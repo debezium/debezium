@@ -1131,7 +1131,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1962")
-    public void shouldTakeColumnWhitelistFilterIntoAccount() throws Exception {
+    public void shouldTakeColumnIncludeListFilterIntoAccount() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
                 "ALTER TABLE s1.a ADD COLUMN cc char(12);" +

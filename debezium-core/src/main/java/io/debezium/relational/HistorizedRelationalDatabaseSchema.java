@@ -95,7 +95,13 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         return recoveredTables;
     }
 
+    @Override
     public boolean storeOnlyCapturedTables() {
         return databaseHistory.storeOnlyCapturedTables();
+    }
+
+    @Override
+    public boolean isHistorized() {
+        return true;
     }
 }

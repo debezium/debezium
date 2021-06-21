@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,7 +22,6 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
-import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -43,7 +43,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                              PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
                                              SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
-        super(connectorConfig, jdbcConnection, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
@@ -220,15 +220,16 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         snapshotter.snapshotCompleted();
     }
 
+    /**
+     * Generate a valid Postgres query string for the specified table and columns
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
+     */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
-                                                 TableId tableId) {
-        return snapshotter.buildSnapshotQuery(tableId);
-    }
-
-    @Override
-    protected RelationalDatabaseSchema schema() {
-        return schema;
+                                                 TableId tableId, List<String> columns) {
+        return snapshotter.buildSnapshotQuery(tableId, columns);
     }
 
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {

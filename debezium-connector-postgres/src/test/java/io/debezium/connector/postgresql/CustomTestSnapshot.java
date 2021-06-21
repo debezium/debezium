@@ -5,7 +5,9 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -39,13 +41,15 @@ public class CustomTestSnapshot implements Snapshotter {
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
-        // on an empty state, don't read from s2 schema, but afterwards, do
+    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
         if (!hasState && tableId.schema().equals("s2")) {
             return Optional.empty();
         }
         else {
-            return Optional.of("select * from " + tableId.toDoubleQuotedString());
+            String query = snapshotSelectColumns.stream()
+                    .collect(Collectors.joining(", ", "SELECT ", " FROM " + tableId.toDoubleQuotedString()));
+
+            return Optional.of(query);
         }
     }
 
