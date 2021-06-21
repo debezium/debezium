@@ -121,11 +121,13 @@ public class LogMinerHelper {
      *
      * @param connection container level database connection
      * @param startScn start SCN
+     * @param prevEndScn previous end SCN
      * @param streamingMetrics the streaming metrics
      * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
-    static Scn getEndScn(OracleConnection connection, Scn startScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize) throws SQLException {
+    static Scn getEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize)
+            throws SQLException {
         Scn currentScn = connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
@@ -146,10 +148,20 @@ public class LogMinerHelper {
             if (!topMiningScnInFarFuture) {
                 streamingMetrics.changeSleepingTime(true);
             }
+            LOGGER.debug("Using current SCN {} as end SCN.", currentScn);
             return currentScn;
         }
         else {
+            if (prevEndScn != null && topScnToMine.compareTo(prevEndScn) <= 0) {
+                LOGGER.debug("Max batch size too small, using current SCN {} as end SCN.", currentScn);
+                return currentScn;
+            }
             streamingMetrics.changeSleepingTime(false);
+            if (topScnToMine.compareTo(startScn) < 0) {
+                LOGGER.debug("Top SCN calculation resulted in end before start SCN, using current SCN {} as end SCN.", currentScn);
+                return currentScn;
+            }
+            LOGGER.debug("Using Top SCN calculation {} as end SCN.", topScnToMine);
             return topScnToMine;
         }
     }
