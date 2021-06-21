@@ -150,7 +150,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             streamingMetrics.calculateTimeDifference(getSystime(jdbcConnection));
 
                             Instant start = Instant.now();
-                            endScn = getEndScn(jdbcConnection, startScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault());
+                            endScn = getEndScn(jdbcConnection, startScn, endScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault());
                             flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
 
                             if (hasLogSwitchOccurred()) {
@@ -170,11 +170,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 currentRedoLogSequences = getCurrentRedoLogSequences();
                             }
 
-                            Scn miningStartScn = offsetContext.getCommitScn();
-                            if (miningStartScn == null) {
-                                miningStartScn = offsetContext.getScn();
-                            }
-                            startLogMining(jdbcConnection, miningStartScn, endScn, strategy, isContinuousMining, streamingMetrics);
+                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics);
 
                             LOGGER.trace("Fetching LogMiner view results SCN {} to {}", startScn, endScn);
                             stopwatch.start();
