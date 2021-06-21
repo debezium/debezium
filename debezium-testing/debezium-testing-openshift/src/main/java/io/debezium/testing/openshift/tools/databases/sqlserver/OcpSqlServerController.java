@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.openshift.tools.databases.sqlserver;
 
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_SA_PASSWORD;
+
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -64,7 +66,7 @@ public class OcpSqlServerController extends OcpSqlDatabaseController {
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
                 .writingError(System.err)
                 .usingListener(new DatabaseInitListener("sqlserver", latch))
-                .exec("/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", "Debezium1$", "-i", "/opt/inventory.sql")) { // TODO: hard-coded password
+                .exec("/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i", "/opt/inventory.sql")) {
             LOGGER.info("Waiting until database is initialized");
             latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
         }
