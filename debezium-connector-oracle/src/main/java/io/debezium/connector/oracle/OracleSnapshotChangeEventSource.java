@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -265,13 +266,34 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 true);
     }
 
+    /**
+     * Generate a valid Oracle query string for the specified table and columns
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
+     */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                                 TableId tableId) {
+                                                 TableId tableId, List<String> columns) {
         final OracleOffsetContext offset = snapshotContext.offset;
         final String snapshotOffset = offset.getScn().toString();
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
         assert snapshotOffset != null;
-        return Optional.of("SELECT * FROM " + quote(tableId) + " AS OF SCN " + snapshotOffset);
+        return Optional.of(String.format("SELECT %s FROM %s AS OF SCN %s", snapshotSelectColumns, quote(tableId), snapshotOffset));
+    }
+
+    @Override
+    protected String resolveColumnName(TableId tableId, String columnName) {
+        StringBuilder sb = new StringBuilder();
+        if (!columnName.contains(tableId.table())) {
+            sb.append(tableId.table())
+                    .append(".").append(columnName);
+        }
+        else {
+            sb.append(columnName);
+        }
+        return sb.toString();
     }
 
     @Override

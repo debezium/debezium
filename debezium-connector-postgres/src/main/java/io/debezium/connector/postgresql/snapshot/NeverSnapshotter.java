@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql.snapshot;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -45,7 +46,7 @@ public class NeverSnapshotter implements Snapshotter {
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
+    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
         throw new UnsupportedOperationException("'never' snapshot mode cannot build queries");
     }
 }

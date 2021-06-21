@@ -401,15 +401,31 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     /**
-     * Generate a valid sqlserver query string for the specified table
+     * Generate a valid MySQL query string for the specified table and columns
      *
      * @param tableId the table to generate a query for
      * @return a valid query string
      */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
-                                                 TableId tableId) {
-        return Optional.of(String.format("SELECT * FROM `%s`.`%s`", tableId.catalog(), tableId.table()));
+                                                 TableId tableId, List<String> columns) {
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
+
+        return Optional.of(String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table()));
+    }
+
+    @Override
+    protected String resolveColumnName(TableId tableId, String columnName) {
+        StringBuilder sb = new StringBuilder();
+        if (!columnName.contains(tableId.table())) {
+            sb.append(tableId.table())
+                    .append(".").append(columnName);
+        }
+        else {
+            sb.append(columnName);
+        }
+        return sb.toString();
     }
 
     private boolean isGloballyLocked() {

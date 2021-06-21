@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -60,15 +61,17 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      */
     public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
+    public static final Pattern SELECT_ALL_PATTERN = Pattern.compile("\\*");
+
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
-    private final HistorizedRelationalDatabaseSchema schema;
+    private final RelationalDatabaseSchema schema;
     protected final EventDispatcher<TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
+                                               JdbcConnection jdbcConnection, RelationalDatabaseSchema schema,
                                                EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
@@ -77,12 +80,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
-    }
-
-    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               JdbcConnection jdbcConnection,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
-        this(connectorConfig, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
@@ -269,13 +266,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             Table table = snapshotContext.tables.forTable(tableId);
 
-            if (schema != null) {
+            if (schema.isHistorized()) {
                 snapshotContext.offset.event(tableId, getClock().currentTime());
 
                 // If data are not snapshotted then the last schema change must set last snapshot flag
                 if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
                     lastSnapshotRecord(snapshotContext);
                 }
+
                 dispatcher.dispatchSchemaChangeEvent(table.id(), (receiver) -> {
                     try {
                         receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
@@ -440,7 +438,34 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
         }
 
-        return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId)) : getSnapshotSelect(snapshotContext, tableId);
+        if (overriddenSelect != null) {
+            return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
+        }
+
+        List<String> columns = getPreparedColumnNames(schema.tableFor(tableId));
+
+        return getSnapshotSelect(snapshotContext, tableId, columns);
+    }
+
+    /**
+     * Prepares a list of columns to be used in the snapshot select.
+     * The selected columns are based on the column include/exclude filters and if all columns are excluded,
+     * the list will contain all the primary key columns.
+     *
+     * @return list of snapshot select columns
+     */
+    protected List<String> getPreparedColumnNames(Table table) {
+        List<String> columnNames = table.retrieveColumnNames()
+                .stream()
+                .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
+                .map(columnName -> resolveColumnName(table.id(), columnName))
+                .collect(Collectors.toList());
+
+        if (columnNames.isEmpty()) {
+            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", table.id());
+            columnNames = table.primaryKeyColumnNames();
+        }
+        return columnNames;
     }
 
     /**
@@ -462,7 +487,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext,
-                                                          TableId tableId);
+                                                          TableId tableId, List<String> columns);
+
+    protected abstract String resolveColumnName(TableId tableId, String columnName);
 
     protected RelationalDatabaseSchema schema() {
         return schema;

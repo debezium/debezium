@@ -214,15 +214,16 @@ public interface Snapshotter {
     default boolean shouldStreamEventsStartingFromSnapshot() {
         return true;
     }
-
     /**
      * Generate a valid postgres query string for the specified table, or an empty {@link Optional}
      * to skip snapshotting this table (but that table will still be streamed from)
      *
      * @param tableId the table to generate a query for
+     * @param snapshotSelectColumns the columns to be used in the snapshot select based on the column
+     *                              include/exclude filters
      * @return a valid query string, or none to skip snapshotting this table
      */
-    Optional<String> buildSnapshotQuery(TableId tableId);
+    Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns);
 
     /**
      * Return a new string that set up the transaction for snapshotting
