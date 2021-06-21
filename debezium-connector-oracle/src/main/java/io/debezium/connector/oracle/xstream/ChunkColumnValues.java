@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.debezium.DebeziumException;
+
 import oracle.streams.ChunkColumnValue;
 
 /**
@@ -76,6 +77,9 @@ public class ChunkColumnValues {
         if (size == 0) {
             return null;
         }
+        if (size > Integer.MAX_VALUE) {
+            throw new DebeziumException("Size " + size + " exceeds maximum value " + Integer.MAX_VALUE);
+        }
         ByteBuffer buffer = ByteBuffer.allocate((int) size);
         for (ChunkColumnValue columnValue : values) {
             buffer.put(columnValue.getColumnData().getBytes());
@@ -90,7 +94,7 @@ public class ChunkColumnValues {
      * @return the size of the column chunk data
      * @throws DebeziumException if there was a problem resolving the size of the column chunk data
      */
-    private static int calculateChunkSize(ChunkColumnValue chunkColumnValue) {
+    private int calculateChunkSize(ChunkColumnValue chunkColumnValue) {
         try {
             switch (chunkColumnValue.getChunkType()) {
                 case ChunkColumnValue.CLOB:
