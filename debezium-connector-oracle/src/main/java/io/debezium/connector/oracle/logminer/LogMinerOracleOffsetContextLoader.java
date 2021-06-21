@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.util.Collections;
 import java.util.Map;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -24,11 +23,6 @@ public class LogMinerOracleOffsetContextLoader implements OffsetContext.Loader<O
 
     public LogMinerOracleOffsetContextLoader(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        return Collections.singletonMap(OracleOffsetContext.SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
     }
 
     @Override

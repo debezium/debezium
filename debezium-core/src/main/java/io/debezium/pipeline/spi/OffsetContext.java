@@ -30,8 +30,6 @@ public interface OffsetContext {
      * Implementations load a connector-specific offset context based on the offset values stored in Kafka.
      */
     interface Loader<O extends OffsetContext> {
-        Map<String, ?> getPartition();
-
         O load(Map<String, ?> offset);
     }
 

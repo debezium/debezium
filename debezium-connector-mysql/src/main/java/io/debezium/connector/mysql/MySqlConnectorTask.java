@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -41,7 +42,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
+public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorTask.class);
     private static final String CONTEXT_NAME = "mysql-connector-task";
@@ -58,7 +59,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
     }
 
     @Override
-    public ChangeEventSourceCoordinator<MySqlOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
         final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(
                 config.edit()
@@ -82,10 +83,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
 
         validateBinlogConfiguration(connectorConfig);
 
-        MySqlOffsetContext previousOffset = getPreviousOffset(new MySqlOffsetContext.Loader(connectorConfig));
-        if (previousOffset == null) {
-            LOGGER.info("No previous offset found");
-        }
+        Map<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(new MySqlPartition.Provider(connectorConfig),
+                new MySqlOffsetContext.Loader(connectorConfig));
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
 
@@ -100,6 +99,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
             throw new DebeziumException(e);
         }
 
+        MySqlOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
+
         validateAndLoadDatabaseHistory(connectorConfig, previousOffset, schema);
 
         LOGGER.info("Reconnecting after finishing schema recovery");
@@ -113,7 +114,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
 
         // If the binlog position is not available it is necessary to reexecute snapshot
         if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {
-            previousOffset = null;
+            MySqlPartition partition = getTheOnlyPartition(previousOffsets);
+            previousOffsets.put(partition, null);
         }
 
         taskContext = new MySqlTaskContext(connectorConfig, schema);
@@ -147,8 +149,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
 
-        ChangeEventSourceCoordinator<MySqlOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                previousOffset,
+        ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+                previousOffsets,
                 errorHandler,
                 MySqlConnector.class,
                 connectorConfig,
@@ -234,8 +236,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
     }
 
     /**
-     * Determine whether the binlog position as set on the {@link MySqlTaskContext#source() SourceInfo} is available in the
-     * server.
+     * Determine whether the binlog position as set on the {@link MySqlOffsetContext} is available in the server.
      *
      * @return {@code true} if the server has the binlog coordinates, or {@code false} otherwise
      */

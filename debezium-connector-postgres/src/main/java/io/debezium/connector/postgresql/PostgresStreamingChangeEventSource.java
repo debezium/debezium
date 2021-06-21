@@ -35,7 +35,7 @@ import io.debezium.util.Threads;
  *
  * @author Horia Chiorean (hchiorea@redhat.com), Jiri Pechanec
  */
-public class PostgresStreamingChangeEventSource implements StreamingChangeEventSource<PostgresOffsetContext> {
+public class PostgresStreamingChangeEventSource implements StreamingChangeEventSource<PostgresPartition, PostgresOffsetContext> {
 
     private static final String KEEP_ALIVE_THREAD_NAME = "keep-alive";
 
@@ -86,7 +86,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, PostgresOffsetContext offsetContext) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext)
+            throws InterruptedException {
         if (!snapshotter.shouldStream()) {
             LOGGER.info("Streaming is not enabled in correct configuration");
             return;

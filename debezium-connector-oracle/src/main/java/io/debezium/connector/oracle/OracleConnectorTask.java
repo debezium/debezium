@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -27,7 +28,7 @@ import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 
-public class OracleConnectorTask extends BaseSourceTask<OracleOffsetContext> {
+public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorTask.class);
     private static final String CONTEXT_NAME = "oracle-connector-task";
@@ -44,7 +45,7 @@ public class OracleConnectorTask extends BaseSourceTask<OracleOffsetContext> {
     }
 
     @Override
-    public ChangeEventSourceCoordinator<OracleOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
@@ -56,7 +57,9 @@ public class OracleConnectorTask extends BaseSourceTask<OracleOffsetContext> {
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector, tableNameCaseSensitivity);
         this.schema.initializeStorage();
-        OracleOffsetContext previousOffset = getPreviousOffset(connectorConfig.getAdapter().getOffsetContextLoader());
+        Map<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
+                connectorConfig.getAdapter().getOffsetContextLoader());
+        OracleOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
 
         if (previousOffset != null) {
             schema.recover(previousOffset);
@@ -91,8 +94,8 @@ public class OracleConnectorTask extends BaseSourceTask<OracleOffsetContext> {
         final OracleStreamingChangeEventSourceMetrics streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
                 connectorConfig);
 
-        ChangeEventSourceCoordinator<OracleOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                previousOffset,
+        ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+                previousOffsets,
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,

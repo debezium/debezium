@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 import java.util.Optional;
 
+import io.debezium.connector.common.Partition;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DataCollectionId;
@@ -16,7 +17,7 @@ import io.debezium.schema.DataCollectionId;
  *
  * @author Gunnar Morling
  */
-public interface ChangeEventSourceFactory<O extends OffsetContext> {
+public interface ChangeEventSourceFactory<P extends Partition, O extends OffsetContext> {
 
     /**
      * Returns a snapshot change event source that may emit change events for schema and/or data changes. Depending on
@@ -30,12 +31,12 @@ public interface ChangeEventSourceFactory<O extends OffsetContext> {
      *
      * @return A snapshot change event source
      */
-    SnapshotChangeEventSource<O> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener);
+    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener);
 
     /**
      * Returns a streaming change event source that starts streaming at the given offset.
      */
-    StreamingChangeEventSource<O> getStreamingChangeEventSource();
+    StreamingChangeEventSource<P, O> getStreamingChangeEventSource();
 
     /**
      * Returns and incremental snapshot change event source that can run in parallel with streaming

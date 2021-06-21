@@ -149,11 +149,6 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
 
         @Override
-        public Map<String, ?> getPartition() {
-            return Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-        }
-
-        @Override
         public SqlServerOffsetContext load(Map<String, ?> offset) {
             final Lsn changeLsn = Lsn.valueOf((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
             final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));

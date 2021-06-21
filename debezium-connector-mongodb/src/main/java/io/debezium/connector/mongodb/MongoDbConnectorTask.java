@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,7 +45,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbOffsetContext> {
+public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition, MongoDbOffsetContext> {
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
@@ -63,7 +64,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbOffsetCont
     }
 
     @Override
-    public ChangeEventSourceCoordinator<MongoDbOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> start(Configuration config) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
@@ -74,7 +75,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbOffsetCont
         this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicSelector(), structSchema);
 
         final ReplicaSets replicaSets = getReplicaSets(config);
-        final MongoDbOffsetContext previousOffsets = getPreviousOffsets(connectorConfig, replicaSets);
+        final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets);
         final Clock clock = Clock.system();
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
@@ -103,8 +104,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbOffsetCont
                     metadataProvider,
                     schemaNameAdjuster);
 
-            ChangeEventSourceCoordinator<MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                    previousOffsets,
+            ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+                    Collections.singletonMap(new MongoDbPartition(), previousOffset),
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
@@ -152,7 +153,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbOffsetCont
         return MongoDbConnectorConfig.ALL_FIELDS;
     }
 
-    private MongoDbOffsetContext getPreviousOffsets(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
+    private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
         MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
