@@ -1958,9 +1958,9 @@ Information about the properties is organized as follows:
 
 * xref:{context}-required-connector-configuration-properties[Required connector configuration properties]
 * xref:{context}-advanced-connector-configuration-properties[Advanced connector configuration properties]
-* xref:{context}-database-history-properties-for-configuring-connector-behavior[Database history connector configuration properties]
-* xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
-* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
+* xref:debezium-{context}-connector-database-history-and-pass-through-configuration-properties[{prodname} connector database history and pass-through configuration properties]
+//* xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
+//* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
 
 
 [id="{context}-required-connector-configuration-properties"]
@@ -2276,7 +2276,8 @@ The name format is _database_name.schema-name.table-name_.
 
 |===
 
-==== Connector database history and pass-through configuration properties
+[id="debezium-{context}-connector-database-history-and-pass-through-configuration-properties"]
+==== {prodname} connector database history and pass-through configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 

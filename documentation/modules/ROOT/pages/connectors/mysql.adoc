@@ -2120,9 +2120,9 @@ Information about the properties is organized as follows:
 
 * xref:mysql-required-connector-configuration-properties[Required connector configuration properties]
 * xref:mysql-advanced-connector-configuration-properties[Advanced connector configuration properties]
-* xref:{context}-database-history-properties-for-configuring-connector-behavior[Database history connector configuration properties]
-* xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
-* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
+* xref:debezium-{context}-connector-database-history-and-pass-through-configuration-properties[{prodname} connector database history and pass-through configuration properties]
+//* xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
+//* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
 
 [id="mysql-required-connector-configuration-properties"]
 The following configuration properties are _required_ unless a default value is available.
@@ -2545,7 +2545,9 @@ The name format is _database-name.table-name_.
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-mysql-connector}#mysql-transaction-metadata[Transaction metadata] for details.
 
 |===
-==== Connector database history and pass-through configuration properties
+
+[id="debezium-{context}-connector-database-history-and-pass-through-configuration-properties"]
+==== {prodname} connector database history and pass-through configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 

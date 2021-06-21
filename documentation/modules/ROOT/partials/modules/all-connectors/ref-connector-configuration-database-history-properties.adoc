@@ -1,7 +1,14 @@
+You can specify the following sets of connector properties to control how {prodname} interacts with the database history topic:
+
+
+* xref:{context}-database-history-properties-for-configuring-connector-behavior[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+* xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties] that control how Kafka producer and consumer clients interact with the Kafka broker.
+* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through database driver properties] that control the behavior of the database driver.
+
 
 [id="{context}-database-history-properties-for-configuring-connector-behavior"]
 .Database history connector configuration properties
-
+{empty} +
 {prodname} provides a set of `database.history.*` properties that control how connectors process control how the connector processes events that it reads from the schema history topic.
 These `database.history` properties specify how the {context} connector processes the event data that it reads from the database history.
 
@@ -54,7 +61,7 @@ The safe default is `false`.
 
 [id="{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
 .Pass-through database history properties for configuring producer and consumer clients
-
+{empty} +
 {prodname} relies on a Kafka producer to write schema changes to database history topics.
 Similarly, it relies on a Kafka consumer to read from database history topics when a connector starts.
 You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.\*` and `database.history.consumer.*` prefixes.
@@ -83,7 +90,7 @@ See the Kafka documentation for more details about link:https://kafka.apache.org
 
 [id="{context}-pass-through-configuration-properties-for-database-drivers"]
 .Pass-through configuration properties for database drivers
-
+{empty} +
 The {prodname} connector provides for pass-through configuration of the database driver.
 Pass-through database properties begin with the prefix `database.*`.
 For example, the connector passes properties such as `database.foobar=false` to the JDBC URL.
