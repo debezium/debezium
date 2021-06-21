@@ -101,7 +101,8 @@
         <version.kafka.scala>2.12</version.kafka.scala>
 
         <!-- ANTLR -->
-        <antlr.version>4.7.2</antlr.version>
+        <!-- Align with Antlr runtime version pulled in via Quarkus -->
+        <antlr.version>4.8</antlr.version>
 
         <!-- Quarkus -->
         <quarkus.version>2.0.0.CR3</quarkus.version>
