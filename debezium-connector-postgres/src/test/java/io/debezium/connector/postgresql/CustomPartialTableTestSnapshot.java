@@ -12,9 +12,9 @@ import io.debezium.relational.TableId;
 
 public class CustomPartialTableTestSnapshot extends CustomStartFromStreamingTestSnapshot {
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
+    public Optional<String> buildSnapshotQuery(TableId tableId, String snapshotSelectColumns) {
         if (tableId.schema().equals("s1") && tableId.table().equals("a")) {
-            return super.buildSnapshotQuery(tableId);
+            return super.buildSnapshotQuery(tableId, snapshotSelectColumns);
         }
 
         return Optional.empty();

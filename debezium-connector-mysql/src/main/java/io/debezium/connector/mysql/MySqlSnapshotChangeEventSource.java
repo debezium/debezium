@@ -400,6 +400,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     protected void complete(SnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext) {
     }
 
+    @Override
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
+                                             String overriddenSelect, TableId tableId) {
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
+    }
+
     /**
      * Generate a valid sqlserver query string for the specified table
      *
@@ -409,7 +416,27 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
                                                  TableId tableId) {
-        return Optional.of(String.format("SELECT * FROM `%s`.`%s`", tableId.catalog(), tableId.table()));
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return Optional.of(String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table()));
+    }
+
+    @Override
+    protected String getSnapshotSelectColumns(TableId tableId) {
+        Table table = databaseSchema.tableFor(tableId);
+        return getPreparedColumnNames(table, tableId).stream().collect(Collectors.joining(","));
+    }
+
+    @Override
+    protected String resolveColumnName(TableId tableId, String columnName) {
+        StringBuilder sb = new StringBuilder();
+        if (!columnName.contains(tableId.table())) {
+            sb.append(tableId.table())
+                    .append(".").append(columnName);
+        }
+        else {
+            sb.append(columnName);
+        }
+        return sb.toString();
     }
 
     private boolean isGloballyLocked() {

@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -59,6 +60,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Interval for showing a log statement with the progress while scanning a single table.
      */
     public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
+
+    public static final Pattern SELECT_ALL_PATTERN = Pattern.compile("\\*");
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
@@ -444,6 +447,34 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     /**
+     * Returns a comma-separated list of columns to be used in the snapshot select.
+     *
+     * @param tableId the table to generate a query for
+     * @return comma-separated list of columns
+     */
+    protected abstract String getSnapshotSelectColumns(TableId tableId);
+
+    /**
+     * Prepares a list of columns to be used in the snapshot select.
+     * The selected columns are based on the column include/exclude filters and if all columns are excluded,
+     * the list will contain all the primary key columns.
+     *
+     * @return list of snapshot select columns
+     */
+    protected List<String> getPreparedColumnNames(Table table, TableId tableId) {
+        List<String> columnNames = table.retrieveColumnNames().stream()
+                .map(columnName -> resolveColumnName(tableId, columnName))
+                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
+                .collect(Collectors.toList());
+
+        if (columnNames.isEmpty()) {
+            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
+            columnNames = table.primaryKeyColumnNames();
+        }
+        return columnNames;
+    }
+
+    /**
      * This method is overridden for Oracle to implement "as of SCN" predicate
      * @param snapshotContext snapshot context, used for getting offset SCN
      * @param overriddenSelect conditional snapshot select
@@ -463,6 +494,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     // scn xyz")
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext,
                                                           TableId tableId);
+
+    protected abstract String resolveColumnName(TableId tableId, String columnName);
 
     protected RelationalDatabaseSchema schema() {
         return schema;

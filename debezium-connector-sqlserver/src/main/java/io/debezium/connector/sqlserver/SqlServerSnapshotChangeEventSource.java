@@ -258,41 +258,37 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                                  TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return Optional.of(String.format("SELECT %s FROM [%s].[%s].[%s]",
-                modifiedColumns, tableId.catalog(), tableId.schema(), tableId.table()));
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return Optional.of(String.format("SELECT %s FROM [%s].[%s]", snapshotSelectColumns, tableId.schema(), tableId.table()));
+    }
+
+    @Override
+    protected String getSnapshotSelectColumns(TableId tableId) {
+        Table table = sqlServerDatabaseSchema.tableFor(tableId);
+        return getPreparedColumnNames(table, tableId).stream().collect(Collectors.joining(","));
+
+    }
+
+    @Override
+    protected String resolveColumnName(TableId tableId, String columnName) {
+        StringBuilder sb = new StringBuilder();
+        if (filterChangeTableColumns(tableId, columnName)) {
+            if (!columnName.contains(tableId.table())) {
+                sb.append("[").append(tableId.table()).append("]")
+                        .append(".[").append(columnName).append("]");
+            }
+            else {
+                sb.append("[").append(columnName).append("]");
+            }
+        }
+        return sb.toString();
     }
 
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                              String overriddenSelect, TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return overriddenSelect.replaceAll("\\*", modifiedColumns);
-    }
-
-    private String checkExcludedColumns(TableId tableId) {
-        Table table = sqlServerDatabaseSchema.tableFor(tableId);
-        List<String> columnNames = table.retrieveColumnNames().stream()
-                .filter(columnName -> filterChangeTableColumns(tableId, columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
-                .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            throw new IllegalArgumentException("Filtered column list for table " + tableId + " is empty");
-        }
-
-        return columnNames.stream()
-                .map(columnName -> {
-                    StringBuilder sb = new StringBuilder();
-                    if (!columnName.contains(tableId.table())) {
-                        sb.append("[").append(tableId.table()).append("]")
-                                .append(".[").append(columnName).append("]");
-                    }
-                    else {
-                        sb.append("[").append(columnName).append("]");
-                    }
-                    return sb.toString();
-                }).collect(Collectors.joining(","));
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
     }
 
     private boolean filterChangeTableColumns(TableId tableId, String columnName) {

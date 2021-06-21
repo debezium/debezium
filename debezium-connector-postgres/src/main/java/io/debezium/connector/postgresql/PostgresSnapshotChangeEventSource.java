@@ -221,9 +221,39 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
+                                             String overriddenSelect, TableId tableId) {
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
+    }
+
+    @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
                                                  TableId tableId) {
-        return snapshotter.buildSnapshotQuery(tableId);
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return snapshotter.buildSnapshotQuery(tableId, snapshotSelectColumns);
+    }
+
+    @Override
+    protected String getSnapshotSelectColumns(TableId tableId) {
+        Table table = schema.tableFor(tableId);
+        return getPreparedColumnNames(table, tableId).stream().collect(Collectors.joining(","));
+    }
+
+    @Override
+    protected String resolveColumnName(TableId tableId, String columnName) {
+        StringBuilder sb = new StringBuilder();
+        if (columnName.contains("\"")) {
+            columnName = columnName.replaceAll("\"", "\"\"");
+        }
+        if (!columnName.contains(tableId.table())) {
+            sb.append(tableId.toDoubleQuotedString())
+                    .append(".\"").append(columnName).append("\"");
+        }
+        else {
+            sb.append("\"").append(columnName).append("\"");
+        }
+        return sb.toString();
     }
 
     @Override
