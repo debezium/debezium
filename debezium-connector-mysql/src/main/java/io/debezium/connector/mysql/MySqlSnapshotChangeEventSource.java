@@ -386,6 +386,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     protected void complete(SnapshotContext<MySqlOffsetContext> snapshotContext) {
     }
 
+    @Override
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext<MySqlOffsetContext> snapshotContext, String overriddenSelect, TableId tableId) {
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
+    }
+
     /**
      * Generate a valid sqlserver query string for the specified table
      *
@@ -394,7 +400,34 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
      */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<MySqlOffsetContext> snapshotContext, TableId tableId) {
-        return Optional.of(String.format("SELECT * FROM `%s`.`%s`", tableId.catalog(), tableId.table()));
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return Optional.of(String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table()));
+    }
+
+    @Override
+    protected String getSnapshotSelectColumns(TableId tableId) {
+        Table table = databaseSchema.tableFor(tableId);
+        List<String> columnNames = table.retrieveColumnNames().stream()
+                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
+                .collect(Collectors.toList());
+
+        if (columnNames.isEmpty()) {
+            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
+            columnNames = table.primaryKeyColumnNames();
+        }
+
+        return columnNames.stream()
+                .map(columnName -> {
+                    StringBuilder sb = new StringBuilder();
+                    if (!columnName.contains(tableId.table())) {
+                        sb.append(tableId.table())
+                                .append(".").append(columnName);
+                    }
+                    else {
+                        sb.append(columnName);
+                    }
+                    return sb.toString();
+                }).collect(Collectors.joining(","));
     }
 
     private boolean isGloballyLocked() {

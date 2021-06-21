@@ -59,9 +59,11 @@ public interface Snapshotter {
      * to skip snapshotting this table (but that table will still be streamed from)
      *
      * @param tableId the table to generate a query for
+     * @param snapshotSelectColumns the comma-separated list of columns to be used in the snapshot select
+     *                              based on the column include/exclude filters
      * @return a valid query string, or none to skip snapshotting this table
      */
-    Optional<String> buildSnapshotQuery(TableId tableId);
+    Optional<String> buildSnapshotQuery(TableId tableId, String snapshotSelectColumns);
 
     /**
      * Return a new string that set up the transaction for snapshotting

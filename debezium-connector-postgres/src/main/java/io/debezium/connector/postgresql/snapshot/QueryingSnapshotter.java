@@ -23,12 +23,8 @@ public abstract class QueryingSnapshotter implements Snapshotter {
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
-        // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-        StringBuilder q = new StringBuilder();
-        q.append("SELECT * FROM ");
-        q.append(tableId.toDoubleQuotedString());
-        return Optional.of(q.toString());
+    public Optional<String> buildSnapshotQuery(TableId tableId, String snapshotSelectColumns) {
+        return Optional.of(String.format("SELECT %s FROM %s", snapshotSelectColumns, tableId.toDoubleQuotedString()));
     }
 
     @Override

@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -212,8 +213,46 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext<PostgresOffsetContext> snapshotContext, String overriddenSelect, TableId tableId) {
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
+    }
+
+    @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresOffsetContext> snapshotContext, TableId tableId) {
-        return snapshotter.buildSnapshotQuery(tableId);
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return snapshotter.buildSnapshotQuery(tableId, snapshotSelectColumns);
+    }
+
+    @Override
+    protected String getSnapshotSelectColumns(TableId tableId) {
+        Table table = schema.tableFor(tableId);
+        List<String> columnNames = table.retrieveColumnNames().stream()
+                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
+                .collect(Collectors.toList());
+
+        if (columnNames.isEmpty()) {
+            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
+            columnNames = table.primaryKeyColumnNames();
+        }
+
+        // returns a list of column names wrapped around double quotes
+        // in case the column name contains a double quote character, add another double quote character to it
+        return columnNames.stream()
+                .map(columnName -> {
+                    StringBuilder sb = new StringBuilder();
+                    if (columnName.contains("\"")) {
+                        columnName = columnName.replaceAll("\"", "\"\"");
+                    }
+                    if (!columnName.contains(tableId.table())) {
+                        sb.append(tableId.toDoubleQuotedString())
+                                .append(".\"").append(columnName).append("\"");
+                    }
+                    else {
+                        sb.append("\"").append(columnName).append("\"");
+                    }
+                    return sb.toString();
+                }).collect(Collectors.joining(","));
     }
 
     @Override

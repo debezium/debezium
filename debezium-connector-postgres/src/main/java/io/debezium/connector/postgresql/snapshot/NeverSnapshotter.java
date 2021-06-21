@@ -45,7 +45,7 @@ public class NeverSnapshotter implements Snapshotter {
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
+    public Optional<String> buildSnapshotQuery(TableId tableId, String snapshotSelectColumns) {
         throw new UnsupportedOperationException("'never' snapshot mode cannot build queries");
     }
 }

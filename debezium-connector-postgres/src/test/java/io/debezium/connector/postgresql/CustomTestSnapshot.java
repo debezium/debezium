@@ -39,13 +39,12 @@ public class CustomTestSnapshot implements Snapshotter {
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
-        // on an empty state, don't read from s2 schema, but afterwards, do
+    public Optional<String> buildSnapshotQuery(TableId tableId, String snapshotSelectColumns) {
         if (!hasState && tableId.schema().equals("s2")) {
             return Optional.empty();
         }
         else {
-            return Optional.of("select * from " + tableId.toDoubleQuotedString());
+            return Optional.of(String.format("select %s from %s", snapshotSelectColumns, tableId.toDoubleQuotedString()));
         }
     }
 

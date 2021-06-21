@@ -60,6 +60,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      */
     public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
+    public static final Pattern SELECT_ALL_PATTERN = Pattern.compile("\\*");
+
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
     private final HistorizedRelationalDatabaseSchema schema;
@@ -429,6 +431,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId)) : getSnapshotSelect(snapshotContext, tableId);
     }
+
+    /**
+     * Returns a comma-separated list of columns to be used in the snapshot select.
+     * The selected columns are based on the column include/exclude filters and if all columns are excluded,
+     * the list will contain all the primary key columns.
+     *
+     * @param tableId the table to generate a query for
+     * @return comma-separated list of columns
+     */
+    protected abstract String getSnapshotSelectColumns(TableId tableId);
 
     /**
      * This method is overridden for Oracle to implement "as of SCN" predicate
