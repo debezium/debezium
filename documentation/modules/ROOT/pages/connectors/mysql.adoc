@@ -1304,7 +1304,7 @@ Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` 
 
 The time zone of the JVM running Kafka Connect and Debezium does not affect these conversions.
 
-More details about properties related to termporal values are in the documentation for {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
+More details about properties related to temporal values are in the documentation for {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
 
 time.precision.mode=adaptive_time_microseconds(default)::
 The MySQL connector determines the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database. All time fields are in microseconds. Only positive `TIME` field values in the range of `00:00:00.000000` to `23:59:59.999999` can be captured correctly.
@@ -1753,7 +1753,7 @@ This option is available in MySQL 5.6 and later.
 .Prerequisites
 
 * A MySQL server.
-* Basic knowlede of SQL commands.
+* Basic knowledge of SQL commands.
 * Access to the MySQL configuration file.
 
 .Procedure
@@ -1806,7 +1806,7 @@ To deploy a {prodname} MySQL connector, you add the connector files to Kafka Con
 For details about deploying the {prodname} MySQL connector, see the following topics:
 
 * xref:deploying-debezium-mysql-connectors[]
-* xref:mysql-connector-properties[]
+* xref:descriptions-of-debezium-mysql-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-mysql-connectors
@@ -2111,6 +2111,7 @@ The connector then starts generating data change events for row-level operations
 
 // Type: reference
 // Title: Description of {prodname} MySQL connector configuration properties
+// ModuleID: descriptions-of-debezium-mysql-connector-configuration-properties
 [[mysql-connector-properties]]
 === Connector properties
 
