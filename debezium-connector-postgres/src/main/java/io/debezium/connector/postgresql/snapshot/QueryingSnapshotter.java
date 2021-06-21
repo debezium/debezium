@@ -6,8 +6,10 @@
 package io.debezium.connector.postgresql.snapshot;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.spi.OffsetState;
@@ -23,12 +25,11 @@ public abstract class QueryingSnapshotter implements Snapshotter {
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
-        // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-        StringBuilder q = new StringBuilder();
-        q.append("SELECT * FROM ");
-        q.append(tableId.toDoubleQuotedString());
-        return Optional.of(q.toString());
+    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
+        String query = snapshotSelectColumns.stream()
+                .collect(Collectors.joining(", ", "SELECT ", " FROM " + tableId.toDoubleQuotedString()));
+
+        return Optional.of(query);
     }
 
     @Override
