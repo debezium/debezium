@@ -1526,6 +1526,14 @@ Any transaction that exceeds this configured value will be discarded entirely an
 While this option allows the behavior to be configured on a case-by-case basis,
 we have plans to enhance this behavior in a future release by means of adding a scalable transaction buffer, (see {link-prefix}:{jira-url}/browse/DBZ-3123[DBZ-3123]).
 
+|[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
+|`false`
+|Controls whether or not large object (CLOB or BLOB) column values are emitted in change events. +
+ +
+By default, change events will have large object columns but they will not have any values.
+There is a certain amount of overhead in processing and managing large object column types and payloads.
+In order to capture large object values and have them serialized in the change events, set this option to `true`.
+
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |
 |A comma-separated list of RAC node host names or addresses.
