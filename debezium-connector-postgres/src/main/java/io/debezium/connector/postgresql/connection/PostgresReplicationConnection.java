@@ -123,7 +123,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
-        this.defaultStartingPos = Lsn.valueOf(lsn);
+        if (lsn != null) {
+            this.defaultStartingPos = Lsn.valueOf(lsn);
+        }
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
