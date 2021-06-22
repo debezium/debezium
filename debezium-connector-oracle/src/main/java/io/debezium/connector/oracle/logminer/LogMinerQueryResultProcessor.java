@@ -189,6 +189,10 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.SELECT_LOB_LOCATOR: {
+                    if (!connectorConfig.isLobEnabled()) {
+                        LOGGER.trace("SEL_LOB_LOCATOR operation skipped for '{}', LOB not enabled.", redoSql);
+                        continue;
+                    }
                     LOGGER.trace("SEL_LOB_LOCATOR: {}, REDO_SQL: {}", logMessage, redoSql);
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
                     final Table table = schema.tableFor(tableId);
@@ -204,6 +208,10 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.LOB_WRITE: {
+                    if (!connectorConfig.isLobEnabled()) {
+                        LOGGER.trace("LOB_WRITE operation skipped, LOB not enabled.");
+                        continue;
+                    }
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
                     if (schema.tableFor(tableId) == null) {
                         LogMinerHelper.logWarn(streamingMetrics, "LOB_WRITE for table '{}' is not known to the connector, skipped.", tableId);
@@ -214,6 +222,10 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.LOB_ERASE: {
+                    if (!connectorConfig.isLobEnabled()) {
+                        LOGGER.trace("LOB_ERASE operation skipped, LOB not enabled.");
+                        continue;
+                    }
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
                     if (schema.tableFor(tableId) == null) {
                         LogMinerHelper.logWarn(streamingMetrics, "LOB_ERASE for table '{}' is not known to the connector, skipped.", tableId);

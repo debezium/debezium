@@ -55,6 +55,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
         Configuration config = connectorConfig()
                 .with(OracleConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
                 .build();
 
         start(OracleConnector.class, config);

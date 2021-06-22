@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOB_ENABLED;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST;
@@ -37,6 +38,9 @@ public class LogMinerQueryBuilderTest {
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
+    private static final String OPERATION_CODES_LOB_ENABLED = "(1,2,3,9,10,11,29)";
+    private static final String OPERATION_CODES_LOB_DISABLED = "(1,2,3)";
+
     /**
      * A template that defines the expected SQL output when the configuration specifies
      * {@code database.history.store.only.captured.tables.ddl} is {@code false}.
@@ -49,7 +53,7 @@ public class LogMinerQueryBuilderTest {
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM','${user}') " +
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
             "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')) ) " +
-            "OR (OPERATION_CODE IN (1,2,3,9,10,11,29) " +
+            "OR (OPERATION_CODE IN ${operationCodes} " +
             "AND TABLE_NAME != '" + SqlUtils.LOGMNR_FLUSH_TABLE + "' " +
             "${systemTablePredicate}" +
             "${schemaPredicate}" +
@@ -65,7 +69,7 @@ public class LogMinerQueryBuilderTest {
             "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? AND ((" +
             "OPERATION_CODE IN (6,7,34,36)) OR " +
-            "((OPERATION_CODE IN (1,2,3,9,10,11,29) OR " +
+            "((OPERATION_CODE IN ${operationCodes} OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM','${user}') " +
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
             "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%'))) " +
@@ -86,7 +90,19 @@ public class LogMinerQueryBuilderTest {
         String result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null));
 
+        config = TestHelper.defaultConfig().with(LOB_ENABLED, true).build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null));
+
         config = TestHelper.defaultConfig().with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null));
+
+        config = TestHelper.defaultConfig().with(STORE_ONLY_CAPTURED_TABLES_DDL, true).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
@@ -157,7 +173,19 @@ public class LogMinerQueryBuilderTest {
         String result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
 
+        config = TestHelper.defaultConfig().with(field, fieldValue).with(LOB_ENABLED, true).build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+
         config = TestHelper.defaultConfig().with(field, fieldValue).with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+
+        config = TestHelper.defaultConfig().with(field, fieldValue).with(STORE_ONLY_CAPTURED_TABLES_DDL, true).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
@@ -171,8 +199,23 @@ public class LogMinerQueryBuilderTest {
         String result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
 
+        config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2).with(LOB_ENABLED, true).build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+
         config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2)
                 .with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+
+        config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2)
+                .with(STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(LOB_ENABLED, true)
+                .build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
@@ -203,6 +246,7 @@ public class LogMinerQueryBuilderTest {
             query = query.replace("${systemTablePredicate}", "");
         }
 
+        query = query.replace("${operationCodes}", config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED : OPERATION_CODES_LOB_DISABLED);
         query = query.replace("${schemaPredicate}", schemaReplacement == null ? "" : schemaReplacement);
         query = query.replace("${tablePredicate}", tableReplacement == null ? "" : tableReplacement);
         query = query.replace("${user}", USERNAME);

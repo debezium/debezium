@@ -110,7 +110,7 @@ public class TransactionalBufferTest {
         clock = mock(Clock.class);
 
         streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig);
-        transactionalBuffer = new TransactionalBuffer(schema, clock, errorHandler, streamingMetrics);
+        transactionalBuffer = new TransactionalBuffer(connectorConfig, schema, clock, errorHandler, streamingMetrics);
     }
 
     @After
