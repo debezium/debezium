@@ -1222,20 +1222,8 @@ When using a non-CDB installation, do *not* specify the `database.pdb.name`.
 ====
 
 [[oracle-connector-properties]]
-=== Connector properties
+=== Connector Properties
 
-The {prodname} Oracle connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
-Many properties have default values.
-Information about the properties is organized as follows:
-
-* xref:{context}-required-connector-configuration-properties[Required connector {prodname} configuration properties]
-* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
-* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
-
-
-[id="oracle-required-connector-configuration-properties"]
-==== Required {prodname} Oracle connector configuration properties
 The following configuration properties are _required_ unless a default value is available.
 
 [cols="30%a,25%a,45%a"]
@@ -1517,6 +1505,14 @@ If the captured table(s) schema changes infrequently or never, this is the ideal
 |The number of hours in the past from SYSDATE to mine archive logs.
 Using the default `0` will mine all archive logs.
 
+|[[oracle-property-log-mining-archive-log-only-mode]]<<oracle-property-log-mining-archive-log-only-mode, `+log.mining.archive.log.only.mode+`>>
+|`false`
+|Controls whether or not the connector mines changes from just archive logs or a combination of the online redo logs and archive logs (the default). +
+ +
+For some environments where online redo logs are archived frequently enough to cause LogMiner session failures,
+this opt-in feature only mines archive logs which are guaranteed to be reliable unlike the circular buffer nature of redo logs that can be archived at any point, leading to LogMiner session errors.
+Note that by using this opt-in feature, events will be emitted with a certain amount of latency that is entirely dependent on how frequently online redo logs are archived by Oracle.
+
 |[[oracle-property-log-mining-transaction-retention-hours]]<<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>>
 |`0`
 |Positive integer value that specifies the number of hours to retain long running transactions between redo log switches.
@@ -1565,17 +1561,17 @@ The {prodname} Oracle connector has three metric types in addition to the built-
 Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[oracle-monitoring-snapshots]]
-[[oracle-snapshot-metrics]]
 === Snapshot Metrics
 
+[[oracle-snapshot-metrics]]
 The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 [[oracle-monitoring-streaming]]
-[[oracle-streaming-metrics]]
 === Streaming Metrics
 
+[[oracle-streaming-metrics]]
 The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
