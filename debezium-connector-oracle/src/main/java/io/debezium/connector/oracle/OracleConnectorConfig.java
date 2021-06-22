@@ -295,6 +295,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "When set to `true`, the connector will only mine archive logs. There are circumstances where its advantageous to only " +
                     "mine archive logs and accept latency in event emission due to frequent revolving redo logs.");
 
+    public static final Field LOB_ENABLED = Field.create("lob.enabled")
+            .withDisplayName("Specifies whether the connector supports mining LOB fields and operations")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("When set to `false`, the default, LOB fields will not be captured nor emitted. When set to `true`, the connector " +
+                    "will capture LOB fields and emit changes for those fields like any other column type.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -335,7 +344,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SLEEP_TIME_INCREMENT_MS,
                     LOG_MINING_TRANSACTION_RETENTION,
                     LOG_MINING_DML_PARSER,
-                    LOG_MINING_ARCHIVE_LOG_ONLY_MODE)
+                    LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
+                    LOB_ENABLED)
             .create();
 
     /**
@@ -381,6 +391,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningTransactionRetention;
     private final LogMiningDmlParser dmlParser;
     private final boolean archiveLogOnlyMode;
+    private final boolean lobEnabled;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
@@ -396,6 +407,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+        this.lobEnabled = config.getBoolean(LOB_ENABLED);
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
         if (this.streamingAdapter == null) {
@@ -977,6 +989,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isArchiveLogOnlyMode() {
         return archiveLogOnlyMode;
+    }
+
+    /**
+     * @return true if LOB fields are to be captured; false otherwise to not capture LOB fields.
+     */
+    public boolean isLobEnabled() {
+        return lobEnabled;
     }
 
     public Configuration jdbcConfig() {

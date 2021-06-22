@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.BlobChunkList;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
@@ -48,6 +49,7 @@ public final class TransactionalBuffer implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionalBuffer.class);
 
+    private final OracleConnectorConfig connectorConfig;
     private final Map<String, Transaction> transactions;
     private final OracleDatabaseSchema schema;
     private final Clock clock;
@@ -64,13 +66,16 @@ public final class TransactionalBuffer implements AutoCloseable {
     /**
      * Constructor to create a new instance.
      *
+     * @param connectorConfig connector configuration, should not be {@code null}
      * @param schema database schema
      * @param clock system clock
      * @param errorHandler the connector error handler
      * @param streamingMetrics the streaming metrics
      */
-    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    TransactionalBuffer(OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler,
+                        OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.transactions = new HashMap<>();
+        this.connectorConfig = connectorConfig;
         this.schema = schema;
         this.clock = clock;
         this.errorHandler = errorHandler;
@@ -563,6 +568,11 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param transaction transaction to be reconciled, never {@code null}
      */
     private void reconcileTransaction(Transaction transaction) {
+        // Do not perform reconciliation if LOB support is not enabled.
+        if (!connectorConfig.isLobEnabled()) {
+            return;
+        }
+
         LOGGER.trace("Reconciling transaction {}", transaction.transactionId);
         LogMinerEvent prevEvent = null;
 

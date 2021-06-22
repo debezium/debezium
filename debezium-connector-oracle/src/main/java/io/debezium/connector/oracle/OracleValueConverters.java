@@ -105,10 +105,12 @@ public class OracleValueConverters extends JdbcValueConverters {
     private static final Pattern TO_DATE = Pattern.compile("TO_DATE\\('(.*)',[ ]*'(.*)'\\)", Pattern.CASE_INSENSITIVE);
 
     private final OracleConnection connection;
+    private final boolean lobEnabled;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, null);
         this.connection = connection;
+        this.lobEnabled = config.isLobEnabled();
     }
 
     @Override
@@ -249,6 +251,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((CHAR) data).stringValue();
         }
         if (data instanceof Clob) {
+            if (!lobEnabled) {
+                return null;
+            }
             try {
                 Clob clob = (Clob) data;
                 // Note that java.sql.Clob specifies that the first character starts at 1
@@ -312,9 +317,15 @@ public class OracleValueConverters extends JdbcValueConverters {
                 }
             }
             else if (data instanceof BlobChunkList) {
+                if (!lobEnabled) {
+                    return null;
+                }
                 data = convertBlobChunkList((BlobChunkList) data);
             }
             else if (data instanceof Blob) {
+                if (!lobEnabled) {
+                    return null;
+                }
                 Blob blob = (Blob) data;
                 data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
             }

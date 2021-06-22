@@ -260,9 +260,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     @Override
     public void processChunk(ChunkColumnValue chunk) throws StreamsException {
-        // Store the chunk in the chunk map
-        // Chunks will be processed once the end of the row is reached
-        columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ChunkColumnValues()).add(chunk);
+        if (connectorConfig.isLobEnabled()) {
+            // Store the chunk in the chunk map
+            // Chunks will be processed once the end of the row is reached
+            columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ChunkColumnValues()).add(chunk);
+        }
 
         if (chunk.isEndOfRow()) {
             try {
