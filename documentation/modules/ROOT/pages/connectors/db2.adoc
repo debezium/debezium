@@ -13,7 +13,6 @@ ifdef::community[]
 :source-highlighter: highlight.js
 
 toc::[]
-endif::community[]
 
 {prodname}'s Db2 connector can capture row-level changes in the tables of a Db2 database. This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode". When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
 
