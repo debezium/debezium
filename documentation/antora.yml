@@ -32,6 +32,8 @@ asciidoc:
     link-event-flattening: 'configuration/event-flattening.adoc'
     link-mongodb-connector: 'connectors/mongodb.adoc'
     link-mongodb-event-flattening: 'configuration/mongodb-event-flattening.adoc' 
+    link-content-based-routing: 'configuration/content-based-routing.adoc'
+    link-filtering: 'configuration/filtering.adoc'
     link-mysql-connector: 'connectors/mysql.adoc'
     link-oracle-connector: 'connectors/oracle.adoc'
     link-outbox-event-router: 'configuration/outbox-event-router.adoc'
