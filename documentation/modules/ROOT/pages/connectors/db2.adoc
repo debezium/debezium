@@ -1841,9 +1841,10 @@ Information about the properties is organized as follows:
 
 * xref:db2-required-configuration-properties[Required configuration properties]
 * xref:db2-advanced-configuration-properties[Advanced configuration properties]
-* xref:debezium-{context}-connector-database-history-and-pass-through-configuration-properties[{prodname} connector database history and pass-through configuration properties]
-//* xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
-//* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
+* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties] 
+* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+
 
 [id="db2-required-configuration-properties"]
 ==== Required {prodname} Db2 connector configuration properties
@@ -2101,10 +2102,15 @@ The name format is _schema-name.table-name_.
 
 |===
 
-[id="debezium-{context}-connector-database-history-and-pass-through-configuration-properties"]
-==== {prodname} connector database history and pass-through configuration properties
+[id="debezium-{context}-connector-database-history-configuration-properties"]
+==== {prodname} connector database history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} connector pass-through database driver configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-db2-connector-performance

@@ -1228,10 +1228,11 @@ The {prodname} Oracle connector has numerous configuration properties that you c
 Many properties have default values.
 Information about the properties is organized as follows:
 
-* xref:{context}-required-connector-configuration-properties[Required connector configuration properties]
-* xref:debezium-{context}-connector-database-history-and-pass-through-configuration-properties[{prodname} connector database history and pass-through configuration properties]
-//* xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
-//* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
+* xref:{context}-required-connector-configuration-properties[Required connector {prodname} configuration properties]
+* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+
 
 [id="oracle-required-connector-configuration-properties"]
 ==== Required {prodname} Oracle connector configuration properties
@@ -1542,10 +1543,15 @@ By default, no operations are skipped.
 
 |===
 
-[id="debezium-{context}-connector-database-history-and-pass-through-configuration-properties"]
-==== {prodname} connector database history and pass-through configuration properties
+[id="debezium-{context}-connector-database-history-configuration-properties"]
+==== {prodname} connector database history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} connector pass-through database driver configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
 [[oracle-monitoring]]
 == Monitoring
