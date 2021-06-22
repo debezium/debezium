@@ -76,8 +76,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     /**
      * Creates a new replication connection with the given params.
-     *
-     * @param config                    the JDBC configuration for the connection; may not be null
+     *  @param config                    the JDBC configuration for the connection; may not be null
      * @param slotName                  the name of the DB slot for logical replication; may not be null
      * @param publicationName           the name of the DB publication for logical replication; may not be null
      * @param tableFilter               the tables to watch of the DB publication for logical replication; may not be null
@@ -85,14 +84,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
      * @param truncateHandlingMode      the mode for truncate handling; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
-     * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param exportSnapshot            whether the replication should export a snapshot when created
      * @param doSnapshot                whether the connector is doing snapshot
+     * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
-     *                                  <p>
-     *                                  updates to the server
+     * @param lsn                       the start lsn for cdc
      */
     private PostgresReplicationConnection(Configuration config,
                                           String slotName,
@@ -107,7 +105,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           Duration statusUpdateInterval,
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
-                                          PostgresSchema schema) {
+                                          PostgresSchema schema,
+                                          String lsn) {
         super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
@@ -124,6 +123,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
+        this.defaultStartingPos = Lsn.valueOf(lsn);
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
@@ -235,8 +235,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.debug("received latest xlogpos '{}'", xlogpos);
                 return Lsn.valueOf(xlogpos);
             });
-
-            if (slotCreationInfo != null) {
+            if (defaultStartingPos != null) {
+                LOGGER.debug("use the default lsn : {} ", defaultStartingPos);
+            }
+            else if (slotCreationInfo != null) {
                 this.defaultStartingPos = slotCreationInfo.startLsn();
             }
             else if (shouldCreateSlot || !slotInfo.hasValidFlushedLsn()) {
@@ -642,6 +644,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
         private Properties slotStreamParams = new Properties();
+        private String lsn;
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -733,10 +736,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder startLSN(String lsn) {
+            this.lsn = lsn;
+            return this;
+        }
+
+        @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
             return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, truncateHandlingMode,
-                    dropSlotOnClose, exportSnapshot, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+                    dropSlotOnClose, exportSnapshot, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema, lsn);
         }
 
         @Override

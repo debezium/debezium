@@ -214,6 +214,13 @@ public interface ReplicationConnection extends AutoCloseable {
         Builder doSnapshot(final boolean doSnapshot);
 
         /**
+         * Special lsn for cdc
+         * @param lsn Special lsn for cdc
+         * @return this instance
+         */
+        Builder startLSN(String lsn);
+
+        /**
          * Creates a new {@link ReplicationConnection} instance
          * @return a connection, never null
          */
