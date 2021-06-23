@@ -1508,7 +1508,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             // Get streaming records
             sourceRecords = consumeRecordsByTopic(logMinerAdapter ? 3 : 2);
             table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
-            assertThat(table).hasSize(3);
+            assertThat(table).hasSize(logMinerAdapter ? 3 : 2);
 
             record = table.get(0);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
