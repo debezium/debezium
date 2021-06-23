@@ -1221,6 +1221,7 @@ When using CDB installations, specify `database.pdb.name`. +
 When using a non-CDB installation, do *not* specify the `database.pdb.name`.
 ====
 
+
 [[oracle-connector-properties]]
 === Connector Properties
 
@@ -1228,12 +1229,13 @@ The {prodname} Oracle connector has numerous configuration properties that you c
 Many properties have default values.
 Information about the properties is organized as follows:
 
-* xref:mysql-required-connector-configuration-properties[Required connector configuration properties]
+* xref:required-debezium-{context}-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
 * xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
 ** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
 * xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
-
+[id="required-debezium-{context}-connector-configuration-properties"]
+==== Required {prodname} Oracle connector configuration properties
 The following configuration properties are _required_ unless a default value is available.
 
 [cols="30%a,25%a,45%a"]
