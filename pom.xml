@@ -61,7 +61,7 @@
         <version.zookeeper>3.4.13</version.zookeeper>
         <version.jackson>2.9.7</version.jackson>
         <version.org.slf4j>1.7.25</version.org.slf4j>
-        <version.log4j>1.2.17</version.log4j>
+        <version.log4j>1.2.17-cp2</version.log4j>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>5.0.1</version.confluent.platform>
 
@@ -284,8 +284,8 @@
                 <version>${version.org.slf4j}</version>
             </dependency>
             <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
+                <groupId>io.confluent</groupId>
+                <artifactId>confluent-log4j</artifactId>
                 <version>${version.log4j}</version>
             </dependency>
 
