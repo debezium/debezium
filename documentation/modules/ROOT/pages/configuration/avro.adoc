@@ -117,11 +117,13 @@ endif::product[]
 [source,options="nowrap"]
 ----
 key.converter=io.apicurio.registry.utils.converter.AvroConverter
-key.converter.apicurio.registry.url=http://apicurio:8080/api
-key.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy
+key.converter.apicurio.registry.url=http://apicurio:8080/apis/registry/v2
+key.converter.apicurio.registry.auto-register=true
+key.converter.apicurio.registry.find-latest=true
 value.converter=io.apicurio.registry.utils.converter.AvroConverter
-value.converter.apicurio.registry.url=http://apicurio:8080/api
-value.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy
+value.converter.apicurio.registry.url=http://apicurio:8080/apis/registry/v2
+value.converter.apicurio.registry.auto-register=true
+value.converter.apicurio.registry.find-latest=true
 ----
 
 Internally, Kafka Connect always uses JSON key/value converters for storing configuration and offsets.
@@ -173,11 +175,13 @@ docker run -it --rm --name connect \
     -e KEY_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
     -e VALUE_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
     -e CONNECT_KEY_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
-    -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_URL=http://apicurio:8080 \
-    -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy \
+    -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_URL=http://apicurio:8080/apis/registry/v2 \
+    -e CONNECT_KEY_CONVERTER_APICURIO_REGISTRY_AUTO-REGISTER=true \
+    -e CONNECT_KEY_CONVERTER_APICURIO_REGISTRY_FIND-LATEST=true \
     -e CONNECT_VALUE_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
-    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_URL=http://apicurio:8080 \
-    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy \
+    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_URL=http://apicurio:8080/apis/registry/v2 \
+    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_AUTO-REGISTER=true \
+    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_FIND-LATEST=true \
     -p 8083:8083 debezium/connect:{debezium-docker-label}
 ----
 endif::community[]
