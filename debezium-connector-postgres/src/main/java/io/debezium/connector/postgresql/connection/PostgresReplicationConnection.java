@@ -91,6 +91,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
+     * @param lsn                       the start lsn for cdc
      *                                  <p>
      *                                  updates to the server
      */
@@ -107,7 +108,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           Duration statusUpdateInterval,
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
-                                          PostgresSchema schema) {
+                                          PostgresSchema schema,
+                                          String lsn) {
         super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
@@ -124,6 +126,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
+        if (lsn != null) {
+            this.defaultStartingPos = Lsn.valueOf(lsn);
+        }
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
@@ -235,8 +240,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.debug("received latest xlogpos '{}'", xlogpos);
                 return Lsn.valueOf(xlogpos);
             });
-
-            if (slotCreationInfo != null) {
+            if (defaultStartingPos != null) {
+                LOGGER.debug("use the default lsn : {} ", defaultStartingPos);
+            }
+            else if (slotCreationInfo != null) {
                 this.defaultStartingPos = slotCreationInfo.startLsn();
             }
             else if (shouldCreateSlot || !slotInfo.hasValidFlushedLsn()) {
@@ -642,6 +649,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
         private Properties slotStreamParams = new Properties();
+        private String lsn;
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -733,10 +741,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder startLSN(String lsn) {
+            this.lsn = lsn;
+            return this;
+        }
+
+        @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, truncateHandlingMode,
-                    dropSlotOnClose, exportSnapshot, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin,
+                    truncateHandlingMode, dropSlotOnClose, exportSnapshot, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema, lsn);
         }
 
         @Override
