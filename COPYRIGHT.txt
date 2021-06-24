@@ -48,6 +48,7 @@ Braden Groom
 Braden Staudacher
 Brandon Brown
 Brandon Maguire
+Camile Sing
 Cao Manh Dat
 Cheng Pan
 Ching Tsai
@@ -118,6 +119,7 @@ Hoa Le
 Horia Chiorean
 Hossein Torabi
 Hussain Ansari
+Hyunjin Oh
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
@@ -134,6 +136,7 @@ Jakub Cechacek
 James Gormley
 Jan-Hendrik Dolling
 Jan Uyttenhove
+JapuDCret
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel

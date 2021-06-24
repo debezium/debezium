@@ -84,3 +84,4 @@ raphaelauv,Raphael Auv
 chriscollingwood,Chris Collingwood
 jackey.zhang,Jackey Zhang
 gvaquez-ubi,Gilles Vaquez
+camile.sing,Camile Sing
