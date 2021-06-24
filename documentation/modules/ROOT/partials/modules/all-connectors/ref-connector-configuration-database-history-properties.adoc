@@ -29,7 +29,7 @@ The following table describes the `database.history` properties for configuring 
 The safe default is `false`.
 Skipping should be used only with care as it can lead to data loss or mangling when the binlog is being processed.
 
-|[[{context}-property-database-history-store-only-monitored-tables-ddl]]<<{context}-property-database-history-store-only-monitored-tables-ddl, `+database.history.store.only.monitored.tables.ddl+`>> +
+|[[{context}-property-database-history-store-only-monitored-tables-ddl]]<<{context}-property-database-history-store-only-monitored-tables-ddl, `+database.history.store.only.monitored.tables.ddl+`>>
 +
 _Deprecated and scheduled for removal in a future release; use xref:{context}-property-database-history-store-only-captured-tables-ddl[`database.history.store.only.captured.tables.ddl`] instead._
 |`false`
