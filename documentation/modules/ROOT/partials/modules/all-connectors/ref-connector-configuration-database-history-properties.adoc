@@ -43,7 +43,7 @@ The safe default is `false`.
 |`false`
 |A Boolean value that specifies whether the connector should record all DDL statements
 +
-`true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured. +
+`true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured.
 +
 The safe default is `false`.
 |===
