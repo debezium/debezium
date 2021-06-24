@@ -1137,7 +1137,7 @@ Due to licensing requirements, the {prodname} Oracle Connector does not ship wit
 You can obtain them for free by downloading the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client].
 
 Extract the archive and navigate to the Instant Client directory.
-Copy `ojdbc<version>.jar` and `xstreams.jar` into Kafka's _libs_ directory.
+Copy `ojdbc8.jar` and `xstreams.jar` (not needed when using the LogMiner-based capture implementation) into Kafka Connect's _libs_ directory.
 Lastly, create an environment variable, `LD_LIBRARY_PATH`, that points to the instant client directory, as shown below:
 
 [source,bash,indent=0]
