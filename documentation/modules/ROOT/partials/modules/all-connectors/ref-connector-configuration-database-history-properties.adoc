@@ -1,4 +1,4 @@
-{prodname} provides a set of `database.history.*` properties that control how the connector processes events that it reads from the schema history topic.
+{prodname} provides a set of `database.history.*` properties that control how the connector interacts with the schema history topic.
 These `database.history` properties specify how the {context} connector processes the event data that it reads from the database history.
 
 The following table describes the `database.history` properties for configuring the {prodname} {context} connector.
