@@ -246,7 +246,8 @@ public class KeyValueStore {
                                 break;
                         }
                     }
-                } else {
+                }
+                else {
                     // This is a tombstone ...
                     valuesByKey.remove(key);
                 }

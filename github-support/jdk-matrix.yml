@@ -1,0 +1,29 @@
+name: Java Quality Outreach
+
+'on':
+  schedule:
+    - cron: "0 22 * * *"
+
+default:
+  runs-on: ubuntu-latest
+  strategy:
+    matrix:
+      java: ['15', '16.0.0-ea.20']
+
+#@ load("@ytt:data", "data")
+#@yaml/text-templated-strings
+jobs:
+#@ for job in data.values.jobs:
+  (@= job.key @):
+    name: (@= job.name @) - Java ${{ matrix.java }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Setup OpenJDK
+        uses: actions/setup-java@v1.3.0
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Maven Build
+        run: (@= job.maven @)
+#@ end

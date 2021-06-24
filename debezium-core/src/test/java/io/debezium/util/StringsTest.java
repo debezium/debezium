@@ -11,6 +11,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 import org.junit.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.text.ParsingException;
 
 /**
@@ -28,7 +30,7 @@ import io.debezium.text.ParsingException;
  */
 public class StringsTest {
 
-    public void compareSeparatedLines( Object... lines ) {
+    public void compareSeparatedLines(Object... lines) {
         ByteArrayOutputStream content = new ByteArrayOutputStream();
         PrintStream stream = new PrintStream(content);
         for (Object line : lines) {
@@ -162,45 +164,45 @@ public class StringsTest {
 
     @Test
     public void replaceVariablesShouldReplaceVariableThatHaveSameCase() {
-        assertReplacement("some ${v1} text",vars("v1", "abc"), "some abc text");
-        assertReplacement("some ${v1} text",vars("v1", "abc", "V1", "ABC"), "some abc text");
-        assertReplacement("some ${v1:other} text",vars("V1", "ABC"), "some other text");
+        assertReplacement("some ${v1} text", vars("v1", "abc"), "some abc text");
+        assertReplacement("some ${v1} text", vars("v1", "abc", "V1", "ABC"), "some abc text");
+        assertReplacement("some ${v1:other} text", vars("V1", "ABC"), "some other text");
     }
 
     @Test
     public void replaceVariablesShouldNotReplaceVariableThatHasNoDefaultAndIsNotFound() {
-        assertReplacement("some ${varName} text",vars("v1", "value1"), "some ${varName} text");
-        assertReplacement("some${varName}text",vars("v1", "value1"), "some${varName}text");
-        assertReplacement("${varName}",vars("v1", "value1"), "${varName}");
+        assertReplacement("some ${varName} text", vars("v1", "value1"), "some ${varName} text");
+        assertReplacement("some${varName}text", vars("v1", "value1"), "some${varName}text");
+        assertReplacement("${varName}", vars("v1", "value1"), "${varName}");
     }
 
     @Test
     public void replaceVariablesShouldReplaceVariablesWithNoDefault() {
-        assertReplacement("${varName}",vars("varName", "replaced"), "replaced");
-        assertReplacement("some${varName}text",vars("varName", "replaced"), "somereplacedtext");
-        assertReplacement("some ${varName} text",vars("varName", "replaced"), "some replaced text");
-        assertReplacement("some ${var1,var2,var3:other} text",vars("var1", "replaced"), "some replaced text");
-        assertReplacement("some ${var1,var2,var3:other} text",vars("v1", "replaced", "var2", "new"), "some new text");
-        assertReplacement("some ${var1,var2,var3:other} text",vars("v1", "replaced", "var3", "new"), "some new text");
+        assertReplacement("${varName}", vars("varName", "replaced"), "replaced");
+        assertReplacement("some${varName}text", vars("varName", "replaced"), "somereplacedtext");
+        assertReplacement("some ${varName} text", vars("varName", "replaced"), "some replaced text");
+        assertReplacement("some ${var1,var2,var3:other} text", vars("var1", "replaced"), "some replaced text");
+        assertReplacement("some ${var1,var2,var3:other} text", vars("v1", "replaced", "var2", "new"), "some new text");
+        assertReplacement("some ${var1,var2,var3:other} text", vars("v1", "replaced", "var3", "new"), "some new text");
     }
 
     @Test
     public void replaceVariablesShouldReplaceVariablesWithDefaultWhenNoReplacementIsFound() {
-        assertReplacement("some${varName:other}text",vars("v1", "replaced"), "someothertext");
-        assertReplacement("some ${varName:other} text",vars("v1", "replaced"), "some other text");
-        assertReplacement("some ${var1,var2,var3:other} text",vars("var10", "replaced"), "some other text");
-        assertReplacement("some ${var1,var2,var3:other} text",vars("var10", "replaced", "var11", "new"), "some other text");
+        assertReplacement("some${varName:other}text", vars("v1", "replaced"), "someothertext");
+        assertReplacement("some ${varName:other} text", vars("v1", "replaced"), "some other text");
+        assertReplacement("some ${var1,var2,var3:other} text", vars("var10", "replaced"), "some other text");
+        assertReplacement("some ${var1,var2,var3:other} text", vars("var10", "replaced", "var11", "new"), "some other text");
     }
 
     @Test
     public void replaceVariablesShouldReplaceMultipleVariables() {
-        assertReplacement("${v1}${v1}",vars("v1", "first", "v2", "second"), "firstfirst");
-        assertReplacement("${v1}${v2}",vars("v1", "first", "v2", "second"), "firstsecond");
-        assertReplacement("some${v1}text${v2}end",vars("v1", "first", "v2", "second"), "somefirsttextsecondend");
-        assertReplacement("some ${v1} text ${v2} end",vars("v1", "first", "v2", "second"), "some first text second end");
-        assertReplacement("some ${v1:other} text",vars("vx1", "replaced"), "some other text");
-        assertReplacement("some ${v1,v2,v3:other} text ${v1,v2,v3:other}",vars("var10", "replaced", "v2", "s"), "some s text s");
-        assertReplacement("some ${v1,v2:other}${v2,v3:other} text",vars("v1", "1", "v2", "2"), "some 12 text");
+        assertReplacement("${v1}${v1}", vars("v1", "first", "v2", "second"), "firstfirst");
+        assertReplacement("${v1}${v2}", vars("v1", "first", "v2", "second"), "firstsecond");
+        assertReplacement("some${v1}text${v2}end", vars("v1", "first", "v2", "second"), "somefirsttextsecondend");
+        assertReplacement("some ${v1} text ${v2} end", vars("v1", "first", "v2", "second"), "some first text second end");
+        assertReplacement("some ${v1:other} text", vars("vx1", "replaced"), "some other text");
+        assertReplacement("some ${v1,v2,v3:other} text ${v1,v2,v3:other}", vars("var10", "replaced", "v2", "s"), "some s text s");
+        assertReplacement("some ${v1,v2:other}${v2,v3:other} text", vars("v1", "1", "v2", "2"), "some 12 text");
     }
 
     @Test
@@ -221,6 +223,26 @@ public class StringsTest {
     @Test
     public void isNullOrEmptyReturnsFalseForFalseForBlankString() {
         assertThat(Strings.isNullOrEmpty("     ")).isFalse();
+    }
+
+    @Test
+    public void isNumericShouldReturnFalseForNull() {
+        assertThat(Strings.isNumeric(null)).isFalse();
+    }
+
+    @Test
+    public void isNumericShouldReturnFalseForEmptyString() {
+        assertThat(Strings.isNumeric("")).isFalse();
+    }
+
+    @Test
+    public void isNumericShouldReturnFalseForBlankString() {
+        assertThat(Strings.isNumeric("     ")).isFalse();
+    }
+
+    @Test
+    public void isNumericShouldReturnTrueForNumericString() {
+        assertThat(Strings.isNumeric("123")).isTrue();
     }
 
     public void unquoteIdentifierPartShouldReturnNullForNull() {
@@ -260,9 +282,9 @@ public class StringsTest {
     @Test
     public void hexStringToByteArrayShouldReturnCorrectByteArray() {
         assertThat(Strings.hexStringToByteArray(null)).isNull();
-        assertThat(Strings.hexStringToByteArray("00")).isEqualTo(new byte[] { 0 });
-        assertThat(Strings.hexStringToByteArray("010203")).isEqualTo(new byte[] { 1, 2, 3 });
-        assertThat(Strings.hexStringToByteArray("CAFEBABE")).isEqualTo(new byte[] { -54, -2, -70, -66 });
+        assertThat(Strings.hexStringToByteArray("00")).isEqualTo(new byte[]{ 0 });
+        assertThat(Strings.hexStringToByteArray("010203")).isEqualTo(new byte[]{ 1, 2, 3 });
+        assertThat(Strings.hexStringToByteArray("CAFEBABE")).isEqualTo(new byte[]{ -54, -2, -70, -66 });
     }
 
     @Test
@@ -272,25 +294,74 @@ public class StringsTest {
         assertRegexSet("a,b,", "a", "b");
         assertRegexSet("a,b\\,", "a", "b,");
         assertRegexSet("a\\\\\\,b", "a\\\\,b");
-                assertRegexSet(
+        assertRegexSet(
                 "DROP TEMPORARY TABLE IF EXISTS .+ /\\\\* generated by server \\\\*/,"
-                + "INSERT INTO mysql.rds_heartbeat2\\(.*\\,.*\\) values \\(.*\\,.*\\) ON DUPLICATE KEY UPDATE value = .*",
+                        + "INSERT INTO mysql.rds_heartbeat2\\(.*\\,.*\\) values \\(.*\\,.*\\) ON DUPLICATE KEY UPDATE value = .*",
                 "DROP TEMPORARY TABLE IF EXISTS .+ /\\\\* generated by server \\\\*/",
-                  "INSERT INTO mysql.rds_heartbeat2\\(.*,.*\\) values \\(.*,.*\\) ON DUPLICATE KEY UPDATE value = .*");
+                "INSERT INTO mysql.rds_heartbeat2\\(.*,.*\\) values \\(.*,.*\\) ON DUPLICATE KEY UPDATE value = .*");
         assertRegexList("a,b", "a", "b");
         assertRegexList("a\\,b", "a,b");
         assertRegexList("a,b,", "a", "b");
         assertRegexList("a,b\\,", "a", "b,");
         assertRegexList("a\\\\\\,b", "a\\\\,b");
-        assertRegexList(                "DROP TEMPORARY TABLE IF EXISTS .+ /\\\\* generated by server \\\\*/,"
-                        + "INSERT INTO mysql.rds_heartbeat2\\(.*\\,.*\\) values \\(.*\\,.*\\) ON DUPLICATE KEY UPDATE value = .*",
+        assertRegexList("DROP TEMPORARY TABLE IF EXISTS .+ /\\\\* generated by server \\\\*/,"
+                + "INSERT INTO mysql.rds_heartbeat2\\(.*\\,.*\\) values \\(.*\\,.*\\) ON DUPLICATE KEY UPDATE value = .*",
                 "DROP TEMPORARY TABLE IF EXISTS .+ /\\\\* generated by server \\\\*/",
                 "INSERT INTO mysql.rds_heartbeat2\\(.*,.*\\) values \\(.*,.*\\) ON DUPLICATE KEY UPDATE value = .*");
+    }
+
+    @Test
+    public void joinShouldExcludeFirstNullableElement() {
+        assertThat(Strings.join(",", Arrays.asList(null, "b", "c"))).isEqualTo("b,c");
+    }
+
+    @Test
+    public void joinShouldExcludeSecondNullableElement() {
+        assertThat(Strings.join(",", Arrays.asList("a", null, "c"))).isEqualTo("a,c");
+    }
+
+    @Test
+    public void joinShouldExcludeAllNullableElements() {
+        assertThat(Strings.join(",", Arrays.asList(null, null, null))).isEqualTo("");
+    }
+
+    @Test
+    public void joinWithConversionShouldConvertAllElements() {
+        assertThat(Strings.join(",", Arrays.asList("a", "b", "c"), s -> "_" + s)).isEqualTo("_a,_b,_c");
     }
 
     @Test(expected = ParsingException.class)
     public void regexSplitWrongEscape() {
         Strings.setOfRegex("a,b\\,c\\");
+    }
+
+    @Test
+    @FixFor("DBZ-1164")
+    public void asDurationShouldConvertValue() {
+        assertThat(Strings.asDuration(null)).isNull();
+        assertThat(Strings.asDuration("24:00:00")).isEqualTo(Duration.parse("PT24H"));
+        assertThat(Strings.asDuration("18:02:54.123")).isEqualTo(Duration.parse("PT18H2M54.123S"));
+        assertThat(Strings.asDuration("18:02:54.123456789")).isEqualTo(Duration.parse("PT18H2M54.123456789S"));
+        assertThat(Strings.asDuration("24:00:01")).isEqualTo(Duration.parse("PT24H1S"));
+    }
+
+    @Test
+    public void startsWithIgnoreCase() {
+        assertThat(Strings.startsWithIgnoreCase("INSERT INTO", "insert")).isTrue();
+        assertThat(Strings.startsWithIgnoreCase("INSERT INTO", "INSERT")).isTrue();
+        assertThat(Strings.startsWithIgnoreCase("insert INTO", "INSERT")).isTrue();
+        assertThat(Strings.startsWithIgnoreCase("INSERT INTO", "update")).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-1340")
+    public void getBegin() {
+        assertThat(Strings.getBegin(null, 10)).isNull();
+        assertThat(Strings.getBegin("", 10)).isEqualTo("");
+        assertThat(Strings.getBegin("INSERT ", 7)).isEqualTo("INSERT ");
+        assertThat(Strings.getBegin("INSERT INTO", 7)).isEqualTo("INSERT ");
+        assertThat(Strings.getBegin("UPDATE mytable", 7)).isEqualTo("UPDATE ");
+        assertThat(Strings.getBegin("delete from ", 7).toUpperCase()).isEqualTo("DELETE ");
     }
 
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
@@ -311,13 +382,13 @@ public class StringsTest {
 
         assertThat(regexSet.stream()
                 .map(Pattern::pattern)
-                .collect(Collectors.toSet())).containsOnly((Object[])matches);
+                .collect(Collectors.toSet())).containsOnly((Object[]) matches);
     }
 
     protected void assertRegexList(String patterns, String... matches) {
         List<Pattern> regexList = Strings.listOfRegex(patterns, Pattern.CASE_INSENSITIVE);
         assertThat(regexList.stream()
                 .map(Pattern::pattern)
-                .collect(Collectors.toList())).isEqualTo(Arrays.asList((Object[])matches));
+                .collect(Collectors.toList())).isEqualTo(Arrays.asList((Object[]) matches));
     }
 }

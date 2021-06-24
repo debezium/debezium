@@ -1,0 +1,108 @@
+[[{context}-adhoc-snapshot]]
+
+= Ad-hoc snapshot
+
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+Please let us know if you encounter any problems while using this extension.
+====
+
+When the initial snapshot is completed then it is not executed again as further data are acquired via streaming.
+
+Sometimes it would be really useful to re-execute a snapshot, either completely, or for only a subset of tables.
+Examples for such use cases include:
+
+* a new table was added into the list of captured tables
+* some of the topics were deleted and their content needs to be rebuilt
+* the data were corrupted due to a configuration error
+
+Debezium can be requested via the {link-prefix}:{link-signalling}[signalling table] mechanism to execute a new snapshot of a defined list of tables.
+The signal is named `execute-snapshot` and accepts messages in the following format:
+
+.Example of a signal record
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to be executed. Currently only `incremental` is supported. +
+See the next section for more details.
+
+|`data-collections`
+|_N/A_
+| An array of qualified names of table to be snapshotted. +
+The format of the names is the same as for {link-prefix}:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
+
+|===
+
+An example of the signal to be triggered is this:
+
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema1.table2"]}')
+----
+
+[[{context}-incremental-snapshot]]
+
+= Incremental snapshot
+
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+Please let us know if you encounter any problems while using this extension.
+====
+
+Initial snapshots are a great way to obtain a consistent set of all data stored in a database upfront.
+But there are also some downsides to this approach, though:
+
+* For larger datasets it can take very long to complete; hours or even days
+* The snapshot must be completed before the start of streaming
+* Snapshots are not resumable
+If a snapshot hasn't been completed when the connector gets stopped or restarted, the snapshot must be restarted from scratch
+* New tables that are added among the captured ones later are not snapshotted.
+
+To mitigate these issues, a new mechanism called _incremental snapshotting_ has been introduced.
+
+[NOTE]
+====
+Incremental snapshots can be started current only as {link-prefix}:#{context}-adhoc-snapshot[an ad-hoc snapshot].
+====
+
+[NOTE]
+====
+Configuration option {link-prefix}:#{context}-property-signal-data-collection[signal.data.collection] must be set.
+====
+
+Incremental snapshot is based on link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
+In this case the table is snapshotted in chunks and streaming and snapshot events are blended together.
+The snaphot events are still denoted using operation `r` and the `snapshot` field in `source` info block is set to `incremental`.
+
+.Example
+[source,json,index=0]
+----
+{
+   "before":null,
+   "after": {
+      "pk":"1",
+      "value":"New data"
+   },
+   "source": {
+...
+      "snapshot":"incremental"
+   },
+   "op":"r",
+   "ts_ms":"1620393591654",
+   "transaction":null
+}
+----
+
+The incremental snapshot events should be understood in a different way than events from an initial snapshot.
+The `read` events should be understoold like a materialization of data in a certain period of time.
+This means that event semantics differ between initial and incremental snapshots:
+
+* `update` and `delete` events can arrive before `read` events
+* if `delete` event arrives first then `read` event is never delivered
+* if `update` event arrives first then `read` event will either not be delivered at all or it will be delivered with the updated value
+

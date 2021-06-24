@@ -25,7 +25,7 @@ public class CollectTest {
         assertThat(values).containsOnly(1, 2, 3, 42);
     }
 
-    @Test(expected=UnsupportedOperationException.class)
+    @Test(expected = UnsupportedOperationException.class)
     public void unmodifiableSetForIteratorShouldRaiseExceptionUponModification() {
         Set<Integer> values = Collect.unmodifiableSet(Arrays.asList(1, 2, 3, 42).iterator());
         values.remove(1);

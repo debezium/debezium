@@ -5,9 +5,10 @@
  */
 package io.debezium.relational;
 
-import java.util.function.Predicate;
-
+import io.debezium.DebeziumException;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.Key.KeyMapper;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
@@ -27,12 +28,13 @@ import io.debezium.schema.TopicSelector;
 public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatabaseSchema
         implements HistorizedDatabaseSchema<TableId> {
 
-    private final DatabaseHistory databaseHistory;
+    protected final DatabaseHistory databaseHistory;
+    private boolean recoveredTables;
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
-            TableFilter tableFilter, Predicate<ColumnId> columnFilter, TableSchemaBuilder schemaBuilder,
-            boolean tableIdCaseInsensitive) {
-        super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive);
+                                                 TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
+                                                 boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
+        super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive, customKeysMapper);
 
         this.databaseHistory = config.getDatabaseHistory();
         this.databaseHistory.start();
@@ -40,7 +42,12 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
     @Override
     public void recover(OffsetContext offset) {
+        if (!databaseHistory.exists()) {
+            String msg = "The db history topic or its content is fully or partially missing. Please check database history topic configuration and re-execute the snapshot.";
+            throw new DebeziumException(msg);
+        }
         databaseHistory.recover(offset.getPartition(), offset.getOffset(), tables(), getDdlParser());
+        recoveredTables = !tableIds().isEmpty();
         for (TableId tableId : tableIds()) {
             buildAndRegisterSchema(tableFor(tableId));
         }
@@ -49,6 +56,17 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     @Override
     public void close() {
         databaseHistory.stop();
+    }
+
+    /**
+     * Configures a storage used to store history, e.g. in Kafka case it creates topic with
+     * required parameters.
+     */
+    @Override
+    public void initializeStorage() {
+        if (!databaseHistory.storageExists()) {
+            databaseHistory.initializeStorage();
+        }
     }
 
     /**
@@ -69,5 +87,14 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     protected void record(SchemaChangeEvent schemaChange, TableChanges tableChanges) {
         databaseHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), schemaChange.getDatabase(),
                 schemaChange.getSchema(), schemaChange.getDdl(), tableChanges);
+    }
+
+    @Override
+    public boolean tableInformationComplete() {
+        return recoveredTables;
+    }
+
+    public boolean storeOnlyCapturedTables() {
+        return databaseHistory.storeOnlyCapturedTables();
     }
 }

@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
-import org.junit.Test;
-
 import static org.fest.assertions.Assertions.assertThat;
+
+import org.junit.Test;
 
 /**
  * @author Randall Hauch
@@ -16,25 +16,35 @@ import static org.fest.assertions.Assertions.assertThat;
 public class CollectionIdTest {
 
     private CollectionId id;
-    
+
     @Test
-    public void shouldParseStringWithThreeSegments() {
-        assertParseable("a","b","c");
+    public void shouldParseString() {
+        assertParseable("a", "b", "c");
     }
-    
+
     @Test
-    public void shouldNotParseStringWithTwoSegments() {
-        assertThat(CollectionId.parse("a.b")).isNull();
+    public void shouldParseStringWithDottedCollection() {
+        assertParseable("a", "b", "c.d");
     }
-    
+
     @Test
-    public void shouldNotParseStringWithOneSegments() {
-        assertThat(CollectionId.parse("a")).isNull();
+    public void shouldNotParseStringWithDotAtStart() {
+        assertThat(CollectionId.parse("rs0", ".a.b")).isNull();
     }
-    
-    protected void assertParseable( String replicaSetName, String dbName, String collectionName ) {
-        String str = replicaSetName + "." + dbName + "." + collectionName;
-        id = CollectionId.parse(str);
+
+    @Test
+    public void shouldNotParseStringWithDotAtEnd() {
+        assertThat(CollectionId.parse("rs0", "a.")).isNull();
+    }
+
+    @Test
+    public void shouldNotParseStringWithOneSegment() {
+        assertThat(CollectionId.parse("rs0", "a")).isNull();
+    }
+
+    protected void assertParseable(String replicaSetName, String dbName, String collectionName) {
+        String str = dbName + "." + collectionName;
+        id = CollectionId.parse(replicaSetName, str);
         assertThat(id.replicaSetName()).isEqualTo(replicaSetName);
         assertThat(id.dbName()).isEqualTo(dbName);
         assertThat(id.name()).isEqualTo(collectionName);

@@ -106,6 +106,11 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
+    public TableEditor updateColumn(Column column) {
+        return this;
+    }
+
+    @Override
     public TableEditor reorderColumn(String columnName, String afterColumnName) {
         return this;
     }
@@ -122,7 +127,9 @@ final class NoOpTableEditorImpl implements TableEditor {
 
     @Override
     public Table create() {
-        if (id == null) throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
+        if (id == null) {
+            throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
+        }
         List<Column> columns = new ArrayList<>();
         return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
     }

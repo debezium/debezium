@@ -329,7 +329,7 @@ CREATE SERVER server_1
 --    [COMMENT [=] comment_text]
 --    ENGINE [=] engine_name
 
-CREATE TABLESPACE tbl_space_1 ADD DATAFILE 'my_data_file' USER LOGFILE GROUP my_lf_group ENGINE = NDB;
+CREATE TABLESPACE tbl_space_1 ADD DATAFILE 'my_data_file' USE LOGFILE GROUP my_lf_group ENGINE = NDB;
 
 -- CREATE
 --    [DEFINER = { user | CURRENT_USER }]

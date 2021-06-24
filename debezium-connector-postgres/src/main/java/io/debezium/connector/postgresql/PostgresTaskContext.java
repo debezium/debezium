@@ -7,13 +7,20 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.Collections;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
+import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
 
 /**
  * The context of a {@link PostgresConnectorTask}. This deals with most of the brunt of reading various configuration options
@@ -24,14 +31,22 @@ import io.debezium.schema.TopicSelector;
 @ThreadSafe
 public class PostgresTaskContext extends CdcSourceTaskContext {
 
+    protected final static Logger LOGGER = LoggerFactory.getLogger(PostgresTaskContext.class);
+
     private final PostgresConnectorConfig config;
     private final TopicSelector<TableId> topicSelector;
     private final PostgresSchema schema;
 
+    private ElapsedTimeStrategy refreshXmin;
+    private Long lastXmin;
+
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicSelector<TableId> topicSelector) {
-        super("Postgres", config.getLogicalName());
+        super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
 
         this.config = config;
+        if (config.xminFetchInterval().toMillis() > 0) {
+            this.refreshXmin = ElapsedTimeStrategy.constant(Clock.SYSTEM, config.xminFetchInterval().toMillis());
+        }
         this.topicSelector = topicSelector;
         assert schema != null;
         this.schema = schema;
@@ -49,24 +64,60 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         return config;
     }
 
-    protected void refreshSchema(boolean printReplicaIdentityInfo) throws SQLException {
-        try (final PostgresConnection connection = createConnection()) {
-            schema.refresh(connection, printReplicaIdentityInfo);
+    protected void refreshSchema(PostgresConnection connection, boolean printReplicaIdentityInfo) throws SQLException {
+        schema.refresh(connection, printReplicaIdentityInfo);
+    }
+
+    Long getSlotXmin(PostgresConnection connection) throws SQLException {
+        // when xmin fetch is set to 0, we don't track it to ignore any performance of querying the
+        // slot periodically
+        if (config.xminFetchInterval().toMillis() <= 0) {
+            return null;
         }
+        assert (this.refreshXmin != null);
+
+        if (this.refreshXmin.hasElapsed()) {
+            lastXmin = getCurrentSlotState(connection).slotCatalogXmin();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Fetched new xmin from slot of {}", lastXmin);
+            }
+        }
+        else {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("reusing xmin value of {}", lastXmin);
+            }
+        }
+
+        return lastXmin;
     }
 
-    protected ReplicationConnection createReplicationConnection() throws SQLException {
-        return ReplicationConnection.builder(config.jdbcConfig())
-                                    .withSlot(config.slotName())
-                                    .withPlugin(config.plugin())
-                                    .dropSlotOnClose(config.dropSlotOnStop())
-                                    .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
-                                    .withTypeRegistry(schema.getTypeRegistry())
-                                    .build();
+    private SlotState getCurrentSlotState(PostgresConnection connection) throws SQLException {
+        return connection.getReplicationSlotState(config.slotName(), config.plugin().getPostgresPluginName());
     }
 
-    protected PostgresConnection createConnection() {
-        return new PostgresConnection(config.jdbcConfig());
+    protected ReplicationConnection createReplicationConnection(boolean doSnapshot) throws SQLException {
+        final boolean dropSlotOnStop = config.dropSlotOnStop();
+        if (dropSlotOnStop) {
+            LOGGER.warn(
+                    "Connector has enabled automated replication slot removal upon restart ({} = true). " +
+                            "This setting is not recommended for production environments, as a new replication slot " +
+                            "will be created after a connector restart, resulting in missed data change events.",
+                    PostgresConnectorConfig.DROP_SLOT_ON_STOP.name());
+        }
+        return ReplicationConnection.builder(config)
+                .withSlot(config.slotName())
+                .withPublication(config.publicationName())
+                .withTableFilter(config.getTableFilters())
+                .withPublicationAutocreateMode(config.publicationAutocreateMode())
+                .withPlugin(config.plugin())
+                .withTruncateHandlingMode(config.truncateHandlingMode())
+                .dropSlotOnClose(dropSlotOnStop)
+                .streamParams(config.streamParams())
+                .statusUpdateInterval(config.statusUpdateInterval())
+                .withTypeRegistry(schema.getTypeRegistry())
+                .doSnapshot(doSnapshot)
+                .withSchema(schema)
+                .build();
     }
 
     PostgresConnectorConfig getConfig() {

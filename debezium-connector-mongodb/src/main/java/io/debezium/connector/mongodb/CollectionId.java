@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.regex.Pattern;
-
 import io.debezium.annotation.Immutable;
 import io.debezium.schema.DataCollectionId;
 
@@ -18,18 +16,20 @@ import io.debezium.schema.DataCollectionId;
 @Immutable
 public final class CollectionId implements DataCollectionId {
 
-    private static final Pattern IDENTIFIER_SEPARATOR_PATTERN = Pattern.compile("\\.");
-
     /**
-     * Parse the supplied string, extracting the first 3 parts into a Collection.
+     * Parse the supplied {@code <database_name>.<collection_name>} string.
+     * The {@code collection_name} can also contain dots in its value.
      *
+     * @param replicaSetName the name of replica; may not be null
      * @param str the string representation of the collection identifier; may not be null
      * @return the collection ID, or null if it could not be parsed
      */
-    public static CollectionId parse(String str) {
-        String[] parts = IDENTIFIER_SEPARATOR_PATTERN.split(str);
-        if (parts.length < 3) return null;
-        return new CollectionId(parts[0], parts[1], parts[2]);
+    public static CollectionId parse(String replicaSetName, String str) {
+        final int dotPosition = str.indexOf('.');
+        if (dotPosition == -1 || (dotPosition + 1) == str.length() || dotPosition == 0) {
+            return null;
+        }
+        return new CollectionId(replicaSetName, str.substring(0, dotPosition), str.substring(dotPosition + 1));
     }
 
     private final String replicaSetName;
@@ -80,13 +80,20 @@ public final class CollectionId implements DataCollectionId {
     }
 
     @Override
+    public String identifier() {
+        return replicaSetName + "." + dbName + "." + name;
+    }
+
+    @Override
     public int hashCode() {
         return name.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof CollectionId) {
             CollectionId that = (CollectionId) obj;
             return this.replicaSetName.equals(that.replicaSetName) &&
@@ -107,6 +114,6 @@ public final class CollectionId implements DataCollectionId {
 
     @Override
     public String toString() {
-        return replicaSetName + "." + dbName + "." + name;
+        return identifier();
     }
 }

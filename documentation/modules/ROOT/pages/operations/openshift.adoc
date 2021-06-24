@@ -1,0 +1,256 @@
+[id="deploying-debezium-on-openshift"]
+= Deploying {prodname} on OpenShift
+
+:linkattrs:
+:icons: font
+:toc:
+:toc-placement: macro
+
+toc::[]
+
+This procedure is for setting up {prodname} connectors on Red Hat's link:https://www.openshift.com/[OpenShift] container platform. These instructions have been tested with the two most recent releases of OpenShift. These instructions should also work on any other Kubernetes distribution by using the `kubectl` command.
+
+To get started more quickly, try the link:https://learn.openshift.com/middleware/debezium-getting-started/[{prodname} online learning scenario].
+It starts an OpenShift cluster just for you, which lets you start using {prodname} in your browser within a few minutes.
+
+== {prodname} Deployment
+
+To set up Apache Kafka and Kafka Connect on OpenShift, use the set of images that are provided by the link:https://strimzi.io/[Strimzi] project. These images offer "Kafka as a Service" by providing enterprise grade configuration files and images that bring Kafka to Kubernetes and OpenShift, as well as Kubernetes operators for running Kafka there.
+
+.Prerequisites
+
+* The OpenShift command line interface (`oc`) is installed.
+* Docker is installed. 
+
+.Procedure
+
+. In your OpenShift project, enter the following commands to install the operators and templates for the Kafka broker and Kafka Connect:
++
+[source,shell,subs="attributes",options="nowrap"]
+----
+export STRIMZI_VERSION={strimzi-version}
+git clone -b $STRIMZI_VERSION https://github.com/strimzi/strimzi-kafka-operator
+cd strimzi-kafka-operator
+
+# Switch to an admin user to create security objects as part of installation:
+oc login -u system:admin
+oc create -f install/cluster-operator && oc create -f examples/templates/cluster-operator
+----
++
+To learn more about setting up Apache Kafka with Strimzi on Kubernetes and OpenShift, see link:https://strimzi.io/docs/operators/latest/overview.html#kafka-components_str[Strimzi deployment of Kafka].
+
+. Deploy a Kafka broker cluster:
++
+[source,shell,subs="attributes",options="nowrap"]
+----
+# Deploy an ephemeral single instance Kafka broker:
+oc process strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p KAFKA_NODE_COUNT=1 -p KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -p KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 | oc apply -f -
+----
+
+. Create a Kafka Connect image with the {prodname} connectors installed:
+
+.. Download and extract the archive for each {prodname} connector you want to run. For example: 
++
+[source,subs="attributes",options="nowrap"]
+----
+curl https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz tar xvz`
+----
+
+.. Create a `Dockerfile` that uses a Strimzi Kafka image as the base image. The following example creates a `plugins/debezium` directory, which would contain a directory for each {prodname} connector that you want to run. To run more than one {prodname} connector, insert a `COPY` line for each connector. 
++
+[source,subs=+macros,subs="attributes"]
+----
+FROM strimzi/kafka:{strimzi-version}-kafka-2.5.0
+USER root:root
+RUN mkdir -p /opt/kafka/plugins/debezium
+COPY ./debezium-connector-mysql/ /opt/kafka/plugins/debezium/
+USER 1001
+----
++
+Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
+
+.. Build a Debezium image from your Dockerfile and push it to your preferred container registry, for example, `quay.io` or Docker Hub, by executing the following commands. Replace `debezium-community` with the name of your Docker Hub organization. 
++
+----
+export DOCKER_ORG=debezium-community
+docker build . -t ${DOCKER_ORG}/connect-debezium
+docker push ${DOCKER_ORG}/connect-debezium
+----
++
+After a while all parts should be up and running:
++
+[source%nowrap,bash]
+----
+oc get pods
+
+NAME                                       READY     STATUS        RESTARTS   AGE
+broker-entity-operator-5fb7bc8b9b-r86nz    3/3       Running       1          4m
+broker-kafka-0                             2/2       Running       0          4m
+broker-zookeeper-0                         2/2       Running       0          5m
+debezium-connect-3-4sdjr                   1/1       Running       0          1m
+strimzi-cluster-operator-d77476b8f-rblqf   1/1       Running       0          5m
+----
++
+Alternatively, go to the "Pods" view of your OpenShift Web Console (https://myhost:8443/console/project/myproject/browse/pods) to confirm that all pods are up and running:
++
+image::/images/openshift_pods.png[width=771,align="center"]
+
+== Verifying the Deployment
+
+Verify whether the deployment is correct by emulating the xref:tutorial.adoc[{prodname} Tutorial] in the OpenShift environment.
+
+. Start a MySQL server instance that contains some example tables:
++
+[source%nowrap,bash,subs="attributes"]
+----
+# Deploy pre-populated MySQL instance
+oc new-app --name=mysql debezium/example-mysql:{debezium-docker-label}
+
+# Configure credentials for the database
+oc set env dc/mysql MYSQL_ROOT_PASSWORD=debezium  MYSQL_USER=mysqluser MYSQL_PASSWORD=mysqlpw
+----
++
+A new pod with MySQL server should be up and running:
++
+[source%nowrap,bash]
+----
+oc get pods
+NAME                             READY     STATUS      RESTARTS   AGE
+...
+mysql-1-4503l                    1/1       Running     0          2s
+mysql-1-deploy                   1/1       Running     0          4s
+...
+----
+
+. Register the {prodname} MySQL connector to run against the deployed MySQL instance:
++
+[source%nowrap,bash]
+----
+oc exec -i -c kafka broker-kafka-0 -- curl -X POST \
+    -H "Accept:application/json" \
+    -H "Content-Type:application/json" \
+    http://debezium-connect-api:8083/connectors -d @- <<'EOF'
+
+{
+    "name": "inventory-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "mysql",
+        "database.port": "3306",
+        "database.user": "debezium",
+        "database.password": "dbz",
+        "database.server.id": "184054",
+        "database.server.name": "dbserver1",
+        "database.include.list": "inventory",
+        "database.history.kafka.bootstrap.servers": "broker-kafka-bootstrap:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+    }
+}
+EOF
+----
++
+Kafka Connect's log file should contain messages regarding execution of the initial snapshot:
++
+[source%nowrap,bash]
+----
+oc logs $(oc get pods -o name -l strimzi.io/name=debezium-connect)
+----
+
+. Read change events for the `customers` table from the corresponding Kafka topic:
++
+[source%nowrap,bash]
+----
+oc exec -it broker-kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh \
+    --bootstrap-server localhost:9092 \
+    --from-beginning \
+    --property print.key=true \
+    --topic dbserver1.inventory.customers
+----
++
+You should see an output like the following (formatted for the sake of readability):
++
+[source%nowrap,json,subs="attributes"]
+----
+# Message 1
+{
+    "id": 1001
+}
+
+# Message 1 Value
+{
+    "before": null,
+    "after": {
+        "id": 1001,
+        "first_name": "Sally",
+        "last_name": "Thomas",
+        "email": "sally.thomas@acme.com"
+    },
+    "source": {
+        "version": "{debezium-version}",
+        "connector": "mysql",
+        "name": "dbserver1",
+        "server_id": 0,
+        "ts_sec": 0,
+        "gtid": null,
+        "file": "mysql-bin.000003",
+        "pos": 154,
+        "row": 0,
+        "snapshot": true,
+        "thread": null,
+        "db": "inventory",
+        "table": "customers"
+    },
+    "op": "c",
+    "ts_ms": 1509530901446
+}
+
+# Message 2 Key
+{
+    "id": 1002
+}
+
+# Message 2 Value
+{
+    "before": null,
+    "after": {
+        "id": 1002,
+        "first_name": "George",
+        "last_name": "Bailey",
+        "email": "gbailey@foobar.com"
+    },
+    "source": {
+        "version": "{debezium-version}",
+        "connector": "mysql",
+        "name": "dbserver1",
+        "server_id": 0,
+        "ts_sec": 0,
+        "gtid": null,
+        "file": "mysql-bin.000003",
+        "pos": 154,
+        "row": 0,
+        "snapshot": true,
+        "thread": null,
+        "db": "inventory",
+        "table": "customers"
+    },
+    "op": "c",
+    "ts_ms": 1509530901446
+}
+...
+----
+
+. Modify some records in the `customers` table of the database:
++
+[source%nowrap,bash]
+----
+oc exec -it $(oc get pods -o custom-columns=NAME:.metadata.name --no-headers -l app=mysql) \
+    -- bash -c 'mysql -u $MYSQL_USER -p$MYSQL_PASSWORD inventory'
+
+# For example, run UPDATE customers SET email="sally.thomas@example.com" WHERE ID = 1001;
+----
++
+You should now see additional change messages in the consumer started previously.
+
+If you have any questions or requests related to running {prodname} on Kubernetes or OpenShift,
+let us know in our https://groups.google.com/forum/#!forum/debezium[user group] or in the {prodname} https://gitter.im/debezium/dev[developer's chat].

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -12,8 +14,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.connector.mysql.GtidSet.Interval;
 import io.debezium.connector.mysql.GtidSet.UUIDSet;
@@ -104,13 +104,13 @@ public class GtidSetTest {
         GtidSet connector = new GtidSet("036d85a9-64e5-11e6-9b48-42010af0000c:1-2,"
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41");
-        Arrays.stream(new String[] { "\r\n", "\n", "\r" })
-              .forEach(separator -> {
-                  GtidSet server = new GtidSet("036d85a9-64e5-11e6-9b48-42010af0000c:1-2," + separator +
-                                               "7145bf69-d1ca-11e5-a588-0242ac110004:1-3202," + separator +
-                                               "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41");
-                  assertThat(connector.isContainedWithin(server)).isTrue();
-              });
+        Arrays.stream(new String[]{ "\r\n", "\n", "\r" })
+                .forEach(separator -> {
+                    GtidSet server = new GtidSet("036d85a9-64e5-11e6-9b48-42010af0000c:1-2," + separator +
+                            "7145bf69-d1ca-11e5-a588-0242ac110004:1-3202," + separator +
+                            "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41");
+                    assertThat(connector.isContainedWithin(server)).isTrue();
+                });
     }
 
     @Test
@@ -119,13 +119,13 @@ public class GtidSetTest {
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41";
         Collection<String> keepers = Collect.arrayListOf("036d85a9-64e5-11e6-9b48-42010af0000c",
-                                                         "7c1de3f2-3fd2-11e6-9cdc-42010af000bc",
-                                                         "wont-be-found");
+                "7c1de3f2-3fd2-11e6-9cdc-42010af000bc",
+                "wont-be-found");
         GtidSet original = new GtidSet(gtidStr);
         assertThat(original.forServerWithId("036d85a9-64e5-11e6-9b48-42010af0000c")).isNotNull();
         assertThat(original.forServerWithId("7c1de3f2-3fd2-11e6-9cdc-42010af000bc")).isNotNull();
         assertThat(original.forServerWithId("7145bf69-d1ca-11e5-a588-0242ac110004")).isNotNull();
-        
+
         GtidSet filtered = original.retainAll(keepers::contains);
         List<String> actualUuids = filtered.getUUIDSets().stream().map(UUIDSet::getUUID).collect(Collectors.toList());
         assertThat(keepers.containsAll(actualUuids)).isTrue();
@@ -158,7 +158,9 @@ public class GtidSetTest {
     protected boolean hasInterval(String uuid, int start, int end) {
         UUIDSet set = gtids.forServerWithId(uuid);
         for (Interval interval : set.getIntervals()) {
-            if (interval.getStart() == start && interval.getEnd() == end) return true;
+            if (interval.getStart() == start && interval.getEnd() == end) {
+                return true;
+            }
         }
         return false;
     }

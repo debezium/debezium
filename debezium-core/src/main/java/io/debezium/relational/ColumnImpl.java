@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -25,16 +27,25 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final boolean generated;
     private final Object defaultValue;
     private final boolean hasDefaultValue;
+    private final List<String> enumValues;
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
-            String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-            boolean optional, boolean autoIncremented, boolean generated) {
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         boolean optional, boolean autoIncremented, boolean generated) {
         this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
-                defaultCharsetName, columnLength, columnScale, optional, autoIncremented, generated, null, false);
+                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, null, false);
     }
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean hasDefaultValue) {
+        this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName,
+                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, defaultValue, hasDefaultValue);
+    }
+
+    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         List<String> enumValues,
                          boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean hasDefaultValue) {
         this.name = columnName;
         this.position = position;
@@ -43,7 +54,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
         this.typeName = typeName;
         this.typeExpression = typeExpression;
         // We want to always capture the charset name for the column (if the column needs one) ...
-        if ( typeUsesCharset() && (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName)) ) {
+        if (typeUsesCharset() && (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName))) {
             // Use the default charset name ...
             charsetName = defaultCharsetName;
         }
@@ -55,6 +66,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
         this.generated = generated;
         this.defaultValue = defaultValue;
         this.hasDefaultValue = hasDefaultValue;
+        this.enumValues = enumValues == null ? new ArrayList<>() : enumValues;
         assert this.length >= -1;
     }
 
@@ -129,20 +141,27 @@ final class ColumnImpl implements Column, Comparable<Column> {
     }
 
     @Override
+    public List<String> enumValues() {
+        return enumValues;
+    }
+
+    @Override
     public int hashCode() {
         return name.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof Column) {
             Column that = (Column) obj;
             return this.name().equalsIgnoreCase(that.name()) &&
                     this.typeExpression().equalsIgnoreCase(that.typeExpression()) &&
                     this.typeName().equalsIgnoreCase(that.typeName()) &&
                     this.jdbcType() == that.jdbcType() &&
-                    Strings.equalsIgnoreCase(this.charsetName(),that.charsetName()) &&
+                    Strings.equalsIgnoreCase(this.charsetName(), that.charsetName()) &&
                     this.position() == that.position() &&
                     this.length() == that.length() &&
                     this.scale().equals(that.scale()) &&
@@ -150,7 +169,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
                     this.isAutoIncremented() == that.isAutoIncremented() &&
                     this.isGenerated() == that.isGenerated() &&
                     Objects.equals(this.defaultValue(), that.defaultValue()) &&
-                    this.hasDefaultValue() == that.hasDefaultValue();
+                    this.hasDefaultValue() == that.hasDefaultValue() &&
+                    this.enumValues().equals(that.enumValues());
         }
         return false;
     }
@@ -169,12 +189,19 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (charsetName != null && !charsetName.isEmpty()) {
             sb.append(" CHARSET ").append(charsetName);
         }
-        if (!optional) sb.append(" NOT NULL");
-        if (autoIncremented) sb.append(" AUTO_INCREMENTED");
-        if (generated) sb.append(" GENERATED");
+        if (!optional) {
+            sb.append(" NOT NULL");
+        }
+        if (autoIncremented) {
+            sb.append(" AUTO_INCREMENTED");
+        }
+        if (generated) {
+            sb.append(" GENERATED");
+        }
         if (hasDefaultValue() && defaultValue() == null) {
             sb.append(" DEFAULT VALUE NULL");
-        } else if (defaultValue != null) {
+        }
+        else if (defaultValue != null) {
             sb.append(" DEFAULT VALUE ").append(defaultValue);
         }
         return sb.toString();
@@ -193,7 +220,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .position(position())
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())
-                .generated(isGenerated());
+                .generated(isGenerated())
+                .enumValues(enumValues);
         if (hasDefaultValue()) {
             editor.defaultValue(defaultValue());
         }

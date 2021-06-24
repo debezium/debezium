@@ -3,8 +3,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.6.0-SNAPSHOT</version>
+	<relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-microbenchmark</artifactId>
@@ -14,6 +14,10 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-scripting</artifactId>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -39,6 +43,28 @@
             <groupId>org.openjdk.jmh</groupId>
             <artifactId>jmh-generator-annprocess</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-jsr223</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-scriptengine</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <resources>
@@ -52,13 +78,6 @@
             </resource>
         </resources>
         <plugins>
-            <plugin>
-                 <groupId>org.apache.maven.plugins</groupId>
-                 <artifactId>maven-checkstyle-plugin</artifactId>
-                 <configuration>
-                     <excludes>**/generated/**</excludes>
-                 </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -77,6 +96,7 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.openjdk.jmh.Main</mainClass>
                                 </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
                             </transformers>
                             <filters>
                                 <filter>

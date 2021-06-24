@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
@@ -46,7 +47,7 @@ public class ColumnMappersTest {
                 .with("column.truncate.to.10.chars", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(config);
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
         converter = mappers.mappingConverterFor(tableId, column2);
         assertThat(converter).isNull();
     }
@@ -57,7 +58,8 @@ public class ColumnMappersTest {
                 .with("column.truncate.to.10.chars", fullyQualifiedNames.toUpperCase())
                 .build();
 
-        mappers = ColumnMappers.create(config);
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
+
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890").toString()).isEqualTo("1234567890");
@@ -68,7 +70,7 @@ public class ColumnMappersTest {
         assertThat(converter.convert("1234567890").toString().length()).isEqualTo(10);
         assertThat(converter.convert("123456789").toString()).isEqualTo("123456789");
         assertThat(converter.convert("123456789").toString().length()).isEqualTo(9);
-        assertThat(converter.convert(null)).isNull();   // null values are unaltered
+        assertThat(converter.convert(null)).isNull(); // null values are unaltered
     }
 
     @Test
@@ -79,7 +81,7 @@ public class ColumnMappersTest {
                 .with("column.mask.with.10.chars", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(config); // exact case
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0)); // exact case
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);

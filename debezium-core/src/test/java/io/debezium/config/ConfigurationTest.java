@@ -5,8 +5,15 @@
  */
 package io.debezium.config;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_WHITELIST;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.SERVER_NAME;
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -17,6 +24,7 @@ import org.junit.Test;
 
 import io.debezium.doc.FixFor;
 import io.debezium.function.Predicates;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.DatabaseHistory;
 
 /**
@@ -45,14 +53,94 @@ public class ConfigurationTest {
         assertThat(config.getString("A")).isEqualTo("a");
         assertThat(config.getString("B")).isEqualTo("b");
         assertThat(config.getString("1")).isEqualTo("1");
-        assertThat(config.getInteger("1")).isEqualTo(1);    // converts
-        assertThat(config.getBoolean("1")).isNull();    // not a boolean
+        assertThat(config.getInteger("1")).isEqualTo(1); // converts
+        assertThat(config.getBoolean("1")).isNull(); // not a boolean
+    }
+
+    /**
+     * Test verifying that a Configuration object cannot be modified after creation.
+     */
+    @Test
+    @FixFor("DBZ-3514")
+    public void shouldNotBeModifiedAfterCreation() {
+        // GIVEN a list of configuration properties
+        Properties props = new Properties();
+        props.setProperty("1", "one");
+        props.setProperty("2", "two");
+
+        // WHEN a configuration object is created from the properties list
+        config = Configuration.from(props);
+
+        // THEN changes to the properties list does not change the configuration object.
+        props.setProperty("1", "newValue");
+        assertThat(config.getString("1")).isEqualTo("one");
     }
 
     @Test
-    public void shoulCreateInternalFields() {
+    public void shouldCreateInternalFields() {
         config = Configuration.create().with(Field.createInternal("a"), "a1").build();
         assertThat(config.getString("internal.a")).isEqualTo("a1");
+    }
+
+    @Test
+    @FixFor("DBZ-1962")
+    public void shouldThrowValidationOnDuplicateOldColumnFilterConfigurationOld() {
+        config = Configuration.create()
+                .with(COLUMN_WHITELIST, ".+aa")
+                .with(COLUMN_BLACKLIST, ".+bb")
+                .build();
+
+        List<String> errorMessages = config.validate(Field.setOf(COLUMN_BLACKLIST)).get(COLUMN_BLACKLIST.name()).errorMessages();
+        assertThat(errorMessages).isNotEmpty();
+        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
+    }
+
+    @Test
+    @FixFor("DBZ-1962")
+    public void shouldThrowValidationOnDuplicateOldColumnFilterConfiguration() {
+        config = Configuration.create()
+                .with(COLUMN_INCLUDE_LIST, ".+aa")
+                .with(COLUMN_EXCLUDE_LIST, ".+bb")
+                .build();
+
+        List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
+        assertThat(errorMessages).isNotEmpty();
+        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+    }
+
+    @Test
+    @FixFor("DBZ-1962")
+    public void shouldThrowValidationOnDuplicateColumnFilterConfiguration() {
+        config = Configuration.create()
+                .with("column.include.list", ".+aa")
+                .with("column.exclude.list", ".+bb")
+                .build();
+
+        List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
+        assertThat(errorMessages).isNotEmpty();
+        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+    }
+
+    @Test
+    public void shouldAllowNewColumnFilterIncludeListConfiguration() {
+        config = Configuration.create()
+                .with("column.include.list", ".+aa")
+                .build();
+
+        List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
+        assertThat(errorMessages).isEmpty();
+        errorMessages = config.validate(Field.setOf(COLUMN_INCLUDE_LIST)).get(COLUMN_INCLUDE_LIST.name()).errorMessages();
+        assertThat(errorMessages).isEmpty();
+    }
+
+    @Test
+    public void shouldAllowNewColumnFilterExcludeListConfiguration() {
+        config = Configuration.create()
+                .with("column.exclude.list", ".+bb")
+                .build();
+
+        List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
+        assertThat(errorMessages).isEmpty();
     }
 
     @Test
@@ -68,7 +156,7 @@ public class ConfigurationTest {
 
         // Use a regex that captures an integer using a regex group ...
         AtomicInteger counter = new AtomicInteger();
-        config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars",(value,n)->{
+        config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars", (value, n) -> {
             counter.incrementAndGet();
             assertThat(value).isEqualTo(Integer.toString(n) + "-chars");
         });
@@ -76,7 +164,7 @@ public class ConfigurationTest {
 
         // Use a regex that captures an integer using a regex group ...
         counter.set(0);
-        config.forEachMatchingFieldNameWithInteger("column.mask.with.(\\d+).chars",(value,n)->{
+        config.forEachMatchingFieldNameWithInteger("column.mask.with.(\\d+).chars", (value, n) -> {
             counter.incrementAndGet();
             assertThat(value).isEqualTo(Integer.toString(n) + "-mask");
         });
@@ -84,7 +172,7 @@ public class ConfigurationTest {
 
         // Use a regex that matches the name but also uses a regex group ...
         counter.set(0);
-        config.forEachMatchingFieldName("column.mask.with.(\\d+).chars",(name,value)->{
+        config.forEachMatchingFieldName("column.mask.with.(\\d+).chars", (name, value) -> {
             counter.incrementAndGet();
             assertThat(name).startsWith("column.mask.with.");
             assertThat(name).endsWith(".chars");
@@ -94,7 +182,7 @@ public class ConfigurationTest {
 
         // Use a regex that matches all of our fields ...
         counter.set(0);
-        config.forEachMatchingFieldName("column.*",(name,value)->{
+        config.forEachMatchingFieldName("column.*", (name, value) -> {
             counter.incrementAndGet();
             assertThat(name).startsWith("column.");
             assertThat(name).endsWith(".chars");
@@ -105,13 +193,13 @@ public class ConfigurationTest {
 
     @Test
     public void shouldMaskPasswords() {
-        Pattern p = Pattern.compile(".*password$",Pattern.CASE_INSENSITIVE);
+        Pattern p = Pattern.compile(".*password$", Pattern.CASE_INSENSITIVE);
         assertThat(p.matcher("password").matches()).isTrue();
         assertThat(p.matcher("otherpassword").matches()).isTrue();
 
         config = Configuration.create()
                 .with("column.password", "warning")
-                .with("column.Password.this.is.not","value")
+                .with("column.Password.this.is.not", "value")
                 .with("column.truncate.to.20.chars", "20-chars")
                 .with("column.mask.with.20.chars", "20-mask")
                 .with("column.mask.with.0.chars", "0-mask")
@@ -130,7 +218,7 @@ public class ConfigurationTest {
      */
     @Test
     @FixFor("DBZ-469")
-    public void defaultDddlFilterShouldFilterOutRdsHeartbeatInsert() {
+    public void defaultDdlFilterShouldFilterOutRdsHeartbeatInsert() {
         String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
         Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
         assertThat(ddlFilter.test("INSERT INTO mysql.rds_heartbeat2(id, value) values (1,1510678117058) ON DUPLICATE KEY UPDATE value = 1510678117058")).isTrue();
@@ -138,9 +226,96 @@ public class ConfigurationTest {
 
     @Test
     @FixFor("DBZ-661")
-    public void defaultDddlFilterShouldFilterOutFlushRelayLogs() {
+    public void defaultDdlFilterShouldFilterOutFlushRelayLogs() {
         String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
         Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
         assertThat(ddlFilter.test("FLUSH RELAY LOGS")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1492")
+    public void defaultDdlFilterShouldFilterOutRdsSysinfoStatements() {
+        String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        assertThat(ddlFilter.test("DELETE FROM mysql.rds_sysinfo where name = 'innodb_txn_key'")).isTrue();
+        assertThat(ddlFilter.test("INSERT INTO mysql.rds_sysinfo(name, value) values ('innodb_txn_key','Thu Sep 19 19:38:23 UTC 2019')")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1775")
+    public void defaultDdlFilterShouldFilterOutRdsMonitorStatements() {
+        String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        assertThat(ddlFilter.test("DELETE FROM mysql.rds_monitor")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1015")
+    public void testMsgKeyColumnsField() {
+        List<String> errorList;
+        // null : ok
+        config = Configuration.create().build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        // empty field: error
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("Must not be empty");
+        // field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        // field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, " t1:C1 ").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        // field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1,C2").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        // field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1,C2;t2:C1,C2").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        // field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        // field: invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1,t2").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("t1,t2 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+    }
+
+    @Test
+    @FixFor("DBZ-2957")
+    public void testMsgKeyColumnsFieldRegexValidation() {
+        List<String> errorList;
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+
+        // field : invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;t3.C1;").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("t3.C1 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+
+        // field : invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;t3;").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("t3 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+
+        // field : invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;foobar").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("foobar has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+    }
+
+    @Test
+    @FixFor("DBZ-3427")
+    public void testServerNameValidation() {
+        List<String> errorList;
+        config = Configuration.create().with(SERVER_NAME, "server_11").build();
+        assertThat(config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages()).isEmpty();
+
+        config = Configuration.create().with(SERVER_NAME, "server-12").build();
+        assertThat(config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages()).isEmpty();
+
+        config = Configuration.create().with(SERVER_NAME, "server@X").build();
+        errorList = config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("server@X has invalid format (only the underscore, hyphen and alphanumeric characters are allowed)");
     }
 }

@@ -33,7 +33,7 @@ public class MySqlNumericColumnIT extends AbstractConnectorTest {
     private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-numeric-column.txt")
-                                                             .toAbsolutePath();
+            .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("numericcolumnit", "numeric_column_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
 
@@ -51,7 +51,8 @@ public class MySqlNumericColumnIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
@@ -70,7 +71,7 @@ public class MySqlNumericColumnIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        //Testing.Debug.enable();
+        // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 1;
         int numInserts = 1;

@@ -29,8 +29,8 @@ public class Point extends Geometry {
     public static final String X_FIELD = "x";
     public static final String Y_FIELD = "y";
 
-    private static final int WKB_POINT = 1;  // type constant
-    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
+    private static final int WKB_POINT = 1; // type constant
+    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8); // fixed size
 
     /**
      * Returns a {@link SchemaBuilder} for a Point field.
@@ -57,7 +57,7 @@ public class Point extends Geometry {
      */
     private static byte[] buildWKBPoint(double x, double y) {
         ByteBuffer wkb = ByteBuffer.allocate(WKB_POINT_SIZE);
-        wkb.put((byte)1); // BOM
+        wkb.put((byte) 1); // BOM
         wkb.order(ByteOrder.LITTLE_ENDIAN);
 
         wkb.putInt(WKB_POINT);
@@ -90,7 +90,7 @@ public class Point extends Geometry {
 
         double x = reader.getDouble();
         double y = reader.getDouble();
-        return new double[] {x, y};
+        return new double[]{ x, y };
     }
 
     /**
@@ -101,7 +101,7 @@ public class Point extends Geometry {
      * @param y the Y coordinate of the point; may not be null
      * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
-    public static Struct createValue(Schema geomSchema, double x, double y){
+    public static Struct createValue(Schema geomSchema, double x, double y) {
         // turn the specified points
         byte[] wkb = buildWKBPoint(x, y);
         Struct result = Geometry.createValue(geomSchema, wkb, null);

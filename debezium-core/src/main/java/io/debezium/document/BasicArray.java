@@ -17,7 +17,7 @@ import io.debezium.util.Sequences;
 
 /**
  * Package-level implementation of {@link Array}.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -44,7 +44,8 @@ final class BasicArray implements Array {
     BasicArray(Value[] values) {
         if (values == null || values.length == 0) {
             this.values = new ArrayList<>();
-        } else {
+        }
+        else {
             this.values = new ArrayList<>(values.length);
             for (Value value : values) {
                 this.values.add(value != null ? value : Value.nullValue());
@@ -72,15 +73,21 @@ final class BasicArray implements Array {
 
     @Override
     public int compareTo(Array that) {
-        if (that == null) return 1;
+        if (that == null) {
+            return 1;
+        }
         int size = this.size();
-        if (size != that.size()) return size - that.size();
+        if (size != that.size()) {
+            return size - that.size();
+        }
         Array thatArray = that;
         for (int i = 0; i != size; ++i) {
             Value thatValue = thatArray.get(i);
             Value thisValue = get(i);
             int diff = thatValue.compareTo(thisValue);
-            if (diff != 0) return diff;
+            if (diff != 0) {
+                return diff;
+            }
         }
         return 0;
     }
@@ -117,14 +124,18 @@ final class BasicArray implements Array {
 
     @Override
     public Array setValue(int index, Value value) {
-        if (value == null) value = Value.nullValue();
+        if (value == null) {
+            value = Value.nullValue();
+        }
         if (isValidIndex(index)) {
             // The index is in bounds ...
             values.set(index, value);
-        } else if (isValidIndex(index - 1)) {
+        }
+        else if (isValidIndex(index - 1)) {
             // The index is the next valid one, so go ahead and add it ...
             values.add(value);
-        } else {
+        }
+        else {
             // The index is invalid ...
             throw new IllegalArgumentException("The index " + index + " is too large for this array, which has only " + size() + " values");
         }
@@ -133,29 +144,37 @@ final class BasicArray implements Array {
 
     @Override
     public Array expand(int desiredSize, Value value) {
-        if (desiredSize <= values.size()) return this;
+        if (desiredSize <= values.size()) {
+            return this;
+        }
         // Otherwise, we have to expand the array ...
-        if (value == null) value = Value.nullValue();
+        if (value == null) {
+            value = Value.nullValue();
+        }
         for (int i = values.size(); i < desiredSize; ++i) {
             values.add(value);
         }
         return this;
     }
-    
+
     @Override
     public Array increment(int index, Value increment) {
-        if ( !increment.isNumber() ) throw new IllegalArgumentException("The increment must be a number but is " + increment);
+        if (!increment.isNumber()) {
+            throw new IllegalArgumentException("The increment must be a number but is " + increment);
+        }
         Value current = get(index);
-        if ( current.isNumber() ) {
-            Value updated = Value.create(MathOps.add(current.asNumber(),increment.asNumber()));
-            setValue(index,Value.create(updated));
+        if (current.isNumber()) {
+            Value updated = Value.create(MathOps.add(current.asNumber(), increment.asNumber()));
+            setValue(index, Value.create(updated));
         }
         return this;
     }
 
     @Override
     public Array add(Value value) {
-        if (value == null) value = Value.nullValue();
+        if (value == null) {
+            value = Value.nullValue();
+        }
         this.values.add(value);
         return this;
     }

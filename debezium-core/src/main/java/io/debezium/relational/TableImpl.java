@@ -5,12 +5,13 @@
  */
 package io.debezium.relational;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import io.debezium.annotation.PackagePrivate;
 import io.debezium.util.Strings;
 
 final class TableImpl implements Table {
@@ -18,26 +19,24 @@ final class TableImpl implements Table {
     private final TableId id;
     private final List<Column> columnDefs;
     private final List<String> pkColumnNames;
-    private final List<String> columnNames;
     private final Map<String, Column> columnsByLowercaseName;
     private final String defaultCharsetName;
 
-    protected TableImpl(Table table) {
+    @PackagePrivate
+    TableImpl(Table table) {
         this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName());
     }
 
-    protected TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName) {
+    @PackagePrivate
+    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName) {
         this.id = id;
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
         Map<String, Column> defsByLowercaseName = new LinkedHashMap<>();
-        List<String> columnNames = new ArrayList<>();
         for (Column def : this.columnDefs) {
             defsByLowercaseName.put(def.name().toLowerCase(), def);
-            columnNames.add(def.name());
         }
         this.columnsByLowercaseName = Collections.unmodifiableMap(defsByLowercaseName);
-        this.columnNames = Collections.unmodifiableList(columnNames);
         this.defaultCharsetName = defaultCharsetName;
     }
 
@@ -52,13 +51,15 @@ final class TableImpl implements Table {
     }
 
     @Override
-    public List<String> columnNames() {
-        return columnNames;
+    public List<Column> columns() {
+        return columnDefs;
     }
 
     @Override
-    public List<Column> columns() {
-        return columnDefs;
+    public List<String> retrieveColumnNames() {
+        return columnDefs.stream()
+                .map(Column::name)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -78,7 +79,9 @@ final class TableImpl implements Table {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof Table) {
             Table that = (Table) obj;
             return this.id().equals(that.id())
@@ -96,8 +99,10 @@ final class TableImpl implements Table {
         return sb.toString();
     }
 
-    protected void toString(StringBuilder sb, String prefix) {
-        if (prefix == null) prefix = "";
+    public void toString(StringBuilder sb, String prefix) {
+        if (prefix == null) {
+            prefix = "";
+        }
         sb.append(prefix).append("columns: {").append(System.lineSeparator());
         for (Column defn : columnDefs) {
             sb.append(prefix).append("  ").append(defn).append(System.lineSeparator());
@@ -110,8 +115,8 @@ final class TableImpl implements Table {
     @Override
     public TableEditor edit() {
         return new TableEditorImpl().tableId(id)
-                                    .setColumns(columnDefs)
-                                    .setPrimaryKeyNames(pkColumnNames)
-                                    .setDefaultCharsetName(defaultCharsetName);
+                .setColumns(columnDefs)
+                .setPrimaryKeyNames(pkColumnNames)
+                .setDefaultCharsetName(defaultCharsetName);
     }
 }

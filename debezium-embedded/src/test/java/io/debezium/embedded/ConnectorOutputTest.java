@@ -76,7 +76,7 @@ import io.debezium.util.Threads.TimeSince;
  * A base class for classes the define integration tests for connectors that verify the output of a connector matches an
  * expected sequence of change event records. This base class provides a simple framework for running a connector given
  * a configuration and either recording or comparing the connector's output to expected results.
- * 
+ *
  * <h2>Overview</h2>
  * One of the common and easiest ways to test a connector is to simply run it and compare the changes events output by the
  * connector with a sequence of expected change events. Manually writing tests to compare the results is tedious and error
@@ -87,7 +87,7 @@ import io.debezium.util.Threads.TimeSince;
  * and compare these change events to expected results. Connectors are defined via properties files, and the expected
  * results are recorded to or read from files containing the sequence of change events serialized as an array of JSON documents.
  * The test can also define an optional environment properties file in which test-specific parameters can be specified.
- * 
+ *
  * <h3>Variations in results</h3>
  * Some fields in the output will change every time the connector is run. For example, a change event may include the
  * timestamp at which the connector processed/generated the event, or it might include a transaction identifier that is
@@ -104,12 +104,12 @@ import io.debezium.util.Threads.TimeSince;
  * supply a function that provides the replacement variable values given the connector configuration. So the MySQL connector
  * tests, for example, can connect to the MySQL server and return all of the system variables as the variable values;
  * the framework does all the rest.
- * 
+ *
  * <h3>Stopping the connector</h3>
  * When the test framework has compared all of the generated change events to the expected change events and found no
  * discrepancies, the framework knows that the connector should generate no additional change events. If the connector does
  * generate another event, the test will fail. Otherwise, the framework will stop the connector since it is no longer needed.
- * 
+ *
  * <h3>Connector restarts</h3>
  * Another requirement is to verify that a connector will resume where it left off when it is restarted following a failure
  * or graceful shutdown. This is normally a bit harder to do, but this framework makes it very easy. Simply insert in the
@@ -119,17 +119,17 @@ import io.debezium.util.Threads.TimeSince;
  * change event processed by the connector) and to then restart it given those persisted offsets. A properly-written connector
  * will resume exactly where it left off, and the framework can once again begin comparing the resulting change events
  * to the next events in the expected results.
- * 
+ *
  * <h2>Example</h2>
  * A simple test runs a connector and records/compares the connector's output to expected results:
- * 
+ *
  * <pre>
  * &#64;Test
  * public void shouldCaptureChangesFromMySqlWithNoGtids() {
  *     runConnector(usingSpec("test1", "src/test/resources/expected/test1"));
  * }
  * </pre>
- * 
+ *
  * The framework uses a <i>test specification</i> that encapsulates the connector configuration, the environment properties, how
  * to obtain the variable values, and where to find the results. This example creates a test specification with the name
  * {@code test1} and the connector properties file, the environment properties file, and the expected results file all defined
@@ -142,11 +142,11 @@ import io.debezium.util.Threads.TimeSince;
  * <p>
  * To see more detail about the actual and expected records, turn on Debezium's test debug mode by using this line
  * before the {@code runConnector} call:
- * 
+ *
  * <pre>
  * Testing.Debug.enable();
  * </pre>
- * 
+ *
  * @author Randall Hauch
  */
 public abstract class ConnectorOutputTest {
@@ -155,7 +155,7 @@ public abstract class ConnectorOutputTest {
     public static final String DEFAULT_ENV_PROPERTIES_FILENAME = "env.properties";
     public static final String DEFAULT_EXPECTED_RECORDS_FILENAME = "expected-records.json";
 
-    public static final String ENV_CONNECTOR_TIMEOUT_IN_SECONDS = "connector.timeout.in.seconds";
+    public static final String ENV_CONNECTOR_TIMEOUT_IN_SECONDS = "-connector.timeout.in.seconds";
     public static final String ENV_IGNORE_FIELDS = "ignore.fields";
 
     /**
@@ -163,7 +163,7 @@ public abstract class ConnectorOutputTest {
      */
     public static final Path CONNECTOR_OUTPUT_PATH = Testing.Files.createTestingPath("connector-output");
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("integration-test-connector-offsets.data")
-                                                                 .toAbsolutePath();
+            .toAbsolutePath();
 
     public static final String CONTROL_KEY = "connector";
     public static final String CONTROL_RESTART = "restart";
@@ -193,7 +193,7 @@ public abstract class ConnectorOutputTest {
     public static interface TestData extends AutoCloseable {
         /**
          * Read the records that are expected by the test.
-         * 
+         *
          * @return the expected records, or null if there are none
          * @throws IOException if there is a problem reading the expected records
          */
@@ -202,7 +202,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Record the function that should be called with each of the actual records output by the connector. By default this
          * method does nothing.
-         * 
+         *
          * @param sourceRecord the JSON representation of the source record; never null
          */
         default void write(Document sourceRecord) {
@@ -212,7 +212,7 @@ public abstract class ConnectorOutputTest {
         /**
          * If records are being recorded, then complete writing them and close all resources associated with the test data.
          * By default this method does nothing.
-         * 
+         *
          * @throws IOException if there is a problem writing the expected records
          */
         @Override
@@ -247,7 +247,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Get the name of this test.
-         * 
+         *
          * @return the name of the test; never null
          */
         public String name() {
@@ -256,7 +256,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Get the connector's configuration as would normally be passed to Kafka Connect when deploying the connector.
-         * 
+         *
          * @return the configuration; never null
          */
         public Configuration config() {
@@ -272,7 +272,7 @@ public abstract class ConnectorOutputTest {
          * <li>{@value #ENV_CONNECTOR_TIMEOUT_IN_SECONDS} for the maximum time the connector should wait for records before
          * stopping</li>
          * </ul>
-         * 
+         *
          * @return the test environment configuration; never null
          */
         public Configuration environment() {
@@ -281,7 +281,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Get the data for this test. This method will be called once per execution.
-         * 
+         *
          * @return the test data; never null
          */
         public TestData testData() {
@@ -294,7 +294,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Get the system, environmental, and other variables.
-         * 
+         *
          * @return the variables; never null
          */
         public AvailableVariables variables() {
@@ -303,7 +303,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given name.
-         * 
+         *
          * @param name the new name
          * @return the new test specification; never null
          */
@@ -313,7 +313,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given configuration.
-         * 
+         *
          * @param config the new configuration
          * @return the new test specification; never null
          */
@@ -323,7 +323,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given configuration.
-         * 
+         *
          * @param file the configuration file; may not be null
          * @return the new test specification; never null
          */
@@ -332,7 +332,8 @@ public abstract class ConnectorOutputTest {
                 try (InputStream stream = new FileInputStream(file)) {
                     return withConfiguration(stream);
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the configuration file '" + file + "': " + e.getMessage());
                 return null;
             }
@@ -340,7 +341,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given configuration.
-         * 
+         *
          * @param stream the input stream to the configuration file; may not be null
          * @return the new test specification; never null
          */
@@ -348,7 +349,8 @@ public abstract class ConnectorOutputTest {
             Properties props = new Properties();
             try {
                 props.load(stream);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the configuration file from the input stream': " + e.getMessage());
             }
             return withConfiguration(Configuration.from(props));
@@ -356,7 +358,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given environment.
-         * 
+         *
          * @param env the new environment
          * @return the new test specification; never null
          */
@@ -366,7 +368,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given environment.
-         * 
+         *
          * @param file the file containing the test environment; may not be null
          * @return the new test specification; never null
          */
@@ -375,7 +377,8 @@ public abstract class ConnectorOutputTest {
                 try (InputStream stream = new FileInputStream(file)) {
                     return withEnvironment(stream);
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the environment file '" + file + "': " + e.getMessage());
                 return null;
             }
@@ -383,7 +386,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given environment.
-         * 
+         *
          * @param stream the input stream to the file containing the test environment; may not be null
          * @return the new test specification; never null
          */
@@ -391,7 +394,8 @@ public abstract class ConnectorOutputTest {
             Properties props = new Properties();
             try {
                 props.load(stream);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the environment input stream: " + e.getMessage());
                 return null;
             }
@@ -400,7 +404,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given data.
-         * 
+         *
          * @param dataSupplier the function that returns the new data when needed, given the TestSpecification that will own it;
          *            may be null if there is no test data
          * @return the new test specification; never null
@@ -412,7 +416,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Create a new test specification that is a copy of this specification except with the test data read from
          * or able to be written to the given file.
-         * 
+         *
          * @param path the path to the file where the test data can be read or to which it is to be written; may not be null
          * @return the new test specification; never null
          */
@@ -423,7 +427,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Create a new test specification that is a copy of this specification except with the test data read from
          * or able to be written to the given file.
-         * 
+         *
          * @param file the file where the test data can be read or to which it is to be written; may not be null
          * @return the new test specification; never null
          */
@@ -437,7 +441,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Create a new test specification that is a copy of this specification except with the test data read from
          * the specified file.
-         * 
+         *
          * @param path the path to the test data; may not be null
          * @return the new test specification; never null
          */
@@ -448,7 +452,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Create a new test specification that is a copy of this specification except with the test data read from
          * the specified file.
-         * 
+         *
          * @param file the test data; may not be null
          * @return the new test specification; never null
          */
@@ -460,7 +464,7 @@ public abstract class ConnectorOutputTest {
          * Create a new test specification that is a copy of this specification except with the test data read from
          * the specified input stream. The supplied stream is read and variables substituted when the {@link #testData() test
          * data} is {@link TestData#read() read}.
-         * 
+         *
          * @param stream the supplier to the stream of test data; may not be null
          * @return the new test specification; never null
          */
@@ -484,7 +488,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Create a new test specification that is a copy of this specification except with a {@link TestData} that can capture
          * the connector output as expected records.
-         * 
+         *
          * @param path the path to the file to which the test data is to be written; may not be null
          * @return the new test specification; never null
          */
@@ -495,7 +499,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Create a new test specification that is a copy of this specification except with a {@link TestData} that can capture
          * the connector output as expected records.
-         * 
+         *
          * @param file the file to which the test data is to be written; may not be null
          * @return the new test specification; never null
          */
@@ -506,7 +510,7 @@ public abstract class ConnectorOutputTest {
         /**
          * Create a new test specification that is a copy of this specification except with a {@link TestData} that can capture
          * the connector output as expected records.
-         * 
+         *
          * @param stream the stream to which the test data is to be written; may not be null
          * @return the new test specification; never null
          */
@@ -542,7 +546,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given variables.
-         * 
+         *
          * @param variables the new variables that should replace this specification's variables
          * @return the new test specification; never null
          */
@@ -552,7 +556,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Create a new test specification that is a copy of this specification except with the given variables.
-         * 
+         *
          * @param variableSupplier the function used to obtain the variables using the configuration
          * @return the new test specification; never null
          */
@@ -560,7 +564,8 @@ public abstract class ConnectorOutputTest {
             try {
                 Map<String, String> variables = variableSupplier.get(config);
                 return withVariables(variables::get);
-            } catch (Throwable t) {
+            }
+            catch (Throwable t) {
                 t.printStackTrace(System.err);
                 fail("Unable to read variables using configuration: " + config);
                 return null;
@@ -593,7 +598,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Create a new test specification with the given name.
-     * 
+     *
      * @param name the name of the test
      * @return the test specification; never null
      */
@@ -605,31 +610,43 @@ public abstract class ConnectorOutputTest {
      * Create a new test specification that uses the files in the given directory for the connector configuration, environment
      * configuration,
      * and expected results. These names of these files are as follows:
-     * 
+     *
      * <ul>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the connector configuration file and is required;</li>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the environment configuration file and is optional; and</li>
      * <li>{@value #DEFAULT_EXPECTED_RECORDS_FILENAME} for the expected results file and will be generated if missing.</li>
      * </ul>
-     * 
+     *
      * @param name the name of the test
      * @param directory the path to the directory that contains the test files; may not be null
      * @return the test specification; never null
      */
     protected TestSpecification usingSpec(String name, String directory) {
-        return usingSpec(name, Paths.get(directory));
+        String version = System.getProperty("java.version");
+        String modulePath = "";
+        /**
+         * Java 11 seems to have issues finding the file when tests are invoked from the root directory. However, running
+         * the tests directory from the module directory work, so we only need to mess with the path when we are invoking
+         * the tests from the root.
+         */
+        if (!version.startsWith("1.")) {
+            if (!Paths.get(directory).toAbsolutePath().toString().contains("debezium-embedded")) {
+                modulePath = "debezium-embedded/";
+            }
+        }
+        return usingSpec(name, Paths.get(modulePath + directory));
     }
 
     /**
      * Create a new test specification that uses the files in the given directory for the connector configuration, environment
      * configuration, and expected results. These names of these files are as follows:
-     * 
+     *
      * <ul>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the connector configuration file and is required;</li>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the environment configuration file and is optional; and</li>
      * <li>{@value #DEFAULT_EXPECTED_RECORDS_FILENAME} for the expected results file and will be generated if missing.</li>
      * </ul>
-     * 
+     *
      * @param name the name of the test
      * @param directory the path to the directory that contains the test files; may not be null
      * @return the test specification; never null
@@ -640,13 +657,13 @@ public abstract class ConnectorOutputTest {
         Path expectedRecordsFile = directory.resolve(DEFAULT_EXPECTED_RECORDS_FILENAME);
         Path envFile = directory.resolve(DEFAULT_ENV_PROPERTIES_FILENAME);
         return usingSpec(name).withConfiguration(configFile.toFile())
-                              .withEnvironment(envFile.toFile())
-                              .withReadOrWriteTestData(expectedRecordsFile);
+                .withEnvironment(envFile.toFile())
+                .withReadOrWriteTestData(expectedRecordsFile);
     }
 
     /**
      * Create a new test specification that uses the given files for the configuration, environment, and expected results.
-     * 
+     *
      * @param name the name of the test or test run; may not be null
      * @param configFile the path to the configuration file; may not be null
      * @param expectedRecordsFile the path to the file where the expected records can be read or where they are to be written;
@@ -660,7 +677,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Create a new test specification that uses the given files for the configuration, environment, and expected results.
-     * 
+     *
      * @param name the name of the test or test run; may not be null
      * @param configFile the path to the configuration file; may not be null
      * @param expectedRecordsFile the path to the file where the expected records can be read or where they are to be written;
@@ -670,8 +687,8 @@ public abstract class ConnectorOutputTest {
      */
     protected TestSpecification usingSpec(String name, Path configFile, Path expectedRecordsFile, Path envFile) {
         return usingSpec(name).withConfiguration(configFile.toFile())
-                              .withEnvironment(envFile.toFile())
-                              .withReadOrWriteTestData(expectedRecordsFile);
+                .withEnvironment(envFile.toFile())
+                .withReadOrWriteTestData(expectedRecordsFile);
     }
 
     @Before
@@ -689,7 +706,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Return the names of the fields that should always be ignored for all tests. By default this method returns {@code null}.
-     * 
+     *
      * @return the array of field names that should always be ignored, or empty or null if there are no such fields
      */
     protected String[] globallyIgnorableFieldNames() {
@@ -699,13 +716,13 @@ public abstract class ConnectorOutputTest {
     /**
      * Run the connector that uses the files in the given directory for the connector configuration, environment configuration,
      * and expected results. These names of these files are as follows:
-     * 
+     *
      * <ul>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the connector configuration file and is required;</li>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the environment configuration file and is optional; and</li>
      * <li>{@value #DEFAULT_EXPECTED_RECORDS_FILENAME} for the expected results file and will be generated if missing.</li>
      * </ul>
-     * 
+     *
      * @param testName the name of the test or test run; may not be null
      * @param directory the path to the directory that contains the test files; may not be null
      */
@@ -716,13 +733,13 @@ public abstract class ConnectorOutputTest {
     /**
      * Run the connector that uses the files in the given directory for the connector configuration, environment configuration,
      * and expected results. These names of these files are as follows:
-     * 
+     *
      * <ul>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the connector configuration file and is required;</li>
      * <li>{@value #DEFAULT_CONNECTOR_PROPERTIES_FILENAME} for the environment configuration file and is optional; and</li>
      * <li>{@value #DEFAULT_EXPECTED_RECORDS_FILENAME} for the expected results file and will be generated if missing.</li>
      * </ul>
-     * 
+     *
      * @param testName the name of the test or test run; may not be null
      * @param directory the path to the directory that contains the test files; may not be null
      */
@@ -732,7 +749,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Run the connector described by the supplied test specification.
-     * 
+     *
      * @param testName the name of the test or test run; may not be null
      * @param configFile the path to the configuration file; may not be null
      * @param expectedRecordsFile the path to the file where the expected records can be read or where they are to be written;
@@ -745,7 +762,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Run the connector described by the supplied test specification.
-     * 
+     *
      * @param testName the name of the test or test run; may not be null
      * @param configFile the path to the configuration file; may not be null
      * @param expectedRecordsFile the path to the file where the expected records can be read or where they are to be written;
@@ -758,7 +775,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Run the connector described by the supplied test specification.
-     * 
+     *
      * @param spec the test specification
      */
     protected void runConnector(TestSpecification spec) {
@@ -767,7 +784,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Run the connector described by the supplied test specification.
-     * 
+     *
      * @param spec the test specification
      * @param callback the function that should be called when the connector is stopped
      */
@@ -819,8 +836,11 @@ public abstract class ConnectorOutputTest {
                     // And possibly hand it to the test's recorder ...
                     try {
                         Document jsonRecord = serializeSourceRecord(actualRecord, keyConverter, valueConverter);
-                        if (jsonRecord != null) recorder.accept(jsonRecord);
-                    } catch (IOException e) {
+                        if (jsonRecord != null) {
+                            recorder.accept(jsonRecord);
+                        }
+                    }
+                    catch (IOException e) {
                         String msg = "Error converting JSON to SourceRecord";
                         Testing.debug(msg);
                         throw new ConnectException(msg, e);
@@ -841,10 +861,12 @@ public abstract class ConnectorOutputTest {
                             String msg = "Source record was found but not expected: " + SchemaUtil.asString(actualRecord);
                             Testing.debug(msg);
                             throw new MismatchRecordException(msg, actualRecordHistory, expectedRecordHistory);
-                        } else if (isCommand(expected)) {
+                        }
+                        else if (isCommand(expected)) {
                             Testing.debug("applying command: " + SchemaUtil.asString(expected));
                             applyCommand(expected, result);
-                        } else {
+                        }
+                        else {
                             try {
                                 // Otherwise, build a record from the expected and add it to the history ...
                                 SourceRecord expectedRecord = rehydrateSourceRecord(expected, keyConverter, valueConverter);
@@ -854,15 +876,17 @@ public abstract class ConnectorOutputTest {
                                 // And compare the records ...
                                 try {
                                     assertSourceRecordMatch(actualRecord, expectedRecord, ignorableFields::contains,
-                                                            comparatorsByFieldName, comparatorsBySchemaName);
-                                } catch (AssertionError e) {
+                                            comparatorsByFieldName, comparatorsBySchemaName);
+                                }
+                                catch (AssertionError e) {
                                     result.error();
                                     String msg = "Source record with key " + SchemaUtil.asString(actualRecord.key())
                                             + " did not match expected record: " + e.getMessage();
                                     Testing.debug(msg);
                                     throw new MismatchRecordException(e, msg, actualRecordHistory, expectedRecordHistory);
                                 }
-                            } catch (IOException e) {
+                            }
+                            catch (IOException e) {
                                 result.exception();
                                 String msg = "Error converting JSON to SourceRecord";
                                 Testing.debug(msg);
@@ -886,7 +910,8 @@ public abstract class ConnectorOutputTest {
                         }
                     }
 
-                } finally {
+                }
+                finally {
                     prev.restore();
                 }
             };
@@ -894,28 +919,28 @@ public abstract class ConnectorOutputTest {
             // Set up the configuration for the engine to include the connector configuration and apply as defaults
             // the environment and engine parameters ...
             Configuration engineConfig = Configuration.copy(connectorConfig)
-                                                      .withDefault(environmentConfig)
-                                                      .withDefault(EmbeddedEngine.ENGINE_NAME, spec.name())
-                                                      .withDefault(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                                                      .withDefault(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                                                      .build();
+                    .withDefault(environmentConfig)
+                    .withDefault(EmbeddedEngine.ENGINE_NAME, spec.name())
+                    .withDefault(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                    .withDefault(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                    .build();
 
             // Create the engine ...
             EmbeddedEngine engine = EmbeddedEngine.create()
-                                                  .using(engineConfig)
-                                                  .notifying(consumer)
-                                                  .using(this.getClass().getClassLoader())
-                                                  .using(problem)
-                                                  .build();
+                    .using(engineConfig)
+                    .notifying(consumer)
+                    .using(this.getClass().getClassLoader())
+                    .using(problem)
+                    .build();
 
             long connectorTimeoutInSeconds = environmentConfig.getLong(ENV_CONNECTOR_TIMEOUT_IN_SECONDS, 10);
             // Get ready to run the connector one or more times ...
             do {
                 // Each time create a thread that will stop our connector if we don't get enough results
                 Thread timeoutThread = Threads.timeout(spec.name() + "-connector-output",
-                                                       connectorTimeoutInSeconds, TimeUnit.SECONDS,
-                                                       timeSinceLastRecord,
-                                                       engine::stop);
+                        connectorTimeoutInSeconds, TimeUnit.SECONDS,
+                        timeSinceLastRecord,
+                        engine::stop);
                 // But plan to stop our timeout thread as soon as the connector completes ...
                 result.uponCompletion(timeoutThread::interrupt);
                 timeoutThread.start();
@@ -926,25 +951,32 @@ public abstract class ConnectorOutputTest {
                 result.reset();
                 engine.run();
             } while (result.get() == ExecutionResult.RESTART_REQUESTED);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             runError = new RuntimeException("Error reading test data: " + e.getMessage(), e);
-        } catch (RuntimeException t) {
+        }
+        catch (RuntimeException t) {
             runError = t;
-        } finally {
+        }
+        finally {
             // And clean up everything ...
             try {
                 testData.close();
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 if (runError != null) {
                     runError = new RuntimeException("Error closing test data: " + e.getMessage(), e);
                 }
-            } finally {
+            }
+            finally {
                 try {
                     keyConverter.close();
-                } finally {
+                }
+                finally {
                     try {
                         valueConverter.close();
-                    } finally {
+                    }
+                    finally {
                         preRunContext.restore();
                     }
                 }
@@ -958,7 +990,8 @@ public abstract class ConnectorOutputTest {
             Throwable error = problem.error();
             if (error instanceof AssertionError) {
                 fail(problem.message());
-            } else if (error instanceof MismatchRecordException) {
+            }
+            else if (error instanceof MismatchRecordException) {
                 MismatchRecordException mismatch = (MismatchRecordException) error;
                 LinkedList<SourceRecord> actualHistory = mismatch.getActualRecords();
                 LinkedList<SourceRecord> expectedHistory = mismatch.getExpectedRecords();
@@ -973,9 +1006,11 @@ public abstract class ConnectorOutputTest {
                     throw cause;
                 }
                 fail(problem.message());
-            } else if (error instanceof RuntimeException) {
+            }
+            else if (error instanceof RuntimeException) {
                 throw (RuntimeException) error;
-            } else {
+            }
+            else {
                 throw new RuntimeException(error);
             }
         }
@@ -991,7 +1026,8 @@ public abstract class ConnectorOutputTest {
                 String msg = "Stopping connector after record as requested";
                 Testing.debug(msg);
                 throw new StopConnectorException(msg);
-            } else if (CONTROL_STOP.equalsIgnoreCase(command)) {
+            }
+            else if (CONTROL_STOP.equalsIgnoreCase(command)) {
                 // We're supposed to restart the connector, so stop it ...
                 result.stop();
                 String msg = "Stopping connector after record as requested";
@@ -1039,7 +1075,8 @@ public abstract class ConnectorOutputTest {
                 if (r != null) {
                     r.run();
                 }
-            } finally {
+            }
+            finally {
                 this.result.compareAndSet(null, result);
             }
         }
@@ -1081,7 +1118,7 @@ public abstract class ConnectorOutputTest {
 
     /**
      * Serialize the source record to document form.
-     * 
+     *
      * @param record the record; may not be null
      * @param keyConverter the converter for the record key's schema and payload
      * @param valueConverter the converter for the record value's schema and payload
@@ -1112,12 +1149,14 @@ public abstract class ConnectorOutputTest {
                                          Map<String, RecordValueComparator> comparatorsBySchemaName) {
         try {
             VerifyRecord.isValid(actual);
-        } catch (AssertionError e) {
+        }
+        catch (AssertionError e) {
             throw new AssertionError("Actual source record is not valid: " + e.getMessage());
         }
         try {
             VerifyRecord.isValid(expected);
-        } catch (AssertionError e) {
+        }
+        catch (AssertionError e) {
             throw new AssertionError("Expected source record is not valid: " + e.getMessage());
         }
         VerifyRecord.assertEquals(actual, expected, ignoreFields, comparatorsByName, comparatorsBySchemaName);
@@ -1154,7 +1193,8 @@ public abstract class ConnectorOutputTest {
         public void close() {
             try {
                 jsonSerializer.close();
-            } finally {
+            }
+            finally {
                 jsonDeserializer.close();
             }
         }
@@ -1186,7 +1226,7 @@ public abstract class ConnectorOutputTest {
     /**
      * Read the contents of the supplied {@link InputStream}, replace all variables found in the content, and write the
      * result to a temporary file.
-     * 
+     *
      * @param stream the input stream containing zero or more {@link Strings#replaceVariables(String, java.util.function.Function)
      *            variable expressions}
      * @param variables the variables
@@ -1200,7 +1240,8 @@ public abstract class ConnectorOutputTest {
                 String newLine = Strings.replaceVariables(line, variables::variableForName);
                 try {
                     ostream.write(newLine.getBytes(StandardCharsets.UTF_8));
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new RuntimeException("Error writing to file '" + tmpFile + "'", e);
                 }
             }, StandardCharsets.UTF_8);

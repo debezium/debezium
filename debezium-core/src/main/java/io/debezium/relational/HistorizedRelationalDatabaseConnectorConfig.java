@@ -9,12 +9,15 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceConnector;
 
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -24,6 +27,12 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  * @author Gunnar Morling
  */
 public abstract class HistorizedRelationalDatabaseConnectorConfig extends RelationalDatabaseConnectorConfig {
+
+    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
+
+    private boolean useCatalogBeforeSchema;
+    private final String logicalName;
+    private final Class<? extends SourceConnector> connectorClass;
 
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
@@ -40,12 +49,39 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter) {
-        super(config, logicalName, systemTablesFilter, TableId::toString);
+    protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
+            .history(
+                    DATABASE_HISTORY,
+                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
+                    DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
+                    DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL,
+                    KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
+                    KafkaDatabaseHistory.TOPIC,
+                    KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS)
+            .create();
+
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+                                                          TableFilter systemTablesFilter,
+                                                          boolean useCatalogBeforeSchema, int defaultSnapshotFetchSize, ColumnFilterMode columnFilterMode) {
+        super(config, logicalName, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode);
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
+        this.logicalName = logicalName;
+        this.connectorClass = connectorClass;
     }
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper);
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+                                                          TableFilter systemTablesFilter, boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
+        this(connectorClass, config, logicalName, systemTablesFilter, useCatalogBeforeSchema, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
+    }
+
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+                                                          TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper,
+                                                          boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
+        super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
+        this.logicalName = logicalName;
+        this.connectorClass = connectorClass;
     }
 
     /**
@@ -62,14 +98,20 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
         // Do not remove the prefix from the subset of config properties ...
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
-                                              .edit()
-                                              .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
-                                              .build();
+                .edit()
+                .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, logicalName)
+                .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
-        databaseHistory.configure(dbHistoryConfig, historyComparator); // validates
+        databaseHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(this), useCatalogBeforeSchema); // validates
 
         return databaseHistory;
+    }
+
+    public boolean useCatalogBeforeSchema() {
+        return useCatalogBeforeSchema;
     }
 
     /**
@@ -78,4 +120,5 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
      * records have been persisted but no new offset has been committed yet).
      */
     protected abstract HistoryRecordComparator getHistoryRecordComparator();
+
 }

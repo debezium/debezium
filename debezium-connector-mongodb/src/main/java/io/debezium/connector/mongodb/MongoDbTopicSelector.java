@@ -28,7 +28,7 @@ public class MongoDbTopicSelector {
      * @return the topic selector; never null
      */
     public static TopicSelector<CollectionId> defaultSelector(String prefix, String heartbeatPrefix) {
-        return TopicSelector.defaultSelector(prefix, "", ".",
+        return TopicSelector.defaultSelector(prefix, heartbeatPrefix, ".",
                 (id, pref, delimiter) -> getTopicName(id, pref, delimiter));
     }
 

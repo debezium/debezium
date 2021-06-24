@@ -5,12 +5,12 @@
  */
 package io.debezium.text;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Arrays;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.text.TokenStream.BasicTokenizer;
 import io.debezium.text.TokenStream.Tokenizer;
@@ -331,8 +331,8 @@ public class TokenStreamTest {
     @Test
     public void shouldReturnTrueFromCanConsumeArrayOfTokensIfTheyAllMatch() {
         makeCaseInsensitive();
-        assertThat(tokens.matches(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
-        assertThat(tokens.canConsume(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
+        assertThat(tokens.matches(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
+        assertThat(tokens.canConsume(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
         assertThat(tokens.hasNext()).isFalse();
     }
 
@@ -421,7 +421,7 @@ public class TokenStreamTest {
     public void shouldCanConsumeStringAfterTokensCompleteFromCanConsumeStringArray() {
         makeCaseInsensitive();
         // consume ALL the tokens using canConsume()
-        tokens.canConsume(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" });
+        tokens.canConsume(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" });
         // try to canConsume() single word
         assertThat(tokens.canConsume("SELECT")).isFalse();
         assertThat(tokens.canConsume(TokenStream.ANY_VALUE)).isFalse();
@@ -432,7 +432,7 @@ public class TokenStreamTest {
     public void shouldCanConsumeStringAfterTokensCompleteFromCanConsumeStringIterator() {
         makeCaseInsensitive();
         // consume ALL the tokens using canConsume()
-        tokens.canConsume(Arrays.asList(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" }));
+        tokens.canConsume(Arrays.asList(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" }));
         // try to canConsume() single word
         assertThat(tokens.canConsume("SELECT")).isFalse();
         assertThat(tokens.canConsume(TokenStream.ANY_VALUE)).isFalse();
@@ -482,7 +482,7 @@ public class TokenStreamTest {
         assertThat(tokens.nextPosition().column()).isEqualTo(7);
 
     }
-    
+
     @Test
     public void shouldConsumeUntilWithoutRepeats() {
         makeCaseInsensitive();
@@ -497,7 +497,7 @@ public class TokenStreamTest {
         tokens.consume("BAR");
         assertThat(tokens.hasNext()).isFalse();
     }
-    
+
     @Test
     public void shouldConsumeUntilWithRepeats() {
         makeCaseInsensitive();
@@ -512,7 +512,7 @@ public class TokenStreamTest {
         tokens.consume("BAR");
         assertThat(tokens.hasNext()).isFalse();
     }
-    
+
     @Test
     public void shouldConsumeUntilWithRepeatsAndMultipleSkipTokens() {
         makeCaseInsensitive();

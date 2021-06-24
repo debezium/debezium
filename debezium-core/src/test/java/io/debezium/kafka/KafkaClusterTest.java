@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
@@ -24,14 +25,17 @@ import org.junit.rules.TestRule;
 
 import io.debezium.junit.SkipLongRunning;
 import io.debezium.junit.SkipTestRule;
+import io.debezium.util.Collect;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
+
+import kafka.server.KafkaConfig;
 
 /**
  * @author Randall Hauch
  */
 public class KafkaClusterTest {
-    
+
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
 
@@ -42,8 +46,9 @@ public class KafkaClusterTest {
     public void beforeEach() {
         dataDir = Testing.Files.createTestingDirectory("cluster");
         cluster = new KafkaCluster().usingDirectory(dataDir)
-                                    .deleteDataPriorToStartup(true)
-                                    .deleteDataUponShutdown(true);
+                .deleteDataPriorToStartup(true)
+                .deleteDataUponShutdown(true)
+                .withKafkaConfiguration(Collect.propertiesOf(KafkaConfig.ZkSessionTimeoutMsProp(), "20000"));
     }
 
     @After
@@ -115,7 +120,8 @@ public class KafkaClusterTest {
         if (completion.await(10, TimeUnit.SECONDS)) {
             sw.stop();
             Testing.debug("Both consumer and producer completed normally in " + sw.durations());
-        } else {
+        }
+        else {
             Testing.debug("Consumer and/or producer did not completed normally");
         }
 
@@ -143,17 +149,18 @@ public class KafkaClusterTest {
 
         // Produce some messages interactively ...
         cluster.useTo()
-               .createProducer("manual", new StringSerializer(), new IntegerSerializer())
-               .write(topicName, "key1", 1)
-               .write(topicName, "key2", 2)
-               .write(topicName, "key3", 3)
-               .close();
+                .createProducer("manual", new StringSerializer(), new IntegerSerializer())
+                .write(topicName, "key1", 1)
+                .write(topicName, "key2", 2)
+                .write(topicName, "key3", 3)
+                .close();
 
         // Wait for the consumer to to complete ...
         if (completion.await(10, TimeUnit.SECONDS)) {
             sw.stop();
             Testing.debug("The consumer completed normally in " + sw.durations());
-        } else {
+        }
+        else {
             Testing.debug("Consumer did not completed normally");
         }
 
@@ -192,7 +199,8 @@ public class KafkaClusterTest {
         if (completion.await(10, TimeUnit.SECONDS)) {
             sw.stop();
             Testing.debug("The consumer completed normally in " + sw.durations());
-        } else {
+        }
+        else {
             Testing.debug("Consumer did not completed normally");
         }
         assertThat(messagesRead.get()).isEqualTo(numMessages);
@@ -222,7 +230,6 @@ public class KafkaClusterTest {
         Properties serverConfig = kafkaServers.values().iterator().next().config();
         assertThat(serverConfig.get("foo")).isEqualTo("bar");
     }
-
 
     protected void assertValidDataDirectory(File dir) {
         assertThat(dir.exists()).isTrue();

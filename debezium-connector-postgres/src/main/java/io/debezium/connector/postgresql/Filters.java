@@ -9,10 +9,8 @@ package io.debezium.connector.postgresql;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
-import io.debezium.relational.ColumnId;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
@@ -26,12 +24,11 @@ import io.debezium.relational.Tables.TableFilter;
 public class Filters {
 
     protected static final List<String> SYSTEM_SCHEMAS = Arrays.asList("pg_catalog", "information_schema");
-    protected static final String SYSTEM_SCHEMA_BLACKLIST = SYSTEM_SCHEMAS.stream().collect(Collectors.joining(","));
+    protected static final String SYSTEM_SCHEMA_EXCLUDE_LIST = String.join(",", SYSTEM_SCHEMAS);
     protected static final Predicate<String> IS_SYSTEM_SCHEMA = SYSTEM_SCHEMAS::contains;
-    protected static final String TEMP_TABLE_BLACKLIST = ".*\\.pg_temp.*";
+    protected static final String TEMP_TABLE_EXCLUDE_LIST = ".*\\.pg_temp.*";
 
     private final TableFilter tableFilter;
-    private final Predicate<ColumnId> columnFilter;
 
     /**
      * @param config the configuration; may not be null
@@ -39,38 +36,32 @@ public class Filters {
     public Filters(PostgresConnectorConfig config) {
 
         // we always want to exclude PG system schemas as they are never part of logical decoding events
-        String schemaBlacklist = config.schemaBlacklist();
-        if (schemaBlacklist != null) {
-            schemaBlacklist = schemaBlacklist + "," + SYSTEM_SCHEMA_BLACKLIST;
-        } else {
-            schemaBlacklist = SYSTEM_SCHEMA_BLACKLIST;
+        String schemaExcludeList = config.schemaExcludeList();
+        if (schemaExcludeList != null) {
+            schemaExcludeList = schemaExcludeList + "," + SYSTEM_SCHEMA_EXCLUDE_LIST;
+        }
+        else {
+            schemaExcludeList = SYSTEM_SCHEMA_EXCLUDE_LIST;
         }
 
-        String tableBlacklist = config.tableBlacklist();
-        if (tableBlacklist != null) {
-            tableBlacklist = tableBlacklist + "," + TEMP_TABLE_BLACKLIST;
-        } else {
-            tableBlacklist = TEMP_TABLE_BLACKLIST;
+        String tableExcludeList = config.tableExcludeList();
+        if (tableExcludeList != null) {
+            tableExcludeList = tableExcludeList + "," + TEMP_TABLE_EXCLUDE_LIST;
+        }
+        else {
+            tableExcludeList = TEMP_TABLE_EXCLUDE_LIST;
         }
 
-        // Define the filter using the whitelists and blacklists for table names ...
+        // Define the filter using the include/exclude lists for table names ...
         this.tableFilter = TableFilter.fromPredicate(Selectors.tableSelector()
-                                    .includeTables(config.tableWhitelist())
-                                    .excludeTables(tableBlacklist)
-                                    .includeSchemas(config.schemaWhitelist())
-                                    .excludeSchemas(schemaBlacklist)
-                                    .build());
-
-
-        // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-        this.columnFilter = Selectors.excludeColumns(config.columnBlacklist());
+                .includeTables(config.tableIncludeList())
+                .excludeTables(tableExcludeList)
+                .includeSchemas(config.schemaIncludeList())
+                .excludeSchemas(schemaExcludeList)
+                .build());
     }
 
     protected TableFilter tableFilter() {
         return tableFilter;
-    }
-
-    protected Predicate<ColumnId> columnFilter() {
-        return columnFilter;
     }
 }

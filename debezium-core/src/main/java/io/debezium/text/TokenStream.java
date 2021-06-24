@@ -17,7 +17,6 @@ import java.util.function.LongConsumer;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.function.BooleanConsumer;
-import io.debezium.relational.ddl.DdlTokenizer;
 import io.debezium.util.Strings;
 
 /**
@@ -26,7 +25,7 @@ import io.debezium.util.Strings;
  * or other lexically-relevant piece of information. This simple framework makes it very easy to create a parser that walks
  * through (or "consumes") the tokens in the order they appear and do something useful with that content (usually creating another
  * representation of the content, such as some domain-specific Abstract Syntax Tree or object model).
- * 
+ *
  * <h3>The parts</h3>
  * <p>
  * This simple framework consists of a couple of pieces that fit together to do the whole job of parsing input content.
@@ -58,7 +57,7 @@ import io.debezium.util.Strings;
  * different tokens. It also makes the parser very easy to write and read (and thus maintain), without placing very many
  * restrictions on how that logic is to be defined. Plus, because the TokenStream takes responsibility for tracking the positions
  * of every token (including line and column numbers), it can automatically produce meaningful errors.
- * 
+ *
  * <h3>Consuming tokens</h3>
  * <p>
  * A parser works with the tokens on the TokenStream using a variety of methods:
@@ -106,7 +105,7 @@ import io.debezium.util.Strings;
  * statements, such as <code>SELECT * FROM Customers</code> or
  * <code>SELECT Name, StreetAddress AS Address, City, Zip FROM Customers</code> or
  * <code>DELETE FROM Customers WHERE Zip=12345</code>:
- * 
+ *
  * <pre>
  * public class SampleSqlSelectParser {
  *     public List&lt;Statement&gt; parse( String ddl ) {
@@ -122,7 +121,7 @@ import io.debezium.util.Strings;
  *         }
  *         return statements;
  *     }
- * 
+ *
  *     protected Select parseSelect( TokenStream tokens ) throws ParsingException {
  *         tokens.consume(&quot;SELECT&quot;);
  *         List&lt;Column&gt; columns = parseColumns(tokens);
@@ -130,7 +129,7 @@ import io.debezium.util.Strings;
  *         String tableName = tokens.consume();
  *         return new Select(tableName, columns);
  *     }
- * 
+ *
  *     protected List&lt;Column&gt; parseColumns( TokenStream tokens ) throws ParsingException {
  *         List&lt;Column&gt; columns = new LinkedList&lt;Column&gt;();
  *         if (tokens.matches('*')) {
@@ -149,7 +148,7 @@ import io.debezium.util.Strings;
  *         }
  *         return columns;
  *     }
- * 
+ *
  *     protected Delete parseDelete( TokenStream tokens ) throws ParsingException {
  *         tokens.consume(&quot;DELETE&quot;, &quot;FROM&quot;);
  *         String tableName = tokens.consume();
@@ -165,7 +164,7 @@ import io.debezium.util.Strings;
  *  public class Delete extends Statement { ... }
  *  public class Column { ... }
  * </pre>
- * 
+ *
  * This example shows an idiomatic way of writing a parser that is stateless and thread-safe. The <code>parse(...)</code> method
  * takes the input as a parameter, and returns the domain-specific representation that resulted from the parsing. All other
  * methods are utility methods that simply encapsulate common logic or make the code more readable.
@@ -176,7 +175,7 @@ import io.debezium.util.Strings;
  * commas (or a '*' if there all columns are to be selected), a "FROM" token, and the name of the table being queried. The
  * <code>parseSelect(...)</code> method returns a <code>Select</code> object, which then added to the list of statements in the
  * <code>parse(...)</code> method. The parser handles the "DELETE" statements in a similar manner.
- * 
+ *
  * <h3>Case sensitivity</h3>
  * <p>
  * Very often grammars to not require the case of keywords to match. This can make parsing a challenge, because all combinations
@@ -190,7 +189,7 @@ import io.debezium.util.Strings;
  * <p>
  * Of course, when the TokenStream is created with a <code>true</code> value for the <code>caseSensitive</code> parameter, the
  * matching is performed using the <i>actual</i> value as it appears in the input content
- * 
+ *
  * <h3>Whitespace</h3>
  * <p>
  * Many grammars are independent of lines breaks or whitespace, allowing a lot of flexibility when writing the content. The
@@ -200,7 +199,7 @@ import io.debezium.util.Strings;
  * <p>
  * Of course, many parsers will require that some whitespace be included. For example, whitespace within a quoted string may be
  * needed by the parser. In this case, the Tokenizer should simply include the whitespace characters in the tokens.
- * 
+ *
  * <h3>Writing a Tokenizer</h3>
  * <p>
  * Each parser will likely have its own {@link Tokenizer} implementation that contains the parser-specific logic about how to
@@ -210,7 +209,7 @@ import io.debezium.util.Strings;
  * <p>
  * Here is the code for a very basic Tokenizer implementation that ignores whitespace, line breaks and Java-style (multi-line and
  * end-of-line) comments, while constructing single tokens for each quoted string.
- * 
+ *
  * <pre>
  * public class BasicTokenizer implements Tokenizer {
  *     public void tokenize(CharacterStream input,
@@ -335,11 +334,11 @@ import io.debezium.util.Strings;
  *     }
  * }
  * </pre>
- * 
+ *
  * {@link Tokenizer}s with exactly this behavior can actually be created using the {@link #basicTokenizer(boolean)} method. So
  * while this very basic implementation is not meant to be used in all situations, it may be useful in some situations.
  * </p>
- * 
+ *
  * @author Randall Hauch
  * @author Horia Chiorean
  * @author Daniel Kelleher
@@ -349,7 +348,7 @@ public class TokenStream {
 
     /**
      * An opaque marker for a position within the token stream.
-     * 
+     *
      * @see TokenStream#mark()
      */
     public static final class Marker implements Comparable<Marker> {
@@ -363,7 +362,7 @@ public class TokenStream {
 
         /**
          * Get the position of this marker, or null if this is at the start or end of the token stream.
-         * 
+         *
          * @return the position.
          */
         public Position position() {
@@ -372,7 +371,9 @@ public class TokenStream {
 
         @Override
         public int compareTo(Marker that) {
-            if (this == that) return 0;
+            if (this == that) {
+                return 0;
+            }
             return this.tokenIndex - that.tokenIndex;
         }
 
@@ -406,7 +407,7 @@ public class TokenStream {
      * This class navigates the Token objects using this iterator. However, because it very often needs to access the
      * "current token" in the "consume(...)" and "canConsume(...)" and "matches(...)" methods, the class caches a "current token"
      * and makes this iterator point to the 2nd token.
-     * 
+     *
      * <pre>
      *     T1     T2    T3    T4    T5
      *         &circ;   &circ;  &circ;
@@ -421,8 +422,8 @@ public class TokenStream {
     private boolean completed;
 
     public TokenStream(String content,
-            Tokenizer tokenizer,
-            boolean caseSensitive) {
+                       Tokenizer tokenizer,
+                       boolean caseSensitive) {
         Objects.requireNonNull(content, "content");
         Objects.requireNonNull(tokenizer, "tokenizer");
         this.inputString = content;
@@ -433,7 +434,7 @@ public class TokenStream {
 
     /**
      * Begin the token stream, including (if required) the tokenization of the input content.
-     * 
+     *
      * @return this object for easy method chaining; never null
      * @throws ParsingException if an error occurs during tokenization of the content
      */
@@ -455,7 +456,7 @@ public class TokenStream {
     /**
      * Method to allow subclasses to pre-process the set of tokens and return the correct tokens to use. The default behavior is
      * to simply return the supplied tokens.
-     * 
+     *
      * @param tokens the tokens
      * @return list of tokens.
      */
@@ -477,7 +478,7 @@ public class TokenStream {
     /**
      * Obtain a marker that records the current position so that the stream can be {@link #rewind(Marker)} back to the mark even
      * after having been advanced beyond the mark.
-     * 
+     *
      * @return the marker; never null
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      * @throws NoSuchElementException if there are no more tokens
@@ -494,7 +495,7 @@ public class TokenStream {
     /**
      * Reset the stream back to the position described by the supplied marker. This method does nothing if the mark is invalid.
      * For example, it is not possible to advance the token stream beyond the current position.
-     * 
+     *
      * @param marker the marker
      * @return true if the token stream was reset, or false if the marker was invalid
      * @see #advance(Marker)
@@ -513,7 +514,7 @@ public class TokenStream {
     /**
      * Advance the stream back to the position described by the supplied marker. This method does nothing if the mark is invalid.
      * For example, it is not possible to rewind the token stream beyond the current position.
-     * 
+     *
      * @param marker the marker
      * @return true if the token stream was advanced, or false if the marker was invalid
      * @see #rewind(Marker)
@@ -531,7 +532,7 @@ public class TokenStream {
 
     /**
      * Get the position of the previous token.
-     * 
+     *
      * @return the previous token's position; never null
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      * @throws NoSuchElementException if there is no previous token
@@ -539,10 +540,10 @@ public class TokenStream {
     public Position previousPosition() {
         return previousPosition(1);
     }
-    
+
     /**
      * Get the position of a token earlier in the stream from the current position.
-     * 
+     *
      * @param count the number of tokens before the current position (e.g., 1 for the previous position)
      * @return the previous token's position; never null
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -554,7 +555,7 @@ public class TokenStream {
 
     /**
      * Get the position of the next (or current) token.
-     * 
+     *
      * @return the current token's position; never null
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      * @throws NoSuchElementException if there is no previous token
@@ -564,92 +565,16 @@ public class TokenStream {
     }
 
     /**
-     * Convert the value of this token to an integer, return it, and move to the next token.
-     * 
-     * @return the current token's value, converted to an integer
-     * @throws ParsingException if there is no such token to consume, or if the token cannot be converted to an integer
-     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
-     */
-    public int consumeInteger() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
-        // Get the value from the current token ...
-        String value = currentToken().value().toUpperCase();
-        try {
-            List<Token> newTokens = new ArrayList<>();
-            int ePos = value.indexOf("E");
-            // Scientific format, need to identify mantissa and exponent and put it back to stream
-            if (ePos != -1) {
-                String mantissa = value.substring(0, ePos);
-                newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos, currentToken().startIndex() + ePos + 1, DdlTokenizer.WORD, currentToken().position()));
-                // Number is in format xxxEyyy
-                if (ePos != value.length() - 1) {
-                    newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos + 1, currentToken().endIndex(), DdlTokenizer.WORD, currentToken().position()));
-                }
-                value = mantissa;
-            }
-            int result = Integer.parseInt(value);
-            moveToNextToken(newTokens);
-            return result;
-        } catch (NumberFormatException e) {
-            Position position = currentToken().position();
-            throw new ParsingException(position,
-                    "Expecting integer at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
-        }
-    }
-
-    /**
-     * Convert the value of this token to a long, return it, and move to the next token.
-     * 
-     * @return the current token's value, converted to an integer
-     * @throws ParsingException if there is no such token to consume, or if the token cannot be converted to a long
-     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
-     */
-    public long consumeLong() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
-        // Get the value from the current token ...
-        String value = currentToken().value();
-        try {
-            long result = Long.parseLong(value);
-            moveToNextToken();
-            return result;
-        } catch (NumberFormatException e) {
-            Position position = currentToken().position();
-            throw new ParsingException(position,
-                    "Expecting long at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
-        }
-    }
-
-    /**
-     * Convert the value of this token to an integer, return it, and move to the next token.
-     * 
-     * @return the current token's value, converted to an integer
-     * @throws ParsingException if there is no such token to consume, or if the token cannot be converted to an integer
-     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
-     */
-    public boolean consumeBoolean() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
-        // Get the value from the current token ...
-        String value = currentToken().value();
-        try {
-            boolean result = Boolean.parseBoolean(value);
-            moveToNextToken();
-            return result;
-        } catch (NumberFormatException e) {
-            Position position = currentToken().position();
-            throw new ParsingException(position,
-                    "Expecting boolean at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
-        }
-    }
-
-    /**
      * Return the value of this token and move to the next token.
-     * 
+     *
      * @return the value of the current token
      * @throws ParsingException if there is no such token to consume
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public String consume() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String result = currentToken().value();
         moveToNextToken();
@@ -662,7 +587,9 @@ public class TokenStream {
     }
 
     public String peek() throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token but do NOT advance ...
         return currentToken().value();
     }
@@ -673,7 +600,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the expected value of the current token
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the current token doesn't match the supplied value
@@ -699,7 +626,7 @@ public class TokenStream {
     /**
      * Attempt to consume this current token as long as it matches the expected character, or throw an exception if the token does
      * not match.
-     * 
+     *
      * @param expected the expected character of the current token
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the current token doesn't match the supplied value
@@ -728,7 +655,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_TYPE ANY_TYPE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expectedType the expected token type of the current token
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the current token doesn't match the supplied value
@@ -759,7 +686,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the expected value of the current token
      * @param expectedForNextTokens the expected values of the following tokens
      * @return this token stream instance so callers can chain together methods; never null
@@ -782,7 +709,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param nextTokens the expected values for the next tokens
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the current token doesn't match the supplied value
@@ -801,7 +728,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param nextTokens the expected values for the next tokens
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the current token doesn't match the supplied value
@@ -816,7 +743,7 @@ public class TokenStream {
 
     /**
      * Consume and return the next token that must match one of the supplied values.
-     * 
+     *
      * @param typeOptions the options for the type of the current token
      * @return the token that was consumed and that matches one of the supplied options
      * @throws ParsingException if the current token doesn't match the supplied value
@@ -828,7 +755,9 @@ public class TokenStream {
                     "No more content but was expecting one token of type " + Strings.join("|", typeOptions));
         }
         for (int typeOption : typeOptions) {
-            if (typeOption == ANY_TYPE || matches(typeOption)) return consume();
+            if (typeOption == ANY_TYPE || matches(typeOption)) {
+                return consume();
+            }
         }
         // Failed to find a match ...
         String found = currentToken().value();
@@ -841,7 +770,7 @@ public class TokenStream {
 
     /**
      * Consume and return the next token that must match one of the supplied values.
-     * 
+     *
      * @param options the additional options for the value of the current token
      * @return the token that was consumed and that matches one of the supplied options
      * @throws ParsingException if the current token doesn't match the supplied value
@@ -853,7 +782,9 @@ public class TokenStream {
                     "No more content but was expecting one token of " + String.join("|", options));
         }
         for (String option : options) {
-            if (option == ANY_VALUE || matches(option)) return consume();
+            if (option == ANY_VALUE || matches(option)) {
+                return consume();
+            }
         }
         // Failed to find a match ...
         String found = currentToken().value();
@@ -870,7 +801,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
@@ -886,7 +817,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
      *            of {@code skipMatchingTokens}; may be null
@@ -904,7 +835,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
@@ -920,7 +851,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
      *            of {@code skipMatchingTokens}; may be null
@@ -944,14 +875,14 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(char expected) throws ParsingException, IllegalStateException {
-        return consumeUntil(String.valueOf(expected), (String[])null);
+        return consumeUntil(String.valueOf(expected), (String[]) null);
     }
 
     /**
@@ -960,7 +891,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
      *            of {@code skipMatchingTokens}
@@ -978,14 +909,14 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if the specified token cannot be found
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(String expected) throws ParsingException, IllegalStateException {
-        return consumeUntil(expected, (String[])null);
+        return consumeUntil(expected, (String[]) null);
     }
 
     /**
@@ -994,7 +925,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the token that is to be found
      * @param skipMatchingTokens the token that, if found, should result in skipping {@code expected} once for each occurrence
      *            of {@code skipMatchingTokens}; may be null
@@ -1010,7 +941,9 @@ public class TokenStream {
         Marker start = mark();
         int remaining = 0;
         while (hasNext()) {
-            if (skipMatchingTokens != null && matchesAnyOf(skipMatchingTokens)) ++remaining;
+            if (skipMatchingTokens != null && matchesAnyOf(skipMatchingTokens)) {
+                ++remaining;
+            }
             if (matches(expected)) {
                 if (remaining == 0) {
                     break;
@@ -1029,7 +962,7 @@ public class TokenStream {
 
     /**
      * Consume the token stream until one of the stop tokens or the end of the stream is found.
-     * 
+     *
      * @param stopTokens the stop tokens; may not be null
      * @return this token stream instance so callers can chain together methods; never null
      * @throws ParsingException if none of the specified tokens can be found
@@ -1049,14 +982,16 @@ public class TokenStream {
     /**
      * Attempt to consume this current token if it can be parsed as an integer, and return whether this method was indeed able to
      * consume the token.
-     * 
+     *
      * @param consumer the function that should be called with the integer value if the current token token could be parsed
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeInteger(IntConsumer consumer) throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -1064,7 +999,8 @@ public class TokenStream {
             moveToNextToken();
             consumer.accept(result);
             return true;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             return false;
         }
     }
@@ -1072,14 +1008,16 @@ public class TokenStream {
     /**
      * Attempt to consume this current token if it can be parsed as a boolean, and return whether this method was indeed able to
      * consume the token.
-     * 
+     *
      * @param consumer the function that should be called with the boolean value if the current token token could be parsed
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeBoolean(BooleanConsumer consumer) throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -1087,7 +1025,8 @@ public class TokenStream {
             moveToNextToken();
             consumer.accept(result);
             return true;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             return false;
         }
     }
@@ -1095,14 +1034,16 @@ public class TokenStream {
     /**
      * Attempt to consume this current token if it can be parsed as a long, and return whether this method was indeed able to
      * consume the token.
-     * 
+     *
      * @param consumer the function that should be called with the long value if the current token token could be parsed
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeLong(LongConsumer consumer) throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -1110,7 +1051,8 @@ public class TokenStream {
             moveToNextToken();
             consumer.accept(result);
             return true;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             return false;
         }
     }
@@ -1121,7 +1063,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected value as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the expected value of the current token
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
@@ -1137,7 +1079,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected value as a wildcard.
      * </p>
-     * 
+     *
      * @param type the expected type of the current token
      * @param expected the expected value of the current token
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
@@ -1145,7 +1087,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(int type, String expected) throws IllegalStateException {
-        if (!(matches(expected) && matches(type))) return false;
+        if (!(matches(expected) && matches(type))) {
+            return false;
+        }
         moveToNextToken();
         return true;
     }
@@ -1156,7 +1100,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected value as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the expected value of the current token
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
@@ -1169,14 +1113,16 @@ public class TokenStream {
     /**
      * Attempt to consume this current token if it matches the expected value, and return whether this method was indeed able to
      * consume the token.
-     * 
+     *
      * @param expected the expected value of the current token token
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(char expected) throws IllegalStateException {
-        if (!matches(expected)) return false;
+        if (!matches(expected)) {
+            return false;
+        }
         moveToNextToken();
         return true;
     }
@@ -1187,14 +1133,16 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_TYPE ANY_TYPE} constant can be used in the expected type as a wildcard.
      * </p>
-     * 
+     *
      * @param expectedType the expected token type of the current token
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(int expectedType) throws IllegalStateException {
-        if (!matches(expectedType)) return false;
+        if (!matches(expectedType)) {
+            return false;
+        }
         moveToNextToken();
         return true;
     }
@@ -1208,20 +1156,20 @@ public class TokenStream {
      * </p>
      * <p>
      * This method <i>is</i> equivalent to calling the following:
-     * 
+     *
      * <pre>
-     * 
+     *
      * if (tokens.matches(currentExpected, expectedForNextTokens)) {
      *     tokens.consume(currentExpected, expectedForNextTokens);
      * }
-     * 
+     *
      * </pre>
-     * 
+     *
      * </p>
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param currentExpected the expected value of the current token
      * @param expectedForNextTokens the expected values fo the following tokens
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
@@ -1243,20 +1191,20 @@ public class TokenStream {
      * </p>
      * <p>
      * This method <i>is</i> equivalent to calling the following:
-     * 
+     *
      * <pre>
-     * 
+     *
      * if (tokens.matches(currentExpected, expectedForNextTokens) && tokens.matches(type, type, ...)) {
      *     tokens.consume(currentExpected, expectedForNextTokens);
      * }
-     * 
+     *
      * </pre>
-     * 
+     *
      * </p>
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param type the expect type of the tokens
      * @param currentExpected the expected value of the current token
      * @param expectedForNextTokens the expected values fo the following tokens
@@ -1266,16 +1214,28 @@ public class TokenStream {
      */
     public boolean canConsume(int type, String currentExpected, String... expectedForNextTokens)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
-        if (!iter.hasNext()) return false;
+        if (!iter.hasNext()) {
+            return false;
+        }
         Token token = iter.next();
-        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)) return false;
+        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)) {
+            return false;
+        }
         for (String nextExpected : expectedForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(type, nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(type, nextExpected)) {
+                return false;
+            }
         }
         this.tokenIterator = iter;
         this.currentToken = tokenIterator.hasNext() ? tokenIterator.next() : null;
@@ -1286,7 +1246,7 @@ public class TokenStream {
     /**
      * Attempt to consume this current token and the next tokens if and only if they are of {@link BasicTokenizer#WORD} and match the expected values,
      * and return whether this method was indeed able to consume all of the supplied tokens.
-     * 
+     *
      * @param currentExpected the expected value of the current token
      * @param expectedForNextTokens the expected values fo the following tokens
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
@@ -1307,34 +1267,42 @@ public class TokenStream {
      * </p>
      * <p>
      * This method <i>is</i> equivalent to calling the following:
-     * 
+     *
      * <pre>
-     * 
+     *
      * if (tokens.matches(currentExpected, expectedForNextTokens)) {
      *     tokens.consume(currentExpected, expectedForNextTokens);
      * }
-     * 
+     *
      * </pre>
-     * 
+     *
      * </p>
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param nextTokens the expected values of the next tokens
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(String[] nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         this.tokenIterator = iter;
         this.currentToken = tokenIterator.hasNext() ? tokenIterator.next() : null;
@@ -1351,34 +1319,42 @@ public class TokenStream {
      * </p>
      * <p>
      * This method <i>is</i> equivalent to calling the following:
-     * 
+     *
      * <pre>
-     * 
+     *
      * if (tokens.matches(currentExpected, expectedForNextTokens)) {
      *     tokens.consume(currentExpected, expectedForNextTokens);
      * }
-     * 
+     *
      * </pre>
-     * 
+     *
      * </p>
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param nextTokens the expected values of the next tokens
      * @return true if the current token did match and was consumed, or false if the current token did not match and therefore was
      *         not consumed
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(Iterable<String> nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         this.tokenIterator = iter;
         this.currentToken = tokenIterator.hasNext() ? tokenIterator.next() : null;
@@ -1388,7 +1364,7 @@ public class TokenStream {
 
     /**
      * Attempt to consume the next token if it matches one of the supplied values.
-     * 
+     *
      * @param firstOption the first option for the value of the current token
      * @param additionalOptions the additional options for the value of the current token
      * @return true if the current token's value did match one of the supplied options, or false otherwise
@@ -1397,47 +1373,61 @@ public class TokenStream {
     public boolean canConsumeAnyOf(String firstOption,
                                    String... additionalOptions)
             throws IllegalStateException {
-        if (completed) return false;
-        if (canConsume(firstOption)) return true;
+        if (completed) {
+            return false;
+        }
+        if (canConsume(firstOption)) {
+            return true;
+        }
         for (String nextOption : additionalOptions) {
-            if (canConsume(nextOption)) return true;
+            if (canConsume(nextOption)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Attempt to consume the next token if it matches one of the supplied values.
-     * 
+     *
      * @param options the options for the value of the current token
      * @return true if the current token's value did match one of the suplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(String[] options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         for (String option : options) {
-            if (canConsume(option)) return true;
+            if (canConsume(option)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Attempt to consume the next token if it matches one of the supplied values.
-     * 
+     *
      * @param options the options for the value of the current token
      * @return true if the current token's value did match one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(Iterable<String> options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         for (String option : options) {
-            if (canConsume(option)) return true;
+            if (canConsume(option)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Attempt to consume the next token if it matches one of the supplied types.
-     * 
+     *
      * @param firstTypeOption the first option for the type of the current token
      * @param additionalTypeOptions the additional options for the type of the current token
      * @return true if the current token's type matched one of the supplied options, or false otherwise
@@ -1446,25 +1436,35 @@ public class TokenStream {
     public boolean canConsumeAnyOf(int firstTypeOption,
                                    int... additionalTypeOptions)
             throws IllegalStateException {
-        if (completed) return false;
-        if (canConsume(firstTypeOption)) return true;
+        if (completed) {
+            return false;
+        }
+        if (canConsume(firstTypeOption)) {
+            return true;
+        }
         for (int nextTypeOption : additionalTypeOptions) {
-            if (canConsume(nextTypeOption)) return true;
+            if (canConsume(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Attempt to consume the next token if it matches one of the supplied types.
-     * 
+     *
      * @param typeOptions the options for the type of the current token
      * @return true if the current token's type matched one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(int[] typeOptions) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         for (int nextTypeOption : typeOptions) {
-            if (canConsume(nextTypeOption)) return true;
+            if (canConsume(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1474,7 +1474,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the expected value of the current token
      * @return true if the current token did match, or false if the current token did not match
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -1488,7 +1488,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used as a wildcard.
      * </p>
-     * 
+     *
      * @param type the expected type of the curent token
      * @param expected the expected value of the current token
      * @return true if the current token did match, or false if the current token did not match
@@ -1503,7 +1503,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used as a wildcard.
      * </p>
-     * 
+     *
      * @param expected the expected value of the current token
      * @return true if the current token did match, or false if the current token did not match
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -1514,7 +1514,7 @@ public class TokenStream {
 
     /**
      * Determine if the current token matches the expected value.
-     * 
+     *
      * @param expected the expected value of the current token token
      * @return true if the current token did match, or false if the current token did not match
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -1525,7 +1525,7 @@ public class TokenStream {
 
     /**
      * Determine if the current token matches the expected token type.
-     * 
+     *
      * @param expectedType the expected token type of the current token
      * @return true if the current token did match, or false if the current token did not match
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -1539,7 +1539,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param currentExpected the expected value of the current token
      * @param expectedForNextTokens the expected values for the following tokens
      * @return true if the tokens did match, or false otherwise
@@ -1548,16 +1548,28 @@ public class TokenStream {
     public boolean matches(String currentExpected,
                            String... expectedForNextTokens)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
-        if (!iter.hasNext()) return false;
+        if (!iter.hasNext()) {
+            return false;
+        }
         Token token = iter.next();
-        if (currentExpected != ANY_VALUE && !token.matches(currentExpected)) return false;
+        if (currentExpected != ANY_VALUE && !token.matches(currentExpected)) {
+            return false;
+        }
         for (String nextExpected : expectedForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1567,20 +1579,28 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param nextTokens the expected value of the next tokens
      * @return true if the tokens did match, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(String[] nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1590,20 +1610,28 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_VALUE ANY_VALUE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param nextTokens the expected value of the next tokens
      * @return true if the tokens did match, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(Iterable<String> nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1613,7 +1641,7 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_TYPE ANY_TYPE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param currentExpectedType the expected type of the current token
      * @param expectedTypeForNextTokens the expected type for the following tokens
      * @return true if the tokens did match, or false otherwise
@@ -1622,16 +1650,28 @@ public class TokenStream {
     public boolean matches(int currentExpectedType,
                            int... expectedTypeForNextTokens)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
-        if (!iter.hasNext()) return false;
+        if (!iter.hasNext()) {
+            return false;
+        }
         Token token = iter.next();
-        if (currentExpectedType != ANY_TYPE && (currentToken().type() & currentExpectedType) != currentExpectedType) return false;
+        if (currentExpectedType != ANY_TYPE && (currentToken().type() & currentExpectedType) != currentExpectedType) {
+            return false;
+        }
         for (int nextExpectedType : expectedTypeForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpectedType == ANY_TYPE) continue;
-            if ((token.type() & nextExpectedType) != nextExpectedType) return false;
+            if (nextExpectedType == ANY_TYPE) {
+                continue;
+            }
+            if ((token.type() & nextExpectedType) != nextExpectedType) {
+                return false;
+            }
         }
         return true;
     }
@@ -1641,27 +1681,35 @@ public class TokenStream {
      * <p>
      * The {@link #ANY_TYPE ANY_TYPE} constant can be used in the expected values as a wildcard.
      * </p>
-     * 
+     *
      * @param typesForNextTokens the expected type for each of the next tokens
      * @return true if the tokens did match, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(int[] typesForNextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (int nextExpectedType : typesForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpectedType == ANY_TYPE) continue;
-            if (!token.matches(nextExpectedType)) return false;
+            if (nextExpectedType == ANY_TYPE) {
+                continue;
+            }
+            if (!token.matches(nextExpectedType)) {
+                return false;
+            }
         }
         return true;
     }
 
     /**
      * Determine if the next token matches one of the supplied values.
-     * 
+     *
      * @param firstOption the first option for the value of the current token
      * @param additionalOptions the additional options for the value of the current token
      * @return true if the current token's value did match one of the supplied options, or false otherwise
@@ -1675,7 +1723,7 @@ public class TokenStream {
 
     /**
      * Determine if the next token matches one of the supplied values of the expected type.
-     * 
+     *
      * @param type the expected type of tokens
      * @param firstOption the first option for the value of the current token
      * @param additionalOptions the additional options for the value of the current token
@@ -1684,18 +1732,24 @@ public class TokenStream {
      */
     public boolean matchesAnyOf(int type, String firstOption, String... additionalOptions)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         Token current = currentToken();
-        if (current.matches(type, firstOption)) return true;
+        if (current.matches(type, firstOption)) {
+            return true;
+        }
         for (String nextOption : additionalOptions) {
-            if (current.matches(type, nextOption)) return true;
+            if (current.matches(type, nextOption)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Determine if the next token matches one of the supplied values of the type {@link BasicTokenizer#WORD}
-     * 
+     *
      * @param firstOption the first option for the value of the current token
      * @param additionalOptions the additional options for the value of the current token
      * @return true if the current token's value did match one of the supplied options, or false otherwise
@@ -1706,42 +1760,49 @@ public class TokenStream {
         return matchesAnyOf(BasicTokenizer.WORD, firstOption, additionalOptions);
     }
 
-
     /**
      * Determine if the next token matches one of the supplied values.
-     * 
+     *
      * @param options the options for the value of the current token
      * @return true if the current token's value did match one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(String[] options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         Token current = currentToken();
         for (String option : options) {
-            if (current.matches(option)) return true;
+            if (current.matches(option)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Determine if the next token matches one of the supplied values.
-     * 
+     *
      * @param options the options for the value of the current token
      * @return true if the current token's value did match one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(Iterable<String> options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         Token current = currentToken();
         for (String option : options) {
-            if (current.matches(option)) return true;
+            if (current.matches(option)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Determine if the next token have one of the supplied types.
-     * 
+     *
      * @param firstTypeOption the first option for the type of the current token
      * @param additionalTypeOptions the additional options for the type of the current token
      * @return true if the current token's type matched one of the supplied options, or false otherwise
@@ -1750,34 +1811,44 @@ public class TokenStream {
     public boolean matchesAnyOf(int firstTypeOption,
                                 int... additionalTypeOptions)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         Token current = currentToken();
-        if (current.matches(firstTypeOption)) return true;
+        if (current.matches(firstTypeOption)) {
+            return true;
+        }
         for (int nextTypeOption : additionalTypeOptions) {
-            if (current.matches(nextTypeOption)) return true;
+            if (current.matches(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Determine if the next token have one of the supplied types.
-     * 
+     *
      * @param typeOptions the options for the type of the current token
      * @return true if the current token's type matched one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(int[] typeOptions) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         Token current = currentToken();
         for (int nextTypeOption : typeOptions) {
-            if (current.matches(nextTypeOption)) return true;
+            if (current.matches(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
 
     /**
      * Determine if this stream has another token to be consumed.
-     * 
+     *
      * @return true if there is another token ready for consumption, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
@@ -1810,7 +1881,7 @@ public class TokenStream {
 
     private void moveToNextToken(List<Token> newTokens) {
         if (newTokens != null && !newTokens.isEmpty()) {
-            for (Token t: newTokens) {
+            for (Token t : newTokens) {
                 tokenIterator.add(t);
             }
             for (int i = 0; i < newTokens.size() - 1; i++) {
@@ -1823,7 +1894,8 @@ public class TokenStream {
         if (!tokenIterator.hasNext()) {
             completed = true;
             currentToken = null;
-        } else {
+        }
+        else {
             currentToken = tokenIterator.next();
         }
     }
@@ -1834,7 +1906,7 @@ public class TokenStream {
 
     /**
      * Get the current token.
-     * 
+     *
      * @return the current token; never null
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      * @throws NoSuchElementException if there are no more tokens
@@ -1852,7 +1924,7 @@ public class TokenStream {
 
     /**
      * Gets the content string starting at the specified marker (inclusive) and continuing up to the next position (exclusive).
-     * 
+     *
      * @param starting the marker describing a point in the stream; may not be null
      * @return the content string; never null
      */
@@ -1864,7 +1936,7 @@ public class TokenStream {
 
     /**
      * Gets the content string starting at the specified marker (inclusive) and continuing up to the end position (exclusive).
-     * 
+     *
      * @param starting the marker describing a point in the stream; may not be null
      * @param end the position located directly after the returned content string; can be null, which means end of content
      * @return the content string; never null
@@ -1878,7 +1950,7 @@ public class TokenStream {
 
     /**
      * Gets the content string starting at the first position (inclusive) and continuing up to the end position (exclusive).
-     * 
+     *
      * @param starting the position marking the beginning of the desired content string; may not be null
      * @param end the position located directly after the returned content string; can be null, which means end of content
      * @return the content string; never null
@@ -1901,7 +1973,7 @@ public class TokenStream {
 
     /**
      * Get the previous token. This does not modify the state.
-     * 
+     *
      * @param count the number of tokens back from the current position that this method should return
      * @return the previous token; never null
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
@@ -1936,7 +2008,7 @@ public class TokenStream {
 
     /**
      * Utility method to generate a highlighted fragment of a particular point in the stream.
-     * 
+     *
      * @param content the content from which the fragment should be taken; may not be null
      * @param indexOfProblem the index of the problem point that should be highlighted; must be a valid index in the content
      * @param charactersToIncludeBeforeAndAfter the maximum number of characters before and after the problem point to include in
@@ -1969,7 +2041,7 @@ public class TokenStream {
     public static interface Tokenizer {
         /**
          * Process the supplied characters and construct the appropriate {@link Token} objects.
-         * 
+         *
          * @param input the character input stream; never null
          * @param tokens the factory for {@link Token} objects, which records the order in which the tokens are created
          * @throws ParsingException if there is an error while processing the character stream (e.g., a quote is not closed, etc.)
@@ -1986,14 +2058,14 @@ public class TokenStream {
 
         /**
          * Determine if there is another character available in this stream.
-         * 
+         *
          * @return true if there is another character (and {@link #next()} can be called), or false otherwise
          */
         boolean hasNext();
 
         /**
          * Obtain the next character value, and advance the stream.
-         * 
+         *
          * @return the next character
          * @throws NoSuchElementException if there is no {@link #hasNext() next character}
          */
@@ -2001,14 +2073,14 @@ public class TokenStream {
 
         /**
          * Get the index for the last character returned from {@link #next()}.
-         * 
+         *
          * @return the index of the last character returned
          */
         int index();
 
         /**
          * Get the position for the last character returned from {@link #next()}.
-         * 
+         *
          * @param startIndex the starting index
          * @return the position of the last character returned; never null
          */
@@ -2016,7 +2088,7 @@ public class TokenStream {
 
         /**
          * Get the content from the start position to the end position.
-         * 
+         *
          * @param startIndex the starting index
          * @param endIndex the index after the last character to include
          * @return the content
@@ -2026,7 +2098,7 @@ public class TokenStream {
         /**
          * Determine if the next character on the stream is a {@link Character#isWhitespace(char) whitespace character}. This
          * method does <i>not</i> advance the stream.
-         * 
+         *
          * @return true if there is a {@link #next() next} character and it is a whitespace character, or false otherwise
          */
         boolean isNextWhitespace();
@@ -2034,7 +2106,7 @@ public class TokenStream {
         /**
          * Determine if the next character on the stream is a {@link Character#isLetterOrDigit(char) letter or digit}. This method
          * does <i>not</i> advance the stream.
-         * 
+         *
          * @return true if there is a {@link #next() next} character and it is a letter or digit, or false otherwise
          */
         boolean isNextLetterOrDigit();
@@ -2042,7 +2114,7 @@ public class TokenStream {
         /**
          * Determine if the next character on the stream is a {@link XmlCharacters#isValid(int) valid XML character}. This method
          * does <i>not</i> advance the stream.
-         * 
+         *
          * @return true if there is a {@link #next() next} character and it is a valid XML character, or false otherwise
          */
         boolean isNextValidXmlCharacter();
@@ -2050,7 +2122,7 @@ public class TokenStream {
         /**
          * Determine if the next character on the sream is a {@link XmlCharacters#isValidName(int) valid XML NCName character}.
          * This method does <i>not</i> advance the stream.
-         * 
+         *
          * @return true if there is a {@link #next() next} character and it is a valid XML Name character, or false otherwise
          */
         boolean isNextValidXmlNameCharacter();
@@ -2058,14 +2130,14 @@ public class TokenStream {
         /**
          * Determine if the next character on the sream is a {@link XmlCharacters#isValidNcName(int) valid XML NCName character}.
          * This method does <i>not</i> advance the stream.
-         * 
+         *
          * @return true if there is a {@link #next() next} character and it is a valid XML NCName character, or false otherwise
          */
         boolean isNextValidXmlNcNameCharacter();
 
         /**
          * Determine if the next character on the sream is the supplied value. This method does <i>not</i> advance the stream.
-         * 
+         *
          * @param c the character value to compare to the next character on the stream
          * @return true if there is a {@link #next() next} character and it is the supplied character, or false otherwise
          */
@@ -2074,7 +2146,7 @@ public class TokenStream {
         /**
          * Determine if the next two characters on the stream match the supplied values. This method does <i>not</i> advance the
          * stream.
-         * 
+         *
          * @param nextChar the character value to compare to the next character on the stream
          * @param followingChar the character value to compare to the character immediately after the next character on the stream
          * @return true if there are at least two characters left on the stream and the first matches <code>nextChar</code> and
@@ -2086,7 +2158,7 @@ public class TokenStream {
         /**
          * Determine if the next three characters on the sream match the supplied values. This method does <i>not</i> advance the
          * stream.
-         * 
+         *
          * @param nextChar the character value to compare to the next character on the stream
          * @param nextChar2 the character value to compare to the second character on the stream
          * @param nextChar3 the character value to compare to the second character on the stream
@@ -2100,7 +2172,7 @@ public class TokenStream {
         /**
          * Determine if the next character on the stream matches one of the supplied characters. This method does <i>not</i>
          * advance the stream.
-         * 
+         *
          * @param characters the characters to match
          * @return true if there is a {@link #next() next} character and it does match one of the supplied characters, or false
          *         otherwise
@@ -2110,7 +2182,7 @@ public class TokenStream {
         /**
          * Determine if the next character on the stream matches one of the supplied characters. This method does <i>not</i>
          * advance the stream.
-         * 
+         *
          * @param characters the characters to match
          * @return true if there is a {@link #next() next} character and it does match one of the supplied characters, or false
          *         otherwise
@@ -2126,7 +2198,7 @@ public class TokenStream {
         /**
          * Create a single-character token at the supplied index in the character stream. The token type is set to 0, meaning this
          * is equivalent to calling <code>addToken(index,index+1)</code> or <code>addToken(index,index+1,0)</code>.
-         * 
+         *
          * @param position the position (line and column numbers) of this new token; may not be null
          * @param index the index of the character to appear in the token; must be a valid index in the stream
          */
@@ -2140,7 +2212,7 @@ public class TokenStream {
          * the character stream. The character at the ending index is <i>not</i> included in the token (as this is standard
          * practice when using 0-based indexes). The token type is set to 0, meaning this is equivalent to calling <code>
          * addToken(startIndex,endIndex,0)</code> .
-         * 
+         *
          * @param position the position (line and column numbers) of this new token; may not be null
          * @param startIndex the index of the first character to appear in the token; must be a valid index in the stream
          * @param endIndex the index just past the last character to appear in the token; must be a valid index in the stream
@@ -2155,7 +2227,7 @@ public class TokenStream {
          * Create a single- or multi-character token with the supplied type and with the characters in the range given by the
          * starting and ending index in the character stream. The character at the ending index is <i>not</i> included in the
          * token (as this is standard practice when using 0-based indexes).
-         * 
+         *
          * @param position the position (line and column numbers) of this new token; may not be null
          * @param startIndex the index of the first character to appear in the token; must be a valid index in the stream
          * @param endIndex the index just past the last character to appear in the token; must be a valid index in the stream
@@ -2169,7 +2241,7 @@ public class TokenStream {
 
     /**
      * The interface defining a token, which references the characters in the actual input character stream.
-     * 
+     *
      * @see CaseSensitiveTokenFactory
      * @see CaseInsensitiveTokenFactory
      */
@@ -2177,14 +2249,14 @@ public class TokenStream {
     public interface Token {
         /**
          * Get the value of the token, in actual case.
-         * 
+         *
          * @return the value
          */
         String value();
 
         /**
          * Determine if the token matches the supplied string.
-         * 
+         *
          * @param expected the expected value
          * @return true if the token's value matches the supplied value, or false otherwise
          */
@@ -2192,7 +2264,7 @@ public class TokenStream {
 
         /**
          * Determine if the token matches the supplied string and is of a requested type.
-         * 
+         *
          * @param expectedType the expected token type
          * @param expected the expected value
          * @return true if the token's type and value matches the supplied type and value, or false otherwise
@@ -2203,7 +2275,7 @@ public class TokenStream {
 
         /**
          * Determine if the token matches the supplied character.
-         * 
+         *
          * @param expected the expected character value
          * @return true if the token's value matches the supplied character value, or false otherwise
          */
@@ -2211,7 +2283,7 @@ public class TokenStream {
 
         /**
          * Determine if the token matches the supplied type.
-         * 
+         *
          * @param expectedType the expected integer type
          * @return true if the token's value matches the supplied integer type, or false otherwise
          */
@@ -2219,42 +2291,42 @@ public class TokenStream {
 
         /**
          * Get the type of the token.
-         * 
+         *
          * @return the token's type
          */
         int type();
 
         /**
          * Get the index in the raw stream for the first character in the token.
-         * 
+         *
          * @return the starting index of the token
          */
         int startIndex();
 
         /**
          * Get the index in the raw stream past the last character in the token.
-         * 
+         *
          * @return the ending index of the token, which is past the last character
          */
         int endIndex();
 
         /**
          * Get the length of the token, which is equivalent to <code>endIndex() - startIndex()</code>.
-         * 
+         *
          * @return the length
          */
         int length();
 
         /**
          * Get the position of this token, which includes the line number and column number of the first character in the token.
-         * 
+         *
          * @return the position; never null
          */
         Position position();
 
         /**
          * Bitmask ORed with existing type value.
-         * 
+         *
          * @param typeMask the mask of types
          * @return copy of Token with new type
          */
@@ -2272,9 +2344,9 @@ public class TokenStream {
         private final Position position;
 
         public CaseSensitiveToken(int startIndex,
-                int endIndex,
-                int type,
-                Position position) {
+                                  int endIndex,
+                                  int type,
+                                  Position position) {
             this.startIndex = startIndex;
             this.endIndex = endIndex;
             this.type = type;
@@ -2345,9 +2417,9 @@ public class TokenStream {
     @Immutable
     protected class CaseInsensitiveToken extends CaseSensitiveToken {
         public CaseInsensitiveToken(int startIndex,
-                int endIndex,
-                int type,
-                Position position) {
+                                    int endIndex,
+                                    int type,
+                                    Position position) {
             super(startIndex, endIndex, type, position);
         }
 
@@ -2438,10 +2510,14 @@ public class TokenStream {
                 nextCharMayBeLineFeed = true;
                 ++lineNumber;
                 columnNumber = 0;
-            } else if (result == '\n') {
-                if (!nextCharMayBeLineFeed) ++lineNumber;
+            }
+            else if (result == '\n') {
+                if (!nextCharMayBeLineFeed) {
+                    ++lineNumber;
+                }
                 columnNumber = 0;
-            } else if (nextCharMayBeLineFeed) {
+            }
+            else if (nextCharMayBeLineFeed) {
                 nextCharMayBeLineFeed = false;
             }
             return result;
@@ -2478,7 +2554,9 @@ public class TokenStream {
             if (nextIndex <= maxIndex) {
                 char nextChar = content[lastIndex + 1];
                 for (char c : characters) {
-                    if (c == nextChar) return true;
+                    if (c == nextChar) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -2489,7 +2567,9 @@ public class TokenStream {
             int nextIndex = lastIndex + 1;
             if (nextIndex <= maxIndex) {
                 char nextChar = content[lastIndex + 1];
-                if (characters.indexOf(nextChar) != -1) return true;
+                if (characters.indexOf(nextChar) != -1) {
+                    return true;
+                }
             }
             return false;
         }
@@ -2532,7 +2612,7 @@ public class TokenStream {
      * Note that the resulting Tokenizer may not be appropriate in many situations, but is provided merely as a convenience for
      * those situations that happen to be able to use it.
      * </p>
-     * 
+     *
      * @param includeComments true if the comments should be retained and be included in the token stream, or false if comments
      *            should be stripped and not included in the token stream
      * @return the tokenizer; never null
@@ -2632,9 +2712,11 @@ public class TokenStream {
                             c = input.next();
                             if (c == '\\' && input.isNext('"')) {
                                 c = input.next(); // consume the " character since it is escaped \"
-                            } else if (c == '"' && input.isNext('"')) {
+                            }
+                            else if (c == '"' && input.isNext('"')) {
                                 c = input.next(); // consume the " character since it is escaped ""
-                            } else if (c == '"') {
+                            }
+                            else if (c == '"') {
                                 foundClosingQuote = true;
                                 break;
                             }
@@ -2655,9 +2737,11 @@ public class TokenStream {
                             c = input.next();
                             if (c == '\\' && input.isNext('\'')) {
                                 c = input.next(); // consume the ' character since it is escaped \'
-                            } else if (c == '\'' && input.isNext('\'')) {
-                                    c = input.next(); // consume the ' character since it is escaped ''
-                            } else if (c == '\'') {
+                            }
+                            else if (c == '\'' && input.isNext('\'')) {
+                                c = input.next(); // consume the ' character since it is escaped ''
+                            }
+                            else if (c == '\'') {
                                 foundClosingQuote = true;
                                 break;
                             }
@@ -2684,23 +2768,33 @@ public class TokenStream {
                                 }
                             }
                             endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
-                            if (!foundLineTerminator) ++endIndex; // must point beyond last char
-                            if (c == '\r' && input.isNext('\n')) input.next();
+                            if (!foundLineTerminator) {
+                                ++endIndex; // must point beyond last char
+                            }
+                            if (c == '\r' && input.isNext('\n')) {
+                                input.next();
+                            }
                             if (useComments) {
                                 tokens.addToken(startingPosition, startIndex, endIndex, COMMENT);
                             }
-                        } else if (input.isNext('*')) {
+                        }
+                        else if (input.isNext('*')) {
                             // Multi-line comment ...
                             while (input.hasNext() && !input.isNext('*', '/')) {
                                 c = input.next();
                             }
-                            if (input.hasNext()) input.next(); // consume the '*'
-                            if (input.hasNext()) input.next(); // consume the '/'
+                            if (input.hasNext()) {
+                                input.next(); // consume the '*'
+                            }
+                            if (input.hasNext()) {
+                                input.next(); // consume the '/'
+                            }
                             if (useComments) {
                                 endIndex = input.index() + 1; // the token will include the '/' and '*' characters
                                 tokens.addToken(startingPosition, startIndex, endIndex, COMMENT);
                             }
-                        } else {
+                        }
+                        else {
                             // just a regular slash ...
                             tokens.addToken(startingPosition, startIndex, startIndex + 1, SYMBOL);
                         }

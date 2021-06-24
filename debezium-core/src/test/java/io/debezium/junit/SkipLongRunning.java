@@ -16,8 +16,8 @@ import java.lang.annotation.Target;
  *
  * @author Horia Chiorean
  */
-@Retention( RetentionPolicy.RUNTIME)
-@Target( {ElementType.METHOD, ElementType.TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.METHOD, ElementType.TYPE })
 public @interface SkipLongRunning {
 
     String SKIP_LONG_RUNNING_PROPERTY = "skipLongRunningTests";

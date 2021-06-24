@@ -6,13 +6,14 @@
 package io.debezium.relational;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
-final class TableEditorImpl implements TableEditor {
+class TableEditorImpl implements TableEditor {
 
     private TableId id;
     private LinkedHashMap<String, Column> sortedColumns = new LinkedHashMap<>();
@@ -82,7 +83,6 @@ final class TableEditorImpl implements TableEditor {
     public TableEditor setColumns(Column... columns) {
         sortedColumns.clear();
         addColumns(columns);
-        updatePrimaryKeys();
         assert positionsAreValid();
         return this;
     }
@@ -91,41 +91,31 @@ final class TableEditorImpl implements TableEditor {
     public TableEditor setColumns(Iterable<Column> columns) {
         sortedColumns.clear();
         addColumns(columns);
-        updatePrimaryKeys();
         assert positionsAreValid();
         return this;
     }
 
     protected void updatePrimaryKeys() {
-        Iterator<String> nameIter = primaryKeyColumnNames().iterator();
-        while (nameIter.hasNext()) {
-            String pkColumnName = nameIter.next();
-            if (!hasColumnWithName(pkColumnName)) nameIter.remove();
+        if (!uniqueValues) {
+            // table does have any primary key --> we need to remove it
+            this.pkColumnNames.removeIf(pkColumnName -> {
+                final boolean pkColumnDoesNotExists = !hasColumnWithName(pkColumnName);
+                if (pkColumnDoesNotExists) {
+                    throw new IllegalArgumentException(
+                            "The column \"" + pkColumnName + "\" is referenced as PRIMARY KEY, but a matching column is not defined in table \"" + tableId() + "\"!");
+                }
+                return pkColumnDoesNotExists;
+            });
         }
     }
 
     @Override
     public TableEditor setPrimaryKeyNames(String... pkColumnNames) {
-        for (String pkColumnName : pkColumnNames) {
-            if (!hasColumnWithName(pkColumnName)) {
-                throw new IllegalArgumentException("The primary key cannot reference a non-existant column'" + pkColumnName + "'");
-            }
-        }
-        uniqueValues = false;
-        this.pkColumnNames.clear();
-        for (String pkColumnName : pkColumnNames) {
-            this.pkColumnNames.add(pkColumnName);
-        }
-        return this;
+        return setPrimaryKeyNames(Arrays.asList(pkColumnNames));
     }
-    
+
     @Override
     public TableEditor setPrimaryKeyNames(List<String> pkColumnNames) {
-        for (String pkColumnName : pkColumnNames) {
-            if (!hasColumnWithName(pkColumnName)) {
-                throw new IllegalArgumentException("The primary key cannot reference a non-existant column'" + pkColumnName + "'");
-            }
-        }
         this.pkColumnNames.clear();
         this.pkColumnNames.addAll(pkColumnNames);
         uniqueValues = false;
@@ -138,18 +128,18 @@ final class TableEditorImpl implements TableEditor {
         uniqueValues = true;
         return this;
     }
-    
+
     @Override
     public boolean hasUniqueValues() {
         return uniqueValues;
     }
-    
+
     @Override
     public TableEditor setDefaultCharsetName(String charsetName) {
         this.defaultCharsetName = charsetName;
         return this;
     }
-    
+
     @Override
     public boolean hasDefaultCharsetName() {
         return this.defaultCharsetName != null && !this.defaultCharsetName.trim().isEmpty();
@@ -158,26 +148,35 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor removeColumn(String columnName) {
         Column existing = sortedColumns.remove(columnName.toLowerCase());
-        if (existing != null) updatePositions();
+        if (existing != null) {
+            updatePositions();
+        }
         assert positionsAreValid();
+        pkColumnNames.remove(columnName);
+        return this;
+    }
+
+    @Override
+    public TableEditor updateColumn(Column newColumn) {
+        setColumns(columns().stream()
+                .map(c -> c.name().equals(newColumn.name()) ? newColumn : c)
+                .collect(Collectors.toList()));
         return this;
     }
 
     @Override
     public TableEditor reorderColumn(String columnName, String afterColumnName) {
         Column columnToMove = columnWithName(columnName);
-        if (columnToMove == null) throw new IllegalArgumentException("No column with name '" + columnName + "'");
-        Column afterColumn = afterColumnName == null ? null : columnWithName(afterColumnName);
-        if (afterColumn != null && (afterColumn.position() + 1) == columnToMove.position()) {
-            // nothing to do ...
-        } else if ( afterColumn == null && columnToMove.position() == 1) {
-            // nothing to do ...
+        if (columnToMove == null) {
+            throw new IllegalArgumentException("No column with name '" + columnName + "'");
         }
+        Column afterColumn = afterColumnName == null ? null : columnWithName(afterColumnName);
         if (afterColumn != null && afterColumn.position() == sortedColumns.size()) {
             // Just append ...
             sortedColumns.remove(columnName);
             sortedColumns.put(columnName, columnToMove);
-        } else {
+        }
+        else {
             LinkedHashMap<String, Column> newColumns = new LinkedHashMap<>();
             sortedColumns.remove(columnName.toLowerCase());
             if (afterColumn == null) {
@@ -196,17 +195,19 @@ final class TableEditorImpl implements TableEditor {
         updatePositions();
         return this;
     }
-    
+
     @Override
     public TableEditor renameColumn(String existingName, String newName) {
         final Column existing = columnWithName(existingName);
-        if (existing == null) throw new IllegalArgumentException("No column with name '" + existingName + "'");
+        if (existing == null) {
+            throw new IllegalArgumentException("No column with name '" + existingName + "'");
+        }
         Column newColumn = existing.edit().name(newName).create();
         // Determine the primary key names ...
         List<String> newPkNames = null;
-        if ( !hasUniqueValues() && primaryKeyColumnNames().contains(existing.name())) {
+        if (!hasUniqueValues() && primaryKeyColumnNames().contains(existing.name())) {
             newPkNames = new ArrayList<>(primaryKeyColumnNames());
-            newPkNames.replaceAll(name->existing.name().equals(name) ? newName : name);
+            newPkNames.replaceAll(name -> existing.name().equals(name) ? newName : name);
         }
         // Add the new column, move it before the existing column, and remove the old column ...
         addColumn(newColumn);
@@ -232,7 +233,7 @@ final class TableEditorImpl implements TableEditor {
 
     protected boolean positionsAreValid() {
         AtomicInteger position = new AtomicInteger(1);
-        return sortedColumns.values().stream().allMatch(defn -> defn.position() == position.getAndIncrement());
+        return sortedColumns.values().stream().allMatch(defn -> defn.position() >= position.getAndSet(defn.position() + 1));
     }
 
     @Override
@@ -242,12 +243,15 @@ final class TableEditorImpl implements TableEditor {
 
     @Override
     public Table create() {
-        if (id == null) throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
+        if (id == null) {
+            throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
+        }
         List<Column> columns = new ArrayList<>();
-        sortedColumns.values().forEach(column->{
+        sortedColumns.values().forEach(column -> {
             column = column.edit().charsetNameOfTable(defaultCharsetName).create();
             columns.add(column);
         });
+        updatePrimaryKeys();
         return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
     }
 }

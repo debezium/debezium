@@ -3,14 +3,18 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.6.0-SNAPSHOT</version>
+	<relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-core</artifactId>
     <name>Debezium Core</name>
     <packaging>jar</packaging>
     <dependencies>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -27,8 +31,33 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-json</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- OpenTracing Integration, Strimzi version is not aligned with Quarkus -->
+        <dependency>
+            <groupId>io.opentracing</groupId>
+            <artifactId>opentracing-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentracing</groupId>
+            <artifactId>opentracing-util</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Testing -->
@@ -52,6 +81,16 @@
             <artifactId>fest-assert</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-json</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Used for unit testing with Kafka -->
         <dependency>
@@ -70,14 +109,32 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-json</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
             <scope>test</scope>
+        </dependency>
+        <!-- open libraries -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.code.findbugs</groupId>
+                    <artifactId>jsr305</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.errorprone</groupId>
+                    <artifactId>error_prone_annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.j2objc</groupId>
+                    <artifactId>j2objc-annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.checkerframework</groupId>
+                    <artifactId>checker-qual</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
     <build>

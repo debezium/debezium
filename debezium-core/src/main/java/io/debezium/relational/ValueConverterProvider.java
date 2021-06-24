@@ -11,14 +11,14 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 /**
  * A provider of {@link ValueConverter} functions and the {@link SchemaBuilder} used to describe them.
- * 
+ *
  * @author Randall Hauch
  */
 public interface ValueConverterProvider {
 
     /**
      * Returns a {@link SchemaBuilder} for a {@link Schema} describing literal values of the given JDBC type.
-     * 
+     *
      * @param columnDefinition the column definition; never null
      * @return the schema builder; null if the column's type information is unknown
      */
@@ -30,7 +30,7 @@ public interface ValueConverterProvider {
      * <p>
      * This method is only called when {@link #schemaBuilder(Column)} returns a non-null {@link SchemaBuilder} for the same column
      * definition.
-     * 
+     *
      * @param columnDefinition the column definition; never null
      * @param fieldDefn the definition for the field in a Kafka Connect {@link Schema} describing the output of the function;
      *            never null

@@ -12,7 +12,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 /**
  * A set of bits of arbitrary length.
- * 
+ *
  * @author Randall Hauch
  */
 public class Bits {
@@ -23,20 +23,20 @@ public class Bits {
     /**
      * Returns a {@link SchemaBuilder} for a Bits. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
-     * 
+     *
      * @param length maximum the number of bits in the set
      * @return the schema builder
      */
     public static SchemaBuilder builder(int length) {
         return SchemaBuilder.bytes()
-                            .name(LOGICAL_NAME)
-                            .parameter(LENGTH_FIELD, Integer.toString(length))
-                            .version(1);
+                .name(LOGICAL_NAME)
+                .parameter(LENGTH_FIELD, Integer.toString(length))
+                .version(1);
     }
 
     /**
      * Returns a Schema for a Bits but with all other default Schema settings.
-     * 
+     *
      * @param length maximum the number of bits in the set
      * @return the schema
      * @see #builder(int)
@@ -47,7 +47,7 @@ public class Bits {
 
     /**
      * Convert a value from its logical format (BitSet) to it's encoded format.
-     * 
+     *
      * @param schema the schema
      * @param value the logical value
      * @return the encoded value

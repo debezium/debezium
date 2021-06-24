@@ -20,4 +20,3 @@ public class StopEventDataDeserializer implements EventDataDeserializer<StopEven
         return new StopEventData();
     }
 }
-

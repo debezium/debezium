@@ -126,3 +126,46 @@ select CONVERT( LEFT( CONVERT( '自動下書き' USING binary ), 100 ) USING utf
 select CONVERT( LEFT( CONVERT( '自動' USING binary ), 6 ) USING utf8 ) AS x_0;
 select  t.*, tt.* FROM wptests_terms AS t  INNER JOIN wptests_term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.taxonomy IN ('category') AND t.name IN ('远征手记') ORDER BY t.name ASC;
 #end
+#begin
+-- cast as integer
+SELECT CAST('1' AS INT);
+SELECT CAST('1' AS INTEGER);
+#end
+#begin
+-- JSON functions
+SELECT JSON_ARRAY(1, "abc", NULL, TRUE, CURTIME());
+SELECT JSON_OBJECT('id', 87, 'name', 'carrot');
+SELECT JSON_QUOTE('null'), JSON_QUOTE('"null"');
+SELECT JSON_CONTAINS(@j, @j2, '$.a');
+SELECT JSON_CONTAINS_PATH(@j, 'one', '$.a', '$.e');
+SELECT JSON_EXTRACT('[10, 20, [30, 40]]', '$[1]');
+SELECT JSON_KEYS('{"a": 1, "b": {"c": 30}}');
+SELECT JSON_OVERLAPS("[1,3,5,7]", "[2,5,7]");
+SELECT JSON_SEARCH(@j, 'one', 'abc');
+SELECT JSON_ARRAY_APPEND(@j, '$[1]', 1);
+SELECT JSON_ARRAY_INSERT(@j, '$[1]', 'x');
+SELECT JSON_INSERT(@j, '$.a', 10, '$.c', '[true, false]');
+SELECT JSON_MERGE('[1, 2]', '[true, false]');
+SELECT JSON_MERGE_PATCH('[1, 2]', '[true, false]');
+SELECT JSON_MERGE_PRESERVE('[1, 2]', '[true, false]');
+SELECT JSON_REMOVE(@j, '$[1]');
+SELECT JSON_REPLACE(@j, '$.a', 10, '$.c', '[true, false]');
+SELECT JSON_SET(@j, '$.a', 10, '$.c', '[true, false]');
+SELECT @j, JSON_UNQUOTE(@j);
+SELECT JSON_DEPTH('{}'), JSON_DEPTH('[]'), JSON_DEPTH('true');
+SELECT JSON_LENGTH('[1, 2, {"a": 3}]');
+SELECT JSON_TYPE(@j);
+SELECT JSON_VALID('{"a": 1}');
+SELECT JSON_SCHEMA_VALID(@schema, @document);
+SELECT JSON_SCHEMA_VALIDATION_REPORT(@schema, @document);
+SELECT JSON_PRETTY('123');
+SELECT JSON_STORAGE_FREE(jcol), JSON_STORAGE_FREE(jcol) FROM jtable;
+SELECT o_id, JSON_ARRAYAGG(attribute) AS attributes FROM t3 GROUP BY o_id;
+SELECT o_id, JSON_OBJECTAGG(attribute, value) FROM t3 GROUP BY o_id;
+#end
+SELECT trigger.num FROM test `trigger`;
+-- Valid when SELECT is in stored procedure
+SELECT * FROM test LIMIT LIMIT1,LIMIT2;
+-- Functions
+SELECT mod(3,2);
+SELECT SCHEMA();

@@ -5,10 +5,17 @@
  */
 package io.debezium.pipeline.spi;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * Keeps track of the current offset within the source DB's change stream. This reflects in the offset as committed to
@@ -22,14 +29,18 @@ public interface OffsetContext {
     /**
      * Implementations load a connector-specific offset context based on the offset values stored in Kafka.
      */
-    interface Loader {
+    interface Loader<O extends OffsetContext> {
         Map<String, ?> getPartition();
-        OffsetContext load(Map<String, ?> offset);
+
+        O load(Map<String, ?> offset);
     }
 
     Map<String, ?> getPartition();
+
     Map<String, ?> getOffset();
+
     Schema getSourceInfoSchema();
+
     Struct getSourceInfo();
 
     /**
@@ -37,6 +48,11 @@ public interface OffsetContext {
      * @return
      */
     boolean isSnapshotRunning();
+
+    /**
+     * mark current record as the last one in the snapshot
+     */
+    void markLastSnapshotRecord();
 
     /**
      * Signals that a snapshot will begin, which should reflect in an updated offset state.
@@ -52,4 +68,34 @@ public interface OffsetContext {
      * Signals that a snapshot has been completed, which should reflect in an updated offset state.
      */
     void postSnapshotCompletion();
+
+    /**
+     * Records the name of the collection and the timestamp of the last event
+     */
+    void event(DataCollectionId collectionId, Instant timestamp);
+
+    /**
+     * Provide a context used by {@link TransactionMonitor} so persist its internal state into offsets to survive
+     * between restarts.
+     *
+     * @return transaction context
+     */
+    TransactionContext getTransactionContext();
+
+    /**
+     * Signals that the streaming of a batch of <i>incremental</i> snapshot events will begin,
+     * which should reflect in an updated offset state.
+     */
+    default void incrementalSnapshotEvents() {
+    }
+
+    /**
+     * Provide a context used by {@link IncrementalSnapshotChangeEventSource} so persist its internal state into offsets to survive
+     * between restarts.
+     *
+     * @return incremental snapshot context
+     */
+    default IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
+        return null;
+    };
 }

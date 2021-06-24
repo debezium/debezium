@@ -25,10 +25,12 @@ public class DropViewParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterDropView(MySqlParser.DropViewContext ctx) {
-        ctx.fullId().stream().map(parser::parseQualifiedTableId).forEach(tableId -> {
-            parser.databaseTables().removeTable(tableId);
-            parser.signalDropView(tableId, ctx);
-        });
+        if (!parser.skipViews()) {
+            ctx.fullId().stream().map(parser::parseQualifiedTableId).forEach(tableId -> {
+                parser.databaseTables().removeTable(tableId);
+                parser.signalDropView(tableId, ctx);
+            });
+        }
         super.enterDropView(ctx);
     }
 }

@@ -17,9 +17,9 @@ import java.nio.ByteOrder;
 public class MySqlGeometry {
 
     // WKB constants from http://www.opengeospatial.org/standards/sfa
-    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
+    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8); // fixed size
     // WKB for a GEOMETRYCOLLECTION EMPTY object
-    private static final byte[] WKB_EMPTY_GEOMETRYCOLLECTION = {0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 0x010700000000000000
+    private static final byte[] WKB_EMPTY_GEOMETRYCOLLECTION = { 0x01, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // 0x010700000000000000
 
     /**
      * Open Geospatial Consortium Well-Known-Binary representation of the Geometry.

@@ -18,12 +18,12 @@ import java.lang.annotation.Target;
 
 /**
  * Annotation that can be used to specify that the target field, method, constructor, package or type is read-only.
- * 
+ *
  * @see Immutable
  */
 @Documented
-@Retention( RUNTIME )
-@Target( {FIELD, METHOD, CONSTRUCTOR, PACKAGE, TYPE} )
+@Retention(RUNTIME)
+@Target({ FIELD, METHOD, CONSTRUCTOR, PACKAGE, TYPE })
 public @interface ReadOnly {
 
 }

@@ -8,21 +8,27 @@ package io.debezium.connector.base;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.SingleThreadAccess;
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Metronome;
+import io.debezium.util.ObjectSizeCalculator;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
@@ -38,7 +44,7 @@ import io.debezium.util.Threads.Timer;
  * the queue.
  * <p>
  * If an exception occurs on the producer side, the producer should make that
- * exception known by calling {@link #producerFailure} before stopping its
+ * exception known by calling {@link #producerException(RuntimeException)} before stopping its
  * operation. Upon the next call to {@link #poll()}, that exception will be
  * raised, causing Kafka Connect to stop the connector and mark it as
  * {@code FAILED}.
@@ -51,24 +57,44 @@ import io.debezium.util.Threads.Timer;
  *            producers to the consumer, a custom type wrapping source records
  *            may be used.
  */
-public class ChangeEventQueue<T> {
+@ThreadSafe
+public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventQueue.class);
 
     private final Duration pollInterval;
     private final int maxBatchSize;
+    private final int maxQueueSize;
+    private final long maxQueueSizeInBytes;
     private final BlockingQueue<T> queue;
     private final Metronome metronome;
     private final Supplier<PreviousContext> loggingContextSupplier;
+    private final AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
+    private final Map<T, Long> objectMap = new ConcurrentHashMap<>();
 
-    private volatile Throwable producerFailure;
+    // Sometimes it is necessary to update the record before it is delivered depending on the content
+    // of the following record. In that cases the easiest solution is to provide a single cell buffer
+    // that will allow the modification of it during the explicit flush.
+    // Typical example is MySQL connector when sometimes it is impossible to detect when the record
+    // in process is the last one. In this case the snapshot flags are set during the explicit flush.
+    @SingleThreadAccess("producer thread")
+    private boolean buffering;
 
-    private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier) {
+    @SingleThreadAccess("producer thread")
+    private T bufferedEvent;
+
+    private volatile RuntimeException producerException;
+
+    private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
+                             long maxQueueSizeInBytes, boolean buffering) {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
+        this.maxQueueSize = maxQueueSize;
         this.queue = new LinkedBlockingDeque<>(maxQueueSize);
         this.metronome = Metronome.sleeper(pollInterval, Clock.SYSTEM);
         this.loggingContextSupplier = loggingContextSupplier;
+        this.maxQueueSizeInBytes = maxQueueSizeInBytes;
+        this.buffering = buffering;
     }
 
     public static class Builder<T> {
@@ -77,6 +103,8 @@ public class ChangeEventQueue<T> {
         private int maxQueueSize;
         private int maxBatchSize;
         private Supplier<LoggingContext.PreviousContext> loggingContextSupplier;
+        private long maxQueueSizeInBytes;
+        private boolean buffering;
 
         public Builder<T> pollInterval(Duration pollInterval) {
             this.pollInterval = pollInterval;
@@ -98,8 +126,18 @@ public class ChangeEventQueue<T> {
             return this;
         }
 
+        public Builder<T> maxQueueSizeInBytes(long maxQueueSizeInBytes) {
+            this.maxQueueSizeInBytes = maxQueueSizeInBytes;
+            return this;
+        }
+
+        public Builder<T> buffering() {
+            this.buffering = true;
+            return this;
+        }
+
         public ChangeEventQueue<T> build() {
-            return new ChangeEventQueue<T>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier);
+            return new ChangeEventQueue<T>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering);
         }
     }
 
@@ -122,8 +160,54 @@ public class ChangeEventQueue<T> {
             throw new InterruptedException();
         }
 
+        if (buffering) {
+            final T newEvent = record;
+            record = bufferedEvent;
+            bufferedEvent = newEvent;
+            if (record == null) {
+                // Can happen only for the first coming event
+                return;
+            }
+        }
+
+        doEnqueue(record);
+    }
+
+    /**
+     * Applies a function to the event and the buffer and adds it to the queue. Buffer is emptied.
+     *
+     * @param recordModifier
+     * @throws InterruptedException
+     */
+    public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
+        assert buffering : "Unsuported for queues with disabled buffering";
+        if (bufferedEvent != null) {
+            doEnqueue(recordModifier.apply(bufferedEvent));
+            bufferedEvent = null;
+        }
+    }
+
+    /**
+     * Disable buffering for the queue
+     */
+    public void disableBuffering() {
+        assert bufferedEvent == null : "Buffer must be flushed";
+        buffering = false;
+    }
+
+    protected void doEnqueue(T record) throws InterruptedException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Enqueuing source record '{}'", record);
+        }
+        // Waiting for queue to add more record.
+        while (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes.get() > maxQueueSizeInBytes) {
+            Thread.sleep(pollInterval.toMillis());
+        }
+        // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
+        if (maxQueueSizeInBytes > 0) {
+            long messageSize = ObjectSizeCalculator.getObjectSize(record);
+            objectMap.put(record, messageSize);
+            currentQueueSizeInBytes.addAndGet(messageSize);
         }
 
         // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
@@ -144,28 +228,57 @@ public class ChangeEventQueue<T> {
         try {
             LOGGER.debug("polling records...");
             List<T> records = new ArrayList<>();
-            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
+            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
             while (!timeout.expired() && queue.drainTo(records, maxBatchSize) == 0) {
-                throwProducerFailureIfPresent();
+                throwProducerExceptionIfPresent();
 
                 LOGGER.debug("no records available yet, sleeping a bit...");
                 // no records yet, so wait a bit
                 metronome.pause();
                 LOGGER.debug("checking for more records...");
             }
+            if (maxQueueSizeInBytes > 0 && records.size() > 0) {
+                records.parallelStream().forEach((record) -> {
+                    if (objectMap.containsKey(record)) {
+                        currentQueueSizeInBytes.addAndGet(-objectMap.get(record));
+                        objectMap.remove(record);
+                    }
+                });
+            }
             return records;
-        } finally {
+        }
+        finally {
             previousContext.restore();
         }
     }
 
-    public void producerFailure(final Throwable producerFailure) {
-        this.producerFailure = producerFailure;
+    public void producerException(final RuntimeException producerException) {
+        this.producerException = producerException;
     }
 
-    private void throwProducerFailureIfPresent() {
-        if (producerFailure != null) {
-            throw new ConnectException("An exception ocurred in the change event producer. This connector will be stopped.", producerFailure);
+    private void throwProducerExceptionIfPresent() {
+        if (producerException != null) {
+            throw producerException;
         }
+    }
+
+    @Override
+    public int totalCapacity() {
+        return maxQueueSize;
+    }
+
+    @Override
+    public int remainingCapacity() {
+        return queue.remainingCapacity();
+    }
+
+    @Override
+    public long maxQueueSizeInBytes() {
+        return maxQueueSizeInBytes;
+    }
+
+    @Override
+    public long currentQueueSizeInBytes() {
+        return currentQueueSizeInBytes.get();
     }
 }

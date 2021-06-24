@@ -5,14 +5,14 @@
  */
 package io.debezium.document;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.util.Testing;
 
@@ -57,7 +57,9 @@ public class DocumentSerdesTest implements Testing {
 
     protected void roundTrip(Document doc, IntConsumer sizeAccumulator) {
         byte[] bytes = SERDES.serialize("topicA", doc);
-        if (sizeAccumulator != null) sizeAccumulator.accept(bytes.length);
+        if (sizeAccumulator != null) {
+            sizeAccumulator.accept(bytes.length);
+        }
         Document reconstituted = SERDES.deserialize("topicA", bytes);
         assertThat((Object) reconstituted).isEqualTo(doc);
     }
@@ -70,7 +72,8 @@ public class DocumentSerdesTest implements Testing {
             try {
                 Document doc = DocumentReader.defaultReader().read(content);
                 array = doc.getArray("entityChanges");
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 array = ArrayReader.defaultReader().readArray(content);
             }
             array.forEach(entry -> documents.add(entry.getValue().asDocument()));

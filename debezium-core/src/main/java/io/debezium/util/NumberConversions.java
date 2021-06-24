@@ -6,6 +6,7 @@
 package io.debezium.util;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 
 /**
  * A set of numeric conversion methods.
@@ -33,6 +34,8 @@ public class NumberConversions {
     public static final Double DOUBLE_FALSE = Double.valueOf(0.0);
 
     public static final byte[] BYTE_ZERO = new byte[0];
+
+    public static final ByteBuffer BYTE_BUFFER_ZERO = ByteBuffer.wrap(new byte[0]);
 
     /**
      * Convert boolean object to bigDecimal object.

@@ -4,22 +4,22 @@
   <parent>
     <groupId>org.jboss</groupId>
     <artifactId>jboss-parent</artifactId>
-    <version>19</version>
+    <version>36</version>
   </parent>
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
-    <artifactId>debezium-parent</artifactId>
-    <version>0.9.0-SNAPSHOT</version>
-    <name>Debezium Parent POM</name>
+    <artifactId>debezium-build-parent</artifactId>
+    <version>1.6.0-SNAPSHOT</version>
+    <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
-    <url>http://debezium.io</url>
+    <url>https://debezium.io</url>
     <scm>
         <connection>scm:git:git@github.com:debezium/debezium.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
         <url>https://github.com/debezium/debezium</url>
-      <tag>HEAD</tag>
+        <tag>HEAD</tag>
     </scm>
     <issueManagement>
         <system>jira</system>
@@ -49,8 +49,8 @@
         </developer>
     </developers>
     <properties>
-        <!-- Instruct the build to use only UTF-8 encoding for source code -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
@@ -83,38 +83,73 @@
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
         <version.jmh>1.21</version.jmh>
+        <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
+        <jdk.min.version>11</jdk.min.version>
 
         <!-- Maven Plugins -->
-        <version.resources.plugin>2.7</version.resources.plugin>
-        <version.dependency.plugin>2.10</version.dependency.plugin>
-        <version.enforcer.plugin>3.0.0-M1</version.enforcer.plugin>
+        <version.compiler.plugin>3.8.1</version.compiler.plugin>
+        <version.resources.plugin>3.1.0</version.resources.plugin>
+        <version.filtering.plugin>3.1.1</version.filtering.plugin>
+        <version.dependency.plugin>3.1.1</version.dependency.plugin>
+        <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
+
         <version.jar.plugin>3.0.2</version.jar.plugin>
-        <version.source.plugin>3.0.1</version.source.plugin>
-        <version.assembly.plugin>2.4</version.assembly.plugin>
+        <version.source.plugin>3.1.0</version.source.plugin>
+        <version.assembly.plugin>3.1.1</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
-        <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.26.0</version.docker.maven.plugin>
-        <version.staging.plugin>1.6.3</version.staging.plugin>
-        <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
+        <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
+        <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
+        <version.staging.plugin>1.6.8</version.staging.plugin>
+        <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
+        <version.javadoc.plugin>3.1.1</version.javadoc.plugin>
+        <version.code.formatter>2.15.0</version.code.formatter>
+        <version.surefire.plugin>3.0.0-M3</version.surefire.plugin>
+        <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
+        <version.release.plugin>2.5.3</version.release.plugin>
+        <version.impsort>1.6.0</version.impsort>
+        <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
+        <version.checkstyle>8.32</version.checkstyle>
+        <version.revapi.plugin>0.11.5</version.revapi.plugin>
+        <version.jandex>1.0.8</version.jandex>
+        <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
+        <version.build-helper.plugin>1.9.1</version.build-helper.plugin>
 
-        <!-- Dockerfiles -->
-        <docker.maintainer>Debezium community</docker.maintainer>
+        <!-- Which Maven Central infra should be used -->
+        <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
-        <!--Skip long running tests by default-->
-        <skipLongRunningTests>true</skipLongRunningTests>
+        <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
+        <version.kafka>2.7.0</version.kafka>
+        <version.curator>4.2.0</version.curator>
+        <version.zookeeper>3.5.8</version.zookeeper>
+        <version.jackson>2.10.5</version.jackson>
+        <version.org.slf4j>1.7.30</version.org.slf4j>
+        <version.log4j>1.2.17</version.log4j>
+        <version.netty>4.1.51.Final</version.netty>
 
-        <!-- Don't skip integration tests by default -->
-        <skipITs>false</skipITs>
+        <!-- Scala version used to build Kafka -->
+        <version.kafka.scala>2.12</version.kafka.scala>
 
-        <!-- No debug options by default -->
-        <debug.argline />
+        <!-- ANTLR -->
+        <!-- Align with Antlr runtime version pulled in via Quarkus -->
+        <antlr.version>4.8</antlr.version>
 
-        <!-- No modules options by default -->
-        <modules.argline />
+        <!-- Quarkus -->
+        <quarkus.version>2.0.0.Final</quarkus.version>
+
+        <!-- Databases, should align with database drivers in debezium-bom -->
+        <version.mysql.server>5.7</version.mysql.server>
+        <version.mongo.server>3.6</version.mongo.server>
+        <version.cassandra>3.11.10</version.cassandra>
+
     </properties>
 
     <modules>
+        <module>debezium-bom</module>
+        <module>debezium-parent</module>
         <module>support/checkstyle</module>
+        <module>support/ide-configs</module>
+        <module>support/revapi</module>
+        <module>debezium-api</module>
         <module>debezium-ddl-parser</module>
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
@@ -122,14 +157,19 @@
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
+        <module>debezium-connector-sqlserver</module>
         <module>debezium-microbenchmark</module>
+        <module>debezium-quarkus-outbox</module>
+        <module>debezium-scripting</module>
+        <module>debezium-server</module>
+        <module>debezium-testing</module>
     </modules>
 
     <distributionManagement>
       <repository>
         <id>ossrh</id>
         <name>Sonatype Staging Repository</name>
-        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        <url>${release.endpoint}/service/local/staging/deploy/maven2</url>
       </repository>
       <snapshotRepository>
         <id>ossrh</id>
@@ -142,7 +182,7 @@
         <repository>
             <id>confluent</id>
             <name>Confluent</name>
-            <url>http://packages.confluent.io/maven/</url>
+            <url>https://packages.confluent.io/maven/</url>
             <snapshots>
                 <enabled>true</enabled>
                 <updatePolicy>never</updatePolicy>
@@ -150,8 +190,8 @@
         </repository>
         <repository>
             <id>ossrh</id>
-            <name>OSS Sonatype Nexus </name>
-            <url>https://oss.sonatype.org/content/groups/public/</url>
+            <name>OSS Sonatype Nexus</name>
+            <url>${release.endpoint}/content/groups/public/</url>
             <releases>
                 <enabled>true</enabled>
                 <updatePolicy>never</updatePolicy>
@@ -426,6 +466,11 @@
                     <version>${version.resources.plugin}</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.apache.maven.shared</groupId>
+                    <artifactId>maven-filtering</artifactId>
+                    <version>${version.filtering.plugin}</version>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>${version.dependency.plugin}</version>
@@ -436,50 +481,13 @@
                     <version>${version.gpg.plugin}</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>${version.failsafe.plugin}</version>
-                    <configuration>
-                        <argLine>${debug.argline} ${modules.argline}</argLine>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
-                    <artifactId>maven-java-formatter-plugin</artifactId>
-                    <version>${version.google.formatter.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>io.fabric8</groupId>
-                    <artifactId>docker-maven-plugin</artifactId>
-                    <version>${version.docker.maven.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>com.github.os72</groupId>
-                    <artifactId>protoc-jar-maven-plugin</artifactId>
-                    <version>${version.protoc.maven.plugin}</version>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${version.build-helper.plugin}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>attach-test-sources</id>
-                        <goals>
-                            <goal>test-jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
@@ -494,7 +502,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <nexusUrl>${release.endpoint}</nexusUrl>
                     <autoReleaseAfterClose>false</autoReleaseAfterClose>
                 </configuration>
             </plugin>
@@ -515,14 +523,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
-                <artifactId>maven-java-formatter-plugin</artifactId>
-                <configuration>
-                    <configFile>${project.basedir}/support/eclipse-formatting.xml</configFile>
-                    <lineEnding>LF</lineEnding>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <executions>
@@ -534,118 +534,41 @@
                         <configuration>
                             <rules>
                                 <requireMavenVersion>
-                                    <version>3.0.0</version>
+                                    <version>3.6.3</version>
                                 </requireMavenVersion>
                             </rules>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
-            <!--
-                   Build a test-jar for each project, so that src/test/* resources and
-                   classes can be used in other projects. Also customize how the jar
-                   files are assembled.
-               -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>test-jar</id>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <systemProperties combine.children="append">
-                        <property>
-                            <name>java.io.tmpdir</name>
-                            <value>${project.build.directory}</value>
-                        </property>
-                        <property>
-                            <name>skipLongRunningTests</name>
-                            <value>${skipLongRunningTests}</value>
-                        </property>
-                        <property>
-                            <name>dbz.test.data.dir</name>
-                            <value>${project.build.directory}/data</value>
-                        </property>
-                    </systemProperties>
-                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
-                    <!--runOrder>alphabetical</runOrder-->
-                    <useFile>false</useFile>
-                    <enableAssertions>true</enableAssertions>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <dependencies>
-                    <dependency>
-                        <groupId>io.debezium</groupId>
-                        <artifactId>debezium-checkstyle</artifactId>
-                        <version>${project.version}</version>
-                    </dependency>
-                </dependencies>
-                <configuration>
-                    <configLocation>checkstyle.xml</configLocation>
-                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
-                    <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
-                    <consoleOutput>true</consoleOutput>
-                    <failsOnError>true</failsOnError>
-                    <linkXRef>false</linkXRef>
-                    <violationSeverity>error</violationSeverity>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>check-style</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>checkstyle</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
     <profiles>
-        <!--
-           ###################################################################
-           Enable remotely debugging on the command line
-           ###################################################################
-
-           To use, specify "-Ddebug=true" on the Maven command line
-           (typically used when running a single test). Then, start
-           remote debugger (on port 1044) and connect.
-       -->
         <profile>
-            <id>debug</id>
+            <id>qa</id>
             <activation>
                 <property>
-                    <name>debug</name>
-                    <value>true</value>
+                    <name>!quick</name>
+                </property>
+            </activation>
+        </profile>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
                 </property>
             </activation>
             <properties>
-                <!-- Useful for remotely debugging the unit tests run by Surefire ... -->
-                <debug.argline>-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=1044</debug.argline>
+                <skipTests>true</skipTests>
             </properties>
         </profile>
-
         <profile>
             <id>assembly</id>
             <properties>
                 <skipLongRunningTests>false</skipLongRunningTests>
             </properties>
-            <modules>
-                <!--module>integration-tests</module-->
-            </modules>
         </profile>
         <profile>
             <id>release</id>
@@ -716,6 +639,12 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
@@ -723,13 +652,21 @@
             </build>
         </profile>
         <profile>
-            <id>jdk9</id>
+            <id>jdk11</id>
             <activation>
-                <jdk>9</jdk>
+                <jdk>11</jdk>
             </activation>
             <properties>
-                <modules.argline>--add-modules java.xml.bind</modules.argline>
+                <modules.argline>--illegal-access=permit</modules.argline>
+                <maven.compiler.release>8</maven.compiler.release>
             </properties>
+        </profile>
+        <profile>
+            <id>oracle</id>
+            <modules>
+                <module>debezium-connector-oracle</module>
+                <module>debezium-microbenchmark-oracle</module>
+            </modules>
         </profile>
     </profiles>
 </project>

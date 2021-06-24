@@ -15,7 +15,7 @@ import io.debezium.data.Envelope.Operation;
 
 /**
  * Statistics of {@link SourceRecord}s.
- * 
+ *
  * @author Randall Hauch
  */
 public class SourceRecordStats implements Consumer<SourceRecord> {
@@ -34,7 +34,8 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
     public void accept(SourceRecord record) {
         if (record.value() == null) {
             tombstones.incrementAndGet();
-        } else {
+        }
+        else {
             Operation op = Envelope.operationFor(record);
             if (op != null) {
                 statsByOperation.computeIfAbsent(op, key -> new AtomicLong()).incrementAndGet();
@@ -44,7 +45,7 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
 
     /**
      * Get the number of {@link #accept(SourceRecord) added} records that had the given {@link Operation}.
-     * 
+     *
      * @param op the operation for which the record count is to be returned
      * @return the count; never negative
      */
@@ -54,7 +55,7 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
 
     /**
      * Get the number of {@link Operation#CREATE CREATE} records that were {@link #accept(SourceRecord) added} to this object.
-     * 
+     *
      * @return the count; never negative
      */
     public long numberOfCreates() {
@@ -63,7 +64,7 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
 
     /**
      * Get the number of {@link Operation#DELETE DELETE} records that were {@link #accept(SourceRecord) added} to this object.
-     * 
+     *
      * @return the count; never negative
      */
     public long numberOfDeletes() {
@@ -72,7 +73,7 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
 
     /**
      * Get the number of {@link Operation#READ READ} records that were {@link #accept(SourceRecord) added} to this object.
-     * 
+     *
      * @return the count; never negative
      */
     public long numberOfReads() {
@@ -81,7 +82,7 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
 
     /**
      * Get the number of {@link Operation#UPDATE UPDATE} records that were {@link #accept(SourceRecord) added} to this object.
-     * 
+     *
      * @return the count; never negative
      */
     public long numberOfUpdates() {
@@ -90,7 +91,7 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
 
     /**
      * Get the number of tombstone records that were {@link #accept(SourceRecord) added} to this object.
-     * 
+     *
      * @return the count; never negative
      */
     public long numberOfTombstones() {
@@ -99,7 +100,7 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
 
     /**
      * Reset all of the counters to 0.
-     * 
+     *
      * @return this object for method chaining purposes; never null
      */
     public SourceRecordStats reset() {

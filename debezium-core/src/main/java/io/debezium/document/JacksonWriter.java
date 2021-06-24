@@ -20,7 +20,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * A {@link DocumentWriter} and {@link ArrayWriter} that uses the Jackson library to write JSON.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -75,7 +75,8 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
                 writeDocument(document, jsonGenerator);
             }
             return stream.toByteArray();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -107,7 +108,9 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
     }
 
     protected void configure(JsonGenerator generator) {
-        if (pretty) generator.setPrettyPrinter(new DefaultPrettyPrinter());
+        if (pretty) {
+            generator.setPrettyPrinter(new DefaultPrettyPrinter());
+        }
     }
 
     protected void writeDocument(Document document, JsonGenerator generator) throws IOException {
@@ -117,12 +120,14 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
                 try {
                     generator.writeFieldName(field.getName().toString());
                     writeValue(field.getValue(), generator);
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new WritingError(e);
                 }
             });
             generator.writeEndObject();
-        } catch (WritingError e) {
+        }
+        catch (WritingError e) {
             throw e.wrapped();
         }
     }
@@ -133,12 +138,14 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
             array.streamValues().forEach((value) -> {
                 try {
                     writeValue(value, generator);
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new WritingError(e);
                 }
             });
             generator.writeEndArray();
-        } catch (WritingError e) {
+        }
+        catch (WritingError e) {
             throw e.wrapped();
         }
     }

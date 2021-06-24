@@ -51,7 +51,6 @@ public class ProxyParseTreeListenerUtil {
         }
     }
 
-
     /**
      * Delegates exit rule event to collection of parsing listeners and captures parsing exceptions that may appear.
      *
@@ -72,7 +71,6 @@ public class ProxyParseTreeListenerUtil {
 
     }
 
-
     /**
      * Delegates visit error node event to collection of parsing listeners and captures parsing exceptions that may appear.
      *
@@ -90,7 +88,6 @@ public class ProxyParseTreeListenerUtil {
             }
         }
     }
-
 
     /**
      * Delegates visit terminal event to collection of parsing listeners and captures parsing exceptions that may appear.

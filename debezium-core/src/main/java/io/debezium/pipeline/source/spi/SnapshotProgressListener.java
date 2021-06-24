@@ -6,6 +6,7 @@
 package io.debezium.pipeline.source.spi;
 
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * A class invoked by {@link SnapshotChangeEventSource} whenever an important event or change of state happens.
@@ -15,12 +16,18 @@ import io.debezium.relational.TableId;
 public interface SnapshotProgressListener {
 
     void snapshotStarted();
-    void monitoredTablesDetermined(Iterable<TableId> tableIds);
+
+    void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds);
+
     void snapshotCompleted();
+
     void snapshotAborted();
 
-    void tableSnapshotCompleted(TableId tableId, long numRows);
+    void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows);
+
     void rowsScanned(TableId tableId, long numRows);
+
+    void currentChunk(String chunkId, Object[] from, Object[] to);
 
     public static SnapshotProgressListener NO_OP = new SnapshotProgressListener() {
 
@@ -33,11 +40,11 @@ public interface SnapshotProgressListener {
         }
 
         @Override
-        public void monitoredTablesDetermined(Iterable<TableId> tableIds) {
+        public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
         }
 
         @Override
-        public void tableSnapshotCompleted(TableId tableId, long numRows) {
+        public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
         }
 
         @Override
@@ -46,6 +53,10 @@ public interface SnapshotProgressListener {
 
         @Override
         public void snapshotAborted() {
+        }
+
+        @Override
+        public void currentChunk(String chunkId, Object[] from, Object[] to) {
         }
     };
 }

@@ -10,7 +10,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 /**
  * A semantic type for a JSON string.
- * 
+ *
  * @author Randall Hauch
  */
 public class Json {
@@ -20,18 +20,18 @@ public class Json {
     /**
      * Returns a {@link SchemaBuilder} for a JSON field. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
-     * 
+     *
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.string()
-                            .name(LOGICAL_NAME)
-                            .version(1);
+                .name(LOGICAL_NAME)
+                .version(1);
     }
 
     /**
      * Returns a {@link SchemaBuilder} for a JSON field, with all other default Schema settings.
-     * 
+     *
      * @return the schema
      * @see #builder()
      */

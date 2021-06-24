@@ -36,22 +36,22 @@ public class TableIdParserTest {
         assertThat(TableIdParser.parse("\"\"\"s\"\"\".\"\"\"a\"\"\"")).containsExactly("\"s\"", "\"a\"");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void leadingSeparatorIsInvalid() {
         TableIdParser.parse(".table");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void trailingSeparatorIsInvalid() {
         TableIdParser.parse("table.");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void unclosedQuotingCharIsInvalid() {
         TableIdParser.parse("\"table");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void escapedQuoteDoesntCloseQuotedIdentifier() {
         TableIdParser.parse("\"table\"\"");
     }

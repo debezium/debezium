@@ -36,10 +36,13 @@ public class TopicSelector<I extends DataCollectionId> {
         this.dataCollectionTopicNamer = new TopicNameCache<>(new TopicNameSanitizer<>(dataCollectionTopicNamer));
     }
 
-    public static <I extends DataCollectionId> TopicSelector<I> defaultSelector(String prefix, String heartbeatPrefix, String delimiter, DataCollectionTopicNamer<I> dataCollectionTopicNamer) {
+    public static <I extends DataCollectionId> TopicSelector<I> defaultSelector(String prefix, String heartbeatPrefix, String delimiter,
+                                                                                DataCollectionTopicNamer<I> dataCollectionTopicNamer) {
         return new TopicSelector<>(prefix, heartbeatPrefix, delimiter, dataCollectionTopicNamer);
     }
-    public static <I extends DataCollectionId> TopicSelector<I> defaultSelector(CommonConnectorConfig connectorConfig, DataCollectionTopicNamer<I> dataCollectionTopicNamer) {
+
+    public static <I extends DataCollectionId> TopicSelector<I> defaultSelector(CommonConnectorConfig connectorConfig,
+                                                                                DataCollectionTopicNamer<I> dataCollectionTopicNamer) {
         String prefix = connectorConfig.getLogicalName();
         String heartbeatTopicsPrefix = connectorConfig.getHeartbeatTopicsPrefix();
         String delimiter = ".";
@@ -111,7 +114,7 @@ public class TopicSelector<I extends DataCollectionId> {
             StringBuilder sanitizedNameBuilder = new StringBuilder(topicName.length());
             boolean changed = false;
 
-            for(int i = 0; i < topicName.length(); i++) {
+            for (int i = 0; i < topicName.length(); i++) {
                 char c = topicName.charAt(i);
                 if (isValidTopicNameCharacter(c)) {
                     sanitizedNameBuilder.append(c);
@@ -137,10 +140,10 @@ public class TopicSelector<I extends DataCollectionId> {
          * Whether the given character is a legal character of a Kafka topic name. Legal characters are
          * {@code [a-zA-Z0-9._-]}.
          *
-         * @see https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java
+         * @link https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java
          */
         private boolean isValidTopicNameCharacter(char c) {
-            return c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')  || (c >= '0' && c <= '9');
+            return c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         }
     }
 
@@ -148,7 +151,7 @@ public class TopicSelector<I extends DataCollectionId> {
      * A topic namer that caches names it has obtained from a delegate.
      */
     @ThreadSafe
-    private static class TopicNameCache <I extends DataCollectionId> implements DataCollectionTopicNamer<I> {
+    private static class TopicNameCache<I extends DataCollectionId> implements DataCollectionTopicNamer<I> {
 
         private final BoundedConcurrentHashMap<I, String> topicNames;
         private final DataCollectionTopicNamer<I> delegate;

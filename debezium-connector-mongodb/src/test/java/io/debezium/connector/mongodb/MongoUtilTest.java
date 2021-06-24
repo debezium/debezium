@@ -5,14 +5,14 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 
 import com.mongodb.ServerAddress;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -107,7 +107,6 @@ public class MongoUtilTest {
         assertThat(addresses.get(3).getPort()).isEqualTo(5111);
     }
 
-
     @Test
     public void shouldParseServerIPv6AddressesWithReplicaSetNameAndWithoutPort() {
         addresses = MongoUtil.parseAddresses("replicaSetName/[::1/128],host2,[ff02::2:ff00:0/104],host4");
@@ -149,14 +148,14 @@ public class MongoUtilTest {
         assertThat(addresses.get(0).getHost()).isEqualTo(ServerAddress.defaultHost());
         assertThat(addresses.get(0).getPort()).isEqualTo(ServerAddress.defaultPort());
     }
-    
+
     @Test
     public void shouldParseReplicaSetName() {
         assertThat(MongoUtil.replicaSetUsedIn("rs0/")).isEqualTo("rs0");
         assertThat(MongoUtil.replicaSetUsedIn("rs0/localhost")).isEqualTo("rs0");
         assertThat(MongoUtil.replicaSetUsedIn("rs0/[::1/128]")).isEqualTo("rs0");
     }
-    
+
     @Test
     public void shouldNotParseReplicaSetName() {
         assertThat(MongoUtil.replicaSetUsedIn("")).isNull();

@@ -13,7 +13,7 @@ import io.debezium.relational.ValueConverter;
 
 /**
  * A {@link ColumnMapper} implementation that ensures that string values longer than a specified length will be truncated.
- * 
+ *
  * @author Randall Hauch
  */
 public class TruncateStrings implements ColumnMapper {
@@ -22,12 +22,14 @@ public class TruncateStrings implements ColumnMapper {
 
     /**
      * Create a {@link ColumnMapper} that truncates string values to a maximum length.
-     * 
+     *
      * @param maxLength the maximum number of characters allowed in values
      * @throws IllegalArgumentException if the {@code maxLength} is not positive
      */
     public TruncateStrings(int maxLength) {
-        if (maxLength <= 0) throw new IllegalArgumentException("Maximum length must be positive");
+        if (maxLength <= 0) {
+            throw new IllegalArgumentException("Maximum length must be positive");
+        }
         this.converter = new TruncatingValueConverter(maxLength);
     }
 
@@ -61,7 +63,9 @@ public class TruncateStrings implements ColumnMapper {
         public Object convert(Object value) {
             if (value instanceof String) {
                 String str = (String) value;
-                if (str.length() > maxLength) return str.substring(0, maxLength);
+                if (str.length() > maxLength) {
+                    return str.substring(0, maxLength);
+                }
             }
             return value;
         }

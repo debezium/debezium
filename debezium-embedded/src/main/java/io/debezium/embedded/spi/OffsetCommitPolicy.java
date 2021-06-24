@@ -6,6 +6,7 @@
 package io.debezium.embedded.spi;
 
 import java.time.Duration;
+import java.util.Properties;
 
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 
@@ -14,11 +15,12 @@ import io.debezium.embedded.EmbeddedEngine;
 
 /**
  * The policy that defines when the offsets should be committed to {@link OffsetBackingStore offset storage}.
- * 
+ *
  * @author Randall Hauch
  */
+@Deprecated
 @FunctionalInterface
-public interface OffsetCommitPolicy {
+public interface OffsetCommitPolicy extends io.debezium.engine.spi.OffsetCommitPolicy {
 
     /**
      * An {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced
@@ -45,9 +47,13 @@ public interface OffsetCommitPolicy {
             minimumTime = Duration.ofMillis(config.getLong(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS));
         }
 
+        public PeriodicCommitOffsetPolicy(Properties properties) {
+            this(Configuration.from(properties));
+        }
+
         @Override
         public boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit) {
-                return timeSinceLastCommit.compareTo(minimumTime) >= 0;
+            return timeSinceLastCommit.compareTo(minimumTime) >= 0;
         }
     }
 
@@ -60,34 +66,28 @@ public interface OffsetCommitPolicy {
     }
 
     /**
-     * Determine if a commit of the offsets should be performed.
-     * 
-     * @param numberOfMessagesSinceLastCommit the number of messages that have been received from the connector since last
-     *            the offsets were last committed; never negative
-     * @param timeSinceLastCommit the time that has elapsed since the offsets were last committed; never negative
-     * @return {@code true} if the offsets should be committed, or {@code false} otherwise
-     */
-    boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit);
-
-    /**
      * Obtain a new {@link OffsetCommitPolicy} that will commit offsets if this policy OR the other requests it.
-     * 
+     *
      * @param other the other commit policy; if null, then this policy instance is returned as is
      * @return the resulting policy; never null
      */
     default OffsetCommitPolicy or(OffsetCommitPolicy other) {
-        if ( other == null ) return this;
+        if (other == null) {
+            return this;
+        }
         return (number, time) -> this.performCommit(number, time) || other.performCommit(number, time);
     }
 
     /**
      * Obtain a new {@link OffsetCommitPolicy} that will commit offsets if both this policy AND the other requests it.
-     * 
+     *
      * @param other the other commit policy; if null, then this policy instance is returned as is
      * @return the resulting policy; never null
      */
     default OffsetCommitPolicy and(OffsetCommitPolicy other) {
-        if ( other == null ) return this;
+        if (other == null) {
+            return this;
+        }
         return (number, time) -> this.performCommit(number, time) && other.performCommit(number, time);
     }
 }

@@ -1,6 +1,14 @@
 # Releasing Debezium
 
-The Debezium project uses Maven for its build system, relying up on the _release_ plugin to most of the work. This document describes the steps required to perform a release.
+The Debezium project uses Maven for its build system, relying up on the _release_ plugin to most of the work.
+
+The release process is automated by means of a parameterized [Jenkins job](https://github.com/debezium/debezium/blob/master/jenkins-jobs/release.yaml),
+that takes the required information as an input (release version etc.)
+and performs most of the required tasks.
+Refer to [Automated Release](#automated-release) below for the details.
+
+The following describes the individual steps of the release process,
+which may be useful for updating the automated pipeline or in case a manual release is necessary.
 
 ## Verify Jira issues
 
@@ -22,6 +30,21 @@ It currently exists in two versions, one in the main code repo and one on the we
 JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
 Search for them using [this query](https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the implications and required steps for upgrading in the changelog on the website.
 
+## Update antora.yml
+
+The `antora.yml` file in the `master` branch always used the version _master_.
+During the release process, this file's `version` attribute should be changed to reference the correct major/minor version number.
+There are other Asciidoc variables defined here that should be reviewed and modified as needed.
+
+As an example, when releasing version `2.1`, the `antora.yml` file should change from:
+```
+version: 'master'
+```
+to
+```
+version: '2.1'
+```
+
 ## Start with the correct branch
 
 Make sure that you are on the correct branch that is to be released, and that your local Git repository has all of the most recent commits. For example, to release from the `master` branch on the remote repository named `upstream`:
@@ -40,6 +63,20 @@ This should report:
     nothing to commit, working directory clean
 
 Only if this is the case can you proceed with the release.
+
+## Rebase and merge development docs branch
+
+The documentation of the current development version is published from the `development_docs` branch,
+which always is based off of the latest development release tag.
+
+The branch may contain critical documentation updates for the development release documentation,
+which couldn't wait until the next release.
+In this case rebase the branch to the current master and merge it:
+
+    $ git checkout development_docs
+    $ git rebase master
+    $ git checkout master
+    $ git merge development_docs
 
 ## Update versions and tag
 
@@ -75,6 +112,11 @@ which should show the most recent commits first. The first two lines should look
     * d5bbb11 (tag: v0.2.0) [maven-release-plugin] prepare release v0.2.0
 
 followed by commits made prior to the release. The second line shows the commit from step 4 and includes the tag, while the first line shows the subsequent commit from step 7.
+
+Also point the `development_docs` branch to the release tag:
+
+    $ git checkout development_docs
+    $ git merge <release tag>
 
 ## Push to Git
 
@@ -116,7 +158,7 @@ Before continuing, using this lower frame of the window to collect the following
 
 ### Validating the staged artifacts
 
-At this time, the best way to verify the staged artifacts are valid is to locally update the [Debezium Docker images](https://github.com/debezium/docker-images) used in the [Debezium tutorial](http://debezium.io/docs/tutorial) to use the latest connector plugins, and then to run through the tutorial using those locally-built Docker images.
+At this time, the best way to verify the staged artifacts are valid is to locally update the [Debezium Docker images](https://github.com/debezium/docker-images) used in the [Debezium tutorial](https://debezium.io/docs/tutorial) to use the latest connector plugins, and then to run through the tutorial using those locally-built Docker images.
 
 This [GitHub repository](https://github.com/debezium/docker-images) containing the Docker images contains separate Dockerfiles for each major and minor release of Debezium. Start by checking out and getting the latest commits from the [Debezium Docker images](https://github.com/debezium/docker-images) repository and creating a topic branch (using an appropriate branch name):
 
@@ -201,20 +243,27 @@ project=DBZ AND fixVersion=<VERSION> AND status='Resolved'
 ```
 Then mark release in Jira as *Released* using `Release` action.
 
+## Documentation post-release changes
+
+After the release, the `antora.yml` file should be changed so that the `version` attribute references `master` once more.
+
 ## Update the documentation and blog
 
-Update the documentation on the [Debezium website](http://debezium.io) by following the [instructions for changing the website](http://debezium.io/docs/contribute/#website).
+Update the documentation on the [Debezium website](https://debezium.io) by following the [instructions for changing the website](https://debezium.io/docs/contribute/#website).
 This typically involves updating the documentation (look for pending pull requests tagged as "Merge after next release") and writing a blog post to announce the release.
-Also update the `debezium-version` and `debezium-docker-label` attributes in _\_config/site.yml_.
 Then, create a pull request with your changes and wait for a committer to approve and merge your changes.
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
 
 # Automated Release
-There are few manual steps to be completede before the execution
+
+There are few manual steps to be completed before the execution:
+
+* Verify the Maven Central [status](https://status.maven.org/) is green
 * Update [the changelog](#update-the-changelog)
 * Update [configuration](#reconfigure-docker-hub-builds) for Docker Hub builds
 
-To perform release automatically invoke a [Jenkins job](http://ci.hibernate.org/view/Debezium/job/debezium-release/). Two parameters are requested
+To perform a release automatically, invoke the Jenkins job on the release infrastructure. Two parameters are requested:
+
 * `RELEASE_VERSION` - a version to be released in format x.y.z
 * `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT

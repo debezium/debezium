@@ -79,7 +79,8 @@ public class ReplicaSets {
             rsSpecs.forEach(replicaSet -> {
                 if (replicaSet.hasReplicaSetName()) {
                     replicaSetsByName.put(replicaSet.replicaSetName(), replicaSet);
-                } else {
+                }
+                else {
                     nonReplicaSets.add(replicaSet);
                 }
             });
@@ -212,7 +213,9 @@ public class ReplicaSets {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof ReplicaSets) {
             ReplicaSets that = (ReplicaSets) obj;
             return this.replicaSetsByName.equals(that.replicaSetsByName) && this.nonReplicaSets.equals(that.nonReplicaSets);

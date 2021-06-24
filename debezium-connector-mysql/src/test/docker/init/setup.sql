@@ -1,4 +1,4 @@
--- In production you would almost certainly limit the replication user must be on the follower (slave) machine,
+-- In production you would almost certainly limit the replication user must be on the follower (replica) machine,
 -- to prevent other clients accessing the log from other machines. For example, 'replicator'@'follower.acme.com'.
 -- However, in this database we'll grant 3 users different privileges:
 --
@@ -6,11 +6,32 @@
 -- 2) 'snapper' - all privileges required by the snapshot reader AND binlog reader
 -- 3) 'mysqluser' - all privileges
 --
-GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator' IDENTIFIED BY 'replpass';
-GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT  ON *.* TO 'snapper'@'%' IDENTIFIED BY 'snapperpass';
+CREATE USER 'replicator' IDENTIFIED BY 'replpass';
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator';
+CREATE USER 'snapper' IDENTIFIED BY 'snapperpass';
+GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'snapper'@'%';
+CREATE USER 'cloud' IDENTIFIED BY 'cloudpass';
+GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT, LOCK TABLES  ON *.* TO 'cloud'@'%';
 GRANT ALL PRIVILEGES ON *.* TO 'mysqluser'@'%';
 
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  emptydb
 -- ----------------------------------------------------------------------------------------------------------------
 CREATE DATABASE emptydb;
+RESET MASTER;
+CREATE DATABASE testing;
+CREATE TABLE testing.testing (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY);
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();
+INSERT INTO testing.testing VALUES ();

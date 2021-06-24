@@ -36,8 +36,8 @@ public class Date {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.int32()
-                            .name(SCHEMA_NAME)
-                            .version(1);
+                .name(SCHEMA_NAME)
+                .version(1);
     }
 
     /**
@@ -68,7 +68,7 @@ public class Date {
         if (adjuster != null) {
             date = date.with(adjuster);
         }
-        return (int)date.toEpochDay();
+        return (int) date.toEpochDay();
     }
 
     private Date() {

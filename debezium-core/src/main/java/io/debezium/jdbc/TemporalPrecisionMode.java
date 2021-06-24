@@ -48,10 +48,14 @@ public enum TemporalPrecisionMode implements EnumeratedValue {
      * @return the matching option, or null if no match is found
      */
     public static TemporalPrecisionMode parse(String value) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         value = value.trim();
         for (TemporalPrecisionMode option : TemporalPrecisionMode.values()) {
-            if (option.getValue().equalsIgnoreCase(value)) return option;
+            if (option.getValue().equalsIgnoreCase(value)) {
+                return option;
+            }
         }
         return null;
     }
@@ -65,7 +69,9 @@ public enum TemporalPrecisionMode implements EnumeratedValue {
      */
     public static TemporalPrecisionMode parse(String value, String defaultValue) {
         TemporalPrecisionMode mode = parse(value);
-        if (mode == null && defaultValue != null) mode = parse(defaultValue);
+        if (mode == null && defaultValue != null) {
+            mode = parse(defaultValue);
+        }
         return mode;
     }
 }

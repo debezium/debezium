@@ -59,7 +59,8 @@ public interface BufferedBlockingConsumer<T> extends BlockingConsumer<T> {
                 if (previous != null) {
                     try {
                         delegate.accept(function.apply(previous));
-                    } finally {
+                    }
+                    finally {
                         last.set(null);
                     }
                 }

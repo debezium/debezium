@@ -5,9 +5,9 @@
  */
 package io.debezium.text;
 
-import org.junit.Test;
-
 import static org.fest.assertions.Assertions.assertThat;
+
+import org.junit.Test;
 
 /**
  * @author Randall Hauch

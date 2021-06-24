@@ -8,6 +8,9 @@ package io.debezium.connector.mysql.antlr.listener;
 
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -23,6 +26,8 @@ import io.debezium.text.ParsingException;
  */
 public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
 
+    private final static Logger LOG = LoggerFactory.getLogger(AlterTableParserListener.class);
+
     private final MySqlAntlrDdlParser parser;
 
     public CreateUniqueIndexParserListener(MySqlAntlrDdlParser parser) {
@@ -33,11 +38,16 @@ public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
     public void enterCreateIndex(MySqlParser.CreateIndexContext ctx) {
         if (ctx.UNIQUE() != null) {
             TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
+            if (!parser.getTableFilter().isIncluded(tableId)) {
+                LOG.debug("{} is not monitored, no need to process unique index", tableId);
+                return;
+            }
             TableEditor tableEditor = parser.databaseTables().editTable(tableId);
             if (tableEditor != null) {
                 if (!tableEditor.hasPrimaryKey()) {
                     parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
-                    parser.signalCreateIndex(parser.parseName(ctx.uid()), null, ctx);
+                    parser.signalCreateIndex(parser.parseName(ctx.uid()), tableId, ctx);
+                    parser.databaseTables().overwriteTable(tableEditor.create());
                 }
             }
             else {

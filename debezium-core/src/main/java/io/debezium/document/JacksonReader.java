@@ -20,7 +20,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * A {@link DocumentReader} and {@link ArrayReader} that uses the Jackson library to read JSON.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -100,7 +100,8 @@ final class JacksonReader implements DocumentReader, ArrayReader {
     private Document parse(JsonParser parser) throws IOException {
         try {
             return parseDocument(parser, false);
-        } finally {
+        }
+        finally {
             parser.close();
         }
     }

@@ -7,18 +7,17 @@
 package io.debezium.connector.mysql.antlr;
 
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+
+import com.mysql.cj.CharsetMapping;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
@@ -29,6 +28,8 @@ import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.CollationNameContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
@@ -102,12 +103,14 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.CHAR, MySqlParser.CHAR),
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.CHAR, MySqlParser.VARYING),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.VARCHAR),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TINYTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.MEDIUMTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.LONGTEXT),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NCHAR),
+                new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARYING),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NVARCHAR),
                 new DataTypeEntry(Types.BINARY, MySqlParser.CHAR, MySqlParser.BINARY),
                 new DataTypeEntry(Types.BINARY, MySqlParser.VARCHAR, MySqlParser.BINARY),
@@ -116,35 +119,50 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.BINARY, MySqlParser.MEDIUMTEXT, MySqlParser.BINARY),
                 new DataTypeEntry(Types.BINARY, MySqlParser.LONGTEXT, MySqlParser.BINARY),
                 new DataTypeEntry(Types.BINARY, MySqlParser.NCHAR, MySqlParser.BINARY),
-                new DataTypeEntry(Types.BINARY, MySqlParser.NVARCHAR, MySqlParser.BINARY)
-        ));
+                new DataTypeEntry(Types.BINARY, MySqlParser.NVARCHAR, MySqlParser.BINARY),
+                new DataTypeEntry(Types.CHAR, MySqlParser.CHARACTER),
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.CHARACTER, MySqlParser.VARYING)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.NationalStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER).setSuffixTokens(MySqlParser.BINARY),
-                new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY)
-        ));
+                new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.NationalVaryingStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHAR, MySqlParser.VARYING),
-                new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER, MySqlParser.VARYING)
-        ));
+                new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER, MySqlParser.VARYING)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.DimensionDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.SMALLINT, MySqlParser.TINYINT)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.SMALLINT, MySqlParser.INT1)
+                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.SMALLINT, MySqlParser.SMALLINT)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.SMALLINT, MySqlParser.INT2)
+                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.INTEGER, MySqlParser.MEDIUMINT)
+                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.INTEGER, MySqlParser.INT3)
+                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.INTEGER, MySqlParser.MIDDLEINT)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.INTEGER, MySqlParser.INT)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.INTEGER, MySqlParser.INTEGER)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.INTEGER, MySqlParser.INT4)
+                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.BIGINT, MySqlParser.BIGINT)
+                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.BIGINT, MySqlParser.INT8)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.REAL, MySqlParser.REAL)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE)
                         .setSuffixTokens(MySqlParser.PRECISION, MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.DOUBLE, MySqlParser.FLOAT8)
+                        .setSuffixTokens(MySqlParser.PRECISION, MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.FLOAT, MySqlParser.FLOAT)
+                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
+                new DataTypeEntry(Types.FLOAT, MySqlParser.FLOAT4)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.DECIMAL, MySqlParser.DECIMAL)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
@@ -164,23 +182,22 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.TIMESTAMP, MySqlParser.DATETIME),
                 new DataTypeEntry(Types.BINARY, MySqlParser.BINARY),
                 new DataTypeEntry(Types.VARBINARY, MySqlParser.VARBINARY),
-                new DataTypeEntry(Types.INTEGER, MySqlParser.YEAR)
-        ));
+                new DataTypeEntry(Types.BLOB, MySqlParser.BLOB),
+                new DataTypeEntry(Types.INTEGER, MySqlParser.YEAR)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.SimpleDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.DATE, MySqlParser.DATE),
                 new DataTypeEntry(Types.BLOB, MySqlParser.TINYBLOB),
-                new DataTypeEntry(Types.BLOB, MySqlParser.BLOB),
                 new DataTypeEntry(Types.BLOB, MySqlParser.MEDIUMBLOB),
                 new DataTypeEntry(Types.BLOB, MySqlParser.LONGBLOB),
                 new DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOL),
-                new DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOLEAN)
-        ));
+                new DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOLEAN),
+                new DataTypeEntry(Types.BIGINT, MySqlParser.SERIAL)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.CollectionDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.CHAR, MySqlParser.ENUM).setSuffixTokens(MySqlParser.BINARY),
-                new DataTypeEntry(Types.CHAR, MySqlParser.SET).setSuffixTokens(MySqlParser.BINARY)
-        ));
+                new DataTypeEntry(Types.CHAR, MySqlParser.SET).setSuffixTokens(MySqlParser.BINARY)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.SpatialDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.OTHER, MySqlParser.GEOMETRYCOLLECTION),
+                new DataTypeEntry(Types.OTHER, MySqlParser.GEOMCOLLECTION),
                 new DataTypeEntry(Types.OTHER, MySqlParser.LINESTRING),
                 new DataTypeEntry(Types.OTHER, MySqlParser.MULTILINESTRING),
                 new DataTypeEntry(Types.OTHER, MySqlParser.MULTIPOINT),
@@ -188,8 +205,13 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.OTHER, MySqlParser.POINT),
                 new DataTypeEntry(Types.OTHER, MySqlParser.POLYGON),
                 new DataTypeEntry(Types.OTHER, MySqlParser.JSON),
-                new DataTypeEntry(Types.OTHER, MySqlParser.GEOMETRY)
-        ));
+                new DataTypeEntry(Types.OTHER, MySqlParser.GEOMETRY)));
+        dataTypeResolverBuilder.registerDataTypes(MySqlParser.LongVarbinaryDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(Types.BLOB, MySqlParser.LONG)
+                        .setSuffixTokens(MySqlParser.VARBINARY)));
+        dataTypeResolverBuilder.registerDataTypes(MySqlParser.LongVarcharDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.LONG)
+                        .setSuffixTokens(MySqlParser.VARCHAR)));
 
         return dataTypeResolverBuilder.build();
     }
@@ -221,15 +243,47 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      * @return qualified {@link TableId}.
      */
     public TableId parseQualifiedTableId(MySqlParser.FullIdContext fullIdContext) {
-        String fullTableName = fullIdContext.getText();
-        int dotIndex;
-        if ((dotIndex = fullTableName.indexOf(".")) > 0) {
-            return resolveTableId(withoutQuotes(fullTableName.substring(0, dotIndex)),
-                    withoutQuotes(fullTableName.substring(dotIndex + 1, fullTableName.length())));
+        final char[] fullTableName = fullIdContext.getText().toCharArray();
+        StringBuilder component = new StringBuilder();
+        String dbName = null;
+        String tableName = null;
+        final char EMPTY = '\0';
+        char lastQuote = EMPTY;
+        for (int i = 0; i < fullTableName.length; i++) {
+            char c = fullTableName[i];
+            if (isQuote(c)) {
+                // Opening quote
+                if (lastQuote == EMPTY) {
+                    lastQuote = c;
+                }
+                // Closing quote
+                else if (lastQuote == c) {
+                    // escape of quote by doubling
+                    if (i < fullTableName.length - 1 && fullTableName[i + 1] == c) {
+                        component.append(c);
+                        i++;
+                    }
+                    else {
+                        lastQuote = EMPTY;
+                    }
+                }
+                // Quote that is part of name
+                else {
+                    component.append(c);
+                }
+            }
+            // dot that is not in quotes, so name separator
+            else if (c == '.' && lastQuote == EMPTY) {
+                dbName = component.toString();
+                component = new StringBuilder();
+            }
+            // Any char is part of name including quoted dot
+            else {
+                component.append(c);
+            }
         }
-        else {
-            return resolveTableId(currentSchema(), withoutQuotes(fullTableName));
-        }
+        tableName = component.toString();
+        return resolveTableId(dbName != null ? dbName : currentSchema(), tableName);
     }
 
     /**
@@ -279,6 +333,16 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
+     * Get the name of the character set for the give table name.
+     *
+     * @return the name of the character set for the given table, or null if not known ...
+     */
+    public String charsetForTable(TableId tableId) {
+        final String defaultDatabaseCharset = tableId.catalog() != null ? charsetNameForDatabase().get(tableId.catalog()) : null;
+        return defaultDatabaseCharset != null ? defaultDatabaseCharset : currentDatabaseCharset();
+    }
+
+    /**
      * Runs a function if all given object are not null.
      *
      * @param function function to run; may not be null
@@ -294,23 +358,23 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
-     * Parse the {@code ENUM} or {@code SET} data type expression to extract the character options, where the index(es) appearing
-     * in the {@code ENUM} or {@code SET} values can be used to identify the acceptable characters.
+     * Extracts the enumeration values properly parsed and escaped.
      *
-     * @param typeExpression the data type expression
-     * @return the string containing the character options allowed by the {@code ENUM} or {@code SET}; never null
+     * @param enumValues the raw enumeration values from the parsed column definition
+     * @return the list of options allowed for the {@code ENUM} or {@code SET}; never null.
      */
-    public static List<String> parseSetAndEnumOptions(String typeExpression) {
-        List<String> options = new ArrayList<>();
-        final String ucTypeExpression = typeExpression.toUpperCase();
-        if (ucTypeExpression.startsWith("ENUM") || ucTypeExpression.startsWith("SET")) {
-            Pattern pattern = Pattern.compile("['\"][a-zA-Z0-9-!$%^&*()_+|~=`{}\\[\\]:\";'<>?\\/\\\\ ]*['\"]");
-            Matcher matcher = pattern.matcher(typeExpression);
-            while (matcher.find()) {
-                options.add(withoutQuotes(matcher.group()));
-            }
-        }
-        return options;
+    public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
+        return enumValues.stream()
+                .map(MySqlAntlrDdlParser::withoutQuotes)
+                .map(MySqlAntlrDdlParser::escapeOption)
+                .collect(Collectors.toList());
+    }
+
+    public static String escapeOption(String option) {
+        // Replace comma to backslash followed by comma (this escape sequence implies comma is part of the option)
+        // Replace backlash+single-quote to a single-quote.
+        // Replace double single-quote to a single-quote.
+        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replaceAll("''", "'");
     }
 
     public MySqlValueConverters getConverters() {
@@ -319,5 +383,29 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     public TableFilter getTableFilter() {
         return tableFilter;
+    }
+
+    /**
+     * Obtains the charset name either form charset if present or from collation.
+     *
+     * @param charsetNode
+     * @param collationNode
+     * @return character set
+     */
+    public String extractCharset(CharsetNameContext charsetNode, CollationNameContext collationNode) {
+        String charsetName = null;
+        if (charsetNode != null && charsetNode.getText() != null) {
+            charsetName = withoutQuotes(charsetNode.getText());
+        }
+        else if (collationNode != null && collationNode.getText() != null) {
+            final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
+            for (int index = 0; index < CharsetMapping.MAP_SIZE; index++) {
+                if (collationName.equals(CharsetMapping.COLLATION_INDEX_TO_COLLATION_NAME[index])) {
+                    charsetName = CharsetMapping.getMysqlCharsetNameForCollationIndex(index);
+                    break;
+                }
+            }
+        }
+        return charsetName;
     }
 }

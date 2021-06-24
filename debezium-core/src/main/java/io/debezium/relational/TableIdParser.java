@@ -29,7 +29,7 @@ class TableIdParser {
 
         List<String> parts = new ArrayList<>();
 
-        while(stream.hasNext()) {
+        while (stream.hasNext()) {
             parts.add(stream.consume().replaceAll("''", "'").replaceAll("\"\"", "\"").replaceAll("``", "`"));
         }
 
@@ -52,7 +52,7 @@ class TableIdParser {
 
             currentState.onEntry(parsingContext);
 
-            while(input.hasNext()) {
+            while (input.hasNext()) {
                 previousState = currentState;
                 currentState = currentState.handleCharacter(input.next(), parsingContext);
 
@@ -64,7 +64,7 @@ class TableIdParser {
 
             currentState.onExit(parsingContext);
 
-            if(currentState != ParsingState.BEFORE_SEPARATOR && currentState != ParsingState.IN_IDENTIFIER) {
+            if (currentState != ParsingState.BEFORE_SEPARATOR && currentState != ParsingState.IN_IDENTIFIER) {
                 throw new IllegalArgumentException("Invalid identifier: " + identifier);
             }
         }
@@ -105,8 +105,7 @@ class TableIdParser {
                 context.tokens.addToken(
                         context.input.position(context.startOfLastToken),
                         context.startOfLastToken,
-                        context.lastIdentifierEnd + 1
-                );
+                        context.lastIdentifierEnd + 1);
             }
 
             @Override
@@ -193,8 +192,7 @@ class TableIdParser {
                 context.tokens.addToken(
                         context.input.position(context.startOfLastToken + 1),
                         context.startOfLastToken + 1,
-                        context.lastIdentifierEnd
-                );
+                        context.lastIdentifierEnd);
             }
         };
 

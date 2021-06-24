@@ -11,7 +11,7 @@ import io.debezium.document.Document;
 
 /**
  * Compares HistoryRecord instances to determine which came first.
- * 
+ *
  * @author Randall Hauch
  * @since 0.2
  */
@@ -26,7 +26,7 @@ public class HistoryRecordComparator {
     /**
      * Create a {@link HistoryRecordComparator} that requires identical sources but will use the supplied function to compare
      * positions.
-     * 
+     *
      * @param positionComparator the non-null function that returns {@code true} if the first position is at or before
      *            the second position or {@code false} otherwise
      * @return the comparator instance; never null
@@ -42,7 +42,7 @@ public class HistoryRecordComparator {
 
     /**
      * Determine if the first {@link HistoryRecord} is at the same or earlier point in time than the second {@link HistoryRecord}.
-     * 
+     *
      * @param record1 the first record; never null
      * @param record2 the second record; never null
      * @return {@code true} if the first record is at the same or earlier point in time than the second record, or {@code false}

@@ -9,7 +9,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-
 /**
  * A semantic type for an OGC Simple Features for SQL Geometry.
  * Used to describe geometries on a planar basis (rather than Geography, which is a spherical basis).
@@ -36,12 +35,12 @@ public class Geometry {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.struct()
-                            .name(LOGICAL_NAME)
-                            .version(1)
-                            .doc("Geometry")
-                            .optional()
-                            .field(WKB_FIELD, Schema.BYTES_SCHEMA)
-                            .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
+                .name(LOGICAL_NAME)
+                .version(1)
+                .doc("Geometry")
+                .optional()
+                .field(WKB_FIELD, Schema.BYTES_SCHEMA)
+                .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
     }
 
     /**
@@ -61,7 +60,7 @@ public class Geometry {
      * @param srid the coordinate reference system identifier; may be null if unset/unknown
      * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
-    public static Struct createValue(Schema geomSchema, byte[] wkb, Integer srid){
+    public static Struct createValue(Schema geomSchema, byte[] wkb, Integer srid) {
         Struct result = new Struct(geomSchema);
         result.put(WKB_FIELD, wkb);
         if (srid != null) {

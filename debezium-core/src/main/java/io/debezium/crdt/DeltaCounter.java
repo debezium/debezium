@@ -18,7 +18,7 @@ import io.debezium.annotation.NotThreadSafe;
 public interface DeltaCounter extends PNCounter, DeltaCount {
     /**
      * Increment the counter and get the result.
-     * 
+     *
      * @return this instance so methods can be chained together; never null
      */
     @Override
@@ -26,7 +26,7 @@ public interface DeltaCounter extends PNCounter, DeltaCount {
 
     /**
      * Decrement the counter and get the result.
-     * 
+     *
      * @return this instance so methods can be chained together; never null
      */
     @Override
@@ -34,7 +34,7 @@ public interface DeltaCounter extends PNCounter, DeltaCount {
 
     /**
      * Merge the supplied counter into this counter.
-     * 
+     *
      * @param other the other counter to merge into this one; may be null
      * @return this counter so that methods can be chained
      */

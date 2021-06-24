@@ -10,6 +10,7 @@ import java.util.Map.Entry;
 
 import io.debezium.document.Array;
 import io.debezium.document.Document;
+import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 
 public class HistoryRecord {
 
@@ -23,6 +24,7 @@ public class HistoryRecord {
     }
 
     private final Document doc;
+    private static final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
 
     public HistoryRecord(Document document) {
         this.doc = document;
@@ -32,7 +34,9 @@ public class HistoryRecord {
         this.doc = Document.create();
 
         Document src = doc.setDocument(Fields.SOURCE);
-        if (source != null) source.forEach(src::set);
+        if (source != null) {
+            source.forEach(src::set);
+        }
 
         Document pos = doc.setDocument(Fields.POSITION);
         if (position != null) {
@@ -59,7 +63,7 @@ public class HistoryRecord {
         }
 
         if (changes != null) {
-            doc.setArray(Fields.TABLE_CHANGES, changes.toArray());
+            doc.setArray(Fields.TABLE_CHANGES, tableChangesSerializer.serialize(changes));
         }
 
     }

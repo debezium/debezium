@@ -20,7 +20,7 @@ import io.debezium.annotation.ThreadSafe;
 /**
  * A stopwatch for measuring durations. All NewStopwatch implementations are threadsafe, although using a single stopwatch
  * object across threads requires caution and care.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -28,7 +28,7 @@ public abstract class Stopwatch {
 
     /**
      * Start the stopwatch. Calling this method on an already-started stopwatch has no effect.
-     * 
+     *
      * @return this object to enable chaining methods
      * @see #stop
      */
@@ -36,7 +36,7 @@ public abstract class Stopwatch {
 
     /**
      * Stop the stopwatch. Calling this method on an already-stopped stopwatch has no effect.
-     * 
+     *
      * @return this object to enable chaining methods
      * @see #start()
      */
@@ -44,7 +44,7 @@ public abstract class Stopwatch {
 
     /**
      * Get the total and average durations measured by this stopwatch.
-     * 
+     *
      * @return the durations; never null
      */
     public abstract Durations durations();
@@ -57,7 +57,7 @@ public abstract class Stopwatch {
 
         /**
          * Get the statistics for the durations in nanoseconds.
-         * 
+         *
          * @return the statistics; never null
          */
         Statistics statistics();
@@ -170,16 +170,26 @@ public abstract class Stopwatch {
             private String fixedLengthSeconds(Duration duration) {
                 double seconds = duration.toNanos() * 1e-9;
                 String result = new DecimalFormat("##0.00000").format(seconds) + "s";
-                if (result.length() == 8) return "  " + result;
-                if (result.length() == 9) return " " + result;
+                if (result.length() == 8) {
+                    return "  " + result;
+                }
+                if (result.length() == 9) {
+                    return " " + result;
+                }
                 return result;
             }
 
             private String fixedLength(long count) {
                 String result = new DecimalFormat("###0").format(count);
-                if (result.length() == 1) return "   " + result;
-                if (result.length() == 2) return "  " + result;
-                if (result.length() == 3) return " " + result;
+                if (result.length() == 1) {
+                    return "   " + result;
+                }
+                if (result.length() == 2) {
+                    return "  " + result;
+                }
+                if (result.length() == 3) {
+                    return " " + result;
+                }
                 return result;
             }
 
@@ -201,20 +211,20 @@ public abstract class Stopwatch {
      * only reflect the most recently completed stopwatch interval.
      * <p>
      * For example, the following code shows this behavior:
-     * 
+     *
      * <pre>
      * Stopwatch sw = Stopwatch.reusable();
      * sw.start();
      * sleep(3000); // sleep 3 seconds
      * sw.stop();
      * print(sw.durations()); // total and average duration are each 3 seconds
-     * 
+     *
      * sw.start();
      * sleep(2000); // sleep 2 seconds
      * sw.stop();
      * print(sw.durations()); // total and average duration are each 2 seconds
      * </pre>
-     * 
+     *
      * @return the new stopwatch; never null
      */
     public static Stopwatch reusable() {
@@ -225,20 +235,20 @@ public abstract class Stopwatch {
      * Create a new {@link Stopwatch} that records all of the measured durations of the stopwatch.
      * <p>
      * For example, the following code shows this behavior:
-     * 
+     *
      * <pre>
      * Stopwatch sw = Stopwatch.accumulating();
      * sw.start();
      * sleep(3000); // sleep 3 seconds
      * sw.stop();
      * print(sw.durations()); // total and average duration are each 3 seconds
-     * 
+     *
      * sw.start();
      * sleep(2000); // sleep 2 seconds
      * sw.stop();
      * print(sw.durations()); // total duration is now 5 seconds, average is 2.5 seconds
      * </pre>
-     * 
+     *
      * @return the new stopwatch; never null
      */
     public static Stopwatch accumulating() {
@@ -257,14 +267,14 @@ public abstract class Stopwatch {
     public static interface StopwatchSet extends Durations {
         /**
          * Create a new stopwatch that records durations with this set.
-         * 
+         *
          * @return the new stopwatch; never null
          */
         Stopwatch create();
 
         /**
          * Time the given function.
-         * 
+         *
          * @param runnable the function to call
          */
         default public void time(Runnable runnable) {
@@ -273,7 +283,7 @@ public abstract class Stopwatch {
 
         /**
          * Time the given function.
-         * 
+         *
          * @param runnable the function that is to be executed; may not be null
          * @return the result of the operation
          */
@@ -281,18 +291,21 @@ public abstract class Stopwatch {
             Stopwatch sw = create().start();
             try {
                 return runnable.call();
-            } catch (RuntimeException e) {
+            }
+            catch (RuntimeException e) {
                 throw e;
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 throw new RuntimeException(e);
-            } finally {
+            }
+            finally {
                 sw.stop();
             }
         }
 
         /**
          * Time the given function multiple times.
-         * 
+         *
          * @param repeat the number of times to repeat the function call; must be positive
          * @param runnable the function to call; may not be null
          */
@@ -301,7 +314,8 @@ public abstract class Stopwatch {
                 Stopwatch sw = create().start();
                 try {
                     runnable.run();
-                } finally {
+                }
+                finally {
                     sw.stop();
                 }
             }
@@ -309,7 +323,7 @@ public abstract class Stopwatch {
 
         /**
          * Time the given function multiple times.
-         * 
+         *
          * @param repeat the number of times to repeat the function call; must be positive
          * @param runnable the function that is to be executed a number of times; may not be null
          * @param cleanup the function that is to be called after each time call to the runnable function, and not included
@@ -322,7 +336,8 @@ public abstract class Stopwatch {
                 Stopwatch sw = create().start();
                 try {
                     result = runnable.call();
-                } finally {
+                }
+                finally {
                     sw.stop();
                     if (cleanup != null) {
                         cleanup.accept(result);
@@ -337,7 +352,7 @@ public abstract class Stopwatch {
          * is {@link #create() created} and started, then this method will block until the stopwatch is {@link Stopwatch#stop()
          * stopped} (even if the same stopwatch is started multiple times).
          * are stopped.
-         * 
+         *
          * @throws InterruptedException if the thread is interrupted before unblocking
          */
         void await() throws InterruptedException;
@@ -345,7 +360,7 @@ public abstract class Stopwatch {
         /**
          * Block until all stopwatches that have been {@link #create() created} and {@link Stopwatch#start() started} are
          * stopped.
-         * 
+         *
          * @param timeout the maximum length of time that this method should block
          * @param unit the unit for the timeout; may not be null
          * @throws InterruptedException if the thread is interrupted before unblocking
@@ -356,7 +371,7 @@ public abstract class Stopwatch {
     /**
      * Create a new set of stopwatches. The resulting object is threadsafe, and each {@link Stopwatch} created by
      * {@link StopwatchSet#create()} is also threadsafe.
-     * 
+     *
      * @return the stopwatches set; never null
      */
     public static StopwatchSet multiple() {
@@ -396,7 +411,7 @@ public abstract class Stopwatch {
      * <p>
      * The resulting stopwatch is threadsafe.
      * </p>
-     * 
+     *
      * @param duration the duration that should be updated; may not be null
      * @param uponStart the function that should be called when the stopwatch is successfully started (after not running); may be
      *            null
@@ -414,7 +429,9 @@ public abstract class Stopwatch {
                     if (existing == 0L) {
                         // Has not yet been started ...
                         existing = System.nanoTime();
-                        if (uponStart != null) uponStart.run();
+                        if (uponStart != null) {
+                            uponStart.run();
+                        }
                     }
                     return existing;
                 });
@@ -427,7 +444,9 @@ public abstract class Stopwatch {
                     if (existing != 0L) {
                         // Is running but has not yet been stopped ...
                         duration.add(Duration.ofNanos(System.nanoTime() - existing));
-                        if (uponStop != null) uponStop.run();
+                        if (uponStop != null) {
+                            uponStop.run();
+                        }
                         return 0L;
                     }
                     return existing;
@@ -449,7 +468,7 @@ public abstract class Stopwatch {
 
     /**
      * Compute the readable string representation of the supplied duration.
-     * 
+     *
      * @param duration the duration; may not be null
      * @return the string representation; never null
      */
@@ -485,7 +504,9 @@ public abstract class Stopwatch {
         @Override
         public void add(Duration duration) {
             LongSummaryStatistics stats = new LongSummaryStatistics();
-            if (duration != null) stats.accept(duration.toNanos());
+            if (duration != null) {
+                stats.accept(duration.toNanos());
+            }
             this.stats.set(createStatistics(stats));
         }
     }

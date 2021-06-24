@@ -9,7 +9,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A class that represents the position of a particular character in terms of the lines and columns of a character sequence.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -24,9 +24,9 @@ public final class Position {
     private final int column;
     private final int indexInContent;
 
-    public Position( int indexInContent,
-                     int line,
-                     int column ) {
+    public Position(int indexInContent,
+                    int line,
+                    int column) {
         this.indexInContent = indexInContent < 0 ? -1 : indexInContent;
         this.line = line;
         this.column = column;
@@ -40,7 +40,7 @@ public final class Position {
 
     /**
      * Get the 0-based index of this position in the content character array.
-     * 
+     *
      * @return the index; never negative except for the first position in an empty content.
      */
     public int index() {
@@ -49,7 +49,7 @@ public final class Position {
 
     /**
      * Get the 1-based column number of the character.
-     * 
+     *
      * @return the column number; always positive
      */
     public int column() {
@@ -58,11 +58,16 @@ public final class Position {
 
     /**
      * Get the 1-based line number of the character.
-     * 
+     *
      * @return the line number; always positive
      */
     public int line() {
         return line;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
     }
 
     @Override
@@ -77,11 +82,11 @@ public final class Position {
 
     /**
      * Return a new position that is the addition of this position and that supplied.
-     * 
+     *
      * @param position the position to add to this object; may not be null
      * @return the combined position
      */
-    public Position add( Position position ) {
+    public Position add(Position position) {
         if (this.index() < 0) {
             return position.index() < 0 ? EMPTY_CONTENT_POSITION : position;
         }

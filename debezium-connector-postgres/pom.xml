@@ -3,8 +3,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
-        <relativePath>../</relativePath>
+        <version>1.6.0-SNAPSHOT</version>
+	<relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-postgres</artifactId>
@@ -17,6 +17,7 @@
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
         <version.postgres.server>9.6</version.postgres.server>
+        <postgres.host>${docker.host.address}</postgres.host>
         <postgres.port>5432</postgres.port>
         <postgres.user>postgres</postgres.user>
         <postgres.password>postgres</postgres.password>
@@ -30,6 +31,9 @@
         <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
+
+        <!-- We're tracking the API changes of the SPI. -->
+        <revapi.skip>false</revapi.skip>
     </properties>
 
     <dependencies>
@@ -90,6 +94,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.easytesting</groupId>
             <artifactId>fest-assert</artifactId>
             <scope>test</scope>
@@ -97,6 +106,16 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -213,7 +232,7 @@
                     <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
-                        <database.hostname>${docker.host.address}</database.hostname>
+                        <database.hostname>${postgres.host}</database.hostname>
                         <database.port>${postgres.port}</database.port>
                         <database.user>${postgres.user}</database.user>
                         <database.password>${postgres.password}</database.password>
@@ -260,6 +279,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${version.assembly.plugin}</version>
                         <dependencies>
                             <dependency>
                                 <groupId>io.debezium</groupId>
@@ -278,14 +298,57 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
                                     </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
                             </execution>
                         </executions>
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>qa</id>
+            <activation>
+                <property>
+                    <name>!quick</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.revapi</groupId>
+                        <artifactId>revapi-maven-plugin</artifactId>
+                        <configuration>
+                            <analysisConfiguration combine.children="append">
+                                <revapi.java>
+                                    <filter>
+                                        <packages>
+                                            <include>
+                                                <item>io.debezium.connector.postgresql.spi</item>
+                                            </include>
+                                        </packages>
+                                    </filter>
+                                </revapi.java>
+                            </analysisConfiguration>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+            </properties>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
               Do not perform any Docker-related functionality
@@ -313,6 +376,12 @@
             <id>wal2json-decoder</id>
             <properties>
                 <decoder.plugin.name>wal2json</decoder.plugin.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>pgoutput-decoder</id>
+            <properties>
+                <decoder.plugin.name>pgoutput</decoder.plugin.name>
             </properties>
         </profile>
         <profile>

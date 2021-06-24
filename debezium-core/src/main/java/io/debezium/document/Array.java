@@ -28,23 +28,27 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
         /**
          * Get the index of the entry
-         * 
+         *
          * @return the entry's index; never null
          */
         int getIndex();
 
         /**
          * Get the value of the entry.
-         * 
+         *
          * @return the entry's value; may be null
          */
         Value getValue();
 
         @Override
         default int compareTo(Entry that) {
-            if (that == null) return 1;
+            if (that == null) {
+                return 1;
+            }
             int diff = this.getIndex() - that.getIndex();
-            if (diff != 0) return diff;
+            if (diff != 0) {
+                return diff;
+            }
             return this.getValue().compareTo(that.getValue());
         }
     }
@@ -88,7 +92,9 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     }
 
     static Array create(Iterable<?> values) {
-        if (values == null) return create();
+        if (values == null) {
+            return create();
+        }
         BasicArray array = new BasicArray();
         values.forEach(obj -> array.add(Value.create(obj)));
         return array;
@@ -100,21 +106,21 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Return the number of name-value fields in this object.
-     * 
+     *
      * @return the number of name-value fields; never negative
      */
     int size();
 
     /**
      * Return whether this document contains no fields and is therefore empty.
-     * 
+     *
      * @return true if there are no fields in this document, or false if there is at least one.
      */
     boolean isEmpty();
 
     /**
      * Determine if this contains an entry at the given index.
-     * 
+     *
      * @param index the index
      * @return true if the entry exists, or false otherwise
      */
@@ -122,7 +128,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Gets the value in this array at the given index.
-     * 
+     *
      * @param index the index
      * @return The field value, if found, or null otherwise
      */
@@ -130,7 +136,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Gets the value in this document for the given field name.
-     * 
+     *
      * @param index the index
      * @param defaultValue the default value to return if there is no such entry
      * @return The value if found or <code>defaultValue</code> if there is no such entry
@@ -142,7 +148,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Determine whether this object has an entry at the given index and the value is null.
-     * 
+     *
      * @param index the index
      * @return <code>true</code> if the entry exists but is null, or false otherwise
      * @see #isNullOrMissing(int)
@@ -155,7 +161,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     /**
      * Determine whether this object has an entry at the given index and the value is null, or if this object has no entry at
      * the given index.
-     * 
+     *
      * @param index the index
      * @return <code>true</code> if the field value for the name is null or if there is no such field.
      * @see #isNull(int)
@@ -167,7 +173,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Remove the specified entry from this array
-     * 
+     *
      * @param index the index
      * @return the value in the removed entry, or null if there is no such entry
      */
@@ -175,7 +181,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Remove all entries from this array.
-     * 
+     *
      * @return this array to allow for chaining methods
      */
     Array removeAll();
@@ -183,7 +189,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.
-     * 
+     *
      * @param values the values to be added to this array
      * @return this array to allow for chaining methods
      */
@@ -199,7 +205,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.
-     * 
+     *
      * @param values the values to be added to this array
      * @return this array to allow for chaining methods
      */
@@ -213,7 +219,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.
-     * 
+     *
      * @param values the values to be added to this array
      * @return this array to allow for chaining methods
      */
@@ -227,7 +233,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     /**
      * Sets on this object all name/value pairs from the supplied object. If the supplied object is null, this method does
      * nothing.
-     * 
+     *
      * @param values the values to be added to this array
      * @return this array to allow for chaining methods
      */
@@ -240,7 +246,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the value to the end of this array.
-     * 
+     *
      * @param value the value; may not be null
      * @return this array to allow for chaining methods
      */
@@ -248,7 +254,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds a null value to the end of this array.
-     * 
+     *
      * @return this array to allow for chaining methods
      */
     default Array addNull() {
@@ -258,7 +264,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the string value to the end of this array.
-     * 
+     *
      * @param value the string value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -269,7 +275,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the boolean value to the end of this array.
-     * 
+     *
      * @param value the boolean value; may not be null
      * @return this array to allow for chaining methods
      */
@@ -280,7 +286,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the boolean value to the end of this array.
-     * 
+     *
      * @param value the boolean value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -291,7 +297,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the integer value to the end of this array.
-     * 
+     *
      * @param value the integer value; may not be null
      * @return this array to allow for chaining methods
      */
@@ -302,7 +308,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the long value to the end of this array.
-     * 
+     *
      * @param value the long value; may not be null
      * @return this array to allow for chaining methods
      */
@@ -313,7 +319,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the float value to the end of this array.
-     * 
+     *
      * @param value the float value; may not be null
      * @return this array to allow for chaining methods
      */
@@ -324,7 +330,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the double value to the end of this array.
-     * 
+     *
      * @param value the double value; may not be null
      * @return this array to allow for chaining methods
      */
@@ -335,7 +341,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the big integer value to the end of this array.
-     * 
+     *
      * @param value the big integer value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -346,7 +352,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the decimal value to the end of this array.
-     * 
+     *
      * @param value the decimal value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -357,7 +363,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the integer value to the end of this array.
-     * 
+     *
      * @param value the integer value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -368,7 +374,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the long value to the end of this array.
-     * 
+     *
      * @param value the long value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -379,7 +385,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the float value to the end of this array.
-     * 
+     *
      * @param value the float value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -390,7 +396,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the double value to the end of this array.
-     * 
+     *
      * @param value the double value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -401,7 +407,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the document value to the end of this array.
-     * 
+     *
      * @param value the document value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -412,7 +418,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Adds the array value to the end of this array.
-     * 
+     *
      * @param value the array value; may be null if a {@link #addNull() null value} should be added
      * @return this array to allow for chaining methods
      */
@@ -423,7 +429,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Sets on this object all key/value pairs from the supplied map. If the supplied map is null, this method does nothing.
-     * 
+     *
      * @param entries the entries that are to be used to modify this array
      * @return this array to allow for chaining methods
      */
@@ -463,7 +469,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Transform all of the field values using the supplied {@link BiFunction transformer function}.
-     * 
+     *
      * @param transformer the transformer that should be used to transform each field value; may not be null
      * @return this array with transformed fields, or this document if the transformer changed none of the values
      */
@@ -471,7 +477,9 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
         for (int i = 0; i != size(); ++i) {
             Value existing = get(i);
             Value updated = transformer.apply(Integer.valueOf(i), existing);
-            if (updated == null) updated = Value.nullValue();
+            if (updated == null) {
+                updated = Value.nullValue();
+            }
             if (updated != existing) {
                 setValue(i, updated);
             }
@@ -483,7 +491,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * Set the value for the field with the given name to be a null value. The {@link #isNull(int)} methods can be used to
      * determine if a field has been set to null, or {@link #isNullOrMissing(int)} if the field has not be set or if it has
      * been set to null.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @return this array to allow for chaining methods
      * @see #isNull(int)
@@ -495,7 +503,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied boolean value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -507,7 +515,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied integer value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -519,7 +527,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied long value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -531,7 +539,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied float value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -543,7 +551,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied double value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -555,7 +563,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied big integer value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -567,7 +575,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied big integer value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -579,7 +587,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to the supplied string value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param value the new value for the field
      * @return this array to allow for chaining methods
@@ -591,7 +599,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to be a binary value. The value will be encoded as Base64.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param data the bytes for the binary value
      * @return this array to allow for chaining methods
@@ -603,7 +611,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to be a value.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 and less than or equal to {@link #size() size}
      * @param value the new value
      * @return this array to allow for chaining methods
@@ -613,18 +621,18 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     /**
      * If the current size of the array is smaller than the given size, expand it and use a null value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize) {
-        return expand(desiredSize,Value.nullValue());
+        return expand(desiredSize, Value.nullValue());
     }
-    
+
     /**
      * If the current size of the array is smaller than the given size, expand it and use the supplied value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @param value  the new value for any new entries
      * @return this array to allow for chaining methods
@@ -634,73 +642,73 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     /**
      * If the current size of the array is smaller than the given size, expand it and use the supplied value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @param value  the new value for any new entries
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, boolean value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
      * If the current size of the array is smaller than the given size, expand it and use the supplied value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @param value  the new value for any new entries
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, int value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
      * If the current size of the array is smaller than the given size, expand it and use the supplied value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @param value  the new value for any new entries
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, long value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
      * If the current size of the array is smaller than the given size, expand it and use the supplied value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @param value  the new value for any new entries
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, float value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
      * If the current size of the array is smaller than the given size, expand it and use the supplied value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @param value  the new value for any new entries
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, double value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
      * If the current size of the array is smaller than the given size, expand it and use the supplied value for all new entries.
      * This method does nothing if the current size is larger than the supplied {@code desiredSize}.
-     * 
+     *
      * @param desiredSize the desired size of the array; may be negative
      * @param value  the new value for any new entries
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, String value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
@@ -710,8 +718,8 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, int increment ) {
-        return increment(index,Value.create(increment));
+    default Array increment(int index, int increment) {
+        return increment(index, Value.create(increment));
     }
 
     /**
@@ -721,8 +729,8 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, long increment ) {
-        return increment(index,Value.create(increment));
+    default Array increment(int index, long increment) {
+        return increment(index, Value.create(increment));
     }
 
     /**
@@ -732,8 +740,8 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, double increment ) {
-        return increment(index,Value.create(increment));
+    default Array increment(int index, double increment) {
+        return increment(index, Value.create(increment));
     }
 
     /**
@@ -743,8 +751,8 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, float increment ) {
-        return increment(index,Value.create(increment));
+    default Array increment(int index, float increment) {
+        return increment(index, Value.create(increment));
     }
 
     /**
@@ -754,11 +762,11 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    Array increment( int index, Value increment );
+    Array increment(int index, Value increment);
 
     /**
      * Set the value for the field with the given name to be a new, empty Document.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 and less than or equal to {@link #size() size}
      * @return The editable document that was just created; never null
      */
@@ -768,7 +776,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to be the supplied Document.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param document the document
      * @return The document that was just set as the value for the named field; never null and may or may not be the same
@@ -776,14 +784,16 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      */
     default Document setDocument(int index,
                                  Document document) {
-        if (document == null) document = Document.create();
+        if (document == null) {
+            document = Document.create();
+        }
         setValue(index, Value.create(document));
         return document;
     }
 
     /**
      * Set the value for the field with the given name to be a new, empty array.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @return The array that was just created; never null
      */
@@ -793,7 +803,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Set the value for the field with the given name to be the supplied array.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param array the array
      * @return The array that was just set as the value for the named field; never null and may or may not be the same
@@ -801,14 +811,16 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      */
     default Array setArray(int index,
                            Array array) {
-        if (array == null) array = Array.create();
+        if (array == null) {
+            array = Array.create();
+        }
         setValue(index, Value.create(array));
         return array;
     }
 
     /**
      * Set the value for the field with the given name to be the supplied array.
-     * 
+     *
      * @param index the index of the field; must be greater than or equal to 0 or less than or equal to {@link #size() size}
      * @param values the (valid) values for the array
      * @return The array that was just set as the value for the named field; never null and may or may not be the same
@@ -823,7 +835,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
     /**
      * Obtain a complete copy of this array.
-     * 
+     *
      * @return the clone of this array; never null
      */
     Array clone();

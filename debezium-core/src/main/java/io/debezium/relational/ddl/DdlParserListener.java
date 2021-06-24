@@ -5,16 +5,18 @@
  */
 package io.debezium.relational.ddl;
 
+import java.util.Optional;
+
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.TableId;
 
 /**
- * An interface that can listen to various actions of a {@link LegacyDdlParser}. Every kind of {@link Event} has a {@link EventType
+ * An interface that can listen to various actions of a {@link DdlParser}. Every kind of {@link Event} has a {@link EventType
  * type} that makes it easier to implement a {@link DdlParserListener} using a {@code switch} statement. However, each kind of
  * {@link Event} also may have additional data associated with it.
  * <p>
- * Clearly not all DDL statements processed by a {@link LegacyDdlParser parser} will result in an {@link Event event}.
- * 
+ * Clearly not all DDL statements processed by a {@link DdlParser parser} will result in an {@link Event event}.
+ *
  * @author Randall Hauch
  */
 @FunctionalInterface
@@ -22,7 +24,7 @@ public interface DdlParserListener {
 
     /**
      * Handle a DDL event.
-     * 
+     *
      * @param event the DDL event; never null
      */
     void handle(Event event);
@@ -31,9 +33,16 @@ public interface DdlParserListener {
      * The type of concrete {@link Event}s.
      */
     public static enum EventType {
-        CREATE_TABLE, ALTER_TABLE, DROP_TABLE, TRUNCATE_TABLE,
-        CREATE_INDEX, DROP_INDEX,
-        CREATE_DATABASE, ALTER_DATABASE, DROP_DATABASE,
+        CREATE_TABLE,
+        ALTER_TABLE,
+        DROP_TABLE,
+        TRUNCATE_TABLE,
+        CREATE_INDEX,
+        DROP_INDEX,
+        CREATE_DATABASE,
+        ALTER_DATABASE,
+        DROP_DATABASE,
+        USE_DATABASE,
         SET_VARIABLE,
     }
 
@@ -88,7 +97,7 @@ public interface DdlParserListener {
         public TableId tableId() {
             return tableId;
         }
-        
+
         /**
          * Determine whether the target of the event is a view rather than a table.
          * @return {@code true} if the target is a view, or {@code false} if the target is a table
@@ -135,7 +144,7 @@ public interface DdlParserListener {
 
         @Override
         public String toString() {
-            if ( previousTableId != null ) {
+            if (previousTableId != null) {
                 return tableId() + " (was " + previousTableId() + ") => " + statement();
             }
             return tableId() + " => " + statement();
@@ -161,6 +170,7 @@ public interface DdlParserListener {
             super(EventType.TRUNCATE_TABLE, tableId, ddlStatement, isView);
         }
     }
+
     /**
      * The abstract base class for all index-related events.
      */
@@ -193,7 +203,7 @@ public interface DdlParserListener {
 
         @Override
         public String toString() {
-            if ( tableId == null ) {
+            if (tableId == null) {
                 return indexName() + " => " + statement();
             }
             return indexName() + " on " + tableId() + " => " + statement();
@@ -219,7 +229,7 @@ public interface DdlParserListener {
             super(EventType.DROP_INDEX, indexName, tableId, ddlStatement);
         }
     }
-    
+
     /**
      * The base class for all table-related events.
      */
@@ -239,7 +249,7 @@ public interface DdlParserListener {
         public String databaseName() {
             return databaseName;
         }
-        
+
         @Override
         public String toString() {
             return databaseName() + " => " + statement();
@@ -262,10 +272,12 @@ public interface DdlParserListener {
     @Immutable
     public static class DatabaseAlteredEvent extends DatabaseEvent {
         private final String previousDatabaseName;
+
         public DatabaseAlteredEvent(String databaseName, String previousDatabaseName, String ddlStatement) {
             super(EventType.ALTER_DATABASE, databaseName, ddlStatement);
             this.previousDatabaseName = previousDatabaseName;
         }
+
         /**
          * If the table was renamed, then get the old identifier of the table before it was renamed.
          * @return the table's previous identifier; may be null if the alter did not affect the table's identifier
@@ -276,7 +288,7 @@ public interface DdlParserListener {
 
         @Override
         public String toString() {
-            if ( previousDatabaseName != null ) {
+            if (previousDatabaseName != null) {
                 return databaseName() + " (was " + previousDatabaseName() + ") => " + statement();
             }
             return databaseName() + " => " + statement();
@@ -294,18 +306,32 @@ public interface DdlParserListener {
     }
 
     /**
+     * An event describing the switching of a database.
+     */
+    @Immutable
+    public static class DatabaseSwitchedEvent extends DatabaseEvent {
+        public DatabaseSwitchedEvent(String databaseName, String ddlStatement) {
+            super(EventType.USE_DATABASE, databaseName, ddlStatement);
+        }
+    }
+
+    /**
      * An event describing the setting of a variable.
      */
     @Immutable
     public static class SetVariableEvent extends Event {
-        
+
         private final String variableName;
         private final String value;
+        private final String databaseName;
+        private final int order;
 
-        public SetVariableEvent(String variableName, String value, String ddlStatement) {
+        public SetVariableEvent(String variableName, String value, String currentDatabaseName, int order, String ddlStatement) {
             super(EventType.SET_VARIABLE, ddlStatement);
             this.variableName = variableName;
             this.value = value;
+            this.databaseName = currentDatabaseName;
+            this.order = order;
         }
 
         /**
@@ -315,7 +341,7 @@ public interface DdlParserListener {
         public String variableName() {
             return variableName;
         }
-        
+
         /**
          * Get the value of the variable that was set.
          * @return the variable value; may be null
@@ -323,7 +349,19 @@ public interface DdlParserListener {
         public String variableValue() {
             return value;
         }
-        
+
+        /**
+         * In case of multiple vars set in the same SET statement the order of the variable in the statement.
+         * @return the variable order
+         */
+        public int order() {
+            return order;
+        }
+
+        public Optional<String> databaseName() {
+            return Optional.ofNullable(databaseName);
+        }
+
         @Override
         public String toString() {
             return statement();

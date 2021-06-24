@@ -51,10 +51,12 @@ public class SchemaNameAdjusterTest {
         AtomicInteger counter = new AtomicInteger();
         AtomicInteger conflicts = new AtomicInteger();
         ReplacementOccurred handler = (original, replacement, conflict) -> {
-            if (conflict != null) conflicts.incrementAndGet();
+            if (conflict != null) {
+                conflicts.incrementAndGet();
+            }
             counter.incrementAndGet();
         };
-        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler);
+        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create("_", handler);
         for (int i = 0; i != 20; ++i) {
             adjuster.adjust("some-invalid-fullname$");
         }
@@ -67,10 +69,12 @@ public class SchemaNameAdjusterTest {
         AtomicInteger counter = new AtomicInteger();
         AtomicInteger conflicts = new AtomicInteger();
         ReplacementOccurred handler = (original, replacement, conflict) -> {
-            if (conflict != null) conflicts.incrementAndGet();
+            if (conflict != null) {
+                conflicts.incrementAndGet();
+            }
             counter.incrementAndGet();
         };
-        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler.firstTimeOnly());
+        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create("_", handler.firstTimeOnly());
         for (int i = 0; i != 20; ++i) {
             adjuster.adjust("some-invalid-fullname$");
         }
@@ -83,10 +87,12 @@ public class SchemaNameAdjusterTest {
         AtomicInteger counter = new AtomicInteger();
         AtomicInteger conflicts = new AtomicInteger();
         ReplacementOccurred handler = (original, replacement, conflict) -> {
-            if (conflict != null) conflicts.incrementAndGet();
+            if (conflict != null) {
+                conflicts.incrementAndGet();
+            }
             counter.incrementAndGet();
         };
-        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler.firstTimeOnly());
+        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create("_", handler.firstTimeOnly());
         adjuster.adjust("some-invalid-fullname$");
         adjuster.adjust("some-invalid%fullname_");
         assertThat(counter.get()).isEqualTo(2);

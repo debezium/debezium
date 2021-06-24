@@ -11,7 +11,7 @@ package io.debezium.crdt;
 public interface Count {
     /**
      * Get the current value.
-     * 
+     *
      * @return the current value
      */
     long get();

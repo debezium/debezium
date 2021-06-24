@@ -15,7 +15,20 @@ package io.debezium.schema;
  */
 public interface DatabaseSchema<I extends DataCollectionId> {
 
+    String NO_CAPTURED_DATA_COLLECTIONS_WARNING = "After applying the include/exclude list filters, no changes will be captured. Please check your configuration!";
+
     void close();
 
     DataCollectionSchema schemaFor(I id);
+
+    /**
+     * Indicates whether or not table names are guaranteed to be fully present, regardless of whether or not a
+     * snapshot has been performed.
+     *
+     * @return boolean indicating if table names are present
+     */
+    boolean tableInformationComplete();
+
+    default void assureNonEmptySchema() {
+    }
 }

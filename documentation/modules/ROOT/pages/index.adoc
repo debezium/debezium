@@ -1,0 +1,15 @@
+= Debezium Documentation
+
+
+== What is it?
+
+Debezium is a set of distributed services to capture changes in your databases so that your applications can see those changes and respond to them.
+Debezium records all row-level changes within each database table in a _change event stream_, and applications simply read these streams to see the change events in the same order in which they occurred.
+
+
+Use the links at the left to find the documentation for Debezium, including the various Debezium xref:connectors/index.adoc[connectors].
+If you're trying to get your head around what Debezium is or how it works, we recommend starting with our xref:tutorial.adoc[tutorial] and link:https://www.infoq.com/presentations/data-streaming-kafka-debezium/[this session] from QCon San Francisco on CDC use cases with Debezium.
+
+== Feedback
+
+If you have questions about the documentation, or discover any issues that need to be fixed, open an issue link:{jira-url}[here].

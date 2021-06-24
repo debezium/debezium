@@ -15,7 +15,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  */
 public class ChangeEvent {
 
-    /**
+    /*
      * source record to be sent
      */
     private final SourceRecord record;

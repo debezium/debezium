@@ -6,11 +6,12 @@
 
 package io.debezium.antlr;
 
-import io.debezium.text.ParsingException;
+import java.util.Collection;
+
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
-import java.util.Collection;
+import io.debezium.text.ParsingException;
 
 /**
  * Interface for listeners used by {@link ParseTreeWalker}.

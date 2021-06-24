@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -13,11 +14,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * Metrics related to the initial snapshot of a connector.
@@ -25,7 +30,7 @@ import io.debezium.relational.TableId;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public class SnapshotChangeEventSourceMetrics extends Metrics implements SnapshotChangeEventSourceMetricsMXBean, SnapshotProgressListener {
+public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements SnapshotChangeEventSourceMetricsMXBean, SnapshotProgressListener {
 
     private final AtomicBoolean snapshotRunning = new AtomicBoolean();
     private final AtomicBoolean snapshotCompleted = new AtomicBoolean();
@@ -34,19 +39,22 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     private final AtomicLong stopTime = new AtomicLong();
     private final ConcurrentMap<String, Long> rowsScanned = new ConcurrentHashMap<String, Long>();
 
-    // TODO DBZ-978 what's the purpose of the value here? It's never updated.
     private final ConcurrentMap<String, String> remainingTables = new ConcurrentHashMap<>();
 
-    // TODO DBZ-978 Pull up to Metrics
-    private final Set<String> monitoredTables = Collections.synchronizedSet(new HashSet<>());
+    private final AtomicReference<String> chunkId = new AtomicReference<>();
+    private final AtomicReference<Object[]> chunkFrom = new AtomicReference<>();
+    private final AtomicReference<Object[]> chunkTo = new AtomicReference<>();
 
-    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext) {
-        super(taskContext, "snapshot");
+    private final Set<String> capturedTables = Collections.synchronizedSet(new HashSet<>());
+
+    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                             EventMetadataProvider metadataProvider) {
+        super(taskContext, "snapshot", changeEventQueueMetrics, metadataProvider);
     }
 
     @Override
     public int getTotalTableCount() {
-        return this.monitoredTables.size();
+        return this.capturedTables.size();
     }
 
     @Override
@@ -82,26 +90,36 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
         return (stopMillis - startMillis) / 1000L;
     }
 
+    /**
+     * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
+     * Scheduled for removal in a future release.
+     */
     @Override
+    @Deprecated
     public String[] getMonitoredTables() {
-        return monitoredTables.toArray(new String[monitoredTables.size()]);
+        return capturedTables.toArray(new String[capturedTables.size()]);
     }
 
     @Override
-    public void monitoredTablesDetermined(Iterable<TableId> tableIds) {
-        Iterator<TableId> it = tableIds.iterator();
-        while (it.hasNext()) {
-            TableId tableId = it.next();
+    public String[] getCapturedTables() {
+        return capturedTables.toArray(new String[capturedTables.size()]);
+    }
 
-            this.remainingTables.put(tableId.toString(), "");
-            monitoredTables.add(tableId.toString());
+    @Override
+    public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
+        Iterator<? extends DataCollectionId> it = dataCollectionIds.iterator();
+        while (it.hasNext()) {
+            DataCollectionId dataCollectionId = it.next();
+
+            this.remainingTables.put(dataCollectionId.identifier(), "");
+            capturedTables.add(dataCollectionId.identifier());
         }
     }
 
     @Override
-    public void tableSnapshotCompleted(TableId tableId, long numRows) {
-        rowsScanned.put(tableId.toString(), numRows);
-        remainingTables.remove(tableId.toString());
+    public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
+        rowsScanned.put(dataCollectionId.identifier(), numRows);
+        remainingTables.remove(dataCollectionId.identifier());
     }
 
     @Override
@@ -140,6 +158,40 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     }
 
     @Override
+    public void currentChunk(String chunkId, Object[] from, Object[] to) {
+        this.chunkId.set(chunkId);
+        this.chunkFrom.set(from);
+        this.chunkTo.set(to);
+    }
+
+    @Override
+    public String getChunkId() {
+        return chunkId.get();
+    }
+
+    @Override
+    public String getChunkFrom() {
+        return Arrays.toString(chunkFrom.get());
+    }
+
+    @Override
+    public String getChunkTo() {
+        return Arrays.toString(chunkTo.get());
+    }
+
+    @Override
     public void reset() {
+        super.reset();
+        snapshotRunning.set(false);
+        snapshotCompleted.set(false);
+        snapshotAborted.set(false);
+        startTime.set(0);
+        stopTime.set(0);
+        rowsScanned.clear();
+        remainingTables.clear();
+        capturedTables.clear();
+        chunkId.set(null);
+        chunkFrom.set(null);
+        chunkTo.set(null);
     }
 }

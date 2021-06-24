@@ -10,6 +10,7 @@ import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,6 +23,7 @@ import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -41,6 +43,8 @@ import io.debezium.text.TokenStream.Tokens;
 @ThreadSafe
 public final class Strings {
 
+    private static final Pattern TIME_PATTERN = Pattern.compile("([0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
+
     /**
      * Generate the set of values that are included in the list.
      *
@@ -50,11 +54,15 @@ public final class Strings {
      * @return the set of objects included in the list; never null
      */
     public static <T> Set<T> setOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
-        if (input == null) return Collections.emptySet();
+        if (input == null) {
+            return Collections.emptySet();
+        }
         Set<T> matches = new HashSet<>();
         for (String item : splitter.apply(input)) {
             T obj = factory.apply(item);
-            if (obj != null) matches.add(obj);
+            if (obj != null) {
+                matches.add(obj);
+            }
         }
         return matches;
     }
@@ -68,11 +76,15 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> List<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
-        if (input == null) return Collections.emptyList();
+        if (input == null) {
+            return Collections.emptyList();
+        }
         List<T> matches = new ArrayList<T>();
         for (String item : splitter.apply(input)) {
             T obj = factory.apply(item);
-                        if (obj != null) matches.add(obj);
+            if (obj != null) {
+                matches.add(obj);
+            }
         }
         return matches;
     }
@@ -160,7 +172,9 @@ public final class Strings {
      * @return the list of lines; never null but may be an empty (unmodifiable) list if the supplied content is null or empty
      */
     public static List<String> splitLines(final String content) {
-        if (content == null || content.length() == 0) return Collections.emptyList();
+        if (content == null || content.length() == 0) {
+            return Collections.emptyList();
+        }
         String[] lines = content.split("[\\r]?\\n");
         return Arrays.asList(lines);
     }
@@ -174,9 +188,15 @@ public final class Strings {
      *         both are null), or a positive integer if the first sequence is greater than the second
      */
     public static int compareTo(CharSequence str1, CharSequence str2) {
-        if (str1 == str2) return 0;
-        if (str1 == null) return -1;
-        if (str2 == null) return 1;
+        if (str1 == str2) {
+            return 0;
+        }
+        if (str1 == null) {
+            return -1;
+        }
+        if (str2 == null) {
+            return 1;
+        }
         return str1.toString().compareTo(str2.toString());
     }
 
@@ -189,8 +209,12 @@ public final class Strings {
      *         otherwise
      */
     public static boolean equalsIgnoreCase(String str1, String str2) {
-        if (str1 == str2) return true;
-        if (str1 == null) return str2 == null;
+        if (str1 == str2) {
+            return true;
+        }
+        if (str1 == null) {
+            return str2 == null;
+        }
         return str1.equalsIgnoreCase(str2);
     }
 
@@ -208,8 +232,12 @@ public final class Strings {
     public static String join(CharSequence delimiter, int[] values) {
         Objects.requireNonNull(delimiter);
         Objects.requireNonNull(values);
-        if (values.length == 0) return "";
-        if (values.length == 1) return Integer.toString(values[0]);
+        if (values.length == 0) {
+            return "";
+        }
+        if (values.length == 1) {
+            return Integer.toString(values[0]);
+        }
         StringBuilder sb = new StringBuilder();
         sb.append(values[0]);
         for (int i = 1; i != values.length; ++i) {
@@ -252,14 +280,24 @@ public final class Strings {
         Objects.requireNonNull(delimiter);
         Objects.requireNonNull(values);
         Iterator<T> iter = values.iterator();
-        if (!iter.hasNext()) return "";
+        if (!iter.hasNext()) {
+            return "";
+        }
         StringBuilder sb = new StringBuilder();
-        sb.append(iter.next());
+        String first = conversion.apply(iter.next());
+        boolean delimit = false;
+        if (first != null) {
+            sb.append(first);
+            delimit = true;
+        }
         while (iter.hasNext()) {
-            String convertedValue = conversion.apply(iter.next());
-            if (convertedValue != null) {
-                sb.append(delimiter);
-                sb.append(convertedValue);
+            String next = conversion.apply(iter.next());
+            if (next != null) {
+                if (delimit) {
+                    sb.append(delimiter);
+                }
+                sb.append(next);
+                delimit = true;
             }
         }
         return sb.toString();
@@ -288,7 +326,9 @@ public final class Strings {
      */
     public static String trim(String str, CharacterPredicate predicate) {
         int len = str.length();
-        if (len == 0) return str;
+        if (len == 0) {
+            return str;
+        }
         int st = 0;
         while ((st < len) && predicate.test(str.charAt(st))) {
             st++;
@@ -328,7 +368,9 @@ public final class Strings {
     public static String pad(String original,
                              int length,
                              char padChar) {
-        if (original.length() >= length) return original;
+        if (original.length() >= length) {
+            return original;
+        }
         StringBuilder sb = new StringBuilder(original);
         while (sb.length() < length) {
             sb.append(padChar);
@@ -354,7 +396,9 @@ public final class Strings {
     }
 
     public static enum Justify {
-        LEFT, RIGHT, CENTER;
+        LEFT,
+        RIGHT,
+        CENTER;
     }
 
     /**
@@ -519,7 +563,9 @@ public final class Strings {
      * @return the stack trace, or null if the supplied exception is null
      */
     public static String getStackTrace(Throwable throwable) {
-        if (throwable == null) return null;
+        if (throwable == null) {
+            return null;
+        }
         final ByteArrayOutputStream bas = new ByteArrayOutputStream();
         final PrintWriter pw = new PrintWriter(bas);
         throwable.printStackTrace(pw);
@@ -549,25 +595,33 @@ public final class Strings {
         if (value != null) {
             try {
                 return Short.valueOf(value);
-            } catch (NumberFormatException e1) {
+            }
+            catch (NumberFormatException e1) {
                 try {
                     return Integer.valueOf(value);
-                } catch (NumberFormatException e2) {
+                }
+                catch (NumberFormatException e2) {
                     try {
                         return Long.valueOf(value);
-                    } catch (NumberFormatException e3) {
+                    }
+                    catch (NumberFormatException e3) {
                         try {
                             return Float.valueOf(value);
-                        } catch (NumberFormatException e4) {
+                        }
+                        catch (NumberFormatException e4) {
                             try {
                                 return Double.valueOf(value);
-                            } catch (NumberFormatException e5) {
+                            }
+                            catch (NumberFormatException e5) {
                                 try {
                                     return new BigInteger(value);
-                                } catch (NumberFormatException e6) {
+                                }
+                                catch (NumberFormatException e6) {
                                     try {
                                         return new BigDecimal(value);
-                                    } catch (NumberFormatException e7) {}
+                                    }
+                                    catch (NumberFormatException e7) {
+                                    }
                                 }
                             }
                         }
@@ -589,7 +643,9 @@ public final class Strings {
         if (value != null) {
             try {
                 return Integer.parseInt(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
     }
@@ -605,7 +661,9 @@ public final class Strings {
         if (value != null) {
             try {
                 return Long.parseLong(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
     }
@@ -621,7 +679,9 @@ public final class Strings {
         if (value != null) {
             try {
                 return Double.parseDouble(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
     }
@@ -637,9 +697,49 @@ public final class Strings {
         if (value != null) {
             try {
                 return Boolean.parseBoolean(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
+    }
+
+    /**
+     * Converts the given string (in the format 00:00:00(.0*)) into a {@link Duration}.
+     *
+     * @return the given value as {@code Duration} or {@code null} if {@code null} was passed.
+     */
+    public static Duration asDuration(String timeString) {
+        if (timeString == null) {
+            return null;
+        }
+        Matcher matcher = TIME_PATTERN.matcher(timeString);
+
+        if (!matcher.matches()) {
+            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
+        }
+
+        long hours = Long.parseLong(matcher.group(1));
+        long minutes = Long.parseLong(matcher.group(2));
+        long seconds = Long.parseLong(matcher.group(3));
+        long nanoSeconds = 0;
+        String microSecondsString = matcher.group(5);
+        if (microSecondsString != null) {
+            nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
+        }
+
+        if (hours >= 0) {
+            return Duration.ofHours(hours)
+                    .plusMinutes(minutes)
+                    .plusSeconds(seconds)
+                    .plusNanos(nanoSeconds);
+        }
+        else {
+            return Duration.ofHours(hours)
+                    .minusMinutes(minutes)
+                    .minusSeconds(seconds)
+                    .minusNanos(nanoSeconds);
+        }
     }
 
     /**
@@ -736,13 +836,17 @@ public final class Strings {
      * @return the function that will replace variables in supplied strings; never null
      */
     public static String replaceVariables(String value, Function<String, String> replacementsByVariableName) {
-        if (value == null || value.trim().length() == 0) return value;
+        if (value == null || value.trim().length() == 0) {
+            return value;
+        }
 
         StringBuilder sb = new StringBuilder(value);
 
         // Get the index of the first constant, if any
         int startName = sb.indexOf(CURLY_PREFIX);
-        if (startName == -1) return value;
+        if (startName == -1) {
+            return value;
+        }
 
         // process as many different variable groupings that are defined, where one group will resolve to one property
         // substitution
@@ -790,7 +894,8 @@ public final class Strings {
                 // Checking for another constants
                 startName = sb.indexOf(CURLY_PREFIX);
 
-            } else {
+            }
+            else {
                 // continue to try to substitute for other properties so that all defined variables
                 // are tried to be substituted for
                 startName = sb.indexOf(CURLY_PREFIX, endName);
@@ -824,11 +929,14 @@ public final class Strings {
      * @return {@code true} if the string is a valid representation of a UUID, or {@code false} otherwise
      */
     public static boolean isUuid(String str) {
-        if (str == null) return false;
+        if (str == null) {
+            return false;
+        }
         try {
             UUID.fromString(str);
             return true;
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return false;
         }
     }
@@ -895,10 +1003,41 @@ public final class Strings {
         byte[] bytes = new byte[length / 2];
         for (int i = 0; i < length; i += 2) {
             bytes[i / 2] = (byte) ((Character.digit(hexString.charAt(i), 16) << 4)
-                                 + Character.digit(hexString.charAt(i+1), 16));
+                    + Character.digit(hexString.charAt(i + 1), 16));
         }
 
         return bytes;
+    }
+
+    /**
+     * Whether the given string begins with the given prefix, ignoring casing.
+     * Copied from https://github.com/spring-projects/spring-framework/blob/master/spring-core/src/main/java/org/springframework/util/StringUtils.java.
+     */
+    public static boolean startsWithIgnoreCase(String str, String prefix) {
+        return (str != null && prefix != null && str.length() >= prefix.length() &&
+                str.regionMatches(true, 0, prefix, 0, prefix.length()));
+    }
+
+    /**
+     * Returns the first {@code length} characters of the given string.
+     *
+     * @param str    The string to get the begin from
+     * @param length The length of the string to return
+     * @return {@code null}, if the given string is {@code null}, the first first
+     *         {@code length} characters of that string otherwise. If the string is
+     *         shorter than the given number of characters, the string itself will
+     *         be returned.
+     */
+    public static String getBegin(String str, int length) {
+        if (str == null) {
+            return null;
+        }
+        else if (str.length() < length) {
+            return str;
+        }
+        else {
+            return str.substring(0, length);
+        }
     }
 
     private static Character deriveQuotingChar(String identifierPart) {
@@ -928,12 +1067,12 @@ public final class Strings {
 
             List<String> parts = new ArrayList<>();
 
-            while(stream.hasNext()) {
+            while (stream.hasNext()) {
                 final String part = stream.consume();
                 if (part.length() == 0) {
                     continue;
                 }
-                parts.add(part.replace("\\,", ","));
+                parts.add(part.trim().replace("\\,", ","));
             }
 
             return parts.toArray(new String[parts.size()]);
@@ -950,7 +1089,8 @@ public final class Strings {
                         throw new ParsingException(input.position(input.index()), "Unterminated escape sequence at the end of the string");
                     }
                     input.next();
-                } else if (c == ',') {
+                }
+                else if (c == ',') {
                     tokens.addToken(input.position(tokenStart), tokenStart, input.index());
                     tokenStart = input.index() + 1;
                 }

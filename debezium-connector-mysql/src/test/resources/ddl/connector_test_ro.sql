@@ -4,7 +4,8 @@
 
 -- Create and populate our products using a single insert with many rows
 CREATE TABLE Products (
-  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  PRIMARY KEY (id),
+  id INTEGER NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   description VARCHAR(512),
   weight FLOAT
@@ -89,3 +90,5 @@ CREATE TABLE dbz_342_timetest (
   c5 TIME(6)
 );
 INSERT INTO dbz_342_timetest VALUES ('517:51:04.777', '-13:14:50', '-733:00:00.0011', '-1:59:59.0011', '-838:59:58.999999');
+
+CREATE DATABASE IF NOT EXISTS emptydb;

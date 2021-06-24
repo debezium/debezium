@@ -12,7 +12,7 @@ public interface DeltaCount extends PNCount {
 
     /**
      * Get the changes in the current value during the last interval.
-     * 
+     *
      * @return the changes in the value during the last interval; never null
      */
     PNCount getChanges();
@@ -25,7 +25,7 @@ public interface DeltaCount extends PNCount {
         PNCount changes = getChanges();
         return changes.getIncrement() != 0 || changes.getDecrement() != 0;
     }
-    
+
     /**
      * Get the value of this count prior to the {@link #getChanges() changes}.
      * @return the prior count; never null

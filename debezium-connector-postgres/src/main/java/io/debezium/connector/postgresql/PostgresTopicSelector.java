@@ -6,7 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig.TopicSelectionStrategy;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 
@@ -18,9 +17,7 @@ import io.debezium.schema.TopicSelector;
 public class PostgresTopicSelector {
 
     public static TopicSelector<TableId> create(PostgresConnectorConfig connectorConfig) {
-        TopicSelectionStrategy topicSelectionStrategy = connectorConfig.topicSelectionStrategy();
-
         return TopicSelector.defaultSelector(connectorConfig,
-                (id, prefix, delimiter) -> topicSelectionStrategy.getTopicName(id, prefix, delimiter));
+                (id, prefix, delimiter) -> String.join(delimiter, prefix, id.schema(), id.table()));
     }
 }

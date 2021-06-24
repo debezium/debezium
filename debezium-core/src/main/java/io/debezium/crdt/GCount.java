@@ -13,7 +13,7 @@ public interface GCount extends Count {
 
     /**
      * Get the amount that the value incremented.
-     * 
+     *
      * @return the incremented value
      */
     long getIncrement();

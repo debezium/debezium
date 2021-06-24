@@ -5,6 +5,7 @@
  */
 package io.debezium.jdbc;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -24,30 +25,43 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.TableEditor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
 import io.debezium.util.Collect;
+import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
 
 /**
@@ -58,20 +72,22 @@ import io.debezium.util.Strings;
 @NotThreadSafe
 public class JdbcConnection implements AutoCloseable {
 
+    private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
-    private final Map<String, PreparedStatement> statementCache = new BoundedConcurrentHashMap<>(STATEMENT_CACHE_CAPACITY, 16, Eviction.LIRS, new EvictionListener<String, PreparedStatement>() {
+    private final Map<String, PreparedStatement> statementCache = new BoundedConcurrentHashMap<>(STATEMENT_CACHE_CAPACITY, 16, Eviction.LIRS,
+            new EvictionListener<String, PreparedStatement>() {
 
-        @Override
-        public void onEntryEviction(Map<String, PreparedStatement> evicted) {
-        }
+                @Override
+                public void onEntryEviction(Map<String, PreparedStatement> evicted) {
+                }
 
-        @Override
-        public void onEntryChosenForEviction(PreparedStatement statement) {
-            cleanupPreparedStatement(statement);
-        }
-    });
+                @Override
+                public void onEntryChosenForEviction(PreparedStatement statement) {
+                    cleanupPreparedStatement(statement);
+                }
+            });
 
     /**
      * Establishes JDBC connections.
@@ -89,6 +105,29 @@ public class JdbcConnection implements AutoCloseable {
         Connection connect(JdbcConfiguration config) throws SQLException;
     }
 
+    private class ConnectionFactoryDecorator implements ConnectionFactory {
+        private final ConnectionFactory defaultConnectionFactory;
+        private final Supplier<ClassLoader> classLoaderSupplier;
+        private ConnectionFactory customConnectionFactory;
+
+        private ConnectionFactoryDecorator(ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier) {
+            this.defaultConnectionFactory = connectionFactory;
+            this.classLoaderSupplier = classLoaderSupplier;
+        }
+
+        @Override
+        public Connection connect(JdbcConfiguration config) throws SQLException {
+            if (Strings.isNullOrEmpty(config.getConnectionFactoryClassName())) {
+                return defaultConnectionFactory.connect(config);
+            }
+            if (customConnectionFactory == null) {
+                customConnectionFactory = config.getInstance(JdbcConfiguration.CONNECTION_FACTORY_CLASS,
+                        ConnectionFactory.class, classLoaderSupplier);
+            }
+            return customConnectionFactory.connect(config);
+        }
+    }
+
     /**
      * Defines multiple JDBC operations.
      */
@@ -101,6 +140,14 @@ public class JdbcConnection implements AutoCloseable {
          * @throws SQLException if there is an error connecting to the database or executing the statements
          */
         void apply(Statement statement) throws SQLException;
+    }
+
+    /**
+     * Extracts a data of resultset..
+     */
+    @FunctionalInterface
+    public static interface ResultSetExtractor<T> {
+        T apply(ResultSet rs) throws SQLException;
     }
 
     /**
@@ -119,19 +166,25 @@ public class JdbcConnection implements AutoCloseable {
      */
     public static ConnectionFactory patternBasedFactory(String urlPattern, Field... variables) {
         return (config) -> {
-            LOGGER.trace("Config: {}", config.asProperties());
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Config: {}", propsWithMaskedPassword(config.asProperties()));
+            }
             Properties props = config.asProperties();
             Field[] varsWithDefaults = combineVariables(variables,
-                                                        JdbcConfiguration.HOSTNAME,
-                                                        JdbcConfiguration.PORT,
-                                                        JdbcConfiguration.USER,
-                                                        JdbcConfiguration.PASSWORD,
-                                                        JdbcConfiguration.DATABASE);
+                    JdbcConfiguration.HOSTNAME,
+                    JdbcConfiguration.PORT,
+                    JdbcConfiguration.USER,
+                    JdbcConfiguration.PASSWORD,
+                    JdbcConfiguration.DATABASE);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
-            LOGGER.trace("Props: {}", props);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
+            }
             LOGGER.trace("URL: {}", url);
             Connection conn = DriverManager.getConnection(url, props);
-            LOGGER.debug("Connected to {} with {}", url, props);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Connected to {} with {}", url, propsWithMaskedPassword(props));
+            }
             return conn;
         };
     }
@@ -155,18 +208,22 @@ public class JdbcConnection implements AutoCloseable {
      */
     @SuppressWarnings("unchecked")
     public static ConnectionFactory patternBasedFactory(String urlPattern, String driverClassName,
-            ClassLoader classloader, Field... variables) {
+                                                        ClassLoader classloader, Field... variables) {
         return (config) -> {
-            LOGGER.trace("Config: {}", config.asProperties());
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Config: {}", propsWithMaskedPassword(config.asProperties()));
+            }
             Properties props = config.asProperties();
             Field[] varsWithDefaults = combineVariables(variables,
-                                                        JdbcConfiguration.HOSTNAME,
-                                                        JdbcConfiguration.PORT,
-                                                        JdbcConfiguration.USER,
-                                                        JdbcConfiguration.PASSWORD,
-                                                        JdbcConfiguration.DATABASE);
+                    JdbcConfiguration.HOSTNAME,
+                    JdbcConfiguration.PORT,
+                    JdbcConfiguration.USER,
+                    JdbcConfiguration.PASSWORD,
+                    JdbcConfiguration.DATABASE);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
-            LOGGER.trace("Props: {}", props);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
+            }
             LOGGER.trace("URL: {}", url);
             Connection conn = null;
             try {
@@ -175,14 +232,26 @@ public class JdbcConnection implements AutoCloseable {
                     driverClassLoader = JdbcConnection.class.getClassLoader();
                 }
                 Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
-                java.sql.Driver driver = driverClazz.newInstance();
+                java.sql.Driver driver = driverClazz.getDeclaredConstructor().newInstance();
                 conn = driver.connect(url, props);
-            } catch (ClassNotFoundException|IllegalAccessException|InstantiationException e) {
+            }
+            catch (ClassNotFoundException | IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
                 throw new SQLException(e);
             }
-            LOGGER.debug("Connected to {} with {}", url, props);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Connected to {} with {}", url, propsWithMaskedPassword(props));
+            }
             return conn;
         };
+    }
+
+    private static Properties propsWithMaskedPassword(Properties props) {
+        final Properties filtered = new Properties();
+        filtered.putAll(props);
+        if (props.containsKey(JdbcConfiguration.PASSWORD.name())) {
+            filtered.put(JdbcConfiguration.PASSWORD.name(), "***");
+        }
+        return filtered;
     }
 
     private static Field[] combineVariables(Field[] overriddenVariables,
@@ -203,22 +272,35 @@ public class JdbcConnection implements AutoCloseable {
 
     private static String findAndReplace(String url, Properties props, Field... variables) {
         for (Field field : variables) {
-            if ( field != null ) url = findAndReplace(url, field.name(), props);
+            if (field != null) {
+                url = findAndReplace(url, field.name(), props, field.defaultValueAsString());
+            }
         }
         for (Object key : new HashSet<>(props.keySet())) {
-            if (key != null ) url = findAndReplace(url, key.toString(), props);
+            if (key != null) {
+                url = findAndReplace(url, key.toString(), props, null);
+            }
         }
         return url;
     }
 
-    private static String findAndReplace(String url, String name, Properties props) {
+    private static String findAndReplace(String url, String name, Properties props, String defaultValue) {
         if (name != null && url.contains("${" + name + "}")) {
-            // Otherwise, we have to remove it from the properties ...
-            String value = props.getProperty(name);
-            if (value != null) {
-                props.remove(name);
-                // And replace the variable ...
-                url = url.replaceAll("\\$\\{" + name + "\\}", value);
+            {
+                // Otherwise, we have to remove it from the properties ...
+                String value = props.getProperty(name);
+                if (value != null) {
+                    props.remove(name);
+                }
+
+                if (value == null) {
+                    value = defaultValue;
+                }
+
+                if (value != null) {
+                    // And replace the variable ...
+                    url = url.replaceAll("\\$\\{" + name + "\\}", value);
+                }
             }
         }
         return url;
@@ -236,7 +318,17 @@ public class JdbcConnection implements AutoCloseable {
      * @param connectionFactory the connection factory; may not be null
      */
     public JdbcConnection(Configuration config, ConnectionFactory connectionFactory) {
-        this(config, connectionFactory, null);
+        this(config, connectionFactory, (Operations) null);
+    }
+
+    /**
+     * Create a new instance with the given configuration and connection factory.
+     *
+     * @param config the configuration; may not be null
+     * @param connectionFactory the connection factory; may not be null
+     */
+    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier) {
+        this(config, connectionFactory, null, null, classLoaderSupplier);
     }
 
     /**
@@ -261,9 +353,24 @@ public class JdbcConnection implements AutoCloseable {
      * @param adapter the function that can be called to update the configuration with defaults
      */
     protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
-            Consumer<Configuration.Builder> adapter) {
+                             Consumer<Configuration.Builder> adapter) {
+        this(config, connectionFactory, initialOperations, adapter, null);
+    }
+
+    /**
+     * Create a new instance with the given configuration and connection factory, and specify the operations that should be
+     * run against each newly-established connection.
+     *
+     * @param config the configuration; may not be null
+     * @param connectionFactory the connection factory; may not be null
+     * @param initialOperations the initial operations that should be run on each new connection; may be null
+     * @param adapter the function that can be called to update the configuration with defaults
+     * @param classLoaderSupplier class loader supplier
+     */
+    protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
+                             Consumer<Configuration.Builder> adapter, Supplier<ClassLoader> classLoaderSupplier) {
         this.config = adapter == null ? config : config.edit().apply(adapter).build();
-        this.factory = connectionFactory;
+        this.factory = classLoaderSupplier == null ? connectionFactory : new ConnectionFactoryDecorator(connectionFactory, classLoaderSupplier);
         this.initialOps = initialOperations;
         this.conn = null;
     }
@@ -279,6 +386,25 @@ public class JdbcConnection implements AutoCloseable {
 
     public JdbcConnection setAutoCommit(boolean autoCommit) throws SQLException {
         connection().setAutoCommit(autoCommit);
+        return this;
+    }
+
+    public JdbcConnection commit() throws SQLException {
+        Connection conn = connection();
+        if (!conn.getAutoCommit()) {
+            conn.commit();
+        }
+        return this;
+    }
+
+    public synchronized JdbcConnection rollback() throws SQLException {
+        if (!isConnected()) {
+            return this;
+        }
+        Connection conn = connection();
+        if (!conn.getAutoCommit()) {
+            conn.rollback();
+        }
         return this;
     }
 
@@ -326,7 +452,7 @@ public class JdbcConnection implements AutoCloseable {
         Connection conn = connection();
         try (Statement statement = conn.createStatement();) {
             operations.apply(statement);
-            if (!conn.getAutoCommit()) conn.commit();
+            commit();
         }
         return this;
     }
@@ -450,7 +576,8 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
      */
-    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer preparer, BlockingMultiResultSetConsumer resultConsumer) throws SQLException, InterruptedException {
+    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer preparer, BlockingMultiResultSetConsumer resultConsumer)
+            throws SQLException, InterruptedException {
         final StatementPreparer[] preparers = new StatementPreparer[multiQuery.length];
         Arrays.fill(preparers, preparer);
         return prepareQuery(multiQuery, preparers, resultConsumer);
@@ -460,13 +587,14 @@ public class JdbcConnection implements AutoCloseable {
      * Execute multiple SQL prepared queries where each query is executed with the same set of parameters.
      *
      * @param multiQuery the array of prepared queries
-     * @param preparer the array of functions that supply arguments to the prepared statements; may not be null
+     * @param preparers the array of functions that supply arguments to the prepared statements; may not be null
      * @param resultConsumer the consumer of the query results
      * @return this object for chaining methods together
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
      */
-    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer[] preparers, BlockingMultiResultSetConsumer resultConsumer) throws SQLException, InterruptedException {
+    public JdbcConnection prepareQuery(String[] multiQuery, StatementPreparer[] preparers, BlockingMultiResultSetConsumer resultConsumer)
+            throws SQLException, InterruptedException {
         final ResultSet[] resultSets = new ResultSet[multiQuery.length];
         final PreparedStatement[] preparedStatements = new PreparedStatement[multiQuery.length];
 
@@ -486,7 +614,7 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         finally {
-            for (ResultSet rs: resultSets) {
+            for (ResultSet rs : resultSets) {
                 if (rs != null) {
                     try {
                         rs.close();
@@ -498,7 +626,6 @@ public class JdbcConnection implements AutoCloseable {
         }
         return this;
     }
-
 
     /**
      * Execute a SQL query and map the result set into an expected type.
@@ -524,7 +651,8 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
-    public JdbcConnection queryWithBlockingConsumer(String query, StatementFactory statementFactory, BlockingResultSetConsumer resultConsumer) throws SQLException, InterruptedException {
+    public JdbcConnection queryWithBlockingConsumer(String query, StatementFactory statementFactory, BlockingResultSetConsumer resultConsumer)
+            throws SQLException, InterruptedException {
         Connection conn = connection();
         try (Statement statement = statementFactory.createStatement(conn);) {
             if (LOGGER.isTraceEnabled()) {
@@ -564,12 +692,36 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
      */
+    public JdbcConnection prepareQueryWithBlockingConsumer(String preparedQueryString, StatementPreparer preparer, BlockingResultSetConsumer resultConsumer)
+            throws SQLException, InterruptedException {
+        final PreparedStatement statement = createPreparedStatement(preparedQueryString);
+        preparer.accept(statement);
+        try (ResultSet resultSet = statement.executeQuery();) {
+            if (resultConsumer != null) {
+                resultConsumer.accept(resultSet);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Execute a SQL prepared query.
+     *
+     * @param preparedQueryString the prepared query string
+     * @param preparer the function that supplied arguments to the prepared statement; may not be null
+     * @param resultConsumer the consumer of the query results
+     * @return this object for chaining methods together
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
     public JdbcConnection prepareQuery(String preparedQueryString, StatementPreparer preparer, ResultSetConsumer resultConsumer)
             throws SQLException {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         preparer.accept(statement);
         try (ResultSet resultSet = statement.executeQuery();) {
-            if (resultConsumer != null) resultConsumer.accept(resultSet);
+            if (resultConsumer != null) {
+                resultConsumer.accept(resultSet);
+            }
         }
         return this;
     }
@@ -580,7 +732,7 @@ public class JdbcConnection implements AutoCloseable {
      *
      * @param preparedQueryString the prepared query string
      * @param preparer the function that supplied arguments to the prepared statement; may not be null
-     * @param resultConsumer the consumer of the query results
+     * @param mapper the function processing the query results
      * @return the result of the mapper calculation
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
@@ -628,7 +780,7 @@ public class JdbcConnection implements AutoCloseable {
             throws SQLException {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         int index = 1;
-        for (final Object parameter: parameters) {
+        for (final Object parameter : parameters) {
             statement.setObject(index++, parameter);
         }
         try (ResultSet resultSet = statement.executeQuery()) {
@@ -653,7 +805,9 @@ public class JdbcConnection implements AutoCloseable {
             lines.accept(delimiter(columnCount, columnSizes));
             StringBuilder sb = new StringBuilder();
             for (int i = 1; i <= columnCount; i++) {
-                if (i > 1) sb.append(" | ");
+                if (i > 1) {
+                    sb.append(" | ");
+                }
                 sb.append(Strings.setLength(rsmd.getColumnLabel(i), columnSizes[i], ' '));
             }
             lines.accept(sb.toString());
@@ -662,14 +816,17 @@ public class JdbcConnection implements AutoCloseable {
             while (resultSet.next()) {
                 sb.setLength(0);
                 for (int i = 1; i <= columnCount; i++) {
-                    if (i > 1) sb.append(" | ");
+                    if (i > 1) {
+                        sb.append(" | ");
+                    }
                     sb.append(Strings.setLength(resultSet.getString(i), columnSizes[i], ' '));
                 }
                 lines.accept(sb.toString());
                 sb.setLength(0);
             }
             lines.accept(delimiter(columnCount, columnSizes));
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -677,7 +834,9 @@ public class JdbcConnection implements AutoCloseable {
     private String delimiter(int columnCount, int[] columnSizes) {
         StringBuilder sb = new StringBuilder();
         for (int i = 1; i <= columnCount; i++) {
-            if (i > 1) sb.append("---");
+            if (i > 1) {
+                sb.append("---");
+            }
             sb.append(Strings.createString('-', columnSizes[i]));
         }
         return sb.toString();
@@ -693,7 +852,9 @@ public class JdbcConnection implements AutoCloseable {
         while (resultSet.next()) {
             for (int i = 1; i <= columnCount; i++) {
                 String value = resultSet.getString(i);
-                if (value != null) columnSizes[i] = Math.max(columnSizes[i], value.length());
+                if (value != null) {
+                    columnSizes[i] = Math.max(columnSizes[i], value.length());
+                }
             }
         }
         resultSet.beforeFirst();
@@ -701,7 +862,9 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized boolean isConnected() throws SQLException {
-        if (conn == null) return false;
+        if (conn == null) {
+            return false;
+        }
         return !conn.isClosed();
     }
 
@@ -710,11 +873,15 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
-        if (conn == null) {
+        if (!isConnected()) {
             conn = factory.connect(JdbcConfiguration.adapt(config));
-            if (conn == null) throw new SQLException("Unable to obtain a JDBC connection");
+            if (!isConnected()) {
+                throw new SQLException("Unable to obtain a JDBC connection");
+            }
             // Always run the initial operations on this new connection
-            if (initialOps != null) execute(initialOps);
+            if (initialOps != null) {
+                execute(initialOps);
+            }
             final String statements = config.getString(JdbcConfiguration.ON_CONNECT_STATEMENTS);
             if (statements != null && executeOnConnect) {
                 final List<String> splitStatements = parseSqlStatementString(statements);
@@ -767,10 +934,41 @@ public class JdbcConnection implements AutoCloseable {
             try {
                 statementCache.values().forEach(this::cleanupPreparedStatement);
                 statementCache.clear();
-                conn.close();
-            } finally {
+                LOGGER.trace("Closing database connection");
+                doClose();
+            }
+            finally {
                 conn = null;
             }
+        }
+    }
+
+    private void doClose() throws SQLException {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        // attempting to close the connection gracefully
+        Future<Object> futureClose = executor.submit(() -> {
+            conn.close();
+            LOGGER.info("Connection gracefully closed");
+            return null;
+        });
+        try {
+            futureClose.get(WAIT_FOR_CLOSE_SECONDS, TimeUnit.SECONDS);
+        }
+        catch (ExecutionException e) {
+            if (e.getCause() instanceof SQLException) {
+                throw (SQLException) e.getCause();
+            }
+            else if (e.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) e.getCause();
+            }
+            throw new DebeziumException(e.getCause());
+        }
+        catch (TimeoutException | InterruptedException e) {
+            LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
+            conn.abort(Runnable::run);
+        }
+        finally {
+            executor.shutdownNow();
         }
     }
 
@@ -820,7 +1018,9 @@ public class JdbcConnection implements AutoCloseable {
         try (ResultSet rs = metadata.getTableTypes()) {
             while (rs.next()) {
                 String tableType = rs.getString(1);
-                if (tableType != null) types.add(tableType);
+                if (tableType != null) {
+                    types.add(tableType);
+                }
             }
         }
         return types.toArray(new String[types.size()]);
@@ -854,7 +1054,9 @@ public class JdbcConnection implements AutoCloseable {
     public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
                                        String[] tableTypes)
             throws SQLException {
-        if (tableNamePattern == null) tableNamePattern = "%";
+        if (tableNamePattern == null) {
+            tableNamePattern = "%";
+        }
         Set<TableId> tableIds = new HashSet<>();
         DatabaseMetaData metadata = connection().getMetaData();
         try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, tableNamePattern, tableTypes)) {
@@ -878,7 +1080,7 @@ public class JdbcConnection implements AutoCloseable {
     public String connectionString(String urlPattern) {
         Properties props = config.asProperties();
         return findAndReplace(urlPattern, props, JdbcConfiguration.DATABASE, JdbcConfiguration.HOSTNAME, JdbcConfiguration.PORT,
-                              JdbcConfiguration.USER, JdbcConfiguration.PASSWORD);
+                JdbcConfiguration.USER, JdbcConfiguration.PASSWORD);
     }
 
     /**
@@ -886,15 +1088,16 @@ public class JdbcConnection implements AutoCloseable {
      *
      * @return a {@code String}, never {@code null}
      */
-    public String username()  {
+    public String username() {
         return config.getString(JdbcConfiguration.USER);
     }
-  /**
+
+    /**
      * Returns the database name for this connection
      *
      * @return a {@code String}, never {@code null}
      */
-    public String database()  {
+    public String database() {
         return config.getString(JdbcConfiguration.DATABASE);
     }
 
@@ -909,6 +1112,17 @@ public class JdbcConnection implements AutoCloseable {
      */
     protected int resolveNativeType(String typeName) {
         return Column.UNSET_INT_VALUE;
+    }
+
+    /**
+     * Resolves the supplied metadata JDBC type to a final JDBC type.
+     *
+     * @param metadataJdbcType the JDBC type from the underlying driver's metadata lookup
+     * @param nativeType the database native type or -1 for unknown
+     * @return the resolved JDBC type
+     */
+    protected int resolveJdbcType(int metadataJdbcType, int nativeType) {
+        return metadataJdbcType;
     }
 
     /**
@@ -937,43 +1151,49 @@ public class JdbcConnection implements AutoCloseable {
         // Read the metadata for the table columns ...
         DatabaseMetaData metadata = connection().getMetaData();
 
-        // Find views as they cannot be snapshotted
+        // Find regular and materialized views as they cannot be snapshotted
         final Set<TableId> viewIds = new HashSet<>();
-        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, new String[] {"VIEW"})) {
+        final Set<TableId> tableIds = new HashSet<>();
+
+        int totalTables = 0;
+        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null,
+                new String[]{ "VIEW", "MATERIALIZED VIEW", "TABLE" })) {
             while (rs.next()) {
                 final String catalogName = rs.getString(1);
                 final String schemaName = rs.getString(2);
                 final String tableName = rs.getString(3);
-                viewIds.add(new TableId(catalogName, schemaName, tableName));
+                final String tableType = rs.getString(4);
+                if ("TABLE".equals(tableType)) {
+                    totalTables++;
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    if (tableFilter == null || tableFilter.isIncluded(tableId)) {
+                        tableIds.add(tableId);
+                    }
+                }
+                else {
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    viewIds.add(tableId);
+                }
             }
         }
 
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
-            while (columnMetadata.next()) {
-                String catalogName = columnMetadata.getString(1);
-                String schemaName = columnMetadata.getString(2);
-                String tableName = columnMetadata.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
 
-                // exclude views and non-whitelisted tables
-                if (viewIds.contains(tableId) ||
-                        (tableFilter != null && !tableFilter.isIncluded(tableId))) {
-                    continue;
-                }
-
-                // add all whitelisted columns
-                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
-                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
-                        .add(column.create());
-                });
+        if (totalTables == tableIds.size() || config.getBoolean(RelationalDatabaseConnectorConfig.SNAPSHOT_FULL_COLUMN_SCAN_FORCE)) {
+            columnsByTable = getColumnsDetails(databaseCatalog, schemaNamePattern, null, tableFilter, columnFilter, metadata, viewIds);
+        }
+        else {
+            for (TableId includeTable : tableIds) {
+                Map<TableId, List<Column>> cols = getColumnsDetails(databaseCatalog, schemaNamePattern, includeTable.table(), tableFilter,
+                        columnFilter, metadata, viewIds);
+                columnsByTable.putAll(cols);
             }
         }
 
         // Read the metadata for the primary keys ...
         for (Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
             // First get the primary key information, which must be done for *each* table ...
-            List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableEntry.getKey());
+            List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, tableEntry.getKey());
 
             // Then define the table ...
             List<Column> columns = tableEntry.getValue();
@@ -989,15 +1209,45 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
+    private Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
+                                                         String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
+                                                         final Set<TableId> viewIds)
+            throws SQLException {
+        Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
+            while (columnMetadata.next()) {
+                String catalogName = columnMetadata.getString(1);
+                String schemaName = columnMetadata.getString(2);
+                String metaTableName = columnMetadata.getString(3);
+                TableId tableId = new TableId(catalogName, schemaName, metaTableName);
+
+                // exclude views and non-captured tables
+                if (viewIds.contains(tableId) ||
+                        (tableFilter != null && !tableFilter.isIncluded(tableId))) {
+                    continue;
+                }
+
+                // add all included columns
+                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
+                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
+                            .add(column.create());
+                });
+            }
+        }
+        return columnsByTable;
+    }
+
     /**
      * Returns a {@link ColumnEditor} representing the current record of the given result set of column metadata, if
-     * included in the column whitelist.
+     * included in column.include.list.
      */
     protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        // Oracle drivers require this for LONG/LONGRAW to be fetched first.
+        final String defaultValue = columnMetadata.getString(13);
+
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);
-            column.jdbcType(columnMetadata.getInt(5));
             column.type(columnMetadata.getString(6));
             column.length(columnMetadata.getInt(7));
             if (columnMetadata.getObject(9) != null) {
@@ -1016,14 +1266,22 @@ public class JdbcConnection implements AutoCloseable {
             column.generated("YES".equalsIgnoreCase(autogenerated));
 
             column.nativeType(resolveNativeType(column.typeName()));
-
+            column.jdbcType(resolveJdbcType(columnMetadata.getInt(5), column.nativeType()));
+            if (defaultValue != null) {
+                getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
+            }
             return Optional.of(column);
         }
 
         return Optional.empty();
     }
 
-    protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
+    protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
+        // nothing to do by default; overwrite in database specific implementation
+        return Optional.empty();
+    }
+
+    public List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> pkColumnNames = new ArrayList<>();
         try (ResultSet rs = metadata.getPrimaryKeys(id.catalog(), id.schema(), id.table())) {
             while (rs.next()) {
@@ -1033,6 +1291,52 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return pkColumnNames;
+    }
+
+    public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
+        final List<String> uniqueIndexColumnNames = new ArrayList<>();
+        try (ResultSet rs = metadata.getIndexInfo(id.catalog(), id.schema(), id.table(), true, true)) {
+            String firstIndexName = null;
+            while (rs.next()) {
+                final String indexName = rs.getString(6);
+                final String columnName = rs.getString(9);
+                final int columnIndex = rs.getInt(8);
+                if (firstIndexName == null) {
+                    firstIndexName = indexName;
+                }
+                if (!isTableUniqueIndexIncluded(indexName, columnName)) {
+                    continue;
+                }
+                // Only first unique index is taken into consideration
+                if (indexName != null && !indexName.equals(firstIndexName)) {
+                    return uniqueIndexColumnNames;
+                }
+                if (columnName != null) {
+                    // The returned columnIndex is 0 when columnName is null. These are related
+                    // to table statistics that get returned as part of the index descriptors
+                    // and should be ignored.
+                    Collect.set(uniqueIndexColumnNames, columnIndex - 1, columnName, null);
+                }
+            }
+        }
+        return uniqueIndexColumnNames;
+    }
+
+    protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id) throws SQLException {
+        final List<String> pkColumnNames = readPrimaryKeyNames(metadata, id);
+        return pkColumnNames.isEmpty() ? readTableUniqueIndices(metadata, id) : pkColumnNames;
+    }
+
+    /**
+     * Allows the connector implementation to determine if a table's unique index
+     * should be include when resolving a table's unique indices.
+     *
+     * @param indexName the index name
+     * @param columnName the column name
+     * @return true if the index is to be included; false otherwise.
+     */
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        return true;
     }
 
     private void cleanupPreparedStatement(PreparedStatement statement) {
@@ -1058,44 +1362,125 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
-     * Use the supplied table editor to create columns for the supplied result set.
+     * Executes a series of statements without explicitly committing the connection.
      *
-     * @param resultSet the query result set; may not be null
-     * @param editor the consumer of the definitions; may not be null
-     * @throws SQLException if an error occurs while using the result set
+     * @param statements a series of statements to execute
+     * @return this object so methods can be chained together; never null
+     * @throws SQLException if anything fails
      */
-    public static void columnsFor(ResultSet resultSet, TableEditor editor) throws SQLException {
-        List<Column> columns = new ArrayList<>();
-        columnsFor(resultSet, columns::add);
-        editor.setColumns(columns);
-    }
-
-    /**
-     * Determine the column definitions for the supplied result set and add each column to the specified consumer.
-     *
-     * @param resultSet the query result set; may not be null
-     * @param consumer the consumer of the definitions; may not be null
-     * @throws SQLException if an error occurs while using the result set
-     */
-    public static void columnsFor(ResultSet resultSet, Consumer<Column> consumer) throws SQLException {
-        ResultSetMetaData metadata = resultSet.getMetaData();
-        ColumnEditor column = Column.editor();
-        for (int position = 1; position <= metadata.getColumnCount(); ++position) {
-            String columnLabel = metadata.getColumnLabel(position);
-            column.name(columnLabel != null ? columnLabel : metadata.getColumnName(position));
-            column.type(metadata.getColumnTypeName(position));
-            column.jdbcType(metadata.getColumnType(position));
-            column.length(metadata.getPrecision(position));
-            column.scale(metadata.getScale(position));
-            column.optional(isNullable(metadata.isNullable(position)));
-            column.autoIncremented(metadata.isAutoIncrement(position));
-            column.generated(false);
-            consumer.accept(column.create());
+    public JdbcConnection executeWithoutCommitting(String... statements) throws SQLException {
+        Connection conn = connection();
+        try (Statement statement = conn.createStatement()) {
+            for (String stmt : statements) {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Executing statement {}", stmt);
+                }
+                statement.execute(stmt);
+            }
         }
+        return this;
     }
 
-    private static boolean isNullable(int jdbcNullable) {
+    protected static boolean isNullable(int jdbcNullable) {
         return jdbcNullable == ResultSetMetaData.columnNullable || jdbcNullable == ResultSetMetaData.columnNullableUnknown;
     }
 
+    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
+        return (rs) -> {
+            if (rs.next()) {
+                final T ret = extractor.apply(rs);
+                if (!rs.next()) {
+                    return ret;
+                }
+            }
+            throw new IllegalStateException(error);
+        };
+    }
+
+    public static <T> T querySingleValue(Connection connection, String queryString, StatementPreparer preparer, ResultSetExtractor<T> extractor) throws SQLException {
+        final PreparedStatement preparedStatement = connection.prepareStatement(queryString);
+        preparer.accept(preparedStatement);
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            if (resultSet.next()) {
+                final T result = extractor.apply(resultSet);
+                if (!resultSet.next()) {
+                    return result;
+                }
+            }
+            throw new IllegalStateException("Exactly one result expected.");
+        }
+    }
+
+    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition, String orderBy) {
+        final StringBuilder sql = new StringBuilder("SELECT ");
+        sql
+                .append(projection)
+                .append(" FROM ");
+        sql.append(quotedTableIdString(tableId));
+        if (condition.isPresent()) {
+            sql
+                    .append(" WHERE ")
+                    .append(condition.get());
+        }
+        sql
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" LIMIT ")
+                .append(limit);
+        return sql.toString();
+    }
+
+    /**
+     * Allow per-connector query creation to override for best database performance depending on the table size.
+     */
+    public Statement readTableStatement(CommonConnectorConfig connectorConfig, OptionalLong tableSize) throws SQLException {
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
+        final Statement statement = connection().createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
+    }
+
+    /**
+     * Allow per-connector prepared query creation to override for best database performance depending on the table size.
+     */
+    public PreparedStatement readTablePreparedStatement(CommonConnectorConfig connectorConfig, String sql, OptionalLong tableSize) throws SQLException {
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
+        final PreparedStatement statement = connection().prepareStatement(sql); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
+    }
+
+    /**
+     * Reads a value from JDBC result set and execute per-connector conversion if needed
+     */
+    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
+                                                                     Table table, T schema)
+            throws SQLException {
+        return rs.getObject(columnIndex);
+    }
+
+    /**
+     * Converts a {@link ResultSet} row to an array of Objects
+     */
+    public <T extends DatabaseSchema<TableId>> Object[] rowToArray(Table table, T databaseSchema, ResultSet rs,
+                                                                   ColumnUtils.ColumnArray columnArray)
+            throws SQLException {
+        final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
+        for (int i = 0; i < columnArray.getColumns().length; i++) {
+            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
+                    columnArray.getColumns()[i], table, databaseSchema);
+        }
+        return row;
+    }
+
+    /**
+     * Converts a table id into a string with all components of the id quoted so non-alphanumeric
+     * characters are properly handled.
+     *
+     * @param tableId
+     * @return formatted string
+     */
+    public String quotedTableIdString(TableId tableId) {
+        return tableId.toDoubleQuotedString();
+    }
 }

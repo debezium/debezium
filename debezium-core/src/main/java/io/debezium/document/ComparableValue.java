@@ -14,7 +14,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A specialization of {@link Value} that wraps another {@link Value} that is not comparable.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -40,23 +40,51 @@ final class ComparableValue implements Value {
 
     static Type typeForValue(Value value) {
         assert value != null;
-        if (value.isNull()) return Type.NULL;
+        if (value.isNull()) {
+            return Type.NULL;
+        }
         // Check by exact class ...
         Type type = TYPES_BY_CLASS.get(value.getClass());
-        if (type != null) return type;
+        if (type != null) {
+            return type;
+        }
         // Otherwise, check using instanceof ...
-        if (value.isString()) return Type.STRING;
-        if (value.isBoolean()) return Type.BOOLEAN;
-        if (value.isBinary()) return Type.BINARY;
-        if (value.isInteger()) return Type.INTEGER;
-        if (value.isLong()) return Type.LONG;
-        if (value.isFloat()) return Type.FLOAT;
-        if (value.isDouble()) return Type.DOUBLE;
-        if (value.isBigInteger()) return Type.BIG_INTEGER;
-        if (value.isBigDecimal()) return Type.DECIMAL;
-        if (value.isDocument()) return Type.DOCUMENT;
-        if (value.isArray()) return Type.ARRAY;
-        if (value.isNull()) return Type.NULL;
+        if (value.isString()) {
+            return Type.STRING;
+        }
+        if (value.isBoolean()) {
+            return Type.BOOLEAN;
+        }
+        if (value.isBinary()) {
+            return Type.BINARY;
+        }
+        if (value.isInteger()) {
+            return Type.INTEGER;
+        }
+        if (value.isLong()) {
+            return Type.LONG;
+        }
+        if (value.isFloat()) {
+            return Type.FLOAT;
+        }
+        if (value.isDouble()) {
+            return Type.DOUBLE;
+        }
+        if (value.isBigInteger()) {
+            return Type.BIG_INTEGER;
+        }
+        if (value.isBigDecimal()) {
+            return Type.DECIMAL;
+        }
+        if (value.isDocument()) {
+            return Type.DOCUMENT;
+        }
+        if (value.isArray()) {
+            return Type.ARRAY;
+        }
+        if (value.isNull()) {
+            return Type.NULL;
+        }
         assert false;
         throw new IllegalStateException();
     }
@@ -75,16 +103,30 @@ final class ComparableValue implements Value {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof Value) {
             Value that = (Value) obj;
             if (this.isNumber() && that.isNumber()) {
-                if (this.isLong()) return this.asLong().equals(that.asLong());
-                if (this.isDouble()) return this.asDouble().equals(that.asDouble());
-                if (this.isInteger()) return this.asInteger().equals(that.asInteger());
-                if (this.isFloat()) return this.asFloat().equals(that.asFloat());
-                if (this.isBigDecimal()) return this.asBigDecimal().equals(that.asBigDecimal());
-                if (this.isBigInteger()) return this.asBigInteger().equals(that.asBigInteger());
+                if (this.isLong()) {
+                    return this.asLong().equals(that.asLong());
+                }
+                if (this.isDouble()) {
+                    return this.asDouble().equals(that.asDouble());
+                }
+                if (this.isInteger()) {
+                    return this.asInteger().equals(that.asInteger());
+                }
+                if (this.isFloat()) {
+                    return this.asFloat().equals(that.asFloat());
+                }
+                if (this.isBigDecimal()) {
+                    return this.asBigDecimal().equals(that.asBigDecimal());
+                }
+                if (this.isBigInteger()) {
+                    return this.asBigInteger().equals(that.asBigInteger());
+                }
             }
             return this.value.equals(that.asObject());
         }
@@ -100,29 +142,42 @@ final class ComparableValue implements Value {
     @SuppressWarnings("unchecked")
     @Override
     public int compareTo(Value that) {
-        if (Value.isNull(that)) return 1;
-        if ( this.isBoolean() && that.isBoolean() ) {
+        if (Value.isNull(that)) {
+            return 1;
+        }
+        if (this.isBoolean() && that.isBoolean()) {
             return this.asBoolean().compareTo(that.asBoolean());
         }
         if (this.isNumber() && that.isNumber()) {
-            if (this.isLong()) return this.asLong().compareTo(that.asLong());
-            if (this.isDouble()) return this.asDouble().compareTo(that.asDouble());
-            if (this.isInteger()) return this.asInteger().compareTo(that.asInteger());
-            if (this.isFloat()) return this.asFloat().compareTo(that.asFloat());
-            if (this.isBigDecimal()) return this.asBigDecimal().compareTo(that.asBigDecimal());
+            if (this.isLong()) {
+                return this.asLong().compareTo(that.asLong());
+            }
+            if (this.isDouble()) {
+                return this.asDouble().compareTo(that.asDouble());
+            }
+            if (this.isInteger()) {
+                return this.asInteger().compareTo(that.asInteger());
+            }
+            if (this.isFloat()) {
+                return this.asFloat().compareTo(that.asFloat());
+            }
+            if (this.isBigDecimal()) {
+                return this.asBigDecimal().compareTo(that.asBigDecimal());
+            }
             return this.asBigInteger().compareTo(that.asBigInteger());
         }
-        if ( this.isDocument() && that.isDocument()) {
+        if (this.isDocument() && that.isDocument()) {
             return this.asDocument().compareTo(that.asDocument());
         }
-        if ( this.isArray() && that.isArray() ) {
+        if (this.isArray() && that.isArray()) {
             return this.asArray().compareTo(that.asArray());
         }
-        Comparable<Object> thisValue = (Comparable<Object>)this.asObject();
-        Comparable<Object> thatValue = (Comparable<Object>)((ComparableValue)that.comparable()).asObject();
-        if ( thisValue.getClass().isAssignableFrom(thatValue.getClass())) {
+        Comparable<Object> thisValue = (Comparable<Object>) this.asObject();
+        Comparable<Object> thatValue = (Comparable<Object>) ((ComparableValue) that.comparable()).asObject();
+        if (thisValue.getClass().isAssignableFrom(thatValue.getClass())) {
             return thisValue.compareTo(thatValue);
-        } else if (thatValue.getClass().isAssignableFrom(thisValue.getClass())) {
+        }
+        else if (thatValue.getClass().isAssignableFrom(thisValue.getClass())) {
             return thatValue.compareTo(thisValue) * -1; // correct for the reversed comparison
         }
         return ((Comparable<Object>) this.value).compareTo(that.asObject());
@@ -133,9 +188,15 @@ final class ComparableValue implements Value {
         Type type = TYPES_BY_CLASS.get(value.getClass());
         if (type == null) {
             // Didn't match by exact class, so then figure out the extensible types by instanceof ...
-            if (isDocument()) return Type.DOCUMENT;
-            if (isArray()) return Type.ARRAY;
-            if (isNull()) return Type.NULL;
+            if (isDocument()) {
+                return Type.DOCUMENT;
+            }
+            if (isArray()) {
+                return Type.ARRAY;
+            }
+            if (isNull()) {
+                return Type.NULL;
+            }
         }
         assert type != null;
         return type;
@@ -153,10 +214,14 @@ final class ComparableValue implements Value {
 
     @Override
     public Integer asInteger() {
-        if (value instanceof Integer) return (Integer) value;
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
         if (value instanceof Long) {
             long raw = ((Long) value).longValue();
-            if (isValidInteger(raw)) return Integer.valueOf((int) raw);
+            if (isValidInteger(raw)) {
+                return Integer.valueOf((int) raw);
+            }
         }
         return null;
     }
@@ -171,8 +236,12 @@ final class ComparableValue implements Value {
 
     @Override
     public Long asLong() {
-        if (value instanceof Long) return (Long) value;
-        if (value instanceof Integer) return Long.valueOf(((Integer) value).longValue());
+        if (value instanceof Long) {
+            return (Long) value;
+        }
+        if (value instanceof Integer) {
+            return Long.valueOf(((Integer) value).longValue());
+        }
         return null;
     }
 
@@ -198,20 +267,32 @@ final class ComparableValue implements Value {
 
     @Override
     public Float asFloat() {
-        if (value instanceof Float) return (Float) value;
+        if (value instanceof Float) {
+            return (Float) value;
+        }
         if (value instanceof Double) {
             double raw = ((Double) value).doubleValue();
-            if (isValidFloat(raw)) return Float.valueOf((float) raw);
+            if (isValidFloat(raw)) {
+                return Float.valueOf((float) raw);
+            }
         }
-        if (value instanceof Number) return ((Number)value).floatValue();
+        if (value instanceof Number) {
+            return ((Number) value).floatValue();
+        }
         return null;
     }
 
     @Override
     public Double asDouble() {
-        if (value instanceof Double) return (Double) value;
-        if (value instanceof Float) return Double.valueOf(((Float) value).doubleValue());
-        if (value instanceof Number) return ((Number)value).doubleValue();
+        if (value instanceof Double) {
+            return (Double) value;
+        }
+        if (value instanceof Float) {
+            return Double.valueOf(((Float) value).doubleValue());
+        }
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
         return null;
     }
 
@@ -302,8 +383,12 @@ final class ComparableValue implements Value {
 
     @Override
     public Value clone() {
-        if (isArray()) return new ComparableValue(asArray().clone());
-        if (isDocument()) return new ComparableValue(asDocument().clone());
+        if (isArray()) {
+            return new ComparableValue(asArray().clone());
+        }
+        if (isDocument()) {
+            return new ComparableValue(asDocument().clone());
+        }
         // All other values are immutable ...
         return this;
     }

@@ -49,7 +49,9 @@ public class Collect {
     public static <T, V> Set<T> unmodifiableSet(Function<V, T> extractor, V... values) {
         Set<T> newSet = new HashSet<>();
         for (V value : values) {
-            if (value != null) newSet.add(extractor.apply(value));
+            if (value != null) {
+                newSet.add(extractor.apply(value));
+            }
         }
         return Collections.unmodifiableSet(newSet);
     }
@@ -57,7 +59,9 @@ public class Collect {
     public static <T, V> Set<T> unmodifiableSet(Function<V, T> extractor, Collection<V> values) {
         Set<T> newSet = new HashSet<>();
         for (V value : values) {
-            if (value != null) newSet.add(extractor.apply(value));
+            if (value != null) {
+                newSet.add(extractor.apply(value));
+            }
         }
         return Collections.unmodifiableSet(newSet);
     }
@@ -66,7 +70,9 @@ public class Collect {
     public static <T> Set<T> unmodifiableSet(Set<T> values, T... additionalValues) {
         Set<T> newSet = new HashSet<>(values);
         for (T value : values) {
-            if (value != null) newSet.add(value);
+            if (value != null) {
+                newSet.add(value);
+            }
         }
         return Collections.unmodifiableSet(newSet);
     }
@@ -96,7 +102,9 @@ public class Collect {
     public static <T> List<T> arrayListOf(T[] values) {
         List<T> result = new ArrayList<>();
         for (T value : values) {
-            if (value != null) result.add(value);
+            if (value != null) {
+                result.add(value);
+            }
         }
         return result;
     }
@@ -232,7 +240,8 @@ public class Collect {
         return props;
     }
 
-    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5, String value5) {
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5,
+                                          String value5) {
         Properties props = new Properties();
         props.put(key1, value1);
         props.put(key2, value2);
@@ -242,7 +251,8 @@ public class Collect {
         return props;
     }
 
-    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5, String value5, String key6, String value6) {
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5,
+                                          String value5, String key6, String value6) {
         Properties props = new Properties();
         props.put(key1, value1);
         props.put(key2, value2);
@@ -268,6 +278,18 @@ public class Collect {
             list.add(defaultValue);
         }
         list.set(index, value);
+    }
+
+    /**
+     * Remove the content of one set from an another one.
+     *
+     * @param subtrahend the main set 
+     * @param minuend the elements to be removed
+     */
+    public static <T> Set<T> minus(Set<T> subtrahend, Set<T> minuend) {
+        final Set<T> r = new HashSet<T>(subtrahend);
+        r.removeAll(minuend);
+        return r;
     }
 
     private Collect() {

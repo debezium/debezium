@@ -3,8 +3,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>0.9.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>1.6.0-SNAPSHOT</version>
+	<relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-mysql</artifactId>
@@ -21,7 +21,7 @@
             <artifactId>debezium-ddl-parser</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.github.shyiko</groupId>
+            <groupId>com.zendesk</groupId>
             <artifactId>mysql-binlog-connector-java</artifactId>
         </dependency>
         <dependency>
@@ -42,6 +42,12 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Testing -->
@@ -78,6 +84,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.easytesting</groupId>
             <artifactId>fest-assert</artifactId>
             <scope>test</scope>
@@ -85,6 +96,18 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Used for unit testing with Kafka -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_${version.kafka.scala}</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -97,9 +120,10 @@
         <mysql.replica.user>mysqlreplica</mysql.replica.user>
         <mysql.replica.password>mysqlpw</mysql.replica.password>
         <mysql.port>3306</mysql.port>
+        <mysql.percona.port>3306</mysql.percona.port>
         <mysql.gtid.port>3306</mysql.gtid.port>
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
-        <mysql.replica.port>3306</mysql.replica.port> <!-- by default use master as 'replica' -->
+        <mysql.replica.port>3306</mysql.replica.port> <!-- by default use primary as 'replica' -->
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
@@ -107,9 +131,7 @@
         -->
         <docker.filter>debezium/mysql-server-test-database</docker.filter>
         <docker.skip>false</docker.skip>
-        <docker.initimage>ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
-
-        <ddl.parser.mode>legacy</ddl.parser.mode>
+        <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
     </properties>
     <build>
         <plugins>
@@ -278,6 +300,54 @@
                       </assembly>
                     </build>
                   </image>
+                  <image>
+                    <!--
+                    A Docker image using a Percona Server installation
+                    -->
+                    <name>debezium/percona-server-test-database</name>
+                    <run>
+                      <namingStrategy>none</namingStrategy>
+                      <env>
+                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                        <TZ>Pacific/Pago_Pago</TZ>
+                      </env>
+                      <ports>
+                        <port>${mysql.percona.port}:3306</port>
+                      </ports>
+                      <log>
+                        <prefix>percona-server</prefix>
+                        <enabled>true</enabled>
+                        <color>magenta</color>
+                      </log>
+                      <wait>
+                        <log>MySQL init process done. Ready for start up.</log>
+                        <time>${mysql.init.timeout}</time>
+                      </wait>
+                    </run>
+                    <build>
+                      <from>percona/percona-server:${version.mysql.server}</from>
+                      <assembly>
+                        <inline>
+                          <fileSets>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/server</directory>
+                              <includes>
+                                <include>my.cnf</include>
+                              </includes>
+                              <outputDirectory>etc/mysql</outputDirectory>
+                            </fileSet>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/init</directory>
+                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                            </fileSet>
+                          </fileSets>
+                        </inline>
+                        <targetDir>/</targetDir>
+                      </assembly>
+                    </build>
+                  </image>
                 </images>
               </configuration>
               <!--
@@ -322,8 +392,8 @@
                         <database.replica.hostname>${docker.host.address}</database.replica.hostname>
                         <database.replica.port>${mysql.replica.port}</database.replica.port>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-                        <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
                     </systemPropertyVariables>
+                    <runOrder>alphabetical</runOrder>
                 </configuration>
                 <executions>
                     <execution>
@@ -339,6 +409,10 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-assembly-plugin</artifactId>
             </plugin>
         </plugins>
         <resources>
@@ -383,10 +457,11 @@
             </activation>
             <properties>
               <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
-              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.filter>
+              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database</docker.filter>
               <mysql.port>4301</mysql.port>
               <mysql.gtid.port>4302</mysql.gtid.port>
               <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
+              <mysql.percona.port>4304</mysql.percona.port>
             </properties>
             <build>
                 <plugins>
@@ -411,8 +486,9 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
                                     </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
                             </execution>
                         </executions>
@@ -424,6 +500,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
                         <configuration>
                             <skipTests>${skipITs}</skipTests>
                             <enableAssertions>true</enableAssertions>
@@ -438,7 +515,7 @@
                                 <database.port>${mysql.port}</database.port>
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
+                                <runOrder>alphabetical</runOrder>
                             </systemPropertyVariables>
                         </configuration>
                         <executions>
@@ -466,6 +543,20 @@
                                     <systemPropertyVariables>
                                         <database.port>${mysql.gtid.port}</database.port>
                                         <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <!-- Then just Percona Server -->
+                            <execution>
+                                <id>integration-test-percona-server</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <!-- same port for both, since we're only running one server -->
+                                        <database.port>${mysql.percona.port}</database.port>
+                                        <database.replica.port>${mysql.percona.port}</database.replica.port>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -497,6 +588,19 @@
           <docker.skip>true</docker.skip>
         </properties>
       </profile>
+      <profile>
+        <id>quick</id>
+        <activation>
+          <activeByDefault>false</activeByDefault>
+          <property>
+            <name>quick</name>
+          </property>
+        </activation>
+        <properties>
+          <skipITs>true</skipITs>
+          <docker.skip>true</docker.skip>
+        </properties>
+      </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             Use the alternative Docker image for MySQL.
             To use, specify "-Dmysql-gtids" or -Pmysql-gtids on the Maven command line.
@@ -518,6 +622,27 @@
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            Use the Docker image for Percona Server.
+            To use, specify "-Dpercona-server" or -Ppercona-server on the Maven command line.
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+            <profile>
+              <id>percona-server</id>
+              <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                  <name>percona-server</name>
+                </property>
+              </activation>
+              <properties>
+                <!-- Docker properties -->
+                <docker.filter>debezium/percona-server-test-database</docker.filter>
+                <!-- Integration test properties -->
+                <database.port>${mysql.percona.port}</database.port>
+                <database.replica.port>${mysql.percona.port}</database.replica.port>
+                <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
+              </properties>
+            </profile>
+            <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             Use the Docker image for a MySQL replica of another MySQL server 
             configured to use GTIDs. To use, specify "-Dmysql-replica" 
             or -Pmysql-replica on the Maven command line.
@@ -542,14 +667,5 @@
         </properties>
       </profile>
 
-      <profile>
-        <id>parser-legacy</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-        </activation>
-        <properties>
-          <ddl.parser.mode>legacy</ddl.parser.mode>
-        </properties>
-      </profile>
     </profiles>
 </project>

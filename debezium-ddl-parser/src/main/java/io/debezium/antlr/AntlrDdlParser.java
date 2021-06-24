@@ -20,6 +20,8 @@ import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
+import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.RenameTableContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
@@ -74,7 +76,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         // remove default console output printing error listener
         parser.removeErrorListener(ConsoleErrorListener.INSTANCE);
 
-        ParsingErrorListener parsingErrorListener = new ParsingErrorListener(AbstractDdlParser::accumulateParsingFailure);
+        ParsingErrorListener parsingErrorListener = new ParsingErrorListener(ddlContent, AbstractDdlParser::accumulateParsingFailure);
         parser.addErrorListener(parsingErrorListener);
 
         ParseTree parseTree = parseTree(parser);
@@ -173,7 +175,19 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @return matched part of the getText
      */
     public static String getText(ParserRuleContext ctx) {
-        Interval interval = new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
+        return getText(ctx, ctx.start.getStartIndex(), ctx.stop.getStopIndex());
+    }
+
+    /**
+     * Returns matched part of the getText for the context.
+     *
+     * @param ctx the parser rule context; may not be null
+     * @param start the interval start position
+     * @param stop the interval stop position
+     * @return matched part of the getText
+     */
+    public static String getText(ParserRuleContext ctx, int start, int stop) {
+        Interval interval = new Interval(start, stop);
         return ctx.start.getInputStream().getText(interval);
     }
 
@@ -181,8 +195,12 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         return skipViews;
     }
 
-    public void signalSetVariable(String variableName, String variableValue, ParserRuleContext ctx) {
-        signalSetVariable(variableName, variableValue, getText(ctx));
+    public void signalSetVariable(String variableName, String variableValue, int order, ParserRuleContext ctx) {
+        signalSetVariable(variableName, variableValue, order, getText(ctx));
+    }
+
+    public void signalUseDatabase(ParserRuleContext ctx) {
+        signalUseDatabase(getText(ctx));
     }
 
     /**
@@ -224,6 +242,21 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     public void signalCreateTable(TableId id, ParserRuleContext ctx) {
         signalCreateTable(id, getText(ctx));
+    }
+
+    /**
+     * Signal an alter table event to ddl changes listener.
+     *
+     * @param id         the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param ctx        the start of the statement; may not be null
+     */
+    public void signalAlterTable(TableId id, TableId previousId, MySqlParser.RenameTableClauseContext ctx) {
+        final RenameTableContext parent = (RenameTableContext) ctx.getParent();
+        Interval interval = new Interval(ctx.getParent().start.getStartIndex(),
+                parent.renameTableClause().get(0).start.getStartIndex() - 1);
+        String prefix = ctx.getParent().start.getInputStream().getText(interval);
+        signalAlterTable(id, previousId, prefix + getText(ctx));
     }
 
     /**
@@ -328,7 +361,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     private void throwParsingException(Collection<ParsingException> errors) {
-        if(errors.size() == 1) {
+        if (errors.size() == 1) {
             throw errors.iterator().next();
         }
         else {

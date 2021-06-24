@@ -13,10 +13,22 @@ import java.util.Map;
 public interface SnapshotChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean {
 
     int getTotalTableCount();
+
     int getRemainingTableCount();
+
     boolean getSnapshotRunning();
+
     boolean getSnapshotAborted();
+
     boolean getSnapshotCompleted();
+
     long getSnapshotDurationInSeconds();
+
     Map<String, Long> getRowsScanned();
+
+    String getChunkId();
+
+    String getChunkFrom();
+
+    String getChunkTo();
 }

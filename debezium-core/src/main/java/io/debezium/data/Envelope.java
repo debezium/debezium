@@ -5,6 +5,7 @@
  */
 package io.debezium.data;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,6 +15,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 /**
  * An immutable descriptor for the structure of Debezium message envelopes. An {@link Envelope} can be created for each message
@@ -43,7 +46,12 @@ public final class Envelope {
         /**
          * An operation that resulted in an existing record being removed from or deleted in the source.
          */
-        DELETE("d");
+        DELETE("d"),
+        /**
+         * An operation that resulted in an existing table being truncated in the source.
+         */
+        TRUNCATE("t");
+
         private final String code;
 
         private Operation(String code) {
@@ -52,7 +60,9 @@ public final class Envelope {
 
         public static Operation forCode(String code) {
             for (Operation op : Operation.values()) {
-                if (op.code().equalsIgnoreCase(code)) return op;
+                if (op.code().equalsIgnoreCase(code)) {
+                    return op;
+                }
             }
             return null;
         }
@@ -84,6 +94,10 @@ public final class Envelope {
          */
         public static final String SOURCE = "source";
         /**
+         * The optional metadata information associated with transaction - like transaction id.
+         */
+        public static final String TRANSACTION = "transaction";
+        /**
          * The {@code ts_ms} field is used to store the information about the local time at which the connector
          * processed/generated the event. The timestamp values are the number of milliseconds past epoch (January 1, 1970), and
          * determined by the {@link System#currentTimeMillis() JVM current time in milliseconds}. Note that the <em>accuracy</em>
@@ -110,8 +124,14 @@ public final class Envelope {
         fields.add(FieldName.BEFORE);
         fields.add(FieldName.AFTER);
         fields.add(FieldName.SOURCE);
+        fields.add(FieldName.TRANSACTION);
         ALL_FIELD_NAMES = Collections.unmodifiableSet(fields);
     }
+
+    /**
+     * A suffix appended to each schema name representing Envelope
+     */
+    public static String SCHEMA_NAME_SUFFIX = ".Envelope";
 
     /**
      * A builder of an envelope schema.
@@ -200,20 +220,28 @@ public final class Envelope {
             public Envelope build() {
                 builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
                 builder.field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
-                checkFieldIsDefined(FieldName.OPERATION, OPERATION_REQUIRED);
-                checkFieldIsDefined(FieldName.BEFORE, false);
-                checkFieldIsDefined(FieldName.AFTER, false);
-                checkFieldIsDefined(FieldName.SOURCE, false);
+                builder.field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+                checkFieldIsDefined(FieldName.OPERATION);
+                checkFieldIsDefined(FieldName.BEFORE);
+                checkFieldIsDefined(FieldName.AFTER);
+                checkFieldIsDefined(FieldName.SOURCE);
+                checkFieldIsDefined(FieldName.TRANSACTION);
                 if (!missingFields.isEmpty()) {
                     throw new IllegalStateException("The envelope schema is missing field(s) " + String.join(", ", missingFields));
                 }
                 return new Envelope(builder.build());
             }
 
-            private void checkFieldIsDefined(String fieldName, boolean required) {
-                if (builder.field(fieldName) == null) missingFields.add(fieldName);
+            private void checkFieldIsDefined(String fieldName) {
+                if (builder.field(fieldName) == null) {
+                    missingFields.add(fieldName);
+                }
             }
         };
+    }
+
+    public static Envelope fromSchema(Schema schema) {
+        return new Envelope(schema);
     }
 
     private final Schema schema;
@@ -239,12 +267,16 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the read message; never null
      */
-    public Struct read(Object record, Struct source, Long timestamp) {
+    public Struct read(Object record, Struct source, Instant timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.READ.code());
         struct.put(FieldName.AFTER, record);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (source != null) {
+            struct.put(FieldName.SOURCE, source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
+        }
         return struct;
     }
 
@@ -256,12 +288,16 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the create message; never null
      */
-    public Struct create(Object record, Struct source, Long timestamp) {
+    public Struct create(Object record, Struct source, Instant timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.CREATE.code());
         struct.put(FieldName.AFTER, record);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (source != null) {
+            struct.put(FieldName.SOURCE, source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
+        }
         return struct;
     }
 
@@ -274,13 +310,19 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the update message; never null
      */
-    public Struct update(Object before, Struct after, Struct source, Long timestamp) {
+    public Struct update(Object before, Struct after, Struct source, Instant timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.UPDATE.code());
-        if (before != null) struct.put(FieldName.BEFORE, before);
+        if (before != null) {
+            struct.put(FieldName.BEFORE, before);
+        }
         struct.put(FieldName.AFTER, after);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (source != null) {
+            struct.put(FieldName.SOURCE, source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
+        }
         return struct;
     }
 
@@ -292,12 +334,33 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the delete message; never null
      */
-    public Struct delete(Object before, Struct source, Long timestamp) {
+    public Struct delete(Object before, Struct source, Instant timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.DELETE.code());
-        if (before != null) struct.put(FieldName.BEFORE, before);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (before != null) {
+            struct.put(FieldName.BEFORE, before);
+        }
+        if (source != null) {
+            struct.put(FieldName.SOURCE, source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
+        }
+        return struct;
+    }
+
+    /**
+     * Generate an {@link Operation#TRUNCATE truncate} message with the given information.
+     *
+     * @param source the information about the source where the truncate occurred; never null
+     * @param timestamp the timestamp for this message; never null
+     * @return the truncate message; never null
+     */
+    public Struct truncate(Struct source, Instant timestamp) {
+        Struct struct = new Struct(schema);
+        struct.put(FieldName.OPERATION, Operation.TRUNCATE.code());
+        struct.put(FieldName.SOURCE, source);
+        struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
         return struct;
     }
 
@@ -314,5 +377,31 @@ public final class Envelope {
             return Operation.forCode(value.getString(opField.name()));
         }
         return null;
+    }
+
+    /**
+     * Converts an event type name into envelope schema name
+     *
+     * @param type
+     * @return Envelope schema name
+     */
+    public static String schemaName(String type) {
+        return type + SCHEMA_NAME_SUFFIX;
+    }
+
+    /**
+     * @param schemaName
+     * @return true if schema name conforms to Envelope naming
+     */
+    public static boolean isEnvelopeSchema(String schemaName) {
+        return schemaName.endsWith(SCHEMA_NAME_SUFFIX);
+    }
+
+    /**
+     * @param schema
+     * @return true if schema name conforms to Envelope naming
+     */
+    public static boolean isEnvelopeSchema(Schema schema) {
+        return isEnvelopeSchema(schema.name());
     }
 }

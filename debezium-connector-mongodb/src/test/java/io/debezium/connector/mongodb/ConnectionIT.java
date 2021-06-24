@@ -40,8 +40,8 @@ public class ConnectionIT extends AbstractMongoIT {
     @Test
     public void shouldCreateMovieDatabase() {
         useConfiguration(config.edit()
-                .with(MongoDbConnectorConfig.DATABASE_WHITELIST, "dbA,dbB")
-                .with(MongoDbConnectorConfig.COLLECTION_BLACKLIST, "dbB.moviesB")
+                .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "dbA,dbB")
+                .with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, "dbB.moviesB")
                 .build());
 
         Testing.print("Configuration: " + config);
@@ -97,16 +97,16 @@ public class ConnectionIT extends AbstractMongoIT {
         primary.execute("read oplog from beginning", mongo -> {
             Testing.debug("Getting local.oplog.rs");
 
-            BsonTimestamp oplogStart = new BsonTimestamp(1,1);
+            BsonTimestamp oplogStart = new BsonTimestamp(1, 1);
             Bson filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
-                                      Filters.exists("fromMigrate", false)); // skip internal movements across shards
+                    Filters.exists("fromMigrate", false)); // skip internal movements across shards
             FindIterable<Document> results = mongo.getDatabase("local")
-                                                  .getCollection("oplog.rs")
-                                                  .find(filter)
-                                                  .sort(new Document("$natural", 1))
-                                                  .oplogReplay(true) // tells Mongo to not rely on indexes
-                                                  .noCursorTimeout(true) // don't timeout waiting for events
-                                                  .cursorType(CursorType.TailableAwait);
+                    .getCollection("oplog.rs")
+                    .find(filter)
+                    .sort(new Document("$natural", 1))
+                    .oplogReplay(true) // tells Mongo to not rely on indexes
+                    .noCursorTimeout(true) // don't timeout waiting for events
+                    .cursorType(CursorType.TailableAwait);
 
             Testing.debug("Reading local.oplog.rs");
             try (MongoCursor<Document> cursor = results.iterator();) {

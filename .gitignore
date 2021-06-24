@@ -9,9 +9,12 @@ activemq-data/
 .project
 .cache
 .settings/
+.factorypath
 .checkstyle
 .gradle/
+.vscode/
 build/
+debezium-ddl-parser/gen
 deploy/
 target/
 mods/
@@ -25,3 +28,6 @@ phantomjsdriver.log
 generated-sources/
 
 /state/
+bin/
+gen/
+*.tokens

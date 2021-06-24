@@ -6,11 +6,13 @@
 package io.debezium.util;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 import org.apache.kafka.connect.source.SourceConnector;
@@ -19,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Utilities related to threads and threading.
- * 
+ *
  * @author Randall Hauch
  */
 public class Threads {
@@ -38,7 +40,7 @@ public class Threads {
 
         /**
          * Get the time that has elapsed since the last call to {@link #reset() reset}.
-         * 
+         *
          * @return the number of milliseconds
          */
         long elapsedTime();
@@ -49,15 +51,18 @@ public class Threads {
      *
      */
     public static interface Timer {
+
         /**
          * @return true if current time is greater than start time plus requested time period
          */
         boolean expired();
+
+        Duration remaining();
     }
 
     /**
      * Obtain a {@link TimeSince} that uses the given clock to record the time elapsed.
-     * 
+     *
      * @param clock the clock; may not be null
      * @return the {@link TimeSince} object; never null
      */
@@ -88,14 +93,26 @@ public class Threads {
     public static Timer timer(Clock clock, Duration time) {
         final TimeSince start = timeSince(clock);
         start.reset();
-        return () -> start.elapsedTime() > time.toMillis();
+
+        return new Timer() {
+
+            @Override
+            public boolean expired() {
+                return start.elapsedTime() > time.toMillis();
+            }
+
+            @Override
+            public Duration remaining() {
+                return time.minus(start.elapsedTime(), ChronoUnit.MILLIS);
+            }
+        };
     }
 
     /**
      * Create a thread that will interrupt the calling thread when the {@link TimeSince elapsed time} has exceeded the
      * specified amount. The supplied {@link TimeSince} object will be {@link TimeSince#reset() reset} when the
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -113,7 +130,7 @@ public class Threads {
      * Create a thread that will interrupt the given thread when the {@link TimeSince elapsed time} has exceeded the
      * specified amount. The supplied {@link TimeSince} object will be {@link TimeSince#reset() reset} when the
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -125,8 +142,8 @@ public class Threads {
                                                long timeout, TimeUnit timeoutUnit,
                                                TimeSince elapsedTimer, Thread threadToInterrupt) {
         return timeout(threadName, timeout, timeoutUnit, 100, TimeUnit.MILLISECONDS,
-                       elapsedTimer::elapsedTime, elapsedTimer::reset,
-                       () -> threadToInterrupt.interrupt());
+                elapsedTimer::elapsedTime, elapsedTimer::reset,
+                () -> threadToInterrupt.interrupt());
     }
 
     /**
@@ -135,7 +152,7 @@ public class Threads {
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
      * <p>
      * The thread checks the elapsed time every 100 milliseconds.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -147,8 +164,8 @@ public class Threads {
                                  long timeout, TimeUnit timeoutUnit,
                                  TimeSince elapsedTimer, Runnable uponTimeout) {
         return timeout(threadName, timeout, timeoutUnit, 100, TimeUnit.MILLISECONDS,
-                       elapsedTimer::elapsedTime, elapsedTimer::reset,
-                       uponTimeout);
+                elapsedTimer::elapsedTime, elapsedTimer::reset,
+                uponTimeout);
     }
 
     /**
@@ -157,7 +174,7 @@ public class Threads {
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
      * <p>
      * The thread checks the elapsed time every 100 milliseconds.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -172,14 +189,14 @@ public class Threads {
                                  long sleepInterval, TimeUnit sleepUnit,
                                  TimeSince elapsedTimer, Runnable uponTimeout) {
         return timeout(threadName, timeout, timeoutUnit, sleepInterval, sleepUnit,
-                       elapsedTimer::elapsedTime, elapsedTimer::reset,
-                       uponTimeout);
+                elapsedTimer::elapsedTime, elapsedTimer::reset,
+                uponTimeout);
     }
 
     /**
      * Create a thread that will call the supplied function when the elapsed time has exceeded the
      * specified amount.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -198,13 +215,16 @@ public class Threads {
         final long timeoutInMillis = timeoutUnit.toMillis(timeout);
         final long sleepTimeInMillis = sleepUnit.toMillis(sleepInterval);
         Runnable r = () -> {
-            if (uponStart != null) uponStart.run();
+            if (uponStart != null) {
+                uponStart.run();
+            }
             while (elapsedTime.getAsLong() < timeoutInMillis) {
                 try {
                     Thread.sleep(sleepTimeInMillis);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     // awoke from sleep
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                     return;
                 }
             }
@@ -225,10 +245,30 @@ public class Threads {
      * @param connectorId - the identifier to differentiate between connector instances
      * @param name - the name of the thread
      * @param indexed - true if the thread name should be appended with an index
+     * @param daemon - true if the thread should be a daemon thread
      * @return the thread factory setting the correct name
      */
-    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed) {
-        LOGGER.info("Requested thread factory for connector {}, id = {} named = {}", connector.getSimpleName(), connectorId, name);
+    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed, boolean daemon) {
+        return threadFactory(connector, connectorId, name, indexed, daemon, null);
+    }
+
+    /**
+     * Returns a thread factory that creates threads conforming to Debezium thread naming
+     * pattern {@code debezium-<connector class>-<connector-id>-<thread-name>}.
+     *
+     * @param connector - the source connector class
+     * @param connectorId - the identifier to differentiate between connector instances
+     * @param name - the name of the thread
+     * @param indexed - true if the thread name should be appended with an index
+     * @param daemon - true if the thread should be a daemon thread
+     * @param callback - a callback called on every thread created
+     * @return the thread factory setting the correct name
+     */
+    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed, boolean daemon,
+                                              Consumer<Thread> callback) {
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Requested thread factory for connector {}, id = {} named = {}", connector.getSimpleName(), connectorId, name);
+        }
 
         return new ThreadFactory() {
             private final AtomicInteger index = new AtomicInteger(0);
@@ -236,25 +276,34 @@ public class Threads {
             @Override
             public Thread newThread(Runnable r) {
                 StringBuilder threadName = new StringBuilder(DEBEZIUM_THREAD_NAME_PREFIX)
-                                            .append(connector.getSimpleName().toLowerCase())
-                                            .append('-')
-                                            .append(connectorId)
-                                            .append('-')
-                                            .append(name);
+                        .append(connector.getSimpleName().toLowerCase())
+                        .append('-')
+                        .append(connectorId)
+                        .append('-')
+                        .append(name);
                 if (indexed) {
                     threadName.append('-').append(index.getAndIncrement());
                 }
                 LOGGER.info("Creating thread {}", threadName);
-                return new Thread(r, threadName.toString());
+                final Thread t = new Thread(r, threadName.toString());
+                t.setDaemon(daemon);
+                if (callback != null) {
+                    callback.accept(t);
+                }
+                return t;
             }
         };
     }
 
-    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name) {
-        return Executors.newSingleThreadExecutor(threadFactory(connector, connectorId, name, false));
+    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name, boolean daemon) {
+        return Executors.newSingleThreadExecutor(threadFactory(connector, connectorId, name, false, daemon));
     }
 
     public static ExecutorService newFixedThreadPool(Class<? extends SourceConnector> connector, String connectorId, String name, int threadCount) {
-        return Executors.newFixedThreadPool(threadCount, threadFactory(connector, connectorId, name, true));
+        return Executors.newFixedThreadPool(threadCount, threadFactory(connector, connectorId, name, true, false));
+    }
+
+    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name) {
+        return newSingleThreadExecutor(connector, connectorId, name, false);
     }
 }

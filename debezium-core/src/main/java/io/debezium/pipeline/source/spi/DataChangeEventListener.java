@@ -5,7 +5,12 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import org.apache.kafka.connect.data.Struct;
+
+import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * A class invoked by {@link EventDispatcher} whenever an event is available for processing.
@@ -15,8 +20,41 @@ import io.debezium.pipeline.EventDispatcher;
  */
 public interface DataChangeEventListener {
 
-    // TODO DBZ-978 pass representation of incoming event
-    void onEvent();
+    /**
+     * Invoked if an event is processed for a captured table.
+     */
+    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) throws InterruptedException;
 
-    static DataChangeEventListener NO_OP = () -> {};
+    /**
+     * Invoked for events pertaining to non-captured tables.
+     */
+    void onFilteredEvent(String event);
+
+    /**
+     * Invoked for events that cannot be processed.
+     */
+    void onErroneousEvent(String event);
+
+    /**
+     * Invoked for events that represent a connector event.
+     */
+    void onConnectorEvent(ConnectorEvent event);
+
+    static DataChangeEventListener NO_OP = new DataChangeEventListener() {
+        @Override
+        public void onFilteredEvent(String event) {
+        }
+
+        @Override
+        public void onErroneousEvent(String event) {
+        }
+
+        @Override
+        public void onConnectorEvent(ConnectorEvent event) {
+        }
+
+        @Override
+        public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
+        }
+    };
 }

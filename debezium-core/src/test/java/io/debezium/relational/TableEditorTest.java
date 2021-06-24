@@ -5,13 +5,15 @@
  */
 package io.debezium.relational;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.doc.FixFor;
 
 public class TableEditorTest {
 
@@ -48,13 +50,15 @@ public class TableEditorTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
+    @FixFor("DBZ-2580")
     public void shouldNotAllowAddingPrimaryKeyColumnWhenNotFound() {
         editor.tableId(id);
+        editor.setPrimaryKeyNames("C1", "WOOPS");
         Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
         Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
         Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
         editor.addColumns(c1, c2, c3);
-        editor.setPrimaryKeyNames("C1", "WOOPS");
+        editor.create();
     }
 
     @Test
@@ -72,7 +76,7 @@ public class TableEditorTest {
         assertThat(c2.position()).isEqualTo(2);
         assertThat(c3.position()).isEqualTo(3);
         table = editor.create();
-        assertThat(table.columnNames()).containsExactly("C1", "C2", "C3");
+        assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3");
         assertThat(table.columns()).containsExactly(c1, c2, c3);
         assertThat(table.primaryKeyColumnNames()).containsOnly("C1");
         assertValidPositions(editor);
@@ -102,7 +106,7 @@ public class TableEditorTest {
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1");
         table = editor.create();
-        assertThat(table.columnNames()).containsExactly("C1", "C2", "C3");
+        assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3");
         table.columns().forEach(col -> {
             assertThat(table.isGenerated(col.name())).isEqualTo(col.isGenerated());
         });
@@ -118,7 +122,7 @@ public class TableEditorTest {
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1");
         table = editor.create();
-        assertThat(table.columnNames()).containsExactly("C1", "C2", "C3");
+        assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3");
         table.columns().forEach(col -> {
             assertThat(table.isAutoIncremented(col.name())).isEqualTo(col.isAutoIncremented());
         });
@@ -135,28 +139,28 @@ public class TableEditorTest {
         assertValidPositions(editor);
         editor.reorderColumn("C1", null);
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C2"),
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
         editor.reorderColumn("C2", "C1");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C2"),
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
         editor.reorderColumn("C3", "C2");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C2"),
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
         editor.reorderColumn("C3", "C1");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C3"),
-                                                     editor.columnWithName("C2"));
+                editor.columnWithName("C3"),
+                editor.columnWithName("C2"));
         assertValidPositions(editor);
         editor.reorderColumn("C3", null);
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C3"),
-                                                     editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"));
+                editor.columnWithName("C1"),
+                editor.columnWithName("C2"));
         assertValidPositions(editor);
     }
 
@@ -180,7 +184,7 @@ public class TableEditorTest {
         editor.addColumns(c1, c2, c3);
         editor.removeColumn("C2");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
     }
 

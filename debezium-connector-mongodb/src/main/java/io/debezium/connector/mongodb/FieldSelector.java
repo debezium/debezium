@@ -93,7 +93,7 @@ public final class FieldSelector {
 
         /**
          * Builds the filter selector that returns the field filter for a given collection identifier, using the comma-separated
-         * list of fully-qualified field names (for details, see {@link MongoDbConnectorConfig#FIELD_BLACKLIST}) defining
+         * list of fully-qualified field names (for details, see {@link MongoDbConnectorConfig#FIELD_EXCLUDE_LIST}) defining
          * which fields (if any) should be excluded, and using the comma-separated list of fully-qualified field replacements
          * (for details, see {@link MongoDbConnectorConfig#FIELD_RENAMES}) defining which fields (if any) should be
          * renamed.
@@ -494,11 +494,19 @@ public final class FieldSelector {
 
         @Override
         void modifyField(Document doc, String field) {
+            // if the original field does not exist, make no change
+            if (!doc.containsKey(field)) {
+                return;
+            }
             doc.put(checkFieldExists(doc, newFieldNode), doc.remove(field));
         }
 
         @Override
         void modifyFieldWithDotNotation(Document doc, String field) {
+            // if the original field does not exist, make no change
+            if (!doc.containsKey(field)) {
+                return;
+            }
             doc.put(checkFieldExists(doc, newField), doc.remove(field));
         }
 
@@ -535,7 +543,8 @@ public final class FieldSelector {
             for (String nameNode : nameNodes) {
                 if (Strings.isNumeric(nameNode)) {
                     newName.add(nameNode);
-                } else {
+                }
+                else {
                     newName.add((i == replaceIndex) ? newFieldNode : nameNode);
                     i++;
                 }

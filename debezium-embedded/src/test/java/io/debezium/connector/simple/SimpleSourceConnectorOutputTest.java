@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.simple;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -20,8 +22,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import io.debezium.document.Array;
 import io.debezium.document.ArrayReader;
 import io.debezium.document.ArrayWriter;
@@ -33,7 +33,7 @@ import io.debezium.util.Testing;
 /**
  * A test case for the {@link SimpleSourceConnector} that is also able to test and verify the behavior of
  * {@link ConnectorOutputTest}.
- * 
+ *
  * @author Randall Hauch
  */
 public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
@@ -42,11 +42,13 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
 
     /**
      * Run the connector with no known expected results so that it generates the results.
-     * 
+     *
      * @throws Exception if there is an error
      */
     @Test
     public void shouldGenerateExpected() throws Exception {
+        // The test connector is blocking so we need to execute interrupt faster
+        System.setProperty("debezium.embedded.shutdown.pause.before.interrupt.ms", "5000");
         int numBatches = 1;
         int numRecordsPerBatch = 10;
         // Testing.Debug.enable();
@@ -63,7 +65,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         config.put(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, Integer.toString(numRecordsPerBatch));
         config.put(SimpleSourceConnector.TOPIC_NAME, TOPIC_NAME);
         writeConfigurationFileWithDefaultName(dir, config);
-        
+
         Properties env = new Properties();
         env.put(ConnectorOutputTest.ENV_CONNECTOR_TIMEOUT_IN_SECONDS, "1");
         writeEnvironmentFileWithDefaultName(dir, env);
@@ -83,13 +85,14 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         // Run the connector again (with fresh offsets) to read the expected results ...
         cleanOffsetStorage();
         runConnector("gen-expected", dir);
+        System.clearProperty("debezium.embedded.shutdown.pause.before.interrupt.ms");
     }
 
     /**
      * Run the connector with connector configuration and expected results files, which are read in one step.
      */
     @Test
-    public void shouldRunConnectorFromFilesInOneStep(){
+    public void shouldRunConnectorFromFilesInOneStep() {
         runConnector("simple-test-a", "src/test/resources/simple/test/a");
     }
 
@@ -97,7 +100,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector with connector configuration and expected results files, which are read in two steps.
      */
     @Test
-    public void shouldRunConnectorFromFilesInTwoSteps(){
+    public void shouldRunConnectorFromFilesInTwoSteps() {
         runConnector("simple-test-b", "src/test/resources/simple/test/b");
     }
 
@@ -105,7 +108,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector with connector configuration and expected results files, but find a mismatch in the results.
      */
     @Test(expected = AssertionError.class)
-    public void shouldRunConnectorFromFilesAndFindMismatch(){
+    public void shouldRunConnectorFromFilesAndFindMismatch() {
         // Testing.Debug.enable();
         Testing.Print.disable();
         runConnector("simple-test-c", "src/test/resources/simple/test/c");
@@ -117,9 +120,18 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * However, this test filters out the timestamps from the matching logic.
      */
     @Test
-    public void shouldRunConnectorFromFilesInOneStepWithTimestamps(){
+    public void shouldRunConnectorFromFilesInOneStepWithTimestamps() {
         // Testing.Debug.enable();
         runConnector("simple-test-d", "src/test/resources/simple/test/d");
+    }
+
+    /**
+     * Run the connector and verify that {@link org.apache.kafka.connect.errors.RetriableException} is handled.
+     */
+    @Test
+    public void shouldRecoverFromRetriableException() {
+        // Testing.Debug.enable();
+        runConnector("simple-test-e", "src/test/resources/simple/test/e");
     }
 
     protected void writeConfigurationFileWithDefaultName(Path dir, Properties props) throws IOException {
@@ -151,7 +163,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
     protected void appendStop(Path results) throws IOException {
         appendCommand(results, Document.create(CONTROL_KEY, CONTROL_STOP));
     }
-    
+
     protected Array readResults(File file) throws IOException {
         return ArrayReader.defaultReader().readArray(file);
     }

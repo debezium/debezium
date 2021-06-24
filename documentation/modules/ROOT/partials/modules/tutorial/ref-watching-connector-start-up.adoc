@@ -1,0 +1,243 @@
+
+[id="watching-connector-start-up"]
+= Watching the connector start
+
+When you register a connector,
+it generates a large amount of log output in the Kafka Connect container.
+By reviewing this output,
+you can better understand the process that the connector goes through from the time it is created until it begins reading the MySQL server's `binlog`.
+
+After registering the `inventory-connector` connector,
+you can review the log output in the Kafka Connect container (`connect`) to track the connector's status.
+
+The first few lines show the connector (`inventory-connector`) being created and started:
+
+[source,shell,options="nowrap"]
+----
+...
+2017-09-21 07:23:59,051 INFO   ||  Connector inventory-connector config updated   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2017-09-21 07:23:59,550 INFO   ||  Rebalance started   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2017-09-21 07:23:59,550 INFO   ||  Finished stopping tasks in preparation for rebalance   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2017-09-21 07:23:59,550 INFO   ||  (Re-)joining group 1   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
+2017-09-21 07:23:59,556 INFO   ||  Successfully joined group 1 with generation 2   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
+2017-09-21 07:23:59,556 INFO   ||  Joined group and got assignment: Assignment{error=0, leader='connect-1-4d60cb71-cb93-4388-8908-6f0d299a9d94', leaderUrl='http://172.17.0.7:9092/', offset=1, connectorIds=[inventory-connector], taskIds=[]}   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2017-09-21 07:23:59,557 INFO   ||  Starting connectors and tasks using config offset 1   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2017-09-21 07:23:59,557 INFO   ||  Starting connector inventory-connector   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+...
+----
+
+Further down, you should see output like the following from the connector:
+
+[source,shell,options="nowrap"]
+----
+...
+2017-09-21 07:24:01,151 INFO   MySQL|dbserver1|task  Kafka version : 0.11.0.0   [org.apache.kafka.common.utils.AppInfoParser]
+2017-09-21 07:24:01,151 INFO   MySQL|dbserver1|task  Kafka commitId : cb8625948210849f   [org.apache.kafka.common.utils.AppInfoParser]
+2017-09-21 07:24:01,584 INFO   MySQL|dbserver1|task  Found no existing offset, so preparing to perform a snapshot   [io.debezium.connector.mysql.MySqlConnectorTask]
+2017-09-21 07:24:01,614 INFO   ||  Source task WorkerSourceTask{id=inventory-connector-0} finished initialization and start   [org.apache.kafka.connect.runtime.WorkerSourceTask]
+2017-09-21 07:24:01,615 INFO   MySQL|dbserver1|snapshot  Starting snapshot for jdbc:mysql://mysql:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull with user 'debezium'   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,617 INFO   MySQL|dbserver1|snapshot  Snapshot is using user 'debezium' with these MySQL grants:   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,618 INFO   MySQL|dbserver1|snapshot         GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%'   [io.debezium.connector.mysql.SnapshotReader]
+...
+----
+
+The {prodname} log output uses _mapped diagnostic contexts_ (MDC) to provide thread-specific information in the log output,
+and make it easier to understand what is happening in the multi-threaded Kafka Connect service.
+This includes the connector type (`MySQL` in the above log messages),
+the logical name of the connector (`dbserver1` above),
+and the connector's activity (`task`, `snapshot` and `binlog`).
+
+In the log output above,
+the first few lines involve the `task` activity of the connector,
+and report some bookkeeping information (in this case, that the connector was started with no prior offset).
+The next three lines involve the `snapshot` activity of the connector,
+and report that a snapshot is being started using the `debezium` MySQL user along with the MySQL grants associated with that user.
+
+[TIP]
+====
+If the connector is not able to connect,
+or if it does not see any tables or the `binlog`,
+check these grants to ensure that all of those listed above are included.
+====
+
+Next, the connector reports the relevant MySQL server settings that it has found. One of the most important is `binlog_format`, which is set to `ROW`:
+
+[source,shell,options="nowrap"]
+----
+2017-09-21 07:24:01,618 INFO   MySQL|dbserver1|snapshot  MySQL server variables related to change data capture:   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,625 INFO   MySQL|dbserver1|snapshot  	binlog_cache_size                             = 32768                                           [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,625 INFO   MySQL|dbserver1|snapshot  	binlog_checksum                               = CRC32                                           [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,625 INFO   MySQL|dbserver1|snapshot  	binlog_direct_non_transactional_updates       = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,625 INFO   MySQL|dbserver1|snapshot  	binlog_error_action                           = ABORT_SERVER                                    [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_format                                 = ROW                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_group_commit_sync_delay                = 0                                               [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_group_commit_sync_no_delay_count       = 0                                               [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_gtid_simple_recovery                   = ON                                              [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_max_flush_queue_time                   = 0                                               [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_order_commits                          = ON                                              [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_row_image                              = FULL                                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_rows_query_log_events                  = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	binlog_stmt_cache_size                        = 32768                                           [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_set_client                          = utf8                                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_set_connection                      = utf8                                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_set_database                        = latin1                                          [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_set_filesystem                      = binary                                          [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_set_results                         = utf8                                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_set_server                          = latin1                                          [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_set_system                          = utf8                                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	character_sets_dir                            = /usr/share/mysql/charsets/                      [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	collation_connection                          = utf8_general_ci                                 [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	collation_database                            = latin1_swedish_ci                               [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	collation_server                              = latin1_swedish_ci                               [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	enforce_gtid_consistency                      = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,626 INFO   MySQL|dbserver1|snapshot  	gtid_executed_compression_period              = 1000                                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	gtid_mode                                     = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	gtid_next                                     = AUTOMATIC                                       [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	gtid_owned                                    =                                                 [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	gtid_purged                                   =                                                 [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	innodb_api_enable_binlog                      = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	innodb_locks_unsafe_for_binlog                = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	innodb_version                                = 5.7.19                                          [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	log_statements_unsafe_for_binlog              = ON                                              [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	max_binlog_cache_size                         = 18446744073709547520                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	max_binlog_size                               = 1073741824                                      [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	max_binlog_stmt_cache_size                    = 18446744073709547520                            [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	protocol_version                              = 10                                              [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	session_track_gtids                           = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	slave_type_conversions                        =                                                 [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	sync_binlog                                   = 1                                               [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	system_time_zone                              = UTC                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	time_zone                                     = SYSTEM                                          [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	tls_version                                   = TLSv1,TLSv1.1                                   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	tx_isolation                                  = REPEATABLE-READ                                 [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	tx_read_only                                  = OFF                                             [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	version                                       = 5.7.19-log                                      [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	version_comment                               = MySQL Community Server (GPL)                    [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,627 INFO   MySQL|dbserver1|snapshot  	version_compile_machine                       = x86_64                                          [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,628 INFO   MySQL|dbserver1|snapshot  	version_compile_os                            = Linux                                           [io.debezium.connector.mysql.SnapshotReader]
+...
+----
+
+Next, the connector reports the nine steps that make up the snapshot operation:
+
+[source,shell,options="nowrap"]
+----
+...
+2017-09-21 07:24:01,628 INFO   MySQL|dbserver1|snapshot  Step 0: disabling autocommit and enabling repeatable read transactions   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,631 INFO   MySQL|dbserver1|snapshot  Step 1: start transaction with consistent snapshot   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,634 INFO   MySQL|dbserver1|snapshot  Step 2: flush and obtain global read lock to prevent writes to database   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,636 INFO   MySQL|dbserver1|snapshot  Step 3: read binlog position of MySQL primary server   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,638 INFO   MySQL|dbserver1|snapshot  	 using binlog 'mysql-bin.000003' at position '154' and gtid ''   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,638 INFO   MySQL|dbserver1|snapshot  Step 4: read list of available databases   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,638 INFO   MySQL|dbserver1|snapshot  	 list of available databases is: [information_schema, inventory, mysql, performance_schema, sys]   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,639 INFO   MySQL|dbserver1|snapshot  Step 5: read list of available tables in each database   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,641 INFO   MySQL|dbserver1|snapshot  	 including 'inventory.customers'   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,641 INFO   MySQL|dbserver1|snapshot  	 including 'inventory.orders'   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,641 INFO   MySQL|dbserver1|snapshot  	 including 'inventory.products'   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,641 INFO   MySQL|dbserver1|snapshot  	 including 'inventory.products_on_hand'   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,642 INFO   MySQL|dbserver1|snapshot  	 'mysql.columns_priv' is filtered out, discarding   [io.debezium.connector.mysql.SnapshotReader]
+...
+2017-09-21 07:24:01,670 INFO   MySQL|dbserver1|snapshot  	snapshot continuing with database(s): [inventory]   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,670 INFO   MySQL|dbserver1|snapshot  Step 6: generating DROP and CREATE statements to reflect current database schemas:   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,679 INFO   MySQL|dbserver1|snapshot  	SET character_set_server=latin1, collation_server=latin1_swedish_ci;   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,724 WARN   MySQL|dbserver1|task  Error while fetching metadata with correlation id 1 : {dbhistory.inventory=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2017-09-21 07:24:01,853 INFO   MySQL|dbserver1|snapshot  	DROP TABLE IF EXISTS `inventory`.`products_on_hand`   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,861 INFO   MySQL|dbserver1|snapshot  	DROP TABLE IF EXISTS `inventory`.`customers`   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,864 INFO   MySQL|dbserver1|snapshot  	DROP TABLE IF EXISTS `inventory`.`orders`   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,866 INFO   MySQL|dbserver1|snapshot  	DROP TABLE IF EXISTS `inventory`.`products`   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,881 INFO   MySQL|dbserver1|snapshot  	DROP DATABASE IF EXISTS `inventory`   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,889 INFO   MySQL|dbserver1|snapshot  	CREATE DATABASE `inventory`   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,893 INFO   MySQL|dbserver1|snapshot  	USE `inventory`   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,914 INFO   MySQL|dbserver1|snapshot  	CREATE TABLE `customers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(255) NOT NULL,
+  `last_name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=1005 DEFAULT CHARSET=latin1   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,932 INFO   MySQL|dbserver1|snapshot  	CREATE TABLE `orders` (
+  `order_number` int(11) NOT NULL AUTO_INCREMENT,
+  `order_date` date NOT NULL,
+  `purchaser` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  PRIMARY KEY (`order_number`),
+  KEY `order_customer` (`purchaser`),
+  KEY `ordered_product` (`product_id`),
+  CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`purchaser`) REFERENCES `customers` (`id`),
+  CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=10005 DEFAULT CHARSET=latin1   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,937 INFO   MySQL|dbserver1|snapshot  	CREATE TABLE `products` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` varchar(512) DEFAULT NULL,
+  `weight` float DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=110 DEFAULT CHARSET=latin1   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,941 INFO   MySQL|dbserver1|snapshot  	CREATE TABLE `products_on_hand` (
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  PRIMARY KEY (`product_id`),
+  CONSTRAINT `products_on_hand_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,947 INFO   MySQL|dbserver1|snapshot  Step 7: releasing global read lock to enable MySQL writes   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,949 INFO   MySQL|dbserver1|snapshot  Step 7: blocked writes to MySQL for a total of 00:00:00.312   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,950 INFO   MySQL|dbserver1|snapshot  Step 8: scanning contents of 4 tables while still in transaction   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,953 INFO   MySQL|dbserver1|snapshot  Step 8: - scanning table 'inventory.customers' (1 of 4 tables)   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,958 INFO   MySQL|dbserver1|snapshot  Step 8: - Completed scanning a total of 4 rows from table 'inventory.customers' after 00:00:00.005   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,959 INFO   MySQL|dbserver1|snapshot  Step 8: - scanning table 'inventory.orders' (2 of 4 tables)   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,014 INFO   MySQL|dbserver1|snapshot  Step 8: - Completed scanning a total of 4 rows from table 'inventory.orders' after 00:00:00.055   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,016 INFO   MySQL|dbserver1|snapshot  Step 8: - scanning table 'inventory.products' (3 of 4 tables)   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,017 INFO   MySQL|dbserver1|snapshot  Step 8: - Completed scanning a total of 9 rows from table 'inventory.products' after 00:00:00.001   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,018 INFO   MySQL|dbserver1|snapshot  Step 8: - scanning table 'inventory.products_on_hand' (4 of 4 tables)   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,019 INFO   MySQL|dbserver1|snapshot  Step 8: - Completed scanning a total of 9 rows from table 'inventory.products_on_hand' after 00:00:00.001   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,020 INFO   MySQL|dbserver1|snapshot  Step 8: scanned 26 rows in 4 tables in 00:00:00.069   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,020 INFO   MySQL|dbserver1|snapshot  Step 9: committing transaction   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:02,021 INFO   MySQL|dbserver1|snapshot  Completed snapshot in 00:00:00.405   [io.debezium.connector.mysql.SnapshotReader]
+...
+----
+
+Each of these steps reports what the connector is doing to perform the consistent snapshot.
+For example, Step 6 involves reverse engineering the DDL `create` statements for the tables that are being captured.
+Step 7 releases the global write lock just 0.3 seconds after acquiring it,
+and Step 8 reads all of the rows in each of the tables and reports the time taken and number of rows found.
+In this case, the connector completed its consistent snapshot in just 0.38 seconds.
+
+[NOTE]
+====
+The snapshot process will take longer with your databases,
+but the connector outputs enough log messages that you can track what it is working on,
+even when the tables have a large number of rows.
+And although an exclusive write lock is used at the beginning of the snapshot process,
+it should not last very long even for large databases.
+This is because the lock is released before any data is copied.
+For more information, see the {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[MySQL connector documentation].
+====
+
+Next, Kafka Connect reports some "errors".
+However, you can safely ignore these warnings:
+these messages just mean that _new_ Kafka topics were created and that Kafka had to assign a new leader for each one:
+
+[source,shell,options="nowrap"]
+----
+...
+2017-09-21 07:24:02,632 WARN   ||  Error while fetching metadata with correlation id 1 : {dbserver1=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2017-09-21 07:24:02,775 WARN   ||  Error while fetching metadata with correlation id 5 : {dbserver1.inventory.customers=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2017-09-21 07:24:02,910 WARN   ||  Error while fetching metadata with correlation id 9 : {dbserver1.inventory.orders=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2017-09-21 07:24:03,045 WARN   ||  Error while fetching metadata with correlation id 13 : {dbserver1.inventory.products=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2017-09-21 07:24:03,179 WARN   ||  Error while fetching metadata with correlation id 17 : {dbserver1.inventory.products_on_hand=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+...
+----
+
+Finally, the log output shows that the connector has transitioned from its snapshot mode into continuously reading the MySQL server's `binlog`:
+
+[source,shell,options="nowrap"]
+----
+...
+Sep 21, 2017 7:24:03 AM com.github.shyiko.mysql.binlog.BinaryLogClient connect
+INFO: Connected to mysql:3306 at mysql-bin.000003/154 (sid:184054, cid:7)
+2017-09-21 07:24:03,373 INFO   MySQL|dbserver1|binlog  Connected to MySQL binlog at mysql:3306, starting at binlog file 'mysql-bin.000003', pos=154, skipping 0 events plus 0 rows   [io.debezium.connector.mysql.BinlogReader]
+2017-09-21 07:25:01,096 INFO   ||  Finished WorkerSourceTask{id=inventory-connector-0} commitOffsets successfully in 18 ms   [org.apache.kafka.connect.runtime.WorkerSourceTask]
+...
+----

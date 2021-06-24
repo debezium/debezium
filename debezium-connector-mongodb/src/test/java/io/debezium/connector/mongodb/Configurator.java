@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.util.Testing;
 
 /**
  * A helper for easily building connector configurations for testing.
@@ -45,23 +46,48 @@ public class Configurator {
     }
 
     public Configurator includeDatabases(String regexList) {
-        return with(MongoDbConnectorConfig.DATABASE_WHITELIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_WHITELIST.name() + "\" config property");
+            return with(MongoDbConnectorConfig.DATABASE_WHITELIST, regexList);
+        }
+        Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_INCLUDE_LIST.name() + "\" config property");
+        return with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, regexList);
     }
 
     public Configurator excludeDatabases(String regexList) {
-        return with(MongoDbConnectorConfig.DATABASE_BLACKLIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_BLACKLIST.name() + "\" config property");
+            return with(MongoDbConnectorConfig.DATABASE_BLACKLIST, regexList);
+        }
+        Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST.name() + "\" config property");
+        return with(MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST, regexList);
     }
 
     public Configurator includeCollections(String regexList) {
-        return with(MongoDbConnectorConfig.COLLECTION_WHITELIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_WHITELIST.name() + "\" config property");
+            return with(MongoDbConnectorConfig.COLLECTION_WHITELIST, regexList);
+        }
+        Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST.name() + "\" config property");
+        return with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, regexList);
     }
 
     public Configurator excludeCollections(String regexList) {
-        return with(MongoDbConnectorConfig.COLLECTION_BLACKLIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_BLACKLIST.name() + "\" config property");
+            return with(MongoDbConnectorConfig.COLLECTION_BLACKLIST, regexList);
+        }
+        Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST.name() + "\" config property");
+        return with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, regexList);
     }
 
-    public Configurator excludeFields(String blacklist) {
-        return with(MongoDbConnectorConfig.FIELD_BLACKLIST, blacklist);
+    public Configurator excludeFields(String excludeList) {
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MongoDbConnectorConfig.FIELD_BLACKLIST.name() + "\" config property");
+            return with(MongoDbConnectorConfig.FIELD_BLACKLIST, excludeList);
+        }
+        Testing.debug("Using \"" + MongoDbConnectorConfig.FIELD_EXCLUDE_LIST.name() + "\" config property");
+        return with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, excludeList);
     }
 
     public Configurator renameFields(String renames) {

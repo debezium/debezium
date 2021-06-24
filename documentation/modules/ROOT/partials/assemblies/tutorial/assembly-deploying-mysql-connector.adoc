@@ -1,0 +1,30 @@
+// Metadata created by nebel
+//
+// UserStory: As an evaluator, I want to use Debezium to monitor my sample MySQL database so that I can see how Debezium captures database changes.
+
+:context: mysql
+
+[id="deploying-mysql-connector"]
+= Deploying the MySQL connector
+
+After starting the {prodname} and MySQL services,
+you are ready to deploy the {prodname} MySQL connector so that it can start monitoring the sample MySQL database (`inventory`).
+
+At this point, you are running the {prodname} services,
+a MySQL database server with a sample `inventory` database,
+and the MySQL command line client that is connected to the database.
+To deploy the MySQL connector,
+you must:
+
+* xref:registering-connector-monitor-inventory-database[Register the MySQL connector to monitor the `inventory` database]
++
+After the connector is registered,
+it will start monitoring the database server's `binlog` and it will generate change events for each row that changes.
+
+* xref:watching-connector-start-up[Watch the MySQL connector start]
++
+Reviewing the Kafka Connect log output as the connector starts helps you to better understand each task it must complete before it can start monitoring the `binlog`.
+
+include::{partialsdir}/modules/tutorial/proc-registering-connector-monitor-inventory-database.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/ref-watching-connector-start-up.adoc[leveloffset=+1]

@@ -124,8 +124,12 @@ public abstract class AbstractDdlParser implements DdlParser {
         this.ddlChanges.handle(event);
     }
 
-    protected void signalSetVariable(String variableName, String variableValue, String statement) {
-        signalChangeEvent(new DdlParserListener.SetVariableEvent(variableName, variableValue, statement));
+    protected void signalSetVariable(String variableName, String variableValue, int order, String statement) {
+        signalChangeEvent(new DdlParserListener.SetVariableEvent(variableName, variableValue, currentSchema, order, statement));
+    }
+
+    protected void signalUseDatabase(String statement) {
+        signalChangeEvent(new DdlParserListener.DatabaseSwitchedEvent(currentSchema, statement));
     }
 
     /**
@@ -189,7 +193,6 @@ public abstract class AbstractDdlParser implements DdlParser {
     protected void signalDropTable(TableId id, String statement) {
         signalChangeEvent(new DdlParserListener.TableDroppedEvent(id, statement, false));
     }
-
 
     /**
      * Signal a truncate table event to ddl changes listener.
@@ -271,20 +274,40 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @return string without quotes
      */
     public static String withoutQuotes(String possiblyQuoted) {
+        return isQuoted(possiblyQuoted) ? possiblyQuoted.substring(1, possiblyQuoted.length() - 1) : possiblyQuoted;
+    }
+
+    /**
+     * Check if the string is enclosed in quotes.
+     *
+     * @param possiblyQuoted string with possible quotes
+     * @return true if the string is quoted, false otherwise
+     */
+    public static boolean isQuoted(String possiblyQuoted) {
         if (possiblyQuoted.length() < 2) {
             // Too short to be quoted ...
-            return possiblyQuoted;
+            return false;
         }
         if (possiblyQuoted.startsWith("`") && possiblyQuoted.endsWith("`")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+            return true;
         }
         if (possiblyQuoted.startsWith("'") && possiblyQuoted.endsWith("'")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+            return true;
         }
         if (possiblyQuoted.startsWith("\"") && possiblyQuoted.endsWith("\"")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+            return true;
         }
-        return possiblyQuoted;
+        return false;
+    }
+
+    /**
+     * Check if the char is quote.
+     *
+     * @param c possible quote char
+     * @return true if the char is quote false otherwise
+     */
+    public static boolean isQuote(char c) {
+        return c == '\'' || c == '"' || c == '`';
     }
 
     /**
@@ -295,8 +318,12 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
      */
     public static Collection<ParsingException> accumulateParsingFailure(ParsingException e, Collection<ParsingException> list) {
-        if (e == null) return list;
-        if (list == null) list = new ArrayList<ParsingException>();
+        if (e == null) {
+            return list;
+        }
+        if (list == null) {
+            list = new ArrayList<ParsingException>();
+        }
         list.add(e);
         return list;
     }
@@ -309,8 +336,12 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
      */
     protected Collection<ParsingException> accumulateParsingFailure(MultipleParsingExceptions e, Collection<ParsingException> list) {
-        if (e == null) return list;
-        if (list == null) list = new ArrayList<ParsingException>();
+        if (e == null) {
+            return list;
+        }
+        if (list == null) {
+            list = new ArrayList<ParsingException>();
+        }
         list.addAll(e.getErrors());
         return list;
     }
@@ -332,7 +363,7 @@ public abstract class AbstractDdlParser implements DdlParser {
             }
         }
         catch (Throwable t) {
-            logger.debug("Unable to create an artificial column for the constant: " + constantValue);
+            logger.debug("Unable to create an artificial column for the constant: {}", constantValue);
         }
         return column.create();
     }
@@ -375,10 +406,12 @@ public abstract class AbstractDdlParser implements DdlParser {
                     foundDecimalPoint = true;
                 }
                 else if (Character.isDigit(c)) {
-                    if (foundDecimalPoint)
+                    if (foundDecimalPoint) {
                         ++scale;
-                    else
+                    }
+                    else {
                         ++precision;
+                    }
                 }
                 else {
                     break;

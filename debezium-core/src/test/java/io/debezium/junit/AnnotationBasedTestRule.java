@@ -13,8 +13,8 @@ import org.junit.runners.model.Statement;
 
 /**
  * A base {@link TestRule} that allows easy writing of test rules based on method annotations.
- * @author Jiri Pechanec
  *
+ * @author Jiri Pechanec
  */
 public abstract class AnnotationBasedTestRule implements TestRule {
 
@@ -27,6 +27,7 @@ public abstract class AnnotationBasedTestRule implements TestRule {
                 if (reason != null && !reason.trim().isEmpty()) {
                     messageBuilder.append(" because: ").append(reason);
                 }
+
                 System.out.println(messageBuilder.toString());
             }
         };
@@ -34,16 +35,14 @@ public abstract class AnnotationBasedTestRule implements TestRule {
 
     protected <T extends Annotation> T hasAnnotation(Description description, Class<T> annotationClass) {
         T annotation = description.getAnnotation(annotationClass);
+
         if (annotation != null) {
             return annotation;
-        } else if (description.isTest() && description.getTestClass().isAnnotationPresent(annotationClass)) {
+        }
+        else if (description.isTest() && description.getTestClass().isAnnotationPresent(annotationClass)) {
             return description.getTestClass().getAnnotation(annotationClass);
         }
+
         return null;
     }
-
-    public AnnotationBasedTestRule() {
-        super();
-    }
-
 }

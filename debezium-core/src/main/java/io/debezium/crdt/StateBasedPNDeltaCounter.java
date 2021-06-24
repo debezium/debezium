@@ -7,7 +7,8 @@ package io.debezium.crdt;
 
 import io.debezium.annotation.NotThreadSafe;
 
-@NotThreadSafe class StateBasedPNDeltaCounter extends StateBasedPNCounter implements DeltaCounter {
+@NotThreadSafe
+class StateBasedPNDeltaCounter extends StateBasedPNCounter implements DeltaCounter {
     private PNCounter delta;
 
     protected StateBasedPNDeltaCounter() {
@@ -61,12 +62,12 @@ import io.debezium.annotation.NotThreadSafe;
     public PNCount getChanges() {
         return delta;
     }
-    
+
     @Override
     public boolean hasChanges() {
         return delta.getIncrement() != 0 || delta.getDecrement() != 0;
     }
-    
+
     @Override
     public Count getPriorCount() {
         long value = super.get() - delta.get();
@@ -90,12 +91,13 @@ import io.debezium.annotation.NotThreadSafe;
             DeltaCount that = (DeltaCount) other;
             this.delta.merge(that.getChanges());
             super.merge(that.getChanges());
-        } else {
+        }
+        else {
             super.merge(other);
         }
         return this;
     }
-    
+
     @Override
     public String toString() {
         return super.toString() + " (changes " + this.delta + ")";

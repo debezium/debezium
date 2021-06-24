@@ -6,11 +6,12 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import org.antlr.v4.runtime.misc.Interval;
+
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.TableId;
-import org.antlr.v4.runtime.misc.Interval;
 
 /**
  * Parser listener that is parsing MySQL DROP TABLE statements.
@@ -32,7 +33,7 @@ public class DropTableParserListener extends MySqlParserBaseListener {
         ctx.tables().tableName().forEach(tableNameContext -> {
             TableId tableId = parser.parseQualifiedTableId(tableNameContext.fullId());
             parser.databaseTables().removeTable(tableId);
-            parser.signalDropTable(tableId, prefix + tableId.table()
+            parser.signalDropTable(tableId, prefix + tableId.toQuotedString('`')
                     + (ctx.dropType != null ? " " + ctx.dropType.getText() : ""));
         });
         super.enterDropTable(ctx);

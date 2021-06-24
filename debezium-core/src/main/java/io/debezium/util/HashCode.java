@@ -21,7 +21,7 @@ public class HashCode {
 
     /**
      * Compute a combined hash code from the supplied objects. This method always returns 0 if no objects are supplied.
-     * 
+     *
      * @param objects the objects that should be used to compute the hash code
      * @return the hash code
      */
@@ -31,7 +31,7 @@ public class HashCode {
 
     /**
      * Compute a combined hash code from the supplied objects using the supplied seed.
-     * 
+     *
      * @param seed a value upon which the hash code will be based; may be 0
      * @param objects the objects that should be used to compute the hash code
      * @return the hash code
@@ -47,23 +47,32 @@ public class HashCode {
             hc = HashCode.PRIME * hc;
             if (object instanceof byte[]) {
                 hc += Arrays.hashCode((byte[]) object);
-            } else if (object instanceof boolean[]) {
+            }
+            else if (object instanceof boolean[]) {
                 hc += Arrays.hashCode((boolean[]) object);
-            } else if (object instanceof short[]) {
+            }
+            else if (object instanceof short[]) {
                 hc += Arrays.hashCode((short[]) object);
-            } else if (object instanceof int[]) {
+            }
+            else if (object instanceof int[]) {
                 hc += Arrays.hashCode((int[]) object);
-            } else if (object instanceof long[]) {
+            }
+            else if (object instanceof long[]) {
                 hc += Arrays.hashCode((long[]) object);
-            } else if (object instanceof float[]) {
+            }
+            else if (object instanceof float[]) {
                 hc += Arrays.hashCode((float[]) object);
-            } else if (object instanceof double[]) {
+            }
+            else if (object instanceof double[]) {
                 hc += Arrays.hashCode((double[]) object);
-            } else if (object instanceof char[]) {
+            }
+            else if (object instanceof char[]) {
                 hc += Arrays.hashCode((char[]) object);
-            } else if (object instanceof Object[]) {
+            }
+            else if (object instanceof Object[]) {
                 hc += Arrays.hashCode((Object[]) object);
-            } else if (object != null) {
+            }
+            else if (object != null) {
                 hc += object.hashCode();
             }
         }

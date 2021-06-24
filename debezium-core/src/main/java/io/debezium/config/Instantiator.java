@@ -6,6 +6,7 @@
 package io.debezium.config;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Properties;
 import java.util.function.Supplier;
 
 /**
@@ -13,7 +14,7 @@ import java.util.function.Supplier;
  *
  * @author Jiri Pechanec
  */
-class Instantiator {
+public class Instantiator {
 
     /**
      * Instantiates the specified class either using the no-args constructor or the
@@ -22,19 +23,36 @@ class Instantiator {
      *
      * @return The newly created instance or {@code null} if no class name was given
      */
+    public static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier,
+                                    Configuration configuration) {
+        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, Configuration.class, configuration);
+    }
+
+    /**
+     * Instantiates the specified class either using the no-args constructor or the
+     * constructor with a single parameter of type {@link Properties}, if a
+     * properties object is passed.
+     *
+     * @return The newly created instance or {@code null} if no class name was given
+     */
+    public static <T> T getInstanceWithProperties(String className, Supplier<ClassLoader> classloaderSupplier,
+                                                  Properties prop) {
+        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, Properties.class, prop);
+    }
+
     @SuppressWarnings("unchecked")
-    static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier,
-            Configuration configuration) {
+    public static <T, C> T getInstanceWithProvidedConstructorType(String className, Supplier<ClassLoader> classloaderSupplier, Class<C> constructorType,
+                                                                  C constructorValue) {
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
                     : Configuration.class.getClassLoader();
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
-                return configuration == null ? clazz.newInstance()
-                        : clazz.getConstructor(Configuration.class).newInstance(configuration);
+                return constructorValue == null ? clazz.getDeclaredConstructor().newInstance()
+                        : clazz.getConstructor(constructorType).newInstance(constructorValue);
             }
             catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException("Unable to find class" + className, e);
+                throw new IllegalArgumentException("Unable to find class " + className, e);
             }
             catch (InstantiationException e) {
                 throw new IllegalArgumentException("Unable to instantiate class " + className, e);

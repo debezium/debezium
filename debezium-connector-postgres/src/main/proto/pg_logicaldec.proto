@@ -5,9 +5,12 @@ option java_outer_classname = "PgProto";
 option optimize_for = SPEED;
 
 enum Op {
+    UNKNOWN = -1;
     INSERT = 0;
     UPDATE = 1;
     DELETE = 2;
+    BEGIN  = 3;
+    COMMIT = 4;
 }
 
 message Point {
@@ -27,6 +30,7 @@ message DatumMessage {
       string datum_string = 8;
       bytes datum_bytes = 9;
       Point datum_point = 10;
+      bool datum_missing = 11;
     }
 }
 

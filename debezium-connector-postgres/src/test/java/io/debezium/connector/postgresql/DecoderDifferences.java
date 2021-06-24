@@ -15,6 +15,7 @@ import java.util.function.Supplier;
  *
  */
 public class DecoderDifferences {
+    static final String TOASTED_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
 
     /**
      * wal2json plugin does not send events for updates on tables that does not define primary key.
@@ -53,6 +54,10 @@ public class DecoderDifferences {
                 || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS_STREAMING;
     }
 
+    private static boolean pgoutput() {
+        return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT;
+    }
+
     /**
      * wal2json plugin is not currently able to encode and parse NaN and Inf values
      *
@@ -61,5 +66,27 @@ public class DecoderDifferences {
      */
     public static boolean areSpecialFPValuesUnsupported() {
         return wal2Json();
+    }
+
+    /**
+     * wal2json plugin include toasted column in the update
+     *
+     * @author Jiri Pechanec
+     *
+     */
+    public static boolean areToastedValuesPresentInSchema() {
+        return !wal2Json();
+    }
+
+    public static String optionalToastedValuePlaceholder() {
+        return TOASTED_VALUE_PLACEHOLDER;
+    }
+
+    public static String mandatoryToastedValuePlaceholder() {
+        return TOASTED_VALUE_PLACEHOLDER;
+    }
+
+    public static boolean areDefaultValuesRefreshedEagerly() {
+        return pgoutput();
     }
 }

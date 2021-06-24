@@ -12,6 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -75,7 +77,8 @@ public class Predicates {
         for (String literalOrPattern : LITERAL_SEPARATOR_PATTERN.split(literalsOrPatterns)) {
             if (isLiteral.test(literalOrPattern)) {
                 literals.add(literalOrPattern.toLowerCase());
-            } else {
+            }
+            else {
                 patterns.add(Pattern.compile(literalOrPattern, Pattern.CASE_INSENSITIVE));
             }
         }
@@ -198,8 +201,17 @@ public class Predicates {
         return includedInPatterns(patterns, conversion);
     }
 
+    public static <T, U> BiPredicate<T, U> includes(String regexPatterns, BiFunction<T, U, String> conversion) {
+        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE);
+        return includedInPatterns(patterns, conversion);
+    }
+
     protected static <T> Predicate<T> includedInPatterns(Collection<Pattern> patterns, Function<T, String> conversion) {
         return (t) -> matchedByPattern(patterns, conversion).apply(t).isPresent();
+    }
+
+    protected static <T, U> BiPredicate<T, U> includedInPatterns(Collection<Pattern> patterns, BiFunction<T, U, String> conversion) {
+        return (t, u) -> matchedByPattern(patterns, conversion).apply(t, u).isPresent();
     }
 
     /**
@@ -207,7 +219,7 @@ public class Predicates {
      * in the supplied comma-separated list that matches the predicate parameter in a case-insensitive manner.
      *
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
-
+    
      * @return the function that performs the matching
      * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
@@ -220,7 +232,23 @@ public class Predicates {
             String str = conversion.apply(t);
             if (str != null) {
                 for (Pattern p : patterns) {
-                    if (p.matcher(str).matches()) return Optional.of(p);
+                    if (p.matcher(str).matches()) {
+                        return Optional.of(p);
+                    }
+                }
+            }
+            return Optional.empty();
+        };
+    }
+
+    protected static <T, U> BiFunction<T, U, Optional<Pattern>> matchedByPattern(Collection<Pattern> patterns, BiFunction<T, U, String> conversion) {
+        return (t, u) -> {
+            String str = conversion.apply(t, u);
+            if (str != null) {
+                for (Pattern p : patterns) {
+                    if (p.matcher(str).matches()) {
+                        return Optional.of(p);
+                    }
                 }
             }
             return Optional.empty();
@@ -255,8 +283,8 @@ public class Predicates {
      * @param disallowed the predicate that defines the disallowed values; may be null
      * @return the predicate function; never null
      */
-    public static <T> Predicate<T> filter( Predicate<T> allowed, Predicate<T> disallowed ) {
-        return allowed != null ? allowed : (disallowed != null ? disallowed : (id)->true);
+    public static <T> Predicate<T> filter(Predicate<T> allowed, Predicate<T> disallowed) {
+        return allowed != null ? allowed : (disallowed != null ? disallowed : (id) -> true);
     }
 
     public static <R> Predicate<R> not(Predicate<R> predicate) {

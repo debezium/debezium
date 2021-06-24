@@ -1,6 +1,5 @@
 [![License](http://img.shields.io/:license-apache%202.0-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.debezium/debezium-parent/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22)
-[![Build Status](https://travis-ci.org/debezium/debezium.svg?branch=master)](https://travis-ci.org/debezium/debezium)
 [![User chat](https://img.shields.io/badge/chat-users-brightgreen.svg)](https://gitter.im/debezium/user)
 [![Developer chat](https://img.shields.io/badge/chat-devs-brightgreen.svg)](https://gitter.im/debezium/dev)
 [![Google Group](https://img.shields.io/:mailing%20list-debezium-brightgreen.svg)](https://groups.google.com/forum/#!forum/debezium)
@@ -9,6 +8,8 @@
 Copyright Debezium Authors.
 Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 The Antlr grammars within the debezium-ddl-parser module are licensed under the [MIT License](https://opensource.org/licenses/MIT).
+
+English | [Chinese](README_ZH.md) | [Japanese](README_JA.md)
 
 # Debezium
 
@@ -48,16 +49,14 @@ Data is often stored in multiple places, especially when it is used for differen
 
 The [Command Query Responsibility Separation (CQRS)](http://martinfowler.com/bliki/CQRS.html) architectural pattern uses a one data model for updating and one or more other data models for reading. As changes are recorded on the update-side, those changes are then processed and used to update the various read representations. As a result CQRS applications are usually more complicated, especially when they need to ensure reliable and totally-ordered processing. Debezium and CDC can make this more approachable: writes are recorded as normal, but Debezium captures those changes in durable, totally ordered streams that are consumed by the services that asynchronously update the read-only views. The write-side tables can represent domain-oriented entities, or when CQRS is paired with [Event Sourcing](http://martinfowler.com/eaaDev/EventSourcing.html) the write-side tables are the append-only event log of commands.
 
-
-
 ## Building Debezium
 
 The following software is required to work with the Debezium codebase and build it locally:
 
-* [Git 2.2.1](https://git-scm.com) or later
-* [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or [OpenJDK 8](http://openjdk.java.net/projects/jdk8/)
-* [Maven 3.2.1](https://maven.apache.org/index.html) or later
-* [Docker Engine 1.9](http://docs.docker.com/engine/installation/) or later
+* [Git](https://git-scm.com) 2.2.1 or later
+* JDK 11 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
+* [Apache Maven](https://maven.apache.org/index.html) 3.6.3 or later
+* [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
 
 See the links above for installation instructions on your platform. You can verify the versions are installed and running:
 
@@ -65,7 +64,6 @@ See the links above for installation instructions on your platform. You can veri
     $ javac -version
     $ mvn -version
     $ docker --version
-
 
 ### Why Docker?
 
@@ -79,7 +77,7 @@ Using Docker has several advantages:
 1. We can test multiple versions of an external service. Each module can start whatever containers it needs, so different modules can easily use different versions of the services.
 1. Everyone can run complete builds locally. You don't have to rely upon a remote continuous integration server running the build in an environment set up with all the required services.
 1. All builds are consistent. When multiple developers each build the same codebase, they should see exactly the same results -- as long as they're using the same or equivalent JDK, Maven, and Docker versions. That's because the containers will be running the same versions of the services on the same operating systems. Plus, all of the tests are designed to connect to the systems running in the containers, so nobody has to fiddle with connection properties or custom configurations specific to their local environments.
-1. No need to clean up the services, even if those services modify and store data locally. Docker *images* are cached, so building them reusing them to start containers is fast and consistent. However, Docker *containers* are never reused: they always start in their pristine initial state, and are discarded when they are shutdown. Integration tests rely upon containers, and so cleanup is handled automatically.
+1. No need to clean up the services, even if those services modify and store data locally. Docker *images* are cached, so reusing them to start containers is fast and consistent. However, Docker *containers* are never reused: they always start in their pristine initial state, and are discarded when they are shutdown. Integration tests rely upon containers, and so cleanup is handled automatically.
 
 ### Configure your Docker environment
 
@@ -100,7 +98,7 @@ First obtain the code by cloning the Git repository:
 
 Then build the code using Maven:
 
-    $ mvn clean install
+    $ mvn clean verify
 
 The build starts and uses several Docker containers for different DBMSes. Note that if Docker is not running or configured, you'll likely get an arcane error -- if this is the case, always verify that Docker is running, perhaps by using `docker ps` to list the running containers.
 
@@ -108,18 +106,66 @@ The build starts and uses several Docker containers for different DBMSes. Note t
 
 You can skip the integration tests and docker-builds with the following command:
 
-    $ mvn clean install -DskipITs
+    $ mvn clean verify -DskipITs
 
-### Running tests of the Postgres connector using the wal2json logical decoding plug-in
+### Building just the artifacts, without running tests, CheckStyle, etc.
 
-The Postgres connector supports two logical decoding plug-ins for streaming changes from the DB server to the connector: decoderbufs (the default) and wal2json.
+You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, formatter, API compatibility check, etc.) using the "quick" build profile:
+
+    $ mvn clean verify -Dquick
+
+This provides the fastes way for solely producing the output artifacts, without running any of the QA related Maven plug-ins.
+This comes in handy for producing connector JARs and/or archives as quickly as possible, e.g. for manual testing in Kafka Connect.
+
+### Running tests of the Postgres connector using the wal2json or pgoutput logical decoding plug-ins
+
+The Postgres connector supports three logical decoding plug-ins for streaming changes from the DB server to the connector: decoderbufs (the default), wal2json, and pgoutput.
 To run the integration tests of the PG connector using wal2json, enable the "wal2json-decoder" build profile:
 
     $ mvn clean install -pl :debezium-connector-postgres -Pwal2json-decoder
+    
+To run the integration tests of the PG connector using pgoutput, enable the "pgoutput-decoder" and "postgres-10" build profiles:
+
+    $ mvn clean install -pl :debezium-connector-postgres -Ppgoutput-decoder,postgres-10
 
 A few tests currently don't pass when using the wal2json plug-in.
 Look for references to the types defined in `io.debezium.connector.postgresql.DecoderDifferences` to find these tests.
 
+### Running tests of the Postgres connector with specific Apicurio Version
+To run the tests of PG connector using wal2json or pgoutput logical decoding plug-ins with a specific version of Apicurio, a test property can be passed as:
+
+    $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder 
+          -Ddebezium.test.apicurio.version=1.3.1.Final
+
+In absence of the property the stable version of Apicurio will be fetched.
+
+### Running tests of the Postgres connector against an external database, e.g. Amazon RDS
+Please note if you want to test against a *non-RDS* cluster, this test requires `<your user>` to be a superuser with not only `replication` but permissions
+to login to `all` databases in `pg_hba.conf`.  It also requires `postgis` packages to be available on the target server for some of the tests to pass.
+
+    $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder \
+         -Ddocker.skip.build=true -Ddocker.skip.run=true -Dpostgres.host=<your PG host> \
+         -Dpostgres.user=<your user> -Dpostgres.password=<your password> \
+         -Ddebezium.test.records.waittime=10
+
+Adjust the timeout value as needed.
+
+See [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) for details on setting up a database on RDS to test against.
+
+### Running tests of the Oracle connector using Oracle XStream
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle,xstream -Dinstantclient.dir=<path-to-instantclient>
+
+### Running tests of the Oracle connector with a non-CDB database
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
+
 ## Contributing
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](CONTRIBUTE.md) for details.
+
+A big thank you to all the Debezium contributors!
+
+<a href="https://github.com/debezium/debezium/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=debezium/debezium" />
+</a>

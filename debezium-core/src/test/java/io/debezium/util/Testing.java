@@ -65,8 +65,11 @@ public interface Testing {
         if (message != null && Print.enabled) {
             int len = leader.length();
             System.out.print(leader);
-            if (len < length) for (int i = len; i != length; ++i)
-                System.out.print(" ");
+            if (len < length) {
+                for (int i = len; i != length; ++i) {
+                    System.out.print(" ");
+                }
+            }
             System.out.println(message);
         }
     }
@@ -79,7 +82,7 @@ public interface Testing {
         }
 
         public static void disable() {
-            enabled = true;
+            enabled = false;
         }
 
         public static boolean isEnabled() {
@@ -182,7 +185,8 @@ public interface Testing {
         public static String readResourceAsString(String pathOnClasspath) {
             try (InputStream stream = readResourceAsStream(pathOnClasspath)) {
                 return IoUtil.read(stream);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 Fail.fail("Unable to read '" + pathOnClasspath + "'", e);
                 return null;
             }
@@ -235,7 +239,7 @@ public interface Testing {
          */
         public static File createTestingFile(Path relativePath) {
             Path path = relativePath.toAbsolutePath();
-            if ( !inTestDataDir(path) ) {
+            if (!inTestDataDir(path)) {
                 throw new IllegalStateException("Expecting '" + relativePath + "' to be within the testing directory");
             }
             return IoUtil.createFile(path);
@@ -271,7 +275,9 @@ public interface Testing {
          * @param path the path to the file or folder in the target directory
          */
         public static void delete(String path) {
-            if (path != null) delete(Paths.get(path));
+            if (path != null) {
+                delete(Paths.get(path));
+            }
         }
 
         /**
@@ -281,7 +287,9 @@ public interface Testing {
          * @param fileOrFolder the file or folder in the target directory
          */
         public static void delete(File fileOrFolder) {
-            if (fileOrFolder != null) delete(fileOrFolder.toPath());
+            if (fileOrFolder != null) {
+                delete(fileOrFolder.toPath());
+            }
         }
 
         /**
@@ -296,10 +304,12 @@ public interface Testing {
                 if (inTestDataDir(path)) {
                     try {
                         IoUtil.delete(path);
-                    } catch (IOException e) {
+                    }
+                    catch (IOException e) {
                         printError("Unable to remove '" + path.toAbsolutePath() + "'", e);
                     }
-                } else {
+                }
+                else {
                     printError("Will not remove directory that is outside test data area: " + path);
                 }
             }
@@ -365,9 +375,12 @@ public interface Testing {
             sw.start();
             try {
                 sws.time(repeat, runnable, result -> {
-                    if (cleanup != null) cleanup.accept(result);
+                    if (cleanup != null) {
+                        cleanup.accept(result);
+                    }
                 });
-            } catch (Throwable t) {
+            }
+            catch (Throwable t) {
                 t.printStackTrace();
                 fail(t.getMessage());
             }

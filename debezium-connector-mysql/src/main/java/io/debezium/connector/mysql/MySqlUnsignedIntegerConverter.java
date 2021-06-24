@@ -29,12 +29,13 @@ public class MySqlUnsignedIntegerConverter {
     private static final int SMALLINT_CORRECTION = SMALLINT_MAX_VALUE + 1;
     private static final int MEDIUMINT_CORRECTION = MEDIUMINT_MAX_VALUE + 1;
     private static final long INT_CORRECTION = INT_MAX_VALUE + 1;
-    private static final BigDecimal BIGINT_CORRECTION = BIGINT_MAX_VALUE .add(BigDecimal.ONE);
+    private static final BigDecimal BIGINT_CORRECTION = BIGINT_MAX_VALUE.add(BigDecimal.ONE);
 
     /**
      * Private constructor
      */
-    private MySqlUnsignedIntegerConverter(){}
+    private MySqlUnsignedIntegerConverter() {
+    }
 
     /**
      * Convert original value insertion of type 'TINYINT' into the correct TINYINT UNSIGNED representation
@@ -43,10 +44,11 @@ public class MySqlUnsignedIntegerConverter {
      * @param originalNumber {@link Short} the original insertion value
      * @return {@link Short} the correct representation of the original insertion value
      */
-    public static short convertUnsignedTinyint(short originalNumber){
-        if (originalNumber < 0){
+    public static short convertUnsignedTinyint(short originalNumber) {
+        if (originalNumber < 0) {
             return (short) (originalNumber + TINYINT_CORRECTION);
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -58,10 +60,11 @@ public class MySqlUnsignedIntegerConverter {
      * @param originalNumber {@link Integer} the original insertion value
      * @return {@link Integer} the correct representation of the original insertion value
      */
-    public static int convertUnsignedSmallint(int originalNumber){
-        if (originalNumber < 0){
+    public static int convertUnsignedSmallint(int originalNumber) {
+        if (originalNumber < 0) {
             return originalNumber + SMALLINT_CORRECTION;
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -73,10 +76,11 @@ public class MySqlUnsignedIntegerConverter {
      * @param originalNumber {@link Integer} the original insertion value
      * @return {@link Integer} the correct representation of the original insertion value
      */
-    public static int convertUnsignedMediumint(int originalNumber){
-        if (originalNumber < 0){
+    public static int convertUnsignedMediumint(int originalNumber) {
+        if (originalNumber < 0) {
             return originalNumber + MEDIUMINT_CORRECTION;
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -88,10 +92,11 @@ public class MySqlUnsignedIntegerConverter {
      * @param originalNumber {@link Long} the original insertion value
      * @return {@link Long} the correct representation of the original insertion value
      */
-    public static long convertUnsignedInteger(long originalNumber){
+    public static long convertUnsignedInteger(long originalNumber) {
         if (originalNumber < 0) {
             return originalNumber + INT_CORRECTION;
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -106,7 +111,8 @@ public class MySqlUnsignedIntegerConverter {
     public static BigDecimal convertUnsignedBigint(BigDecimal originalNumber) {
         if (originalNumber.compareTo(BigDecimal.ZERO) == -1) {
             return originalNumber.add(BIGINT_CORRECTION);
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }

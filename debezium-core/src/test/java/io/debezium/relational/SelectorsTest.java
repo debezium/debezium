@@ -5,11 +5,11 @@
  */
 package io.debezium.relational;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.function.Predicate;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -21,11 +21,11 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithAllLists() {
         filter = Selectors.tableSelector()
-                          .includeDatabases("connector_test")
-                          .excludeDatabases("")
-                          .includeTables("")
-                          .excludeTables("")
-                          .build();
+                .includeDatabases("connector_test")
+                .excludeDatabases("")
+                .includeTables("")
+                .excludeTables("")
+                .build();
         assertAllowed(filter, "connector_test", "A");
         assertAllowed(filter, "connector_test", "B");
         assertNotAllowed(filter, "other_test", "A");
@@ -35,9 +35,9 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithDatabaseWhitelistAndTableWhitelist() {
         filter = Selectors.tableSelector()
-                          .includeDatabases("db1,db2")
-                          .includeTables("db1\\.A,db1\\.B,db2\\.C")
-                          .build();
+                .includeDatabases("db1,db2")
+                .includeTables("db1\\.A,db1\\.B,db2\\.C")
+                .build();
 
         assertAllowed(filter, "db1", "A");
         assertAllowed(filter, "db1", "B");
@@ -56,9 +56,9 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithDatabaseWhitelistAndTableBlacklist() {
         filter = Selectors.tableSelector()
-                          .includeDatabases("db1,db2")
-                          .excludeTables("db1\\.A,db1\\.B,db2\\.C")
-                          .build();
+                .includeDatabases("db1,db2")
+                .excludeTables("db1\\.A,db1\\.B,db2\\.C")
+                .build();
 
         assertNotAllowed(filter, "db1", "A");
         assertNotAllowed(filter, "db1", "B");
@@ -77,9 +77,9 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithDatabaseBlacklistAndTableWhitelist() {
         filter = Selectors.tableSelector()
-                          .excludeDatabases("db3,db4")
-                          .includeTables("db1\\.A,db1\\.B,db2\\.C")
-                          .build();
+                .excludeDatabases("db3,db4")
+                .includeTables("db1\\.A,db1\\.B,db2\\.C")
+                .build();
 
         assertAllowed(filter, "db1", "A");
         assertAllowed(filter, "db1", "B");
@@ -98,9 +98,9 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithDatabaseBlacklistAndTableBlacklist() {
         filter = Selectors.tableSelector()
-                          .excludeDatabases("db3,db4")
-                          .excludeTables("db1\\.A,db1\\.B,db2\\.C")
-                          .build();
+                .excludeDatabases("db3,db4")
+                .excludeTables("db1\\.A,db1\\.B,db2\\.C")
+                .build();
 
         assertNotAllowed(filter, "db1", "A");
         assertNotAllowed(filter, "db1", "B");
@@ -119,8 +119,8 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithNoDatabaseFilterAndTableWhitelist() {
         filter = Selectors.tableSelector()
-                          .includeTables("db1\\.A,db1\\.B,db2\\.C")
-                          .build();
+                .includeTables("db1\\.A,db1\\.B,db2\\.C")
+                .build();
 
         assertAllowed(filter, "db1", "A");
         assertAllowed(filter, "db1", "B");
@@ -139,8 +139,8 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithNoDatabaseFilterAndTableBlacklist() {
         filter = Selectors.tableSelector()
-                          .excludeTables("db1\\.A,db1\\.B,db2\\.C")
-                          .build();
+                .excludeTables("db1\\.A,db1\\.B,db2\\.C")
+                .build();
 
         assertNotAllowed(filter, "db1", "A");
         assertNotAllowed(filter, "db1", "B");
@@ -159,8 +159,8 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithDatabaseWhitelistAndNoTableFilter() {
         filter = Selectors.tableSelector()
-                          .includeDatabases("db1,db2")
-                          .build();
+                .includeDatabases("db1,db2")
+                .build();
 
         assertAllowed(filter, "db1", "A");
         assertAllowed(filter, "db2", "A");
@@ -171,67 +171,66 @@ public class SelectorsTest {
     @Test
     public void shouldCreateFilterWithDatabaseBlacklistAndNoTableFilter() {
         filter = Selectors.tableSelector()
-                          .excludeDatabases("db1,db2")
-                          .build();
+                .excludeDatabases("db1,db2")
+                .build();
 
         assertNotAllowed(filter, "db1", "A");
         assertNotAllowed(filter, "db2", "A");
         assertAllowed(filter, "db3", "A");
         assertAllowed(filter, "db4", "A");
     }
-    
+
     @Test
     public void shouldCreateFilterWithSchemaBlacklistAndNoTableFilter() {
         filter = Selectors.tableSelector()
-                          .excludeSchemas("sc1,sc2")
-                          .build();
-    
+                .excludeSchemas("sc1,sc2")
+                .build();
+
         assertNotAllowed(filter, "db1", "sc1", "A");
         assertNotAllowed(filter, "db2", "sc2", "A");
         assertAllowed(filter, "db1", "sc3", "A");
-        assertAllowed(filter, "db2", "sc4", "A");     
-    } 
-    
+        assertAllowed(filter, "db2", "sc4", "A");
+    }
+
     @Test
     public void shouldCreateFilterWithSchemaWhitelistAndNoTableFilter() {
         filter = Selectors.tableSelector()
-                          .includeSchemas("sc1,sc2")
-                          .build();
-    
+                .includeSchemas("sc1,sc2")
+                .build();
+
         assertAllowed(filter, "db1", "sc1", "A");
         assertAllowed(filter, "db2", "sc2", "A");
         assertNotAllowed(filter, "db1", "sc3", "A");
-        assertNotAllowed(filter, "db2", "sc4", "A");     
-    } 
-    
+        assertNotAllowed(filter, "db2", "sc4", "A");
+    }
+
     @Test
     public void shouldCreateFilterWithSchemaWhitelistAndTableWhitelist() {
         filter = Selectors.tableSelector()
-                          .includeSchemas("sc1,sc2")
-                          .includeTables("db\\.sc1\\.A,db\\.sc2\\.B")
-                          .build();
-    
+                .includeSchemas("sc1,sc2")
+                .includeTables("db\\.sc1\\.A,db\\.sc2\\.B")
+                .build();
+
         assertAllowed(filter, "db", "sc1", "A");
         assertNotAllowed(filter, "db", "sc1", "B");
         assertAllowed(filter, "db", "sc2", "B");
         assertNotAllowed(filter, "db", "sc2", "A");
         assertNotAllowed(filter, "db", "sc1", "C");
-        assertNotAllowed(filter, "db2", "sc2", "D");     
+        assertNotAllowed(filter, "db2", "sc2", "D");
         assertNotAllowed(filter, "db", "sc3", "A");
-        assertNotAllowed(filter, "db2", "sc4", "B");     
+        assertNotAllowed(filter, "db2", "sc4", "B");
     }
 
     protected void assertAllowed(Predicate<TableId> filter, String dbName, String tableName) {
         TableId id = new TableId(dbName, null, tableName);
         assertThat(filter.test(id)).isTrue();
     }
-    
+
     protected void assertAllowed(Predicate<TableId> filter, String dbName, String schemaName, String tableName) {
         TableId id = new TableId(dbName, schemaName, tableName);
         assertThat(filter.test(id)).isTrue();
     }
 
-    
     protected void assertNotAllowed(Predicate<TableId> filter, String dbName, String tableName) {
         TableId id = new TableId(dbName, null, tableName);
         assertThat(filter.test(id)).isFalse();

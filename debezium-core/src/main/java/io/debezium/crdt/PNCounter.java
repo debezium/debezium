@@ -15,10 +15,10 @@ import io.debezium.annotation.NotThreadSafe;
  */
 @NotThreadSafe
 public interface PNCounter extends PNCount, GCounter {
-    
+
     /**
      * Increment the counter and get the result.
-     * 
+     *
      * @return this instance so methods can be chained together; never null
      */
     @Override
@@ -26,28 +26,28 @@ public interface PNCounter extends PNCount, GCounter {
 
     /**
      * Decrement the counter and get the result.
-     * 
+     *
      * @return this instance so methods can be chained together; never null
      */
     PNCounter decrement();
 
     /**
      * Decrement the counter and get the result.
-     * 
+     *
      * @return the current result after decrementing
      */
     long decrementAndGet();
 
     /**
      * Decrement the counter and get the result.
-     * 
+     *
      * @return the current result before decrementing
      */
     long getAndDecrement();
 
     /**
      * Merge the supplied counter into this counter.
-     * 
+     *
      * @param other the other counter to merge into this one; may be null
      * @return this counter so that methods can be chained
      */

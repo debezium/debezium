@@ -1,0 +1,19 @@
+// Metadata created by nebel
+//
+// UserStory:
+
+[id="introduction-debezium"]
+= Introduction to {prodname}
+
+{prodname} is a distributed platform that turns your existing databases into event streams,
+so applications can see and respond immediately to each row-level change in the databases.
+
+{prodname} is built on top of http://kafka.apache.org[Apache Kafka] and provides {link-kafka-docs}.html#connect[Kafka Connect] compatible connectors that monitor specific database management systems.
+{prodname} records the history of data changes in Kafka logs, from where your application consumes them.
+This makes it possible for your application to easily consume all of the events correctly and completely.
+Even if your application stops unexpectedly,
+it will not miss anything:
+when the application restarts, it will resume consuming the events where it left off.
+
+{prodname} includes multiple connectors.
+In this tutorial, you will use the {link-prefix}:{link-mysql-connector}[MySQL connector].

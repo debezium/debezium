@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- The basic configuration for Revapi API checks in all modules that have API checks enabled. -->
+<analysisConfiguration>
+    <revapi.semver.ignore>
+        <!-- Automatically ignore changes that are OK according to the semver rules. -->
+        <enabled>true</enabled>
+    </revapi.semver.ignore>
+    <revapi.java.filter.annotated>
+        <exclude>
+            <!-- Don't break on changes in the incubating API. -->
+            <item>@io.debezium.common.annotation.Incubating</item>
+        </exclude>
+    </revapi.java.filter.annotated>
+</analysisConfiguration>

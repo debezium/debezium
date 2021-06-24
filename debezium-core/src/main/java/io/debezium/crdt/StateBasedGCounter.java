@@ -48,9 +48,10 @@ class StateBasedGCounter implements GCounter {
     @Override
     public GCounter merge(Count other) {
         if (other instanceof GCount) {
-            GCount changes = (GCount)other;
+            GCount changes = (GCount) other;
             this.adds += changes.getIncrement();
-        } else if (other instanceof Count) {
+        }
+        else if (other instanceof Count) {
             Count changes = other;
             this.adds += changes.get();
         }

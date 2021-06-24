@@ -11,4 +11,11 @@ package io.debezium.schema;
  * @author Gunnar Morling
  */
 public interface DataCollectionId {
+
+    /**
+     * Get the fully qualified identifier of the data collection.
+     *
+     * @return the collection's fully qualified identifier.
+     */
+    String identifier();
 }

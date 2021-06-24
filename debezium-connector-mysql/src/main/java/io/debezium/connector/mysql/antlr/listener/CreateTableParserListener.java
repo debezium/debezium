@@ -7,9 +7,11 @@
 package io.debezium.connector.mysql.antlr.listener;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
+import io.debezium.connector.mysql.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -31,17 +33,21 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     private final MySqlAntlrDdlParser parser;
     private TableEditor tableEditor;
     private ColumnDefinitionParserListener columnDefinitionListener;
+    private final MySqlDefaultValueConverter defaultValueConverter;
 
     public CreateTableParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
         this.parser = parser;
         this.listeners = listeners;
+        this.defaultValueConverter = new MySqlDefaultValueConverter(parser.getConverters());
     }
 
     @Override
     public void enterColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
         TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
-        tableEditor = parser.databaseTables().editOrCreateTable(tableId);
-        super.enterColumnCreateTable(ctx);
+        if (parser.databaseTables().forTable(tableId) == null) {
+            tableEditor = parser.databaseTables().editOrCreateTable(tableId);
+            super.enterColumnCreateTable(ctx);
+        }
     }
 
     @Override
@@ -49,11 +55,24 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         parser.runIfNotNull(() -> {
             // Make sure that the table's character set has been set ...
             if (!tableEditor.hasDefaultCharsetName()) {
-                tableEditor.setDefaultCharsetName(parser.currentDatabaseCharset());
+                tableEditor.setDefaultCharsetName(parser.charsetForTable(tableEditor.tableId()));
             }
             listeners.remove(columnDefinitionListener);
             columnDefinitionListener = null;
             // remove column definition parser listener
+            final String defaultCharsetName = tableEditor.create().defaultCharsetName();
+            tableEditor.setColumns(tableEditor.columns().stream()
+                    .map(
+                            column -> {
+                                final ColumnEditor columnEditor = column.edit();
+                                if (columnEditor.charsetNameOfTable() == null) {
+                                    columnEditor.charsetNameOfTable(defaultCharsetName);
+                                }
+                                return columnEditor;
+                            })
+                    .map(this::convertDefaultValueToSchemaType)
+                    .map(ColumnEditor::create)
+                    .collect(Collectors.toList()));
             parser.databaseTables().overwriteTable(tableEditor.create());
             parser.signalCreateTable(tableEditor.tableId(), ctx);
         }, tableEditor);
@@ -78,9 +97,10 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
             String columnName = parser.parseName(ctx.uid());
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
-                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser.dataTypeResolver(), parser.getConverters());
+                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners, false);
                 listeners.add(columnDefinitionListener);
-            } else {
+            }
+            else {
                 columnDefinitionListener.setColumnEditor(columnEditor);
             }
         }, tableEditor);
@@ -116,9 +136,14 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterTableOptionCharset(MySqlParser.TableOptionCharsetContext ctx) {
         parser.runIfNotNull(() -> {
-            String charsetName = parser.withoutQuotes(ctx.charsetName());
-            tableEditor.setDefaultCharsetName(charsetName);
+            if (ctx.charsetName() != null) {
+                tableEditor.setDefaultCharsetName(parser.withoutQuotes(ctx.charsetName()));
+            }
         }, tableEditor);
         super.enterTableOptionCharset(ctx);
+    }
+
+    private ColumnEditor convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
+        return defaultValueConverter.setColumnDefaultValue(columnEditor);
     }
 }
