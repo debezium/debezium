@@ -2,6 +2,53 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.6.0.CR1
+June 24th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358695)
+
+### New features since 1.6.0.Beta2
+
+* Implement SKIPPED_OPERATIONS for SQLServer [DBZ-2697](https://issues.redhat.com/browse/DBZ-2697)
+* Handling database connection timeout during schema recovery [DBZ-3615](https://issues.redhat.com/browse/DBZ-3615)
+* Scope mined DDL events to include/exclude lists if provided [DBZ-3634](https://issues.redhat.com/browse/DBZ-3634)
+* Support heartbeats during periods of low change event activity [DBZ-3639](https://issues.redhat.com/browse/DBZ-3639)
+
+
+### Breaking changes since 1.6.0.Beta2
+
+None
+
+
+### Fixes since 1.6.0.Beta2
+
+* Fix exception on not found table [DBZ-3523](https://issues.redhat.com/browse/DBZ-3523)
+* Transaction commit event dispatch fails if no active transaction in progress. [DBZ-3593](https://issues.redhat.com/browse/DBZ-3593)
+* Additional unique index referencing columns not exposed by CDC causes exception [DBZ-3597](https://issues.redhat.com/browse/DBZ-3597)
+* GRANT/REVOKE for roles is not working [DBZ-3610](https://issues.redhat.com/browse/DBZ-3610)
+* ParsingException for ALTER TABLE against a table that is unknown to the connector. [DBZ-3612](https://issues.redhat.com/browse/DBZ-3612)
+* Oracle connector continually logging warnings about already processed transactions. [DBZ-3616](https://issues.redhat.com/browse/DBZ-3616)
+* StringIndexOutOfBoundsException thrown while handling UTF-8 characters [DBZ-3618](https://issues.redhat.com/browse/DBZ-3618)
+* DDL ParsingException - "SUPPLEMENTAL LOG DATA (UNIQUE INDEX) COLUMNS" [DBZ-3619](https://issues.redhat.com/browse/DBZ-3619)
+* Oracle transaction reconciliation fails to lookup primary key columns if UPDATE sets columns to only NULL [DBZ-3631](https://issues.redhat.com/browse/DBZ-3631)
+* Oracle DDL parser fails on CREATE TABLE: mismatched input 'maxtrans' expecting {'AS', ';'} [DBZ-3641](https://issues.redhat.com/browse/DBZ-3641)
+* Antlr version mismatch [DBZ-3646](https://issues.redhat.com/browse/DBZ-3646)
+* SQL Agent does not start in SqlServer  image when deployed to openshift [DBZ-3648](https://issues.redhat.com/browse/DBZ-3648)
+* Java UBI image is lacking gzip utility [DBZ-3659](https://isssues.redhat.com/browse/DBZ-3659)
+
+### Other changes since 1.6.0.Beta2
+
+* Upgrade to Apicurio Registry 2.0 [DBZ-3171](https://issues.redhat.com/browse/DBZ-3171)
+* Vitess: rename "master" branch to "main" [DBZ-3275](https://issues.redhat.com/browse/DBZ-3275)
+* Formatting updates to correct errors in documentation builds [DBZ-3518](https://issues.redhat.com/browse/DBZ-3518)
+* Prepare test-suite for Kafka on RHEL [DBZ-3566](https://issues.redhat.com/browse/DBZ-3566)
+* Upgrade to Quarkus 2.0.0.Final [DBZ-3602](https://issues.redhat.com/browse/DBZ-3602)
+* Some dependencies are broken in ocp testsuite after BOM introduction [DBZ-3625](https://issues.redhat.com/browse/DBZ-3625)
+* Handle updated json schema for connector passwords [DBZ-3637](https://issues.redhat.com/browse/DBZ-3637)
+* MySQL SourceInfo should be public [DBZ-3638](https://issues.redhat.com/browse/DBZ-3638)
+* Change CLOB/BLOB data type support to an opt-in feature [DBZ-3645](https://issues.redhat.com/browse/DBZ-3645)
+* Denote BLOB support as incubating [DBZ-3651](https://issues.redhat.com/browse/DBZ-3651)
+
+
+
 ## 1.6.0.Beta2
 June 10th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358021)
 
