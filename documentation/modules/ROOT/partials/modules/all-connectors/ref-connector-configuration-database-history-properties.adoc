@@ -33,7 +33,7 @@ Skipping should be used only with care as it can lead to data loss or mangling w
 +
 _Deprecated and scheduled for removal in a future release; use xref:{context}-property-database-history-store-only-captured-tables-ddl[`database.history.store.only.captured.tables.ddl`] instead._
 |`false`
-|A Boolean value that specifies whether the connector should record all DDL statements  +
+|A Boolean value that specifies whether the connector should record all DDL statements 
 +
 `true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured.
 +
