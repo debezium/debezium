@@ -182,7 +182,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
                                 streamingMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
                                 processor.processResult(rs);
-                                startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
+                                if (connectorConfig.isLobEnabled()) {
+                                    startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
+                                }
+                                else {
+                                    if (transactionalBuffer.isEmpty()) {
+                                        LOGGER.debug("Buffer is empty, updating offset SCN to {}", endScn);
+                                        offsetContext.setScn(endScn);
+                                    }
+                                    startScn = endScn;
+                                }
                             }
 
                             streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));

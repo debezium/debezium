@@ -319,8 +319,10 @@ public final class TransactionalBuffer implements AutoCloseable {
                 maxCommittedScn = lastCommittedScn;
             }
 
-            // cache recent transaction and commit scn for handling offset updates
-            recentlyCommittedTransactionIds.add(new RecentlyCommittedTransaction(transaction, scn));
+            if (connectorConfig.isLobEnabled()) {
+                // cache recent transaction and commit scn for handling offset updates
+                recentlyCommittedTransactionIds.add(new RecentlyCommittedTransaction(transaction, scn));
+            }
         }
         catch (InterruptedException e) {
             LogMinerHelper.logError(streamingMetrics, "Commit interrupted", e);
