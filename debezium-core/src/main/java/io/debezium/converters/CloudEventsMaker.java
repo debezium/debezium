@@ -93,6 +93,8 @@ public abstract class CloudEventsMaker {
                 return new SqlserverCloudEventsMaker(parser, contentType, dataSchemaUriBase);
             case "oracle":
                 return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase);
+            case "db2":
+                return new Db2CloudEventsMaker(parser, contentType, dataSchemaUriBase);
             default:
                 throw new DataException("No usable CloudEvents converters for connector type \"" + parser.connectorType() + "\"");
         }
@@ -292,6 +294,22 @@ public abstract class CloudEventsMaker {
                     + ";scn:" + recordParser.getMetadata(RecordParser.OracleRecordParser.SCN_KEY)
                     + ";commit_scn:" + recordParser.getMetadata(RecordParser.OracleRecordParser.COMMIT_SCN_KEY)
                     + ";lcr_position:" + recordParser.getMetadata(RecordParser.OracleRecordParser.LCR_POSITION_KEY);
+        }
+    }
+
+    /**
+     * CloudEvents maker for records produced by Db2 connector.
+     */
+    public static final class Db2CloudEventsMaker extends CloudEventsMaker {
+        Db2CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
+            super(parser, contentType, dataSchemaUriBase);
+        }
+
+        @Override
+        public String ceId() {
+            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
+                    + ";change_lsn:" + recordParser.getMetadata(RecordParser.Db2RecordParser.CHANGE_LSN_KEY)
+                    + ";commit_lsn:" + recordParser.getMetadata(RecordParser.Db2RecordParser.COMMIT_LSN_KEY);
         }
     }
 }

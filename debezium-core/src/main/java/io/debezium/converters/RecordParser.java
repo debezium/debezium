@@ -66,6 +66,8 @@ public abstract class RecordParser {
                 return new SqlserverRecordParser(schema, record);
             case "oracle":
                 return new OracleRecordParser(schema, record);
+            case "db2":
+                return new Db2RecordParser(schema, record);
             default:
                 throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
         }
@@ -343,6 +345,34 @@ public abstract class RecordParser {
             }
 
             throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Oracle connector");
+        }
+    }
+
+    /**
+     * Parser for records produced by Db2 connectors.
+     */
+    public static final class Db2RecordParser extends RecordParser {
+        static final String CHANGE_LSN_KEY = "change_lsn";
+        static final String COMMIT_LSN_KEY = "commit_lsn";
+
+        static final Set<String> DB2_SOURCE_FIELD = Collect.unmodifiableSet(
+                CHANGE_LSN_KEY,
+                COMMIT_LSN_KEY);
+
+        Db2RecordParser(Schema schema, Struct record) {
+            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
+        }
+
+        @Override
+        public Object getMetadata(String name) {
+            if (SOURCE_FIELDS.contains(name)) {
+                return source().get(name);
+            }
+            if (DB2_SOURCE_FIELD.contains(name)) {
+                return source().get(name);
+            }
+
+            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Db2 connector");
         }
     }
 }
