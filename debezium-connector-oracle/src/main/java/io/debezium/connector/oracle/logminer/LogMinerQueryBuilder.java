@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -119,6 +120,19 @@ public class LogMinerQueryBuilder {
         }
 
         query.append("))");
+
+        Set<String> excludedUsers = connectorConfig.getLogMiningUsernameExcludeList();
+        if (!excludedUsers.isEmpty()) {
+            query.append(" AND USERNAME NOT IN (");
+            for (Iterator<String> i = excludedUsers.iterator(); i.hasNext();) {
+                String user = i.next();
+                query.append("'").append(user).append("'");
+                if (i.hasNext()) {
+                    query.append(",");
+                }
+            }
+            query.append(") ");
+        }
 
         return query.toString();
     }

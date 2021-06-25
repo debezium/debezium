@@ -273,6 +273,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("When set to `false`, the default, LOB fields will not be captured nor emitted. When set to `true`, the connector " +
                     "will capture LOB fields and emit changes for those fields like any other column type.");
 
+    public static final Field LOG_MINING_USERNAME_EXCLUDE_LIST = Field.create("log.mining.username.exclude.list")
+            .withDisplayName("List of users to exclude from logminer query")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Comma separated list of usernames to exclude from logminer query.");
+
     public static final Field LOG_MINING_ARCHIVE_DESTINATION_NAME = Field.create("log.mining.archive.destination.name")
             .withDisplayName("Name of the archive log destination to be used for reading archive logs")
             .withType(Type.STRING)
@@ -320,6 +327,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_TRANSACTION_RETENTION,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
                     LOB_ENABLED,
+                    LOG_MINING_USERNAME_EXCLUDE_LIST,
                     LOG_MINING_ARCHIVE_DESTINATION_NAME)
             .create();
 
@@ -363,6 +371,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningTransactionRetention;
     private final boolean archiveLogOnlyMode;
     private final boolean lobEnabled;
+    private final Set<String> logMiningUsernameExcludeList;
     private final String logMiningArchiveDestinationName;
 
     public OracleConnectorConfig(Configuration config) {
@@ -399,6 +408,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
         this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
+        this.logMiningUsernameExcludeList = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
     }
 
@@ -927,6 +937,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLobEnabled() {
         return lobEnabled;
+    }
+
+    /**
+     * @return set of usernames to exclude from logminer query
+     */
+    public Set<String> getLogMiningUsernameExcludeList() {
+        return logMiningUsernameExcludeList;
     }
 
     /**
