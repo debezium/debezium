@@ -68,6 +68,8 @@ public abstract class RecordParser {
                 return new OracleRecordParser(schema, record);
             case "db2":
                 return new Db2RecordParser(schema, record);
+            case "vitess":
+                return new VitessRecordParser(schema, record);
             default:
                 throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
         }
@@ -373,6 +375,31 @@ public abstract class RecordParser {
             }
 
             throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Db2 connector");
+        }
+    }
+
+    /**
+     * Parser for records produced by Db2 connectors.
+     */
+    public static final class VitessRecordParser extends RecordParser {
+        static final String VGTID_KEY = "vgtid";
+
+        static final Set<String> VITESS_SOURCE_FIELD = Collect.unmodifiableSet(VGTID_KEY);
+
+        VitessRecordParser(Schema schema, Struct record) {
+            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
+        }
+
+        @Override
+        public Object getMetadata(String name) {
+            if (SOURCE_FIELDS.contains(name)) {
+                return source().get(name);
+            }
+            if (VITESS_SOURCE_FIELD.contains(name)) {
+                return source().get(name);
+            }
+
+            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Vitess connector");
         }
     }
 }

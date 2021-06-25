@@ -95,6 +95,8 @@ public abstract class CloudEventsMaker {
                 return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase);
             case "db2":
                 return new Db2CloudEventsMaker(parser, contentType, dataSchemaUriBase);
+            case "vitess":
+                return new VitessCloudEventsMaker(parser, contentType, dataSchemaUriBase);
             default:
                 throw new DataException("No usable CloudEvents converters for connector type \"" + parser.connectorType() + "\"");
         }
@@ -310,6 +312,21 @@ public abstract class CloudEventsMaker {
             return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
                     + ";change_lsn:" + recordParser.getMetadata(RecordParser.Db2RecordParser.CHANGE_LSN_KEY)
                     + ";commit_lsn:" + recordParser.getMetadata(RecordParser.Db2RecordParser.COMMIT_LSN_KEY);
+        }
+    }
+
+    /**
+     * CloudEvents maker for records produced by Vitess connector.
+     */
+    public static final class VitessCloudEventsMaker extends CloudEventsMaker {
+        VitessCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
+            super(parser, contentType, dataSchemaUriBase);
+        }
+
+        @Override
+        public String ceId() {
+            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
+                    + ";vgtid:" + recordParser.getMetadata(RecordParser.VitessRecordParser.VGTID_KEY);
         }
     }
 }
