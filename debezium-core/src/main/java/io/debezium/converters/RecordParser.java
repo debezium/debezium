@@ -64,6 +64,8 @@ public abstract class RecordParser {
                 return new MongodbRecordParser(schema, record);
             case "sqlserver":
                 return new SqlserverRecordParser(schema, record);
+            case "oracle":
+                return new OracleRecordParser(schema, record);
             default:
                 throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
         }
@@ -311,6 +313,36 @@ public abstract class RecordParser {
             }
 
             throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from SQLServer connector");
+        }
+    }
+
+    /**
+     * Parser for records produced by Oracle connectors.
+     */
+    public static final class OracleRecordParser extends RecordParser {
+        static final String SCN_KEY = "scn";
+        static final String COMMIT_SCN_KEY = "commit_scn";
+        static final String LCR_POSITION_KEY = "lcr_position";
+
+        static final Set<String> ORACLE_SOURCE_FIELD = Collect.unmodifiableSet(
+                SCN_KEY,
+                COMMIT_SCN_KEY,
+                LCR_POSITION_KEY);
+
+        OracleRecordParser(Schema schema, Struct record) {
+            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
+        }
+
+        @Override
+        public Object getMetadata(String name) {
+            if (SOURCE_FIELDS.contains(name)) {
+                return source().get(name);
+            }
+            if (ORACLE_SOURCE_FIELD.contains(name)) {
+                return source().get(name);
+            }
+
+            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Oracle connector");
         }
     }
 }

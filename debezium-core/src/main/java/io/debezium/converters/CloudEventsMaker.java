@@ -91,6 +91,8 @@ public abstract class CloudEventsMaker {
                 return new MongodbCloudEventsMaker(parser, contentType, dataSchemaUriBase);
             case "sqlserver":
                 return new SqlserverCloudEventsMaker(parser, contentType, dataSchemaUriBase);
+            case "oracle":
+                return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase);
             default:
                 throw new DataException("No usable CloudEvents converters for connector type \"" + parser.connectorType() + "\"");
         }
@@ -273,6 +275,23 @@ public abstract class CloudEventsMaker {
                     + ";change_lsn:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.CHANGE_LSN_KEY)
                     + ";commit_lsn:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.COMMIT_LSN_KEY)
                     + ";event_serial_no:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.EVENT_SERIAL_NO_KEY);
+        }
+    }
+
+    /**
+     * CloudEvents maker for records produced by Oracle connector.
+     */
+    public static final class OracleCloudEventsMaker extends CloudEventsMaker {
+        OracleCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
+            super(parser, contentType, dataSchemaUriBase);
+        }
+
+        @Override
+        public String ceId() {
+            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
+                    + ";scn:" + recordParser.getMetadata(RecordParser.OracleRecordParser.SCN_KEY)
+                    + ";commit_scn:" + recordParser.getMetadata(RecordParser.OracleRecordParser.COMMIT_SCN_KEY)
+                    + ";lcr_position:" + recordParser.getMetadata(RecordParser.OracleRecordParser.LCR_POSITION_KEY);
         }
     }
 }
