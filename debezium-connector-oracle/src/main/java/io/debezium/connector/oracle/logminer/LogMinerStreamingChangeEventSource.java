@@ -9,8 +9,6 @@ import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSuppleme
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getFirstOnlineLogScn;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToAbandon;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
@@ -119,7 +117,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 startScn = offsetContext.getScn();
                 createFlushTable(jdbcConnection);
 
-                if (!isContinuousMining && startScn.compareTo(getFirstOnlineLogScn(jdbcConnection, archiveLogRetention, archiveDestinationName)) < 0) {
+                if (!isContinuousMining && startScn.compareTo(getFirstScnInLogs(jdbcConnection)) < 0) {
                     throw new DebeziumException(
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
@@ -235,6 +233,47 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 startScn = endScn;
             });
         }
+    }
+
+    /**
+     * Calculates the SCN as a watermark to abandon for long running transactions.
+     * The criteria is do not let the offset SCN expire from archives older the specified retention hours.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @param offsetScn offset system change number, should not be {@code null}
+     * @param retention duration to tolerate long running transactions before being abandoned, must not be {@code null}
+     * @return an optional system change number as the watermark for transaction buffer abandonment
+     */
+    private Optional<Scn> getLastScnToAbandon(OracleConnection connection, Scn offsetScn, Duration retention) {
+        try {
+            Float diffInDays = connection.singleOptionalValue(SqlUtils.diffInDaysQuery(offsetScn), rs -> rs.getFloat(1));
+            if (diffInDays != null && (diffInDays * 24) > retention.toHours()) {
+                return Optional.of(offsetScn);
+            }
+            return Optional.empty();
+        }
+        catch (SQLException e) {
+            LOGGER.error("Cannot calculate days difference for transaction abandonment", e);
+            streamingMetrics.incrementErrorCount();
+            return Optional.of(offsetScn);
+        }
+    }
+
+    /**
+     * Gets the first system change number in both archive and redo logs.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @return the oldest system change number
+     * @throws SQLException if a database exception occurred
+     * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
+     */
+    private Scn getFirstScnInLogs(OracleConnection connection) throws SQLException {
+        String oldestScn = connection.singleOptionalValue(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName), rs -> rs.getString(1));
+        if (oldestScn == null) {
+            throw new DebeziumException("Failed to calculate oldest SCN available in logs");
+        }
+        LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
+        return Scn.valueOf(oldestScn);
     }
 
     private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn) throws SQLException {
