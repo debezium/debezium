@@ -14,7 +14,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -34,13 +33,10 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 /**
@@ -59,30 +55,6 @@ public class LogMinerHelper {
         TIMESTAMP,
         STRING,
         FLOAT
-    }
-
-    private static Map<String, OracleConnection> racFlushConnections = new HashMap<>();
-
-    static void instantiateFlushConnections(JdbcConfiguration config, Set<String> hosts) {
-        for (OracleConnection conn : racFlushConnections.values()) {
-            if (conn != null) {
-                try {
-                    conn.close();
-                }
-                catch (SQLException e) {
-                    LOGGER.warn("Cannot close existing RAC flush connection", e);
-                }
-            }
-        }
-        racFlushConnections = new HashMap<>();
-        for (String host : hosts) {
-            try {
-                racFlushConnections.put(host, createFlushConnection(config, host));
-            }
-            catch (SQLException e) {
-                LOGGER.error("Cannot connect to RAC node {}", host, e);
-            }
-        }
     }
 
     /**
@@ -165,29 +137,6 @@ public class LogMinerHelper {
             }
             LOGGER.debug("Using Top SCN calculation {} as end SCN.", topScnToMine);
             return topScnToMine;
-        }
-    }
-
-    /**
-     * It is critical to flush LogWriter(s) buffer
-     *
-     * @param connection container level database connection
-     * @param config configuration
-     * @param isRac true if this is the RAC system
-     * @param racHosts set of RAC host
-     * @throws SQLException exception
-     */
-    static void flushLogWriter(OracleConnection connection, JdbcConfiguration config,
-                               boolean isRac, Set<String> racHosts)
-            throws SQLException {
-        Scn currentScn = connection.getCurrentScn();
-        if (isRac) {
-            flushRacLogWriters(currentScn, config, racHosts);
-        }
-        else {
-            LOGGER.trace("Updating {} with SCN {}", SqlUtils.LOGMNR_FLUSH_TABLE, currentScn);
-            executeCallableStatement(connection, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
-            connection.commit();
         }
     }
 
@@ -320,62 +269,6 @@ public class LogMinerHelper {
             LOGGER.error("Cannot get switch counter", e);
         }
         return 0;
-    }
-
-    /**
-     * Oracle RAC has one LogWriter per node (instance), we have to flush them all
-     * We cannot use a query like from gv_instance view to get all the nodes, because not all nodes could be load balanced.
-     * We also cannot rely on connection factory, because it may return connection to the same instance multiple times
-     * Instead we are asking node ip list from configuration
-     */
-    private static void flushRacLogWriters(Scn currentScn, JdbcConfiguration config, Set<String> racHosts) {
-        Instant startTime = Instant.now();
-        if (racHosts.isEmpty()) {
-            throw new RuntimeException("No RAC node ip addresses were supplied in the configuration");
-        }
-
-        // todo: Ugly, but, using one factory.connect() in the loop, it may always connect the same node with badly configured load balancer
-        boolean errors = false;
-        for (String host : racHosts) {
-            try {
-                OracleConnection conn = racFlushConnections.get(host);
-                if (conn == null) {
-                    LOGGER.warn("Connection to the node {} was not instantiated", host);
-                    errors = true;
-                    continue;
-                }
-                LOGGER.trace("Flushing Log Writer buffer of node {}", host);
-                executeCallableStatement(conn, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
-                conn.commit();
-            }
-            catch (Exception e) {
-                LOGGER.warn("Cannot flush Log Writer buffer of the node {} due to {}", host, e);
-                errors = true;
-            }
-        }
-
-        if (errors) {
-            instantiateFlushConnections(config, racHosts);
-            LOGGER.warn("Not all LogWriter buffers were flushed. Sleeping for 3 seconds to let Oracle do the flush.", racHosts);
-            Metronome metronome = Metronome.sleeper(Duration.ofMillis(3000), Clock.system());
-            try {
-                metronome.pause();
-            }
-            catch (InterruptedException e) {
-                LOGGER.warn("Metronome was interrupted");
-            }
-        }
-
-        LOGGER.trace("Flushing RAC Log Writers took {} ", Duration.between(startTime, Instant.now()));
-    }
-
-    // todo use pool
-    private static OracleConnection createFlushConnection(JdbcConfiguration config, String host) throws SQLException {
-        JdbcConfiguration hostConfig = JdbcConfiguration.adapt(config.edit().with(JdbcConfiguration.HOSTNAME, host).build());
-        LOGGER.debug("Creating RAC flush connection to '{}:{}'", hostConfig.getHostname(), hostConfig.getPort());
-        OracleConnection connection = new OracleConnection(hostConfig, () -> LogMinerHelper.class.getClassLoader());
-        connection.setAutoCommit(false);
-        return connection;
     }
 
     /**
