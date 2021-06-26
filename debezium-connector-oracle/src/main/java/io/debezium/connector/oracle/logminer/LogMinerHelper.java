@@ -33,7 +33,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -200,18 +199,6 @@ public class LogMinerHelper {
                 return firstScnOfOnlineLog;
             }
         }
-    }
-
-    /**
-     * Sets NLS parameters for mining session.
-     *
-     * @param connection session level database connection
-     * @throws SQLException if anything unexpected happens
-     */
-    static void setNlsSessionParameters(JdbcConnection connection) throws SQLException {
-        connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
-        // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE get returned in UTC
-        connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
     }
 
     /**
