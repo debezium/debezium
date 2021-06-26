@@ -9,7 +9,6 @@ import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -163,27 +161,6 @@ public class LogMinerHelper {
     }
 
     /**
-     * This method fetches the oldest SCN from online redo log files
-     *
-     * @param connection container level database connection
-     * @param archiveLogRetention duration that archive logs are mined
-     * @param archiveDestinationName configured archive destination name to use, may be {@code null}
-     * @return oldest SCN from online redo log
-     * @throws SQLException if anything unexpected happens
-     */
-    static Scn getFirstOnlineLogScn(OracleConnection connection, Duration archiveLogRetention, String archiveDestinationName) throws SQLException {
-        LOGGER.trace("Getting first scn of all online logs");
-        try (Statement s = connection.connection(false).createStatement()) {
-            try (ResultSet rs = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName))) {
-                rs.next();
-                Scn firstScnOfOnlineLog = Scn.valueOf(rs.getString(1));
-                LOGGER.trace("First SCN in online logs is {}", firstScnOfOnlineLog);
-                return firstScnOfOnlineLog;
-            }
-        }
-    }
-
-    /**
      * This fetches online redo log statuses
      * @param connection privileged connection
      * @return REDO LOG statuses Map, where key is the REDO name and value is the status
@@ -323,30 +300,6 @@ public class LogMinerHelper {
         }
 
         LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}\n", lastProcessedScn, logFilesNames);
-    }
-
-    /**
-     * This method calculates SCN as a watermark to abandon long lasting transactions.
-     * The criteria is don't let offset scn go out of archives older given number of hours
-     *
-     * @param connection connection
-     * @param offsetScn current offset scn
-     * @param transactionRetention duration to tolerate long running transactions
-     * @return optional SCN as a watermark for abandonment
-     */
-    public static Optional<Scn> getLastScnToAbandon(OracleConnection connection, Scn offsetScn, Duration transactionRetention) {
-        try {
-            String query = SqlUtils.diffInDaysQuery(offsetScn);
-            Float diffInDays = (Float) getSingleResult(connection, query, DATATYPE.FLOAT);
-            if (diffInDays != null && (diffInDays * 24) > transactionRetention.toHours()) {
-                return Optional.of(offsetScn);
-            }
-            return Optional.empty();
-        }
-        catch (SQLException e) {
-            LOGGER.error("Cannot calculate days difference due to {}", e);
-            return Optional.of(offsetScn);
-        }
     }
 
     static void logWarn(OracleStreamingChangeEventSourceMetrics streamingMetrics, String format, Object... args) {
