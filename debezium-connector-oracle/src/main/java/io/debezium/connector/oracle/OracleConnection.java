@@ -379,6 +379,10 @@ public class OracleConnection extends JdbcConnection {
                 "' AND n.statistic#=m.statistic#", rs -> rs.next() ? rs.getLong(1) : 0L);
     }
 
+    public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
+        return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
     public static String connectionString(Configuration config) {
         return config.getString(URL) != null ? config.getString(URL)
                 : ConnectorAdapter.parse(config.getString("connection.adapter")).getConnectionUrl();
