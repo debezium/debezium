@@ -228,10 +228,6 @@ public class SqlUtils {
         return "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
     }
 
-    static String tableExistsQuery(String tableName) {
-        return "SELECT '1' AS ONE FROM USER_TABLES WHERE TABLE_NAME = '" + tableName + "'";
-    }
-
     /**
      * This method return query which converts given SCN in days and deduct from the current day
      */
