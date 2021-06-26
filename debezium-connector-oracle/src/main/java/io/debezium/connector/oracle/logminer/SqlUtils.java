@@ -5,16 +5,12 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.io.IOException;
-import java.sql.SQLRecoverableException;
 import java.time.Duration;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
-
-import oracle.net.ns.NetException;
 
 /**
  * This utility class contains SQL statements to configure, manage and query Oracle LogMiner
@@ -107,10 +103,6 @@ public class SqlUtils {
 
     static String tableSupplementalLoggingCheckQuery(TableId tableId) {
         return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER = '%s' AND TABLE_NAME = '%s'", ALL_LOG_GROUPS, tableId.schema(), tableId.table());
-    }
-
-    static String currentScnQuery() {
-        return String.format("SELECT CURRENT_SCN FROM %s", DATABASE_VIEW);
     }
 
     static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
@@ -270,35 +262,6 @@ public class SqlUtils {
         return "SELECT '1' AS ONE FROM USER_TABLES WHERE TABLE_NAME = '" + tableName + "'";
     }
 
-    static String dropTableStatement(String tableName) {
-        return "DROP TABLE " + tableName.toUpperCase() + " PURGE";
-    }
-
-    // no constraints, no indexes, minimal info
-    static String logMiningHistoryDdl(String tableName) {
-        return "create  TABLE " + tableName + "(" +
-                "row_sequence NUMBER(19,0), " +
-                "captured_scn NUMBER(19,0), " +
-                "table_name VARCHAR2(30 CHAR), " +
-                "seg_owner VARCHAR2(30 CHAR), " +
-                "operation_code NUMBER(19,0), " +
-                "change_time TIMESTAMP(6), " +
-                // "row_id VARCHAR2(20 CHAR)," +
-                // "session_num NUMBER(19,0)," +
-                // "serial_num NUMBER(19,0)," +
-                "transaction_id VARCHAR2(50 CHAR), " +
-                // "rs_id VARCHAR2(34 CHAR)," +
-                // "ssn NUMBER(19,0)," +
-                "csf NUMBER(19,0), " +
-                "redo_sql VARCHAR2(4000 CHAR)" +
-                // "capture_time TIMESTAMP(6)" +
-                ") nologging";
-    }
-
-    static String truncateTableStatement(String tableName) {
-        return "TRUNCATE TABLE " + tableName;
-    }
-
     /**
      * This method return query which converts given SCN in days and deduct from the current day
      */
@@ -307,30 +270,5 @@ public class SqlUtils {
             return null;
         }
         return "select sysdate - CAST(scn_to_timestamp(" + scn.toString() + ") as date) from dual";
-    }
-
-    public static boolean connectionProblem(Throwable e) {
-        if (e instanceof IOException) {
-            return true;
-        }
-        Throwable cause = e.getCause();
-        if (cause != null) {
-            if (cause.getCause() != null && cause.getCause() instanceof NetException) {
-                return true;
-            }
-        }
-        if (e instanceof SQLRecoverableException) {
-            return true;
-        }
-        if (e.getMessage() == null) {
-            return false;
-        }
-        return e.getMessage().startsWith("ORA-03135") || // connection lost contact
-                e.getMessage().startsWith("ORA-12543") || // TNS:destination host unreachable
-                e.getMessage().startsWith("ORA-00604") || // error occurred at recursive SQL level 1
-                e.getMessage().startsWith("ORA-01089") || // Oracle immediate shutdown in progress
-                e.getMessage().startsWith("ORA-00600") || // Oracle internal error on the RAC node shutdown could happen
-                e.getMessage().toUpperCase().contains("CONNECTION IS CLOSED") ||
-                e.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET");
     }
 }
