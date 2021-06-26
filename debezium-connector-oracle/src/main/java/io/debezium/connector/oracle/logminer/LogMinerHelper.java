@@ -11,7 +11,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -48,23 +47,6 @@ public class LogMinerHelper {
         TIMESTAMP,
         STRING,
         FLOAT
-    }
-
-    /**
-     * This method query the database to get CURRENT online redo log file(s). Multiple is applicable for RAC systems.
-     * @param connection connection to reuse
-     * @return full redo log file name(s), including path
-     * @throws SQLException if anything unexpected happens
-     */
-    static Set<String> getCurrentRedoLogFiles(OracleConnection connection) throws SQLException {
-        final Set<String> fileNames = new HashSet<>();
-        connection.query(SqlUtils.currentRedoNameQuery(), rs -> {
-            while (rs.next()) {
-                fileNames.add(rs.getString(1));
-            }
-        });
-        LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
-        return fileNames;
     }
 
     /**
