@@ -30,8 +30,6 @@ public class SqlUtilsTest {
 
     @Test
     public void testStatements() {
-        SqlUtils.setRac(false);
-
         String result = SqlUtils.addLogFileStatement("ADD", "FILENAME");
         String expected = "BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => 'FILENAME', OPTIONS => ADD);END;";
         assertThat(expected.equals(result)).isTrue();

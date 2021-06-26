@@ -9,9 +9,6 @@ import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
@@ -81,14 +78,6 @@ public class SqlUtils {
             + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF'"
             + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'"
             + "  NLS_NUMERIC_CHARACTERS = '.,'";
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SqlUtils.class);
-
-    static void setRac(boolean isRac) {
-        if (isRac) {
-            // todo : enforce continious_mine=false?
-        }
-    }
 
     static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
