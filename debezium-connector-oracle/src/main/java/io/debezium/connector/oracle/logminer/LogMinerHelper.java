@@ -57,19 +57,6 @@ public class LogMinerHelper {
         FLOAT
     }
 
-    static void createFlushTable(OracleConnection connection) throws SQLException {
-        String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), DATATYPE.STRING);
-        if (tableExists == null) {
-            executeCallableStatement(connection, SqlUtils.CREATE_FLUSH_TABLE);
-        }
-
-        String recordExists = (String) getSingleResult(connection, SqlUtils.FLUSH_TABLE_NOT_EMPTY, DATATYPE.STRING);
-        if (recordExists == null) {
-            executeCallableStatement(connection, SqlUtils.INSERT_FLUSH_TABLE);
-            connection.commit();
-        }
-    }
-
     /**
      * This method returns next SCN for mining and also updates streaming metrics.
      *

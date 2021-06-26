@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.createFlushTable;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
@@ -454,6 +453,25 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             catch (SQLException e) {
                 throw new DebeziumException("Cannot connect to RAC node '" + hostName + "'", e);
             }
+        }
+    }
+
+    /**
+     * Creates the flush table used to force flushing of the Oracle LGWR buffers.
+     *
+     * @param connection database connection
+     * @throws SQLException if a database exception occurred
+     */
+    private void createFlushTable(OracleConnection connection) throws SQLException {
+        String tableExists = connection.singleOptionalValue(SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), rs -> rs.getString(1));
+        if (tableExists == null) {
+            connection.executeWithoutCommitting(SqlUtils.CREATE_FLUSH_TABLE);
+        }
+
+        String recordExists = connection.singleOptionalValue(SqlUtils.FLUSH_TABLE_NOT_EMPTY, rs -> rs.getString(1));
+        if (recordExists == null) {
+            connection.executeWithoutCommitting(SqlUtils.INSERT_FLUSH_TABLE);
+            connection.commit();
         }
     }
 
