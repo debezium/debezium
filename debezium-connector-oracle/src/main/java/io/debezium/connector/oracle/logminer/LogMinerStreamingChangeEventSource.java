@@ -14,7 +14,6 @@ import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToA
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getSystime;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.setNlsSessionParameters;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
 
 import java.math.BigInteger;
@@ -473,6 +472,18 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             connection.executeWithoutCommitting(SqlUtils.INSERT_FLUSH_TABLE);
             connection.commit();
         }
+    }
+
+    /**
+     * Sets the NLS parameters for the mining session.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @throws SQLException if a database exception occurred
+     */
+    private void setNlsSessionParameters(OracleConnection connection) throws SQLException {
+        connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
+        // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
+        connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
     }
 
     @Override
