@@ -308,7 +308,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     private void buildDataDictionary(OracleConnection connection) throws SQLException {
         LOGGER.trace("Building data dictionary");
-        connection.executeWithoutCommitting(SqlUtils.BUILD_DICTIONARY);
+        connection.executeWithoutCommitting("BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;");
     }
 
     /**
@@ -411,7 +411,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
         else {
             LOGGER.trace("Flushing LGWR buffer on instance '{}'", jdbcConfig.getHostname());
-            connection.executeWithoutCommitting(SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
+            connection.executeWithoutCommitting("UPDATE " + SqlUtils.LOGMNR_FLUSH_TABLE + " SET LAST_SCN =" + currentScn);
             connection.commit();
         }
     }
@@ -438,7 +438,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     continue;
                 }
                 LOGGER.trace("Flushing LGWR buffer on RAC node '{}'", hostName);
-                connection.executeWithoutCommitting(SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
+                connection.executeWithoutCommitting("UPDATE " + SqlUtils.LOGMNR_FLUSH_TABLE + " SET LAST_SCN =" + currentScn);
                 connection.commit();
             }
             catch (Exception e) {
@@ -519,12 +519,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private void createFlushTable(OracleConnection connection) throws SQLException {
         String tableExists = connection.singleOptionalValue(SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), rs -> rs.getString(1));
         if (tableExists == null) {
-            connection.executeWithoutCommitting(SqlUtils.CREATE_FLUSH_TABLE);
+            connection.executeWithoutCommitting("CREATE TABLE " + SqlUtils.LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))");
         }
 
-        String recordExists = connection.singleOptionalValue(SqlUtils.FLUSH_TABLE_NOT_EMPTY, rs -> rs.getString(1));
+        String recordExistsQuery = "SELECT '1' AS ONE FROM " + SqlUtils.LOGMNR_FLUSH_TABLE;
+        String recordExists = connection.singleOptionalValue(recordExistsQuery, rs -> rs.getString(1));
         if (recordExists == null) {
-            connection.executeWithoutCommitting(SqlUtils.INSERT_FLUSH_TABLE);
+            connection.executeWithoutCommitting("INSERT INTO " + SqlUtils.LOGMNR_FLUSH_TABLE + " VALUES(0)");
             connection.commit();
         }
     }
@@ -536,7 +537,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private void setNlsSessionParameters(OracleConnection connection) throws SQLException {
-        connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
+        final String NLS_SESSION_PARAMETERS = "ALTER SESSION SET "
+                + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
+                + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF'"
+                + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'"
+                + "  NLS_NUMERIC_CHARACTERS = '.,'";
+
+        connection.executeWithoutCommitting(NLS_SESSION_PARAMETERS);
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
         connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
     }
@@ -549,7 +556,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private OffsetDateTime getDatabaseSystemTime(OracleConnection connection) throws SQLException {
-        return connection.singleOptionalValue(SqlUtils.SELECT_SYSTIMESTAMP, rs -> rs.getObject(1, OffsetDateTime.class));
+        return connection.singleOptionalValue("SELECT SYSTIMESTAMP FROM DUAL", rs -> rs.getObject(1, OffsetDateTime.class));
     }
 
     /**
@@ -591,7 +598,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         try {
             LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
                     startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
-            connection.executeWithoutCommitting(SqlUtils.END_LOGMNR);
+            connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
         }
         catch (SQLException e) {
             if (e.getMessage().toUpperCase().contains("ORA-01307")) {

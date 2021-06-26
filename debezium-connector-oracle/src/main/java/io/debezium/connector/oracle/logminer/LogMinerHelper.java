@@ -167,7 +167,7 @@ public class LogMinerHelper {
      * @throws SQLException something happened
      */
     public static void removeLogFilesFromMining(OracleConnection conn) throws SQLException {
-        try (PreparedStatement ps = conn.connection(false).prepareStatement(SqlUtils.FILES_FOR_MINING);
+        try (PreparedStatement ps = conn.connection(false).prepareStatement("SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS");
                 ResultSet result = ps.executeQuery()) {
             Set<String> files = new LinkedHashSet<>();
             while (result.next()) {
