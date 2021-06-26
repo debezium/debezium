@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 
@@ -139,8 +138,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         streamingMetrics.calculateTimeDifference(getDatabaseSystemTime(jdbcConnection));
 
                         Instant start = Instant.now();
-                        endScn = getEndScn(jdbcConnection, startScn, endScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault(),
-                                connectorConfig.isLobEnabled());
+                        endScn = calculateEndScn(jdbcConnection, startScn, endScn);
                         flushLogWriter(jdbcConnection, jdbcConfiguration, racHosts);
 
                         if (hasLogSwitchOccurred()) {
@@ -579,6 +577,65 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
             // LogMiner failed to terminate properly, a restart of the connector will be required.
             throw e;
+        }
+    }
+
+    /**
+     * Calculates the mining session's end system change number.
+     *
+     * This calculation is based upon a sliding window algorithm to where if the connector is falling behind,
+     * the mining session's end point will be calculated based on the batch size and either be increased up
+     * to the maximum batch size or reduced to as low as the minimum batch size.
+     *
+     * Additionally, this method calculates and maintains a sliding algorithm for the sleep time between the
+     * mining sessions, increasing the pause up to the maximum sleep time if the connector is not behind or
+     * is mining too quick and reducing the pause down to the mimum sleep time if the connector has fallen
+     * behind and needs to catch-up faster.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @param startScn upcoming mining session's starting change number, should not be {@code null}
+     * @param prevEndScn last mining session's ending system change number, can be {@code null}
+     * @return the ending system change number to be used for the upcoming mining session, never {@code null}
+     * @throws SQLException if the current max system change number cannot be obtained from the database
+     */
+    private Scn calculateEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn) throws SQLException {
+        Scn currentScn = connection.getCurrentScn();
+        streamingMetrics.setCurrentScn(currentScn);
+
+        // Add the current batch size to the starting system change number
+        Scn topScnToMine = startScn.add(Scn.valueOf(streamingMetrics.getBatchSize()));
+
+        // Control adjusting batch size
+        boolean topMiningScnInFarFuture = false;
+        final Scn defaultBatchScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
+        if (topScnToMine.subtract(currentScn).compareTo(defaultBatchScn) > 0) {
+            streamingMetrics.changeBatchSize(false, connectorConfig.isLobEnabled());
+            topMiningScnInFarFuture = true;
+        }
+        if (currentScn.subtract(topScnToMine).compareTo(defaultBatchScn) > 0) {
+            streamingMetrics.changeBatchSize(true, connectorConfig.isLobEnabled());
+        }
+
+        // Control sleep time to reduce database impact
+        if (currentScn.compareTo(topScnToMine) < 0) {
+            if (!topMiningScnInFarFuture) {
+                streamingMetrics.changeSleepingTime(true);
+            }
+            LOGGER.debug("Using current SCN {} as end SCN.", currentScn);
+            return currentScn;
+        }
+        else {
+            if (prevEndScn != null && topScnToMine.compareTo(prevEndScn) <= 0) {
+                LOGGER.debug("Max batch size too small, using current SCN {} as end SCN.", currentScn);
+                return currentScn;
+            }
+            streamingMetrics.changeSleepingTime(false);
+            if (topScnToMine.compareTo(startScn) < 0) {
+                LOGGER.debug("Top SCN calculation resulted in end before start SCN, using current SCN {} as end SCN.", currentScn);
+                return currentScn;
+            }
+            LOGGER.debug("Using Top SCN calculation {} as end SCN.", topScnToMine);
+            return topScnToMine;
         }
     }
 
