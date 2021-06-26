@@ -6,12 +6,10 @@
 package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
 
 import java.math.BigInteger;
 import java.sql.PreparedStatement;
@@ -151,7 +149,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             // At this point we use a new mining session
                             LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
                                     startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
-                            endMining(jdbcConnection);
+                            endMiningSession(jdbcConnection);
 
                             initializeRedoLogsForMining(jdbcConnection, true, startScn);
 
@@ -162,7 +160,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             currentRedoLogSequences = getCurrentRedoLogSequences();
                         }
 
-                        startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics);
+                        startMiningSession(jdbcConnection, startScn, endScn);
 
                         LOGGER.trace("Fetching LogMiner view results SCN {} to {}", startScn, endScn);
                         stopwatch.start();
@@ -534,6 +532,54 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     private OffsetDateTime getDatabaseSystemTime(OracleConnection connection) throws SQLException {
         return connection.singleOptionalValue(SqlUtils.SELECT_SYSTIMESTAMP, rs -> rs.getObject(1, OffsetDateTime.class));
+    }
+
+    /**
+     * Starts a new Oracle LogMiner session.
+     *
+     * When this is called, LogMiner prepares all the necessary state for an upcoming LogMiner view query.
+     * If the mining statement defines using DDL tracking, the data dictionary will be mined as a part of
+     * this call to prepare DDL tracking state for the upcoming LogMiner view query.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @param startScn mining session's starting system change number (inclusive), should not be {@code null}
+     * @param endScn mining session's ending system change number (inclusive), can be {@code null}
+     * @throws SQLException if mining session failed to start
+     */
+    public void startMiningSession(OracleConnection connection, Scn startScn, Scn endScn) throws SQLException {
+        LOGGER.trace("Starting mining session startScn={}, endScn={}, strategy={}, continuous={}",
+                startScn, endScn, strategy, isContinuousMining);
+        try {
+            Instant start = Instant.now();
+            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining));
+            streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
+        }
+        catch (SQLException e) {
+            // Capture the database state before throwing the exception up
+            LogMinerHelper.logDatabaseState(connection);
+            throw e;
+        }
+    }
+
+    /**
+     * End the current Oracle LogMiner session, if one is in progress.  If the current session does not
+     * have an active mining session, a log message is recorded and the method is a no-op.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @throws SQLException if the current mining session cannot be ended gracefully
+     */
+    public void endMiningSession(OracleConnection connection) throws SQLException {
+        try {
+            connection.executeWithoutCommitting(SqlUtils.END_LOGMNR);
+        }
+        catch (SQLException e) {
+            if (e.getMessage().toUpperCase().contains("ORA-01307")) {
+                LOGGER.info("LogMiner mining session is already closed.");
+                return;
+            }
+            // LogMiner failed to terminate properly, a restart of the connector will be required.
+            throw e;
+        }
     }
 
     @Override

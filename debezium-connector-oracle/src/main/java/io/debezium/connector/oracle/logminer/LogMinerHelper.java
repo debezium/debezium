@@ -10,7 +10,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -26,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
@@ -109,40 +107,6 @@ public class LogMinerHelper {
     }
 
     /**
-     * This method builds mining view to query changes from.
-     * This view is built for online redo log files.
-     * It starts log mining session.
-     * It uses data dictionary objects, incorporated in previous steps.
-     * It tracks DDL changes and mines committed data only.
-     *
-     * @param connection container level database connection
-     * @param startScn   the SCN to mine from
-     * @param endScn     the SCN to mine to
-     * @param strategy this is about dictionary location
-     * @param isContinuousMining works < 19 version only
-     * @param streamingMetrics the streaming metrics
-     * @throws SQLException if anything unexpected happens
-     */
-    static void startLogMining(OracleConnection connection, Scn startScn, Scn endScn,
-                               OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining, OracleStreamingChangeEventSourceMetrics streamingMetrics)
-            throws SQLException {
-        LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
-        String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
-        try {
-            Instant start = Instant.now();
-            executeCallableStatement(connection, statement);
-            streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
-        }
-        catch (SQLException e) {
-            // Capture database state before throwing exception
-            logDatabaseState(connection);
-            throw e;
-        }
-        // todo dbms_logmnr.STRING_LITERALS_IN_STMT?
-        // todo If the log file is corrupted/bad, logmnr will not be able to access it, we have to switch to another one?
-    }
-
-    /**
      * This method query the database to get CURRENT online redo log file(s). Multiple is applicable for RAC systems.
      * @param connection connection to reuse
      * @return full redo log file name(s), including path
@@ -207,27 +171,6 @@ public class LogMinerHelper {
             }
             return false;
         });
-    }
-
-    /**
-     * This call completes LogMiner session.
-     * Complete gracefully.
-     *
-     * @param connection container level database connection
-     */
-    public static void endMining(OracleConnection connection) {
-        String stopMining = SqlUtils.END_LOGMNR;
-        try {
-            executeCallableStatement(connection, stopMining);
-        }
-        catch (SQLException e) {
-            if (e.getMessage().toUpperCase().contains("ORA-01307")) {
-                LOGGER.info("LogMiner session was already closed");
-            }
-            else {
-                LOGGER.error("Cannot close LogMiner session gracefully: {}", e);
-            }
-        }
     }
 
     /**
@@ -361,7 +304,7 @@ public class LogMinerHelper {
      *
      * @param connection the database connection
      */
-    private static void logDatabaseState(OracleConnection connection) {
+    public static void logDatabaseState(OracleConnection connection) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Configured redo logs are:");
             try {
