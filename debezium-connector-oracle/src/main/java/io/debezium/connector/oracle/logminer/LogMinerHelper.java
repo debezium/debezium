@@ -12,7 +12,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -110,23 +109,6 @@ public class LogMinerHelper {
             LOGGER.debug("Using Top SCN calculation {} as end SCN.", topScnToMine);
             return topScnToMine;
         }
-    }
-
-    /**
-     * Get the database time in the time zone of the system this database is running on
-     *
-     * @param connection connection
-     * @return the database system time
-     */
-    static OffsetDateTime getSystime(OracleConnection connection) throws SQLException {
-        return connection.queryAndMap(SqlUtils.SELECT_SYSTIMESTAMP, rs -> {
-            if (rs.next()) {
-                return rs.getObject(1, OffsetDateTime.class);
-            }
-            else {
-                return null;
-            }
-        });
     }
 
     /**
