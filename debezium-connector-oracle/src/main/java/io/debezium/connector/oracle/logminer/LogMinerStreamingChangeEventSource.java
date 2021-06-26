@@ -126,9 +126,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context,
                         connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher);
 
-                final String query = LogMinerQueryBuilder.build(connectorConfig);
-                try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-                        ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT)) {
+                try (PreparedStatement miningView = getMiningViewStatement(jdbcConnection)) {
 
                     currentRedoLogSequences = getCurrentRedoLogSequences();
                     Stopwatch stopwatch = Stopwatch.reusable();
@@ -144,12 +142,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             // This is the way to mitigate PGA leaks.
                             // With one mining session, it grows and maybe there is another way to flush PGA.
                             // At this point we use a new mining session
-                            LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
-                                    startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
-                            endMiningSession(jdbcConnection);
-
+                            endMiningSession(jdbcConnection, offsetContext);
                             initializeRedoLogsForMining(jdbcConnection, true, startScn);
-
                             abandonOldTransactionsIfExist(jdbcConnection, offsetContext, transactionalBuffer);
 
                             // This needs to be re-calculated because building the data dictionary will force the
@@ -198,6 +192,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
             }
         }
+    }
+
+    private PreparedStatement getMiningViewStatement(OracleConnection connection) throws SQLException {
+        return connection.connection()
+                .prepareStatement(LogMinerQueryBuilder.build(connectorConfig),
+                        ResultSet.TYPE_FORWARD_ONLY,
+                        ResultSet.CONCUR_READ_ONLY,
+                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
     }
 
     private void captureSessionMemoryStatistics(OracleConnection connection) throws SQLException {
@@ -582,10 +584,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * have an active mining session, a log message is recorded and the method is a no-op.
      *
      * @param connection database connection, should not be {@code null}
+     * @param offsetContext connector offset context, should not be {@code null}
      * @throws SQLException if the current mining session cannot be ended gracefully
      */
-    public void endMiningSession(OracleConnection connection) throws SQLException {
+    public void endMiningSession(OracleConnection connection, OracleOffsetContext offsetContext) throws SQLException {
         try {
+            LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
+                    startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
             connection.executeWithoutCommitting(SqlUtils.END_LOGMNR);
         }
         catch (SQLException e) {
