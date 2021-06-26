@@ -11,10 +11,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -24,12 +22,10 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
 /**
@@ -38,66 +34,7 @@ import io.debezium.util.Strings;
 public class LogMinerHelper {
 
     private static final String CURRENT = "CURRENT";
-    private static final String UNKNOWN = "unknown";
-    private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
-
-    public enum DATATYPE {
-        LONG,
-        TIMESTAMP,
-        STRING,
-        FLOAT
-    }
-
-    /**
-     * This method validates the supplemental logging configuration for the source database.
-     *
-     * @param connection oracle connection on LogMiner level
-     * @param pdbName pdb name
-     * @param schema oracle schema
-     * @throws SQLException if anything unexpected happens
-     */
-    static void checkSupplementalLogging(OracleConnection connection, String pdbName, OracleDatabaseSchema schema) throws SQLException {
-        try {
-            if (pdbName != null) {
-                connection.setSessionToPdb(pdbName);
-            }
-
-            // Check if ALL supplemental logging is enabled at the database
-            Map<String, String> globalAll = getMap(connection, SqlUtils.databaseSupplementalLoggingAllCheckQuery(), UNKNOWN);
-            if ("NO".equalsIgnoreCase(globalAll.get("KEY"))) {
-                // Check if MIN supplemental logging is enabled at the database
-                Map<String, String> globalMin = getMap(connection, SqlUtils.databaseSupplementalLoggingMinCheckQuery(), UNKNOWN);
-                if ("NO".equalsIgnoreCase(globalMin.get("KEY"))) {
-                    throw new DebeziumException("Supplemental logging not properly configured.  Use: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
-                }
-
-                // If ALL supplemental logging is not enabled, then each monitored table should be set to ALL COLUMNS
-                for (TableId tableId : schema.getTables().tableIds()) {
-                    if (!isTableSupplementalLogDataAll(connection, tableId)) {
-                        throw new DebeziumException("Supplemental logging not configured for table " + tableId + ".  " +
-                                "Use command: ALTER TABLE " + tableId.schema() + "." + tableId.table() + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-                    }
-                }
-            }
-        }
-        finally {
-            if (pdbName != null) {
-                connection.resetSessionToCdb();
-            }
-        }
-    }
-
-    static boolean isTableSupplementalLogDataAll(OracleConnection connection, TableId tableId) throws SQLException {
-        return connection.queryAndMap(SqlUtils.tableSupplementalLoggingCheckQuery(tableId), (rs) -> {
-            while (rs.next()) {
-                if (ALL_COLUMN_LOGGING.equals(rs.getString(2))) {
-                    return true;
-                }
-            }
-            return false;
-        });
-    }
 
     /**
      * This method substitutes CONTINUOUS_MINE functionality
@@ -325,20 +262,6 @@ public class LogMinerHelper {
         Objects.requireNonNull(statement);
         try (CallableStatement s = connection.connection(false).prepareCall(statement)) {
             s.execute();
-        }
-    }
-
-    public static Map<String, String> getMap(OracleConnection connection, String query, String nullReplacement) throws SQLException {
-        Map<String, String> result = new LinkedHashMap<>();
-        try (
-                PreparedStatement statement = connection.connection(false).prepareStatement(query);
-                ResultSet rs = statement.executeQuery()) {
-            while (rs.next()) {
-                String value = rs.getString(2);
-                value = value == null ? nullReplacement : value;
-                result.put(rs.getString(1), value);
-            }
-            return result;
         }
     }
 

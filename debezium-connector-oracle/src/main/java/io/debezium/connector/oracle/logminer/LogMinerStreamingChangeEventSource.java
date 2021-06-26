@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 
@@ -56,6 +55,7 @@ import io.debezium.util.Stopwatch;
 public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
+    private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
 
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<TableId> dispatcher;
@@ -655,6 +655,102 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             LOGGER.debug("Using Top SCN calculation {} as end SCN.", topScnToMine);
             return topScnToMine;
         }
+    }
+
+    /**
+     * Validates the supplemental logging configuration for the source database and its captured tables.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @param pdbName pluggable database name, can be {@code null} when not using pluggable databases
+     * @param schema connector's database schema, should not be {@code null}
+     * @throws SQLException if a database exception occurred
+     */
+    private void checkSupplementalLogging(OracleConnection connection, String pdbName, OracleDatabaseSchema schema) throws SQLException {
+        try {
+            if (pdbName != null) {
+                connection.setSessionToPdb(pdbName);
+            }
+
+            // Check if ALL supplemental logging is enabled at the database
+            if (!isDatabaseAllSupplementalLoggingEnabled(connection)) {
+                // Check if MIN supplemental logging is enabled at the database
+                if (!isDatabaseMinSupplementalLoggingEnabled(connection)) {
+                    throw new DebeziumException("Supplemental logging not properly configured. "
+                            + "Use: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
+                }
+
+                // Check if ALL COLUMNS supplemental logging is enabled for each captured table
+                for (TableId tableId : schema.getTables().tableIds()) {
+                    if (!isTableAllColumnsSupplementalLoggingEnabled(connection, tableId)) {
+                        throw new DebeziumException("Supplemental logging not properly configured for table " + tableId + ". "
+                                + "Use: ALTER TABLE " + tableId.schema() + "." + tableId.table()
+                                + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+                    }
+                }
+            }
+        }
+        finally {
+            if (pdbName != null) {
+                connection.resetSessionToCdb();
+            }
+        }
+    }
+
+    /**
+     * Returns whether the database is configured with ALL supplemental logging.
+     *
+     * @param connection database connection, must not be {@code null}
+     * @return true if all supplemental logging is enabled, false otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    private boolean isDatabaseAllSupplementalLoggingEnabled(OracleConnection connection) throws SQLException {
+        return connection.queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(), rs -> {
+            while (rs.next()) {
+                if ("YES".equalsIgnoreCase(rs.getString(2))) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    /**
+     * Returns whether the database is configured with MIN supplemental logging.
+     *
+     * @param connection database connection, must not be {@code null}
+     * @return true if min supplemental logging is enabled, false otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    private boolean isDatabaseMinSupplementalLoggingEnabled(OracleConnection connection) throws SQLException {
+        return connection.queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(), rs -> {
+            while (rs.next()) {
+                if ("YES".equalsIgnoreCase(rs.getString(2))) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    /**
+     * Return whether the table is configured with ALL COLUMN supplemental logging.
+     *
+     * @param connection database connection, must not be {@code null}
+     * @param tableId table identifier, must not be {@code null}
+     * @return true if all column supplemental logging is enabled, false otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    private boolean isTableAllColumnsSupplementalLoggingEnabled(OracleConnection connection, TableId tableId) throws SQLException {
+        // A table can be defined with multiple logging groups, hence why this check needs to iterate
+        // multiple returned rows to see whether ALL_COLUMN_LOGGING is part of the set.
+        return connection.queryAndMap(SqlUtils.tableSupplementalLoggingCheckQuery(tableId), rs -> {
+            while (rs.next()) {
+                if (ALL_COLUMN_LOGGING.equals(rs.getString(2))) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     @Override
