@@ -42,7 +42,6 @@ public class LogMinerHelper {
 
     private static final String CURRENT = "CURRENT";
     private static final String UNKNOWN = "unknown";
-    private static final String TOTAL = "TOTAL";
     private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
 
@@ -158,36 +157,6 @@ public class LogMinerHelper {
         });
         LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
         return fileNames;
-    }
-
-    /**
-     * This fetches online redo log statuses
-     * @param connection privileged connection
-     * @return REDO LOG statuses Map, where key is the REDO name and value is the status
-     * @throws SQLException if anything unexpected happens
-     */
-    private static Map<String, String> getRedoLogStatus(OracleConnection connection) throws SQLException {
-        return getMap(connection, SqlUtils.redoLogStatusQuery(), UNKNOWN);
-    }
-
-    /**
-     * This fetches REDO LOG switch count for the last day
-     *
-     * @param connection privileged connection
-     * @param archiveDestinationName configured archive destination name, may be {@code null}
-     * @return counter
-     */
-    private static int getSwitchCount(OracleConnection connection, String archiveDestinationName) {
-        try {
-            Map<String, String> total = getMap(connection, SqlUtils.switchHistoryQuery(archiveDestinationName), UNKNOWN);
-            if (total != null && total.get(TOTAL) != null) {
-                return Integer.parseInt(total.get(TOTAL));
-            }
-        }
-        catch (Exception e) {
-            LOGGER.error("Cannot get switch counter", e);
-        }
-        return 0;
     }
 
     /**
@@ -501,25 +470,6 @@ public class LogMinerHelper {
                 result.put(rs.getString(1), value);
             }
             return result;
-        }
-    }
-
-    public static Object getSingleResult(OracleConnection connection, String query, DATATYPE type) throws SQLException {
-        try (PreparedStatement statement = connection.connection(false).prepareStatement(query);
-                ResultSet rs = statement.executeQuery()) {
-            if (rs.next()) {
-                switch (type) {
-                    case LONG:
-                        return rs.getLong(1);
-                    case TIMESTAMP:
-                        return rs.getTimestamp(1);
-                    case STRING:
-                        return rs.getString(1);
-                    case FLOAT:
-                        return rs.getFloat(1);
-                }
-            }
-            return null;
         }
     }
 
