@@ -379,6 +379,29 @@ public class OracleConnection extends JdbcConnection {
                 "' AND n.statistic#=m.statistic#", rs -> rs.next() ? rs.getLong(1) : 0L);
     }
 
+    /**
+     * Returns whether the given table exists or not.
+     *
+     * @param tableName table name, should not be {@code null}
+     * @return true if the table exists, false if it does not
+     * @throws SQLException if a database exception occurred
+     */
+    public boolean isTableExists(String tableName) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM USER_TABLES WHERE TABLE_NAME = '" + tableName + "'",
+                rs -> rs.next() && rs.getLong(1) > 0);
+    }
+
+    /**
+     * Returns whether the given table is empty or not.
+     *
+     * @param tableName table name, should not be {@code null}
+     * @return true if the table has no records, false otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    public boolean isTableEmpty(String tableName) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> rs.next() && rs.getLong(1) == 0);
+    }
+
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
     }

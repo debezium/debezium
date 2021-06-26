@@ -94,10 +94,6 @@ public class SqlUtilsTest {
                 " WHERE STATUS='VALID' AND TYPE='LOCAL' AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_3') AND STATUS='A')";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.tableExistsQuery("table_name");
-        expected = "SELECT '1' AS ONE FROM USER_TABLES WHERE TABLE_NAME = 'table_name'";
-        assertThat(result).isEqualTo(expected);
-
         result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, null);
         expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, " +
                 "L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END FROM V$LOGFILE F, " +

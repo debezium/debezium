@@ -517,14 +517,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private void createFlushTable(OracleConnection connection) throws SQLException {
-        String tableExists = connection.singleOptionalValue(SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), rs -> rs.getString(1));
-        if (tableExists == null) {
+        if (!connection.isTableExists(SqlUtils.LOGMNR_FLUSH_TABLE)) {
             connection.executeWithoutCommitting("CREATE TABLE " + SqlUtils.LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))");
         }
 
-        String recordExistsQuery = "SELECT '1' AS ONE FROM " + SqlUtils.LOGMNR_FLUSH_TABLE;
-        String recordExists = connection.singleOptionalValue(recordExistsQuery, rs -> rs.getString(1));
-        if (recordExists == null) {
+        if (connection.isTableEmpty(SqlUtils.LOGMNR_FLUSH_TABLE)) {
             connection.executeWithoutCommitting("INSERT INTO " + SqlUtils.LOGMNR_FLUSH_TABLE + " VALUES(0)");
             connection.commit();
         }
