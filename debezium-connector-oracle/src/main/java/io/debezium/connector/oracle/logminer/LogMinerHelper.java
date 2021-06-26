@@ -51,62 +51,6 @@ public class LogMinerHelper {
     }
 
     /**
-     * This method returns next SCN for mining and also updates streaming metrics.
-     *
-     * We use a configurable limit, because the larger mining range, the slower query from LogMiner content view.
-     * In addition capturing unlimited number of changes can blow up Java heap.
-     * Gradual querying helps to catch up faster after long delays in mining.
-     *
-     * @param connection container level database connection
-     * @param startScn start SCN
-     * @param prevEndScn previous end SCN
-     * @param streamingMetrics the streaming metrics
-     * @param lobEnabled specifies whether LOB support is enabled
-     * @return next SCN to mine up to
-     * @throws SQLException if anything unexpected happens
-     */
-    static Scn getEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize,
-                         boolean lobEnabled)
-            throws SQLException {
-        Scn currentScn = connection.getCurrentScn();
-        streamingMetrics.setCurrentScn(currentScn);
-
-        Scn topScnToMine = startScn.add(Scn.valueOf(streamingMetrics.getBatchSize()));
-
-        // adjust batch size
-        boolean topMiningScnInFarFuture = false;
-        if (topScnToMine.subtract(currentScn).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
-            streamingMetrics.changeBatchSize(false, lobEnabled);
-            topMiningScnInFarFuture = true;
-        }
-        if (currentScn.subtract(topScnToMine).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
-            streamingMetrics.changeBatchSize(true, lobEnabled);
-        }
-
-        // adjust sleeping time to reduce DB impact
-        if (currentScn.compareTo(topScnToMine) < 0) {
-            if (!topMiningScnInFarFuture) {
-                streamingMetrics.changeSleepingTime(true);
-            }
-            LOGGER.debug("Using current SCN {} as end SCN.", currentScn);
-            return currentScn;
-        }
-        else {
-            if (prevEndScn != null && topScnToMine.compareTo(prevEndScn) <= 0) {
-                LOGGER.debug("Max batch size too small, using current SCN {} as end SCN.", currentScn);
-                return currentScn;
-            }
-            streamingMetrics.changeSleepingTime(false);
-            if (topScnToMine.compareTo(startScn) < 0) {
-                LOGGER.debug("Top SCN calculation resulted in end before start SCN, using current SCN {} as end SCN.", currentScn);
-                return currentScn;
-            }
-            LOGGER.debug("Using Top SCN calculation {} as end SCN.", topScnToMine);
-            return topScnToMine;
-        }
-    }
-
-    /**
      * This method query the database to get CURRENT online redo log file(s). Multiple is applicable for RAC systems.
      * @param connection connection to reuse
      * @return full redo log file name(s), including path
