@@ -572,7 +572,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
         catch (SQLException e) {
             // Capture the database state before throwing the exception up
-            LogMinerHelper.logDatabaseState(connection);
+            LogMinerDatabaseStateWriter.write(connection);
             throw e;
         }
     }
