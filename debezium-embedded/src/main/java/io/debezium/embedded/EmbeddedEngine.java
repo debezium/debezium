@@ -5,6 +5,8 @@
  */
 package io.debezium.embedded;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.CUSTOM_LSN;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -204,7 +206,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
             OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
-            INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
+            INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS, CUSTOM_LSN);
 
     /**
      * How long we wait before forcefully stopping the connector thread when

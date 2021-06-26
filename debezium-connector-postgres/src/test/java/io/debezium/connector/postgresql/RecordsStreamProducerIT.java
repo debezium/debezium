@@ -274,6 +274,55 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-3660")
+    public void testLsnProvided() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+        // Start with latest LSN
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .with(PostgresConnectorConfig.PLUGIN_NAME.name(), PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.getValue())
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true));
+
+        TestHelper.execute("CREATE TABLE t0 (pk SERIAL, d INTEGER, PRIMARY KEY(pk));");
+
+        consumer = testConsumer(1);
+        String lsn = TestHelper.executeWithResult("select pg_current_wal_lsn();", rs -> rs.getString(1));
+        waitForStreamingToStart();
+
+        // Insert new row and verify inserted
+        executeAndWait("INSERT INTO t0 (pk,d) VALUES(1,1);");
+        assertRecordInserted("public.t0", PK_FIELD, 1);
+
+        // simulate the connector is stopped
+        stopConnector();
+        Thread.sleep(3000);
+
+        // Add record offline
+        TestHelper.execute("INSERT INTO t0 (pk,d) VALUES(2,2);");
+
+        // Start the producer and wait; the wait is to guarantee the stream thread is polling
+        // This appears to be a potential race condition problem
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .with(PostgresConnectorConfig.PLUGIN_NAME.name(), PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.getValue())
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
+                .with(PostgresConnectorConfig.CUSTOM_LSN, lsn),
+                false);
+        consumer = testConsumer(3);
+        waitForStreamingToStart();
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+    }
+
+    @Test
     @FixFor("DBZ-1698")
     public void shouldReceiveUpdateSchemaAfterConnectionRestart() throws Exception {
         TestHelper.dropDefaultReplicationSlot();

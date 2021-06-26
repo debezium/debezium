@@ -435,6 +435,17 @@ public class JdbcConnection implements AutoCloseable {
         });
     }
 
+    public <T> T executeQuery(String query, ResultSetExtractor<T> extractor) throws SQLException {
+        Connection conn = connection();
+        try (Statement statement = conn.createStatement()) {
+            ResultSet resultSet = statement.executeQuery(query);
+            resultSet.next();
+            T result = singleResultMapper(extractor, "query error").apply(resultSet);
+            commit();
+            return result;
+        }
+    }
+
     /**
      * Execute a series of operations as a single transaction.
      *

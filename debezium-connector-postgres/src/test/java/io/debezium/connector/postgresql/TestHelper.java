@@ -34,6 +34,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnection
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
@@ -154,6 +155,25 @@ public final class TestHelper {
             else {
                 jdbcConn.rollback();
             }
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> T executeWithResult(String statement, JdbcConnection.ResultSetExtractor<T> extractor) {
+        try (PostgresConnection connection = create()) {
+            connection.setAutoCommit(false);
+            T result = connection.executeQuery(statement, extractor);
+            Connection jdbcConn = connection.connection();
+            if (!statement.endsWith("ROLLBACK;")) {
+                jdbcConn.commit();
+            }
+            else {
+                jdbcConn.rollback();
+            }
+
+            return result;
         }
         catch (Exception e) {
             throw new RuntimeException(e);

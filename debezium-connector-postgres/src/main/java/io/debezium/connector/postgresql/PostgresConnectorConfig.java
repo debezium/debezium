@@ -1113,7 +1113,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SSL_SOCKET_FACTORY,
                     STATUS_UPDATE_INTERVAL_MS,
                     TCP_KEEPALIVE,
-                    XMIN_FETCH_INTERVAL)
+                    XMIN_FETCH_INTERVAL,
+                    CUSTOM_LSN)
             .events(
                     INCLUDE_UNKNOWN_DATATYPES,
                     DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,

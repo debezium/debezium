@@ -118,6 +118,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .exportSnapshotOnCreate(exportSnapshot)
                 .doSnapshot(doSnapshot)
                 .withSchema(schema)
+                .startLSN(config.getConfig().getString("internal.start.lsn"))
                 .build();
     }
 

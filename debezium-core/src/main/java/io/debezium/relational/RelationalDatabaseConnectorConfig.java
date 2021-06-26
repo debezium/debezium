@@ -522,6 +522,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + " If you are excluding a lot of tables the default behavour should work well.")
             .withDefault(false);
 
+    public static final Field CUSTOM_LSN = Field.createInternal("start.lsn")
+            .withDisplayName("Start LSN of Postgres")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Restore pre 1.5 behaviour and scan all tables to discover columns."
+                    + " If you are excluding one table then turning this on may improve performance."
+                    + " If you are excluding a lot of tables the default behavour should work well.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     SERVER_NAME)
