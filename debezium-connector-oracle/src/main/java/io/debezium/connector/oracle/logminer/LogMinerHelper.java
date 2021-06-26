@@ -57,20 +57,6 @@ public class LogMinerHelper {
         FLOAT
     }
 
-    /**
-     * This builds data dictionary objects in redo log files.
-     * During this build, Oracle does an additional REDO LOG switch.
-     * This call may take time, which leads to delay in delivering incremental changes.
-     * With this option the lag between source database and dispatching event fluctuates.
-     *
-     * @param connection connection to the database as LogMiner user (connection to the container)
-     * @throws SQLException any exception
-     */
-    static void buildDataDictionary(OracleConnection connection) throws SQLException {
-        LOGGER.trace("Building data dictionary");
-        executeCallableStatement(connection, SqlUtils.BUILD_DICTIONARY);
-    }
-
     static void createFlushTable(OracleConnection connection) throws SQLException {
         String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), DATATYPE.STRING);
         if (tableExists == null) {
