@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.buildDataDictionary;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.createFlushTable;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
@@ -257,6 +256,25 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
             }
         }
+    }
+
+    /**
+     * Requests Oracle to build the data dictionary.
+     *
+     * During the build step, Oracle will perform an additional series of redo log switches.
+     * Additionally, this call may introduce a delay in delivering incremental changes since the
+     * dictionary will need to have statistics gathered, analyzed, and prepared by LogMiner before
+     * any redo entries can be mined.
+     *
+     * This should only be used in conjunction with the mining strategy
+     * {@link io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy#CATALOG_IN_REDO}.
+     *
+     * @param connection database connection
+     * @throws SQLException if a database exception occurred
+     */
+    private void buildDataDictionary(OracleConnection connection) throws SQLException {
+        LOGGER.trace("Building data dictionary");
+        connection.executeWithoutCommitting(SqlUtils.BUILD_DICTIONARY);
     }
 
     /**
