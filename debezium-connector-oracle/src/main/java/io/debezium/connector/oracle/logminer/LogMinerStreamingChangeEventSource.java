@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 
@@ -348,6 +347,25 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         return false;
+    }
+
+    /**
+     * Get a list of all the CURRENT redo log file names.  For Oracle RAC clusters, multiple filenames
+     * will be returned, one for each node that participates in the cluster.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @return unique set of all current redo log file names, with full paths, never {@code null}
+     * @throws SQLException if a database exception occurred
+     */
+    private Set<String> getCurrentRedoLogFiles(OracleConnection connection) throws SQLException {
+        final Set<String> fileNames = new HashSet<>();
+        connection.query(SqlUtils.currentRedoNameQuery(), rs -> {
+            while (rs.next()) {
+                fileNames.add(rs.getString(1));
+            }
+        });
+        LOGGER.trace("Current redo log filenames: {}", fileNames);
+        return fileNames;
     }
 
     /**
