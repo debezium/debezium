@@ -11,7 +11,6 @@ import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRed
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getFirstOnlineLogScn;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToAbandon;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getSystime;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
@@ -23,6 +22,7 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -140,7 +140,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     Stopwatch stopwatch = Stopwatch.reusable();
                     while (context.isRunning()) {
                         // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
-                        streamingMetrics.calculateTimeDifference(getSystime(jdbcConnection));
+                        streamingMetrics.calculateTimeDifference(getDatabaseSystemTime(jdbcConnection));
 
                         Instant start = Instant.now();
                         endScn = getEndScn(jdbcConnection, startScn, endScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault(),
@@ -484,6 +484,17 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
         connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
+    }
+
+    /**
+     * Get the database system time in the database system's time zone.
+     *
+     * @param connection database connection, should not be {@code null}
+     * @return the database system time
+     * @throws SQLException if a database exception occurred
+     */
+    private OffsetDateTime getDatabaseSystemTime(OracleConnection connection) throws SQLException {
+        return connection.singleOptionalValue(SqlUtils.SELECT_SYSTIMESTAMP, rs -> rs.getObject(1, OffsetDateTime.class));
     }
 
     @Override
