@@ -262,13 +262,14 @@ public class LogMinerHelper {
      *
      * @param connection container level database connection
      * @param archiveLogRetention duration that archive logs are mined
+     * @param archiveDestinationName configured archive destination name to use, may be {@code null}
      * @return oldest SCN from online redo log
      * @throws SQLException if anything unexpected happens
      */
-    static Scn getFirstOnlineLogScn(OracleConnection connection, Duration archiveLogRetention) throws SQLException {
+    static Scn getFirstOnlineLogScn(OracleConnection connection, Duration archiveLogRetention, String archiveDestinationName) throws SQLException {
         LOGGER.trace("Getting first scn of all online logs");
         try (Statement s = connection.connection(false).createStatement()) {
-            try (ResultSet rs = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogRetention))) {
+            try (ResultSet rs = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName))) {
                 rs.next();
                 Scn firstScnOfOnlineLog = Scn.valueOf(rs.getString(1));
                 LOGGER.trace("First SCN in online logs is {}", firstScnOfOnlineLog);
@@ -301,12 +302,14 @@ public class LogMinerHelper {
 
     /**
      * This fetches REDO LOG switch count for the last day
+     *
      * @param connection privileged connection
+     * @param archiveDestinationName configured archive destination name, may be {@code null}
      * @return counter
      */
-    private static int getSwitchCount(OracleConnection connection) {
+    private static int getSwitchCount(OracleConnection connection, String archiveDestinationName) {
         try {
-            Map<String, String> total = getMap(connection, SqlUtils.switchHistoryQuery(), UNKNOWN);
+            Map<String, String> total = getMap(connection, SqlUtils.switchHistoryQuery(archiveDestinationName), UNKNOWN);
             if (total != null && total.get(TOTAL) != null) {
                 return Integer.parseInt(total.get(TOTAL));
             }
@@ -451,14 +454,16 @@ public class LogMinerHelper {
      * @param lastProcessedScn current offset
      * @param archiveLogRetention the duration that archive logs will be mined
      * @param archiveLogOnlyMode true to mine only archive lgos, false to mine all available logs
+     * @param archiveDestinationName configured archive log destination name to use, may be {@code null}
      * @throws SQLException if anything unexpected happens
      */
     // todo: check RAC resiliency
-    public static void setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention, boolean archiveLogOnlyMode)
+    public static void setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention, boolean archiveLogOnlyMode,
+                                            String archiveDestinationName)
             throws SQLException {
         removeLogFilesFromMining(connection);
 
-        List<LogFile> logFilesForMining = getLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention, archiveLogOnlyMode);
+        List<LogFile> logFilesForMining = getLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
         if (!logFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0)) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
         }
@@ -514,10 +519,12 @@ public class LogMinerHelper {
      * @param offsetScn offset system change number
      * @param archiveLogRetention duration that archive logs should be mined
      * @param archiveLogOnlyMode true to mine only archive logs, false to mine all available logs
+     * @param archiveDestinationName archive destination to use, may be {@code null}
      * @return list of log files
      * @throws SQLException if a database exception occurs
      */
-    public static List<LogFile> getLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn, Duration archiveLogRetention, boolean archiveLogOnlyMode)
+    public static List<LogFile> getLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn, Duration archiveLogRetention, boolean archiveLogOnlyMode,
+                                                        String archiveDestinationName)
             throws SQLException {
         LOGGER.trace("Getting logs to be mined for offset scn {}", offsetScn);
 
@@ -525,7 +532,7 @@ public class LogMinerHelper {
         final List<LogFile> onlineLogFiles = new ArrayList<>();
         final List<LogFile> archivedLogFiles = new ArrayList<>();
 
-        connection.query(SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode), rs -> {
+        connection.query(SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName), rs -> {
             while (rs.next()) {
                 String fileName = rs.getString(1);
                 Scn firstScn = getScnFromString(rs.getString(2));

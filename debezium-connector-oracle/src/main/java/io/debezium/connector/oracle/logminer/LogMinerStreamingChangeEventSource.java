@@ -78,6 +78,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final OracleConnectorConfig connectorConfig;
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
+    private final String archiveDestinationName;
 
     private Scn startScn;
     private Scn endScn;
@@ -104,6 +105,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
         this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
+        this.archiveDestinationName = connectorConfig.getLogMiningArchiveDestinationName();
     }
 
     /**
@@ -119,7 +121,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 startScn = offsetContext.getScn();
                 createFlushTable(jdbcConnection);
 
-                if (!isContinuousMining && startScn.compareTo(getFirstOnlineLogScn(jdbcConnection, archiveLogRetention)) < 0) {
+                if (!isContinuousMining && startScn.compareTo(getFirstOnlineLogScn(jdbcConnection, archiveLogRetention, archiveDestinationName)) < 0) {
                     throw new DebeziumException(
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
@@ -127,7 +129,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 setNlsSessionParameters(jdbcConnection);
                 checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName(), schema);
 
-                initializeRedoLogsForMining(jdbcConnection, false, archiveLogRetention, startScn);
+                initializeRedoLogsForMining(jdbcConnection, false, startScn);
 
                 HistoryRecorder historyRecorder = connectorConfig.getLogMiningHistoryRecorder();
 
@@ -161,7 +163,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                         startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
                                 endMining(jdbcConnection);
 
-                                initializeRedoLogsForMining(jdbcConnection, true, archiveLogRetention, startScn);
+                                initializeRedoLogsForMining(jdbcConnection, true, startScn);
 
                                 abandonOldTransactionsIfExist(jdbcConnection, offsetContext, transactionalBuffer);
 
@@ -219,13 +221,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Duration archiveLogRetention, Scn startScn) throws SQLException {
+    private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn) throws SQLException {
         if (!postEndMiningSession) {
             if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                 buildDataDictionary(connection);
             }
             if (!isContinuousMining) {
-                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode);
+                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
             }
         }
         else {
@@ -233,7 +235,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                     buildDataDictionary(connection);
                 }
-                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode);
+                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
             }
         }
     }
@@ -259,7 +261,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 return results;
             });
 
-            final int logSwitchCount = jdbcConnection.queryAndMap(SqlUtils.switchHistoryQuery(), rs -> {
+            final int logSwitchCount = jdbcConnection.queryAndMap(SqlUtils.switchHistoryQuery(archiveDestinationName), rs -> {
                 if (rs.next()) {
                     return rs.getInt(2);
                 }
