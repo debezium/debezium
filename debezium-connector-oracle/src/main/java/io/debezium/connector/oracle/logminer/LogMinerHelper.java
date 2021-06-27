@@ -123,10 +123,12 @@ public class LogMinerHelper {
      * @param startScn start SCN
      * @param prevEndScn previous end SCN
      * @param streamingMetrics the streaming metrics
+     * @param lobEnabled specifies whether LOB support is enabled
      * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
-    static Scn getEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize)
+    static Scn getEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize,
+                         boolean lobEnabled)
             throws SQLException {
         Scn currentScn = connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
@@ -136,11 +138,11 @@ public class LogMinerHelper {
         // adjust batch size
         boolean topMiningScnInFarFuture = false;
         if (topScnToMine.subtract(currentScn).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
-            streamingMetrics.changeBatchSize(false);
+            streamingMetrics.changeBatchSize(false, lobEnabled);
             topMiningScnInFarFuture = true;
         }
         if (currentScn.subtract(topScnToMine).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
-            streamingMetrics.changeBatchSize(true);
+            streamingMetrics.changeBatchSize(true, lobEnabled);
         }
 
         // adjust sleeping time to reduce DB impact

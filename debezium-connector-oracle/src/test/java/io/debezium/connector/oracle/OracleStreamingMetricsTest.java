@@ -131,9 +131,9 @@ public class OracleStreamingMetricsTest {
         assertThat(metrics.getNetworkConnectionProblemsCounter()).isEqualTo(1);
 
         metrics.setBatchSize(5000);
-        metrics.changeBatchSize(true);
+        metrics.changeBatchSize(true, false);
         assertThat(metrics.getBatchSize()).isEqualTo(6000);
-        metrics.changeBatchSize(false);
+        metrics.changeBatchSize(false, false);
         assertThat(metrics.getBatchSize()).isEqualTo(5000);
     }
 

@@ -150,7 +150,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             streamingMetrics.calculateTimeDifference(getSystime(jdbcConnection));
 
                             Instant start = Instant.now();
-                            endScn = getEndScn(jdbcConnection, startScn, endScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault());
+                            endScn = getEndScn(jdbcConnection, startScn, endScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault(),
+                                    connectorConfig.isLobEnabled());
                             flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
 
                             if (hasLogSwitchOccurred()) {
