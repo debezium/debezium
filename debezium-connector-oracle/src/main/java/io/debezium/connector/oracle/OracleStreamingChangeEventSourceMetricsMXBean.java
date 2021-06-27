@@ -116,7 +116,7 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
      */
     void changeSleepingTime(boolean increment);
 
-    void changeBatchSize(boolean increment);
+    void changeBatchSize(boolean increment, boolean lobEnabled);
 
     /**
      * this flag indicates whether log mining is being recorded by {@link HistoryRecorder}

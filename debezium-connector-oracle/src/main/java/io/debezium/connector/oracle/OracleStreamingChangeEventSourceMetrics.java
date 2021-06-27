@@ -461,7 +461,8 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         LOGGER.debug("Updating sleep time window. Sleep time {}. Min sleep time {}. Max sleep time {}.", sleepTime, sleepTimeMin, sleepTimeMax);
     }
 
-    public void changeBatchSize(boolean increment) {
+    @Override
+    public void changeBatchSize(boolean increment, boolean lobEnabled) {
 
         int currentBatchSize = batchSize.get();
         if (increment && currentBatchSize < batchSizeMax) {
@@ -472,7 +473,12 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         }
 
         if (currentBatchSize == batchSizeMax) {
-            LOGGER.info("LogMiner is now using the maximum batch size {}. This could be indicative of large SCN gaps", currentBatchSize);
+            if (!lobEnabled) {
+                LOGGER.info("LogMiner is now using the maximum batch size {}. This could be indicative of large SCN gaps", currentBatchSize);
+            }
+            else {
+                LOGGER.debug("LogMiner is now using the maximum batch size {}.", currentBatchSize);
+            }
         }
         else {
             LOGGER.debug("Updating batch size window. Batch size {}. Min batch size {}. Max batch size {}.", currentBatchSize, batchSizeMin, batchSizeMax);
