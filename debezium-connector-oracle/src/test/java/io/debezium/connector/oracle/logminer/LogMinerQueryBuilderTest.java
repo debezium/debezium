@@ -58,7 +58,8 @@ public class LogMinerQueryBuilderTest {
             "${systemTablePredicate}" +
             "${schemaPredicate}" +
             "${tablePredicate}" +
-            "))";
+            "))" +
+            "${userNamePredicate}";
 
     /**
      * A template that defines the expected SQL output when the configuration specifies
@@ -77,7 +78,8 @@ public class LogMinerQueryBuilderTest {
             "${systemTablePredicate}" +
             "${schemaPredicate}" +
             "${tablePredicate}" +
-            "))";
+            "))" +
+            "${userNamePredicate}";
 
     private static final String USERNAME = "USERNAME";
 
@@ -88,39 +90,39 @@ public class LogMinerQueryBuilderTest {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
         String result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
 
         config = TestHelper.defaultConfig().with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
 
         config = TestHelper.defaultConfig().with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
 
         config = TestHelper.defaultConfig().with(STORE_ONLY_CAPTURED_TABLES_DDL, true).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithSchemaInclude() {
         String schema = "AND (REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') OR REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        assertQueryWithConfig(SCHEMA_INCLUDE_LIST, "SCHEMA1,SCHEMA2", schema, null);
+        assertQueryWithConfig(SCHEMA_INCLUDE_LIST, "SCHEMA1,SCHEMA2", schema, null, null);
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithSchemaExclude() {
         String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') AND NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        assertQueryWithConfig(OracleConnectorConfig.SCHEMA_EXCLUDE_LIST, "SCHEMA1,SCHEMA2", schema, null);
+        assertQueryWithConfig(OracleConnectorConfig.SCHEMA_EXCLUDE_LIST, "SCHEMA1,SCHEMA2", schema, null, null);
     }
 
     @Test
@@ -128,7 +130,7 @@ public class LogMinerQueryBuilderTest {
     public void testLogMinerQueryWithTableInclude() {
         String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
                 "OR REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
-        assertQueryWithConfig(TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", null, table);
+        assertQueryWithConfig(TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", null, table, null);
     }
 
     @Test
@@ -136,7 +138,7 @@ public class LogMinerQueryBuilderTest {
     public void testLogMinerQueryWithTableExcludes() {
         String table = "AND (NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
                 "AND NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
-        assertQueryWithConfig(TABLE_EXCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", null, table);
+        assertQueryWithConfig(TABLE_EXCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", null, table, null);
     }
 
     @Test
@@ -166,30 +168,37 @@ public class LogMinerQueryBuilderTest {
         assertQueryWithConfig(SCHEMA_EXCLUDE_LIST, "SCHEMA1,SCHEMA2", TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", schema, table);
     }
 
-    private void assertQueryWithConfig(Field field, Object fieldValue, String schemaValue, String tableValue) {
+    @Test
+    @FixFor("DBZ-3671")
+    public void testLogMinerExcludeUsersInQuery() {
+        String users = " AND USERNAME NOT IN ('user1','user2','user')";
+        assertQueryWithConfig(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "user1,user2,user", null, null, users);
+    }
+
+    private void assertQueryWithConfig(Field field, Object fieldValue, String schemaValue, String tableValue, String userValue) {
         Configuration config = TestHelper.defaultConfig().with(field, fieldValue).build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
         String result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
 
         config = TestHelper.defaultConfig().with(field, fieldValue).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
 
         config = TestHelper.defaultConfig().with(field, fieldValue).with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
 
         config = TestHelper.defaultConfig().with(field, fieldValue).with(STORE_ONLY_CAPTURED_TABLES_DDL, true).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
     }
 
     private void assertQueryWithConfig(Field field1, Object fieldValue1, Field field2, Object fieldValue2, String schemaValue, String tableValue) {
@@ -197,20 +206,20 @@ public class LogMinerQueryBuilderTest {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
         String result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
 
         config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
 
         config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2)
                 .with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
 
         config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2)
                 .with(STORE_ONLY_CAPTURED_TABLES_DDL, true)
@@ -219,12 +228,13 @@ public class LogMinerQueryBuilderTest {
         connectorConfig = new OracleConnectorConfig(config);
 
         result = LogMinerQueryBuilder.build(connectorConfig, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue));
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
     }
 
     private String resolveLogMineryContentQueryFromTemplate(OracleConnectorConfig config,
                                                             String schemaReplacement,
-                                                            String tableReplacement) {
+                                                            String tableReplacement,
+                                                            String userNameReplacement) {
         String query = config.getDatabaseHistory().storeOnlyCapturedTables()
                 ? LOG_MINER_CONTENT_QUERY_TEMPLATE2
                 : LOG_MINER_CONTENT_QUERY_TEMPLATE1;
@@ -249,6 +259,7 @@ public class LogMinerQueryBuilderTest {
         query = query.replace("${operationCodes}", config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED : OPERATION_CODES_LOB_DISABLED);
         query = query.replace("${schemaPredicate}", schemaReplacement == null ? "" : schemaReplacement);
         query = query.replace("${tablePredicate}", tableReplacement == null ? "" : tableReplacement);
+        query = query.replace("${userNamePredicate}", userNameReplacement == null ? "" : userNameReplacement.toString());
         query = query.replace("${user}", USERNAME);
         return query;
     }
