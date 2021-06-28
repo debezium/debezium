@@ -168,7 +168,7 @@
             <dependency>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-runtime</artifactId>
-                <version>${antlr.version}</version>
+                <version>${version.antlr}</version>
             </dependency>
 
             <!-- PostgreSQL connector -->
