@@ -11,3 +11,6 @@ ALTER TABLE customers MODIFY PARTITION south_india ADD VALUES ('KOCHI', 'MANGALO
 ALTER TABLE customers MODIFY PARTITION south_india DROP VALUES ('KOCHI','MANGALORE');
 ALTER TABLE sales split partition p5 into (Partition p6 values less than (1996), Partition p7 values less than (MAXVALUE));
 ALTER TABLE sales truncate partition p5;
+-- Alter table add unique index
+alter table dbz1211 add constraint name unique (id,data) using index tablespace ts;
+alter table dbz1211_child add constraint name unique (id) using index tablespace ts;

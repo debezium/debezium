@@ -1708,6 +1708,95 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1211")
+    public void shouldSnapshotAndStreamTablesWithUniqueIndexPrimaryKey() throws Exception {
+        TestHelper.dropTables(connection, "dbz1211_child", "dbz1211");
+        try {
+            connection.execute("create table dbz1211 (id numeric(9,0), data varchar2(50), constraint pkdbz1211 primary key (id) using index)");
+            connection.execute("alter table dbz1211 add constraint xdbz1211 unique (id,data) using index");
+            connection
+                    .execute("create table dbz1211_child (id numeric(9,0), data varchar2(50), constraint fk1211 foreign key (id) references dbz1211 on delete cascade)");
+            connection.execute("alter table dbz1211_child add constraint ydbz1211 unique (id,data) using index");
+            TestHelper.streamTable(connection, "dbz1211");
+            TestHelper.streamTable(connection, "dbz1211_child");
+
+            connection.executeWithoutCommitting("INSERT INTO dbz1211 values (1, 'Test')");
+            connection.executeWithoutCommitting("INSERT INTO dbz1211_child values (1, 'Child')");
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1211,DEBEZIUM\\.DBZ1211\\_CHILD")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(2);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ1211")).hasSize(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ1211_CHILD")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ1211").get(0);
+            Struct key = (Struct) record.key();
+            assertThat(key).isNotNull();
+            assertThat(key.get("ID")).isEqualTo(1);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test");
+
+            record = records.recordsForTopic("server1.DEBEZIUM.DBZ1211_CHILD").get(0);
+            key = (Struct) record.key();
+            assertThat(key).isNotNull();
+            assertThat(key.get("ID")).isEqualTo(1);
+            assertThat(key.get("DATA")).isEqualTo("Child");
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Child");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1211 values (2, 'Test2')");
+            connection.executeWithoutCommitting("INSERT INTO dbz1211_child values (1, 'Child1-2')");
+            connection.executeWithoutCommitting("INSERT INTO dbz1211_child values (2, 'Child2-1')");
+            connection.commit();
+
+            records = consumeRecordsByTopic(3);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ1211")).hasSize(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ1211_CHILD")).hasSize(2);
+
+            record = records.recordsForTopic("server1.DEBEZIUM.DBZ1211").get(0);
+            key = (Struct) record.key();
+            assertThat(key).isNotNull();
+            assertThat(key.get("ID")).isEqualTo(2);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo("Test2");
+
+            record = records.recordsForTopic("server1.DEBEZIUM.DBZ1211_CHILD").get(0);
+            key = (Struct) record.key();
+            assertThat(key).isNotNull();
+            assertThat(key.get("ID")).isEqualTo(1);
+            assertThat(key.get("DATA")).isEqualTo("Child1-2");
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Child1-2");
+
+            record = records.recordsForTopic("server1.DEBEZIUM.DBZ1211_CHILD").get(1);
+            key = (Struct) record.key();
+            assertThat(key).isNotNull();
+            assertThat(key.get("ID")).isEqualTo(2);
+            assertThat(key.get("DATA")).isEqualTo("Child2-1");
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo("Child2-1");
+        }
+        finally {
+            TestHelper.dropTables(connection, "dbz1211_child", "dbz1211");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-3322")
     public void shouldNotEmitEventsOnConstraintViolations() throws Exception {
         TestHelper.dropTable(connection, "dbz3322");
