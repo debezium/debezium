@@ -31,6 +31,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -39,6 +40,7 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 
 /**
@@ -519,6 +521,21 @@ public class IoUtil {
      */
     public static Properties loadProperties(Class<?> clazz, String classpathResource) {
         return loadProperties(clazz::getClassLoader, classpathResource);
+    }
+
+    /**
+     * Read a resource on classpath as a String
+     * @param classpathResource
+     * @return the content of resource as String
+     */
+    public static String readClassPathResource(String classpathResource) {
+        try (InputStream stream = IoUtil.class.getClassLoader().getResourceAsStream(classpathResource)) {
+            Objects.requireNonNull(stream);
+            return IoUtil.read(stream);
+        }
+        catch (IOException e) {
+            throw new DebeziumException("Unable to read '" + classpathResource + "'");
+        }
     }
 
     private IoUtil() {

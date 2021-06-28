@@ -6,10 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Set;
@@ -20,6 +17,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -95,7 +93,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl("SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null, offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
-        mysql.parseStreamingDdl(readFile("ddl/mysql-products.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         // Check that we have tables ...
@@ -120,9 +118,9 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl("SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null, offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
-        mysql.parseStreamingDdl("xxxCREATE TABLE mytable\n" + readFile("ddl/mysql-products.ddl"), "db1", offset,
+        mysql.parseStreamingDdl("xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
-        mysql.parseStreamingDdl(readFile("ddl/mysql-products.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         // Check that we have tables ...
@@ -146,7 +144,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl("SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null, offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
-        mysql.parseStreamingDdl("xxxCREATE TABLE mytable\n" + readFile("ddl/mysql-products.ddl"), "db1", offset,
+        mysql.parseStreamingDdl("xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
     }
 
@@ -164,11 +162,11 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl("SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null, offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
-        mysql.parseStreamingDdl(readFile("ddl/mysql-test-init-5.7.ddl"), "mysql", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-test-init-5.7.ddl"), "mysql", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         offset.setBinlogStartPoint("binlog-001", 1000);
-        mysql.parseStreamingDdl(readFile("ddl/mysql-products.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         // Check that we have tables ...
@@ -196,11 +194,11 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl("SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null, offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
-        mysql.parseStreamingDdl(readFile("ddl/mysql-test-init-5.7.ddl"), "mysql", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-test-init-5.7.ddl"), "mysql", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         offset.setBinlogStartPoint("binlog-001", 1000);
-        mysql.parseStreamingDdl(readFile("ddl/mysql-products.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         // Check that we have tables ...
@@ -225,7 +223,7 @@ public class MySqlDatabaseSchemaTest {
 
         // Set up the server ...
         offset.setBinlogStartPoint("binlog-001", 400);
-        mysql.parseStreamingDdl(readFile("ddl/mysql-decimal-issue.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-decimal-issue.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         assertTableIncluded("connector_test.business_order");
@@ -234,6 +232,7 @@ public class MySqlDatabaseSchemaTest {
     }
 
     @Test
+    @FixFor("DBZ-3622")
     public void shouldStoreNonCapturedDatabase() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
@@ -246,7 +245,7 @@ public class MySqlDatabaseSchemaTest {
 
         // Set up the server ...
         offset.setBinlogStartPoint("binlog-001", 400);
-        mysql.parseStreamingDdl(readFile("ddl/mysql-schema-captured.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         assertTableIncluded("captured.ct");
@@ -263,6 +262,7 @@ public class MySqlDatabaseSchemaTest {
     }
 
     @Test
+    @FixFor("DBZ-3622")
     public void shouldNotStoreNonCapturedDatabase() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
@@ -276,7 +276,7 @@ public class MySqlDatabaseSchemaTest {
 
         // Set up the server ...
         offset.setBinlogStartPoint("binlog-001", 400);
-        mysql.parseStreamingDdl(readFile("ddl/mysql-schema-captured.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         assertTableIncluded("captured.ct");
@@ -293,6 +293,7 @@ public class MySqlDatabaseSchemaTest {
     }
 
     @Test
+    @FixFor("DBZ-3622")
     public void shouldStoreNonCapturedTable() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
@@ -305,7 +306,7 @@ public class MySqlDatabaseSchemaTest {
 
         // Set up the server ...
         offset.setBinlogStartPoint("binlog-001", 400);
-        mysql.parseStreamingDdl(readFile("ddl/mysql-schema-captured.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         assertTableIncluded("captured.ct");
@@ -322,6 +323,7 @@ public class MySqlDatabaseSchemaTest {
     }
 
     @Test
+    @FixFor("DBZ-3622")
     public void shouldNotStoreNonCapturedTable() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
@@ -335,7 +337,7 @@ public class MySqlDatabaseSchemaTest {
 
         // Set up the server ...
         offset.setBinlogStartPoint("binlog-001", 400);
-        mysql.parseStreamingDdl(readFile("ddl/mysql-schema-captured.ddl"), "db1", offset,
+        mysql.parseStreamingDdl(IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1", offset,
                 Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
         assertTableIncluded("captured.ct");
@@ -401,17 +403,5 @@ public class MySqlDatabaseSchemaTest {
 
     protected void printStatements(String dbName, Set<TableId> tables, String ddlStatements) {
         Testing.print("Running DDL for '" + dbName + "': " + ddlStatements + " changing tables '" + tables + "'");
-    }
-
-    protected String readFile(String classpathResource) {
-        try (InputStream stream = getClass().getClassLoader().getResourceAsStream(classpathResource);) {
-            assertThat(stream).isNotNull();
-            return IoUtil.read(stream);
-        }
-        catch (IOException e) {
-            fail("Unable to read '" + classpathResource + "'");
-        }
-        assert false : "should never get here";
-        return null;
     }
 }
