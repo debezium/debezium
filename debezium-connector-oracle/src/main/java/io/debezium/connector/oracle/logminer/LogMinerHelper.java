@@ -462,8 +462,12 @@ public class LogMinerHelper {
 
         List<LogFile> logFilesForMining = getLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention, archiveLogOnlyMode);
         if (!logFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0)) {
-            Scn minScn = logFilesForMining.stream().map(LogFile::getFirstScn).min(Scn::compareTo).orElse(Scn.NULL);
-            if ((minScn.isNull() || logFilesForMining.size() == 0) && archiveLogOnlyMode) {
+            Scn minScn = logFilesForMining.stream()
+                .map(LogFile::getFirstScn)
+                .min(Scn::compareTo)
+                .orElse(Scn.NULL);
+
+            if ((minScn.isNull() || logFilesForMining.isEmpty()) && archiveLogOnlyMode) {
                 throw new DebeziumException("The log.mining.archive.log.only mode was recently enabled and the offset SCN " +
                         lastProcessedScn + "is not yet in any available archive logs. " +
                         "Please perform an Oracle log switch and restart the connector.");
