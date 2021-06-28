@@ -572,6 +572,10 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 clock.currentTimeAsInstant());
         try {
             for (SchemaChangeEvent schemaChangeEvent : schemaChangeEvents) {
+                if (taskContext.getSchema().skipSchemaChangeEvent(schemaChangeEvent)) {
+                    continue;
+                }
+
                 final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
                 eventDispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
                     try {
