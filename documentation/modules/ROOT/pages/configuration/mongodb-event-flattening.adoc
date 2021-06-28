@@ -208,14 +208,14 @@ Note that other MongoDB operations might cause an `$unset` internally, `$rename`
 
 When a message is flattened the final result does not show whether it was an insert, update or first read. (Deletions can be detected via tombstones or rewrites, see {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options].)
 
-To solve this problem {prodname} offers an option to propagate the original operation via a header added to the message.
-To enable this feature the option `operation.header` must be set to `true`.
+To solve this problem, you can propagate the original operation either as a field added to message value or as a header property,
+e.g. like so to use a header property:
 
 [source]
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
-transforms.unwrap.operation.header=true
+transforms.unwrap.add.headers=op
 ----
 
 The possible values are the ones from the `op` field of {link-prefix}:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
@@ -231,7 +231,7 @@ For example, the configuration
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
-transforms.unwrap.add.source.fields=rs,collection
+transforms.unwrap.add.fields=rs,collection
 ----
 
 will add
