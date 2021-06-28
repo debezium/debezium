@@ -102,7 +102,8 @@
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
-        <antlr.version>4.8</antlr.version>
+        <version.antlr>4.8</version.antlr>
+        <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
         <quarkus.version>2.0.0.Final</quarkus.version>

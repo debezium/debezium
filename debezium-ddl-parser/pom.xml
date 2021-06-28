@@ -62,7 +62,7 @@
             <plugin>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-maven-plugin</artifactId>
-                <version>${antlr.version}</version>
+                <version>${version.antlr}</version>
                 <configuration>
                     <sourceDirectory>${antlr.source.directory}</sourceDirectory>
                 </configuration>
@@ -90,7 +90,14 @@
                         <!-- https://github.com/antlr/antlr4test-maven-plugin -->
                         <groupId>com.khubla.antlr</groupId>
                         <artifactId>antlr4test-maven-plugin</artifactId>
-                        <version>1.11</version>
+                        <version>${version.antlr4test.plugin}</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.antlr</groupId>
+                                <artifactId>antlr4-runtime</artifactId>
+                                <version>${version.antlr}</version>
+                            </dependency>
+                        </dependencies>
                         <executions>
                             <execution>
                                 <id>MySql</id>
