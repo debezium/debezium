@@ -131,7 +131,7 @@ public class LogMinerQueryBuilder {
                     query.append(",");
                 }
             }
-            query.append(") ");
+            query.append(")");
         }
 
         return query.toString();
