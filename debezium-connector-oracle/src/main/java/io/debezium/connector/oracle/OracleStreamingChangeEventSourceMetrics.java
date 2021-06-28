@@ -474,7 +474,8 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
 
         if (currentBatchSize == batchSizeMax) {
             if (!lobEnabled) {
-                LOGGER.info("The connector is now using the maximum batch size {} when querying the LogMiner view. This could be indicative of large SCN gaps", currentBatchSize);
+                LOGGER.info("The connector is now using the maximum batch size {} when querying the LogMiner view. This could be indicative of large SCN gaps",
+                        currentBatchSize);
             }
             else {
                 LOGGER.debug("The connector is now using the maximum batch size {} when querying the LogMiner view.", currentBatchSize);
