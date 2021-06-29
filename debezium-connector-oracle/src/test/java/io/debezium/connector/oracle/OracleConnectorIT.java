@@ -1741,6 +1741,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Struct key = (Struct) record.key();
             assertThat(key).isNotNull();
             assertThat(key.get("ID")).isEqualTo(1);
+            assertThat(key.schema().field("DATA")).isNull();
             Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("DATA")).isEqualTo("Test");
@@ -1769,6 +1770,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             key = (Struct) record.key();
             assertThat(key).isNotNull();
             assertThat(key.get("ID")).isEqualTo(2);
+            assertThat(key.schema().field("DATA")).isNull();
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(2);
             assertThat(after.get("DATA")).isEqualTo("Test2");
