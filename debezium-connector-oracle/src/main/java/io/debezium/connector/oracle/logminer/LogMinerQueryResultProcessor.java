@@ -17,18 +17,15 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
-import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -72,15 +69,8 @@ class LogMinerQueryResultProcessor {
         this.schema = schema;
         this.dispatcher = dispatcher;
         this.connectorConfig = connectorConfig;
-        this.dmlParser = resolveParser(connectorConfig, schema.getValueConverters());
+        this.dmlParser = new LogMinerDmlParser();
         this.selectLobParser = new SelectLobParser();
-    }
-
-    private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters) {
-        if (connectorConfig.getLogMiningDmlParser().equals(LogMiningDmlParser.LEGACY)) {
-            return new SimpleDmlParser(connectorConfig.getCatalogName(), valueConverters);
-        }
-        return new LogMinerDmlParser();
     }
 
     /**
@@ -383,9 +373,6 @@ class LogMinerQueryResultProcessor {
             StringBuilder message = new StringBuilder();
             message.append("DML statement couldn't be parsed.");
             message.append(" Please open a Jira issue with the statement '").append(redoSql).append("'.");
-            if (LogMiningDmlParser.FAST.equals(connectorConfig.getLogMiningDmlParser())) {
-                message.append(" You can set internal.log.mining.dml.parser='legacy' as a workaround until the parse error is fixed.");
-            }
             throw new DmlParserException(message.toString(), e);
         }
 
