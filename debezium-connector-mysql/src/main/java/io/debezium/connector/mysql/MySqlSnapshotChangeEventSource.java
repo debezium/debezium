@@ -621,9 +621,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 throw new InterruptedException("Interrupted while processing event " + event);
             }
 
-            if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
-                    && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
-                LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
+            if (databaseSchema.skipSchemaChangeEvent(event)) {
                 continue;
             }
 
