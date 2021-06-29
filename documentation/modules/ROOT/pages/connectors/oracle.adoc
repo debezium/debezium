@@ -1079,6 +1079,13 @@ ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
 The following briefly describes these user configurations using a multi-tenant database model.
 
+[WARNING]
+====
+This user account should be used solely by the {prodname} Oracle connector to connect to the Oracle database and capture changes.
+This account should not be used to create tables or modify data as any change performed by this account will not be captured by the connector.
+A separate account that is not `SYS` or `SYSTEM` should be used to create and modify data that is to be captured by the connector.
+====
+
 [[oracle-create-users-logminer]]
 .Creating the connector's LogMiner user
 [source,indent=0]
