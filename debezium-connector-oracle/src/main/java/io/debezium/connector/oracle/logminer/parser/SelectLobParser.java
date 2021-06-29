@@ -9,8 +9,6 @@ import java.util.function.Consumer;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
 import io.debezium.relational.Table;
 import io.debezium.text.ParsingException;
 
