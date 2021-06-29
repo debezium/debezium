@@ -49,13 +49,13 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
-        TestHelper.dropTables(connection, "debezium_signal", "tablea", "tableb", "\"tableC\"");
+        TestHelper.dropAllTables();
     }
 
     @After
     public void afterEach() throws Exception {
         if (connection != null) {
-            TestHelper.dropTables(connection, "tablea", "tableb", "\"tableC\"");
+            TestHelper.dropAllTables();
             connection.close();
         }
     }
