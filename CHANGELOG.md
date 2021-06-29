@@ -2,6 +2,39 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.6.0.Final
+June 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358966)
+
+### New features since 1.6.0.CR1
+
+* Allow specifying of Oracle archive log location [DBZ-3661](https://issues.redhat.com/browse/DBZ-3661)
+
+
+### Breaking changes since 1.6.0.CR1
+
+None
+
+
+### Fixes since 1.6.0.CR1
+
+* Fix connect container build to be compatible with Oracle Instant Client [DBZ-2547](https://issues.redhat.com/browse/DBZ-2547)
+* Schema change events of excluded databases are discarded  [DBZ-3622](https://issues.redhat.com/browse/DBZ-3622)
+* Provide a descriptive error when enabling log.mining.archive.log.only.mode with an offset SCN that isn't yet in an archive log. [DBZ-3665](https://issues.redhat.com/browse/DBZ-3665)
+* When LOB support is disabled, use legacy SCN mining algorithm [DBZ-3676](https://issues.redhat.com/browse/DBZ-3676)
+
+
+### Other changes since 1.6.0.CR1
+
+* Oracle connector error with tables using unique index keys: "key must not be null"  [DBZ-1211](https://issues.redhat.com/browse/DBZ-1211)
+* Database history properties missing in connector docs [DBZ-3459](https://issues.redhat.com/browse/DBZ-3459)
+* Oracle connector doc fixes [DBZ-3662](https://issues.redhat.com/browse/DBZ-3662)
+* Change the reached max batch size log message to DEBUG level [DBZ-3664](https://issues.redhat.com/browse/DBZ-3664)
+* Remove unused code [DBZ-3672](https://issues.redhat.com/browse/DBZ-3672)
+* Update deprecated config for debezium smt [DBZ-3673](https://issues.redhat.com/browse/DBZ-3673)
+* Align Antlr versions used during testing [DBZ-3675](https://issues.redhat.com/browse/DBZ-3675)
+
+
+
 ## 1.6.0.CR1
 June 24th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358695)
 
