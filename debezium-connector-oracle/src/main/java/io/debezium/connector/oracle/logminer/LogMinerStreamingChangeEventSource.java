@@ -131,79 +131,68 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                 initializeRedoLogsForMining(jdbcConnection, false, startScn);
 
-                HistoryRecorder historyRecorder = connectorConfig.getLogMiningHistoryRecorder();
+                final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context,
+                        connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher);
 
-                try {
-                    // todo: why can't OracleConnection be used rather than a Factory+JdbcConfiguration?
-                    historyRecorder.prepare(streamingMetrics, jdbcConfiguration, connectorConfig.getLogMinerHistoryRetentionHours());
+                final String query = LogMinerQueryBuilder.build(connectorConfig, jdbcConnection.username());
+                try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
+                        ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT)) {
 
-                    final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context,
-                            connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
-                            historyRecorder);
+                    currentRedoLogSequences = getCurrentRedoLogSequences();
+                    Stopwatch stopwatch = Stopwatch.reusable();
+                    while (context.isRunning()) {
+                        // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
+                        streamingMetrics.calculateTimeDifference(getSystime(jdbcConnection));
 
-                    final String query = LogMinerQueryBuilder.build(connectorConfig, jdbcConnection.username());
-                    try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
-                            ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT)) {
+                        Instant start = Instant.now();
+                        endScn = getEndScn(jdbcConnection, startScn, endScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault(),
+                                connectorConfig.isLobEnabled());
+                        flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
 
-                        currentRedoLogSequences = getCurrentRedoLogSequences();
-                        Stopwatch stopwatch = Stopwatch.reusable();
-                        while (context.isRunning()) {
-                            // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
-                            streamingMetrics.calculateTimeDifference(getSystime(jdbcConnection));
+                        if (hasLogSwitchOccurred()) {
+                            // This is the way to mitigate PGA leaks.
+                            // With one mining session, it grows and maybe there is another way to flush PGA.
+                            // At this point we use a new mining session
+                            LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
+                                    startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
+                            endMining(jdbcConnection);
 
-                            Instant start = Instant.now();
-                            endScn = getEndScn(jdbcConnection, startScn, endScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault(),
-                                    connectorConfig.isLobEnabled());
-                            flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
+                            initializeRedoLogsForMining(jdbcConnection, true, startScn);
 
-                            if (hasLogSwitchOccurred()) {
-                                // This is the way to mitigate PGA leaks.
-                                // With one mining session, it grows and maybe there is another way to flush PGA.
-                                // At this point we use a new mining session
-                                LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
-                                        startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
-                                endMining(jdbcConnection);
+                            abandonOldTransactionsIfExist(jdbcConnection, offsetContext, transactionalBuffer);
 
-                                initializeRedoLogsForMining(jdbcConnection, true, startScn);
-
-                                abandonOldTransactionsIfExist(jdbcConnection, offsetContext, transactionalBuffer);
-
-                                // This needs to be re-calculated because building the data dictionary will force the
-                                // current redo log sequence to be advanced due to a complete log switch of all logs.
-                                currentRedoLogSequences = getCurrentRedoLogSequences();
-                            }
-
-                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics);
-
-                            LOGGER.trace("Fetching LogMiner view results SCN {} to {}", startScn, endScn);
-                            stopwatch.start();
-                            miningView.setFetchSize(connectorConfig.getMaxQueueSize());
-                            miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
-                            miningView.setString(1, startScn.toString());
-                            miningView.setString(2, endScn.toString());
-                            try (ResultSet rs = miningView.executeQuery()) {
-                                Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
-                                streamingMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
-                                processor.processResult(rs);
-                                if (connectorConfig.isLobEnabled()) {
-                                    startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
-                                }
-                                else {
-                                    if (transactionalBuffer.isEmpty()) {
-                                        LOGGER.debug("Buffer is empty, updating offset SCN to {}", endScn);
-                                        offsetContext.setScn(endScn);
-                                    }
-                                    startScn = endScn;
-                                }
-                            }
-
-                            streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
-                            pauseBetweenMiningSessions();
+                            // This needs to be re-calculated because building the data dictionary will force the
+                            // current redo log sequence to be advanced due to a complete log switch of all logs.
+                            currentRedoLogSequences = getCurrentRedoLogSequences();
                         }
+
+                        startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics);
+
+                        LOGGER.trace("Fetching LogMiner view results SCN {} to {}", startScn, endScn);
+                        stopwatch.start();
+                        miningView.setFetchSize(connectorConfig.getMaxQueueSize());
+                        miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
+                        miningView.setString(1, startScn.toString());
+                        miningView.setString(2, endScn.toString());
+                        try (ResultSet rs = miningView.executeQuery()) {
+                            Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
+                            streamingMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
+                            processor.processResult(rs);
+                            if (connectorConfig.isLobEnabled()) {
+                                startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
+                            }
+                            else {
+                                if (transactionalBuffer.isEmpty()) {
+                                    LOGGER.debug("Buffer is empty, updating offset SCN to {}", endScn);
+                                    offsetContext.setScn(endScn);
+                                }
+                                startScn = endScn;
+                            }
+                        }
+
+                        streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
+                        pauseBetweenMiningSessions();
                     }
-                }
-                finally {
-                    historyRecorder.close();
                 }
             }
             catch (Throwable t) {

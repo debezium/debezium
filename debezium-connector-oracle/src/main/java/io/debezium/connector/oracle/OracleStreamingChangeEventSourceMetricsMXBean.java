@@ -7,7 +7,6 @@ package io.debezium.connector.oracle;
 
 import java.util.Set;
 
-import io.debezium.connector.oracle.logminer.HistoryRecorder;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
 
 /**
@@ -117,11 +116,6 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     void changeSleepingTime(boolean increment);
 
     void changeBatchSize(boolean increment, boolean lobEnabled);
-
-    /**
-     * this flag indicates whether log mining is being recorded by {@link HistoryRecorder}
-     */
-    boolean getRecordMiningHistory();
 
     /**
      * This represents the maximum number of entries processed per second from LogMiner sessions.

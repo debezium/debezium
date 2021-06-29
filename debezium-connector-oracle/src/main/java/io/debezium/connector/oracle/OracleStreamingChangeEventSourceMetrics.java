@@ -12,7 +12,6 @@ import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -67,7 +66,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     private final AtomicInteger batchSize = new AtomicInteger();
     private final AtomicLong millisecondToSleepBetweenMiningQuery = new AtomicLong();
 
-    private final AtomicBoolean recordMiningHistory = new AtomicBoolean();
     private final AtomicInteger hoursToKeepTransaction = new AtomicInteger();
     private final AtomicLong networkConnectionProblemsCounter = new AtomicLong();
 
@@ -140,7 +138,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         redoLogStatus = new AtomicReference<>();
         switchCounter.set(0);
 
-        recordMiningHistory.set(connectorConfig.isLogMiningHistoryRecorded());
         batchSizeDefault = connectorConfig.getLogMiningBatchSizeDefault();
         batchSizeMin = connectorConfig.getLogMiningBatchSizeMin();
         batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
@@ -353,11 +350,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     @Override
     public long getMillisecondToSleepBetweenMiningQuery() {
         return millisecondToSleepBetweenMiningQuery.get();
-    }
-
-    @Override
-    public boolean getRecordMiningHistory() {
-        return recordMiningHistory.get();
     }
 
     @Override
@@ -710,7 +702,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
                 ", switchCounter=" + switchCounter +
                 ", batchSize=" + batchSize +
                 ", millisecondToSleepBetweenMiningQuery=" + millisecondToSleepBetweenMiningQuery +
-                ", recordMiningHistory=" + recordMiningHistory +
                 ", hoursToKeepTransaction=" + hoursToKeepTransaction +
                 ", networkConnectionProblemsCounter" + networkConnectionProblemsCounter +
                 ", batchSizeDefault=" + batchSizeDefault +
