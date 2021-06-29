@@ -55,7 +55,6 @@ class LogMinerQueryResultProcessor {
     private final OracleDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
     private final OracleConnectorConfig connectorConfig;
-    private final HistoryRecorder historyRecorder;
     private final SelectLobParser selectLobParser;
 
     private Scn currentOffsetScn = Scn.NULL;
@@ -65,15 +64,13 @@ class LogMinerQueryResultProcessor {
     LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
                                  OracleStreamingChangeEventSourceMetrics streamingMetrics, TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
-                                 EventDispatcher<TableId> dispatcher,
-                                 HistoryRecorder historyRecorder) {
+                                 EventDispatcher<TableId> dispatcher) {
         this.context = context;
         this.streamingMetrics = streamingMetrics;
         this.transactionalBuffer = transactionalBuffer;
         this.offsetContext = offsetContext;
         this.schema = schema;
         this.dispatcher = dispatcher;
-        this.historyRecorder = historyRecorder;
         this.connectorConfig = connectorConfig;
         this.dmlParser = resolveParser(connectorConfig, schema.getValueConverters());
         this.selectLobParser = new SelectLobParser();
@@ -118,7 +115,7 @@ class LogMinerQueryResultProcessor {
             long hash = RowMapper.getHash(resultSet);
             boolean dml = isDmlOperation(operationCode);
 
-            String redoSql = RowMapper.getSqlRedo(resultSet, dml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime, txId);
+            String redoSql = RowMapper.getSqlRedo(resultSet);
 
             LOGGER.trace("scn={}, operationCode={}, operation={}, table={}, segOwner={}, userName={}, rowId={}, rollbackFlag={}", scn, operationCode, operation,
                     tableName, segOwner, userName, rowId, rollbackFlag);
@@ -136,7 +133,6 @@ class LogMinerQueryResultProcessor {
                 case RowMapper.COMMIT: {
                     // Commits a transaction
                     if (transactionalBuffer.isTransactionRegistered(txId)) {
-                        historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                         if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage, dispatcher)) {
                             LOGGER.trace("COMMIT, {}", logMessage);
                             commitCounter++;
@@ -147,7 +143,6 @@ class LogMinerQueryResultProcessor {
                 case RowMapper.ROLLBACK: {
                     // Rollback a transaction
                     if (transactionalBuffer.isTransactionRegistered(txId)) {
-                        historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                         if (transactionalBuffer.rollback(txId, logMessage)) {
                             LOGGER.trace("ROLLBACK, {}", logMessage);
                             rollbackCounter++;
@@ -160,7 +155,6 @@ class LogMinerQueryResultProcessor {
                         LOGGER.trace("DDL: {} has already been seen, skipped.", redoSql);
                         continue;
                     }
-                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                     LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
                     try {
                         if (tableName != null) {
@@ -184,7 +178,6 @@ class LogMinerQueryResultProcessor {
                     }
                 }
                 case RowMapper.MISSING_SCN: {
-                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                     LogMinerHelper.logWarn(streamingMetrics, "Missing SCN, {}", logMessage);
                     break;
                 }
@@ -307,7 +300,6 @@ class LogMinerQueryResultProcessor {
                 streamingMetrics.getNumberOfActiveTransactions(), streamingMetrics.getMillisecondToSleepBetweenMiningQuery());
 
         streamingMetrics.addProcessedRows(rows);
-        historyRecorder.flush();
     }
 
     private boolean hasNext(ResultSet resultSet) throws SQLException {

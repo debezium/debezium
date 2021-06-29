@@ -1759,11 +1759,6 @@ The {prodname} Oracle connector also provides the following additional streaming
 |The number of hours that transactions will be retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
 See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
 
-|[[oracle-streaming-metrics-recordmininghistory]]<<oracle-streaming-metrics-recordmininghistory, `+RecordMiningHistory+`>>
-|`boolean`
-|Flag that indicates if the mining results are being recorded.
-See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.class`>> for more details.
-
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
 |`long`
 |The number of current active transactions in the transaction buffer.

@@ -109,20 +109,10 @@ public class RowMapper {
      * It also records LogMiner history info if isDml is true
      *
      * @param rs result set
-     * @param isDml flag indicating if operation code is a DML
-     * @param historyRecorder history recorder
-     * @param scn scn
-     * @param tableName table name
-     * @param segOwner segment owner
-     * @param operationCode operation code
-     * @param changeTime time of change
-     * @param txId transaction ID
      * @return the redo SQL
      * @throws SQLException if an exception occurred while interacting with the data source
      */
-    public static String getSqlRedo(ResultSet rs, boolean isDml, HistoryRecorder historyRecorder, Scn scn, String tableName,
-                                    String segOwner, int operationCode, Timestamp changeTime, String txId)
-            throws SQLException {
+    public static String getSqlRedo(ResultSet rs) throws SQLException {
         int lobLimitCounter = 9; // todo : decide on approach ( XStream chunk option) and Lob limit
 
         String redoSql = rs.getString(SQL_REDO);
@@ -132,9 +122,6 @@ public class RowMapper {
 
         StringBuilder result = new StringBuilder(redoSql);
         int csf = rs.getInt(CSF);
-        if (isDml) {
-            historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, csf, redoSql);
-        }
 
         // 0 - indicates SQL_REDO is contained within the same row
         // 1 - indicates that either SQL_REDO is greater than 4000 bytes in size and is continued in
@@ -149,9 +136,6 @@ public class RowMapper {
             redoSql = rs.getString(SQL_REDO);
             result.append(redoSql);
             csf = rs.getInt(CSF);
-            if (isDml) {
-                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, csf, redoSql);
-            }
         }
 
         return result.toString();
