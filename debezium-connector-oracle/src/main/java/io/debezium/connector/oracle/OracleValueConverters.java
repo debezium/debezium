@@ -26,7 +26,6 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -284,12 +283,6 @@ public class OracleValueConverters extends JdbcValueConverters {
             for (int i = 0; i < data.length(); ++i) {
                 char c = data.charAt(i);
                 if (c == '\\') {
-                    // handle special legacy parser use case where '\' is actually '\\', necessitated by JSqlParser
-                    // can safely be removed when SimpleDmlParser is retired
-                    if (data.charAt(i + 1) == '\\') {
-                        // advance by 1
-                        i += 1;
-                    }
                     if (data.length() >= (i + 4)) {
                         // Read next 4 character hex and convert to character.
                         result.append(Character.toChars(Integer.parseInt(data.substring(i + 1, i + 5), 16)));
@@ -427,14 +420,6 @@ public class OracleValueConverters extends JdbcValueConverters {
         // the value (e.g. 4.4444 -> 4.444400)
         if (data instanceof BigDecimal) {
             data = withScaleAdjustedIfNeeded(column, (BigDecimal) data);
-        }
-
-        // When SimpleDmlParser is removed, the following block can be removed.
-        // This is necessitated by the fact SimpleDmlParser invokes the converters internally and
-        // won't be needed when that parser is no longer part of the source.
-        if (data instanceof Struct) {
-            SpecialValueDecimal value = VariableScaleDecimal.toLogical((Struct) data);
-            return value.getDecimalValue().orElse(null);
         }
 
         return super.convertDecimal(column, fieldDefn, data);

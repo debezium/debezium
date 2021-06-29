@@ -199,15 +199,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Complete JDBC URL as an alternative to specifying hostname, port and database provided "
                     + "as a way to support alternative connection scenarios.");
 
-    public static final Field LOG_MINING_DML_PARSER = Field.createInternal("log.mining.dml.parser")
-            .withDisplayName("Log Mining DML parser implementation")
-            .withEnum(LogMiningDmlParser.class, LogMiningDmlParser.FAST)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("The parser implementation to use when parsing DML operations:" +
-                    "'legacy': the legacy parser implementation based on JSqlParser; " +
-                    "'fast': the robust parser implementation that is streamlined specifically for LogMiner redo format");
-
     public static final Field LOG_MINING_ARCHIVE_LOG_HOURS = Field.create("log.mining.archive.log.hours")
             .withDisplayName("Log Mining Archive Log Hours")
             .withType(Type.LONG)
@@ -351,7 +342,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SLEEP_TIME_MAX_MS,
                     LOG_MINING_SLEEP_TIME_INCREMENT_MS,
                     LOG_MINING_TRANSACTION_RETENTION,
-                    LOG_MINING_DML_PARSER,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
                     LOB_ENABLED,
                     LOG_MINING_ARCHIVE_DESTINATION_NAME)
@@ -398,7 +388,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningSleepTimeDefault;
     private final Duration logMiningSleepTimeIncrement;
     private final Duration logMiningTransactionRetention;
-    private final LogMiningDmlParser dmlParser;
     private final boolean archiveLogOnlyMode;
     private final boolean lobEnabled;
     private final String logMiningArchiveDestinationName;
@@ -439,7 +428,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
         this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
-        this.dmlParser = LogMiningDmlParser.parse(config.getString(LOG_MINING_DML_PARSER));
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
     }
@@ -986,13 +974,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Duration getLogMiningTransactionRetention() {
         return logMiningTransactionRetention;
-    }
-
-    /**
-     * @return the log mining parser implementation to be used
-     */
-    public LogMiningDmlParser getLogMiningDmlParser() {
-        return dmlParser;
     }
 
     /**
