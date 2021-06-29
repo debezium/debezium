@@ -9,8 +9,8 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import org.junit.Test;
 
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;

@@ -30,7 +30,7 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
