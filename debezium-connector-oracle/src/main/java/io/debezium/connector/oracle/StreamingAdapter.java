@@ -46,12 +46,12 @@ public interface StreamingAdapter {
 
     HistoryRecordComparator getHistoryRecordComparator();
 
-    OffsetContext.Loader getOffsetContextLoader();
+    OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader();
 
-    StreamingChangeEventSource getSource(OffsetContext offsetContext, OracleConnection connection, EventDispatcher<TableId> dispatcher,
-                                         ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
-                                         OracleTaskContext taskContext, Configuration jdbcConfig,
-                                         OracleStreamingChangeEventSourceMetrics streamingMetrics);
+    StreamingChangeEventSource<OracleOffsetContext> getSource(OracleConnection connection, EventDispatcher<TableId> dispatcher,
+                                                              ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
+                                                              OracleTaskContext taskContext, Configuration jdbcConfig,
+                                                              OracleStreamingChangeEventSourceMetrics streamingMetrics);
 
     /**
      * Returns whether table names are case sensitive.

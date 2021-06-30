@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.openshift.tools.databases.sqlserver;
 
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_SA_PASSWORD;
+
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.WaitConditions;
 import io.debezium.testing.openshift.tools.databases.DatabaseInitListener;
-import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
+import io.debezium.testing.openshift.tools.databases.OcpSqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -28,15 +30,15 @@ import io.fabric8.openshift.client.OpenShiftClient;
  *
  * @author Jakub Cechacek
  */
-public class SqlServerController extends SqlDatabaseController {
+public class OcpSqlServerController extends OcpSqlDatabaseController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpSqlServerController.class);
     private static final String DB_INIT_SCRIPT_PATH = "/database-resources/sqlserver/inventory.sql";
     private static final String DB_INIT_SCRIPT_PATH_CONTAINER = "/opt/inventory.sql";
 
     private final Path initScript;
 
-    public SqlServerController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
+    public OcpSqlServerController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         super(deployment, services, dbType, ocp);
         try {
             initScript = Paths.get(getClass().getResource(DB_INIT_SCRIPT_PATH).toURI());
@@ -47,8 +49,9 @@ public class SqlServerController extends SqlDatabaseController {
     }
 
     @Override
-    protected String constructDatabaseUrl(String hostname, int port) {
-        return "jdbc:" + dbType + "://" + hostname + ":" + port;
+    public String getDatabaseUrl() {
+        return "jdbc:" + getDatabaseType() + "://" + getDatabaseHostname() + ":" + getDatabasePort();
+
     }
 
     public void initialize() throws InterruptedException {
@@ -63,7 +66,7 @@ public class SqlServerController extends SqlDatabaseController {
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
                 .writingError(System.err)
                 .usingListener(new DatabaseInitListener("sqlserver", latch))
-                .exec("/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", "Debezium1$", "-i", "/opt/inventory.sql")) { // TODO: hard-coded password
+                .exec("/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i", "/opt/inventory.sql")) {
             LOGGER.info("Waiting until database is initialized");
             latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
         }

@@ -120,7 +120,7 @@ public class PulsarChangeConsumer extends BaseChangeConsumer implements Debezium
             final String topicName = streamNameMapper.map(record.destination());
             final Producer<?> producer = producers.computeIfAbsent(topicName, (topic) -> createProducer(topic, record.value()));
 
-            final String key = getString(record.key());
+            final String key = (record.key()) == null ? nullKey : getString(record.key());
             @SuppressWarnings("rawtypes")
             final TypedMessageBuilder message;
             if (record.value() instanceof String) {
@@ -130,7 +130,7 @@ public class PulsarChangeConsumer extends BaseChangeConsumer implements Debezium
                 message = producer.newMessage();
             }
             message
-                    .key(key == null ? nullKey : key)
+                    .key(key)
                     .value(record.value());
 
             try {

@@ -21,9 +21,8 @@ public class ApicurioTestResourceLifeCycleManager implements QuarkusTestResource
 
         Map<String, String> params = new ConcurrentHashMap<>();
         params.put("debezium.format.apicurio.registry.url", getApicurioUrl());
-        params.put("debezium.format.apicurio.registry.converter.serializer", "io.apicurio.registry.utils.serde.AvroKafkaSerializer");
-        params.put("debezium.format.apicurio.registry.converter.deserializer", "io.apicurio.registry.utils.serde.AvroKafkaDeserializer");
-        params.put("debezium.format.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy");
+        params.put("debezium.format.apicurio.registry.auto-register", "true");
+        params.put("debezium.format.apicurio.registry.find-latest", "true");
         return params;
     }
 
@@ -40,6 +39,6 @@ public class ApicurioTestResourceLifeCycleManager implements QuarkusTestResource
     }
 
     public static String getApicurioUrl() {
-        return "http://" + container.getHost() + ":" + container.getMappedPort(APICURIO_PORT) + "/api";
+        return "http://" + container.getHost() + ":" + container.getMappedPort(APICURIO_PORT) + "/apis/registry/v2";
     }
 }

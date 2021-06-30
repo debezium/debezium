@@ -63,8 +63,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
     private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
-    private final boolean exportSnapshot;
-    private final Configuration originalConfig;
+    private final PostgresConnectorConfig originalConfig;
     private final Duration statusUpdateInterval;
     private final MessageDecoder messageDecoder;
     private final TypeRegistry typeRegistry;
@@ -83,10 +82,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param tableFilter               the tables to watch of the DB publication for logical replication; may not be null
      * @param publicationAutocreateMode the mode for publication autocreation; may not be null
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
-     * @param truncateHandlingMode      the mode for truncate handling; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
-     * @param exportSnapshot            whether the replication should export a snapshot when created
      * @param doSnapshot                whether the connector is doing snapshot
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
@@ -94,21 +91,19 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      *                                  <p>
      *                                  updates to the server
      */
-    private PostgresReplicationConnection(Configuration config,
+    private PostgresReplicationConnection(PostgresConnectorConfig config,
                                           String slotName,
                                           String publicationName,
                                           RelationalTableFilters tableFilter,
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
-                                          PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode,
                                           boolean dropSlotOnClose,
-                                          boolean exportSnapshot,
                                           boolean doSnapshot,
                                           Duration statusUpdateInterval,
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
                                           PostgresSchema schema) {
-        super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
+        super(config.jdbcConfig(), PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
         this.slotName = slotName;
@@ -118,8 +113,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
-        this.exportSnapshot = exportSnapshot;
-        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, exportSnapshot, doSnapshot, truncateHandlingMode));
+        this.messageDecoder = plugin.messageDecoder(new MessageDecoderContext(config, schema));
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -127,7 +121,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
-        try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
+        try (PostgresConnection connection = new PostgresConnection(originalConfig.jdbcConfig())) {
             return connection.readReplicationSlotInfo(slotName, plugin.getPostgresPluginName());
         }
     }
@@ -302,15 +296,27 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.debug("starting streaming from LSN '{}'", lsn);
         }
 
-        try {
-            return createReplicationStream(lsn, walPosition);
-        }
-        catch (Exception e) {
-            String message = "Failed to start replication stream at " + lsn;
-            if (e.getMessage().matches(".*replication slot .* is active.*")) {
-                message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
+        int maxRetries = config().getInteger(PostgresConnectorConfig.MAX_RETRIES);
+        int delay = config().getInteger(PostgresConnectorConfig.RETRY_DELAY_MS);
+        int tryCount = 0;
+        while (true) {
+            try {
+                return createReplicationStream(lsn, walPosition);
             }
-            throw new DebeziumException(message, e);
+            catch (Exception e) {
+                String message = "Failed to start replication stream at " + lsn;
+                if (++tryCount > maxRetries) {
+                    if (e.getMessage().matches(".*replication slot .* is active.*")) {
+                        message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
+                    }
+                    throw new DebeziumException(message, e);
+                }
+                else {
+                    LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay, tryCount, maxRetries);
+                    final Metronome metronome = Metronome.sleeper(Duration.ofMillis(delay), Clock.SYSTEM);
+                    metronome.pause();
+                }
+            }
         }
     }
 
@@ -335,7 +341,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         String tempPart = "";
         // Exported snapshots are supported in Postgres 9.4+
         boolean canExportSnapshot = pgConnection().haveMinimumServerVersion(ServerVersion.v9_4);
-        if ((dropSlotOnClose || exportSnapshot) && !canExportSnapshot) {
+        if ((dropSlotOnClose) && !canExportSnapshot) {
             LOGGER.warn("A slot marked as temporary or with an exported snapshot was created, " +
                     "but not on a supported version of Postgres, ignoring!");
         }
@@ -594,6 +600,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     public synchronized void close(boolean dropSlot) {
         try {
+            LOGGER.debug("Closing message decoder");
+            messageDecoder.close();
+        }
+        catch (Throwable e) {
+            LOGGER.error("Unexpected error while closing message decoder", e);
+        }
+
+        try {
             LOGGER.debug("Closing replication connection");
             super.close();
         }
@@ -602,7 +616,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
         if (dropSlotOnClose && dropSlot) {
             // we're dropping the replication slot via a regular - i.e. not a replication - connection
-            try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
+            try (PostgresConnection connection = new PostgresConnection(originalConfig.jdbcConfig())) {
                 connection.dropReplicationSlot(slotName);
             }
             catch (Throwable e) {
@@ -628,7 +642,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     protected static class ReplicationConnectionBuilder implements Builder {
 
-        private final Configuration config;
+        private final PostgresConnectorConfig config;
         private String slotName = DEFAULT_SLOT_NAME;
         private String publicationName = DEFAULT_PUBLICATION_NAME;
         private RelationalTableFilters tableFilter;
@@ -637,13 +651,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
-        private boolean exportSnapshot = DEFAULT_EXPORT_SNAPSHOT;
         private boolean doSnapshot;
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
         private Properties slotStreamParams = new Properties();
 
-        protected ReplicationConnectionBuilder(Configuration config) {
+        protected ReplicationConnectionBuilder(PostgresConnectorConfig config) {
             assert config != null;
             this.config = config;
         }
@@ -721,12 +734,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
-        public Builder exportSnapshotOnCreate(boolean exportSnapshot) {
-            this.exportSnapshot = exportSnapshot;
-            return this;
-        }
-
-        @Override
         public Builder doSnapshot(boolean doSnapshot) {
             this.doSnapshot = doSnapshot;
             return this;
@@ -735,8 +742,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, truncateHandlingMode,
-                    dropSlotOnClose, exportSnapshot, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin,
+                    dropSlotOnClose, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
         }
 
         @Override

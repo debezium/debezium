@@ -11,8 +11,10 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -27,10 +29,10 @@ public interface OffsetContext {
     /**
      * Implementations load a connector-specific offset context based on the offset values stored in Kafka.
      */
-    interface Loader {
+    interface Loader<O extends OffsetContext> {
         Map<String, ?> getPartition();
 
-        OffsetContext load(Map<String, ?> offset);
+        O load(Map<String, ?> offset);
     }
 
     Map<String, ?> getPartition();
@@ -80,6 +82,10 @@ public interface OffsetContext {
      */
     TransactionContext getTransactionContext();
 
+    /**
+     * Signals that the streaming of a batch of <i>incremental</i> snapshot events will begin,
+     * which should reflect in an updated offset state.
+     */
     default void incrementalSnapshotEvents() {
     }
 

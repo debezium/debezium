@@ -95,7 +95,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         return connection.getReplicationSlotState(config.slotName(), config.plugin().getPostgresPluginName());
     }
 
-    protected ReplicationConnection createReplicationConnection(boolean exportSnapshot, boolean doSnapshot) throws SQLException {
+    protected ReplicationConnection createReplicationConnection(boolean doSnapshot) throws SQLException {
         final boolean dropSlotOnStop = config.dropSlotOnStop();
         if (dropSlotOnStop) {
             LOGGER.warn(
@@ -104,7 +104,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                             "will be created after a connector restart, resulting in missed data change events.",
                     PostgresConnectorConfig.DROP_SLOT_ON_STOP.name());
         }
-        return ReplicationConnection.builder(config.jdbcConfig())
+        return ReplicationConnection.builder(config)
                 .withSlot(config.slotName())
                 .withPublication(config.publicationName())
                 .withTableFilter(config.getTableFilters())
@@ -115,7 +115,6 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .streamParams(config.streamParams())
                 .statusUpdateInterval(config.statusUpdateInterval())
                 .withTypeRegistry(schema.getTypeRegistry())
-                .exportSnapshotOnCreate(exportSnapshot)
                 .doSnapshot(doSnapshot)
                 .withSchema(schema)
                 .build();

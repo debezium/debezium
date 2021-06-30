@@ -22,13 +22,12 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 
-public class OracleConnectorTask extends BaseSourceTask {
+public class OracleConnectorTask extends BaseSourceTask<OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorTask.class);
     private static final String CONTEXT_NAME = "oracle-connector-task";
@@ -45,7 +44,7 @@ public class OracleConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<OracleOffsetContext> start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
@@ -57,8 +56,7 @@ public class OracleConnectorTask extends BaseSourceTask {
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector, tableNameCaseSensitivity);
         this.schema.initializeStorage();
-
-        OffsetContext previousOffset = getPreviousOffset(connectorConfig.getAdapter().getOffsetContextLoader());
+        OracleOffsetContext previousOffset = getPreviousOffset(connectorConfig.getAdapter().getOffsetContextLoader());
 
         if (previousOffset != null) {
             schema.recover(previousOffset);
@@ -93,7 +91,7 @@ public class OracleConnectorTask extends BaseSourceTask {
         final OracleStreamingChangeEventSourceMetrics streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
                 connectorConfig);
 
-        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
+        ChangeEventSourceCoordinator<OracleOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffset,
                 errorHandler,
                 OracleConnector.class,

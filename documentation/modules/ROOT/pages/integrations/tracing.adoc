@@ -87,14 +87,18 @@ If set to `false` then the tracing span is created for all incoming events regar
 
 == Outbox Extension
 
-The link:/documentation/reference/integrations/outbox[Outbox extension] provides the additional operations necessary for tracing context propagation out-of-the-box.
-It provides the `tracingspancontext` field in an outbox table that is used as the vehicle to pass span context from service using the outbox extension to a Debezium connector.
+The {prodname} link:/documentation/reference/integrations/outbox[Quarkus extension] for implementing the outbox pattern provides the additional functionality necessary for tracing context propagation out-of-the-box.
+Specifically, it provides the `tracingspancontext` field in the outbox table, which is used for passing the tracing span context from a service using the outbox extension to the {prodname} connector.
 
-When an outbox even is emitted the extension will:
+When an outbox event is emitted, the extension will:
 
 * create a new `outbox-write` span as a child of current active span
 * inject the span context into that `java.util.Properties` instance that is serialized into the `tracingspancontext` column
 * write the record into the database
+
+The tracing integration in the outbox extension is automatically enabled if also the `smallrye-opentracing` Quarkus extension is present.
+If you want to disable tracing support for the outbox extension despite the `smallrye-opentracing` Quarkus extension being is present,
+you can disable it by setting an option `quarkus.debezium-outbox.tracing.enabled=false` in the Quarkus `application.properties` file.
 
 == Event Router SMT
 

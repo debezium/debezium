@@ -17,7 +17,7 @@ import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmIdentifierGeneratorDefinitionType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmRootEntityType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmSimpleIdType;
 
-import io.debezium.outbox.quarkus.internal.EventDispatcher;
+import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
 import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
 
 /**
@@ -50,7 +50,9 @@ public class OutboxEventHbmWriter {
         entityType.getAttributes().add(createTypeAttribute(config));
         entityType.getAttributes().add(createTimestampAttribute(config));
         entityType.getAttributes().add(createPayloadAttribute(config, outboxEventEntityBuildItem));
-        entityType.getAttributes().add(createTracingSpanAttribute(config));
+        if (config.tracingEnabled) {
+            entityType.getAttributes().add(createTracingSpanAttribute(config));
+        }
 
         return mapping;
     }
@@ -185,7 +187,7 @@ public class OutboxEventHbmWriter {
 
     private static JaxbHbmBasicAttributeType createTracingSpanAttribute(DebeziumOutboxConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
-        attribute.setName(EventDispatcher.TRACING_SPAN_CONTEXT);
+        attribute.setName(DebeziumTracerEventDispatcher.TRACING_SPAN_CONTEXT);
         attribute.setNotNull(false);
         attribute.setTypeAttribute("string");
 

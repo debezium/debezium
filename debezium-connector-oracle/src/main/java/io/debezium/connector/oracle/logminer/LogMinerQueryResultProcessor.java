@@ -62,9 +62,8 @@ class LogMinerQueryResultProcessor {
     private Scn currentOffsetCommitScn = Scn.NULL;
     private long stuckScnCounter = 0;
 
-    LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnection jdbcConnection,
-                                 OracleConnectorConfig connectorConfig, OracleStreamingChangeEventSourceMetrics streamingMetrics,
-                                 TransactionalBuffer transactionalBuffer,
+    LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
+                                 OracleStreamingChangeEventSourceMetrics streamingMetrics, TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
                                  EventDispatcher<TableId> dispatcher,
                                  HistoryRecorder historyRecorder) {
@@ -157,11 +156,16 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.DDL: {
+                    if (transactionalBuffer.isDdlOperationRegistered(scn)) {
+                        LOGGER.trace("DDL: {} has already been seen, skipped.", redoSql);
+                        continue;
+                    }
                     historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                     LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
                     try {
                         if (tableName != null) {
                             final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                            transactionalBuffer.registerDdlOperation(scn);
                             dispatcher.dispatchSchemaChangeEvent(tableId,
                                     new OracleSchemaChangeEventEmitter(
                                             connectorConfig,
@@ -185,8 +189,17 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.SELECT_LOB_LOCATOR: {
+                    if (!connectorConfig.isLobEnabled()) {
+                        LOGGER.trace("SEL_LOB_LOCATOR operation skipped for '{}', LOB not enabled.", redoSql);
+                        continue;
+                    }
                     LOGGER.trace("SEL_LOB_LOCATOR: {}, REDO_SQL: {}", logMessage, redoSql);
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    final Table table = schema.tableFor(tableId);
+                    if (table == null) {
+                        LogMinerHelper.logWarn(streamingMetrics, "SEL_LOB_LOCATOR for table '{}' is not known to the connector, skipped.", tableId);
+                        continue;
+                    }
                     final LogMinerDmlEntry entry = selectLobParser.parse(redoSql, schema.tableFor(tableId));
                     entry.setObjectOwner(segOwner);
                     entry.setObjectName(tableName);
@@ -195,13 +208,29 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.LOB_WRITE: {
+                    if (!connectorConfig.isLobEnabled()) {
+                        LOGGER.trace("LOB_WRITE operation skipped, LOB not enabled.");
+                        continue;
+                    }
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    if (schema.tableFor(tableId) == null) {
+                        LogMinerHelper.logWarn(streamingMetrics, "LOB_WRITE for table '{}' is not known to the connector, skipped.", tableId);
+                        continue;
+                    }
                     transactionalBuffer.registerLobWriteOperation(operationCode, txId, scn, tableId, redoSql,
                             changeTime.toInstant(), rowId, rsId, hash);
                     break;
                 }
                 case RowMapper.LOB_ERASE: {
+                    if (!connectorConfig.isLobEnabled()) {
+                        LOGGER.trace("LOB_ERASE operation skipped, LOB not enabled.");
+                        continue;
+                    }
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    if (schema.tableFor(tableId) == null) {
+                        LogMinerHelper.logWarn(streamingMetrics, "LOB_ERASE for table '{}' is not known to the connector, skipped.", tableId);
+                        continue;
+                    }
                     transactionalBuffer.registerLobEraseOperation(operationCode, txId, scn, tableId, changeTime.toInstant(), rowId, rsId, hash);
                     break;
                 }
@@ -224,10 +253,15 @@ class LogMinerQueryResultProcessor {
                                 break;
                         }
 
-                        final Table table = schema.tableFor(tableId);
+                        Table table = schema.tableFor(tableId);
                         if (table == null) {
-                            LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
-                            continue;
+                            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                                table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId);
+                            }
+                            else {
+                                LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
+                                continue;
+                            }
                         }
 
                         if (rollbackFlag == 1) {
@@ -283,6 +317,42 @@ class LogMinerQueryResultProcessor {
             return true;
         }
         return false;
+    }
+
+    private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId) throws SQLException {
+        try {
+            LOGGER.info("Table {} is new and will be captured.", tableId);
+            offsetContext.event(tableId, Instant.now());
+            dispatcher.dispatchSchemaChangeEvent(
+                    tableId,
+                    new OracleSchemaChangeEventEmitter(
+                            connectorConfig,
+                            offsetContext,
+                            tableId,
+                            tableId.catalog(),
+                            tableId.schema(),
+                            getTableMetadataDdl(tableId),
+                            schema,
+                            Instant.now(),
+                            streamingMetrics));
+
+            return schema.tableFor(tableId);
+        }
+        catch (InterruptedException e) {
+            throw new DebeziumException("Failed to dispatch schema change event", e);
+        }
+    }
+
+    private String getTableMetadataDdl(TableId tableId) throws SQLException {
+        final String pdbName = connectorConfig.getPdbName();
+        // A separate connection must be used for this out-of-bands query while processing the LogMiner query results.
+        // This should have negligible overhead as this should happen rarely.
+        try (OracleConnection connection = new OracleConnection(connectorConfig.jdbcConfig(), () -> getClass().getClassLoader())) {
+            if (pdbName != null) {
+                connection.setSessionToPdb(pdbName);
+            }
+            return connection.getTableMetadataDdl(tableId);
+        }
     }
 
     /**

@@ -2,6 +2,122 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.6.0.CR1
+June 24th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358695)
+
+### New features since 1.6.0.Beta2
+
+* Implement SKIPPED_OPERATIONS for SQLServer [DBZ-2697](https://issues.redhat.com/browse/DBZ-2697)
+* Handling database connection timeout during schema recovery [DBZ-3615](https://issues.redhat.com/browse/DBZ-3615)
+* Scope mined DDL events to include/exclude lists if provided [DBZ-3634](https://issues.redhat.com/browse/DBZ-3634)
+* Support heartbeats during periods of low change event activity [DBZ-3639](https://issues.redhat.com/browse/DBZ-3639)
+
+
+### Breaking changes since 1.6.0.Beta2
+
+None
+
+
+### Fixes since 1.6.0.Beta2
+
+* Fix exception on not found table [DBZ-3523](https://issues.redhat.com/browse/DBZ-3523)
+* Transaction commit event dispatch fails if no active transaction in progress. [DBZ-3593](https://issues.redhat.com/browse/DBZ-3593)
+* Additional unique index referencing columns not exposed by CDC causes exception [DBZ-3597](https://issues.redhat.com/browse/DBZ-3597)
+* GRANT/REVOKE for roles is not working [DBZ-3610](https://issues.redhat.com/browse/DBZ-3610)
+* ParsingException for ALTER TABLE against a table that is unknown to the connector. [DBZ-3612](https://issues.redhat.com/browse/DBZ-3612)
+* Oracle connector continually logging warnings about already processed transactions. [DBZ-3616](https://issues.redhat.com/browse/DBZ-3616)
+* StringIndexOutOfBoundsException thrown while handling UTF-8 characters [DBZ-3618](https://issues.redhat.com/browse/DBZ-3618)
+* DDL ParsingException - "SUPPLEMENTAL LOG DATA (UNIQUE INDEX) COLUMNS" [DBZ-3619](https://issues.redhat.com/browse/DBZ-3619)
+* Oracle transaction reconciliation fails to lookup primary key columns if UPDATE sets columns to only NULL [DBZ-3631](https://issues.redhat.com/browse/DBZ-3631)
+* Oracle DDL parser fails on CREATE TABLE: mismatched input 'maxtrans' expecting {'AS', ';'} [DBZ-3641](https://issues.redhat.com/browse/DBZ-3641)
+* Antlr version mismatch [DBZ-3646](https://issues.redhat.com/browse/DBZ-3646)
+* SQL Agent does not start in SqlServer  image when deployed to openshift [DBZ-3648](https://issues.redhat.com/browse/DBZ-3648)
+* Java UBI image is lacking gzip utility [DBZ-3659](https://isssues.redhat.com/browse/DBZ-3659)
+
+### Other changes since 1.6.0.Beta2
+
+* Upgrade to Apicurio Registry 2.0 [DBZ-3171](https://issues.redhat.com/browse/DBZ-3171)
+* Vitess: rename "master" branch to "main" [DBZ-3275](https://issues.redhat.com/browse/DBZ-3275)
+* Formatting updates to correct errors in documentation builds [DBZ-3518](https://issues.redhat.com/browse/DBZ-3518)
+* Prepare test-suite for Kafka on RHEL [DBZ-3566](https://issues.redhat.com/browse/DBZ-3566)
+* Upgrade to Quarkus 2.0.0.Final [DBZ-3602](https://issues.redhat.com/browse/DBZ-3602)
+* Some dependencies are broken in ocp testsuite after BOM introduction [DBZ-3625](https://issues.redhat.com/browse/DBZ-3625)
+* Handle updated json schema for connector passwords [DBZ-3637](https://issues.redhat.com/browse/DBZ-3637)
+* MySQL SourceInfo should be public [DBZ-3638](https://issues.redhat.com/browse/DBZ-3638)
+* Change CLOB/BLOB data type support to an opt-in feature [DBZ-3645](https://issues.redhat.com/browse/DBZ-3645)
+* Denote BLOB support as incubating [DBZ-3651](https://issues.redhat.com/browse/DBZ-3651)
+
+
+
+## 1.6.0.Beta2
+June 10th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358021)
+
+### New features since 1.6.0.Beta1
+
+* Clarification on MySQL vs MariaDb Usage [DBZ-1145](https://issues.jboss.org/browse/DBZ-1145)
+* Pravega sink for Debezium Server [DBZ-3546](https://issues.jboss.org/browse/DBZ-3546)
+* Postgres - Column default values are not extracted [DBZ-2790](https://issues.jboss.org/browse/DBZ-2790)
+* Add support for snapshot.include.collection.list [DBZ-3062](https://issues.jboss.org/browse/DBZ-3062)
+* Apply filters with empty filter changes 'Exclude' selection to 'Include' [DBZ-3102](https://issues.jboss.org/browse/DBZ-3102)
+* Adjust OpenShift tests to support new version of Strimzi CRDs [DBZ-3475](https://issues.jboss.org/browse/DBZ-3475)
+* Remove SchemaProcessor From Cassandra Connector [DBZ-3506](https://issues.jboss.org/browse/DBZ-3506)
+* Provide a `snapshot.locking.mode` option for Oracle [DBZ-3557](https://issues.jboss.org/browse/DBZ-3557)
+* Implement support for JSON function in MySQL parser [DBZ-3559](https://issues.jboss.org/browse/DBZ-3559)
+
+
+### Breaking changes since 1.6.0.Beta1
+
+None
+
+
+### Fixes since 1.6.0.Beta1
+
+* AbstractConnectorTest should work in environment with longer latency [DBZ-400](https://issues.jboss.org/browse/DBZ-400)
+* PostgreSQL connector task fails to resume streaming because replication slot is active [DBZ-3068](https://issues.jboss.org/browse/DBZ-3068)
+* SQL Server connector buffers all CDC events in memory if more than one table is captured [DBZ-3486](https://issues.jboss.org/browse/DBZ-3486)
+* SQLServer low throughput tables increase usage of TempDB [DBZ-3515](https://issues.jboss.org/browse/DBZ-3515)
+* Incorrectly identifies primary member of replica set [DBZ-3522](https://issues.jboss.org/browse/DBZ-3522)
+* Cannot enable binlog streaming when INITIAL_ONLY snapshot mode configured [DBZ-3529](https://issues.jboss.org/browse/DBZ-3529)
+* Connector CRD name and database.server.name cannot use the same value in OCP test-suite [DBZ-3538](https://issues.jboss.org/browse/DBZ-3538)
+* SelectLobParser checks for lowercase "is null" instead of uppercase "IS NULL" [DBZ-3545](https://issues.jboss.org/browse/DBZ-3545)
+* DDL ParsingException "mismatched input 'sharing'" for create table syntax. [DBZ-3549](https://issues.jboss.org/browse/DBZ-3549)
+* DDL ParsingException on alter table [DBZ-3554](https://issues.jboss.org/browse/DBZ-3554)
+* ORA-00310 when online redo log is archived and replaced by redo log with new sequence [DBZ-3561](https://issues.jboss.org/browse/DBZ-3561)
+* Server name pattern is unnecessarily restrictive [DBZ-3562](https://issues.jboss.org/browse/DBZ-3562)
+* ORA-01289 error encountered on Oracle RAC when multiple logs are mined with same sequence number [DBZ-3563](https://issues.jboss.org/browse/DBZ-3563)
+* MySQL metrics documentation refers to legacy implementation [DBZ-3572](https://issues.jboss.org/browse/DBZ-3572)
+* Update downstream MySQL doc to reference streaming metrics vs. binlog metrics  [DBZ-3582](https://issues.jboss.org/browse/DBZ-3582)
+* No viable alternative at input "add COLUMN optional" [DBZ-3586](https://issues.jboss.org/browse/DBZ-3586)
+* NPE when OracleValueConverters get unsupported jdbc type [DBZ-3587](https://issues.jboss.org/browse/DBZ-3587)
+* SelectLobParser throws NullPointerException when parsing SQL for an unknown table [DBZ-3591](https://issues.jboss.org/browse/DBZ-3591)
+* Pulsar sink tries to convert null key to string [DBZ-3595](https://issues.jboss.org/browse/DBZ-3595)
+* Oracle RAC URL does not correctly substitute node IP addresses [DBZ-3599](https://issues.jboss.org/browse/DBZ-3599)
+* Oracle Connector - got InputMismatchException mismatched input 'CASCADE' expecting {'AS', 'PURGE', ';'} [DBZ-3606](https://issues.jboss.org/browse/DBZ-3606)
+
+
+### Other changes since 1.6.0.Beta1
+
+* Unsupported column types should be ignored as with other connectors [DBZ-814](https://issues.jboss.org/browse/DBZ-814)
+* Make outbox extensions dependency on tracing extension optional [DBZ-2834](https://issues.jboss.org/browse/DBZ-2834)
+* Avoid copying in DML handling [DBZ-3328](https://issues.jboss.org/browse/DBZ-3328)
+* Document impact of using --hostname when starting Connect container [DBZ-3466](https://issues.jboss.org/browse/DBZ-3466)
+* Update external link to AMQ Streams documentation [DBZ-3502](https://issues.jboss.org/browse/DBZ-3502)
+* Update external links in downstream docs to AMQ Streams deployment information  [DBZ-3525](https://issues.jboss.org/browse/DBZ-3525)
+* Debezium Server Core builds plugin artifact [DBZ-3542](https://issues.jboss.org/browse/DBZ-3542)
+* List contributors script fails when name contains a "/" character [DBZ-3544](https://issues.jboss.org/browse/DBZ-3544)
+* Upgrade to Quarkus 2.0.0.CR3 [DBZ-3550](https://issues.jboss.org/browse/DBZ-3550)
+* Reduce DB round-trips for LOB handling [DBZ-3556](https://issues.jboss.org/browse/DBZ-3556)
+* Oracle benchmark does not execute LogMiner parser performance tests [DBZ-3560](https://issues.jboss.org/browse/DBZ-3560)
+* Clarify purpose of database.history.retention.hours [DBZ-3565](https://issues.jboss.org/browse/DBZ-3565)
+* Improve documentation related to signalling table DDL [DBZ-3568](https://issues.jboss.org/browse/DBZ-3568)
+* cassandra-driver-core 3.5.0 managed in Debezium BOM too old for testcontainers 1.15.3 [DBZ-3589](https://issues.jboss.org/browse/DBZ-3589)
+* Remove some dead code in Postgres connector [DBZ-3596](https://issues.jboss.org/browse/DBZ-3596)
+* Debezium server sink oracle database to pulsar without default namespace "public/default" [DBZ-3601](https://issues.jboss.org/browse/DBZ-3601)
+* Document OffsetContext.incrementalSnapshotEvents() [DBZ-3607](https://issues.jboss.org/browse/DBZ-3607)
+* Database skipping logic isn't correct [DBZ-3608](https://issues.jboss.org/browse/DBZ-3608)
+
+
+
 ## 1.6.0.Beta1
 May 20th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12357565)
 

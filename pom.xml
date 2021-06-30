@@ -101,10 +101,12 @@
         <version.kafka.scala>2.12</version.kafka.scala>
 
         <!-- ANTLR -->
-        <antlr.version>4.7.2</antlr.version>
+        <!-- Align with Antlr runtime version pulled in via Quarkus -->
+        <version.antlr>4.8</version.antlr>
+        <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
-        <quarkus.version>1.12.0.Final</quarkus.version>
+        <quarkus.version>2.0.0.Final</quarkus.version>
 
         <!-- Databases, should align with database drivers in debezium-bom -->
         <version.mysql.server>5.7</version.mysql.server>

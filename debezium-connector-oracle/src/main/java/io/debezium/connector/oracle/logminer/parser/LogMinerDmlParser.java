@@ -42,6 +42,7 @@ import io.debezium.relational.Table;
  */
 public class LogMinerDmlParser implements DmlParser {
 
+    private static final String NULL_SENTINEL = "${DBZ_NULL}";
     private static final String NULL = "NULL";
     private static final String INSERT_INTO = "insert into ";
     private static final String UPDATE = "update ";
@@ -134,13 +135,17 @@ public class LogMinerDmlParser implements DmlParser {
             Object[] oldValues = new Object[table.columns().size()];
             parseWhereClause(sql, index, oldValues, table);
 
-            // set after
-            if (!isEmptyArray(newValues)) {
-                // There is after state, make sure all non-provided before state is copied to after.
-                for (int i = 0; i < oldValues.length; ++i) {
-                    if (newValues[i] == null && oldValues[i] != null) {
-                        newValues[i] = oldValues[i];
-                    }
+            // For each after state field that is either a NULL_SENTINEL (explicitly wants NULL) or
+            // that wasn't specified and therefore remained null, correctly adapt the after state
+            // accordingly, leaving any field's after value alone if it isn't null or a sentinel.
+            for (int i = 0; i < oldValues.length; ++i) {
+                if (newValues[i] == NULL_SENTINEL) {
+                    // field is explicitly set to NULL, clear the sentinel and continue
+                    newValues[i] = null;
+                }
+                else if (newValues[i] == null) {
+                    // field wasn't specified in set-clause, copy before state to after state
+                    newValues[i] = oldValues[i];
                 }
             }
 
@@ -398,6 +403,15 @@ public class LogMinerDmlParser implements DmlParser {
                 else if ((c == ',' || c == ' ' || c == ';') && nested == 0) {
                     String value = sql.substring(start, index);
                     if (value.equals(NULL) || value.equals(UNSUPPORTED_TYPE)) {
+                        if (value.equals(NULL)) {
+                            // In order to identify when a field is not present in the set-clause or when
+                            // a field is explicitly set to null, the NULL_SENTINEL value is used to then
+                            // indicate that the field is explicitly being cleared to NULL.
+                            // This sentinel value will be cleared later when we reconcile before/after
+                            // state in parseUpdate()
+                            int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
+                            newValues[position] = NULL_SENTINEL;
+                        }
                         start = index + 1;
                         inColumnValue = false;
                         inSpecial = false;

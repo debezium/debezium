@@ -153,9 +153,7 @@ public class ApicurioRegistryTest {
             statement.execute("alter table todo.Todo replica identity full");
             statement.execute("insert into todo.Todo values (3, 'Be Awesome')");
 
-            final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
-            final int port = apicurioContainer.getExposedPorts().get(0);
-            final String apicurioUrl = "http://" + host + ":" + port + "/api";
+            final String apicurioUrl = getApicurioUrl();
             String id = "3";
 
             // host, database, user etc. are obtained from the container
@@ -166,7 +164,8 @@ public class ApicurioRegistryTest {
                     .with("value.converter", "io.debezium.converters.CloudEventsConverter")
                     .with("value.converter.data.serializer.type", "avro")
                     .with("value.converter.avro.apicurio.registry.url", apicurioUrl)
-                    .with("value.converter.avro.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy");
+                    .with("value.converter.avro.apicurio.registry.auto-register", "true")
+                    .with("value.converter.avro.apicurio.registry.find-latest", "true");
 
             debeziumContainer.registerConnector("my-connector-cloudevents-avro", config);
 
@@ -228,9 +227,7 @@ public class ApicurioRegistryTest {
     }
 
     private ConnectorConfiguration getConfiguration(int id, String converter, String... options) {
-        final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
-        final int port = apicurioContainer.getExposedPorts().get(0);
-        final String apicurioUrl = "http://" + host + ":" + port + "/api";
+        final String apicurioUrl = getApicurioUrl();
 
         // host, database, user etc. are obtained from the container
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
@@ -238,10 +235,12 @@ public class ApicurioRegistryTest {
                 .with("slot.name", "debezium_" + id)
                 .with("key.converter", converter)
                 .with("key.converter.apicurio.registry.url", apicurioUrl)
-                .with("key.converter.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy")
+                .with("key.converter.apicurio.registry.auto-register", "true")
+                .with("key.converter.apicurio.registry.find-latest", "true")
                 .with("value.converter.apicurio.registry.url", apicurioUrl)
                 .with("value.converter", converter)
-                .with("value.converter.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy");
+                .with("value.converter.apicurio.registry.auto-register", "true")
+                .with("value.converter.apicurio.registry.find-latest", "true");
 
         if (options != null && options.length > 0) {
             for (int i = 0; i < options.length; i += 2) {
@@ -249,6 +248,13 @@ public class ApicurioRegistryTest {
             }
         }
         return config;
+    }
+
+    private String getApicurioUrl() {
+        final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
+        final int port = apicurioContainer.getExposedPorts().get(0);
+        final String apicurioUrl = "http://" + host + ":" + port + "/apis/registry/v2";
+        return apicurioUrl;
     }
 
     @AfterClass

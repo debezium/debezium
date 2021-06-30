@@ -5,19 +5,18 @@
  */
 package io.debezium.connector.oracle.xstream;
 
-import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -26,10 +25,10 @@ import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-import oracle.sql.Datum;
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.LCR;
@@ -56,7 +55,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
-    private final Map<String, List<ChunkColumnValue>> columnChunks;
+    private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
     public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -151,6 +150,27 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         TableId tableId = getTableId(lcr);
 
+        Table table = schema.tableFor(tableId);
+        if (table == null) {
+            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                LOGGER.info("Table {} is new and will be captured.", tableId);
+                dispatcher.dispatchSchemaChangeEvent(
+                        tableId,
+                        new OracleSchemaChangeEventEmitter(
+                                connectorConfig,
+                                offsetContext,
+                                tableId,
+                                tableId.catalog(),
+                                tableId.schema(),
+                                getTableMetadataDdl(tableId),
+                                schema,
+                                Instant.now(),
+                                streamingMetrics));
+
+                table = schema.tableFor(tableId);
+            }
+        }
+
         dispatcher.dispatchDataChangeEvent(
                 tableId,
                 new XStreamChangeRecordEmitter(offsetContext, lcr, chunkValues, schema.tableFor(tableId), clock));
@@ -183,6 +203,21 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
         else {
             return new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName().toLowerCase());
+        }
+    }
+
+    private String getTableMetadataDdl(TableId tableId) {
+        final String pdbName = connectorConfig.getPdbName();
+        // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
+        // This should have negligible overhead as this should happen rarely.
+        try (OracleConnection connection = new OracleConnection(connectorConfig.jdbcConfig(), () -> getClass().getClassLoader())) {
+            if (pdbName != null) {
+                connection.setSessionToPdb(pdbName);
+            }
+            return connection.getTableMetadataDdl(tableId);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to get table DDL metadata for: " + tableId, e);
         }
     }
 
@@ -225,9 +260,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     @Override
     public void processChunk(ChunkColumnValue chunk) throws StreamsException {
-        // Store the chunk in the chunk map
-        // Chunks will be processed once the end of the row is reached
-        columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ArrayList<>()).add(chunk);
+        if (connectorConfig.isLobEnabled()) {
+            // Store the chunk in the chunk map
+            // Chunks will be processed once the end of the row is reached
+            columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ChunkColumnValues()).add(chunk);
+        }
 
         if (chunk.isEndOfRow()) {
             try {
@@ -235,24 +272,24 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 Map<String, Object> resolvedChunkValues = new HashMap<>();
 
                 // All chunks have been dispatched to the event handler, combine the chunks now.
-                for (Map.Entry<String, List<ChunkColumnValue>> entry : columnChunks.entrySet()) {
+                for (Map.Entry<String, ChunkColumnValues> entry : columnChunks.entrySet()) {
                     final String columnName = entry.getKey();
-                    final List<ChunkColumnValue> chunkValues = entry.getValue();
+                    final ChunkColumnValues chunkValues = entry.getValue();
 
                     if (chunkValues.isEmpty()) {
                         LOGGER.trace("Column '{}' has no chunk values.", columnName);
                         continue;
                     }
 
-                    final int type = chunkValues.get(0).getChunkType();
+                    final int type = chunkValues.getChunkType();
                     switch (type) {
                         case ChunkColumnValue.CLOB:
                         case ChunkColumnValue.NCLOB:
-                            resolvedChunkValues.put(columnName, resolveClobChunkValue(chunkValues));
+                            resolvedChunkValues.put(columnName, chunkValues.getStringValue());
                             break;
 
                         case ChunkColumnValue.BLOB:
-                            resolvedChunkValues.put(columnName, resolveBlobChunkValue(chunkValues));
+                            resolvedChunkValues.put(columnName, chunkValues.getByteArray());
                             break;
 
                         default:
@@ -272,23 +309,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 throw new DebeziumException("Failed to process chunk data", e);
             }
         }
-    }
-
-    private String resolveClobChunkValue(List<ChunkColumnValue> chunkValues) throws SQLException {
-        StringBuilder data = new StringBuilder();
-        for (ChunkColumnValue chunkValue : chunkValues) {
-            data.append(chunkValue.getColumnData().stringValue());
-        }
-        return data.toString();
-    }
-
-    private byte[] resolveBlobChunkValue(List<ChunkColumnValue> chunkValues) {
-        long size = chunkValues.stream().map(ChunkColumnValue::getColumnData).mapToLong(Datum::getLength).sum();
-        ByteBuffer buffer = ByteBuffer.allocate((int) size);
-        for (ChunkColumnValue columnValue : chunkValues) {
-            buffer.put(columnValue.getColumnData().getBytes());
-        }
-        return buffer.array();
     }
 
     @Override

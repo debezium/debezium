@@ -48,9 +48,11 @@ Braden Groom
 Braden Staudacher
 Brandon Brown
 Brandon Maguire
+Camile Sing
 Cao Manh Dat
 Cheng Pan
 Ching Tsai
+Chris Collingwood
 Chris Cranford
 Chris Egerton
 Chris Riccomini
@@ -84,6 +86,7 @@ Eero Koplimets
 Elan Hasson
 Emmanuel Brard
 Emrul Islam
+Eric Slep
 Eric Weaver
 Eric S. Kreiseir
 Ewen Cheslack-Postava
@@ -99,6 +102,7 @@ Frank Koornstra
 Frank Mormino
 Gagan Agrawal
 Ganesh Ramasubramanian
+Gilles Vaquez
 Giovanni De Stefano
 Grant Cooksey
 Guillaume Rosauro
@@ -115,6 +119,7 @@ Hoa Le
 Horia Chiorean
 Hossein Torabi
 Hussain Ansari
+Hyunjin Oh
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
@@ -126,10 +131,12 @@ Ivan Luzyanin
 Ivan San Jose
 Ivan Trusov
 Ivan Vucina
+Jackey Zhang
 Jakub Cechacek
 James Gormley
 Jan-Hendrik Dolling
 Jan Uyttenhove
+JapuDCret
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
@@ -253,6 +260,7 @@ Satyajit Vegesna
 Saulius Valatka
 Sayed Mohammad Hossein Torabi
 Scofield Xu
+Sara Fonseca
 Sean Rooney
 Sergei Morozov
 Shane Paul

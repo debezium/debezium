@@ -275,7 +275,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 .field("eventVersion", Schema.INT32_SCHEMA)
                 .field("aggregateType", Schema.STRING_SCHEMA)
                 .field("someBoolType", Schema.BOOLEAN_SCHEMA)
-                .field("deleted", Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                .field("deleted", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .build();
 
         assertConnectSchemasAreEqual(null, eventRouted.valueSchema(), expectedSchema);

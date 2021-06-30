@@ -49,6 +49,7 @@ import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.util.Strings;
 
 /**
  * Component that records the schema history for databases hosted by a MySQL database server. The schema information includes
@@ -79,6 +80,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final DdlChanges ddlChanges;
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private boolean storageInitialiationExecuted = false;
+    private final MySqlConnectorConfig connectorConfig;
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
@@ -98,6 +100,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
         this.ddlParser = new MySqlAntlrDdlParser(valueConverter, getTableFilter());
         this.ddlChanges = this.ddlParser.getDdlChanges();
+        this.connectorConfig = connectorConfig;
         filters = connectorConfig.getTableFilters();
     }
 
@@ -269,7 +272,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     }
                 });
             }
-            else if (acceptableDatabase(databaseName)) {
+            else {
                 offset.databaseEvent(databaseName, sourceTime);
                 schemaChangeEvents
                         .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
@@ -290,7 +293,10 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     private boolean acceptableDatabase(final String databaseName) {
-        return filters.databaseFilter().test(databaseName) || databaseName == null || databaseName.isEmpty();
+        return !storeOnlyCapturedTables()
+                || filters.databaseFilter().test(databaseName)
+                || databaseName == null
+                || databaseName.isEmpty();
     }
 
     private TableId getTableId(Event event) {
@@ -365,5 +371,14 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public boolean isStorageInitializationExecuted() {
         return storageInitialiationExecuted;
+    }
+
+    public boolean skipSchemaChangeEvent(SchemaChangeEvent event) {
+        if (!Strings.isNullOrEmpty(event.getDatabase())
+                && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
+            LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
+            return true;
+        }
+        return false;
     }
 }

@@ -49,23 +49,21 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public OffsetContext.Loader getOffsetContextLoader() {
+    public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
         return new LogMinerOracleOffsetContextLoader(connectorConfig);
     }
 
     @Override
-    public StreamingChangeEventSource getSource(OffsetContext offsetContext,
-                                                OracleConnection connection,
-                                                EventDispatcher<TableId> dispatcher,
-                                                ErrorHandler errorHandler,
-                                                Clock clock,
-                                                OracleDatabaseSchema schema,
-                                                OracleTaskContext taskContext,
-                                                Configuration jdbcConfig,
-                                                OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    public StreamingChangeEventSource<OracleOffsetContext> getSource(OracleConnection connection,
+                                                                     EventDispatcher<TableId> dispatcher,
+                                                                     ErrorHandler errorHandler,
+                                                                     Clock clock,
+                                                                     OracleDatabaseSchema schema,
+                                                                     OracleTaskContext taskContext,
+                                                                     Configuration jdbcConfig,
+                                                                     OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         return new LogMinerStreamingChangeEventSource(
                 connectorConfig,
-                (OracleOffsetContext) offsetContext,
                 connection,
                 dispatcher,
                 errorHandler,

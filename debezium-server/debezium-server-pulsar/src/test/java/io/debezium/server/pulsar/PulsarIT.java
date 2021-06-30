@@ -18,8 +18,11 @@ import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.Schema;
 import org.awaitility.Awaitility;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.server.TestConfigSource;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
@@ -40,6 +43,22 @@ public class PulsarIT {
 
     private static final int MESSAGE_COUNT = 4;
     private static final String TOPIC_NAME = "testc.inventory.customers";
+    private static final String NOKEY_TOPIC_NAME = "testc.inventory.nokey";
+
+    @ConfigProperty(name = "debezium.source.database.hostname")
+    String dbHostname;
+
+    @ConfigProperty(name = "debezium.source.database.port")
+    String dbPort;
+
+    @ConfigProperty(name = "debezium.source.database.user")
+    String dbUser;
+
+    @ConfigProperty(name = "debezium.source.database.password")
+    String dbPassword;
+
+    @ConfigProperty(name = "debezium.source.database.dbname")
+    String dbName;
 
     protected static PulsarClient pulsarClient;
 
@@ -73,6 +92,30 @@ public class PulsarIT {
         Awaitility.await().atMost(Duration.ofSeconds(PulsarTestConfigSource.waitForSeconds())).until(() -> {
             records.add(consumer.receive());
             return records.size() >= MESSAGE_COUNT;
+        });
+        final Configuration config = Configuration.create()
+                .with("hostname", dbHostname)
+                .with("port", dbPort)
+                .with("user", dbUser)
+                .with("password", dbPassword)
+                .with("dbname", dbName)
+                .build();
+        try (final PostgresConnection connection = new PostgresConnection(config)) {
+            connection.execute(
+                    "CREATE TABLE inventory.nokey (val INT);",
+                    "INSERT INTO inventory.nokey VALUES (1)",
+                    "INSERT INTO inventory.nokey VALUES (2)",
+                    "INSERT INTO inventory.nokey VALUES (3)",
+                    "INSERT INTO inventory.nokey VALUES (4)");
+        }
+        final Consumer<String> nokeyConsumer = pulsarClient.newConsumer(Schema.STRING)
+                .topic(NOKEY_TOPIC_NAME)
+                .subscriptionName("test-" + UUID.randomUUID())
+                .subscribe();
+        final List<Message<String>> nokeyRecords = new ArrayList<>();
+        Awaitility.await().atMost(Duration.ofSeconds(PulsarTestConfigSource.waitForSeconds())).until(() -> {
+            nokeyRecords.add(nokeyConsumer.receive());
+            return nokeyRecords.size() >= MESSAGE_COUNT;
         });
     }
 }

@@ -16,38 +16,41 @@ spec:
         app: sqlserver
         deployment: sqlserver
     spec:
+      hostname: sqlserver
+      securityContext:
+        runAsUser: 10001
       containers:
-      - name: sqlserver
-        image: "mcr.microsoft.com/mssql/server:2017-latest"
-        ports:
-        - containerPort: 1433
-          protocol: TCP
-        env:
-        - name: ACCEPT_EULA
-          value: 'Y'
-        - name: MSSQL_AGENT_ENABLED
-          value: 'true'
-        - name: MSSQL_PID
-          value: Standard
-        - name: SA_PASSWORD
-          value: ${database.sqlserver.password}
-        resources: {}
-        imagePullPolicy: Always
-        restartPolicy: Always
-        livenessProbe:
-          initialDelaySeconds: 30
-          tcpSocket:
-            port: 1433
+        - name: sqlserver
+          image: "mcr.microsoft.com/mssql/server:2019-latest"
+          ports:
+            - containerPort: 1433
+              protocol: TCP
+          env:
+            - name: ACCEPT_EULA
+              value: 'Y'
+            - name: MSSQL_AGENT_ENABLED
+              value: 'true'
+            - name: MSSQL_PID
+              value: Standard
+            - name: SA_PASSWORD
+              value: ${database.sqlserver.password}
+          resources: {}
+          imagePullPolicy: Always
+          restartPolicy: Always
+          livenessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 1433
+            timeoutSeconds: 1
+          readinessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 1433
+            timeoutSeconds: 1
+          initialDelaySeconds: 5
           timeoutSeconds: 1
-        readinessProbe:
-          initialDelaySeconds: 30
-          tcpSocket:
-            port: 1433
-          timeoutSeconds: 1
-        initialDelaySeconds: 5
-        timeoutSeconds: 1
-        terminationMessagePolicy: File
-        terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          terminationMessagePath: /dev/termination-log
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst

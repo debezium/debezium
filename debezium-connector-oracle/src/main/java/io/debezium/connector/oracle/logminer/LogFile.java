@@ -16,10 +16,17 @@ import io.debezium.connector.oracle.Scn;
  */
 public class LogFile {
 
+    public enum Type {
+        ARCHIVE,
+        REDO
+    }
+
     private final String fileName;
     private final Scn firstScn;
     private final Scn nextScn;
+    private final Long sequence;
     private final boolean current;
+    private final Type type;
 
     /**
      * Create a log file that represents an archived log record.
@@ -27,9 +34,11 @@ public class LogFile {
      * @param fileName the file name
      * @param firstScn the first system change number in the log
      * @param nextScn the first system change number in the following log
+     * @param sequence the unique log sequence number
+     * @param type the log type
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn) {
-        this(fileName, firstScn, nextScn, false);
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence, Type type) {
+        this(fileName, firstScn, nextScn, sequence, type, false);
     }
 
     /**
@@ -38,13 +47,17 @@ public class LogFile {
      * @param fileName the file name
      * @param firstScn the first system change number in the log
      * @param nextScn the first system change number in the following log
+     * @param sequence the unique log sequence number
+     * @param type the type of archive log
      * @param current whether the log file is the current one
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn, boolean current) {
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence, Type type, boolean current) {
         this.fileName = fileName;
         this.firstScn = firstScn;
         this.nextScn = nextScn;
+        this.sequence = sequence;
         this.current = current;
+        this.type = type;
     }
 
     public String getFileName() {
@@ -59,6 +72,10 @@ public class LogFile {
         return isCurrent() ? Scn.MAX : nextScn;
     }
 
+    public Long getSequence() {
+        return sequence;
+    }
+
     /**
      * Returns whether this log file instance is considered the current online redo log record.
      */
@@ -66,19 +83,13 @@ public class LogFile {
         return current;
     }
 
-    /**
-     * Returns whether the specified {@code other} log file has the same SCN range as this instance.
-     *
-     * @param other the other log file instance
-     * @return true if both have the same SCN range; otherwise false
-     */
-    public boolean isSameRange(LogFile other) {
-        return Objects.equals(firstScn, other.getFirstScn()) && Objects.equals(nextScn, other.getNextScn());
+    public Type getType() {
+        return type;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(firstScn, nextScn);
+        return Objects.hash(sequence);
     }
 
     @Override
@@ -89,6 +100,7 @@ public class LogFile {
         if (!(obj instanceof LogFile)) {
             return false;
         }
-        return isSameRange((LogFile) obj);
+        final LogFile other = (LogFile) obj;
+        return Objects.equals(sequence, other.sequence);
     }
 }

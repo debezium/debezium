@@ -24,11 +24,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
-import io.debezium.testing.openshift.resources.ConnectorFactories;
 import io.debezium.testing.openshift.tools.ConfigProperties;
-import io.debezium.testing.openshift.tools.databases.mongodb.MongoController;
 import io.debezium.testing.openshift.tools.databases.mongodb.MongoDatabaseClient;
-import io.debezium.testing.openshift.tools.databases.mongodb.MongoDeployer;
+import io.debezium.testing.openshift.tools.databases.mongodb.MongoDatabaseController;
+import io.debezium.testing.openshift.tools.databases.mongodb.OcpMongoDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
 import okhttp3.Request;
@@ -48,20 +47,21 @@ public class MongoConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-mongo";
 
-    private static MongoController dbController;
-    private static ConnectorFactories connectorFactories = new ConnectorFactories();
+    private static MongoDatabaseController dbController;
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
     private static String dbServerName;
 
     @BeforeAll
     public static void setupDatabase() throws IOException, InterruptedException {
-        if (!ConfigProperties.DATABASE_MONGO_HOST.isPresent()) {
-            dbController = new MongoDeployer(ocp)
+        if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
+            OcpMongoDeployer deployer = new OcpMongoDeployer.Deployer()
+                    .withOcpClient(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_MONGO)
                     .withDeployment(DB_DEPLOYMENT_PATH)
-                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH)
-                    .deploy();
+                    .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                    .build();
+            dbController = deployer.deploy();
             dbController.initialize();
         }
 
@@ -160,7 +160,7 @@ public class MongoConnectorIT extends ConnectorTestBase {
     @Order(8)
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
-        kafkaConnectController.waitForConnectCluster();
+        kafkaConnectController.waitForCluster();
         awaitAssert(() -> assertions.assertMinimalRecordsCount(dbServerName + ".inventory.customers", 7));
         awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "nibbles@test.com"));
     }

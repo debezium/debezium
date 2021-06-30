@@ -12,11 +12,10 @@ import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<OracleOffsetContext> {
 
     private final OracleConnectorConfig configuration;
     private final OracleConnection jdbcConnection;
@@ -44,15 +43,14 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
-        return new OracleSnapshotChangeEventSource(configuration, (OracleOffsetContext) offsetContext, jdbcConnection,
+    public SnapshotChangeEventSource<OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+        return new OracleSnapshotChangeEventSource(configuration, jdbcConnection,
                 schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
-    public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
+    public StreamingChangeEventSource<OracleOffsetContext> getStreamingChangeEventSource() {
         return configuration.getAdapter().getSource(
-                offsetContext,
                 jdbcConnection,
                 dispatcher,
                 errorHandler,

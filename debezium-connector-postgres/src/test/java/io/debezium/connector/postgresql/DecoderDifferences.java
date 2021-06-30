@@ -85,4 +85,8 @@ public class DecoderDifferences {
     public static String mandatoryToastedValuePlaceholder() {
         return TOASTED_VALUE_PLACEHOLDER;
     }
+
+    public static boolean areDefaultValuesRefreshedEagerly() {
+        return pgoutput();
+    }
 }

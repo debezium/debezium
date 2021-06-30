@@ -21,11 +21,14 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.openshift.assertions.AvroKafkaAssertions;
 import io.debezium.testing.openshift.assertions.KafkaAssertions;
 import io.debezium.testing.openshift.assertions.PlainKafkaAssertions;
+import io.debezium.testing.openshift.resources.ConnectorFactories;
 import io.debezium.testing.openshift.tools.ConfigProperties;
-import io.debezium.testing.openshift.tools.kafka.KafkaConnectController;
 import io.debezium.testing.openshift.tools.kafka.KafkaController;
-import io.debezium.testing.openshift.tools.kafka.KafkaDeployer;
-import io.debezium.testing.openshift.tools.kafka.OperatorController;
+import io.debezium.testing.openshift.tools.kafka.OcpKafkaConnectController;
+import io.debezium.testing.openshift.tools.kafka.OcpKafkaConnectDeployer;
+import io.debezium.testing.openshift.tools.kafka.OcpKafkaController;
+import io.debezium.testing.openshift.tools.kafka.OcpKafkaDeployer;
+import io.debezium.testing.openshift.tools.kafka.StrimziOperatorController;
 import io.debezium.testing.openshift.tools.registry.RegistryController;
 import io.debezium.testing.openshift.tools.registry.RegistryDeployer;
 import io.fabric8.kubernetes.client.Config;
@@ -59,10 +62,12 @@ public abstract class ConnectorTestBase {
     protected static Properties KAFKA_CONSUMER_PROPS = new Properties();
 
     // Kafka Control
-    protected static KafkaDeployer kafkaDeployer;
     protected static KafkaController kafkaController;
-    protected static KafkaConnectController kafkaConnectController;
-    protected static OperatorController operatorController;
+    protected static OcpKafkaConnectController kafkaConnectController;
+    protected static StrimziOperatorController operatorController;
+
+    // Connectors
+    protected static ConnectorFactories connectorFactories = new ConnectorFactories();
 
     // Registry Control
     protected static RegistryDeployer registryDeployer;
@@ -80,49 +85,69 @@ public abstract class ConnectorTestBase {
         testUtils = new TestUtils();
 
         deployKafkaCluster();
-        initKafkaConsumerProps();
+        deployKafkaConnectCluster();
 
         if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
             // deploy registry
-            registryDeployer = new RegistryDeployer(ConfigProperties.OCP_PROJECT_REGISTRY, ocp, httpClient, kafkaController);
+            registryDeployer = new RegistryDeployer(ConfigProperties.OCP_PROJECT_REGISTRY, ocp, httpClient, (OcpKafkaController) kafkaController);
             registryController = registryDeployer.deployRegistry(REGISTRY_DEPLOYMENT_PATH, REGISTRY_STORAGE_TOPIC_PATH, REGISTRY_ID_TOPIC_PATH);
             assertions = new AvroKafkaAssertions(KAFKA_CONSUMER_PROPS);
         }
         else {
             assertions = new PlainKafkaAssertions(KAFKA_CONSUMER_PROPS);
         }
+        initKafkaConsumerProps();
     }
 
     private static void deployKafkaCluster() throws InterruptedException {
-        kafkaDeployer = new KafkaDeployer(ConfigProperties.OCP_PROJECT_DBZ, ocp);
+        updateOperatorInNamespace(ConfigProperties.OCP_PROJECT_DBZ);
 
-        operatorController = kafkaDeployer.getOperator();
+        OcpKafkaDeployer kafkaDeployer = new OcpKafkaDeployer.Builder()
+                .withOcpClient(ocp)
+                .withHttpClient(httpClient)
+                .withProject(ConfigProperties.OCP_PROJECT_DBZ)
+                .withYamlPath(KAFKA)
+                .build();
+
+        kafkaController = kafkaDeployer.deploy();
+    }
+
+    private static void deployKafkaConnectCluster() throws InterruptedException {
+        OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer.Builder()
+                .withOcpClient(ocp)
+                .withHttpClient(httpClient)
+                .withProject(ConfigProperties.OCP_PROJECT_DBZ)
+                .withYamlPath(KAFKA_CONNECT_S2I)
+                .withCfgYamlPath(KAFKA_CONNECT_S2I_LOGGING)
+                .withConnectorResources(ConfigProperties.STRIMZI_OPERATOR_CONNECTORS)
+                .build();
+
+        kafkaConnectController = connectDeployer.deploy();
+        kafkaConnectController.allowServiceAccess();
+        kafkaConnectController.exposeApi();
+        kafkaConnectController.exposeMetrics();
+    }
+
+    private static void updateOperatorInNamespace(String project) throws InterruptedException {
+        operatorController = StrimziOperatorController.forProject(project, ocp);
+
         operatorController.setLogLevel("DEBUG");
         operatorController.setAlwaysPullPolicy();
         operatorController.setOperandAlwaysPullPolicy();
         operatorController.setSingleReplica();
 
-        if (ConfigProperties.OCP_PULL_SECRET_PATHS.isPresent()) {
-            String paths = ConfigProperties.OCP_PULL_SECRET_PATHS.get();
+        ConfigProperties.OCP_PULL_SECRET_PATHS.ifPresent(paths -> {
             LOGGER.info("Processing pull secrets: " + paths);
-
             List<String> secrets = Arrays.stream(paths.split(","))
-                    .map(kafkaDeployer::deployPullSecret)
+                    .map(operatorController::deployPullSecret)
                     .map(s -> s.getMetadata().getName())
                     .collect(Collectors.toList());
 
             secrets.forEach(operatorController::setImagePullSecret);
             operatorController.setOperandImagePullSecrets(String.join(",", secrets));
-        }
+        });
 
         operatorController.updateOperator();
-
-        kafkaController = kafkaDeployer.deployKafkaCluster(KAFKA);
-        kafkaConnectController = kafkaDeployer.deployKafkaConnectCluster(KAFKA_CONNECT_S2I, KAFKA_CONNECT_S2I_LOGGING, ConfigProperties.STRIMZI_OPERATOR_CONNECTORS);
-
-        kafkaConnectController.allowServiceAccess();
-        kafkaConnectController.exposeApi();
-        kafkaConnectController.exposeMetrics();
     }
 
     private static void initKafkaConsumerProps() {

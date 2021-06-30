@@ -17,6 +17,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -84,7 +86,7 @@ public final class TestHelper {
     public static ReplicationConnection createForReplication(String slotName, boolean dropOnClose) throws SQLException {
         final PostgresConnectorConfig.LogicalDecoder plugin = decoderPlugin();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        return ReplicationConnection.builder(defaultJdbcConfig())
+        return ReplicationConnection.builder(config)
                 .withPlugin(plugin)
                 .withSlot(slotName)
                 .withTypeRegistry(getTypeRegistry())
@@ -117,7 +119,11 @@ public final class TestHelper {
      * @return the PostgresConnection instance; never null
      */
     public static PostgresConnection createWithTypeRegistry() {
-        return new PostgresConnection(defaultJdbcConfig(), true);
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+
+        return new PostgresConnection(
+                config.jdbcConfig(),
+                getPostgresValueConverterBuilder(config));
     }
 
     /**
@@ -185,7 +191,8 @@ public final class TestHelper {
     }
 
     public static TypeRegistry getTypeRegistry() {
-        try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig(), true)) {
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+        try (final PostgresConnection connection = new PostgresConnection(config.jdbcConfig(), getPostgresValueConverterBuilder(config))) {
             return connection.getTypeRegistry();
         }
     }
@@ -198,8 +205,8 @@ public final class TestHelper {
         return new PostgresSchema(
                 config,
                 typeRegistry,
-                Charset.forName("UTF-8"),
-                PostgresTopicSelector.create(config));
+                PostgresTopicSelector.create(config),
+                getPostgresValueConverter(typeRegistry, config));
     }
 
     protected static Set<String> schemaNames() throws SQLException {
@@ -215,6 +222,8 @@ public final class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, 5432)
                 .withDefault(JdbcConfiguration.USER, "postgres")
                 .withDefault(JdbcConfiguration.PASSWORD, "postgres")
+                .with(PostgresConnectorConfig.MAX_RETRIES, 2)
+                .with(PostgresConnectorConfig.RETRY_DELAY_MS, 2000)
                 .build();
     }
 
@@ -360,4 +369,22 @@ public final class TestHelper {
                 });
     }
 
+    private static PostgresValueConverter getPostgresValueConverter(TypeRegistry typeRegistry, PostgresConnectorConfig config) {
+        return getPostgresValueConverterBuilder(config).build(typeRegistry);
+    }
+
+    private static PostgresValueConverterBuilder getPostgresValueConverterBuilder(PostgresConnectorConfig config) {
+        return typeRegistry -> new PostgresValueConverter(
+                Charset.forName("UTF-8"),
+                config.getDecimalMode(),
+                config.getTemporalPrecisionMode(),
+                ZoneOffset.UTC,
+                null,
+                config.includeUnknownDatatypes(),
+                typeRegistry,
+                config.hStoreHandlingMode(),
+                config.binaryHandlingMode(),
+                config.intervalHandlingMode(),
+                config.toastedValuePlaceholder());
+    }
 }

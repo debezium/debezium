@@ -15,31 +15,18 @@ toc::[]
 
 The outbox pattern is a way to safely and reliably exchange data between multiple (micro) services. An outbox pattern implementation avoids inconsistencies between a service's internal state (as typically persisted in its database) and state in events consumed by services that need the same data.
 
-To implement the outbox pattern in a {prodname} application, configure a {prodname} connector to: 
+To implement the outbox pattern in a {prodname} application, configure a {prodname} connector to:
 
 * Capture changes in an outbox table
 * Apply the {prodname} outbox event router single message transformation (SMT)
 
-A {prodname} connector that is configured to apply the outbox SMT should capture changes in only an outbox table. A connector can capture changes in more than one outbox table only if each outbox table has the same structure.  
+A {prodname} connector that is configured to apply the outbox SMT should capture changes in only an outbox table. A connector can capture changes in more than one outbox table only if each outbox table has the same structure.
+
+
+See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works.
 
 ifdef::community[]
-[NOTE]
-====
-The outbox event router SMT is under active development. The structure of the emitted message or other details might change as development progresses.
-====
-endif::community[]
-
-ifdef::product[]
-[IMPORTANT]
-====
-The {prodname} outbox event router SMT is a Technology Preview feature. Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process. For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
-See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works. 
-
-ifdef::community[]
-For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/master/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the outbox event router SMT. 
+For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/master/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the outbox event router SMT.
 endif::community[]
 
 [NOTE]
@@ -48,7 +35,7 @@ The outbox event router SMT does *not* support the MongoDB connector.
 ====
 
 ifdef::product[]
-The following topics provide details: 
+The following topics provide details:
 
 * xref:example-of-a-debezium-outbox-message[]
 * xref:outbox-table-structure-expected-by-debezium-outbox-event-router-smt[]
@@ -77,7 +64,7 @@ To learn about how to configure the {prodname} outbox event router SMT, consider
 }
 ----
 
-A {prodname} connector that is configured to apply the outbox event router SMT generates the above message by transforming a {prodname} raw message like this: 
+A {prodname} connector that is configured to apply the outbox event router SMT generates the above message by transforming a {prodname} raw message like this:
 
 [source,javascript,indent=0]
 ----
@@ -121,7 +108,7 @@ This example of a {prodname} outbox message is based on the {link-prefix}:{link-
 [[basic-outbox-table]]
 == Basic outbox table
 
-To apply the default outbox event router SMT configuration, your outbox table is assumed to have the following columns: 
+To apply the default outbox event router SMT configuration, your outbox table is assumed to have the following columns:
 
 [source]
 ----
@@ -143,30 +130,30 @@ payload       | jsonb                  |
 |`id`
 |Contains the unique ID of the event. In an outbox message, this value is a header. You can use this ID, for example, to remove duplicate messages. +
  +
-To obtain the unique ID of the event from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-id[`table.field.event.id` SMT option] in the connector configuration.  
+To obtain the unique ID of the event from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-id[`table.field.event.id` SMT option] in the connector configuration.
 
 |[[route-by-field-example]]`aggregatetype`
 |Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
  +
 For example, in a default configuration, the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the `route.topic.replacement` SMT option is set to `outbox.event.pass:[${routedByValue}]`. Suppose that your application adds two records to the outbox table. In the first record, the value in the `aggregatetype` column is `customers`. In the second record, the value in the `aggregatetype` column is `orders`. The connector emits the first record to the `outbox.event.customers` topic. The connector emits the second record to the `outbox.event.orders` topic. +
  +
-To obtain this value from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field` SMT option] in the connector configuration. 
+To obtain this value from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field` SMT option] in the connector configuration.
 
 |`aggregateid`
 |Contains the event key, which provides an ID for the payload. The SMT uses this value as the key in the emitted outbox message. This is important for maintaining correct order in Kafka partitions. +
  +
-To obtain the event key from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-key[`table.field.event.key` SMT option] in the connector configuration. 
+To obtain the event key from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-key[`table.field.event.key` SMT option] in the connector configuration.
 
 |`type`
-|A user-defined value that helps categorize or organize events.  
+|A user-defined value that helps categorize or organize events.
 
 a|`payload`
-|The representation of the event itself. The default structure is JSON. The content in this field becomes one of these: 
+|The representation of the event itself. The default structure is JSON. The content in this field becomes one of these:
 
 * Part of the outbox message `payload`.
-* If other metadata, including `eventType` is delivered as headers, the payload becomes the message itself without encapsulation in an envelope. 
+* If other metadata, including `eventType` is delivered as headers, the payload becomes the message itself without encapsulation in an envelope.
 
-To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration. 
+To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
 
 |===
 
@@ -176,7 +163,7 @@ To obtain the event payload from a different outbox table column, set the {link-
 [[basic-outbox-configuration]]
 == Basic configuration
 
-To configure a {prodname} connector to support the outbox pattern, configure the `outbox.EventRouter` SMT. For example, the basic configuration in a `.properties` file looks like this: 
+To configure a {prodname} connector to support the outbox pattern, configure the `outbox.EventRouter` SMT. For example, the basic configuration in a `.properties` file looks like this:
 
 [source]
 ----
@@ -225,12 +212,12 @@ The delegate `Converter` implementation is specified by the `delegate.converter.
 If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
 
 // Type: concept
-// Title: Emitting additional fields in {prodname} outbox messages 
+// Title: Emitting additional fields in {prodname} outbox messages
 // ModuleID: emitting-additional-fields-in-debezium-outbox-messages
 [[emitting-messages-with-additional-fields]]
 == Emitting messages with additional fields
 
-Your outbox table might contain columns whose values you want to add to the emitted outbox messages. For example, consider an outbox table that has a value of `purchase-order` in the `aggregatetype` column and another column, `eventType`, whose possible values are `order-created` and `order-shipped`. 
+Your outbox table might contain columns whose values you want to add to the emitted outbox messages. For example, consider an outbox table that has a value of `purchase-order` in the `aggregatetype` column and another column, `eventType`, whose possible values are `order-created` and `order-shipped`.
 To emit the `eventType` column value in the outbox message header, configure the SMT like this:
 
 [source]
@@ -278,7 +265,7 @@ The following table describes the options that you can specify for the outbox ev
 |[[outbox-event-router-property-table-field-event-timestamp]]<<outbox-event-router-property-table-field-event-timestamp, `table.field.event.timestamp`>>
 |
 |Table
-|By default, the timestamp in the emitted outbox message is the {prodname} event timestamp. To use a different timestamp in outbox messages, set this option to an outbox table column that contains the timestamp that you want to be in emitted outbox messages. 
+|By default, the timestamp in the emitted outbox message is the {prodname} event timestamp. To use a different timestamp in outbox messages, set this option to an outbox table column that contains the timestamp that you want to be in emitted outbox messages.
 
 |[[outbox-event-router-property-table-field-event-payload]]<<outbox-event-router-property-table-field-event-payload, `table.field.event.payload`>>
 |`payload`
@@ -297,11 +284,11 @@ a|Specifies one or more outbox table columns that you want to add to outbox mess
 
 `id:header,my-field:envelope`
 
-To specify an alias for the column, specify a trio with the alias as the third value, for example: 
+To specify an alias for the column, specify a trio with the alias as the third value, for example:
 
 `id:header,my-field:envelope:my-alias`
 
-The second value is the placement and it must always be `header` or `envelope`. 
+The second value is the placement and it must always be `header` or `envelope`.
 
 Configuration examples are in {link-prefix}:{link-outbox-event-router}#emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
 
@@ -320,18 +307,18 @@ Configuration examples are in {link-prefix}:{link-outbox-event-router}#emitting-
 |Router
 |Specifies a regular expression that the outbox SMT applies in the RegexRouter to outbox table records. This regular expression is part of the setting of the `route.topic.replacement` SMT option. +
  +
-The default behavior is that the SMT replaces the default `pass:[${routedByValue}]` variable in the setting of the `route.topic.replacement` SMT option with the setting of the `route.by.field` outbox SMT option.  
+The default behavior is that the SMT replaces the default `pass:[${routedByValue}]` variable in the setting of the `route.topic.replacement` SMT option with the setting of the `route.by.field` outbox SMT option.
 
 |[[outbox-event-router-property-route-topic-replacement]]<<outbox-event-router-property-route-topic-replacement, `route.topic.replacement`>>
 |`outbox.event{zwsp}.pass:[${routedByValue}]`
 |Router
-a|Specifies the name of the topic to which the connector emits outbox messages. 
+a|Specifies the name of the topic to which the connector emits outbox messages.
 The default topic name is `outbox.event.` followed by the `aggregatetype` column value in the outbox table record. For example, if the `aggregatetype` value is `customers`, the topic name is `outbox.event.customers`. +
  +
 To change the topic name, you can: +
 
 * Set the `route.by.field` option to a different column.
-* Set the `route.topic.regex` option to a different regular expression. 
+* Set the `route.topic.regex` option to a different regular expression.
 
 |[[outbox-event-router-property-route-tombstone-on-empty-payload]]<<outbox-event-router-property-route-tombstone-on-empty-payload, `route.tombstone.on.empty.payload`>>
 |`false`
@@ -341,14 +328,14 @@ To change the topic name, you can: +
 |[[outbox-event-router-property-debezium-op-invalid-behavior]]<<outbox-event-router-property-debezium-op-invalid-behavior, `debezium.op.invalid.behavior`>>
 |`warn`
 |{prodname}
-a|Determines the behavior of the SMT when there is an `UPDATE` operation on the outbox table. Possible settings are: 
+a|Determines the behavior of the SMT when there is an `UPDATE` operation on the outbox table. Possible settings are:
 
 * `warn` - The SMT logs a warning and continues to the next outbox table record.
 * `error` - The SMT logs an error and continues to the next outbox table record.
-* `fatal` - The SMT logs an error and the connector stops processing. 
+* `fatal` - The SMT logs an error and the connector stops processing.
 
-All changes in an outbox table are expected to be `INSERT` operations. That is, an outbox table functions as a queue; updates to records in an outbox table are not allowed. The SMT automatically filters out `DELETE` operations on an outbox table. 
-
+All changes in an outbox table are expected to be `INSERT` operations. That is, an outbox table functions as a queue; updates to records in an outbox table are not allowed. The SMT automatically filters out `DELETE` operations on an outbox table.
+ifdef::community[]
 |[[outbox-event-router-property-tracing-span-context-field]]<<outbox-event-router-property-tracing-span-context-field, `tracing.span.context.field`>>
 |`tracingspancontext`
 |Tracing
@@ -363,9 +350,10 @@ All changes in an outbox table are expected to be `INSERT` operations. That is, 
 |`false`
 |Tracing
 |When `true` only events that have serialized context field should be traced.
-
+endif::community[]
 |===
-
+ifdef::community[]
 == Distributed tracing
 The extension has support for the distributed tracing.
 See link:/documentation/reference/integrations/tracing[tracing documentation] for more details.
+endif::community[]

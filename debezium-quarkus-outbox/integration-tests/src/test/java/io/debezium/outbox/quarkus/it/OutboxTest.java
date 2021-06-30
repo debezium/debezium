@@ -5,9 +5,9 @@
  */
 package io.debezium.outbox.quarkus.it;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
@@ -18,24 +18,19 @@ import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
 
-import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.metamodel.spi.MetamodelImplementor;
-import org.hibernate.persister.entity.EntityPersister;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.outbox.quarkus.internal.OutboxConstants;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 
 /**
- * Smoke test that verifies the Debezium Outbox extension started successfully and created the Outbox
- * database table with the expected properties and return types.
+ * Integration tests for the Debezium Outbox extension, using default configuration from application.properties.
  *
  * @author Chris Cranford
  */
 @QuarkusTest
-@QuarkusTestResource(DatabaseTestResource.class)
-public class OutboxTest {
+@TestProfile(OutboxProfiles.Default.class)
+public class OutboxTest extends AbstractOutboxTest {
 
     @Inject
     EntityManager entityManager;
@@ -43,22 +38,7 @@ public class OutboxTest {
     @Inject
     MyService myService;
 
-    @Test
-    public void testOutboxEntityMetamodelExists() throws Exception {
-        final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
-
-        final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
-        assertNotNull(persister);
-
-        // this assumes the default mapping settings, no custom converters or column types
-        assertEquals(UUID.class, persister.getIdentifierType().getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("aggregateType").getReturnedClass());
-        assertEquals(Long.class, persister.getPropertyType("aggregateId").getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("type").getReturnedClass());
-        assertEquals(Instant.class, persister.getPropertyType("timestamp").getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("payload").getReturnedClass());
-    }
-
+    @Override
     @Test
     public void firedEventGetsPersistedInOutboxTable() {
         myService.doSomething();

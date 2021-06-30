@@ -25,6 +25,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
@@ -48,7 +49,7 @@ import io.debezium.util.SchemaNameAdjuster;
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public class PostgresConnectorTask extends BaseSourceTask {
+public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorTask.class);
     private static final String CONTEXT_NAME = "postgres-connector-task";
@@ -60,7 +61,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private volatile PostgresSchema schema;
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<PostgresOffsetContext> start(Configuration config) {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
@@ -70,22 +71,29 @@ public class PostgresConnectorTask extends BaseSourceTask {
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
         }
 
+        heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
+        final Charset databaseCharset = heartbeatConnection.getDatabaseCharset();
+
+        final PostgresValueConverterBuilder valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
+                connectorConfig,
+                databaseCharset,
+                typeRegistry);
+
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
-        jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), true);
+        jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), valueConverterBuilder);
         try {
             jdbcConnection.setAutoCommit(false);
         }
         catch (SQLException e) {
             throw new DebeziumException(e);
         }
-        heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
-        final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
-        final Charset databaseCharset = jdbcConnection.getDatabaseCharset();
 
-        schema = new PostgresSchema(connectorConfig, typeRegistry, databaseCharset, topicSelector);
+        final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
+
+        schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector, valueConverterBuilder.build(typeRegistry));
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
-        final PostgresOffsetContext previousOffset = (PostgresOffsetContext) getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
+        final PostgresOffsetContext previousOffset = getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
@@ -116,7 +124,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
                 final boolean doSnapshot = snapshotter.shouldSnapshot();
-                replicationConnection = createReplicationConnection(this.taskContext, true,
+                replicationConnection = createReplicationConnection(this.taskContext,
                         doSnapshot, connectorConfig.maxRetries(), connectorConfig.retryDelay());
 
                 // we need to create the slot before we start streaming if it doesn't exist
@@ -189,7 +197,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     schemaNameAdjuster,
                     jdbcConnection);
 
-            ChangeEventSourceCoordinator coordinator = new PostgresChangeEventSourceCoordinator(
+            ChangeEventSourceCoordinator<PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffset,
                     errorHandler,
                     PostgresConnector.class,
@@ -221,15 +229,14 @@ public class PostgresConnectorTask extends BaseSourceTask {
         }
     }
 
-    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, boolean shouldExport,
-                                                             boolean doSnapshot, int maxRetries, Duration retryDelay)
+    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, boolean doSnapshot, int maxRetries, Duration retryDelay)
             throws ConnectException {
         final Metronome metronome = Metronome.parker(retryDelay, Clock.SYSTEM);
         short retryCount = 0;
         ReplicationConnection replicationConnection = null;
         while (retryCount <= maxRetries) {
             try {
-                return taskContext.createReplicationConnection(shouldExport, doSnapshot);
+                return taskContext.createReplicationConnection(doSnapshot);
             }
             catch (SQLException ex) {
                 retryCount++;

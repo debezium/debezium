@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.testing.openshift.tools.databases.DatabaseController;
+import io.debezium.testing.openshift.tools.databases.AbstractOcpDatabaseController;
 import io.debezium.testing.openshift.tools.databases.DatabaseInitListener;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
@@ -26,24 +26,27 @@ import io.fabric8.openshift.client.OpenShiftClient;
  *
  * @author Jakub Cechacek
  */
-public class MongoController extends DatabaseController<MongoDatabaseClient> {
+public class OcpMongoController
+        extends AbstractOcpDatabaseController<MongoDatabaseClient>
+        implements MongoDatabaseController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoController.class);
     private static final String DB_INIT_SCRIPT_PATH_CONTAINER = "/usr/local/bin/init-inventory.sh";
 
-    public MongoController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
-        super(deployment, services, dbType, ocp);
+    public OcpMongoController(Deployment deployment, List<Service> services, OpenShiftClient ocp) {
+        super(deployment, services, ocp);
     }
 
     @Override
-    protected String constructDatabaseUrl(String hostname, int port) {
-        return "mongodb://" + hostname + ":" + port;
+    public String getDatabaseUrl() {
+        return "mongodb://" + getDatabaseHostname() + ":" + getDatabasePort();
     }
 
     public void initialize() throws InterruptedException {
         Pod pod = ocp.pods().inNamespace(project).withLabel("deployment", name).list().getItems().get(0);
         String svcName = deployment.getMetadata().getName();
         CountDownLatch latch = new CountDownLatch(1);
+
         try (ExecWatch exec = ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .inContainer("mongo")
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
@@ -53,6 +56,7 @@ public class MongoController extends DatabaseController<MongoDatabaseClient> {
             LOGGER.info("Waiting until database is initialized");
             latch.await(scaled(1), TimeUnit.MINUTES);
         }
+
     }
 
     public MongoDatabaseClient getDatabaseClient(String username, String password) {

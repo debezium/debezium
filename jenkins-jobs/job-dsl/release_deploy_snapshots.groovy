@@ -20,7 +20,7 @@ pipelineJob('release-deploy-snapshots') {
         stringParam('DEBEZIUM_BRANCH', 'master', 'A branch from which Debezium is built')
         stringParam(
                 'DEBEZIUM_ADDITIONAL_REPOSITORIES',
-                'db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#master cassandra#github.com/debezium/debezium-connector-cassandra.git#main',
+                'db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main',
                 'A space separated list of additional repositories from which Debezium connectors are built (id#repo#branch)'
         )
     }

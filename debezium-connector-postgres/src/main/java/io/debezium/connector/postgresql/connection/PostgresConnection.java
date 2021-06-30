@@ -19,6 +19,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
+import org.postgresql.jdbc.PgConnection;
+import org.postgresql.jdbc.TimestampUtils;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PGmoney;
 import org.postgresql.util.PSQLState;
@@ -70,18 +72,48 @@ public class PostgresConnection extends JdbcConnection {
     private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
     private final TypeRegistry typeRegistry;
+    private final PostgresDefaultValueConverter defaultValueConverter;
 
     /**
      * Creates a Postgres connection using the supplied configuration.
      * If necessary this connection is able to resolve data type mappings.
+     * Such a connection requires a {@link PostgresValueConverter}, and will provide its own {@link TypeRegistry}.
      * Usually only one such connection per connector is needed.
      *
      * @param config {@link Configuration} instance, may not be null.
-     * @param provideTypeRegistry {@code true} if type registry should be created
+     * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
      */
-    public PostgresConnection(Configuration config, boolean provideTypeRegistry) {
+    public PostgresConnection(Configuration config, PostgresValueConverterBuilder valueConverterBuilder) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
-        this.typeRegistry = provideTypeRegistry ? new TypeRegistry(this) : null;
+
+        if (Objects.isNull(valueConverterBuilder)) {
+            this.typeRegistry = null;
+            this.defaultValueConverter = null;
+        }
+        else {
+            this.typeRegistry = new TypeRegistry(this);
+
+            final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
+            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
+        }
+    }
+
+    /**
+     * Create a Postgres connection using the supplied configuration and {@link TypeRegistry}
+     * @param config {@link Configuration} instance, may not be null.
+     * @param typeRegistry an existing/already-primed {@link TypeRegistry} instance
+     */
+    public PostgresConnection(Configuration config, TypeRegistry typeRegistry) {
+        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
+        if (Objects.isNull(typeRegistry)) {
+            this.typeRegistry = null;
+            this.defaultValueConverter = null;
+        }
+        else {
+            this.typeRegistry = typeRegistry;
+            final PostgresValueConverter valueConverter = PostgresValueConverter.of(new PostgresConnectorConfig(config), this.getDatabaseCharset(), typeRegistry);
+            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
+        }
     }
 
     /**
@@ -91,7 +123,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
-        this(config, false);
+        this(config, (TypeRegistry) null);
     }
 
     /**
@@ -438,6 +470,15 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    public TimestampUtils getTimestampUtils() {
+        try {
+            return ((PgConnection) this.connection()).getTimestampUtils();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Couldn't get timestamp utils from underlying connection", e);
+        }
+    }
+
     protected static void defaultSettings(Configuration.Builder builder) {
         // we require Postgres 9.4 as the minimum server version since that's where logical replication was first introduced
         builder.with("assumeMinServerVersion", "9.4");
@@ -467,6 +508,16 @@ public class PostgresConnection extends JdbcConnection {
 
     @Override
     protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnFilter) throws SQLException {
+        return doReadTableColumn(columnMetadata, tableId, columnFilter);
+    }
+
+    public Optional<Column> readColumnForDecoder(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnNameFilter)
+            throws SQLException {
+        return doReadTableColumn(columnMetadata, tableId, columnNameFilter).map(ColumnEditor::create);
+    }
+
+    private Optional<ColumnEditor> doReadTableColumn(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnFilter)
+            throws SQLException {
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);
@@ -507,10 +558,20 @@ public class PostgresConnection extends JdbcConnection {
                 column.scale(nativeType.getDefaultScale());
             }
 
+            final String defaultValue = columnMetadata.getString(13);
+            if (defaultValue != null) {
+                getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
+            }
+
             return Optional.of(column);
         }
 
         return Optional.empty();
+    }
+
+    @Override
+    protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
+        return defaultValueConverter.parseDefaultValue(column, defaultValue);
     }
 
     public TypeRegistry getTypeRegistry() {
@@ -576,5 +637,10 @@ public class PostgresConnection extends JdbcConnection {
             // not a known type
             return super.getColumnValue(rs, columnIndex, column, table, schema);
         }
+    }
+
+    @FunctionalInterface
+    public interface PostgresValueConverterBuilder {
+        PostgresValueConverter build(TypeRegistry registry);
     }
 }

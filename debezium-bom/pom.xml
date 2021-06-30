@@ -14,7 +14,7 @@
     <properties>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>6.0.2</version.confluent.platform>
-        <version.apicurio>1.3.2.Final</version.apicurio>
+        <version.apicurio>2.0.0.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases in debezium-build-parent -->
         <version.postgresql.driver>42.2.14</version.postgresql.driver>
@@ -24,7 +24,7 @@
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.1.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
-        <version.cassandra.driver>3.5.0</version.cassandra.driver>
+        <version.cassandra.driver>3.11.0</version.cassandra.driver>
 
         <!-- Connectors -->
         <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
@@ -168,7 +168,7 @@
             <dependency>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-runtime</artifactId>
-                <version>${antlr.version}</version>
+                <version>${version.antlr}</version>
             </dependency>
 
             <!-- PostgreSQL connector -->
