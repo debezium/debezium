@@ -56,6 +56,7 @@ ddlStatement
     | createLogfileGroup | createProcedure | createFunction
     | createServer | createTable | createTablespaceInnodb
     | createTablespaceNdb | createTrigger | createView
+    | createRole
     | alterDatabase | alterEvent | alterFunction
     | alterInstance | alterLogfileGroup | alterProcedure
     | alterServer | alterTable | alterTablespace | alterView
@@ -178,6 +179,10 @@ createFunction
       RETURNS dataType
       routineOption*
     (routineBody | returnStatement)
+    ;
+
+createRole
+    : CREATE ROLE (IF NOT EXISTS)? roleName
     ;
 
 createServer
@@ -1946,6 +1951,10 @@ fullId
 
 tableName
     : fullId
+    ;
+
+roleName
+    : uid
     ;
 
 fullColumnName
