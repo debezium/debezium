@@ -320,3 +320,8 @@ BEGIN
   END IF;
 END -- //-- delimiter ;
 #end
+#begin
+-- Create Role
+create role 'RL_COMPLIANCE_NSA';
+create role if not exists 'RL_COMPLIANCE_NSA';
+#end
