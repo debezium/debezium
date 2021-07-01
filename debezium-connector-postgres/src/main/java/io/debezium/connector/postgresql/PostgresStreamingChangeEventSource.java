@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -30,12 +29,15 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.Threads;
 
 /**
  *
  * @author Horia Chiorean (hchiorea@redhat.com), Jiri Pechanec
  */
 public class PostgresStreamingChangeEventSource implements StreamingChangeEventSource<PostgresOffsetContext> {
+
+    private static final String KEEP_ALIVE_THREAD_NAME = "keep-alive";
 
     /**
      * Number of received events without sending anything to Kafka which will
@@ -117,7 +119,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             // such that the connection times out. We must enable keep
             // alive to ensure that it doesn't time out
             ReplicationStream stream = this.replicationStream.get();
-            stream.startKeepAlive(Executors.newSingleThreadExecutor());
+            stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
 
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(connection, true);
@@ -145,7 +147,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 replicationConnection.reconnect();
                 replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
                 stream = this.replicationStream.get();
-                stream.startKeepAlive(Executors.newSingleThreadExecutor());
+                stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
             processMessages(context, offsetContext, stream);
         }
