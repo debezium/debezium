@@ -2,6 +2,32 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.4.Final
+July 1st 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358735)
+
+### New features since 1.5.3.Final
+
+None
+
+### Breaking changes since 1.5.3.Final
+
+None
+
+
+### Fixes since 1.5.3.Final
+
+* Schema change events of excluded databases are discarded  [DBZ-3622](https://issues.jboss.org/browse/DBZ-3622)
+* Oracle DDL parser fails on CREATE TABLE: mismatched input 'maxtrans' expecting {'AS', ';'} [DBZ-3641](https://issues.jboss.org/browse/DBZ-3641)
+
+
+### Other changes since 1.5.3.Final
+
+* Database history properties missing in connector docs [DBZ-3459](https://issues.jboss.org/browse/DBZ-3459)
+* Update deprecated config for debezium smt [DBZ-3673](https://issues.jboss.org/browse/DBZ-3673)
+* Prepare test-suite for Kafka on RHEL [DBZ-3566](https://issues.jboss.org/browse/DBZ-3566)
+
+
+
 ## 1.5.3.Final
 June 17th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358421)
 
