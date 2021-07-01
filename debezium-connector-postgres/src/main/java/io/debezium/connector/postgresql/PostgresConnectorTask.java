@@ -71,7 +71,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
         }
 
-        heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
+        heartbeatConnection = new PostgresConnection(connectorConfig.getJdbcConfig());
         final Charset databaseCharset = heartbeatConnection.getDatabaseCharset();
 
         final PostgresValueConverterBuilder valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
@@ -81,7 +81,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
 
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
-        jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), valueConverterBuilder);
+        jdbcConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder);
         try {
             jdbcConnection.setAutoCommit(false);
         }
