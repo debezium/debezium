@@ -39,10 +39,6 @@
               <groupId>org.antlr</groupId>
               <artifactId>antlr4-runtime</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.github.jsqlparser</groupId>
-            <artifactId>jsqlparser</artifactId>
-        </dependency>
 
         <!-- Testing -->
         <dependency>
