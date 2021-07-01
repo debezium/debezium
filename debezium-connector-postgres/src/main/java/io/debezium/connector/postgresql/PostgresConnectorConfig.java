@@ -1061,10 +1061,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getBoolean(INCLUDE_UNKNOWN_DATATYPES);
     }
 
-    public Configuration jdbcConfig() {
-        return getConfig().subset(DATABASE_CONFIG_PREFIX, true);
-    }
-
     public Map<String, ConfigValue> validate() {
         return getConfig().validate(ALL_FIELDS);
     }

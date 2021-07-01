@@ -342,7 +342,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final SnapshotMode snapshotMode;
 
     private final String oracleVersion;
-    private final Configuration jdbcConfig;
     private ConnectorAdapter connectorAdapter;
     private final StreamingAdapter streamingAdapter;
     private final String snapshotEnhancementToken;
@@ -375,7 +374,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.oracleVersion = config.getString(ORACLE_VERSION);
-        this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
@@ -936,10 +934,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public String getLogMiningArchiveDestinationName() {
         return logMiningArchiveDestinationName;
-    }
-
-    public Configuration jdbcConfig() {
-        return jdbcConfig;
     }
 
     @Override
