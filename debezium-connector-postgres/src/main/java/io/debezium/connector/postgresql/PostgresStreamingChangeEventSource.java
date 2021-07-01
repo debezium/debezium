@@ -29,6 +29,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Threads;
 
 /**
@@ -62,6 +63,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final AtomicReference<ReplicationStream> replicationStream = new AtomicReference<>();
     private final Snapshotter snapshotter;
     private final DelayStrategy pauseNoMessage;
+    private final ElapsedTimeStrategy connectionProbeTimer;
 
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
@@ -83,6 +85,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
         this.replicationConnection = replicationConnection;
+        this.connectionProbeTimer = ElapsedTimeStrategy.constant(Clock.system(), connectorConfig.statusUpdateInterval());
+
     }
 
     @Override
@@ -243,6 +247,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 }
             });
 
+            probeConnectionIfNeeded();
+
             if (receivedMessage) {
                 noMessageIterations = 0;
             }
@@ -289,8 +295,16 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     pauseNoMessage.sleepWhen(true);
                 }
             }
+
+            probeConnectionIfNeeded();
         }
         LOGGER.info("WAL resume position '{}' discovered", resumeLsn.get());
+    }
+
+    private void probeConnectionIfNeeded() throws SQLException {
+        if (connectionProbeTimer.hasElapsed()) {
+            connection.prepareQuery("SELECT 1");
+        }
     }
 
     private void commitMessage(PostgresOffsetContext offsetContext, final Lsn lsn) throws SQLException, InterruptedException {
