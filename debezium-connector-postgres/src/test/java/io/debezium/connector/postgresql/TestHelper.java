@@ -122,7 +122,7 @@ public final class TestHelper {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
 
         return new PostgresConnection(
-                config.jdbcConfig(),
+                config.getJdbcConfig(),
                 getPostgresValueConverterBuilder(config));
     }
 
@@ -192,7 +192,7 @@ public final class TestHelper {
 
     public static TypeRegistry getTypeRegistry() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (final PostgresConnection connection = new PostgresConnection(config.jdbcConfig(), getPostgresValueConverterBuilder(config))) {
+        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config))) {
             return connection.getTypeRegistry();
         }
     }
