@@ -49,7 +49,7 @@ public class OracleConnectorTask extends BaseSourceTask<OracleOffsetContext> {
         TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
-        Configuration jdbcConfig = connectorConfig.jdbcConfig();
+        Configuration jdbcConfig = connectorConfig.getJdbcConfig();
         jdbcConnection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());
 
         OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);

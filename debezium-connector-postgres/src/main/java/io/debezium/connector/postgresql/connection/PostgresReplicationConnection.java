@@ -103,7 +103,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
                                           PostgresSchema schema) {
-        super(config.jdbcConfig(), PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
+        super(config.getJdbcConfig(), PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
         this.slotName = slotName;
@@ -121,7 +121,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
-        try (PostgresConnection connection = new PostgresConnection(originalConfig.jdbcConfig())) {
+        try (PostgresConnection connection = new PostgresConnection(originalConfig.getJdbcConfig())) {
             return connection.readReplicationSlotInfo(slotName, plugin.getPostgresPluginName());
         }
     }
@@ -616,7 +616,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
         if (dropSlotOnClose && dropSlot) {
             // we're dropping the replication slot via a regular - i.e. not a replication - connection
-            try (PostgresConnection connection = new PostgresConnection(originalConfig.jdbcConfig())) {
+            try (PostgresConnection connection = new PostgresConnection(originalConfig.getJdbcConfig())) {
                 connection.dropReplicationSlot(slotName);
             }
             catch (Throwable e) {

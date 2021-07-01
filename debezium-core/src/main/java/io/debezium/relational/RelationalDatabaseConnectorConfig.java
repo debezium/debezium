@@ -563,6 +563,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
+    private final Configuration jdbcConfig;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
@@ -572,6 +573,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);
         this.tableIdMapper = tableIdMapper;
+        this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
 
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
@@ -616,6 +618,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public KeyMapper getKeyMapper() {
         return keyMapper;
+    }
+
+    /**
+     * Returns a "raw" configuration object exposing all the database driver related
+     * settings, without the "database." prefix. Typically used for passing through
+     * driver settings.
+     */
+    public Configuration getJdbcConfig() {
+        return jdbcConfig;
     }
 
     public Duration snapshotLockTimeout() {
