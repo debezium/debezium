@@ -257,7 +257,7 @@ The following is a JSON representation of a value schema for a _create_ event fo
 ----
 {
   "type": "record",
-  "name": "cassandra-cluster-1.inventory.customers.Value",
+  "name": "cassandra-cluster-1.inventory.customers.Envelope",
   "namespace": "io.debezium.connector.cassandra",
   "fields": [
       {
