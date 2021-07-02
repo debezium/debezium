@@ -5,26 +5,19 @@
  */
 package io.debezium.converters;
 
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-
-import java.util.HashMap;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
 
 /**
- * An abstract parser of change records. Callers {@link #create(Schema, Object) create} a concrete parser for a record
- * and the parser's type is chosen by the connector type (e.g. mysql, postgresql, etc.) defined in change records.
- * Fields and metadata of change records can be provided by RecordParser.
+ * An abstract parser of change records. Fields and metadata of change records can be provided by RecordParser.
  */
 public abstract class RecordParser {
 
@@ -45,33 +38,6 @@ public abstract class RecordParser {
             AbstractSourceInfo.TIMESTAMP_KEY,
             AbstractSourceInfo.SNAPSHOT_KEY,
             AbstractSourceInfo.DATABASE_NAME_KEY);
-
-    private static HashMap<String, CloudEventsProvider> providers;
-    static {
-        providers = new HashMap<>();
-        for (CloudEventsProvider provider : ServiceLoader.load(CloudEventsProvider.class)) {
-            providers.put(provider.getName(), provider);
-        }
-    }
-
-    /**
-     * Create a concrete parser of a change record for a specific connector type.
-     *
-     * @param schema the schema of the record
-     * @param value the value of the record
-     * @return a concrete parser
-     */
-    public static RecordParser create(Schema schema, Object value) {
-        Struct record = requireStruct(value, "CloudEvents converter");
-        String connectorType = record.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
-
-        CloudEventsProvider provider = providers.get(connectorType);
-        if (provider != null) {
-            return provider.createParser(schema, record);
-        }
-
-        throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
-    }
 
     protected RecordParser(Schema schema, Struct record, String... dataFields) {
         this.record = record;

@@ -7,6 +7,7 @@ package io.debezium.converters;
 
 import static io.debezium.converters.SerializerType.withName;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -15,6 +16,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.function.Function;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -41,6 +43,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.util.SchemaNameAdjuster;
@@ -90,6 +93,8 @@ public class CloudEventsConverter implements Converter {
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);
     private static Method CONVERT_TO_CONNECT_METHOD;
 
+    private static Map<String, CloudEventsProvider> providers = new HashMap<>();
+
     static {
         try {
             CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class);
@@ -97,6 +102,10 @@ public class CloudEventsConverter implements Converter {
         }
         catch (NoSuchMethodException e) {
             throw new DataException(e.getCause());
+        }
+
+        for (CloudEventsProvider provider : ServiceLoader.load(CloudEventsProvider.class)) {
+            providers.put(provider.getName(), provider);
         }
     }
 
@@ -190,8 +199,11 @@ public class CloudEventsConverter implements Converter {
             throw new DataException("Mismatching schema");
         }
 
-        RecordParser parser = RecordParser.create(schema, value);
-        CloudEventsMaker maker = CloudEventsMaker.create(parser, dataSerializerType,
+        Struct record = requireStruct(value, "CloudEvents converter");
+        CloudEventsProvider provider = lookupCloudEventsProvider(record);
+
+        RecordParser parser = provider.createParser(schema, record);
+        CloudEventsMaker maker = provider.createMaker(parser, dataSerializerType,
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
 
         if (ceSerializerType == SerializerType.JSON) {
@@ -231,6 +243,18 @@ public class CloudEventsConverter implements Converter {
             SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic + DATA_SCHEMA_SUFFIX, parser, maker);
             return avroConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
         }
+    }
+
+    /**
+     * Lookup the CloudEventsProvider implementation for the source connector.
+     */
+    private static CloudEventsProvider lookupCloudEventsProvider(Struct record) {
+        String connectorType = record.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
+        CloudEventsProvider provider = providers.get(connectorType);
+        if (provider != null) {
+            return provider;
+        }
+        throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
     }
 
     /**
