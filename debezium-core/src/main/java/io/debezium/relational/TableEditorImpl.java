@@ -20,6 +20,7 @@ class TableEditorImpl implements TableEditor {
     private final List<String> pkColumnNames = new ArrayList<>();
     private boolean uniqueValues = false;
     private String defaultCharsetName;
+    private String comment;
 
     protected TableEditorImpl() {
     }
@@ -141,8 +142,19 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
+    public TableEditor setComment(String comment) {
+        this.comment = comment;
+        return this;
+    }
+
+    @Override
     public boolean hasDefaultCharsetName() {
         return this.defaultCharsetName != null && !this.defaultCharsetName.trim().isEmpty();
+    }
+
+    @Override
+    public boolean hasComment() {
+        return this.comment != null && !this.comment.trim().isEmpty();
     }
 
     @Override
@@ -252,6 +264,6 @@ class TableEditorImpl implements TableEditor {
             columns.add(column);
         });
         updatePrimaryKeys();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment);
     }
 }

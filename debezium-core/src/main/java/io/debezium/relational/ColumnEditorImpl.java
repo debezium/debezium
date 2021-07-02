@@ -27,6 +27,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     private Object defaultValue = null;
     private boolean hasDefaultValue = false;
     private List<String> enumValues;
+    private String comment;
 
     protected ColumnEditorImpl() {
     }
@@ -104,6 +105,11 @@ final class ColumnEditorImpl implements ColumnEditor {
     @Override
     public boolean hasDefaultValue() {
         return hasDefaultValue;
+    }
+
+    @Override
+    public String comment() {
+        return comment;
     }
 
     @Override
@@ -217,9 +223,15 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditor comment(String comment) {
+        this.comment = comment;
+        return this;
+    }
+
+    @Override
     public Column create() {
         return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
-                length, scale, enumValues, optional, autoIncremented, generated, defaultValue, hasDefaultValue);
+                length, scale, enumValues, optional, autoIncremented, generated, defaultValue, hasDefaultValue, comment);
     }
 
     @Override

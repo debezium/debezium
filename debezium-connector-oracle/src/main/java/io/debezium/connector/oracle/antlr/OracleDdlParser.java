@@ -50,7 +50,12 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
     }
 
     public OracleDdlParser(boolean throwErrorsFromTreeWalk, OracleValueConverters converters, TableFilter tableFilter) {
-        super(throwErrorsFromTreeWalk);
+        this(throwErrorsFromTreeWalk, false, false, converters, tableFilter);
+    }
+
+    public OracleDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
+                           OracleValueConverters converters, TableFilter tableFilter) {
+        super(throwErrorsFromTreeWalk, includeViews, includeComments);
         this.converters = converters;
         this.tableFilter = tableFilter;
     }

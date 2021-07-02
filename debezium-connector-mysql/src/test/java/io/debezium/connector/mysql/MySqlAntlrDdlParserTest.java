@@ -90,6 +90,27 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4000")
+    public void shouldProcessCommentForTable() {
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, false, true);
+        parser.parse("CREATE TABLE table1(\n"
+                + "id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE PRIMARY KEY COMMENT 'pk',\n"
+                + "bin_volume DECIMAL(20, 4) COMMENT 'decimal column'\n"
+                + ") COMMENT='add table comment'", tables);
+        parser.parse("CREATE TABLE table2(id INT NOT NULL)", tables);
+        parser.parse("ALTER TABLE table2 COMMENT='alter table comment'", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(2);
+
+        Table table = tables.forTable(null, null, "table1");
+        assertThat(table.columnWithName("id").comment()).isEqualTo("pk");
+        assertThat(table.columnWithName("bin_volume").comment()).isEqualTo("decimal column");
+        assertThat(table.comment()).isEqualTo("add table comment");
+        table = tables.forTable(null, null, "table2");
+        assertThat(table.comment()).isEqualTo("alter table comment");
+    }
+
+    @Test
     @FixFor("DBZ-3020")
     public void shouldProcessExpressionWithDefault() {
         String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
@@ -2969,16 +2990,21 @@ public class MySqlAntlrDdlParserTest {
         }
 
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
-            this(changesListener, false, tableFilter);
+            this(changesListener, false, false, tableFilter);
         }
 
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
-            this(changesListener, includeViews, TableFilter.includeAll());
+            this(changesListener, includeViews, false, TableFilter.includeAll());
         }
 
-        private MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, TableFilter tableFilter) {
+        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
+            this(changesListener, includeViews, includeComments, TableFilter.includeAll());
+        }
+
+        private MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter) {
             super(false,
                     includeViews,
+                    includeComments,
                     new MySqlValueConverters(
                             JdbcValueConverters.DecimalMode.DOUBLE,
                             TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,

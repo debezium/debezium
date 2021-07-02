@@ -55,11 +55,11 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected DataTypeResolver dataTypeResolver;
 
     public AntlrDdlParser(boolean throwErrorsFromTreeWalk) {
-        this(throwErrorsFromTreeWalk, false);
+        this(throwErrorsFromTreeWalk, false, false);
     }
 
-    public AntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews) {
-        super(";", includeViews);
+    public AntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments) {
+        super(";", includeViews, includeComments);
         this.throwErrorsFromTreeWalk = throwErrorsFromTreeWalk;
     }
 
@@ -193,6 +193,10 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
 
     public boolean skipViews() {
         return skipViews;
+    }
+
+    public boolean skipComments() {
+        return skipComments;
     }
 
     public void signalSetVariable(String variableName, String variableValue, int order, ParserRuleContext ctx) {

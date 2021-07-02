@@ -143,6 +143,18 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         super.enterTableOptionCharset(ctx);
     }
 
+    @Override
+    public void enterTableOptionComment(MySqlParser.TableOptionCommentContext ctx) {
+        if (!parser.skipComments()) {
+            parser.runIfNotNull(() -> {
+                if (ctx.COMMENT() != null) {
+                    tableEditor.setComment(parser.withoutQuotes(ctx.STRING_LITERAL().getText()));
+                }
+            }, tableEditor);
+        }
+        super.enterTableOptionComment(ctx);
+    }
+
     private ColumnEditor convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
         return defaultValueConverter.setColumnDefaultValue(columnEditor);
     }

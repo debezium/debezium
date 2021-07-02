@@ -668,6 +668,13 @@ public abstract class CommonConnectorConfig {
     }
 
     /**
+     * @return true if the connector should emit messages which include table and column comments.
+     */
+    public boolean isSchemaCommentsHistoryEnabled() {
+        return false;
+    }
+
+    /**
      * Validates the supplied fields in this configuration. Extra fields not described by the supplied
      * {@code fields} parameter will not be validated.
      *
