@@ -6,22 +6,18 @@
 package io.debezium.converters;
 
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.util.Collect;
 
 /**
  * An abstract class that builds CloudEvents attributes using fields of change records provided by
- * {@link RecordParser RecordParser}. Callers {@link #create(RecordParser, SerializerType, String)} create} a concrete
- * CloudEventsMaker for a specific connector type.
+ * {@link RecordParser RecordParser}.
  */
 public abstract class CloudEventsMaker {
 
@@ -73,46 +69,6 @@ public abstract class CloudEventsMaker {
     static final Map<SerializerType, String> CONTENT_TYPE_NAME_MAP = Collect.hashMapOf(
             SerializerType.JSON, "application/json",
             SerializerType.AVRO, "application/avro");
-
-    private static HashMap<String, CloudEventsProvider> providers;
-    static {
-        providers = new HashMap<>();
-        for (CloudEventsProvider provider : ServiceLoader.load(CloudEventsProvider.class)) {
-            providers.put(provider.getName(), provider);
-        }
-    }
-
-    /**
-     * Create a concrete CloudEvents maker using the outputs of a record parser. Also need to specify the data content
-     * type (that is the serialization format of the data attribute).
-     *
-     * @param parser the parser of a change record
-     * @param contentType the data content type of CloudEvents
-     * @param dataSchemaUriBase the URI of the schema in case of Avro; may be null
-     * @return a concrete CloudEvents maker
-     */
-    public static CloudEventsMaker create(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        CloudEventsProvider provider = providers.get(parser.connectorType());
-        if (provider != null) {
-            return provider.createMaker(parser, contentType, dataSchemaUriBase);
-        }
-
-        throw new DataException("No usable CloudEvents converters for connector type \"" + parser.connectorType() + "\"");
-    }
-
-    /**
-     * Create a concrete CloudEvents maker using the outputs of a record parser. Also need to specify the data content
-     * type (that is the serialization format of the data attribute) and the url of data schema registry when using Avro
-     * as the data content type.
-     *
-     * @param parser the parser of a change record
-     * @param contentType the data content type of CloudEvents
-     *
-     * @return a concrete CloudEvents maker
-     */
-    public static CloudEventsMaker create(RecordParser parser, SerializerType contentType) {
-        return create(parser, contentType, null);
-    }
 
     protected CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
         this.recordParser = parser;
