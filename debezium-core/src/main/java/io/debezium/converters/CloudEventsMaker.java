@@ -6,7 +6,9 @@
 package io.debezium.converters;
 
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
@@ -72,6 +74,14 @@ public abstract class CloudEventsMaker {
             SerializerType.JSON, "application/json",
             SerializerType.AVRO, "application/avro");
 
+    private static HashMap<String, CloudEventsProvider> providers;
+    static {
+        providers = new HashMap<>();
+        for (CloudEventsProvider provider : ServiceLoader.load(CloudEventsProvider.class)) {
+            providers.put(provider.getName(), provider);
+        }
+    }
+
     /**
      * Create a concrete CloudEvents maker using the outputs of a record parser. Also need to specify the data content
      * type (that is the serialization format of the data attribute).
@@ -82,24 +92,12 @@ public abstract class CloudEventsMaker {
      * @return a concrete CloudEvents maker
      */
     public static CloudEventsMaker create(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        switch (parser.connectorType()) {
-            case "mysql":
-                return new MysqlCloudEventsMaker(parser, contentType, dataSchemaUriBase);
-            case "postgresql":
-                return new PostgresCloudEventsMaker(parser, contentType, dataSchemaUriBase);
-            case "mongodb":
-                return new MongodbCloudEventsMaker(parser, contentType, dataSchemaUriBase);
-            case "sqlserver":
-                return new SqlserverCloudEventsMaker(parser, contentType, dataSchemaUriBase);
-            case "oracle":
-                return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase);
-            case "db2":
-                return new Db2CloudEventsMaker(parser, contentType, dataSchemaUriBase);
-            case "vitess":
-                return new VitessCloudEventsMaker(parser, contentType, dataSchemaUriBase);
-            default:
-                throw new DataException("No usable CloudEvents converters for connector type \"" + parser.connectorType() + "\"");
+        CloudEventsProvider provider = providers.get(parser.connectorType());
+        if (provider != null) {
+            return provider.createMaker(parser, contentType, dataSchemaUriBase);
         }
+
+        throw new DataException("No usable CloudEvents converters for connector type \"" + parser.connectorType() + "\"");
     }
 
     /**
@@ -116,7 +114,7 @@ public abstract class CloudEventsMaker {
         return create(parser, contentType, null);
     }
 
-    private CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
+    protected CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
         this.recordParser = parser;
         this.dataContentType = contentType;
         this.dataSchemaUriBase = dataSchemaUriBase;
@@ -216,117 +214,5 @@ public abstract class CloudEventsMaker {
         return recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY) + "."
                 + recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY) + "."
                 + "CloudEvents.Envelope";
-    }
-
-    /**
-     * CloudEvents maker for records produced by MySQL connector.
-     */
-    public static final class MysqlCloudEventsMaker extends CloudEventsMaker {
-        MysqlCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-            super(parser, contentType, dataSchemaUriBase);
-        }
-
-        @Override
-        public String ceId() {
-            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                    + ";file:" + recordParser.getMetadata(RecordParser.MysqlRecordParser.BINLOG_FILENAME_OFFSET_KEY)
-                    + ";pos:" + recordParser.getMetadata(RecordParser.MysqlRecordParser.BINLOG_POSITION_OFFSET_KEY);
-        }
-    }
-
-    /**
-     * CloudEvents maker for records produced by PostgreSQL connector.
-     */
-    public static final class PostgresCloudEventsMaker extends CloudEventsMaker {
-        PostgresCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-            super(parser, contentType, dataSchemaUriBase);
-        }
-
-        @Override
-        public String ceId() {
-            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                    + ";lsn:" + recordParser.getMetadata(RecordParser.PostgresRecordParser.LSN_KEY).toString()
-                    + ";txId:" + recordParser.getMetadata(RecordParser.PostgresRecordParser.TXID_KEY).toString();
-        }
-    }
-
-    /**
-     * CloudEvents maker for records produced by MongoDB connector.
-     */
-    public static final class MongodbCloudEventsMaker extends CloudEventsMaker {
-        MongodbCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-            super(parser, contentType, dataSchemaUriBase);
-        }
-
-        @Override
-        public String ceId() {
-            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                    + ";h:" + recordParser.getMetadata(RecordParser.MongodbRecordParser.OPERATION_ID);
-        }
-    }
-
-    /**
-     * CloudEvents maker for records produced by SQL Server connector.
-     */
-    public static final class SqlserverCloudEventsMaker extends CloudEventsMaker {
-        SqlserverCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-            super(parser, contentType, dataSchemaUriBase);
-        }
-
-        @Override
-        public String ceId() {
-            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                    + ";change_lsn:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.CHANGE_LSN_KEY)
-                    + ";commit_lsn:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.COMMIT_LSN_KEY)
-                    + ";event_serial_no:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.EVENT_SERIAL_NO_KEY);
-        }
-    }
-
-    /**
-     * CloudEvents maker for records produced by Oracle connector.
-     */
-    public static final class OracleCloudEventsMaker extends CloudEventsMaker {
-        OracleCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-            super(parser, contentType, dataSchemaUriBase);
-        }
-
-        @Override
-        public String ceId() {
-            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                    + ";scn:" + recordParser.getMetadata(RecordParser.OracleRecordParser.SCN_KEY)
-                    + ";commit_scn:" + recordParser.getMetadata(RecordParser.OracleRecordParser.COMMIT_SCN_KEY)
-                    + ";lcr_position:" + recordParser.getMetadata(RecordParser.OracleRecordParser.LCR_POSITION_KEY);
-        }
-    }
-
-    /**
-     * CloudEvents maker for records produced by Db2 connector.
-     */
-    public static final class Db2CloudEventsMaker extends CloudEventsMaker {
-        Db2CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-            super(parser, contentType, dataSchemaUriBase);
-        }
-
-        @Override
-        public String ceId() {
-            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                    + ";change_lsn:" + recordParser.getMetadata(RecordParser.Db2RecordParser.CHANGE_LSN_KEY)
-                    + ";commit_lsn:" + recordParser.getMetadata(RecordParser.Db2RecordParser.COMMIT_LSN_KEY);
-        }
-    }
-
-    /**
-     * CloudEvents maker for records produced by Vitess connector.
-     */
-    public static final class VitessCloudEventsMaker extends CloudEventsMaker {
-        VitessCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-            super(parser, contentType, dataSchemaUriBase);
-        }
-
-        @Override
-        public String ceId() {
-            return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                    + ";vgtid:" + recordParser.getMetadata(RecordParser.VitessRecordParser.VGTID_KEY);
-        }
     }
 }

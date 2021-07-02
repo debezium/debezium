@@ -7,6 +7,8 @@ package io.debezium.converters;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
+import java.util.HashMap;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
@@ -36,13 +38,21 @@ public abstract class RecordParser {
     private final Schema dataSchema;
     private final String connectorType;
 
-    static final Set<String> SOURCE_FIELDS = Collect.unmodifiableSet(
+    protected static final Set<String> SOURCE_FIELDS = Collect.unmodifiableSet(
             AbstractSourceInfo.DEBEZIUM_VERSION_KEY,
             AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY,
             AbstractSourceInfo.SERVER_NAME_KEY,
             AbstractSourceInfo.TIMESTAMP_KEY,
             AbstractSourceInfo.SNAPSHOT_KEY,
             AbstractSourceInfo.DATABASE_NAME_KEY);
+
+    private static HashMap<String, CloudEventsProvider> providers;
+    static {
+        providers = new HashMap<>();
+        for (CloudEventsProvider provider : ServiceLoader.load(CloudEventsProvider.class)) {
+            providers.put(provider.getName(), provider);
+        }
+    }
 
     /**
      * Create a concrete parser of a change record for a specific connector type.
@@ -55,24 +65,12 @@ public abstract class RecordParser {
         Struct record = requireStruct(value, "CloudEvents converter");
         String connectorType = record.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
 
-        switch (connectorType) {
-            case "mysql":
-                return new MysqlRecordParser(schema, record);
-            case "postgresql":
-                return new PostgresRecordParser(schema, record);
-            case "mongodb":
-                return new MongodbRecordParser(schema, record);
-            case "sqlserver":
-                return new SqlserverRecordParser(schema, record);
-            case "oracle":
-                return new OracleRecordParser(schema, record);
-            case "db2":
-                return new Db2RecordParser(schema, record);
-            case "vitess":
-                return new VitessRecordParser(schema, record);
-            default:
-                throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
+        CloudEventsProvider provider = providers.get(connectorType);
+        if (provider != null) {
+            return provider.createParser(schema, record);
         }
+
+        throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
     }
 
     protected RecordParser(Schema schema, Struct record, String... dataFields) {
@@ -187,219 +185,4 @@ public abstract class RecordParser {
      * @return metadata of the record
      */
     public abstract Object getMetadata(String name);
-
-    /**
-     * Parser for records produced by MySQL connectors.
-     */
-    public static final class MysqlRecordParser extends RecordParser {
-        static final String TABLE_NAME_KEY = "table";
-        static final String SERVER_ID_KEY = "server_id";
-        static final String GTID_KEY = "gtid";
-        static final String BINLOG_FILENAME_OFFSET_KEY = "file";
-        static final String BINLOG_POSITION_OFFSET_KEY = "pos";
-        static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
-        static final String THREAD_KEY = "thread";
-        static final String QUERY_KEY = "query";
-
-        static final Set<String> MYSQL_SOURCE_FIELDS = Collect.unmodifiableSet(
-                TABLE_NAME_KEY,
-                SERVER_ID_KEY,
-                GTID_KEY,
-                BINLOG_FILENAME_OFFSET_KEY,
-                BINLOG_POSITION_OFFSET_KEY,
-                BINLOG_ROW_IN_EVENT_OFFSET_KEY,
-                THREAD_KEY,
-                QUERY_KEY);
-
-        MysqlRecordParser(Schema schema, Struct record) {
-            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
-        }
-
-        @Override
-        public Object getMetadata(String name) {
-            if (SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-            if (MYSQL_SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-
-            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from MySQL connector");
-        }
-    }
-
-    /**
-     * Parser for records produced by PostgreSQL connectors.
-     */
-    public static final class PostgresRecordParser extends RecordParser {
-        static final String TXID_KEY = "txId";
-        static final String XMIN_KEY = "xmin";
-        static final String LSN_KEY = "lsn";
-
-        static final Set<String> POSTGRES_SOURCE_FIELD = Collect.unmodifiableSet(
-                TXID_KEY,
-                XMIN_KEY,
-                LSN_KEY);
-
-        PostgresRecordParser(Schema schema, Struct record) {
-            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
-        }
-
-        @Override
-        public Object getMetadata(String name) {
-            if (SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-            if (POSTGRES_SOURCE_FIELD.contains(name)) {
-                return source().get(name);
-            }
-
-            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from PostgreSQL connector");
-        }
-    }
-
-    /**
-     * Parser for records produced by MongoDB connectors.
-     */
-    public static final class MongodbRecordParser extends RecordParser {
-        static final String REPLICA_SET_NAME = "rs";
-        static final String ORDER = "ord";
-        static final String OPERATION_ID = "h";
-        static final String COLLECTION = "collection";
-
-        static final Set<String> MONGODB_SOURCE_FIELD = Collect.unmodifiableSet(
-                REPLICA_SET_NAME,
-                ORDER,
-                OPERATION_ID,
-                COLLECTION);
-
-        MongodbRecordParser(Schema schema, Struct record) {
-            super(schema, record, Envelope.FieldName.AFTER, "patch");
-        }
-
-        @Override
-        public Object getMetadata(String name) {
-            if (SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-            if (MONGODB_SOURCE_FIELD.contains(name)) {
-                return source().get(name);
-            }
-
-            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from MongoDB connector");
-        }
-    }
-
-    /**
-     * Parser for records produced by Sql Server connectors.
-     */
-    public static final class SqlserverRecordParser extends RecordParser {
-        static final String CHANGE_LSN_KEY = "change_lsn";
-        static final String COMMIT_LSN_KEY = "commit_lsn";
-        static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
-
-        static final Set<String> SQLSERVER_SOURCE_FIELD = Collect.unmodifiableSet(
-                CHANGE_LSN_KEY,
-                COMMIT_LSN_KEY,
-                EVENT_SERIAL_NO_KEY);
-
-        SqlserverRecordParser(Schema schema, Struct record) {
-            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
-        }
-
-        @Override
-        public Object getMetadata(String name) {
-            if (SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-            if (SQLSERVER_SOURCE_FIELD.contains(name)) {
-                return source().get(name);
-            }
-
-            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from SQLServer connector");
-        }
-    }
-
-    /**
-     * Parser for records produced by Oracle connectors.
-     */
-    public static final class OracleRecordParser extends RecordParser {
-        static final String SCN_KEY = "scn";
-        static final String COMMIT_SCN_KEY = "commit_scn";
-        static final String LCR_POSITION_KEY = "lcr_position";
-
-        static final Set<String> ORACLE_SOURCE_FIELD = Collect.unmodifiableSet(
-                SCN_KEY,
-                COMMIT_SCN_KEY,
-                LCR_POSITION_KEY);
-
-        OracleRecordParser(Schema schema, Struct record) {
-            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
-        }
-
-        @Override
-        public Object getMetadata(String name) {
-            if (SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-            if (ORACLE_SOURCE_FIELD.contains(name)) {
-                return source().get(name);
-            }
-
-            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Oracle connector");
-        }
-    }
-
-    /**
-     * Parser for records produced by Db2 connectors.
-     */
-    public static final class Db2RecordParser extends RecordParser {
-        static final String CHANGE_LSN_KEY = "change_lsn";
-        static final String COMMIT_LSN_KEY = "commit_lsn";
-
-        static final Set<String> DB2_SOURCE_FIELD = Collect.unmodifiableSet(
-                CHANGE_LSN_KEY,
-                COMMIT_LSN_KEY);
-
-        Db2RecordParser(Schema schema, Struct record) {
-            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
-        }
-
-        @Override
-        public Object getMetadata(String name) {
-            if (SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-            if (DB2_SOURCE_FIELD.contains(name)) {
-                return source().get(name);
-            }
-
-            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Db2 connector");
-        }
-    }
-
-    /**
-     * Parser for records produced by Db2 connectors.
-     */
-    public static final class VitessRecordParser extends RecordParser {
-        static final String VGTID_KEY = "vgtid";
-
-        static final Set<String> VITESS_SOURCE_FIELD = Collect.unmodifiableSet(VGTID_KEY);
-
-        VitessRecordParser(Schema schema, Struct record) {
-            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
-        }
-
-        @Override
-        public Object getMetadata(String name) {
-            if (SOURCE_FIELDS.contains(name)) {
-                return source().get(name);
-            }
-            if (VITESS_SOURCE_FIELD.contains(name)) {
-                return source().get(name);
-            }
-
-            throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from Vitess connector");
-        }
-    }
 }
