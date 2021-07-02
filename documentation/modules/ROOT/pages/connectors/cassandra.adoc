@@ -471,7 +471,7 @@ VALUES (
 
 The value payload in JSON representation would look like this:
 
-[source,json,indent=0]
+[source,json,indent=0,subs="attributes"]
 ----
 {
   "op": "c",
@@ -504,7 +504,7 @@ The value payload in JSON representation would look like this:
   }
   },
   "source": {
-    "version": "0.9.5.Final",
+    "version": "{debezium-version}",
     "connector": "cassandra",
     "cluster": "cassandra-cluster-1",
     "snapshot": false,
@@ -528,7 +528,7 @@ WHERE id = 1001 AND registration_date = 1562202942545
 
 The value payload in JSON representation would look like this:
 
-[source,json,indent=0]
+[source,json,indent=0,subs="attributes"]
 ----
 {
   "op": "u",
@@ -553,7 +553,7 @@ The value payload in JSON representation would look like this:
   }
   },
   "source": {
-    "version": "0.9.5.Final",
+    "version": "{debezium-version}",
     "connector": "cassandra",
     "cluster": "cassandra-cluster-1",
     "snapshot": false,
@@ -583,7 +583,7 @@ WHERE id = 1001 AND registration_date = 1562202942545;
 
 The value payload in JSON representation would look like this:
 
-[source,json,indent=0]
+[source,json,indent=0,subs="attributes"]
 ----
 {
   "op": "d",
@@ -604,7 +604,7 @@ The value payload in JSON representation would look like this:
   "email": null
   },
   "source": {
-    "version": "0.9.5.Final",
+    "version": "{debezium-version}",
     "connector": "cassandra",
     "cluster": "cassandra-cluster-1",
     "snapshot": false,
