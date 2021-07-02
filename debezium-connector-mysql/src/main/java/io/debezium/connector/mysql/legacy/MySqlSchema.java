@@ -125,7 +125,12 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         this.storeOnlyCapturedTablesDdl = Boolean.valueOf(
                 dbHistoryConfig.getFallbackStringPropertyWithWarning(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL));
 
-        this.ddlParser = new MySqlAntlrDdlParser(getValueConverters(configuration), getTableFilter());
+        this.ddlParser = new MySqlAntlrDdlParser(
+                true,
+                false,
+                configuration.isSchemaCommentsHistoryEnabled(),
+                getValueConverters(configuration),
+                getTableFilter());
         this.ddlChanges = this.ddlParser.getDdlChanges();
 
         // Create and configure the database history ...

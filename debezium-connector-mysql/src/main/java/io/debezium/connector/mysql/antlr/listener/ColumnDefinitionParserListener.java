@@ -124,6 +124,16 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     @Override
+    public void enterCommentColumnConstraint(MySqlParser.CommentColumnConstraintContext ctx) {
+        if (!parser.skipComments()) {
+            if (ctx.STRING_LITERAL() != null) {
+                columnEditor.comment(parser.withoutQuotes(ctx.STRING_LITERAL().getText()));
+            }
+        }
+        super.enterCommentColumnConstraint(ctx);
+    }
+
+    @Override
     public void enterNullNotnull(MySqlParser.NullNotnullContext ctx) {
         optionalColumn.set(Boolean.valueOf(ctx.NOT() == null));
         super.enterNullNotnull(ctx);

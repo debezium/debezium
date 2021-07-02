@@ -97,6 +97,12 @@ public interface Table {
     String defaultCharsetName();
 
     /**
+     * Get the comment of the table.
+     * @return the table comment; may be null if not set
+     */
+    String comment();
+
+    /**
      * Determine if the named column is part of the primary key.
      *
      * @param columnName the name of the column

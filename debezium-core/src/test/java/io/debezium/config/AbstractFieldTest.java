@@ -49,7 +49,7 @@ public abstract class AbstractFieldTest {
             }
         });
         if (!errors.isEmpty()) {
-            fail("Duplicate field group assingnments found: " + String.join("\n", errors));
+            fail("Duplicate field group assignments found: " + String.join("\n", errors));
         }
     }
 }

@@ -45,6 +45,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         document.setString("type", tableChange.getType().name());
         document.setString("id", tableChange.getId().toDoubleQuotedString());
         document.setDocument("table", toDocument(tableChange.getTable()));
+        document.setString("comment", tableChange.getTable().comment());
         return document;
     }
 
@@ -88,6 +89,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         document.setBoolean("optional", column.isOptional());
         document.setBoolean("autoIncremented", column.isAutoIncremented());
         document.setBoolean("generated", column.isGenerated());
+        document.setString("comment", column.comment());
 
         return document;
     }
@@ -117,6 +119,9 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         TableEditor editor = Table.editor()
                 .tableId(id)
                 .setDefaultCharsetName(document.getString("defaultCharsetName"));
+        if (document.getString("comment") != null) {
+            editor.setComment(document.getString("comment"));
+        }
 
         document.getArray("columns")
                 .streamValues()
@@ -142,6 +147,11 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                     Integer scale = v.getInteger("scale");
                     if (scale != null) {
                         columnEditor.scale(scale);
+                    }
+
+                    String columnComment = v.getString("comment");
+                    if (columnComment != null) {
+                        columnEditor.comment(columnComment);
                     }
 
                     columnEditor.position(v.getInteger("position"))

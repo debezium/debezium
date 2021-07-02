@@ -353,4 +353,16 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
         }, tableEditor, columnDefinitionListener);
         super.exitAlterByRenameColumn(ctx);
     }
+
+    @Override
+    public void enterTableOptionComment(MySqlParser.TableOptionCommentContext ctx) {
+        if (!parser.skipComments()) {
+            parser.runIfNotNull(() -> {
+                if (ctx.COMMENT() != null) {
+                    tableEditor.setComment(parser.withoutQuotes(ctx.STRING_LITERAL().getText()));
+                }
+            }, tableEditor);
+        }
+        super.enterTableOptionComment(ctx);
+    }
 }

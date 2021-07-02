@@ -24,8 +24,26 @@ class BaseParserListener extends PlSqlParserBaseListener {
         return getTableOrColumnName(tableName);
     }
 
+    String getTableName(final PlSqlParser.Column_nameContext ctx) {
+        final String tableName;
+        if (ctx.id_expression() != null && ctx.id_expression().size() > 1) {
+            tableName = getTableOrColumnName(ctx.id_expression(0).getText());
+        }
+        else {
+            tableName = getTableOrColumnName(ctx.identifier().id_expression().getText());
+        }
+        return tableName;
+    }
+
     String getColumnName(final PlSqlParser.Column_nameContext ctx) {
-        return getTableOrColumnName(ctx.identifier().id_expression().getText());
+        final String columnName;
+        if (ctx.id_expression() != null && ctx.id_expression().size() > 0) {
+            columnName = getTableOrColumnName(ctx.id_expression(ctx.id_expression().size() - 1).getText());
+        }
+        else {
+            columnName = getTableOrColumnName(ctx.identifier().id_expression().getText());
+        }
+        return columnName;
     }
 
     String getColumnName(final PlSqlParser.Old_column_nameContext ctx) {

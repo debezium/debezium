@@ -39,16 +39,18 @@ public class PropagateSourceTypeToSchemaParameterTest {
     }
 
     @Test
-    @FixFor("DBZ-1073")
+    @FixFor({ "DBZ-1073", "DBZ-4000" })
     public void shouldAddColumnScale() {
         int length = 5;
         int scale = 2;
+        String comment = "numeric column";
         Column column = Column.editor()
                 .name("col")
                 .type("NUMERIC")
                 .jdbcType(Types.NUMERIC)
                 .length(length)
                 .scale(scale)
+                .comment(comment)
                 .create();
 
         SchemaBuilder schemaBuilder = SchemaBuilder.string();
@@ -57,5 +59,6 @@ public class PropagateSourceTypeToSchemaParameterTest {
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.type")).isEqualTo("NUMERIC");
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.length")).isEqualTo(String.valueOf(length));
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.scale")).isEqualTo(String.valueOf(scale));
+        assertThat(schemaBuilder.parameters().get("__debezium.source.column.comment")).isEqualTo(comment);
     }
 }

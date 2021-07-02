@@ -149,6 +149,12 @@ public interface Column extends Comparable<Column> {
      */
     List<String> enumValues();
 
+    /**
+     * Get the comment of the column.
+     * @return the column comment; may be null if not set
+     */
+    String comment();
+
     @Override
     default int compareTo(Column that) {
         if (this == that) {

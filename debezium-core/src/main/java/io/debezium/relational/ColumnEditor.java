@@ -136,6 +136,12 @@ public interface ColumnEditor {
     List<String> enumValues();
 
     /**
+     * Get the comment of the column.
+     * @return the column comment; may be null if not set
+     */
+    String comment();
+
+    /**
      * Set the name of the column.
      *
      * @param name the column name
@@ -257,6 +263,13 @@ public interface ColumnEditor {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor enumValues(List<String> enumValues);
+
+    /**
+     * Set the comment of the column
+     * @param comment column comment
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor comment(String comment);
 
     /**
      * Unsets the default value of the column, reverting the editor to the state where {@link #defaultValue(Object))}

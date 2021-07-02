@@ -21,14 +21,15 @@ final class TableImpl implements Table {
     private final List<String> pkColumnNames;
     private final Map<String, Column> columnsByLowercaseName;
     private final String defaultCharsetName;
+    private final String comment;
 
     @PackagePrivate
     TableImpl(Table table) {
-        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName());
+        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName(), table.comment());
     }
 
     @PackagePrivate
-    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName) {
+    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName, String comment) {
         this.id = id;
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
@@ -38,6 +39,7 @@ final class TableImpl implements Table {
         }
         this.columnsByLowercaseName = Collections.unmodifiableMap(defsByLowercaseName);
         this.defaultCharsetName = defaultCharsetName;
+        this.comment = comment;
     }
 
     @Override
@@ -70,6 +72,11 @@ final class TableImpl implements Table {
     @Override
     public String defaultCharsetName() {
         return defaultCharsetName;
+    }
+
+    @Override
+    public String comment() {
+        return comment;
     }
 
     @Override
@@ -110,6 +117,7 @@ final class TableImpl implements Table {
         sb.append(prefix).append("}").append(System.lineSeparator());
         sb.append(prefix).append("primary key: ").append(primaryKeyColumnNames()).append(System.lineSeparator());
         sb.append(prefix).append("default charset: ").append(defaultCharsetName()).append(System.lineSeparator());
+        sb.append(prefix).append("comment: ").append(comment()).append(System.lineSeparator());
     }
 
     @Override
@@ -117,6 +125,7 @@ final class TableImpl implements Table {
         return new TableEditorImpl().tableId(id)
                 .setColumns(columnDefs)
                 .setPrimaryKeyNames(pkColumnNames)
-                .setDefaultCharsetName(defaultCharsetName);
+                .setDefaultCharsetName(defaultCharsetName)
+                .setComment(comment);
     }
 }

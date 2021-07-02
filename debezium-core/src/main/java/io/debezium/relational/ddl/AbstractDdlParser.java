@@ -28,6 +28,7 @@ public abstract class AbstractDdlParser implements DdlParser {
 
     private final String terminator;
     protected final boolean skipViews;
+    protected final boolean skipComments;
     protected DdlChanges ddlChanges;
     protected SystemVariables systemVariables;
 
@@ -40,7 +41,7 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @param terminator the terminator character sequence; may be null if the default terminator ({@code ;}) should be used
      */
     public AbstractDdlParser(String terminator) {
-        this(terminator, false);
+        this(terminator, false, false);
     }
 
     /**
@@ -48,10 +49,12 @@ public abstract class AbstractDdlParser implements DdlParser {
      *
      * @param terminator   the terminator character sequence; may be null if the default terminator ({@code ;}) should be used
      * @param includeViews {@code true} if view definitions should be included, or {@code false} if they should be skipped
+     * @param includeComments {@code true} if table and column's comment definitions should be included, or {@code false} if they should be skipped
      */
-    public AbstractDdlParser(String terminator, boolean includeViews) {
+    public AbstractDdlParser(String terminator, boolean includeViews, boolean includeComments) {
         this.terminator = terminator != null ? terminator : ";";
         this.skipViews = !includeViews;
+        this.skipComments = !includeComments;
         this.ddlChanges = new DdlChanges(terminator);
         this.systemVariables = createNewSystemVariablesInstance();
     }

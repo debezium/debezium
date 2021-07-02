@@ -46,6 +46,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     public static final String OPTIONAL_KEY = "optional";
     public static final String AUTO_INCREMENTED_KEY = "autoIncremented";
     public static final String GENERATED_KEY = "generated";
+    public static final String COMMENT_KEY = "comment";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectTableChangeSerializer.class);
     private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
@@ -64,6 +65,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
             .field(OPTIONAL_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
             .field(AUTO_INCREMENTED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
             .field(GENERATED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+            .field(COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
             .build();
 
     private static final Schema TABLE_SCHEMA = SchemaBuilder.struct()
@@ -71,6 +73,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
             .field(DEFAULT_CHARSET_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
             .field(PRIMARY_KEY_COLUMN_NAMES_KEY, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
             .field(COLUMNS_KEY, SchemaBuilder.array(COLUMN_SCHEMA).build())
+            .field(COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
             .build();
 
     public static final Schema CHANGE_SCHEMA = SchemaBuilder.struct()
@@ -107,6 +110,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
                 .collect(Collectors.toList());
 
         struct.put(COLUMNS_KEY, columns);
+        struct.put(COMMENT_KEY, table.comment());
         return struct;
     }
 
@@ -134,6 +138,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
         struct.put(OPTIONAL_KEY, column.isOptional());
         struct.put(AUTO_INCREMENTED_KEY, column.isAutoIncremented());
         struct.put(GENERATED_KEY, column.isGenerated());
+        struct.put(COMMENT_KEY, column.comment());
 
         return struct;
     }

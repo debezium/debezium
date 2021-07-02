@@ -45,7 +45,12 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper());
 
-        this.ddlParser = new OracleDdlParser(valueConverters, connectorConfig.getTableFilters().dataCollectionFilter());
+        this.ddlParser = new OracleDdlParser(
+                true,
+                false,
+                connectorConfig.isSchemaCommentsHistoryEnabled(),
+                valueConverters,
+                connectorConfig.getTableFilters().dataCollectionFilter());
         this.valueConverters = valueConverters;
     }
 

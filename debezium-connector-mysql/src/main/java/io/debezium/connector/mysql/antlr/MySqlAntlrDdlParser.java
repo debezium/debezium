@@ -57,11 +57,12 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     public MySqlAntlrDdlParser(MySqlValueConverters converters, TableFilter tableFilter) {
-        this(true, false, converters, tableFilter);
+        this(true, false, false, converters, tableFilter);
     }
 
-    protected MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, MySqlValueConverters converters, TableFilter tableFilter) {
-        super(throwErrorsFromTreeWalk, includeViews);
+    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
+                               MySqlValueConverters converters, TableFilter tableFilter) {
+        super(throwErrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new MySqlSystemVariables();
         this.converters = converters;
         this.tableFilter = tableFilter;

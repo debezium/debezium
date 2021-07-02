@@ -139,7 +139,7 @@ public class OracleDdlParserTest {
      */
     @Test
     public void shouldParseCreateTable() {
-
+        parser = new OracleDdlParser(true, false, true, null, Tables.TableFilter.includeAll());
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("DEBEZIUM");
 
@@ -151,6 +151,17 @@ public class OracleDdlParserTest {
                 "  primary key (id)" +
                 ");";
         parser.parse(CREATE_SIMPLE_TABLE, tables);
+        // parse column comment
+        String[] COMMENT_ON_COLUMNS = new String[]{ "comment on column debezium.customer.id is 'pk'",
+                "comment on column customer.name is 'the name'",
+                "comment on column customer.score is 'the score'",
+                "comment on column customer.registered is 'registered date'" };
+        for (String comment : COMMENT_ON_COLUMNS) {
+            parser.parse(comment, tables);
+        }
+        // parse table comment
+        String COMMENT_ON_TABLE = "comment on table debezium.customer is 'this is customer table'";
+        parser.parse(COMMENT_ON_TABLE, tables);
         Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", "CUSTOMER"));
 
         assertThat(table).isNotNull();
@@ -159,12 +170,14 @@ public class OracleDdlParserTest {
         assertThat(id.isOptional()).isFalse();
         assertThat(id.jdbcType()).isEqualTo(Types.NUMERIC);
         assertThat(id.typeName()).isEqualTo("NUMBER");
+        assertThat(id.comment()).isEqualTo("pk");
 
         final Column name = table.columnWithName("NAME");
         assertThat(name.isOptional()).isTrue();
         assertThat(name.jdbcType()).isEqualTo(Types.VARCHAR);
         assertThat(name.typeName()).isEqualTo("VARCHAR2");
         assertThat(name.length()).isEqualTo(1000);
+        assertThat(name.comment()).isEqualTo("the name");
 
         final Column score = table.columnWithName("SCORE");
         assertThat(score.isOptional()).isTrue();
@@ -172,9 +185,12 @@ public class OracleDdlParserTest {
         assertThat(score.typeName()).isEqualTo("NUMBER");
         assertThat(score.length()).isEqualTo(6);
         assertThat(score.scale().get()).isEqualTo(2);
+        assertThat(score.comment()).isEqualTo("the score");
 
         assertThat(table.columns()).hasSize(4);
         assertThat(table.isPrimaryKeyColumn("ID"));
+
+        assertThat(table.comment()).isEqualTo("this is customer table");
     }
 
     @Test

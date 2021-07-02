@@ -14,6 +14,7 @@ final class NoOpTableEditorImpl implements TableEditor {
     private TableId id;
     private boolean uniqueValues = false;
     private String defaultCharsetName;
+    private String comment;
 
     protected NoOpTableEditorImpl() {
     }
@@ -96,8 +97,19 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
+    public TableEditor setComment(String comment) {
+        this.comment = comment;
+        return this;
+    }
+
+    @Override
     public boolean hasDefaultCharsetName() {
         return this.defaultCharsetName != null && !this.defaultCharsetName.trim().isEmpty();
+    }
+
+    @Override
+    public boolean hasComment() {
+        return this.comment != null && !this.comment.trim().isEmpty();
     }
 
     @Override
@@ -131,6 +143,6 @@ final class NoOpTableEditorImpl implements TableEditor {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment);
     }
 }

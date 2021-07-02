@@ -214,10 +214,23 @@ public interface TableEditor {
     TableEditor setDefaultCharsetName(String charsetName);
 
     /**
+     * Set the comment of the table
+     * @param comment table comment
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor setComment(String comment);
+
+    /**
      * Determine if a {@link #setDefaultCharsetName(String) default character set} has been set on this table.
      * @return {@code true} if this has a default character set, or {@code false} if one has not yet been set
      */
     boolean hasDefaultCharsetName();
+
+    /**
+     * Determine if a {@link #setComment(String) comment} has been set on this table.
+     * @return {@code true} if this has a comment, or {@code false} if one has not yet been set
+     */
+    boolean hasComment();
 
     /**
      * Determine whether this table's primary key contains all columns (via {@link #setUniqueValues()}) such that all rows
