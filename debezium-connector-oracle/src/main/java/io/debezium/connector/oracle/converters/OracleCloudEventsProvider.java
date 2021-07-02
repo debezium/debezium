@@ -10,9 +10,9 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.oracle.Module;
 import io.debezium.converters.CloudEventsMaker;
+import io.debezium.converters.CloudEventsProvider;
 import io.debezium.converters.RecordParser;
 import io.debezium.converters.SerializerType;
-import io.debezium.converters.CloudEventsProvider;
 
 /**
  * An implementation of {@link CloudEventsProvider} for Oracle.
