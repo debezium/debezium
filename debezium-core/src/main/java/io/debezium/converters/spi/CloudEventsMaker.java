@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.converters;
+package io.debezium.converters.spi;
 
 import java.text.SimpleDateFormat;
 import java.util.Map;

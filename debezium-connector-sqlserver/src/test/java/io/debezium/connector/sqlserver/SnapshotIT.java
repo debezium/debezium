@@ -34,7 +34,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolatio
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
-import io.debezium.converters.CloudEventsMaker;
+import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;

@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.connect.avro.AvroConverter;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.debezium.config.Configuration;
+import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.util.Testing;

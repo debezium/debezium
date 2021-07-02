@@ -6,9 +6,9 @@
 package io.debezium.connector.oracle.converters;
 
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.converters.CloudEventsMaker;
-import io.debezium.converters.RecordParser;
-import io.debezium.converters.SerializerType;
+import io.debezium.converters.spi.CloudEventsMaker;
+import io.debezium.converters.spi.RecordParser;
+import io.debezium.converters.spi.SerializerType;
 
 /**
  * @author Chris Cranford
