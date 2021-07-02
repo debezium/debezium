@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.debezium.annotation.Immutable;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
@@ -93,6 +95,7 @@ public class CloudEventsConverter implements Converter {
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);
     private static Method CONVERT_TO_CONNECT_METHOD;
 
+    @Immutable
     private static Map<String, CloudEventsProvider> providers = new HashMap<>();
 
     static {
@@ -104,9 +107,13 @@ public class CloudEventsConverter implements Converter {
             throw new DataException(e.getCause());
         }
 
+        Map<String, CloudEventsProvider> tmp = new HashMap<>();
+
         for (CloudEventsProvider provider : ServiceLoader.load(CloudEventsProvider.class)) {
-            providers.put(provider.getName(), provider);
+            tmp.put(provider.getName(), provider);
         }
+
+        providers = Collections.unmodifiableMap(tmp);
     }
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
