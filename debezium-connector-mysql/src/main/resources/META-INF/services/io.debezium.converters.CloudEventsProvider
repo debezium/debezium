@@ -1,0 +1,1 @@
+io.debezium.connector.mysql.converters.MySqlCloudEventsProvider
