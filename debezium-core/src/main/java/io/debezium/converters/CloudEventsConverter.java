@@ -5,7 +5,7 @@
  */
 package io.debezium.converters;
 
-import static io.debezium.converters.SerializerType.withName;
+import static io.debezium.converters.spi.SerializerType.withName;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
@@ -46,6 +46,10 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.spi.CloudEventsMaker;
+import io.debezium.converters.spi.CloudEventsProvider;
+import io.debezium.converters.spi.RecordParser;
+import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.util.SchemaNameAdjuster;

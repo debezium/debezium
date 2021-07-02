@@ -10,6 +10,8 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.storage.ConverterConfig;
 
+import io.debezium.converters.spi.SerializerType;
+
 /**
  * Configuration options for {@link CloudEventsConverter CloudEventsConverter} instances.
  */
