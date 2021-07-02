@@ -305,11 +305,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "will capture LOB fields and emit changes for those fields like any other column type.");
 
     public static final Field LOG_MINING_USERNAME_EXCLUDE_LIST = Field.create("log.mining.username.exclude.list")
-            .withDisplayName("List of users to exclude from logminer query")
+            .withDisplayName("List of users to exclude from LogMiner query")
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Comma separated list of usernames to exclude from logminer query.");
+            .withDescription("Comma separated list of usernames to exclude from LogMiner query.");
 
     public static final Field LOG_MINING_ARCHIVE_DESTINATION_NAME = Field.create("log.mining.archive.destination.name")
             .withDisplayName("Name of the archive log destination to be used for reading archive logs")
