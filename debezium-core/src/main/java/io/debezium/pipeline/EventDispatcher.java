@@ -68,7 +68,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final TopicSelector<T> topicSelector;
     private final DatabaseSchema<T> schema;
     private final HistorizedDatabaseSchema<T> historizedSchema;
-    private final ChangeEventQueue<DataChangeEvent> queue;
+    private final ChangeEventQueue<SourceRecordChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
     private final Heartbeat heartbeat;
@@ -92,14 +92,14 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final StreamingChangeRecordReceiver streamingReceiver;
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
-                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           DatabaseSchema<T> schema, ChangeEventQueue<SourceRecordChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
                 null, schemaNameAdjuster, null);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
-                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           DatabaseSchema<T> schema, ChangeEventQueue<SourceRecordChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
                            Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
@@ -107,7 +107,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
-                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           DatabaseSchema<T> schema, ChangeEventQueue<SourceRecordChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler,
                            EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster,
                            JdbcConnection jdbcConnection) {
@@ -339,15 +339,15 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     private void enqueueHeartbeat(SourceRecord record) throws InterruptedException {
-        queue.enqueue(new DataChangeEvent(record));
+        queue.enqueue(new SourceRecordChangeEvent(record));
     }
 
     private void enqueueTransactionMessage(SourceRecord record) throws InterruptedException {
-        queue.enqueue(new DataChangeEvent(record));
+        queue.enqueue(new SourceRecordChangeEvent(record));
     }
 
     private void enqueueSchemaChangeMessage(SourceRecord record) throws InterruptedException {
-        queue.enqueue(new DataChangeEvent(record));
+        queue.enqueue(new SourceRecordChangeEvent(record));
     }
 
     /**
@@ -407,7 +407,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver {
 
-        private Supplier<DataChangeEvent> bufferedEvent;
+        private Supplier<SourceRecordChangeEvent> bufferedEvent;
 
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema,
@@ -446,7 +446,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 // It is possible that the last snapshotted table was empty
                 // this way we ensure that the last event is always marked as last
                 // even if it originates form non-last table
-                final DataChangeEvent event = bufferedEvent.get();
+                final SourceRecordChangeEvent event = bufferedEvent.get();
                 final Struct envelope = (Struct) event.getRecord().value();
                 if (envelope.schema().field(Envelope.FieldName.SOURCE) != null) {
                     final Struct source = envelope.getStruct(Envelope.FieldName.SOURCE);

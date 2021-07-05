@@ -20,9 +20,9 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
-import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.SourceRecordChangeEvent;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
@@ -34,7 +34,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     private static final String CONTEXT_NAME = "oracle-connector-task";
 
     private volatile OracleTaskContext taskContext;
-    private volatile ChangeEventQueue<DataChangeEvent> queue;
+    private volatile ChangeEventQueue<SourceRecordChangeEvent> queue;
     private volatile OracleConnection jdbcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile OracleDatabaseSchema schema;
@@ -70,7 +70,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         Clock clock = Clock.system();
 
         // Set up the task record queue ...
-        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        this.queue = new ChangeEventQueue.Builder<SourceRecordChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
@@ -87,7 +87,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
-                DataChangeEvent::new,
+                SourceRecordChangeEvent::new,
                 metadataProvider,
                 schemaNameAdjuster);
 
@@ -111,10 +111,10 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        List<DataChangeEvent> records = queue.poll();
+        List<SourceRecordChangeEvent> records = queue.poll();
 
         List<SourceRecord> sourceRecords = records.stream()
-                .map(DataChangeEvent::getRecord)
+                .map(SourceRecordChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
         return sourceRecords;

@@ -25,9 +25,9 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
-import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.SourceRecordChangeEvent;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.SchemaNameAdjuster;
@@ -52,7 +52,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     // These are all effectively constants between start(...) and stop(...)
-    private volatile ChangeEventQueue<DataChangeEvent> queue;
+    private volatile ChangeEventQueue<SourceRecordChangeEvent> queue;
     private volatile String taskName;
     private volatile MongoDbTaskContext taskContext;
     private volatile ErrorHandler errorHandler;
@@ -82,7 +82,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
         try {
 
-            this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+            this.queue = new ChangeEventQueue.Builder<SourceRecordChangeEvent>()
                     .pollInterval(connectorConfig.getPollInterval())
                     .maxBatchSize(connectorConfig.getMaxBatchSize())
                     .maxQueueSize(connectorConfig.getMaxQueueSize())
@@ -100,7 +100,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     schema,
                     queue,
                     taskContext.filters().collectionFilter()::test,
-                    DataChangeEvent::new,
+                    SourceRecordChangeEvent::new,
                     metadataProvider,
                     schemaNameAdjuster);
 
@@ -131,8 +131,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        List<DataChangeEvent> records = queue.poll();
-        return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+        List<SourceRecordChangeEvent> records = queue.poll();
+        return records.stream()
+                .map(SourceRecordChangeEvent::getRecord)
+                .collect(Collectors.toList());
     }
 
     @Override

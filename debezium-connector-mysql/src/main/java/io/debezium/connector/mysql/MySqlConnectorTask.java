@@ -26,9 +26,9 @@ import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
-import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.SourceRecordChangeEvent;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.schema.TopicSelector;
@@ -48,7 +48,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
     private static final String CONTEXT_NAME = "mysql-connector-task";
 
     private volatile MySqlTaskContext taskContext;
-    private volatile ChangeEventQueue<DataChangeEvent> queue;
+    private volatile ChangeEventQueue<SourceRecordChangeEvent> queue;
     private volatile MySqlConnection connection;
     private volatile ErrorHandler errorHandler;
     private volatile MySqlDatabaseSchema schema;
@@ -121,7 +121,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         taskContext = new MySqlTaskContext(connectorConfig, schema);
 
         // Set up the task record queue ...
-        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        this.queue = new ChangeEventQueue.Builder<SourceRecordChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
@@ -140,7 +140,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
-                DataChangeEvent::new,
+                SourceRecordChangeEvent::new,
                 null,
                 metadataProvider,
                 null,
@@ -183,10 +183,10 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        final List<DataChangeEvent> records = queue.poll();
+        final List<SourceRecordChangeEvent> records = queue.poll();
 
         final List<SourceRecord> sourceRecords = records.stream()
-                .map(DataChangeEvent::getRecord)
+                .map(SourceRecordChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
         return sourceRecords;

@@ -34,9 +34,9 @@ import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
-import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.SourceRecordChangeEvent;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
@@ -56,7 +56,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private static final String CONTEXT_NAME = "postgres-connector-task";
 
     private volatile PostgresTaskContext taskContext;
-    private volatile ChangeEventQueue<DataChangeEvent> queue;
+    private volatile ChangeEventQueue<SourceRecordChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
     private volatile PostgresConnection heartbeatConnection;
     private volatile PostgresSchema schema;
@@ -156,7 +156,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 throw new DebeziumException(e);
             }
 
-            queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+            queue = new ChangeEventQueue.Builder<SourceRecordChangeEvent>()
                     .pollInterval(connectorConfig.getPollInterval())
                     .maxBatchSize(connectorConfig.getMaxBatchSize())
                     .maxQueueSize(connectorConfig.getMaxQueueSize())
@@ -193,7 +193,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     schema,
                     queue,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
-                    DataChangeEvent::new,
+                    SourceRecordChangeEvent::new,
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
                     heartbeat,
@@ -264,10 +264,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        final List<DataChangeEvent> records = queue.poll();
+        final List<SourceRecordChangeEvent> records = queue.poll();
 
         final List<SourceRecord> sourceRecords = records.stream()
-                .map(DataChangeEvent::getRecord)
+                .map(SourceRecordChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
         return sourceRecords;

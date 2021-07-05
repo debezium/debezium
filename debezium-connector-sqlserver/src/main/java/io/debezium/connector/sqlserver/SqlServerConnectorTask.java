@@ -20,9 +20,9 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
-import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.SourceRecordChangeEvent;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -44,7 +44,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     private static final String CONTEXT_NAME = "sql-server-connector-task";
 
     private volatile SqlServerTaskContext taskContext;
-    private volatile ChangeEventQueue<DataChangeEvent> queue;
+    private volatile ChangeEventQueue<SourceRecordChangeEvent> queue;
     private volatile SqlServerConnection dataConnection;
     private volatile SqlServerConnection metadataConnection;
     private volatile ErrorHandler errorHandler;
@@ -98,7 +98,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
         // Set up the task record queue ...
-        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        this.queue = new ChangeEventQueue.Builder<SourceRecordChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
@@ -116,7 +116,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
-                DataChangeEvent::new,
+                SourceRecordChangeEvent::new,
                 metadataProvider,
                 schemaNameAdjuster);
 
@@ -137,10 +137,10 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        final List<DataChangeEvent> records = queue.poll();
+        final List<SourceRecordChangeEvent> records = queue.poll();
 
         final List<SourceRecord> sourceRecords = records.stream()
-                .map(DataChangeEvent::getRecord)
+                .map(SourceRecordChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
         return sourceRecords;

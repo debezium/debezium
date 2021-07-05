@@ -11,9 +11,9 @@ import java.util.function.Function;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.SourceRecordChangeEvent;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -39,12 +39,12 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     // impossible to detect it till the snapshot is ended. Mainly when the last snapshotted table is empty.
     // Based on the DBZ-3113 the code can change in the future and it will be handled not in MySQL
     // but in the core shared code.
-    private final ChangeEventQueue<DataChangeEvent> queue;
+    private final ChangeEventQueue<SourceRecordChangeEvent> queue;
 
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MySqlConnection connection,
                                          ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
-                                         ChangeEventQueue<DataChangeEvent> queue) {
+                                         ChangeEventQueue<SourceRecordChangeEvent> queue) {
         this.configuration = configuration;
         this.connection = connection;
         this.errorHandler = errorHandler;
@@ -63,7 +63,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     }
 
     private void modifyAndFlushLastRecord(Function<SourceRecord, SourceRecord> modify) throws InterruptedException {
-        queue.flushBuffer(dataChange -> new DataChangeEvent(modify.apply(dataChange.getRecord())));
+        queue.flushBuffer(dataChange -> new SourceRecordChangeEvent(modify.apply(dataChange.getRecord())));
         queue.disableBuffering();
     }
 
