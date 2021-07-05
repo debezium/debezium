@@ -17,8 +17,9 @@
     </properties>
 
     <modules>
-        <module>debezium-storage-kafka</module>
         <module>debezium-storage-file</module>
+        <module>debezium-storage-jdbc</module>
+        <module>debezium-storage-kafka</module>
         <module>debezium-storage-redis</module>
         <module>debezium-storage-s3</module>
         <module>debezium-storage-tests</module>
