@@ -20,6 +20,7 @@
         <module>debezium-storage-kafka</module>
         <module>debezium-storage-file</module>
         <module>debezium-storage-redis</module>
+        <module>debezium-storage-jdbc</module>
     </modules>
 </project>
 

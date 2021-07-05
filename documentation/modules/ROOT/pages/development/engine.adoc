@@ -513,6 +513,62 @@ Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`
 The cluster provides the topic to store the database schema history. +
 Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`.
 
+|`database.history.jdbc.uri`
+|`jdbc:postgresql://localhost/mydatabse?ssl=true`
+|Uri of the database which will be used to record the database history. +
+Required when `database.history` is set to the `<...>.JdbcDatabaseHistory`.
+
+|`database.history.jdbc.user`
+|`mydbuser`
+|The database user. +
+Required when `database.history` is set to the `<...>.JdbcDatabaseHistory`.
+
+|`database.history.jdbc.password`
+|`mydbpassword`
+|The database user's password.. +
+Required when `database.history` is set to the `<...>.JdbcDatabaseHistory`.
+
+|=======================
+
+[[offset-backing-store-properties]]
+=== Offset backing store properties
+
+When connectors runs, it reads information from the source and periodically
+records "offsets" that define how much of that information it has processed.
+Should the connector be restarted, it will use the last recorded offset to know where in the
+source information it should resume reading. Since connectors don’t know or care how the offsets
+are stored, it is up to the engine to provide a way to store and recover these offsets.
+
+[cols="35%a,10%a,55%a",options="header"]
+|=======================
+|Property
+|Default
+|Description
+
+|`offset.storage`
+|``
+| The name of the Java class that is responsible for persistence of the offset storage. It must implement `<…>.OffsetBackingStore` interface.
+
+|`offset.storage.file.filename`
+|`/path/to/storage/offset.dat`
+|The file path to store offset. +
+Required when `offset.storage` is set to the `<...>.FileOffsetBackingStore`.
+
+|`offset.storage.jdbc.uri`
+|`jdbc:postgresql://localhost/mydatabse?ssl=true`
+|Uri of the database which will be used to record the offset. +
+Required when `offset.storage` is set to the `<...>.JdbcDatabaseHistory`.
+
+|`offset.storage.jdbc.user`
+|`mydbuser`
+|The database user. +
+Required when `offset.storage` is set to the `<...>.JdbcDatabaseHistory`.
+
+|`offset.storage.jdbc.password`
+|`mydbpassword`
+|The database user's password.. +
+Required when `offset.storage` is set to the `<...>.JdbcDatabaseHistory`.
+
 |=======================
 
 == Handling Failures
