@@ -371,7 +371,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningTransactionRetention;
     private final boolean archiveLogOnlyMode;
     private final boolean lobEnabled;
-    private final Set<String> logMiningUsernameExcludeList;
+    private final Set<String> logMiningUsernameExcludes;
     private final String logMiningArchiveDestinationName;
 
     public OracleConnectorConfig(Configuration config) {
@@ -408,7 +408,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
         this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
-        this.logMiningUsernameExcludeList = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
+        this.logMiningUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
     }
 
@@ -940,10 +940,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return set of usernames to exclude from logminer query
+     * @return User names to exclude from the LogMiner query
      */
-    public Set<String> getLogMiningUsernameExcludeList() {
-        return logMiningUsernameExcludeList;
+    public Set<String> getLogMiningUsernameExcludes() {
+        return logMiningUsernameExcludes;
     }
 
     /**

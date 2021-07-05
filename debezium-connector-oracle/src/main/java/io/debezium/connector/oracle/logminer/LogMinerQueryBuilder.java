@@ -121,7 +121,7 @@ public class LogMinerQueryBuilder {
 
         query.append("))");
 
-        Set<String> excludedUsers = connectorConfig.getLogMiningUsernameExcludeList();
+        Set<String> excludedUsers = connectorConfig.getLogMiningUsernameExcludes();
         if (!excludedUsers.isEmpty()) {
             query.append(" AND USERNAME NOT IN (");
             for (Iterator<String> i = excludedUsers.iterator(); i.hasNext();) {
