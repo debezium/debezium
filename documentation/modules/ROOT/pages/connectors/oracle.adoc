@@ -1565,6 +1565,10 @@ we have plans to enhance this behavior in a future release by means of adding a 
 The default behavior automatically selects the first valid, local configured destination; however a specific
 destination can be used by specifying the destination name, i.e. `LOG_ARCHIVE_DEST_5`.
 
+|[[oracle-property-log-mining-username-exclude-list]]<<oracle-property-log-mining-username-exclude-list, `+log.mining.username.exclude.list+`>>
+|
+|List of database users to exclude from the LogMiner query; useful if there's changes from specific users which you'd always like to exclude from the capturing process.
+
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
 |Controls whether or not large object (CLOB or BLOB) column values are emitted in change events. +
