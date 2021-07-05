@@ -197,7 +197,7 @@ public class DebeziumServer {
     /**
      * For test purposes only
      */
-    DebeziumEngine.ChangeConsumer<?> getConsumer() {
+    public DebeziumEngine.ChangeConsumer<?> getConsumer() {
         return consumer;
     }
 
