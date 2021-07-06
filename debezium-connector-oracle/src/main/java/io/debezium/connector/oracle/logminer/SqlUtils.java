@@ -42,9 +42,6 @@ public class SqlUtils {
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
 
-    // log writer flush statements
-    public static final String LOGMNR_FLUSH_TABLE = "LOG_MINING_FLUSH";
-
     static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
