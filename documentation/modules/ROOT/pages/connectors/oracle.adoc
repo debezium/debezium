@@ -339,6 +339,11 @@ This could be difficult for consumers to deal with, so to make it easy Kafka Con
 Every message key and value has two parts: a _schema_ and _payload_.
 The schema describes the structure of the payload, while the payload contains the actual data.
 
+[WARNING]
+====
+Any change that is performed by the `SYS` or `SYSTEM` user accounts will not be captured by the connector.
+====
+
 [[oracle-change-event-keys]]
 === Change event keys
 
@@ -1081,9 +1086,8 @@ The following briefly describes these user configurations using a multi-tenant d
 
 [WARNING]
 ====
-This user account should be used solely by the {prodname} Oracle connector to connect to the Oracle database and capture changes.
-This account should not be used to create tables or modify data as any change performed by this account will not be captured by the connector.
-A separate account that is not `SYS` or `SYSTEM` should be used to create and modify data that is to be captured by the connector.
+While database changes performed by the connector user account will be captured by the connector,
+changes made by the `SYS` and `SYSTEM` user accounts will not.
 ====
 
 [[oracle-create-users-logminer]]
@@ -2244,3 +2248,9 @@ SELECT IOT_NAME
 ```
 
 The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
+
+[id="oracle-sys-system-change-not-emitted"]
+=== LogMiner adapter does not capture changes made by SYS or SYSTEM
+
+Oracle uses the `SYS` and `SYSTEM` accounts for lots of internal changes and therefore the connector automatically filters changes made by these users when fetching changes from LogMiner.
+Please make sure to use a non-`SYS`, non-`SYSTEM` user account for changes to be emitted by the {prodname} Oracle connector.
