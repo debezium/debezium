@@ -17,15 +17,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +36,9 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -61,7 +61,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
-    private final Set<String> racHosts = new HashSet<>();
     private final JdbcConfiguration jdbcConfiguration;
     private final OracleConnectorConfig.LogMiningStrategy strategy;
     private final ErrorHandler errorHandler;
@@ -75,7 +74,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private Scn startScn;
     private Scn endScn;
     private List<BigInteger> currentRedoLogSequences;
-    private Map<String, OracleConnection> flushConnections;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                               OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
@@ -91,10 +89,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.errorHandler = errorHandler;
         this.streamingMetrics = streamingMetrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
-        if (connectorConfig.isRacSystem()) {
-            this.racHosts.addAll(connectorConfig.getRacNodes().stream().map(String::toUpperCase).collect(Collectors.toSet()));
-            instantiateRacFlushConnections(jdbcConfiguration, racHosts);
-        }
         this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveDestinationName = connectorConfig.getLogMiningArchiveDestinationName();
@@ -109,10 +103,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) {
         try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(connectorConfig, schema, clock, errorHandler, streamingMetrics)) {
-            try {
-                startScn = offsetContext.getScn();
-                createFlushTable(jdbcConnection);
+            startScn = offsetContext.getScn();
 
+            try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
                 if (!isContinuousMining && startScn.compareTo(getFirstScnInLogs(jdbcConnection)) < 0) {
                     throw new DebeziumException(
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
@@ -136,7 +129,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                         Instant start = Instant.now();
                         endScn = calculateEndScn(jdbcConnection, startScn, endScn);
-                        flushLogWriter(jdbcConnection, jdbcConfiguration, racHosts);
+                        flushStrategy.flush(jdbcConnection.getCurrentScn());
 
                         if (hasLogSwitchOccurred()) {
                             // This is the way to mitigate PGA leaks.
@@ -395,139 +388,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     /**
-     * Flushes the Oracle LGWR buffer if connected to a standalone Oracle instance or all LGWR buffers on
-     * each Oracle RAC node when connected to an Oracle RAC cluster.
-     *
-     * @param connection database connection the primary instance, must not be {@code null}
-     * @param jdbcConfig database configuration, must not be {@code null}
-     * @param hosts set of RAC hosts or ip addresses, should not be {@code null} but may be empty.
-     * @throws SQLException if a database exception occurred
-     * @throws InterruptedException if the flushing to an Oracle RAC cluster was interrupted
-     */
-    private void flushLogWriter(OracleConnection connection, JdbcConfiguration jdbcConfig, Set<String> hosts) throws SQLException, InterruptedException {
-        Scn currentScn = connection.getCurrentScn();
-        if (!hosts.isEmpty()) {
-            flushRacLogWriters(currentScn, jdbcConfig, hosts);
-        }
-        else {
-            LOGGER.trace("Flushing LGWR buffer on instance '{}'", jdbcConfig.getHostname());
-            connection.executeWithoutCommitting("UPDATE " + SqlUtils.LOGMNR_FLUSH_TABLE + " SET LAST_SCN =" + currentScn);
-            connection.commit();
-        }
-    }
-
-    /**
-     * An Oracle RAC cluster has one LGWR process per node and each needs to be flushed.
-     * Queries to {@code GV$INSTANCE} cannot be used because not all nodes may be load balanced by the cluster.
-     *
-     * @param currentScn value to be flushed to the node's local flush table, must not be {@code null}
-     * @param jdbcConfig database configuration, must not be {@code null}
-     * @param hosts set of RAC hosts or ip addresses, should not be {@code null} or empty.
-     * @throws InterruptedException if the flushing to the Oracle RAC cluster was interrupted
-     */
-    private void flushRacLogWriters(Scn currentScn, JdbcConfiguration jdbcConfig, Set<String> hosts) throws InterruptedException {
-        Instant startTime = Instant.now();
-
-        boolean recreateConnections = false;
-        for (String hostName : hosts) {
-            try {
-                final OracleConnection connection = flushConnections.get(hostName);
-                if (connection == null) {
-                    LOGGER.warn("Connection to RAC node '{}' does not exist; will be re-created.", hostName);
-                    recreateConnections = true;
-                    continue;
-                }
-                LOGGER.trace("Flushing LGWR buffer on RAC node '{}'", hostName);
-                connection.executeWithoutCommitting("UPDATE " + SqlUtils.LOGMNR_FLUSH_TABLE + " SET LAST_SCN =" + currentScn);
-                connection.commit();
-            }
-            catch (Exception e) {
-                LOGGER.warn("Failed to flush LGWR buffer on RAC node '{}'", hostName, e);
-                recreateConnections = true;
-            }
-        }
-
-        if (recreateConnections) {
-            instantiateRacFlushConnections(jdbcConfig, hosts);
-            LOGGER.warn("Not all LGWR buffers were flushed, waiting 3 seconds for Oracle to flush automatically.");
-            Metronome pause = Metronome.sleeper(Duration.ofSeconds(3), Clock.system());
-            try {
-                pause.pause();
-            }
-            catch (InterruptedException e) {
-                LOGGER.warn("The LGWR buffer wait was interrupted.");
-                throw e;
-            }
-        }
-
-        LOGGER.trace("LGWR flush took {} to complete.", Duration.between(startTime, Instant.now()));
-    }
-
-    /**
-     * Instantiates a RAC flush connection to each RAC cluster node.
-     *
-     * @param jdbcConfig database connection configuration
-     * @param hosts set of Oracle RAC node hosts or ip addresses
-     */
-    private void instantiateRacFlushConnections(JdbcConfiguration jdbcConfig, Set<String> hosts) {
-        if (flushConnections == null) {
-            flushConnections = new HashMap<>();
-        }
-
-        // If any existing connections, close them.
-        for (Map.Entry<String, OracleConnection> entry : flushConnections.entrySet()) {
-            final String hostName = entry.getKey();
-            final OracleConnection connection = entry.getValue();
-            if (connection != null) {
-                try {
-                    connection.close();
-                }
-                catch (SQLException e) {
-                    // It's fine not to throw this exception, a new connection will be established
-                    LOGGER.warn("Failed to close RAC connection to node '{}'", hostName, e);
-                    streamingMetrics.incrementWarningCount();
-                }
-            }
-        }
-
-        flushConnections.clear();
-
-        // Create new connections
-        final Supplier<ClassLoader> classLoaderSupplier = LogMinerStreamingChangeEventSource.class::getClassLoader;
-        for (String hostName : hosts) {
-            try {
-                JdbcConfiguration jdbcHostConfig = JdbcConfiguration.adapt(jdbcConfig.edit()
-                        .with(JdbcConfiguration.HOSTNAME, hostName).build());
-                LOGGER.debug("Creating flush connection to RAC node '{}'", hostName);
-                final OracleConnection flushConnection = new OracleConnection(jdbcHostConfig, classLoaderSupplier);
-                flushConnection.setAutoCommit(false);
-
-                flushConnections.put(hostName, flushConnection);
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Cannot connect to RAC node '" + hostName + "'", e);
-            }
-        }
-    }
-
-    /**
-     * Creates the flush table used to force flushing of the Oracle LGWR buffers.
-     *
-     * @param connection database connection
-     * @throws SQLException if a database exception occurred
-     */
-    private void createFlushTable(OracleConnection connection) throws SQLException {
-        if (!connection.isTableExists(SqlUtils.LOGMNR_FLUSH_TABLE)) {
-            connection.executeWithoutCommitting("CREATE TABLE " + SqlUtils.LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))");
-        }
-
-        if (connection.isTableEmpty(SqlUtils.LOGMNR_FLUSH_TABLE)) {
-            connection.executeWithoutCommitting("INSERT INTO " + SqlUtils.LOGMNR_FLUSH_TABLE + " VALUES(0)");
-            connection.commit();
-        }
-    }
-
-    /**
      * Sets the NLS parameters for the mining session.
      *
      * @param connection database connection, should not be {@code null}
@@ -760,6 +620,18 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
             return false;
         });
+    }
+
+    /**
+     * Resolves the Oracle LGWR buffer flushing strategy.
+     *
+     * @return the strategy to be used to flush Oracle's LGWR process, never {@code null}.
+     */
+    private LogWriterFlushStrategy resolveFlushStrategy() {
+        if (connectorConfig.isRacSystem()) {
+            return new RacCommitLogWriterFlushStrategy(connectorConfig, jdbcConfiguration, streamingMetrics);
+        }
+        return new CommitLogWriterFlushStrategy(jdbcConnection);
     }
 
     @Override
