@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SqlDatabaseClient implements DatabaseClient<Connection, SQLException> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlDatabaseClient.class);
 
     private final String url;
     private final String username;
