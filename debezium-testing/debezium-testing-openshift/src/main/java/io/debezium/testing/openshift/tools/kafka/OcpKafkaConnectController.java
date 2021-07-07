@@ -58,6 +58,7 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     private final OpenShiftClient ocp;
     private final OkHttpClient http;
     private final String project;
+    private final StrimziOperatorController operatorController;
     private final OpenShiftUtils ocpUtils;
     private final HttpUtils httpUtils;
     private final boolean connectorResources;
@@ -70,11 +71,12 @@ public class OcpKafkaConnectController implements KafkaConnectController {
 
     public OcpKafkaConnectController(
                                      KafkaConnect kafkaConnect,
-                                     OpenShiftClient ocp,
+                                     StrimziOperatorController operatorController, OpenShiftClient ocp,
                                      OkHttpClient http,
                                      boolean connectorResources) {
         this.kafkaConnect = kafkaConnect;
         this.name = kafkaConnect.getMetadata().getName();
+        this.operatorController = operatorController;
         this.ocp = ocp;
         this.http = http;
         this.project = kafkaConnect.getMetadata().getNamespace();
@@ -91,6 +93,7 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     @Override
     public void disable() {
         LOGGER.info("Disabling KafkaConnect deployment (scaling to ZERO).");
+        operatorController.disable();
         ocp.apps().deployments().inNamespace(project)
                 .withName(name + "-connect")
                 .scale(0);
@@ -104,13 +107,20 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     /**
      * Crashes Kafka Connect by force deleting all pods. Then it immediately scales its deployment to ZERO by calling {@link #disable()}
      * <p>
-     * NOTICE: cluster operator needs to be disabled first!
+     * NOTICE: cluster operator is disabled once this method is called!
      */
     @Override
     public void destroy() {
         LOGGER.info("Force deleting all KafkaConnect pods.");
+        operatorController.disable();
         ocp.pods().inNamespace(project).withLabel("strimzi.io/kind", "KafkaConnect").withGracePeriod(0).delete();
         disable();
+    }
+
+    @Override
+    public void restore() throws InterruptedException {
+        operatorController.enable();
+        waitForCluster();
     }
 
     /**
@@ -189,12 +199,12 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     /**
      * Deploys Kafka connector with given name and configuration via REST
      *
-     * @param name   connector name
      * @param config connector config
      * @throws IOException or request error
      */
     @Override
-    public void deployConnector(String name, ConnectorConfigBuilder config) throws IOException, InterruptedException {
+    public void deployConnector(ConnectorConfigBuilder config) throws IOException, InterruptedException {
+        String name = config.getConnectorName();
         LOGGER.info("Deploying connector " + name);
         if (connectorResources) {
             deployConnectorCr(name, config);

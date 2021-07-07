@@ -35,6 +35,7 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
         private String yamlPath;
         private OpenShiftClient ocpClient;
         private OkHttpClient httpClient;
+        private StrimziOperatorController operatorController;
 
         public Builder withProject(String project) {
             this.project = project;
@@ -56,19 +57,27 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
             return this;
         }
 
+        public Builder withOperatorController(StrimziOperatorController operatorController) {
+            this.operatorController = operatorController;
+            return this;
+        }
+
         @Override
         public OcpKafkaDeployer build() {
-            return new OcpKafkaDeployer(project, yamlPath, ocpClient, httpClient);
+            return new OcpKafkaDeployer(project, yamlPath, operatorController, ocpClient, httpClient);
         }
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaDeployer.class);
 
     private final String yamlPath;
+    private final StrimziOperatorController operatorController;
 
-    private OcpKafkaDeployer(String project, String yamlPath, OpenShiftClient ocp, OkHttpClient http) {
+    private OcpKafkaDeployer(String project, String yamlPath, StrimziOperatorController operatorController, OpenShiftClient ocp,
+                             OkHttpClient http) {
         super(project, ocp, http);
         this.yamlPath = yamlPath;
+        this.operatorController = (operatorController != null) ? operatorController : StrimziOperatorController.forProject(project, ocp);
     }
 
     /**
@@ -81,7 +90,7 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
         LOGGER.info("Deploying Kafka from " + yamlPath);
         Kafka kafka = kafkaOperation().createOrReplace(YAML.fromResource(yamlPath, Kafka.class));
 
-        OcpKafkaController controller = new OcpKafkaController(kafka, ocp);
+        OcpKafkaController controller = new OcpKafkaController(kafka, operatorController, ocp);
         controller.waitForCluster();
 
         return controller;

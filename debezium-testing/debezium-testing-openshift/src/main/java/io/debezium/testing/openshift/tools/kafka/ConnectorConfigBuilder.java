@@ -21,10 +21,20 @@ import io.strimzi.api.kafka.model.KafkaConnectorBuilder;
 public class ConnectorConfigBuilder {
     private final Map<String, Object> config;
     private final ObjectMapper mapper;
+    private final String connectorName;
 
-    public ConnectorConfigBuilder() {
+    public ConnectorConfigBuilder(String connectorName) {
         this.mapper = new ObjectMapper();
         this.config = new HashMap<>();
+        this.connectorName = connectorName;
+    }
+
+    public String getConnectorName() {
+        return connectorName;
+    }
+
+    public String getDbServerName() {
+        return connectorName.replaceAll("-", "_");
     }
 
     public ConnectorConfigBuilder put(String key, Object value) {

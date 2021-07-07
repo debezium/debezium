@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import io.apicurio.registry.operator.api.model.ApicurioRegistry;
 import io.apicurio.registry.operator.api.model.ApicurioRegistryList;
-import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
@@ -23,11 +22,11 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import okhttp3.OkHttpClient;
 
 /**
- * This class provides control over Kafka instance deployed in OpenShift
+ * This class provides control over Apicurio registry instance deployed in OpenShift
  * @author Jakub Cechacek
  */
-public class RegistryController {
-    private static final Logger LOGGER = LoggerFactory.getLogger(RegistryController.class);
+public class OcpRegistryController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpRegistryController.class);
 
     private final ApicurioRegistry registry;
     private final OpenShiftClient ocp;
@@ -35,7 +34,7 @@ public class RegistryController {
     private final String project;
     private final OpenShiftUtils ocpUtils;
 
-    public RegistryController(ApicurioRegistry registry, OpenShiftClient ocp, OkHttpClient http) {
+    public OcpRegistryController(ApicurioRegistry registry, OpenShiftClient ocp, OkHttpClient http) {
         this.registry = registry;
         this.ocp = ocp;
         this.http = http;
@@ -48,7 +47,7 @@ public class RegistryController {
      */
     public String getRegistryAddress() {
         Service s = getRegistryService();
-        return "http://" + s.getMetadata().getName() + "." + ConfigProperties.OCP_PROJECT_REGISTRY + ".svc.cluster.local:8080";
+        return "http://" + s.getMetadata().getName() + "." + project + ".svc.cluster.local:8080";
     }
 
     /**
@@ -80,12 +79,12 @@ public class RegistryController {
     }
 
     /**
-     * Undeploy this registry by deleted related ApicurioRegistry CR
+     * Undeploy this registry by deleting related ApicurioRegistry CR
      * @return true if the CR was found and deleted
      */
     public boolean undeployRegistry() {
         CustomResourceDefinition crd = ocp.apiextensions().v1().customResourceDefinitions()
-                .load(RegistryDeployer.class.getResourceAsStream("/apicur.io_apicurioregistries_crd.yaml")).get();
+                .load(OcpRegistryDeployer.class.getResourceAsStream("/apicur.io_apicurioregistries_crd.yaml")).get();
         CustomResourceDefinitionContext context = CustomResourceDefinitionContext.fromCrd(crd);
         return ocp.customResources(context, ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project).delete(registry);
     }

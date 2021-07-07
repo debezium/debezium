@@ -6,16 +6,20 @@
 package io.debezium.testing.openshift;
 
 /**
- *
+ * Utility functions used in tests
  * @author Jakub Cechacek
  */
 public class TestUtils {
+
+    private TestUtils() {
+        // intentionally private
+    }
 
     /**
      * Generates unique identifier
      * @return unique id
      */
-    public String getUniqueId() {
+    public static String getUniqueId() {
         return String.valueOf(System.currentTimeMillis());
     }
 }

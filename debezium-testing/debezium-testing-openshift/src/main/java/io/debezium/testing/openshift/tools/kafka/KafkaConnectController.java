@@ -29,12 +29,16 @@ public interface KafkaConnectController {
     void destroy();
 
     /**
+     * Restores Kafka Connect cluster after a call to {@link #disable()} or {@link #destroy()}
+     */
+    void restore() throws InterruptedException;
+
+    /**
      * Deploys connector
      *
-     * @param name connector's name
      * @param config connector's configuration
      */
-    void deployConnector(String name, ConnectorConfigBuilder config) throws IOException, InterruptedException;
+    void deployConnector(ConnectorConfigBuilder config) throws IOException, InterruptedException;
 
     /**
      * Undeploys connector
