@@ -37,14 +37,16 @@ public class OcpKafkaController implements KafkaController {
     private final OpenShiftClient ocp;
     private final String project;
     private final String name;
+    private final StrimziOperatorController operatorController;
 
     private Kafka kafka;
 
-    public OcpKafkaController(Kafka kafka, OpenShiftClient ocp) {
+    public OcpKafkaController(Kafka kafka, StrimziOperatorController operatorController, OpenShiftClient ocp) {
         this.kafka = kafka;
         this.name = kafka.getMetadata().getName();
         this.ocp = ocp;
         this.project = kafka.getMetadata().getNamespace();
+        this.operatorController = operatorController;
     }
 
     @Override

@@ -5,6 +5,13 @@
  */
 package io.debezium.testing.openshift.tools.kafka;
 
+import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
+
+import java.util.Properties;
+
 /**
  * Control over Kafka cluster
  *
@@ -28,4 +35,17 @@ public interface KafkaController {
      * Waits for cluster to be available
      */
     void waitForCluster() throws InterruptedException;
+
+    /**
+     * @return default kafka consumer configuration
+     */
+    default Properties getDefaultConsumerProperties() {
+        Properties consumerProps = new Properties();
+        consumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getKafkaBootstrapAddress());
+        consumerProps.put(GROUP_ID_CONFIG, "DEBEZIUM_IT_01");
+        consumerProps.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
+        consumerProps.put(ENABLE_AUTO_COMMIT_CONFIG, false);
+
+        return consumerProps;
+    }
 }

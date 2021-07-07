@@ -18,11 +18,11 @@ import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
  */
 public class ConnectorFactories {
 
-    public ConnectorConfigBuilder mysql(String dbServerName) {
-        ConnectorConfigBuilder cb = new ConnectorConfigBuilder();
+    public ConnectorConfigBuilder mysql(String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = DATABASE_MYSQL_HOST.orElse("mysql." + ConfigProperties.OCP_PROJECT_MYSQL + ".svc.cluster.local");
         return cb
-                .put("database.server.name", dbServerName)
+                .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.mysql.MySqlConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
@@ -33,11 +33,11 @@ public class ConnectorFactories {
                 .put("database.history.kafka.topic", "schema-changes.inventory");
     }
 
-    public ConnectorConfigBuilder postgresql(String dbServerName) {
-        ConnectorConfigBuilder cb = new ConnectorConfigBuilder();
+    public ConnectorConfigBuilder postgresql(String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = DATABASE_POSTGRESQL_HOST.orElse("postgresql." + ConfigProperties.OCP_PROJECT_POSTGRESQL + ".svc.cluster.local");
         return cb
-                .put("database.server.name", dbServerName)
+                .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
@@ -50,11 +50,11 @@ public class ConnectorFactories {
                 .put("plugin.name", "pgoutput");
     }
 
-    public ConnectorConfigBuilder sqlserver(String dbServerName) {
-        ConnectorConfigBuilder cb = new ConnectorConfigBuilder();
+    public ConnectorConfigBuilder sqlserver(String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = DATABASE_POSTGRESQL_HOST.orElse("sqlserver." + ConfigProperties.OCP_PROJECT_SQLSERVER + ".svc.cluster.local");
         return cb
-                .put("database.server.name", dbServerName)
+                .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.sqlserver.SqlServerConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
@@ -66,11 +66,11 @@ public class ConnectorFactories {
                 .put("database.history.kafka.topic", "schema-changes.inventory");
     }
 
-    public ConnectorConfigBuilder mongo(String dbServerName) {
-        ConnectorConfigBuilder cb = new ConnectorConfigBuilder();
+    public ConnectorConfigBuilder mongo(String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = DATABASE_MONGO_HOST.orElse("mongo." + ConfigProperties.OCP_PROJECT_MONGO + ".svc.cluster.local");
         return cb
-                .put("mongodb.name", dbServerName)
+                .put("mongodb.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
                 .put("task.max", 1)
                 .put("mongodb.hosts", "rs0/" + dbHost + ":" + ConfigProperties.DATABASE_MONGO_PORT)
@@ -78,11 +78,11 @@ public class ConnectorFactories {
                 .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD);
     }
 
-    public ConnectorConfigBuilder db2(String dbServerName) {
-        ConnectorConfigBuilder cb = new ConnectorConfigBuilder();
+    public ConnectorConfigBuilder db2(String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = DATABASE_POSTGRESQL_HOST.orElse("db2." + ConfigProperties.OCP_PROJECT_DB2 + ".svc.cluster.local");
         return cb
-                .put("database.server.name", dbServerName)
+                .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.db2.Db2Connector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)

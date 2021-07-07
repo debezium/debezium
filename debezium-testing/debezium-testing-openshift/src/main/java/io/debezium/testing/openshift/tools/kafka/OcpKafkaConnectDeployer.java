@@ -41,6 +41,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         private boolean connectorResources;
         private boolean exposedMetrics;
         private boolean exposedApi;
+        private StrimziOperatorController operatorController;
 
         public OcpKafkaConnectDeployer.Builder withProject(String project) {
             this.project = project;
@@ -82,6 +83,11 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
             return this;
         }
 
+        public OcpKafkaConnectDeployer.Builder withOperatorController(StrimziOperatorController operatorController) {
+            this.operatorController = operatorController;
+            return this;
+        }
+
         @Override
         public OcpKafkaConnectDeployer build() {
             return new OcpKafkaConnectDeployer(
@@ -89,10 +95,12 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
                     yamlPath,
                     cfgYamlPath,
                     connectorResources,
+                    operatorController,
                     exposedApi,
                     exposedMetrics,
                     ocpClient, httpClient);
         }
+
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaConnectDeployer.class);
@@ -100,6 +108,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
     private final String yamlPath;
     private final String cfgYamlPath;
     private final boolean connectorResources;
+    private final StrimziOperatorController operatorController;
     private final boolean exposedApi;
     private final boolean exposedMetrics;
 
@@ -108,7 +117,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
                                     String yamlPath,
                                     String cfgYamlPath,
                                     boolean connectorResources,
-                                    boolean exposedApi,
+                                    StrimziOperatorController operatorController, boolean exposedApi,
                                     boolean exposedMetrics,
                                     OpenShiftClient ocp,
                                     OkHttpClient http) {
@@ -116,6 +125,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         this.yamlPath = yamlPath;
         this.cfgYamlPath = cfgYamlPath;
         this.connectorResources = connectorResources;
+        this.operatorController = (operatorController != null) ? operatorController : StrimziOperatorController.forProject(project, ocp);
         this.exposedApi = exposedApi;
         this.exposedMetrics = exposedMetrics;
     }
@@ -139,6 +149,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
 
         OcpKafkaConnectController controller = new OcpKafkaConnectController(
                 kafkaConnect,
+                operatorController,
                 ocp,
                 http,
                 connectorResources);
@@ -148,8 +159,8 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
 
     }
 
-    private KafkaConnect enableConnectorResources(KafkaConnect baseReource) {
-        return new KafkaConnectBuilder(baseReource)
+    private KafkaConnect enableConnectorResources(KafkaConnect baseResource) {
+        return new KafkaConnectBuilder(baseResource)
                 .editMetadata()
                 .addToAnnotations("strimzi.io/use-connector-resources", "true")
                 .endMetadata()

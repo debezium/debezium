@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.testing.openshift.db2;
+package io.debezium.testing.openshift.postgresql;
 
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
@@ -11,8 +11,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.OcpConnectorTest;
-import io.debezium.testing.openshift.fixtures.connectors.Db2Connector;
-import io.debezium.testing.openshift.fixtures.databases.OcpDb2;
+import io.debezium.testing.openshift.fixtures.connectors.PostgreSqlConnector;
+import io.debezium.testing.openshift.fixtures.databases.OcpPostgreSql;
 import io.debezium.testing.openshift.fixtures.kafka.OcpKafka;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 
@@ -21,10 +21,9 @@ import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
-@Tag("db2 ")
-@Tag("openshift")
+@Tag("postgresql")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DB2ConnectorIT
+public class OcpPostgreSqlConnectorIT
         extends OcpConnectorTest<SqlDatabaseController>
-        implements OcpKafka, OcpDb2, Db2Connector, DB2lTestCases {
+        implements OcpKafka, OcpPostgreSql, PostgreSqlConnector, PostgreSqlTestCases {
 }
