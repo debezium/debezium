@@ -86,6 +86,7 @@ transforms._<TRANSFORM_ALIAS>_.predicate=_<PREDICATE_ALIAS>_
 +
 For example:
 +
+[source,options="nowrap" subs="+quotes"]
 ----
 transforms.outbox.predicate=IsOutboxTable
 ----
@@ -99,6 +100,7 @@ transforms.outbox.predicate=IsOutboxTable
 +
 For example:
 +
+[source,options="nowrap" subs="+quotes"]
 ----
 predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
 ----
@@ -106,8 +108,9 @@ predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
 +
 For example:
 +
+[source]
 ----
-predicates.IsOutboxTable.pattern=outbox.event.\*
+predicates.IsOutboxTable.pattern=outbox.event.*
 ----
 
 . If you want to negate a condition, append the `negate` keyword to the transform alias and set it to `true`.
@@ -115,6 +118,7 @@ predicates.IsOutboxTable.pattern=outbox.event.\*
 +
 For example:
 +
+[source,options="nowrap" subs="+quotes"]
 ----
 transforms.outbox.negate=true
 ----
@@ -125,7 +129,7 @@ The preceding property inverts the set of records that the predicate matches, so
 
 The following example shows a {prodname} connector configuration that applies the outbox event router transformation only to messages that Debezium emits to the Kafka `outbox.event.order` topic.
 
-Because the `TopicNameMatch` predicate evaluates to _true_ only for messages from the outbox table (`outbox.event.\*`), the transformation is not applied to messages that originate from other tables in the database.
+Because the `TopicNameMatch` predicate evaluates to _true_ only for messages from the outbox table (`outbox.event.*`), the transformation is not applied to messages that originate from other tables in the database.
 
 [source]
 ----
@@ -134,6 +138,6 @@ transforms.outbox.predicate=IsOutboxTable
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 predicates=IsOutboxTable
 predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
-predicates.IsOutboxTable.pattern=outbox.event.\*
+predicates.IsOutboxTable.pattern=outbox.event.*
 
 ----
