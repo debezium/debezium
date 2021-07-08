@@ -1,0 +1,139 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleId: applying-transformations-selectively-with-smt-predicates
+// Title: Applying transformations selectively with SMT predicates
+= Applying transformations selectively
+
+You can define a predicate for a single message transformation to specify a condition that event records must match before Kafka Connect applies the transformation.
+
+// Type: concept
+// ModuleID: about-smt-predicates
+// Title: About SMT predicates
+== SMT predicates
+
+{prodname} provides several single message transformations (SMTs) that you can use to modify event records before Kafka Connect saves the records to Kafka topics.
+By default, when you configure one of these SMTs for a {prodname} connector, Kafka Connect applies that transformation to every record that the connector emits.
+
+However, there can be instances in which you want to apply a transformation selectively, so that it modifies only that subset of change event messages that share a common characteristic.
+For example, you might want to run the transformation only on event messages from a specific table or that include a specific header key.
+In environments that run Kafka 2.6 or greater, you can append a predicate statement to a transformation to instruct Kafka Connect to apply the SMT only to event records that match a specified condition.
+When a predicate is configured, Kafka Connect evaluates each incoming message that it processes against the condition specified in the predicate.
+If the predicate condition is true for the event message, then the SMT is applied.
+Otherwise, the message is passed without any modifications.
+
+After you define a predicate, you can reuse it and apply it to other transforms.
+Predicates also include a `negate` option that you can use to invert a predicate so that the predicate condition is applied only to records that do not match the condition that is defined in the predicate statement.
+You can use the `negate` option to pair the predicate with other transforms that are based on negating the condition.
+
+.Predicate elements
+Predicates include the following elements:
+
+* `predicates` prefix
+* Alias (for example, `isOutboxTable`)
+* Type (for example, `org.apache.kafka.connect.transforms.predicates.TopicNameMatches`).
+  Kafka Connect provides a set of default predicate types, which you can supplement by defining your own custom predicates.
+* Condition statement and any additional configuration properties, depending on the type of predicate (for example, a regex naming pattern)
+
+.Default predicate types
+The following predicate types are available by default:
+
+HasHeaderKey:: Specifies a key name in the header in the event message that you want Kafka Connect to evaluate.
+The predicate evaluates to true for any records that include a header key that has the specified name.
+
+RecordIsTombstone:: Matches records in which the key value of the record is `null`, representing a deleted row in the database.
+Tombstones are fields in a database that indicate that a record is not physically deleted, but has a logical deletion flag that is set to `true` when when the record is marked for deletion.
+The predicate evaluates to `true` for any record that has a `null` key value.
+Use this predicate in combination with a filter SMT to remove tombstone records.
+This predicate has no configuration parameters.
+
+TopicNameMatches:: A regular expression that specifies the name of a topic that you want Kafka Connect to match.
+The predicate is true for connector records in which the topic name matches the specified regular expression.
+Use to apply an SMT according to the name of the topic.
+Topic name of the connect record matches the specified expression.
+
+.Additional resources
+
+* link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[KIP-585: Filter and Conditional SMTs]
+* link:{link-kafka-docs}/#connect_predicates[Apache Kafka documentation for Kafka Connect predicates]
+
+// Type: procedure
+[id="defining-smt-predicates"]
+== Defining SMT predicates
+
+By default, Kafka Connect applies each single message transformation in the {prodname} connector configuration to every change event record that it receives from {prodname}.
+Beginning with Apache Kafka 2.6, you can define an SMT predicate for a transformation in the connector configuration that controls how Kafka Connect applies the transformation.
+The predicate statement defines the conditions under which Kafka Connect applies the transformation to event records emitted by {prodname}.
+Kafka Connect evaluates the predicate statement and then applies the SMT selectively to the subset of records that match the condition that is defined in the predicate.
+
+Configuring Kafka Connect predicates is similar to configuring transforms.
+You specify a predicate alias, associate the alias with a transform, and then define the type and configuration for the predicate.
+
+.Prerequisites
+* The {prodname} environment is running Apache Kafka 2.6 or greater
+ifdef::product[]
+({StreamsName}1.6 or greater)
+endif::product[]
+.
+
+.Procedure
+. In the {prodname} connector configuration, specify a predicate alias for the `predicates` parameter, for example, `IsOutboxTable`.
+. Associate the predicate alias with the transform that you want to apply conditionally, by appending the predicate alias to the transform alias in the connector configuration:
++
+[options="nowrap" subs="+quotes"]
+----
+transforms._<TRANSFORM_ALIAS>_.predicate=_<PREDICATE_ALIAS>_
+----
++
+For example:
++
+----
+transforms.outbox.predicate=IsOutboxTable
+----
+. Configure the predicate by specifying its type and providing values for configuration parameters.
+
+.. For the type, specify one of the following default types that are available in Kafka Connect:
++
+* HasHeaderKey
+* RecordIsTombstone
+* TopicNameMatches
++
+For example:
++
+----
+predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
+----
+.. For the TopicNameMatch or `HasHeaderKey` predicates, specify a regular expression for the topic or header name that you want to match.
++
+For example:
++
+----
+predicates.IsOutboxTable.pattern=outbox.event.\*
+----
+
+. If you want to negate a condition, append the `negate` keyword to the transform alias and set it to `true`.
+
++
+For example:
++
+----
+transforms.outbox.negate=true
+----
+
+The preceding property inverts the set of records that the predicate matches, so that Kafka Connect applies the transform to any record that does not match the condition specified in the predicate.
+
+.Example: TopicNameMatch predicate for the outbox event router transformation
+
+The following example shows a {prodname} connector configuration that applies the outbox event router transformation only to messages that Debezium emits to the Kafka `outbox.event.order` topic.
+
+Because the `TopicNameMatch` predicate evaluates to _true_ only for messages from the outbox table (`outbox.event.\*`), the transformation is not applied to messages that originate from other tables in the database.
+
+[source]
+----
+transforms=outbox
+transforms.outbox.predicate=IsOutboxTable
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+predicates=IsOutboxTable
+predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
+predicates.IsOutboxTable.pattern=outbox.event.\*
+
+----
