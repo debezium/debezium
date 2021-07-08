@@ -21,7 +21,10 @@ To implement the outbox pattern in a {prodname} application, configure a {prodna
 * Capture changes in an outbox table
 * Apply the {prodname} outbox event router single message transformation (SMT)
 
-A {prodname} connector that is configured to apply the outbox SMT should capture changes in only an outbox table. A connector can capture changes in more than one outbox table only if each outbox table has the same structure.
+A {prodname} connector that is configured to apply the outbox SMT should capture changes that occur in an outbox table only.
+For more information, see xref:options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
+
+A connector can capture changes in more than one outbox table only if each outbox table has the same structure.
 
 
 See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works.
@@ -171,6 +174,19 @@ To configure a {prodname} connector to support the outbox pattern, configure the
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 ----
+
+// Type: concept
+// Title: Options for applying the Outbox event router transformation selectively
+// ModuleID: options-for-applying-the-outbox-event-router-transformation-selectively
+[id="options-for-applying-the-transformation-selectively"]
+== Options for applying the transformation selectively
+
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages different from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+You can use one of the following methods to configure the connector to apply the SMT selectively:
+
+* {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+* Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
 
 // Type: concept
 // Title: Using Avro as the payload format in {prodname} outbox messages

@@ -151,12 +151,18 @@ When the filter condition evaluates to `false`, the message is removed.
 
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
 
-[NOTE]
-====
-{prodname} emits not only data change events, but also metadata messages about schema changes, transactions, or heartbeat messages.
-Typically, filter expressions should not be applied to such messages, as their structure is different from what is usually expected by the expression.
-It is recommended to use either the xref:filter-topic-regex[topic.regex] configuration option or an link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[SMT predicate] to ensure that the expression is applied only to data change events.
-====
+// Type: concept
+// Title: Options for applying the filter transformation selectively
+// ModuleID: options-for-applying-the-filter-transformation-selectively
+[id="options-for-applying-the-transformation-selectively"]
+== Options for applying the transformation selectively
+
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+You can use one of the following methods to configure the connector to apply the SMT selectively:
+
+* {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+* Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
 
 // Type: reference
 // ModuleID: filter-condition-configuration-for-other-scripting-languages
