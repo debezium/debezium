@@ -114,7 +114,7 @@ pipeline {
             }
             steps {
                 script {
-                    env.DBZ_CONNECT_IMAGE = "quay.io/debezium/testing-openshift-connect:ci-${currentBuild.number}"
+                    env.DBZ_CONNECT_IMAGE = "quay.io/debezium/testing-system-connect:ci-${currentBuild.number}"
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
@@ -123,7 +123,7 @@ pipeline {
                     set -x 
                     cd ${WORKSPACE}/debezium
                     docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
-                    mvn install -pl debezium-testing/debezium-testing-openshift -DskipTests -DskipITs -Pimage -Dimage.push.skip=false -Dimage.name=${DBZ_CONNECT_IMAGE}   
+                    mvn install -pl debezium-testing/debezium-testing-system -DskipTests -DskipITs -Pimage -Dimage.push.skip=false -Dimage.name=${DBZ_CONNECT_IMAGE}   
                     '''
                 }
             }
@@ -137,7 +137,7 @@ pipeline {
                     sh '''
                     set -x
                     cd ${WORKSPACE}/debezium
-                    mvn install -pl debezium-testing/debezium-testing-openshift -PopenshiftITs \\
+                    mvn install -pl debezium-testing/debezium-testing-system -PopenshiftITs \\
                     -Dtest.ocp.username="${OCP_USERNAME}" \\
                     -Dtest.ocp.password="${OCP_PASSWORD}" \\
                     -Dtest.ocp.url="${OCP_URL}" \\
