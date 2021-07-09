@@ -71,7 +71,8 @@ public class OcpKafkaConnectController implements KafkaConnectController {
 
     public OcpKafkaConnectController(
                                      KafkaConnect kafkaConnect,
-                                     StrimziOperatorController operatorController, OpenShiftClient ocp,
+                                     StrimziOperatorController operatorController,
+                                     OpenShiftClient ocp,
                                      OkHttpClient http,
                                      boolean connectorResources) {
         this.kafkaConnect = kafkaConnect;
