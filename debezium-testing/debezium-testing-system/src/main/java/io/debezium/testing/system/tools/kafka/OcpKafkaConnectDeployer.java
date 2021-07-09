@@ -117,7 +117,8 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
                                     String yamlPath,
                                     String cfgYamlPath,
                                     boolean connectorResources,
-                                    StrimziOperatorController operatorController, boolean exposedApi,
+                                    StrimziOperatorController operatorController,
+                                    boolean exposedApi,
                                     boolean exposedMetrics,
                                     OpenShiftClient ocp,
                                     OkHttpClient http) {

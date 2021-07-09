@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import io.debezium.testing.system.tests.OcpConnectorTest;
 import io.debezium.testing.system.fixtures.connectors.Db2Connector;
 import io.debezium.testing.system.fixtures.databases.OcpDb2;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
+import io.debezium.testing.system.tests.OcpConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 
 /**

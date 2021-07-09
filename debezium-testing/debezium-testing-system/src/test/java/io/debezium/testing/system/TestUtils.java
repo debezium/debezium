@@ -9,7 +9,7 @@ package io.debezium.testing.system;
  * Utility functions used in tests
  * @author Jakub Cechacek
  */
-public class TestUtils {
+public final class TestUtils {
 
     private TestUtils() {
         // intentionally private
