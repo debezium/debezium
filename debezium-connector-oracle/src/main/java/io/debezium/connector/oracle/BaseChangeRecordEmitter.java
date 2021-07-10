@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
@@ -18,8 +19,8 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
 
     protected final Table table;
 
-    protected BaseChangeRecordEmitter(OffsetContext offset, Table table, Clock clock) {
-        super(offset, clock);
+    protected BaseChangeRecordEmitter(Partition partition, OffsetContext offset, Table table, Clock clock) {
+        super(partition, offset, clock);
         this.table = table;
     }
 

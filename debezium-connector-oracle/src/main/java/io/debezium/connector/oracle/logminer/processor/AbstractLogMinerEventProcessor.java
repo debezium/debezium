@@ -19,6 +19,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
@@ -51,6 +52,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
     private final ChangeEventSourceContext context;
     private final OracleConnectorConfig connectorConfig;
     private final OracleDatabaseSchema schema;
+    private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final EventDispatcher<TableId> dispatcher;
     private final OracleStreamingChangeEventSourceMetrics metrics;
@@ -63,12 +65,14 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
     public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
                                           OracleConnectorConfig connectorConfig,
                                           OracleDatabaseSchema schema,
+                                          OraclePartition partition,
                                           OracleOffsetContext offsetContext,
                                           EventDispatcher<TableId> dispatcher,
                                           OracleStreamingChangeEventSourceMetrics metrics) {
         this.context = context;
         this.connectorConfig = connectorConfig;
         this.schema = schema;
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.dispatcher = dispatcher;
         this.metrics = metrics;
@@ -247,6 +251,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             dispatcher.dispatchSchemaChangeEvent(tableId,
                     new OracleSchemaChangeEventEmitter(
                             getConfig(),
+                            partition,
                             offsetContext,
                             tableId,
                             tableId.catalog(),
@@ -493,6 +498,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         offsetContext.event(tableId, Instant.now());
         dispatcher.dispatchSchemaChangeEvent(tableId,
                 new OracleSchemaChangeEventEmitter(connectorConfig,
+                        partition,
                         offsetContext,
                         tableId,
                         tableId.catalog(),

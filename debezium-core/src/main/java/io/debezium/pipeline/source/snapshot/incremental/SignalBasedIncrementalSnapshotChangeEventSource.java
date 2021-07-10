@@ -17,6 +17,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
@@ -38,7 +39,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
 
     @Override
     @SuppressWarnings("unchecked")
-    public void processMessage(DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) {
+    public void processMessage(Partition partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context == null) {
             LOGGER.warn("Context is null, skipping message processing");

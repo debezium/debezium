@@ -29,6 +29,7 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -80,12 +81,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     @Override
     @SuppressWarnings("unchecked")
-    public void closeWindow(String id, OffsetContext offsetContext) throws InterruptedException {
+    public void closeWindow(Partition partition, String id, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (!context.closeWindow(id)) {
             return;
         }
-        sendWindowEvents(offsetContext);
+        sendWindowEvents(partition, offsetContext);
         readChunk();
     }
 
@@ -93,21 +94,21 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         return dataCollectionId;
     }
 
-    protected void sendWindowEvents(OffsetContext offsetContext) throws InterruptedException {
+    protected void sendWindowEvents(Partition partition, OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
-            sendEvent(dispatcher, offsetContext, row);
+            sendEvent(partition, dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
     }
 
-    protected void sendEvent(EventDispatcher<T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
+    protected void sendEvent(Partition partition, EventDispatcher<T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
         context.sendEvent(keyFromRow(row));
         offsetContext.event(context.currentDataCollectionId(), clock.currentTimeAsInstant());
         dispatcher.dispatchSnapshotEvent(context.currentDataCollectionId(),
-                getChangeRecordEmitter(context.currentDataCollectionId(), offsetContext, row),
+                getChangeRecordEmitter(partition, context.currentDataCollectionId(), offsetContext, row),
                 dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
     }
 
@@ -115,9 +116,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
      * Returns a {@link ChangeRecordEmitter} producing the change records for
      * the given table row.
      */
-    protected ChangeRecordEmitter getChangeRecordEmitter(T dataCollectionId, OffsetContext offsetContext,
-                                                         Object[] row) {
-        return new SnapshotChangeRecordEmitter(offsetContext, row, clock);
+    protected ChangeRecordEmitter getChangeRecordEmitter(Partition partition, T dataCollectionId,
+                                                         OffsetContext offsetContext, Object[] row) {
+        return new SnapshotChangeRecordEmitter(partition, offsetContext, row, clock);
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {

@@ -24,6 +24,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
@@ -54,6 +55,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private final ChangeEventSourceContext context;
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<TableId> dispatcher;
+    private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final OracleStreamingChangeEventSourceMetrics metrics;
     private final MemoryTransactionCache transactionCache;
@@ -71,13 +73,15 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                                         OracleConnectorConfig connectorConfig,
                                         OracleConnection jdbcConnection,
                                         EventDispatcher<TableId> dispatcher,
+                                        OraclePartition partition,
                                         OracleOffsetContext offsetContext,
                                         OracleDatabaseSchema schema,
                                         OracleStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, schema, offsetContext, dispatcher, metrics);
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
         this.context = context;
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.metrics = metrics;
         this.transactionCache = new MemoryTransactionCache();
@@ -257,6 +261,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             final DmlEvent dmlEvent = (DmlEvent) event;
             dispatcher.dispatchDataChangeEvent(event.getTableId(),
                     new LogMinerChangeRecordEmitter(
+                            partition,
                             offsetContext,
                             dmlEvent.getEventType(),
                             dmlEvent.getDmlEntry().getOldValues(),
@@ -267,10 +272,10 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
         if (!transaction.getEvents().isEmpty()) {
-            dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
         }
         else {
-            dispatcher.dispatchHeartbeatEvent(offsetContext);
+            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
         }
 
         metrics.calculateLagMetrics(row.getChangeTime());
@@ -327,7 +332,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         if (getConfig().isLobEnabled()) {
             if (transactionCache.isEmpty() && !maxCommittedScn.isNull()) {
                 offsetContext.setScn(maxCommittedScn);
-                dispatcher.dispatchHeartbeatEvent(offsetContext);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
                 final Scn minStartScn = transactionCache.getMinimumScn();
@@ -335,7 +340,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                     recentlyCommittedTransactionsCache.entrySet().removeIf(entry -> entry.getValue().compareTo(minStartScn) < 0);
                     schemaChangesCache.removeIf(scn -> scn.compareTo(minStartScn) < 0);
                     offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
-                    dispatcher.dispatchHeartbeatEvent(offsetContext);
+                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 }
             }
             return offsetContext.getScn();
@@ -343,7 +348,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         else {
             if (transactionCache.isEmpty()) {
                 offsetContext.setScn(endScn);
-                dispatcher.dispatchHeartbeatEvent(offsetContext);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             return endScn;
         }

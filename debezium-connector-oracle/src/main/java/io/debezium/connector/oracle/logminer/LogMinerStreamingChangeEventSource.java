@@ -113,7 +113,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 setNlsSessionParameters(jdbcConnection);
                 checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName(), schema);
 
-                try (LogMinerEventProcessor processor = createProcessor(context, offsetContext)) {
+                try (LogMinerEventProcessor processor = createProcessor(context, partition, offsetContext)) {
                     currentRedoLogSequences = getCurrentRedoLogSequences();
                     initializeRedoLogsForMining(jdbcConnection, false, startScn);
 
@@ -180,12 +180,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 format.format(sessionProcessGlobalAreaMaxMemory / 1024.f / 1024.f));
     }
 
-    private LogMinerEventProcessor createProcessor(ChangeEventSourceContext context, OracleOffsetContext offsetContext) {
+    private LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
+                                                   OraclePartition partition,
+                                                   OracleOffsetContext offsetContext) {
         if (OracleConnectorConfig.LogMiningBufferType.INFINISPAN.equals(connectorConfig.getLogMiningBufferType())) {
-            return new InfinispanLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher, offsetContext,
-                    schema, streamingMetrics);
+            return new InfinispanLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher,
+                    partition, offsetContext, schema, streamingMetrics);
         }
-        return new MemoryLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher, offsetContext, schema, streamingMetrics);
+        return new MemoryLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, streamingMetrics);
     }
 
     /**

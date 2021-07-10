@@ -8,6 +8,7 @@ package io.debezium.pipeline;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.util.Clock;
 
@@ -18,10 +19,12 @@ import io.debezium.util.Clock;
  */
 public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema> implements ChangeRecordEmitter {
 
+    private final Partition partition;
     private final OffsetContext offsetContext;
     private final Clock clock;
 
-    public AbstractChangeRecordEmitter(OffsetContext offsetContext, Clock clock) {
+    public AbstractChangeRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock) {
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.clock = clock;
     }
@@ -46,6 +49,11 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
             default:
                 throw new IllegalArgumentException("Unsupported operation: " + operation);
         }
+    }
+
+    @Override
+    public Partition getPartition() {
+        return partition;
     }
 
     @Override
