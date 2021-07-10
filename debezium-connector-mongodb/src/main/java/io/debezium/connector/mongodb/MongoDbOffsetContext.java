@@ -29,6 +29,7 @@ public class MongoDbOffsetContext implements OffsetContext {
 
     private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
+    private final Map<ReplicaSet, ReplicaSetPartition> replicaSetPartitions = new ConcurrentHashMap<>();
     private final Map<ReplicaSet, ReplicaSetOffsetContext> replicaSetOffsetContexts = new ConcurrentHashMap<>();
 
     public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext) {
@@ -47,12 +48,6 @@ public class MongoDbOffsetContext implements OffsetContext {
 
     void stopReplicaSetSnapshot(String replicaSetName) {
         sourceInfo.stopInitialSync(replicaSetName);
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        // Any common framework API that needs to call this function should be provided with a ReplicaSetOffsetContext
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -105,6 +100,16 @@ public class MongoDbOffsetContext implements OffsetContext {
         // Not used by the mongodb connector
         // see ReplicaSetOffsetContext readEvent and oplogEvent methods
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Get a {@link ReplicaSetPartition} instance for a given {@link ReplicaSet}.
+     *
+     * @param replicaSet the replica set; must not be null.
+     * @return a replica set partition; never null.
+     */
+    public ReplicaSetPartition getReplicaSetPartition(ReplicaSet replicaSet) {
+        return replicaSetPartitions.computeIfAbsent(replicaSet, rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName()));
     }
 
     /**

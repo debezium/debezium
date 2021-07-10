@@ -54,9 +54,9 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
 
         delaySnapshotIfNeeded(context);
 
-        final SnapshotContext<O> ctx;
+        final SnapshotContext<P, O> ctx;
         try {
-            ctx = prepare(context);
+            ctx = prepare(partition);
         }
         catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);
@@ -137,7 +137,8 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
      * @return an indicator to the position at which the snapshot was taken
      */
     protected abstract SnapshotResult<O> doExecute(ChangeEventSourceContext context, O previousOffset,
-                                                   SnapshotContext<O> snapshotContext, SnapshottingTask snapshottingTask)
+                                                   SnapshotContext<P, O> snapshotContext,
+                                                   SnapshottingTask snapshottingTask)
             throws Exception;
 
     /**
@@ -148,7 +149,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
-    protected abstract SnapshotContext<O> prepare(ChangeEventSourceContext changeEventSourceContext) throws Exception;
+    protected abstract SnapshotContext<P, O> prepare(P partition) throws Exception;
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
@@ -156,14 +157,19 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
      *
      * @param snapshotContext snapshot context
      */
-    protected void complete(SnapshotContext<O> snapshotContext) {
+    protected void complete(SnapshotContext<P, O> snapshotContext) {
     }
 
     /**
      * Mutable context which is populated in the course of snapshotting
      */
-    public static class SnapshotContext<O extends OffsetContext> implements AutoCloseable {
+    public static class SnapshotContext<P extends Partition, O extends OffsetContext> implements AutoCloseable {
+        public P partition;
         public O offset;
+
+        public SnapshotContext(P partition) {
+            this.partition = partition;
+        }
 
         @Override
         public void close() throws Exception {

@@ -30,6 +30,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleTopicSelector;
@@ -67,6 +68,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     protected EventDispatcher<TableId> dispatcher;
     protected OracleDatabaseSchema schema;
     protected OracleStreamingChangeEventSourceMetrics metrics;
+    protected OraclePartition partition;
     protected OracleOffsetContext offsetContext;
     protected OracleConnection connection;
 
@@ -77,6 +79,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         Mockito.when(this.context.isRunning()).thenReturn(true);
 
         this.dispatcher = (EventDispatcher<TableId>) Mockito.mock(EventDispatcher.class);
+        this.partition = Mockito.mock(OraclePartition.class);
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         this.connection = createOracleConnection();
         this.schema = createOracleDatabaseSchema();

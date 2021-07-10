@@ -35,6 +35,7 @@ public class InfinispanProcessorTest extends AbstractProcessorUnitTest<Infinispa
                 connectorConfig,
                 connection,
                 dispatcher,
+                partition,
                 offsetContext,
                 schema,
                 metrics);

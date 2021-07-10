@@ -60,8 +60,9 @@ public class SchemaChanges implements Signal.Action {
             if (dispatcher.getHistorizedSchema() != null) {
                 LOGGER.info("Executing schema change for table '{}' requested by signal '{}'", tableChange.getId(), signalPayload.id);
                 dispatcher.dispatchSchemaChangeEvent(tableChange.getId(), emitter -> {
-                    emitter.schemaChangeEvent(new SchemaChangeEvent(signalPayload.offsetContext.getPartition(), signalPayload.offsetContext.getOffset(),
-                            signalPayload.source, database, schema, null, tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false));
+                    emitter.schemaChangeEvent(new SchemaChangeEvent(signalPayload.partition.getSourcePartition(),
+                            signalPayload.offsetContext.getOffset(), signalPayload.source, database, schema, null,
+                            tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false));
                 });
             }
             else if (dispatcher.getSchema() instanceof RelationalDatabaseSchema) {

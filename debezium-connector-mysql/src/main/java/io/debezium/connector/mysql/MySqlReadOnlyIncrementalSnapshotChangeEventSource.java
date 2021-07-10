@@ -19,6 +19,7 @@ import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnaps
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
@@ -85,7 +86,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     @Override
-    public void processMessage(DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
+    public void processMessage(Partition partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
@@ -93,7 +94,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
-            sendWindowEvents(offsetContext);
+            sendWindowEvents(partition, offsetContext);
             readChunk();
         }
         else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
@@ -102,26 +103,26 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     @Override
-    public void processHeartbeat(OffsetContext offsetContext) throws InterruptedException {
+    public void processHeartbeat(Partition partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
         while (getContext().snapshotRunning() && getContext().reachedHighWatermark(offsetContext)) {
-            sendWindowEvents(offsetContext);
+            sendWindowEvents(partition, offsetContext);
             readChunk();
         }
     }
 
     @Override
-    public void processFilteredEvent(OffsetContext offsetContext) throws InterruptedException {
+    public void processFilteredEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
-            sendWindowEvents(offsetContext);
+            sendWindowEvents(partition, offsetContext);
             readChunk();
         }
     }

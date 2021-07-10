@@ -42,11 +42,6 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     }
 
     @Override
-    public Map<String, ?> getPartition() {
-        return sourceInfo.partition(replicaSetName);
-    }
-
-    @Override
     public Map<String, ?> getOffset() {
         @SuppressWarnings("unchecked")
         Map<String, Object> offsets = (Map<String, Object>) sourceInfo.lastOffset(replicaSetName);

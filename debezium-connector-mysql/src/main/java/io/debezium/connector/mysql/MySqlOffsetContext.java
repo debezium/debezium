@@ -6,7 +6,6 @@
 package io.debezium.connector.mysql;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -25,7 +24,6 @@ import io.debezium.schema.DataCollectionId;
 
 public class MySqlOffsetContext implements OffsetContext {
 
-    private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String EVENTS_TO_SKIP_OFFSET_KEY = "event";
     public static final String TIMESTAMP_KEY = "ts_sec";
@@ -34,7 +32,6 @@ public class MySqlOffsetContext implements OffsetContext {
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
-    private final Map<String, String> partition;
     private boolean snapshotCompleted;
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
@@ -48,10 +45,8 @@ public class MySqlOffsetContext implements OffsetContext {
     private boolean inTransaction = false;
     private String transactionId = null;
 
-    public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted,
-                              TransactionContext transactionContext, IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
-                              SourceInfo sourceInfo) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
+    public MySqlOffsetContext(boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+                              IncrementalSnapshotContext<TableId> incrementalSnapshotContext, SourceInfo sourceInfo) {
         this.sourceInfo = sourceInfo;
         sourceInfoSchema = sourceInfo.schema();
 
@@ -67,23 +62,9 @@ public class MySqlOffsetContext implements OffsetContext {
     }
 
     public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted, SourceInfo sourceInfo) {
-        this(connectorConfig, snapshot, snapshotCompleted, new TransactionContext(),
+        this(snapshot, snapshotCompleted, new TransactionContext(),
                 connectorConfig.isReadOnlyConnection() ? new MySqlReadOnlyIncrementalSnapshotContext<>() : new SignalBasedIncrementalSnapshotContext<>(),
                 sourceInfo);
-    }
-
-    /**
-     * Get the Kafka Connect detail about the source "partition", which describes the portion of the source that we are
-     * consuming. Since we're reading the binary log for a single database, the source partition specifies the
-     * {@link #setServerName(String) database server}.
-     * <p>
-     * The resulting map is mutable for efficiency reasons (this information rarely changes), but should not be mutated.
-     *
-     * @return the source partition information; never null
-     */
-    @Override
-    public Map<String, ?> getPartition() {
-        return partition;
     }
 
     @Override
@@ -213,8 +194,8 @@ public class MySqlOffsetContext implements OffsetContext {
             else {
                 incrementalSnapshotContext = SignalBasedIncrementalSnapshotContext.load(offset);
             }
-            final MySqlOffsetContext offsetContext = new MySqlOffsetContext(connectorConfig, snapshot,
-                    snapshotCompleted, TransactionContext.load(offset), incrementalSnapshotContext,
+            final MySqlOffsetContext offsetContext = new MySqlOffsetContext(snapshot, snapshotCompleted,
+                    TransactionContext.load(offset), incrementalSnapshotContext,
                     new SourceInfo(connectorConfig));
             offsetContext.setBinlogStartPoint(binlogFilename, binlogPosition);
             offsetContext.setInitialSkips(longOffsetValue(offset, EVENTS_TO_SKIP_OFFSET_KEY),
@@ -454,7 +435,7 @@ public class MySqlOffsetContext implements OffsetContext {
     @Override
     public String toString() {
         return "MySqlOffsetContext [sourceInfoSchema=" + sourceInfoSchema + ", sourceInfo=" + sourceInfo
-                + ", partition=" + partition + ", snapshotCompleted=" + snapshotCompleted + ", transactionContext="
+                + ", snapshotCompleted=" + snapshotCompleted + ", transactionContext="
                 + transactionContext + ", restartGtidSet=" + restartGtidSet + ", currentGtidSet=" + currentGtidSet
                 + ", restartBinlogFilename=" + restartBinlogFilename + ", restartBinlogPosition="
                 + restartBinlogPosition + ", restartRowsToSkip=" + restartRowsToSkip + ", restartEventsToSkip="

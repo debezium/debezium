@@ -24,6 +24,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
@@ -51,6 +52,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
 
     private final OracleConnection jdbcConnection;
     private final OracleStreamingChangeEventSourceMetrics metrics;
+    private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final EventDispatcher<TableId> dispatcher;
     private final ChangeEventSourceContext context;
@@ -97,12 +99,14 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
                                             OracleConnectorConfig connectorConfig,
                                             OracleConnection jdbcConnection,
                                             EventDispatcher<TableId> dispatcher,
+                                            OraclePartition partition,
                                             OracleOffsetContext offsetContext,
                                             OracleDatabaseSchema schema,
                                             OracleStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, schema, offsetContext, dispatcher, metrics);
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
         this.jdbcConnection = jdbcConnection;
         this.metrics = metrics;
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.dispatcher = dispatcher;
         this.context = context;
@@ -287,6 +291,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             final DmlEvent dmlEvent = (DmlEvent) event;
             dispatcher.dispatchDataChangeEvent(event.getTableId(),
                     new LogMinerChangeRecordEmitter(
+                            partition,
                             offsetContext,
                             dmlEvent.getEventType(),
                             dmlEvent.getDmlEntry().getOldValues(),
@@ -297,10 +302,10 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
         if (!transaction.getEvents().isEmpty()) {
-            dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
         }
         else {
-            dispatcher.dispatchHeartbeatEvent(offsetContext);
+            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
         }
 
         metrics.calculateLagMetrics(row.getChangeTime());
@@ -390,12 +395,12 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
         if (getConfig().isLobEnabled()) {
             if (transactionCache.isEmpty() && !maxCommittedScn.isNull()) {
                 offsetContext.setScn(maxCommittedScn);
-                dispatcher.dispatchHeartbeatEvent(offsetContext);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
                 if (!minCacheScn.isNull()) {
                     offsetContext.setScn(minCacheScn.subtract(Scn.valueOf(1)));
-                    dispatcher.dispatchHeartbeatEvent(offsetContext);
+                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 }
             }
             return offsetContext.getScn();
@@ -408,7 +413,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             metrics.setOffsetScn(endScn);
 
             // optionally dispatch a heartbeat event
-            dispatcher.dispatchHeartbeatEvent(offsetContext);
+            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
             return endScn;
         }

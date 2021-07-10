@@ -67,23 +67,26 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SnapshotContext<OracleOffsetContext> prepare(ChangeEventSourceContext context) throws Exception {
+    protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition)
+            throws Exception {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
 
-        return new OracleSnapshotContext(connectorConfig.getCatalogName());
+        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName());
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<OracleOffsetContext> ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx)
+            throws Exception {
         return jdbcConnection.getAllTableIds(ctx.catalogName);
         // this very slow approach(commented out), it took 30 minutes on an instance with 600 tables
         // return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<OracleOffsetContext> snapshotContext)
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
+                                               RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
         if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
             ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
@@ -102,14 +105,15 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<OracleOffsetContext> snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext)
+            throws SQLException {
         if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
             jdbcConnection.connection().rollback(((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
         }
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext<OracleOffsetContext> ctx,
+    protected void determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
                                            OracleOffsetContext previousOffset)
             throws Exception {
         Optional<Scn> latestTableDdlScn = getLatestTableDdlScn(ctx);
@@ -120,7 +124,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         // SCN of "now" represents the same timestamp as a newly created table that should be captured; in that case
         // we'd get a ORA-01466 when running the flashback query for doing the snapshot
         do {
-            currentScn = getCurrentScn(ctx);
+            currentScn = jdbcConnection.getCurrentScn();
         } while (areSameTimestamp(latestTableDdlScn.orElse(null), currentScn));
 
         ctx.offset = OracleOffsetContext.create()
@@ -129,10 +133,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
-    }
-
-    private Scn getCurrentScn(SnapshotContext<OracleOffsetContext> ctx) throws SQLException {
-        return jdbcConnection.getCurrentScn();
     }
 
     /**
@@ -154,7 +154,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
      * Returns the SCN of the latest DDL change to the captured tables. The result will be empty if there's no table to
      * capture as per the configuration.
      */
-    private Optional<Scn> getLatestTableDdlScn(RelationalSnapshotContext<OracleOffsetContext> ctx) throws SQLException {
+    private Optional<Scn> getLatestTableDdlScn(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx)
+            throws SQLException {
         if (ctx.capturedTables.isEmpty()) {
             return Optional.empty();
         }
@@ -197,7 +198,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<OracleOffsetContext> snapshotContext,
+    protected void readTableStructure(ChangeEventSourceContext sourceContext,
+                                      RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                       OracleOffsetContext offsetContext)
             throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
@@ -237,7 +239,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected String enhanceOverriddenSelect(RelationalSnapshotContext<OracleOffsetContext> snapshotContext, String overriddenSelect, TableId tableId) {
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                                             String overriddenSelect, TableId tableId) {
         String snapshotOffset = (String) snapshotContext.offset.getOffset().get(SourceInfo.SCN_KEY);
         String token = connectorConfig.getTokenToReplaceInSnapshotPredicate();
         if (token != null) {
@@ -247,9 +250,11 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<OracleOffsetContext> snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                                                    Table table)
+            throws SQLException {
         return new SchemaChangeEvent(
-                snapshotContext.offset.getPartition(),
+                snapshotContext.partition.getSourcePartition(),
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
@@ -261,7 +266,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<OracleOffsetContext> snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                                                 TableId tableId) {
         final OracleOffsetContext offset = snapshotContext.offset;
         final String snapshotOffset = offset.getScn().toString();
         assert snapshotOffset != null;
@@ -269,7 +275,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void complete(SnapshotContext<OracleOffsetContext> snapshotContext) {
+    protected void complete(SnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.resetSessionToCdb();
         }
@@ -282,12 +288,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class OracleSnapshotContext extends RelationalSnapshotContext<OracleOffsetContext> {
+    private static class OracleSnapshotContext extends RelationalSnapshotContext<OraclePartition, OracleOffsetContext> {
 
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public OracleSnapshotContext(String catalogName) throws SQLException {
-            super(catalogName);
+        public OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
+            super(partition, catalogName);
         }
     }
 }
