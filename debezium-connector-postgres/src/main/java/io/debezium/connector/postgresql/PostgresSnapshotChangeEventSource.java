@@ -53,7 +53,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(PostgresOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(PostgresPartition partition, PostgresOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -165,7 +165,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<PostgresOffsetContext> snapshotContext,
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, PostgresPartition partition,
+                                      RelationalSnapshotContext<PostgresOffsetContext> snapshotContext,
                                       PostgresOffsetContext offsetContext)
             throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
@@ -193,9 +194,12 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<PostgresOffsetContext> snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(PostgresPartition partition,
+                                                    RelationalSnapshotContext<PostgresOffsetContext> snapshotContext,
+                                                    Table table)
+            throws SQLException {
         return new SchemaChangeEvent(
-                snapshotContext.offset.getPartition(),
+                partition.getSourcePartition(),
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,

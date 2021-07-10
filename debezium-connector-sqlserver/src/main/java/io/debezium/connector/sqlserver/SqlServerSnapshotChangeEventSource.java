@@ -54,7 +54,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(SqlServerOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(SqlServerPartition partition, SqlServerOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -163,7 +163,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext,
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, SqlServerPartition partition,
+                                      RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext,
                                       SqlServerOffsetContext offsetContext)
             throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
@@ -213,9 +214,12 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(SqlServerPartition partition,
+                                                    RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext,
+                                                    Table table)
+            throws SQLException {
         return new SchemaChangeEvent(
-                snapshotContext.offset.getPartition(),
+                partition.getSourcePartition(),
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,

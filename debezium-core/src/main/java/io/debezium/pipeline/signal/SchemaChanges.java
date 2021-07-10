@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.common.Partition;
 import io.debezium.document.Array;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
@@ -43,7 +44,7 @@ public class SchemaChanges implements Signal.Action {
     }
 
     @Override
-    public boolean arrived(Payload signalPayload) throws InterruptedException {
+    public boolean arrived(Partition partition, Payload signalPayload) throws InterruptedException {
         final Array changes = signalPayload.data.getArray(FIELD_CHANGES);
         final String database = signalPayload.data.getString(FIELD_DATABASE);
         final String schema = signalPayload.data.getString(FIELD_SCHEMA);
@@ -60,8 +61,9 @@ public class SchemaChanges implements Signal.Action {
             if (dispatcher.getHistorizedSchema() != null) {
                 LOGGER.info("Executing schema change for table '{}' requested by signal '{}'", tableChange.getId(), signalPayload.id);
                 dispatcher.dispatchSchemaChangeEvent(tableChange.getId(), emitter -> {
-                    emitter.schemaChangeEvent(new SchemaChangeEvent(signalPayload.offsetContext.getPartition(), signalPayload.offsetContext.getOffset(),
-                            signalPayload.source, database, schema, null, tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false));
+                    emitter.schemaChangeEvent(new SchemaChangeEvent(partition.getSourcePartition(),
+                            signalPayload.offsetContext.getOffset(), signalPayload.source, database, schema, null,
+                            tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false));
                 });
             }
             else if (dispatcher.getSchema() instanceof RelationalDatabaseSchema) {

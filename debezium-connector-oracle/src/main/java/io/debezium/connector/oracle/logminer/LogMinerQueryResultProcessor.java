@@ -19,6 +19,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
@@ -75,10 +76,12 @@ class LogMinerQueryResultProcessor {
 
     /**
      * This method does all the job
+     *
+     * @param partition the partition from which the result set was fetched
      * @param resultSet the info from LogMiner view
      * @throws SQLException thrown if any database exception occurs
      */
-    void processResult(ResultSet resultSet) throws SQLException {
+    void processResult(OraclePartition partition, ResultSet resultSet) throws SQLException {
         int dmlCounter = 0, insertCounter = 0, updateCounter = 0, deleteCounter = 0;
         int commitCounter = 0;
         int rollbackCounter = 0;
@@ -123,7 +126,7 @@ class LogMinerQueryResultProcessor {
                 case RowMapper.COMMIT: {
                     // Commits a transaction
                     if (transactionalBuffer.isTransactionRegistered(txId)) {
-                        if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage, dispatcher)) {
+                        if (transactionalBuffer.commit(partition, txId, scn, offsetContext, changeTime, context, logMessage, dispatcher)) {
                             LOGGER.trace("COMMIT, {}", logMessage);
                             commitCounter++;
                         }
@@ -153,6 +156,7 @@ class LogMinerQueryResultProcessor {
                             dispatcher.dispatchSchemaChangeEvent(tableId,
                                     new OracleSchemaChangeEventEmitter(
                                             connectorConfig,
+                                            partition,
                                             offsetContext,
                                             tableId,
                                             tableId.catalog(),
@@ -239,7 +243,7 @@ class LogMinerQueryResultProcessor {
                         Table table = schema.tableFor(tableId);
                         if (table == null) {
                             if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                                table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId);
+                                table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(partition, tableId);
                             }
                             else {
                                 LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
@@ -301,7 +305,7 @@ class LogMinerQueryResultProcessor {
         return false;
     }
 
-    private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId) throws SQLException {
+    private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(OraclePartition partition, TableId tableId) throws SQLException {
         try {
             LOGGER.info("Table {} is new and will be captured.", tableId);
             offsetContext.event(tableId, Instant.now());
@@ -309,6 +313,7 @@ class LogMinerQueryResultProcessor {
                     tableId,
                     new OracleSchemaChangeEventEmitter(
                             connectorConfig,
+                            partition,
                             offsetContext,
                             tableId,
                             tableId.catalog(),

@@ -33,8 +33,6 @@ public interface OffsetContext {
         O load(Map<String, ?> offset);
     }
 
-    Map<String, ?> getPartition();
-
     Map<String, ?> getOffset();
 
     Schema getSourceInfoSchema();

@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.xstream;
 
 import java.util.Map;
 
+import io.debezium.connector.common.Partition;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -26,8 +27,9 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
     private final RowLCR lcr;
     private final Map<String, Object> chunkValues;
 
-    public XStreamChangeRecordEmitter(OffsetContext offset, RowLCR lcr, Map<String, Object> chunkValues, Table table, Clock clock) {
-        super(offset, table, clock);
+    public XStreamChangeRecordEmitter(Partition partition, OffsetContext offset, RowLCR lcr,
+                                      Map<String, Object> chunkValues, Table table, Clock clock) {
+        super(partition, offset, table, clock);
         this.lcr = lcr;
         this.chunkValues = chunkValues;
     }

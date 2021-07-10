@@ -73,7 +73,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MySqlOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -214,7 +214,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected void releaseDataSnapshotLocks(RelationalSnapshotContext<MySqlOffsetContext> snapshotContext) throws Exception {
+    protected void releaseDataSnapshotLocks(MySqlPartition partition, RelationalSnapshotContext<MySqlOffsetContext> snapshotContext) throws Exception {
         if (isGloballyLocked()) {
             globalUnlock();
         }
@@ -222,7 +222,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             tableUnlock();
             if (!delayedSchemaSnapshotTables.isEmpty()) {
                 schemaEvents.clear();
-                createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false);
+                createSchemaEventsForTables(partition, snapshotContext, delayedSchemaSnapshotTables, false);
 
                 for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
                     final SchemaChangeEvent event = i.next();
@@ -289,13 +289,14 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         tryStartingSnapshot(ctx);
     }
 
-    private void addSchemaEvent(RelationalSnapshotContext<MySqlOffsetContext> snapshotContext, String database, String ddl) {
-        schemaEvents.addAll(databaseSchema.parseSnapshotDdl(ddl, database, snapshotContext.offset,
+    private void addSchemaEvent(MySqlPartition partition, RelationalSnapshotContext<MySqlOffsetContext> snapshotContext,
+                                String database, String ddl) {
+        schemaEvents.addAll(databaseSchema.parseSnapshotDdl(partition, ddl, database, snapshotContext.offset,
                 clock.currentTimeAsInstant()));
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<MySqlOffsetContext> snapshotContext,
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, MySqlPartition partition, RelationalSnapshotContext<MySqlOffsetContext> snapshotContext,
                                       MySqlOffsetContext offsetContext)
             throws Exception {
         Set<TableId> capturedSchemaTables;
@@ -321,13 +322,14 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         final Set<String> databases = tablesToRead.keySet();
 
         // Record default charset
-        addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
+        addSchemaEvent(partition, snapshotContext, "",
+                connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
 
         for (TableId tableId : capturedSchemaTables) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while emitting initial DROP TABLE events");
             }
-            addSchemaEvent(snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + quote(tableId));
+            addSchemaEvent(partition, snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + quote(tableId));
         }
 
         final Map<String, DatabaseLocales> databaseCharsets = connection.readDatabaseCollations();
@@ -337,20 +339,22 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             }
 
             LOGGER.info("Reading structure of database '{}'", database);
-            addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
+            addSchemaEvent(partition, snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
             final StringBuilder createDatabaseDddl = new StringBuilder("CREATE DATABASE " + quote(database));
             final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
             if (defaultDatabaseLocales != null) {
                 defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDddl);
             }
-            addSchemaEvent(snapshotContext, database, createDatabaseDddl.toString());
-            addSchemaEvent(snapshotContext, database, "USE " + quote(database));
+            addSchemaEvent(partition, snapshotContext, database, createDatabaseDddl.toString());
+            addSchemaEvent(partition, snapshotContext, database, "USE " + quote(database));
 
-            createSchemaEventsForTables(snapshotContext, tablesToRead.get(database), true);
+            createSchemaEventsForTables(partition, snapshotContext, tablesToRead.get(database), true);
         }
     }
 
-    void createSchemaEventsForTables(RelationalSnapshotContext<MySqlOffsetContext> snapshotContext, final Collection<TableId> tablesToRead, final boolean firstPhase)
+    void createSchemaEventsForTables(MySqlPartition partition,
+                                     RelationalSnapshotContext<MySqlOffsetContext> snapshotContext,
+                                     final Collection<TableId> tablesToRead, final boolean firstPhase)
             throws SQLException {
         for (TableId tableId : tablesToRead) {
             if (firstPhase && delayedSchemaSnapshotTables.contains(tableId)) {
@@ -358,7 +362,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             }
             connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
                 if (rs.next()) {
-                    addSchemaEvent(snapshotContext, tableId.catalog(), rs.getString(2));
+                    addSchemaEvent(partition, snapshotContext, tableId.catalog(), rs.getString(2));
                 }
             });
         }
@@ -369,9 +373,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<MySqlOffsetContext> snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(MySqlPartition partition,
+                                                    RelationalSnapshotContext<MySqlOffsetContext> snapshotContext,
+                                                    Table table)
+            throws SQLException {
         return new SchemaChangeEvent(
-                snapshotContext.offset.getPartition(),
+                partition.getSourcePartition(),
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
@@ -511,7 +518,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext,
+    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, MySqlPartition partition,
                                                      RelationalSnapshotContext<MySqlOffsetContext> snapshotContext,
                                                      SnapshottingTask snapshottingTask)
             throws Exception {

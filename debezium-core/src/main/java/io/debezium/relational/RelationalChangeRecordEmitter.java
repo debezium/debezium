@@ -12,6 +12,7 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.Partition;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -31,8 +32,11 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    public RelationalChangeRecordEmitter(OffsetContext offsetContext, Clock clock) {
-        super(offsetContext, clock);
+    private final Partition partition;
+
+    public RelationalChangeRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock) {
+        super(partition, offsetContext, clock);
+        this.partition = partition;
     }
 
     @Override
@@ -74,7 +78,7 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
             logger.warn("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
-        receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset(), null);
+        receiver.changeRecord(partition, tableSchema, Operation.CREATE, newKey, envelope, getOffset(), null);
     }
 
     @Override
@@ -85,7 +89,7 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
 
-        receiver.changeRecord(tableSchema, Operation.READ, newKey, envelope, getOffset(), null);
+        receiver.changeRecord(partition, tableSchema, Operation.READ, newKey, envelope, getOffset(), null);
     }
 
     @Override
@@ -108,7 +112,7 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
             Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), null);
+            receiver.changeRecord(partition, tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), null);
         }
         // PK update -> emit as delete and re-insert with new key
         else {
@@ -116,13 +120,13 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
             headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
 
             Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
+            receiver.changeRecord(partition, tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
 
             headers = new ConnectHeaders();
             headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
 
             envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);
+            receiver.changeRecord(partition, tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);
         }
     }
 
@@ -138,7 +142,7 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         }
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), null);
+        receiver.changeRecord(partition, tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), null);
     }
 
     protected void emitTruncateRecord(Receiver receiver, TableSchema schema) throws InterruptedException {

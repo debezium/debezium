@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.Partition;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -51,7 +52,7 @@ public class Signal {
          * @param signalPayload the content of the signal
          * @return true if the signal was processed
          */
-        boolean arrived(Payload signalPayload) throws InterruptedException;
+        boolean arrived(Partition partition, Payload signalPayload) throws InterruptedException;
     }
 
     public static class Payload {
@@ -123,7 +124,7 @@ public class Signal {
         signalActions.put(id, signal);
     }
 
-    public boolean process(String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
+    public boolean process(Partition partition, String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
         LOGGER.debug("Arrived signal id = '{}', type = '{}', data = '{}'", id, type, data);
         final Action action = signalActions.get(type);
         if (action == null) {
@@ -133,7 +134,7 @@ public class Signal {
         try {
             final Document jsonData = (data == null || data.isEmpty()) ? Document.create()
                     : DocumentReader.defaultReader().read(data);
-            return action.arrived(new Payload(id, type, jsonData, offset, source));
+            return action.arrived(partition, new Payload(id, type, jsonData, offset, source));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has arrived but the data '{}' cannot be parsed", id, data, e);
@@ -141,8 +142,8 @@ public class Signal {
         }
     }
 
-    public boolean process(String id, String type, String data) throws InterruptedException {
-        return process(id, type, data, null, null);
+    public boolean process(Partition partition, String id, String type, String data) throws InterruptedException {
+        return process(partition, id, type, data, null, null);
     }
 
     /**
@@ -151,7 +152,7 @@ public class Signal {
      * @param offset offset of the incoming signal
      * @return true if the signal was processed
      */
-    public boolean process(Struct value, OffsetContext offset) throws InterruptedException {
+    public boolean process(Partition partition, Struct value, OffsetContext offset) throws InterruptedException {
         String id = null;
         String type = null;
         String data = null;
@@ -177,6 +178,6 @@ public class Signal {
         catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
         }
-        return process(id, type, data, offset, source);
+        return process(partition, id, type, data, offset, source);
     }
 }

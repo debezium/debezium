@@ -20,6 +20,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
@@ -51,6 +52,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
+    private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
@@ -59,13 +61,15 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private RowLCR currentRow;
 
     public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock,
-                           OracleDatabaseSchema schema, OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive,
-                           XstreamStreamingChangeEventSource eventSource, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                           OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
+                           boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
+                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
@@ -144,7 +148,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         LOGGER.debug("Processing DML event {}", lcr);
 
         if (RowLCR.COMMIT.equals(lcr.getCommandType())) {
-            dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
             return;
         }
 
@@ -158,6 +162,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         tableId,
                         new OracleSchemaChangeEventEmitter(
                                 connectorConfig,
+                                partition,
                                 offsetContext,
                                 tableId,
                                 tableId.catalog(),
@@ -173,7 +178,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchDataChangeEvent(
                 tableId,
-                new XStreamChangeRecordEmitter(offsetContext, lcr, chunkValues, schema.tableFor(tableId), clock));
+                new XStreamChangeRecordEmitter(partition, offsetContext, lcr, chunkValues, schema.tableFor(tableId),
+                        clock));
     }
 
     private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) throws InterruptedException {
@@ -187,6 +193,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 tableId,
                 new OracleSchemaChangeEventEmitter(
                         connectorConfig,
+                        partition,
                         offsetContext,
                         tableId,
                         ddlLcr.getSourceDatabaseName(),

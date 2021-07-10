@@ -28,6 +28,7 @@ import io.debezium.connector.oracle.BlobChunkList;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
@@ -234,6 +235,7 @@ public final class TransactionalBuffer implements AutoCloseable {
      * Commits a transaction by looking up the transaction in the buffer and if exists, all registered callbacks
      * will be executed in chronological order, emitting events for each followed by a transaction commit event.
      *
+     * @param partition     partition of the transaction
      * @param transactionId transaction identifier
      * @param scn           SCN of the commit.
      * @param offsetContext Oracle offset
@@ -243,8 +245,9 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param dispatcher    event dispatcher
      * @return true if committed transaction is in the buffer, was not processed yet and processed now
      */
-    boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
-                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId> dispatcher) {
+    boolean commit(OraclePartition partition, String transactionId, Scn scn, OracleOffsetContext offsetContext,
+                   Timestamp timestamp, ChangeEventSource.ChangeEventSourceContext context, String debugMessage,
+                   EventDispatcher<TableId> dispatcher) {
 
         Instant start = Instant.now();
         Transaction transaction = transactions.remove(transactionId);
@@ -295,6 +298,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                 LOGGER.trace("Processing event {}", event);
                 dispatcher.dispatchDataChangeEvent(event.getTableId(),
                         new LogMinerChangeRecordEmitter(
+                                partition,
                                 offsetContext,
                                 event.getOperation(),
                                 event.getEntry().getOldValues(),
@@ -306,10 +310,10 @@ public final class TransactionalBuffer implements AutoCloseable {
 
             lastCommittedScn = Scn.valueOf(scn.longValue());
             if (!transaction.events.isEmpty()) {
-                dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+                dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
             }
             else {
-                dispatcher.dispatchHeartbeatEvent(offsetContext);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
 
             streamingMetrics.calculateLagMetrics(timestamp.toInstant());
@@ -346,17 +350,18 @@ public final class TransactionalBuffer implements AutoCloseable {
     /**
      * Update the offset context based on the current state of the transaction buffer.
      *
+     * @param partition partition to which the offset context belongs, should not be {@code null}
      * @param offsetContext offset context, should not be {@code null}
      * @param dispatcher event dispatcher, should not be {@code null}
      * @return offset context SCN, never {@code null}
      * @throws InterruptedException thrown if dispatch of heartbeat event fails
      */
-    Scn updateOffsetContext(OracleOffsetContext offsetContext, EventDispatcher<TableId> dispatcher) throws InterruptedException {
+    Scn updateOffsetContext(OraclePartition partition, OracleOffsetContext offsetContext, EventDispatcher<TableId> dispatcher) throws InterruptedException {
         if (transactions.isEmpty()) {
             if (!maxCommittedScn.isNull()) {
                 LOGGER.trace("Transaction buffer is empty, updating offset SCN to '{}'", maxCommittedScn);
                 offsetContext.setScn(maxCommittedScn);
-                dispatcher.dispatchHeartbeatEvent(offsetContext);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
                 LOGGER.trace("No max committed SCN detected, offset SCN still '{}'", offsetContext.getScn());
@@ -370,7 +375,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                 LOGGER.trace("Removing all tracked DDL operations up to SCN '{}'", minStartScn);
                 recentlyEmittedDdls.removeIf(scn -> scn.compareTo(minStartScn) < 0);
                 offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
-                dispatcher.dispatchHeartbeatEvent(offsetContext);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
                 LOGGER.trace("Minimum SCN in transaction buffer is still SCN '{}'", minStartScn);

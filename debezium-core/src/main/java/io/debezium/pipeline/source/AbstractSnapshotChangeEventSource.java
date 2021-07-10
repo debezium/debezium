@@ -46,7 +46,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
 
     @Override
     public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
-        SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
+        SnapshottingTask snapshottingTask = getSnapshottingTask(partition, previousOffset);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
             return SnapshotResult.skipped(previousOffset);
@@ -67,7 +67,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
 
         try {
             snapshotProgressListener.snapshotStarted();
-            return doExecute(context, previousOffset, ctx, snapshottingTask);
+            return doExecute(context, partition, previousOffset, ctx, snapshottingTask);
         }
         catch (InterruptedException e) {
             completedSuccessfully = false;
@@ -131,19 +131,20 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
      * pending transactions, releasing locks, etc.
      *
      * @param context contextual information for this source's execution
+     * @param partition source partition from which the snapshot should be executed
      * @param previousOffset previous offset restored from Kafka
      * @param snapshotContext mutable context information populated throughout the snapshot process
      * @param snapshottingTask immutable information about what tasks should be performed during snapshot
      * @return an indicator to the position at which the snapshot was taken
      */
-    protected abstract SnapshotResult<O> doExecute(ChangeEventSourceContext context, O previousOffset,
+    protected abstract SnapshotResult<O> doExecute(ChangeEventSourceContext context, P partition, O previousOffset,
                                                    SnapshotContext<O> snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception;
 
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(O previousOffset);
+    protected abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.

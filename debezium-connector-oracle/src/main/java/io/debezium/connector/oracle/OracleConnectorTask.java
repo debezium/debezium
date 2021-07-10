@@ -59,10 +59,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         this.schema.initializeStorage();
         Map<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());
+        OraclePartition partition = getTheOnlyPartition(previousOffsets);
         OracleOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
 
         if (previousOffset != null) {
-            schema.recover(previousOffset);
+            schema.recover(partition, previousOffset);
         }
 
         taskContext = new OracleTaskContext(connectorConfig, schema);
