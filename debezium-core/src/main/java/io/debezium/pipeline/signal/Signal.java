@@ -24,6 +24,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.source.snapshot.incremental.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.schema.DataCollectionId;
 
@@ -58,18 +59,21 @@ public class Signal {
         public final String id;
         public final String type;
         public final Document data;
+        public final Partition partition;
         public final OffsetContext offsetContext;
         public final Struct source;
 
         /**
+         * @param partition partition from which the signal was sent
          * @param id identifier of the signal intended for deduplication, usually ignored by the signal
          * @param type of the signal, usually ignored by the signal, should be used only when a signal code is shared for mutlple signals
          * @param data data specific for given signal instance
          * @param offsetContext offset at what the signal was sent
          * @param source source info about position at what the signal was sent
          */
-        public Payload(String id, String type, Document data, OffsetContext offsetContext, Struct source) {
+        public Payload(Partition partition, String id, String type, Document data, OffsetContext offsetContext, Struct source) {
             super();
+            this.partition = partition;
             this.id = id;
             this.type = type;
             this.data = data;
@@ -123,7 +127,7 @@ public class Signal {
         signalActions.put(id, signal);
     }
 
-    public boolean process(String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
+    public boolean process(Partition partition, String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
         LOGGER.debug("Arrived signal id = '{}', type = '{}', data = '{}'", id, type, data);
         final Action action = signalActions.get(type);
         if (action == null) {
@@ -133,7 +137,7 @@ public class Signal {
         try {
             final Document jsonData = (data == null || data.isEmpty()) ? Document.create()
                     : DocumentReader.defaultReader().read(data);
-            return action.arrived(new Payload(id, type, jsonData, offset, source));
+            return action.arrived(new Payload(partition, id, type, jsonData, offset, source));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has arrived but the data '{}' cannot be parsed", id, data, e);
@@ -141,8 +145,8 @@ public class Signal {
         }
     }
 
-    public boolean process(String id, String type, String data) throws InterruptedException {
-        return process(id, type, data, null, null);
+    public boolean process(Partition partition, String id, String type, String data) throws InterruptedException {
+        return process(partition, id, type, data, null, null);
     }
 
     /**
@@ -151,7 +155,7 @@ public class Signal {
      * @param offset offset of the incoming signal
      * @return true if the signal was processed
      */
-    public boolean process(Struct value, OffsetContext offset) throws InterruptedException {
+    public boolean process(Partition partition, Struct value, OffsetContext offset) throws InterruptedException {
         String id = null;
         String type = null;
         String data = null;
@@ -177,6 +181,6 @@ public class Signal {
         catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
         }
-        return process(id, type, data, offset, source);
+        return process(partition, id, type, data, offset, source);
     }
 }

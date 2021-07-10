@@ -27,6 +27,7 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.function.Predicates;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
@@ -54,9 +55,10 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final boolean nullToastedValuesMissingFromOld;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
-    public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection,
+    public PostgresChangeRecordEmitter(Partition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
+                                       PostgresConnection connection,
                                        ReplicationMessage message) {
-        super(offset, clock);
+        super(partition, offset, clock);
 
         this.schema = schema;
         this.message = message;
@@ -94,7 +96,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     @Override
     protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
+        receiver.changeRecord(getPartition(), tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
     }
 
     @Override

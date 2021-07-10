@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.util.Clock;
 
@@ -26,8 +27,8 @@ public class SqlServerChangeRecordEmitter extends RelationalChangeRecordEmitter 
     private final Object[] data;
     private final Object[] dataNext;
 
-    public SqlServerChangeRecordEmitter(OffsetContext offset, int operation, Object[] data, Object[] dataNext, Clock clock) {
-        super(offset, clock);
+    public SqlServerChangeRecordEmitter(Partition partition, OffsetContext offset, int operation, Object[] data, Object[] dataNext, Clock clock) {
+        super(partition, offset, clock);
 
         this.operation = operation;
         this.data = data;
