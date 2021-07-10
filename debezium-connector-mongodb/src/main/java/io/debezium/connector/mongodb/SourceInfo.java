@@ -163,6 +163,13 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     /**
+     * @return server id
+     */
+    public String serverId() {
+        return serverName();
+    }
+
+    /**
      * Get the Kafka Connect detail about the source "partition" for the given database in the replica set. If the database is
      * not known, this method records the new partition.
      *

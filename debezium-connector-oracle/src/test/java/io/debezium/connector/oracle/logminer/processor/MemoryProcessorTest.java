@@ -29,6 +29,7 @@ public class MemoryProcessorTest extends AbstractProcessorUnitTest<MemoryLogMine
                 connectorConfig,
                 connection,
                 dispatcher,
+                partition,
                 offsetContext,
                 schema,
                 metrics);

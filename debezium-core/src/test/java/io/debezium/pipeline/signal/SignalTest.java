@@ -7,6 +7,7 @@ package io.debezium.pipeline.signal;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Schema;
@@ -20,6 +21,7 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.Signal.Payload;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
 
 /**
@@ -39,20 +41,20 @@ public class SignalTest {
     public void shouldExecuteLog() throws Exception {
         final Signal signal = new Signal(config());
         final LogInterceptor log = new LogInterceptor(io.debezium.pipeline.signal.Log.class);
-        assertThat(signal.process("log1", "log", "{\"message\": \"signallog {}\"}")).isTrue();
+        assertThat(signal.process(new TestPartition(), "log1", "log", "{\"message\": \"signallog {}\"}")).isTrue();
         assertThat(log.containsMessage("signallog <none>")).isTrue();
     }
 
     @Test
     public void shouldIgnoreInvalidSignalType() throws Exception {
         final Signal signal = new Signal(config());
-        assertThat(signal.process("log1", "log1", "{\"message\": \"signallog\"}")).isFalse();
+        assertThat(signal.process(new TestPartition(), "log1", "log1", "{\"message\": \"signallog\"}")).isFalse();
     }
 
     @Test
     public void shouldIgnoreUnparseableData() throws Exception {
         final Signal signal = new Signal(config());
-        assertThat(signal.process("log1", "log", "{\"message: \"signallog\"}")).isFalse();
+        assertThat(signal.process(new TestPartition(), "log1", "log", "{\"message: \"signallog\"}")).isFalse();
     }
 
     @Test
@@ -69,7 +71,7 @@ public class SignalTest {
             }
         };
         signal.registerSignalAction("custom", testAction);
-        assertThat(signal.process("log1", "custom", "{\"v\": 5}")).isTrue();
+        assertThat(signal.process(new TestPartition(), "log1", "custom", "{\"v\": 5}")).isTrue();
         assertThat(called.intValue()).isEqualTo(5);
     }
 
@@ -100,7 +102,7 @@ public class SignalTest {
             }
         };
         signal.registerSignalAction("custom", testAction);
-        assertThat(signal.process(env.create(record, null, null), null)).isTrue();
+        assertThat(signal.process(new TestPartition(), env.create(record, null, null), null)).isTrue();
         assertThat(called.intValue()).isEqualTo(5);
     }
 
@@ -130,10 +132,10 @@ public class SignalTest {
         };
         signal.registerSignalAction("custom", testAction);
 
-        assertThat(signal.process(env.create(record, null, null), null)).isFalse();
+        assertThat(signal.process(new TestPartition(), env.create(record, null, null), null)).isFalse();
         assertThat(called.intValue()).isEqualTo(0);
 
-        assertThat(signal.process(record, null)).isFalse();
+        assertThat(signal.process(new TestPartition(), record, null)).isFalse();
         assertThat(called.intValue()).isEqualTo(0);
     }
 
@@ -154,5 +156,13 @@ public class SignalTest {
                 return null;
             }
         };
+    }
+
+    private static class TestPartition implements Partition {
+
+        @Override
+        public Map<String, String> getSourcePartition() {
+            throw new UnsupportedOperationException();
+        }
     }
 }

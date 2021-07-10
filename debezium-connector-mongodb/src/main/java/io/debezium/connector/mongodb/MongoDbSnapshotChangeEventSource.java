@@ -81,8 +81,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotResult<MongoDbOffsetContext> doExecute(ChangeEventSourceContext context, MongoDbOffsetContext previousOffset,
-                                                             SnapshotContext<MongoDbOffsetContext> snapshotContext,
+    protected SnapshotResult<MongoDbOffsetContext> doExecute(ChangeEventSourceContext context,
+                                                             MongoDbOffsetContext previousOffset,
+                                                             SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
                                                              SnapshottingTask snapshottingTask)
             throws Exception {
         final MongoDbSnapshottingTask mongoDbSnapshottingTask = (MongoDbSnapshottingTask) snapshottingTask;
@@ -201,8 +202,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotContext<MongoDbOffsetContext> prepare(ChangeEventSourceContext sourceContext) throws Exception {
-        return new MongoDbSnapshotContext();
+    protected SnapshotContext<MongoDbPartition, MongoDbOffsetContext> prepare(MongoDbPartition partition)
+            throws Exception {
+        return new MongoDbSnapshotContext(partition);
     }
 
     private void snapshotReplicaSet(ChangeEventSourceContext sourceContext, MongoDbSnapshotContext ctx, ReplicaSet replicaSet) throws InterruptedException {
@@ -474,14 +476,16 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         });
     }
 
-    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext<MongoDbOffsetContext> snapshotContext, CollectionId collectionId, Document document,
+    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
+                                                         CollectionId collectionId, Document document,
                                                          ReplicaSet replicaSet) {
         final MongoDbOffsetContext offsetContext = snapshotContext.offset;
 
+        final ReplicaSetPartition replicaSetPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
 
-        return new MongoDbChangeRecordEmitter(replicaSetOffsetContext, getClock(), document, true);
+        return new MongoDbChangeRecordEmitter(replicaSetPartition, replicaSetOffsetContext, getClock(), document, true);
     }
 
     protected Clock getClock() {
@@ -519,8 +523,12 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     /**
      * Mutable context that is populated in the course of snapshotting.
      */
-    private static class MongoDbSnapshotContext extends SnapshotContext<MongoDbOffsetContext> {
+    private static class MongoDbSnapshotContext extends SnapshotContext<MongoDbPartition, MongoDbOffsetContext> {
         public boolean lastCollection;
         public boolean lastRecordInCollection;
+
+        MongoDbSnapshotContext(MongoDbPartition partition) {
+            super(partition);
+        }
     }
 }

@@ -10,6 +10,7 @@ import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
 
@@ -22,9 +23,9 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object>
     private final Object[] oldValues;
     private final Object[] newValues;
 
-    public LogMinerChangeRecordEmitter(OffsetContext offset, EventType eventType, Object[] oldValues,
+    public LogMinerChangeRecordEmitter(Partition partition, OffsetContext offset, EventType eventType, Object[] oldValues,
                                        Object[] newValues, Table table, Clock clock) {
-        super(offset, table, clock);
+        super(partition, offset, table, clock);
         this.eventType = eventType;
         this.oldValues = oldValues;
         this.newValues = newValues;

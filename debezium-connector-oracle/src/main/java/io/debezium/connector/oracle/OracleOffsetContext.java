@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -23,11 +22,9 @@ import io.debezium.schema.DataCollectionId;
 
 public class OracleOffsetContext implements OffsetContext {
 
-    public static final String SERVER_PARTITION_KEY = "server";
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
-    private final Map<String, String> partition;
 
     private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
@@ -48,8 +45,6 @@ public class OracleOffsetContext implements OffsetContext {
     public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, String lcrPosition,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-
         sourceInfo = new SourceInfo(connectorConfig);
         sourceInfo.setScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
@@ -119,11 +114,6 @@ public class OracleOffsetContext implements OffsetContext {
 
     public static Builder create() {
         return new Builder();
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        return partition;
     }
 
     @Override
