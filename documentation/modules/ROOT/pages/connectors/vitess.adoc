@@ -265,7 +265,7 @@ CREATE TABLE customers (
 );
 ----
 
-The emitted events for `UPDATE` and `DELETE` oeprations contain the previous values of all columns in the table.
+The emitted events for `UPDATE` and `DELETE` operations contain the previous values of all columns in the table.
 
 // Type: continue
 [[vitess-create-events]]
