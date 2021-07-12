@@ -48,7 +48,7 @@ This predicate has no configuration parameters.
 
 TopicNameMatches:: A regular expression that specifies the name of a topic that you want Kafka Connect to match.
 The predicate is true for connector records in which the topic name matches the specified regular expression.
-Use to apply an SMT according to the name of the topic.
+Use this predicate to apply an SMT according to the name of the topic.
 Topic name of the connect record matches the specified expression.
 
 .Additional resources
