@@ -42,7 +42,7 @@ The predicate evaluates to true for any records that include a header key that h
 
 RecordIsTombstone:: Matches records in which the key value of the record is `null`, representing a deleted row in the database.
 Tombstones are fields in a database that indicate that a record is not physically deleted, but has a logical deletion flag that is set to `true` when when the record is marked for deletion.
-The predicate evaluates to `true` for any record that has a `null` key value.
+The predicate evaluates to `true` for any record that has a `null` value.
 Use this predicate in combination with a filter SMT to remove tombstone records.
 This predicate has no configuration parameters.
 
