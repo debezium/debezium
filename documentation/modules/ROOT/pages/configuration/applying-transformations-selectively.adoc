@@ -4,7 +4,9 @@
 // Title: Applying transformations selectively with SMT predicates
 = Applying transformations selectively
 
-You can define a predicate for a single message transformation to specify a condition that event records must match before Kafka Connect applies the transformation.
+By default, when you configure a single message transformation (SMT) for a Kafka Connect connector, the transformation is applied to every record that the connector processes.
+You can define SMT predicates to modify the default behavior so that Kafka Connect applies transformations to some records, and not to others.
+Predicates can be assigned to transformations for source connectors, such as {prodname}, as well as sink connectors.
 
 // Type: concept
 // ModuleID: about-smt-predicates
@@ -13,13 +15,18 @@ You can define a predicate for a single message transformation to specify a cond
 
 {prodname} provides several single message transformations (SMTs) that you can use to modify event records before Kafka Connect saves the records to Kafka topics.
 By default, when you configure one of these SMTs for a {prodname} connector, Kafka Connect applies that transformation to every record that the connector emits.
+However, there might be instances in which you want to apply a transformation selectively, so that it modifies only that subset of change event messages that share a common characteristic.
 
-However, there can be instances in which you want to apply a transformation selectively, so that it modifies only that subset of change event messages that share a common characteristic.
 For example, you might want to run the transformation only on event messages from a specific table or that include a specific header key.
-In environments that run Apache Kafka 2.6 or greater, you can append a predicate statement to a transformation to instruct Kafka Connect to apply the SMT only to event records that match a specified condition.
-When a predicate is configured, Kafka Connect evaluates each incoming message that it processes against the condition specified in the predicate.
-If the predicate condition is true for the event message, then the SMT is applied.
-Otherwise, the message is passed without any modifications.
+In environments that run Apache Kafka 2.6 or greater, you can append a predicate statement to a transformation to instruct Kafka Connect to apply the SMT only to certain records.
+In the predicate, you specify a condition that Kafka Connect uses to evaluate each message that it processes. 
+When a {prodname} connector emits a change event message, Kafka Connect checks the message against the configured predicate condition.
+If the condition is true for the event message, Kafka Connect applies the transformation, and then writes the message to a Kafka topic. 
+Messages that do not match the condition are sent to Kafka unmodified.
+
+The situation is similar for predicates that you define for a sink connector SMT.
+The connector reads messages from a Kafka topic and Kafka Connect evaluates the messages against the predicate condition.
+If a message matches the condition, Kafka Connect applies the transformation and then passes the messages to the sink consumer.
 
 After you define a predicate, you can reuse it and apply it to other transforms.
 Predicates also include a `negate` option that you can use to invert a predicate so that the predicate condition is applied only to records that do not match the condition that is defined in the predicate statement.
