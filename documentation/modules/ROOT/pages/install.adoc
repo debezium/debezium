@@ -60,7 +60,7 @@ By default, the directory _/kafka/connect_ is used as plugin directory by the {p
 So any additional connectors you may wish to use should be added to that directory.
 Alternatively, you can add further directories to the plugin path by specifying the `KAFKA_CONNECT_PLUGINS_DIR` environment variable when starting the container
 (e.g. `-e KAFKA_CONNECT_PLUGINS_DIR=/kafka/connect/,/path/to/further/plugins`).
-When using the Docker image for Kafka Connect provided by Confluent, you can specify the `CONNECT_PLUGIN_PATH` environment variable to achieve the same.
+When using the container image for Kafka Connect provided by Confluent, you can specify the `CONNECT_PLUGIN_PATH` environment variable to achieve the same.
 
 Not that Java 8 or later is required to run the {prodname} connectors.
 
