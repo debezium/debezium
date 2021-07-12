@@ -28,8 +28,8 @@ The situation is similar for predicates that you define for a sink connector SMT
 The connector reads messages from a Kafka topic and Kafka Connect evaluates the messages against the predicate condition.
 If a message matches the condition, Kafka Connect applies the transformation and then passes the messages to the sink consumer.
 
-After you define a predicate, you can reuse it and apply it to other transforms.
-Predicates also include a `negate` option that you can use to invert a predicate so that the predicate condition is applied only to records that do not match the condition that is defined in the predicate statement.
+After you define a predicate, you can reuse it and apply it to multiple transforms.
+Predicates also include a `negate` option that you can use to invert a predicate so that the predicate condition is applied only to records that do _not_ match the condition that is defined in the predicate statement.
 You can use the `negate` option to pair the predicate with other transforms that are based on negating the condition.
 
 .Predicate elements
