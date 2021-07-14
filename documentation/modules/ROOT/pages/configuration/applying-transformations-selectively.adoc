@@ -2,11 +2,12 @@
 // Type: assembly
 // ModuleId: applying-transformations-selectively-with-smt-predicates
 // Title: Applying transformations selectively with SMT predicates
+[id="applying-transformations-selectively"]
 = Applying transformations selectively
 
-By default, when you configure a single message transformation (SMT) for a Kafka Connect connector, the transformation is applied to every record that the connector processes.
-You can define SMT predicates to modify the default behavior so that Kafka Connect applies transformations to some records, and not to others.
-Predicates can be assigned to transformations for source connectors, such as {prodname}, as well as sink connectors.
+When you configure a single message transformation (SMTs) for a connector, you can define a predicate for the transformation.
+The predicate specifies how to apply the transformation conditionally to a subset of the messages that the connector processes.
+You can assign predicates to transformations that you configure for source connectors, such as {prodname}, or to sink connectors.
 
 // Type: concept
 // ModuleID: about-smt-predicates
@@ -17,11 +18,11 @@ Predicates can be assigned to transformations for source connectors, such as {pr
 By default, when you configure one of these SMTs for a {prodname} connector, Kafka Connect applies that transformation to every record that the connector emits.
 However, there might be instances in which you want to apply a transformation selectively, so that it modifies only that subset of change event messages that share a common characteristic.
 
-For example, you might want to run the transformation only on event messages from a specific table or that include a specific header key.
+For example, for a {prodname} connector, you might want to run the transformation only on event messages from a specific table or that include a specific header key.
 In environments that run Apache Kafka 2.6 or greater, you can append a predicate statement to a transformation to instruct Kafka Connect to apply the SMT only to certain records.
-In the predicate, you specify a condition that Kafka Connect uses to evaluate each message that it processes. 
+In the predicate, you specify a condition that Kafka Connect uses to evaluate each message that it processes.
 When a {prodname} connector emits a change event message, Kafka Connect checks the message against the configured predicate condition.
-If the condition is true for the event message, Kafka Connect applies the transformation, and then writes the message to a Kafka topic. 
+If the condition is true for the event message, Kafka Connect applies the transformation, and then writes the message to a Kafka topic.
 Messages that do not match the condition are sent to Kafka unmodified.
 
 The situation is similar for predicates that you define for a sink connector SMT.
@@ -47,16 +48,28 @@ The following predicate types are available by default:
 HasHeaderKey:: Specifies a key name in the header in the event message that you want Kafka Connect to evaluate.
 The predicate evaluates to true for any records that include a header key that has the specified name.
 
-RecordIsTombstone:: Matches records in which the key value of the record is `null`, representing a deleted row in the database.
-Tombstones are fields in a database that indicate that a record is not physically deleted, but has a logical deletion flag that is set to `true` when when the record is marked for deletion.
+RecordIsTombstone:: Matches Kafka _tombstone_ records.
 The predicate evaluates to `true` for any record that has a `null` value.
 Use this predicate in combination with a filter SMT to remove tombstone records.
 This predicate has no configuration parameters.
++
+A tombstone in Kafka is a record that has a key with a 0-byte, `null` payload.
+When a {prodname} connector processes a delete operation in the source database, the connector emits two change events for the delete operation:
+
+* A delete operation (`"op" : "d"`) event that provides the previous value of the database record.
+* A tombstone event that has the same key, but a `null` value.
++
+The tombstone represents a delete marker for the the row.
+When link:{link-kafka-docs}#compaction[log compaction] is enabled for Kafka, the presence of a tombstone causes Kafka to remove all events with the same key when it compacts the topic.
+Even after the earlier messages are removed, the presence of the tombstone event enables consumers to read the topic from the beginning and retrieve the current state of any events.
+Log compaction occurs periodically, with the compaction interval controlled by the link:{link-kafka-docs}#topicconfigs_delete.retention.ms[`delete.retention.ms`] setting for the topic.
++
+In some cases you might want to configure {prodname} so that it does not emit tombstone events.
+For more information, see xref:ignoring-tombstone-events[Ignoring tombstone events].
 
 TopicNameMatches:: A regular expression that specifies the name of a topic that you want Kafka Connect to match.
 The predicate is true for connector records in which the topic name matches the specified regular expression.
-Use this predicate to apply an SMT according to the name of the topic.
-Topic name of the connect record matches the specified expression.
+Use this predicate to apply an SMT to records based on the name of the source table.
 
 .Additional resources
 
@@ -66,12 +79,12 @@ Topic name of the connect record matches the specified expression.
 // Type: procedure
 [id="defining-smt-predicates"]
 == Defining SMT predicates
-
+ifdef::product[]
 By default, Kafka Connect applies each single message transformation in the {prodname} connector configuration to every change event record that it receives from {prodname}.
 Beginning with Apache Kafka 2.6, you can define an SMT predicate for a transformation in the connector configuration that controls how Kafka Connect applies the transformation.
 The predicate statement defines the conditions under which Kafka Connect applies the transformation to event records emitted by {prodname}.
 Kafka Connect evaluates the predicate statement and then applies the SMT selectively to the subset of records that match the condition that is defined in the predicate.
-
+endif::product[]
 Configuring Kafka Connect predicates is similar to configuring transforms.
 You specify a predicate alias, associate the alias with a transform, and then define the type and configuration for the predicate.
 
@@ -81,6 +94,8 @@ ifdef::product[]
 ({StreamsName}1.6 or greater)
 endif::product[]
 .
+
+* An SMT is configured for the {prodname} connector.
 
 .Procedure
 . In the {prodname} connector configuration, specify a predicate alias for the `predicates` parameter, for example, `IsOutboxTable`.
@@ -129,7 +144,7 @@ For example:
 ----
 transforms.outbox.negate=true
 ----
-
++
 The preceding property inverts the set of records that the predicate matches, so that Kafka Connect applies the transform to any record that does not match the condition specified in the predicate.
 
 .Example: TopicNameMatch predicate for the outbox event router transformation
@@ -147,4 +162,33 @@ predicates=IsOutboxTable
 predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
 predicates.IsOutboxTable.pattern=outbox.event.*
 
+----
+
+// Type: procedure
+[id="ignoring-tombstone-events"]
+== Ignoring tombstone events
+
+You can control whether {prodname} emits tombstone events, and how long Kafka retains them.
+Depending on your data pipeline, you might want to configure {prodname} so that it does not emit tombstone events.
+
+Whether you enable {prodname} to emit tombstones depends on how topics are consumed in your environment and by the characteristics of the sink consumer.
+Some sink connectors rely on tombstone events to remove records from downstream data stores.
+In cases where sink connectors rely on tombstone records to indicate when to delete records in downstream data stores, configure {prodname} to emit them.
+
+To ensure that sink connectors receive tombstone events, set the retention policy for topics, so that the connector are able to read the event messages before Kafka removes them during log compaction.
+The length of time that a topic retains tombstones before compaction is controlled by the link:{link-kafka-docs}#topicconfigs_delete.retention.ms[`delete.retention.ms`] property for the topic.
+
+Some sink connectors or downstream Kafka consumers are unable to process records with a null value.
+To avoid errors in sink connectors that cannot handle tombstone records, you can configure {prodname} to strip out tombstone records before it saves event records to Kafka topic.
+
+If you support downstream consumers that cannot process tombstones, rather than using the `RecordIsTombstone` predicate to remove tombstone messages after {prodname} emits them, you can prevent {prodname} from emitting tombstones in the first place.
+
+.Procedure
+* To prevent {prodname} from emitting tombstone events for deleted database records, set the connector option `tombstones.on.delete` to `false`.
++
+For example:
++
+[source]
+----
+“tombstones.on.delete”: “false”
 ----
