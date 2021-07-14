@@ -50,7 +50,7 @@ node('Slave') {
                         mkdir "\${CONNECTOR_SOURCE_DIR}"
                         curl -Lv "\${SOURCE_MAVEN_REPO}/debezium-connector-\${CONNECTOR}/\${CONNECTOR_BUILD_VERSION}/debezium-connector-\${CONNECTOR}-\${CONNECTOR_BUILD_VERSION}-project-sources.tar.gz" | tar xz --strip-components=1 -C "\${CONNECTOR_SOURCE_DIR}"
                     done
-                    curl -Lv "\${SOURCE_MAVEN_REPO}/debezium-parent/${BUILD_VERSION}/debezium-parent-${BUILD_VERSION}-project-sources.tar.gz" | tar xz --strip-components=1 -C "${SOURCES_DIR}"
+                    curl -Lv "\${SOURCE_MAVEN_REPO}/debezium-build-parent/${BUILD_VERSION}/debezium-build-parent-${BUILD_VERSION}-project-sources.tar.gz" | tar xz --strip-components=1 -C "${SOURCES_DIR}"
                     (cd "${SOURCES_DIR}" && zip -r "../debezium-${BUILD_VERSION}-src.zip" *)
                     rm -rf "${SOURCES_DIR}"
                     ls -al

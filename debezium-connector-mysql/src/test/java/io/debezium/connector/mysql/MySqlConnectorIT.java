@@ -674,11 +674,13 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Read the last committed offsets, and verify the binlog coordinates ...
+        final String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
         final MySqlOffsetContext.Loader loader = new MySqlOffsetContext.Loader(new MySqlConnectorConfig(Configuration.create()
-                .with(MySqlConnectorConfig.SERVER_NAME, config.getString(MySqlConnectorConfig.SERVER_NAME))
+                .with(MySqlConnectorConfig.SERVER_NAME, serverName)
                 .build()));
-        Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, loader.getPartition());
-        final MySqlOffsetContext offsetContext = (MySqlOffsetContext) loader.load(lastCommittedOffset);
+        final Map<String, String> partition = new MySqlPartition(serverName).getSourcePartition();
+        Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, partition);
+        final MySqlOffsetContext offsetContext = loader.load(lastCommittedOffset);
         final SourceInfo persistedOffsetSource = offsetContext.getSource();
         Testing.print("Position before inserts: " + positionBeforeInserts);
         Testing.print("Position after inserts:  " + positionAfterInserts);

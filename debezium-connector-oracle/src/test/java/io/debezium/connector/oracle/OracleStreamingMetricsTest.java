@@ -125,8 +125,6 @@ public class OracleStreamingMetricsTest {
 
         assertThat(metrics.toString().contains("logMinerQueryCount"));
 
-        assertThat(metrics.getRecordMiningHistory()).isFalse();
-
         metrics.incrementNetworkConnectionProblemsCounter();
         assertThat(metrics.getNetworkConnectionProblemsCounter()).isEqualTo(1);
 

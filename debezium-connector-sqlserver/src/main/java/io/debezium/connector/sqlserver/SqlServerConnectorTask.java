@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -37,7 +38,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContext> {
+public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, SqlServerOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorTask.class);
     private static final String CONTEXT_NAME = "sql-server-connector-task";
@@ -55,7 +56,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
     }
 
     @Override
-    public ChangeEventSourceCoordinator<SqlServerOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
@@ -85,7 +86,11 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
         this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
         this.schema.initializeStorage();
 
-        final SqlServerOffsetContext previousOffset = getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
+        Map<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
+                new SqlServerPartition.Provider(connectorConfig),
+                new SqlServerOffsetContext.Loader(connectorConfig));
+        SqlServerOffsetContext previousOffset = getTheOnlyOffset(offsets);
+
         if (previousOffset != null) {
             schema.recover(previousOffset);
         }
@@ -115,8 +120,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
                 metadataProvider,
                 schemaNameAdjuster);
 
-        ChangeEventSourceCoordinator<SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                previousOffset,
+        ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+                offsets,
                 errorHandler,
                 SqlServerConnector.class,
                 connectorConfig,

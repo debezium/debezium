@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.xstream;
 
-import java.util.Collections;
 import java.util.Map;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -26,11 +25,6 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
 
     public XStreamOracleOffsetContextLoader(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        return Collections.singletonMap(OracleOffsetContext.SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
     }
 
     @Override

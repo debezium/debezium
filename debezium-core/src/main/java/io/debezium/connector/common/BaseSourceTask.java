@@ -11,6 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,6 +23,7 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -39,7 +41,7 @@ import io.debezium.util.Strings;
  *
  * @author Gunnar Morling
  */
-public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask {
+public abstract class BaseSourceTask<P extends Partition, O extends OffsetContext> extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
@@ -68,7 +70,7 @@ public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask
      * The change event source coordinator for those connectors adhering to the new
      * framework structure, {@code null} for legacy-style connectors.
      */
-    private ChangeEventSourceCoordinator<O> coordinator;
+    private ChangeEventSourceCoordinator<P, O> coordinator;
 
     /**
      * The latest offset that has been acknowledged by the Kafka producer. Will be
@@ -141,7 +143,7 @@ public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask
      *            the task configuration; implementations should wrap it in a dedicated implementation of
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
-    protected abstract ChangeEventSourceCoordinator<O> start(Configuration config);
+    protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
@@ -296,28 +298,58 @@ public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask
     protected abstract Iterable<Field> getAllConfigurationFields();
 
     /**
-     * Loads the connector's persistent offset (if present) via the given loader.
+     * Loads the connector's persistent offsets (if present) via the given loader.
      */
-    protected O getPreviousOffset(OffsetContext.Loader<O> loader) {
-        Map<String, ?> partition = loader.getPartition();
+    protected Map<P, O> getPreviousOffsets(Partition.Provider<P> provider, OffsetContext.Loader<O> loader) {
+        Set<P> partitions = provider.getPartitions();
+        OffsetReader<P, O, OffsetContext.Loader<O>> reader = new OffsetReader<>(
+                context.offsetStorageReader(), loader);
+        Map<P, O> offsets = reader.offsets(partitions);
 
-        if (lastOffset != null) {
-            O offsetContext = loader.load(lastOffset);
-            LOGGER.info("Found previous offset after restart {}", offsetContext);
-            return offsetContext;
+        boolean found = false;
+        for (P partition : partitions) {
+            O offset = offsets.get(partition);
+
+            if (offset != null) {
+                found = true;
+                LOGGER.info("Found previous partition offset {}: {}", partition, offset);
+            }
         }
 
-        Map<String, Object> previousOffset = context.offsetStorageReader()
-                .offsets(Collections.singleton(partition))
-                .get(partition);
+        if (!found) {
+            LOGGER.info("No previous offsets found");
+        }
 
-        if (previousOffset != null) {
-            O offsetContext = loader.load(previousOffset);
-            LOGGER.info("Found previous offset {}", offsetContext);
-            return offsetContext;
+        return offsets;
+    }
+
+    /**
+     * Returns the offset of the only partition that the task is configured to use.
+     *
+     * This method is meant to be used only by the connectors that do not implement handling
+     * multiple partitions per task.
+     */
+    protected P getTheOnlyPartition(Map<P, O> offsets) {
+        if (offsets.size() != 1) {
+            throw new DebeziumException("The task must be configured to use exactly one partition, "
+                    + offsets.size() + " found");
         }
-        else {
-            return null;
+
+        return offsets.entrySet().iterator().next().getKey();
+    }
+
+    /**
+     * Returns the offset of the only partition that the task is configured to use.
+     *
+     * This method is meant to be used only by the connectors that do not implement handling
+     * multiple partitions per task.
+     */
+    protected O getTheOnlyOffset(Map<P, O> offsets) {
+        if (offsets.size() != 1) {
+            throw new DebeziumException("The task must be configured to use exactly one partition, "
+                    + offsets.size() + " found");
         }
+
+        return offsets.entrySet().iterator().next().getValue();
     }
 }

@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.relational.Table;
 
 /**

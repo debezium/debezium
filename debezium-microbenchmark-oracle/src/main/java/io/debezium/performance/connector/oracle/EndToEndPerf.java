@@ -48,7 +48,6 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.embedded.EmbeddedEngine;
@@ -86,9 +85,6 @@ public class EndToEndPerf {
         @Param({ "1000", "5000", "10000" })
         public int dmlEvents;
 
-        @Param({ "legacy", "fast" })
-        public String parser;
-
         @Param({ "redo_log_catalog", "online_catalog" })
         public String miningStrategy;
 
@@ -118,7 +114,6 @@ public class EndToEndPerf {
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TEST")
                     .with(OracleConnectorConfig.LOG_MINING_STRATEGY, LogMiningStrategy.parse(miningStrategy))
-                    .with(OracleConnectorConfig.LOG_MINING_DML_PARSER, LogMiningDmlParser.parse(parser))
                     .build();
 
             Configuration config = Configuration.copy(connectorConfig)

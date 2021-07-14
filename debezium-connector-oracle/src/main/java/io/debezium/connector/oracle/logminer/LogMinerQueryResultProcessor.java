@@ -17,19 +17,16 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
-import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
@@ -55,7 +52,6 @@ class LogMinerQueryResultProcessor {
     private final OracleDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
     private final OracleConnectorConfig connectorConfig;
-    private final HistoryRecorder historyRecorder;
     private final SelectLobParser selectLobParser;
 
     private Scn currentOffsetScn = Scn.NULL;
@@ -65,25 +61,16 @@ class LogMinerQueryResultProcessor {
     LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
                                  OracleStreamingChangeEventSourceMetrics streamingMetrics, TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
-                                 EventDispatcher<TableId> dispatcher,
-                                 HistoryRecorder historyRecorder) {
+                                 EventDispatcher<TableId> dispatcher) {
         this.context = context;
         this.streamingMetrics = streamingMetrics;
         this.transactionalBuffer = transactionalBuffer;
         this.offsetContext = offsetContext;
         this.schema = schema;
         this.dispatcher = dispatcher;
-        this.historyRecorder = historyRecorder;
         this.connectorConfig = connectorConfig;
-        this.dmlParser = resolveParser(connectorConfig, schema.getValueConverters());
+        this.dmlParser = new LogMinerDmlParser();
         this.selectLobParser = new SelectLobParser();
-    }
-
-    private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters) {
-        if (connectorConfig.getLogMiningDmlParser().equals(LogMiningDmlParser.LEGACY)) {
-            return new SimpleDmlParser(connectorConfig.getCatalogName(), valueConverters);
-        }
-        return new LogMinerDmlParser();
     }
 
     /**
@@ -118,7 +105,7 @@ class LogMinerQueryResultProcessor {
             long hash = RowMapper.getHash(resultSet);
             boolean dml = isDmlOperation(operationCode);
 
-            String redoSql = RowMapper.getSqlRedo(resultSet, dml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime, txId);
+            String redoSql = RowMapper.getSqlRedo(resultSet);
 
             LOGGER.trace("scn={}, operationCode={}, operation={}, table={}, segOwner={}, userName={}, rowId={}, rollbackFlag={}", scn, operationCode, operation,
                     tableName, segOwner, userName, rowId, rollbackFlag);
@@ -136,7 +123,6 @@ class LogMinerQueryResultProcessor {
                 case RowMapper.COMMIT: {
                     // Commits a transaction
                     if (transactionalBuffer.isTransactionRegistered(txId)) {
-                        historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                         if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage, dispatcher)) {
                             LOGGER.trace("COMMIT, {}", logMessage);
                             commitCounter++;
@@ -147,7 +133,6 @@ class LogMinerQueryResultProcessor {
                 case RowMapper.ROLLBACK: {
                     // Rollback a transaction
                     if (transactionalBuffer.isTransactionRegistered(txId)) {
-                        historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                         if (transactionalBuffer.rollback(txId, logMessage)) {
                             LOGGER.trace("ROLLBACK, {}", logMessage);
                             rollbackCounter++;
@@ -160,7 +145,6 @@ class LogMinerQueryResultProcessor {
                         LOGGER.trace("DDL: {} has already been seen, skipped.", redoSql);
                         continue;
                     }
-                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                     LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
                     try {
                         if (tableName != null) {
@@ -184,7 +168,6 @@ class LogMinerQueryResultProcessor {
                     }
                 }
                 case RowMapper.MISSING_SCN: {
-                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                     LogMinerHelper.logWarn(streamingMetrics, "Missing SCN, {}", logMessage);
                     break;
                 }
@@ -307,7 +290,6 @@ class LogMinerQueryResultProcessor {
                 streamingMetrics.getNumberOfActiveTransactions(), streamingMetrics.getMillisecondToSleepBetweenMiningQuery());
 
         streamingMetrics.addProcessedRows(rows);
-        historyRecorder.flush();
     }
 
     private boolean hasNext(ResultSet resultSet) throws SQLException {
@@ -347,7 +329,7 @@ class LogMinerQueryResultProcessor {
         final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the LogMiner query results.
         // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.jdbcConfig(), () -> getClass().getClassLoader())) {
+        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader())) {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
             }
@@ -391,9 +373,6 @@ class LogMinerQueryResultProcessor {
             StringBuilder message = new StringBuilder();
             message.append("DML statement couldn't be parsed.");
             message.append(" Please open a Jira issue with the statement '").append(redoSql).append("'.");
-            if (LogMiningDmlParser.FAST.equals(connectorConfig.getLogMiningDmlParser())) {
-                message.append(" You can set internal.log.mining.dml.parser='legacy' as a workaround until the parse error is fixed.");
-            }
             throw new DmlParserException(message.toString(), e);
         }
 

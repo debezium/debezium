@@ -7,14 +7,13 @@ package io.debezium.connector.oracle.logminer;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
 
 /**
- * Emits change record based on a single {@link LogMinerDmlEntry} event.
+ * Emits change records based on an event read from Oracle LogMiner.
  */
 public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object> {
 

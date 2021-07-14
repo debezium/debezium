@@ -387,4 +387,20 @@ public class TestHelper {
         final String s = System.getProperty(OracleConnectorConfig.CONNECTOR_ADAPTER.name());
         return (s == null || s.length() == 0) ? OracleConnectorConfig.ConnectorAdapter.LOG_MINER : OracleConnectorConfig.ConnectorAdapter.parse(s);
     }
+
+    /**
+     * Drops all tables visible to user {@link #SCHEMA_USER}.
+     */
+    public static void dropAllTables() {
+        try (OracleConnection connection = testConnection()) {
+            connection.query("SELECT TABLE_NAME FROM USER_TABLES", rs -> {
+                while (rs.next()) {
+                    connection.execute("DROP TABLE " + rs.getString(1));
+                }
+            });
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to clean database");
+        }
+    }
 }

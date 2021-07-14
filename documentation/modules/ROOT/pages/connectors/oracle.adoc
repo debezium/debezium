@@ -1565,6 +1565,10 @@ we have plans to enhance this behavior in a future release by means of adding a 
 The default behavior automatically selects the first valid, local configured destination; however a specific
 destination can be used by specifying the destination name, i.e. `LOG_ARCHIVE_DEST_5`.
 
+|[[oracle-property-log-mining-username-exclude-list]]<<oracle-property-log-mining-username-exclude-list, `+log.mining.username.exclude.list+`>>
+|
+|List of database users to exclude from the LogMiner query; useful if there's changes from specific users which you'd always like to exclude from the capturing process.
+
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
 |Controls whether or not large object (CLOB or BLOB) column values are emitted in change events. +
@@ -1758,11 +1762,6 @@ The {prodname} Oracle connector also provides the following additional streaming
 |`int`
 |The number of hours that transactions will be retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
 See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
-
-|[[oracle-streaming-metrics-recordmininghistory]]<<oracle-streaming-metrics-recordmininghistory, `+RecordMiningHistory+`>>
-|`boolean`
-|Flag that indicates if the mining results are being recorded.
-See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.class`>> for more details.
 
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
 |`long`

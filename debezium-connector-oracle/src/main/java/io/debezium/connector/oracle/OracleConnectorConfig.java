@@ -26,8 +26,6 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.connector.oracle.logminer.HistoryRecorder;
-import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
@@ -146,26 +144,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withDescription("A token to replace on snapshot predicate template");
 
-    @Deprecated
-    public static final Field LOG_MINING_HISTORY_RECORDER_CLASS = Field.createInternal("log.mining.history.recorder.class")
-            .withDisplayName("Log Mining History Recorder Class")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withInvisibleRecommender()
-            .withDescription("(Deprecated) Allows connector deployment to capture log mining results");
-
-    @Deprecated
-    public static final Field LOG_MINING_HISTORY_RETENTION = Field.createInternal("log.mining.history.retention.hours")
-            .withDisplayName("Log Mining history retention")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(0)
-            .withDescription(
-                    "(Deprecated) When supplying a log.mining.history.recorder.class, this option specifies the number of hours "
-                            + "the recorder should keep the history.  The default, 0, indicates that no history should be retained.");
-
     public static final Field LOG_MINING_TRANSACTION_RETENTION = Field.create("log.mining.transaction.retention.hours")
             .withDisplayName("Log Mining long running transaction retention")
             .withType(Type.LONG)
@@ -198,15 +176,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::requiredWhenNoHostname)
             .withDescription("Complete JDBC URL as an alternative to specifying hostname, port and database provided "
                     + "as a way to support alternative connection scenarios.");
-
-    public static final Field LOG_MINING_DML_PARSER = Field.createInternal("log.mining.dml.parser")
-            .withDisplayName("Log Mining DML parser implementation")
-            .withEnum(LogMiningDmlParser.class, LogMiningDmlParser.FAST)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("The parser implementation to use when parsing DML operations:" +
-                    "'legacy': the legacy parser implementation based on JSqlParser; " +
-                    "'fast': the robust parser implementation that is streamlined specifically for LogMiner redo format");
 
     public static final Field LOG_MINING_ARCHIVE_LOG_HOURS = Field.create("log.mining.archive.log.hours")
             .withDisplayName("Log Mining Archive Log Hours")
@@ -304,6 +273,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("When set to `false`, the default, LOB fields will not be captured nor emitted. When set to `true`, the connector " +
                     "will capture LOB fields and emit changes for those fields like any other column type.");
 
+    public static final Field LOG_MINING_USERNAME_EXCLUDE_LIST = Field.create("log.mining.username.exclude.list")
+            .withDisplayName("List of users to exclude from LogMiner query")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Comma separated list of usernames to exclude from LogMiner query.");
+
     public static final Field LOG_MINING_ARCHIVE_DESTINATION_NAME = Field.create("log.mining.archive.destination.name")
             .withDisplayName("Name of the archive log destination to be used for reading archive logs")
             .withType(Type.STRING)
@@ -340,8 +316,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     SNAPSHOT_LOCKING_MODE,
                     RAC_SYSTEM,
                     RAC_NODES,
-                    LOG_MINING_HISTORY_RECORDER_CLASS,
-                    LOG_MINING_HISTORY_RETENTION,
                     LOG_MINING_ARCHIVE_LOG_HOURS,
                     LOG_MINING_BATCH_SIZE_DEFAULT,
                     LOG_MINING_BATCH_SIZE_MIN,
@@ -351,9 +325,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SLEEP_TIME_MAX_MS,
                     LOG_MINING_SLEEP_TIME_INCREMENT_MS,
                     LOG_MINING_TRANSACTION_RETENTION,
-                    LOG_MINING_DML_PARSER,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
                     LOB_ENABLED,
+                    LOG_MINING_USERNAME_EXCLUDE_LIST,
                     LOG_MINING_ARCHIVE_DESTINATION_NAME)
             .create();
 
@@ -376,8 +350,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final SnapshotMode snapshotMode;
 
     private final String oracleVersion;
-    private final HistoryRecorder logMiningHistoryRecorder;
-    private final Configuration jdbcConfig;
     private ConnectorAdapter connectorAdapter;
     private final StreamingAdapter streamingAdapter;
     private final String snapshotEnhancementToken;
@@ -385,7 +357,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
-    private final long logMiningHistoryRetentionHours;
     private final Set<String> racNodes;
     private final boolean logMiningContinuousMine;
     private final Duration logMiningArchiveLogRetention;
@@ -398,9 +369,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningSleepTimeDefault;
     private final Duration logMiningSleepTimeIncrement;
     private final Duration logMiningTransactionRetention;
-    private final LogMiningDmlParser dmlParser;
     private final boolean archiveLogOnlyMode;
     private final boolean lobEnabled;
+    private final Set<String> logMiningUsernameExcludes;
     private final String logMiningArchiveDestinationName;
 
     public OracleConnectorConfig(Configuration config) {
@@ -412,8 +383,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.oracleVersion = config.getString(ORACLE_VERSION);
-        this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
-        this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
@@ -426,7 +395,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
-        this.logMiningHistoryRetentionHours = config.getLong(LOG_MINING_HISTORY_RETENTION);
         this.racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
         this.logMiningContinuousMine = config.getBoolean(CONTINUOUS_MINE);
         this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
@@ -439,23 +407,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
         this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
-        this.dmlParser = LogMiningDmlParser.parse(config.getString(LOG_MINING_DML_PARSER));
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
+        this.logMiningUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
     }
 
     private static String toUpperCase(String property) {
         return property == null ? null : property.toUpperCase();
-    }
-
-    private static HistoryRecorder resolveLogMiningHistoryRecorder(Configuration config) {
-        if (!config.hasKey(LOG_MINING_HISTORY_RECORDER_CLASS.name())) {
-            return new NeverHistoryRecorder();
-        }
-        if (config.getLong(LOG_MINING_HISTORY_RETENTION) == 0L) {
-            return new NeverHistoryRecorder();
-        }
-        return config.getInstance(LOG_MINING_HISTORY_RECORDER_CLASS, HistoryRecorder.class);
     }
 
     public String getDatabaseName() {
@@ -862,27 +820,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return whether log mining history is recorded
-     */
-    public Boolean isLogMiningHistoryRecorded() {
-        return logMiningHistoryRetentionHours > 0;
-    }
-
-    /**
-     * @return the log mining history recorder implementation, may be null
-     */
-    public HistoryRecorder getLogMiningHistoryRecorder() {
-        return logMiningHistoryRecorder;
-    }
-
-    /**
-     * @return the number of hours log mining history is retained if history is recorded
-     */
-    public long getLogMinerHistoryRetentionHours() {
-        return logMiningHistoryRetentionHours;
-    }
-
-    /**
      * @return whether Oracle is using RAC
      */
     public Boolean isRacSystem() {
@@ -989,13 +926,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return the log mining parser implementation to be used
-     */
-    public LogMiningDmlParser getLogMiningDmlParser() {
-        return dmlParser;
-    }
-
-    /**
      * @return true if the connector is to mine archive logs only, false to mine all logs.
      */
     public boolean isArchiveLogOnlyMode() {
@@ -1010,14 +940,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * @return User names to exclude from the LogMiner query
+     */
+    public Set<String> getLogMiningUsernameExcludes() {
+        return logMiningUsernameExcludes;
+    }
+
+    /**
      * @return name of the archive destination configuration to use
      */
     public String getLogMiningArchiveDestinationName() {
         return logMiningArchiveDestinationName;
-    }
-
-    public Configuration jdbcConfig() {
-        return jdbcConfig;
     }
 
     @Override

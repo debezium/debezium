@@ -6,6 +6,7 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.Map;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
@@ -28,28 +29,32 @@ import io.debezium.schema.DatabaseSchema;
  * Coordinates one or more {@link ChangeEventSource}s and executes them in order. Extends the base
  * {@link ChangeEventSourceCoordinator} to support a pre-snapshot catch up streaming phase.
  */
-public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoordinator<PostgresOffsetContext> {
+public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresChangeEventSourceCoordinator.class);
 
     private final Snapshotter snapshotter;
     private final SlotState slotInfo;
 
-    public PostgresChangeEventSourceCoordinator(PostgresOffsetContext previousOffset, ErrorHandler errorHandler,
+    public PostgresChangeEventSourceCoordinator(Map<PostgresPartition, PostgresOffsetContext> previousOffsets,
+                                                ErrorHandler errorHandler,
                                                 Class<? extends SourceConnector> connectorType,
                                                 CommonConnectorConfig connectorConfig,
                                                 PostgresChangeEventSourceFactory changeEventSourceFactory,
                                                 ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory,
                                                 EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema,
                                                 Snapshotter snapshotter, SlotState slotInfo) {
-        super(previousOffset, errorHandler, connectorType, connectorConfig, changeEventSourceFactory, changeEventSourceMetricsFactory, eventDispatcher, schema);
+        super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
+                changeEventSourceMetricsFactory, eventDispatcher, schema);
         this.snapshotter = snapshotter;
         this.slotInfo = slotInfo;
     }
 
     @Override
-    protected CatchUpStreamingResult executeCatchUpStreaming(PostgresOffsetContext previousOffset, ChangeEventSourceContext context,
-                                                             SnapshotChangeEventSource<PostgresOffsetContext> snapshotSource)
+    protected CatchUpStreamingResult executeCatchUpStreaming(ChangeEventSourceContext context,
+                                                             SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> snapshotSource,
+                                                             PostgresPartition partition,
+                                                             PostgresOffsetContext previousOffset)
             throws InterruptedException {
         if (previousOffset != null && !snapshotter.shouldStreamEventsStartingFromSnapshot() && slotInfo != null) {
             try {
@@ -61,7 +66,7 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
             }
             LOGGER.info("Previous connector state exists and will stream events until {} then perform snapshot",
                     previousOffset.getStreamingStoppingLsn());
-            streamEvents(previousOffset, context);
+            streamEvents(context, partition, previousOffset);
             return new CatchUpStreamingResult(true);
         }
 
