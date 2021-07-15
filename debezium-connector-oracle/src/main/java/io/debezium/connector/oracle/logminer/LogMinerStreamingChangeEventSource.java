@@ -25,6 +25,7 @@ import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -191,6 +192,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             }
                         }
 
+                        captureSessionMemoryStatistics(jdbcConnection);
+
                         streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
                         pauseBetweenMiningSessions();
                     }
@@ -206,6 +209,23 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
             }
         }
+    }
+
+    private void captureSessionMemoryStatistics(OracleConnection connection) throws SQLException {
+        long sessionUserGlobalAreaMemory = connection.getSessionStatisticByName("session uga memory");
+        long sessionUserGlobalAreaMaxMemory = connection.getSessionStatisticByName("session uga memory max");
+        streamingMetrics.setUserGlobalAreaMemory(sessionUserGlobalAreaMemory, sessionUserGlobalAreaMaxMemory);
+
+        long sessionProcessGlobalAreaMemory = connection.getSessionStatisticByName("session pga memory");
+        long sessionProcessGlobalAreaMaxMemory = connection.getSessionStatisticByName("session pga memory max");
+        streamingMetrics.setProcessGlobalAreaMemory(sessionProcessGlobalAreaMemory, sessionProcessGlobalAreaMaxMemory);
+
+        final DecimalFormat format = new DecimalFormat("#.##");
+        LOGGER.info("Oracle Session UGA {}MB (max = {}MB), PGA {}MB (max = {}MB)",
+                format.format(sessionUserGlobalAreaMemory / 1024.f / 1024.f),
+                format.format(sessionUserGlobalAreaMaxMemory / 1024.f / 1024.f),
+                format.format(sessionProcessGlobalAreaMemory / 1024.f / 1024.f),
+                format.format(sessionProcessGlobalAreaMaxMemory / 1024.f / 1024.f));
     }
 
     private void abandonOldTransactionsIfExist(OracleConnection connection, OracleOffsetContext offsetContext, TransactionalBuffer transactionalBuffer) {

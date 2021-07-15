@@ -367,6 +367,18 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
+    /**
+     * Get the current connection's session statistic by name.
+     *
+     * @param name the name of the statistic to be fetched, must not be {@code null}
+     * @return the session statistic value, never {@code null}
+     * @throws SQLException if an exception occurred obtaining the session statistic value
+     */
+    public Long getSessionStatisticByName(String name) throws SQLException {
+        return queryAndMap("SELECT VALUE FROM v$statname n, v$mystat m WHERE n.name='" + name +
+                "' AND n.statistic#=m.statistic#", rs -> rs.next() ? rs.getLong(1) : 0L);
+    }
+
     public static String connectionString(Configuration config) {
         return config.getString(URL) != null ? config.getString(URL)
                 : ConnectorAdapter.parse(config.getString("connection.adapter")).getConnectionUrl();
