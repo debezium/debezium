@@ -2072,8 +2072,28 @@ segment_attributes_clause
       )+
     ;
 
+external_table_clause
+    : '('? (TYPE access_driver_type)? external_table_data_props? ')'? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
+    ;
+
+access_driver_type
+    : regular_id
+    ;
+
+external_table_data_props
+    : DEFAULT DIRECTORY quoted_string
+    | LOCATION
+    ;
+
 physical_properties
     : deferred_segment_creation?  segment_attributes_clause table_compression?
+    | deferred_segment_creation? (
+        ORGANIZATION (
+            (HEAP segment_attributes_clause? heap_org_table_clause) |
+            (INDEX segment_attributes_clause? index_org_table_clause) |
+            (EXTERNAL external_table_clause)) |
+        EXTERNAL PARTITION ATTRIBUTES external_table_clause (REJECT LIMIT)?
+        )
     ;
 
 row_movement_clause
@@ -2622,6 +2642,10 @@ exceptions_clause
 
 move_table_clause
     : MOVE ONLINE? segment_attributes_clause? table_compression? index_org_table_clause? ((lob_storage_clause | varray_col_properties)+)? parallel_clause?
+    ;
+
+heap_org_table_clause
+    : table_compression?
     ;
 
 index_org_table_clause
