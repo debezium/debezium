@@ -583,7 +583,7 @@ create_index
     : CREATE (UNIQUE | BITMAP)? INDEX index_name
        ON (cluster_index_clause | table_index_clause | bitmap_join_index_clause)
        UNUSABLE?
-       ';'
+       ';'?
     ;
 
 cluster_index_clause
