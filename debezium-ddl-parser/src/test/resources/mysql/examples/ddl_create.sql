@@ -40,6 +40,8 @@ CREATE TABLE char_table (c1 CHAR VARYING(10), c2 CHARACTER VARYING(10), c3 NCHAR
 CREATE TABLE generated_persistent(id int NOT NULL AUTO_INCREMENT, ip_hash char(64) AS (SHA2(CONCAT(`token`, COALESCE(`ip`, "")), 256)) PERSISTENT, persistent int, PRIMARY KEY (`id`), UNIQUE KEY `token_and_ip_hash` (`ip_hash`)) ENGINE=InnoDB;
 create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));
 CREATE TABLE `tblSRCHjob_desc` (`description_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT, `description` mediumtext NOT NULL, PRIMARY KEY (`description_id`)) ENGINE=TokuDB AUTO_INCREMENT=4095997820 DEFAULT CHARSET=utf8mb4 ROW_FORMAT=TOKUDB_QUICKLZ;
+create table invisible_column_test(id int, col1 int INVISIBLE);
+create table visible_column_test(id int, col1 int VISIBLE);
 
 CREATE TABLE table_items (id INT, purchased DATE)
     PARTITION BY RANGE( YEAR(purchased) )
