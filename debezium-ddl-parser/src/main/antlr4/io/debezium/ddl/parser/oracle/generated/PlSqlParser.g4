@@ -2032,6 +2032,8 @@ table_compression
               | (QUERY | ARCHIVE) (LOW | HIGH)?
               )
         )?
+    | ROW STORE COMPRESS (BASIC | ADVANCED)?
+    | COLUMN STORE COMPRESS (FOR (QUERY | ARCHIVE) (LOW | HIGH)?)? ((NO)? ROW LEVEL LOCKING)?
     | NOCOMPRESS
     ;
 
@@ -2056,6 +2058,7 @@ storage_clause
          | OPTIMAL (size_clause | NULL_ )
          | BUFFER_POOL (KEEP | RECYCLE | DEFAULT)
          | FLASH_CACHE (KEEP | NONE | DEFAULT)
+         | CELL_FLASH_CACHE (KEEP | NONE | DEFAULT)
          | ENCRYPT
          )+
        ')'
@@ -2068,6 +2071,8 @@ deferred_segment_creation
 segment_attributes_clause
     : ( physical_attributes_clause
       | TABLESPACE tablespace_name=id_expression
+      // Added to support an unusual, undocumented syntax with Oracle 19
+      | table_compression
       | logging_clause
       )+
     ;
