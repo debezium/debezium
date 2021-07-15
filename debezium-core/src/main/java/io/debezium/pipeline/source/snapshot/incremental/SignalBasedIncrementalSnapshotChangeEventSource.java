@@ -216,6 +216,11 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
                 if (currentTable == null) {
                     break;
                 }
+                if (currentTable.primaryKeyColumns().isEmpty()) {
+                    LOGGER.warn("Incremental snapshot for table '{}' skipped cause the table has no primary keys", currentTableId);
+                    break;
+
+                }
                 if (!context.maximumKey().isPresent()) {
                     context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
                         if (!rs.next()) {
@@ -254,7 +259,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
             jdbcConnection.commit();
         }
         catch (SQLException e) {
-            throw new DebeziumException("Database error while executing incremental snapshot", e);
+            throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
         }
     }
 
