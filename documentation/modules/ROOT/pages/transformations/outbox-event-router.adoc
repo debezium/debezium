@@ -70,7 +70,7 @@ To learn about how to configure the {prodname} outbox event router SMT, consider
 
 A {prodname} connector that is configured to apply the outbox event router SMT generates the above message by transforming a {prodname} raw message like this:
 
-[source,javascript,indent=0]
+[source,javascript,indent=0,subs="attributes"]
 ----
 # Kafka Message key: "406c07f3-26f0-4eea-a50c-109940064b8f"
 # Kafka Message Headers: ""
@@ -86,7 +86,7 @@ A {prodname} connector that is configured to apply the outbox event router SMT g
     "type": "OrderCreated"
   },
   "source": {
-    "version": "0.9.3.Final",
+    "version": "{debezium-version}",
     "connector": "postgresql",
     "name": "dbserver1-bare",
     "db": "orderdb",
