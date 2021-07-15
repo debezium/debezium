@@ -295,6 +295,26 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     int getUnparsableDdlCount();
 
     /**
+     * @return the current mining session's UGA memory usage in bytes.
+     */
+    long getMiningSessionUserGlobalAreaMemoryInBytes();
+
+    /**
+     * @return the current mining session's UGA maximum memory usage in bytes.
+     */
+    long getMiningSessionUserGlobalAreaMaxMemoryInBytes();
+
+    /**
+     * @return the current mining session's PGA memory usage in bytes.
+     */
+    long getMiningSessionProcessGlobalAreaMemoryInBytes();
+
+    /**
+     * @return the current mining session's PGA maximum memory usage in bytes.
+     */
+    long getMiningSessionProcessGlobalAreaMaxMemoryInBytes();
+
+    /**
      * Resets metrics.
      */
     void reset();

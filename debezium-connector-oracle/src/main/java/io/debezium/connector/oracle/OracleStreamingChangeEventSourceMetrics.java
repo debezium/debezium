@@ -90,6 +90,10 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     private final AtomicReference<Scn> committedScn = new AtomicReference<>();
     private final AtomicReference<Scn> offsetScn = new AtomicReference<>();
     private final AtomicInteger unparsableDdlCount = new AtomicInteger();
+    private final AtomicLong miningSessionUserGlobalAreaMemory = new AtomicLong();
+    private final AtomicLong miningSessionUserGlobalAreaMaxMemory = new AtomicLong();
+    private final AtomicLong miningSessionProcessGlobalAreaMemory = new AtomicLong();
+    private final AtomicLong miningSessionProcessGlobalAreaMaxMemory = new AtomicLong();
 
     // Constants for sliding window algorithm
     private final int batchSizeMin;
@@ -177,6 +181,10 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         minBatchProcessingTime.set(Duration.ZERO);
         maxBatchProcessingTime.set(Duration.ZERO);
         totalResultSetNextTime.set(Duration.ZERO);
+        miningSessionUserGlobalAreaMemory.set(0L);
+        miningSessionUserGlobalAreaMaxMemory.set(0L);
+        miningSessionProcessGlobalAreaMemory.set(0L);
+        miningSessionProcessGlobalAreaMaxMemory.set(0L);
 
         // transactional buffer metrics
         lagFromTheSourceDuration.set(Duration.ZERO);
@@ -576,6 +584,26 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         return unparsableDdlCount.get();
     }
 
+    @Override
+    public long getMiningSessionUserGlobalAreaMemoryInBytes() {
+        return miningSessionUserGlobalAreaMemory.get();
+    }
+
+    @Override
+    public long getMiningSessionUserGlobalAreaMaxMemoryInBytes() {
+        return miningSessionUserGlobalAreaMaxMemory.get();
+    }
+
+    @Override
+    public long getMiningSessionProcessGlobalAreaMemoryInBytes() {
+        return miningSessionProcessGlobalAreaMemory.get();
+    }
+
+    @Override
+    public long getMiningSessionProcessGlobalAreaMaxMemoryInBytes() {
+        return miningSessionProcessGlobalAreaMaxMemory.get();
+    }
+
     public void setOldestScn(Scn scn) {
         oldestScn.set(scn);
     }
@@ -676,6 +704,20 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         unparsableDdlCount.incrementAndGet();
     }
 
+    public void setUserGlobalAreaMemory(long ugaMemory, long ugaMaxMemory) {
+        miningSessionUserGlobalAreaMemory.set(ugaMemory);
+        if (ugaMaxMemory > miningSessionUserGlobalAreaMaxMemory.get()) {
+            miningSessionUserGlobalAreaMaxMemory.set(ugaMaxMemory);
+        }
+    }
+
+    public void setProcessGlobalAreaMemory(long pgaMemory, long pgaMaxMemory) {
+        miningSessionProcessGlobalAreaMemory.set(pgaMemory);
+        if (pgaMemory > miningSessionProcessGlobalAreaMaxMemory.get()) {
+            miningSessionProcessGlobalAreaMaxMemory.set(pgaMemory);
+        }
+    }
+
     @Override
     public String toString() {
         return "OracleStreamingChangeEventSourceMetrics{" +
@@ -735,6 +777,10 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
                 ", warningCount=" + warningCount.get() +
                 ", scnFreezeCount=" + scnFreezeCount.get() +
                 ", unparsableDdlCount=" + unparsableDdlCount.get() +
+                ", miningSessionUserGlobalAreaMemory=" + miningSessionUserGlobalAreaMemory.get() +
+                ", miningSessionUserGlobalAreaMaxMemory=" + miningSessionUserGlobalAreaMaxMemory.get() +
+                ", miningSessionProcessGlobalAreaMemory=" + miningSessionProcessGlobalAreaMemory.get() +
+                ", miningSessionProcessGlobalAreaMaxMemory=" + miningSessionProcessGlobalAreaMaxMemory.get() +
                 '}';
     }
 }
