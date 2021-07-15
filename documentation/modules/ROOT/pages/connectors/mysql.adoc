@@ -14,7 +14,6 @@ ifdef::community[]
 
 toc::[]
 
-endif::community[]
 
 [NOTE]
 ====
@@ -28,6 +27,27 @@ The new connector implementation is intended to behave exactly the same as the e
 with the exception of the *experimental* parallel snapshotting feature, which isn't available any longer.
 Users of the parallel snapshotting feature should move to the more robust and flexible notion of "incremental snapshotting" introduced in Debezium 1.6.
 ====
+endif::community[]
+
+ifdef::product[]
+[IMPORTANT]
+====
+This release of the {prodname} MySQL connector includes a new default capturing implementation that is based on the common connector framework that is used by the other {prodname} connectors.
+The revised capturing implementation is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+
+If the connector generates errors or unexpected behavior while running with the new capturing implementation, you can revert to the earlier implementation by setting the following configuration option:
+
+[source]
+----
+internal.implementation=legacy connector
+----
+====
+endif::product[]
+
+
 
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas as well as changes to the data in tables. MySQL uses the binlog for replication and recovery.
 
