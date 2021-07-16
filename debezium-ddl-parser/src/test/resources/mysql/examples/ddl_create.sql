@@ -80,6 +80,14 @@ CREATE TABLE `tab_with_json_value` (
    `col4` JSON NOT NULL,
    PRIMARY KEY (`col1`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin ROW_FORMAT = COMPRESSED;
+
+CREATE TABLE CustomerTable (
+    CustomerID varchar(5),
+    CompanyName varchar(40),
+    ContactName varchar(30),
+    Address varchar(60),
+    Phone varchar(24)
+ ) ENGINE = CONNECT TABLE_TYPE = ODBC;
 #end
 #begin
 -- Rename table
