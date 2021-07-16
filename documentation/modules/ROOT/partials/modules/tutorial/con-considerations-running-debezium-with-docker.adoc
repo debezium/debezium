@@ -5,7 +5,7 @@
 [id="considerations-running-debezium-docker"]
 = Considerations for running {prodname} with Docker
 
-This tutorial uses http://docker.com[Docker] and the https://hub.docker.com/u/debezium/[{prodname} Docker images] to run the ZooKeeper, Kafka, {prodname}, and MySQL services.
+This tutorial uses http://docker.com[Docker] and the https://hub.docker.com/u/debezium/[{prodname} container images] to run the ZooKeeper, Kafka, {prodname}, and MySQL services.
 Running each service in a separate container simplifies the setup so that you can see {prodname} in action.
 
 [NOTE]
@@ -31,7 +31,7 @@ This way, cleanup is simple when you complete the tutorial.
 [NOTE]
 ====
 For more information about storing persistent data,
-see the documentation for the https://hub.docker.com/r/debezium/[Docker images].
+see the documentation for the https://hub.docker.com/r/debezium/[container images].
 ====
 
 * This tutorial requires you to run each service in a different container.
