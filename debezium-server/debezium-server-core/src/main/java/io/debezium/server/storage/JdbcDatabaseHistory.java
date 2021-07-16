@@ -74,7 +74,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
         try {
             jdbc_uri = config.getString(JDBC_URI.name());
             conn = DriverManager.getConnection(config.getString(JDBC_URI.name()), config.getString(JDBC_USER.name()), config.getString(JDBC_PASSWORD.name()));
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new IllegalStateException("Failed to connect " + jdbc_uri);
         }
     }
@@ -91,7 +92,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
                     if (!storageExists()) {
                         initializeStorage();
                     }
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     throw new DatabaseHistoryException("Unable to create history table " + jdbc_uri + ": " + e.getMessage(), e);
                 }
             }
@@ -123,7 +125,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
                 sql.setString(4, substrings.size() >= 3 ? substrings.get(2) : "");
                 sql.executeUpdate();
                 // todo check length 4 and above very long ones!
-            } catch (IOException | SQLException e) {
+            }
+            catch (IOException | SQLException e) {
                 logger.error("Failed to convert record to string: {}", record, e);
             }
         });
@@ -135,7 +138,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
         super.stop();
         try {
             conn.close();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             logger.error("Exception during stop", e);
         }
     }
@@ -146,7 +150,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
             try {
                 if (exists()) {
                     Statement stmt = conn.createStatement();
-                    ResultSet rs = stmt.executeQuery("SELECT history_insert_epoch_ms, history_data_part1, history_data_part2, history_data_part3 FROM " + DATABASE_HISTORY_TABLE_NAME);
+                    ResultSet rs = stmt.executeQuery(
+                            "SELECT history_insert_epoch_ms, history_data_part1, history_data_part2, history_data_part3 FROM " + DATABASE_HISTORY_TABLE_NAME);
                     while (rs.next()) {
                         String line1 = rs.getString("history_data_part1");
                         String line2 = rs.getString("history_data_part2");
@@ -157,7 +162,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
                         }
                     }
                 }
-            } catch (IOException | SQLException e) {
+            }
+            catch (IOException | SQLException e) {
                 logger.error("Failed to add recover records from jdbc history {}", jdbc_uri, e);
             }
         });
@@ -172,7 +178,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
             if (tableExists.next()) {
                 sExists = true;
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             logger.error("Failed to check history from db: {}", jdbc_uri, e);
         }
         return sExists;
@@ -200,7 +207,8 @@ public final class JdbcDatabaseHistory extends AbstractDatabaseHistory {
             logger.debug("Creating table {} to store offset", DATABASE_HISTORY_TABLE_NAME);
             conn.prepareStatement(DATABASE_HISTORY_TABLE_DDL).execute();
             logger.info("Created table in given database...");
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             logger.error("Error initializing", e);
         }
     }

@@ -8,7 +8,6 @@ package io.debezium.server.storage;
 import io.debezium.config.Configuration;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.DatabaseHistoryMetrics;
-import io.debezium.relational.history.FileDatabaseHistory;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,7 +30,7 @@ public class JdbcDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
     protected DatabaseHistory createHistory() {
         DatabaseHistory history = new JdbcDatabaseHistory();
         history.configure(Configuration.create()
-                .with(JDBC_URI, "jdbc:sqlite:"+dbFile)
+                .with(JDBC_URI, "jdbc:sqlite:" + dbFile)
                 .with(JDBC_USER, "user")
                 .with(JDBC_PASSWORD, "pass")
                 .build(), null, DatabaseHistoryMetrics.NOOP, true);

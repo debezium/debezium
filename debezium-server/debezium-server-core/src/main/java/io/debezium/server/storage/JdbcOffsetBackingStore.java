@@ -28,7 +28,9 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -46,7 +48,6 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     public static final Field JDBC_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.password")
             .withDescription("Password of the database which will be used to record the database history")
             .withValidation(Field::isRequired);
-    private static final Logger log = LoggerFactory.getLogger(JdbcOffsetBackingStore.class);
     public static final String OFFSET_STORAGE_TABLE_NAME = "debezium_offset_storage";
     public static final String OFFSET_STORAGE_TABLE_DDL = "CREATE TABLE " + OFFSET_STORAGE_TABLE_NAME +
             "(" +
@@ -54,6 +55,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             "offset_key VARCHAR(1255)," +
             "offset_val VARCHAR(1255)" +
             ")";
+    private static final Logger log = LoggerFactory.getLogger(JdbcOffsetBackingStore.class);
     protected Map<String, String> data = new HashMap<>();
     protected ExecutorService executor;
     Connection conn;
@@ -76,7 +78,8 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             jdbc_uri = config.getString(JDBC_URI.name());
             conn = DriverManager.getConnection(jdbc_uri, config.getString(JDBC_USER.name()), config.getString(JDBC_PASSWORD.name()));
             log.error("Failed to connect Jdbc offset backing store");
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new IllegalStateException("Failed to connect Jdbc offset backing store: " + jdbc_uri, e);
         }
     }
@@ -89,7 +92,8 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         log.info("Starting JdbcOffsetBackingStore db {}", jdbc_uri);
         try {
             initializeTable();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new IllegalStateException("Failed to create Jdbc offset table: " + jdbc_uri, e);
         }
         load();
@@ -125,17 +129,18 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             }
             conn.commit();
             conn.setAutoCommit(true);
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             try {
                 conn.rollback();
                 conn.setAutoCommit(true);
-            } catch (SQLException ex) {
+            }
+            catch (SQLException ex) {
                 //
             }
             throw new ConnectException(e);
         }
     }
-
 
     private void load() {
         try {
@@ -148,7 +153,8 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
                 tmpData.put(key, val);
             }
             data = tmpData;
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             e.printStackTrace();
             log.error("Failed recover records from database: {}", jdbc_uri, e);
         }
@@ -160,7 +166,8 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             // Best effort wait for any get() and set() tasks (and caller's callbacks) to complete.
             try {
                 executor.awaitTermination(30, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
             if (!executor.shutdownNow().isEmpty()) {
@@ -176,12 +183,12 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         stopExecutor();
         try {
             conn.close();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             log.error("Exception while stopping JdbcOffsetBackingStore", e);
         }
         log.info("Stopped JdbcOffsetBackingStore");
     }
-
 
     @Override
     public Future<Void> set(final Map<ByteBuffer, ByteBuffer> values,
