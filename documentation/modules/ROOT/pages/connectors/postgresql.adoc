@@ -1903,7 +1903,7 @@ See the documentation for your chosen plug-in to learn more about the plug-in's 
 * link:https://github.com/debezium/postgres-decoderbufs/blob/master/README.md[`protobuf`]
 * link:https://github.com/eulerto/wal2json/blob/master/README.md[`wal2json`]
 
-For simplicity, {prodname} also provides a container image based on a vanilla PostgreSQL server image on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/docker-images/tree/master/postgres/9.6[use this image] as an example of the detailed steps required for the installation.
+For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/docker-images/tree/master/postgres/13[use this image] as an example of the detailed steps required for the installation.
 
 [WARNING]
 ====
