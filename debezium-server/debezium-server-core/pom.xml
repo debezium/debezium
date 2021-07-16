@@ -88,6 +88,17 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.36.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-postgres</artifactId>
             <scope>test</scope>
