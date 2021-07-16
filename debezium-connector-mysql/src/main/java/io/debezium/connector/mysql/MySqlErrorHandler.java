@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.io.EOFException;
+import java.net.SocketException;
 import java.sql.SQLException;
 
 import com.github.shyiko.mysql.binlog.network.ServerException;
@@ -38,6 +40,9 @@ public class MySqlErrorHandler extends ErrorHandler {
         }
         else if (throwable instanceof DebeziumException && throwable.getCause() != null) {
             return isRetriable(throwable.getCause());
+        }
+        else if (throwable instanceof SocketException || throwable instanceof EOFException) {
+            return true;
         }
         return false;
     }
