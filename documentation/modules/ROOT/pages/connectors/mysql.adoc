@@ -42,7 +42,7 @@ If the connector generates errors or unexpected behavior while running with the 
 
 [source]
 ----
-internal.implementation=legacy connector
+internal.implementation=legacy
 ----
 ====
 endif::product[]
