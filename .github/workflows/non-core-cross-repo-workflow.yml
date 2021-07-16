@@ -1,0 +1,33 @@
+name: Build non-core connectors with PR branch
+
+on: [pull_request]
+
+jobs:
+  cross-repo-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        connector-name: ["cassandra", "db2", "vitess"]
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+      - name: Set branch on pull request event
+        id: event
+        run: echo "::set-output name=BRANCH_NAME::${{ github.head_ref }}"
+      - name: Check if branch exists?
+        id: branch
+        env:
+          branch_name: ${{ steps.event.outputs.BRANCH_NAME }}
+        run: |
+          BRANCH=$(curl -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/debezium/debezium-connector-${{ matrix.connector-name }}/pulls | jq '.[] | {branch: .head.ref}')
+          if grep -q "$branch_name" <<< "$BRANCH"; then
+            echo "::set-output name=FOUND::true"
+          fi
+      - name: Repository dispatch event for ${{ matrix.connector-name }} connector
+        if: ${{ steps.branch.outputs.FOUND == 'true' }}
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.PUBLISH_GH_TOKEN }}
+          repository: debezium/debezium-connector-${{ matrix.connector-name }}
+          event-type: ${{ matrix.connector-name }}-build-event
+          client-payload: '{"ref": "${{ steps.event.outputs.BRANCH_NAME }}"}'
