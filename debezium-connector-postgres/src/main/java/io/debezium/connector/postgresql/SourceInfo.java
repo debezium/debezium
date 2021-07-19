@@ -82,6 +82,8 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String LSN_KEY = "lsn";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final String dbName;
 
     private Lsn lsn;
@@ -162,9 +164,8 @@ public final class SourceInfo extends BaseSourceInfo {
                 }
             }
         }
-        ObjectMapper mapper = new ObjectMapper();
         try {
-            return mapper.writeValueAsString(sequence);
+            return MAPPER.writeValueAsString(sequence);
         }
         catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
