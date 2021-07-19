@@ -5,7 +5,7 @@
 [id="applying-transformations-selectively"]
 = Applying transformations selectively
 
-When you configure a single message transformation (SMTs) for a connector, you can define a predicate for the transformation.
+When you configure a single message transformation (SMT) for a connector, you can define a predicate for the transformation.
 The predicate specifies how to apply the transformation conditionally to a subset of the messages that the connector processes.
 You can assign predicates to transformations that you configure for source connectors, such as {prodname}, or to sink connectors.
 
@@ -89,11 +89,7 @@ Configuring Kafka Connect predicates is similar to configuring transforms.
 You specify a predicate alias, associate the alias with a transform, and then define the type and configuration for the predicate.
 
 .Prerequisites
-* The {prodname} environment is running Apache Kafka 2.6 or greater
-ifdef::product[]
-({StreamsName}1.6 or greater)
-endif::product[]
-.
+* The {prodname} environment runs Apache Kafka 2.6 or greater.
 
 * An SMT is configured for the {prodname} connector.
 
