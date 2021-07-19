@@ -224,10 +224,10 @@ The possible values are the ones from the `op` field of {link-prefix}:{link-mong
 === Adding source metadata fields
 
 The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__").
-This functionality can be used to add things like the collection from the change event, or connector-specific fields like the replica set name.
-For more information on what's available in the source structure see {link-prefix}:{link-mongodb-connector}[the documentation] for the MongoDB connector.
+This ability to add metadata to the event record makes it possible to include content such as the name of the collection associated with the change event, or such connector-specific fields as the replica set name.
+For more information about the MongoDB source structure, see {link-prefix}:{link-mongodb-connector}[the documentation] for the MongoDB connector.
 
-For example, the configuration
+For example, you might specify the following configuration to add a replica set name (`rs`) and the collection name for a change event to the final flattened event record:
 
 ----
 transforms=unwrap,...
@@ -235,16 +235,24 @@ transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocume
 transforms.unwrap.add.fields=rs,collection
 ----
 
-will add
+The preceding configuration results in the following content being added to the flattened record:
 
 ----
 { "__rs" : "rs0", "__collection" : "my-collection", ... }
 ----
 
-to the final flattened record.
+For `DELETE` events, the option to add metadata fields is supported only if the `delete.handling.mode` option is set to `rewrite`.
 
-For `DELETE` events, this option is only supported when the `delete.handling.mode` option is set to "rewrite".
+// Type: concept
+// Title: Options for applying the MongoDB extract new document state transformation selectively
+// ModuleID: options-for-applying-the-mongodb-extract-new-document-state-transformation-selectively
+[id="options-for-applying-the-transformation-selectively"]
+== Options for applying the transformation selectively
 
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+
+For more information about how to apply the SMT selectively, see {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
 
 [[mongodb-extract-new-record-state-configuration-options]]
 == Configuration options
