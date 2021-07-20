@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
@@ -29,6 +30,7 @@ import io.debezium.annotation.Immutable;
 public final class GtidSet {
 
     private final Map<String, UUIDSet> uuidSetsByServerId = new TreeMap<>(); // sorts on keys
+    public static Pattern GTID_DELIMITER = Pattern.compile(":");
 
     protected GtidSet(Map<String, UUIDSet> uuidSetsByServerId) {
         this.uuidSetsByServerId.putAll(uuidSetsByServerId);
@@ -138,6 +140,17 @@ public final class GtidSet {
         }
 
         return new GtidSet(newSet);
+    }
+
+    public boolean contains(String gtid) {
+        String[] split = GTID_DELIMITER.split(gtid);
+        String sourceId = split[0];
+        UUIDSet uuidSet = forServerWithId(sourceId);
+        if (uuidSet == null) {
+            return false;
+        }
+        long transactionId = Long.parseLong(split[1]);
+        return uuidSet.contains(transactionId);
     }
 
     @Override
@@ -263,6 +276,15 @@ public final class GtidSet {
             return true;
         }
 
+        public boolean contains(long transactionId) {
+            for (Interval interval : this.intervals) {
+                if (interval.contains(transactionId)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         @Override
         public int hashCode() {
             return uuid.hashCode();
@@ -344,6 +366,10 @@ public final class GtidSet {
                 return false;
             }
             return this.getStart() >= other.getStart() && this.getEnd() <= other.getEnd();
+        }
+
+        public boolean contains(long transactionId) {
+            return getStart() <= transactionId && transactionId <= getEnd();
         }
 
         @Override

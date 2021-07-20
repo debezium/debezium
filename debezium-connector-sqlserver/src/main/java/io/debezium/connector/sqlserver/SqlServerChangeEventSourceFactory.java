@@ -67,6 +67,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
         final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
                 configuration,
                 dataConnection,
+                dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,

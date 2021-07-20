@@ -85,13 +85,23 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                                                                                                                               MySqlOffsetContext offsetContext,
                                                                                                                               SnapshotProgressListener snapshotProgressListener,
                                                                                                                               DataChangeEventListener dataChangeEventListener) {
-        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
+        if (configuration.isReadOnlyConnection()) {
+            return Optional.of(new ReadOnlyMySqlIncrementalSnapshotChangeEventSource<>(
+                    configuration,
+                    connection,
+                    dispatcher,
+                    schema,
+                    clock,
+                    snapshotProgressListener,
+                    dataChangeEventListener));
+        }
+        return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
                 connection,
+                dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
-        return Optional.of(incrementalSnapshotChangeEventSource);
+                dataChangeEventListener));
     }
 }

@@ -913,6 +913,14 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                             "false - delegates the implicit conversion to the database" +
                             "true - (the default) Debezium makes the conversion");
 
+    public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
+            .withDisplayName("Read only connection")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Switched connector to use alternative methods to deliver signals to Debezium instead of writing to signaling table");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MySQL")
             .excluding(
@@ -992,6 +1000,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Predicate<String> ddlFilter;
     private final boolean legacy;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
+    private final boolean readOnlyConnection;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -1008,6 +1017,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+        this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
 
         final String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
         this.gitIdNewChannelPosition = GtidNewChannelPosition.parse(gitIdNewChannelPosition, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
@@ -1288,6 +1298,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     boolean legacy() {
         return legacy;
+    }
+
+    public boolean isReadOnlyConnection() {
+        return readOnlyConnection;
     }
 
     /**

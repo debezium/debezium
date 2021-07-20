@@ -92,6 +92,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
                 configuration,
                 jdbcConnection,
+                dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,

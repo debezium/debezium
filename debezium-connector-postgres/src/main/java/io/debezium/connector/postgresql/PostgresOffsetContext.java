@@ -22,6 +22,7 @@ import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -212,7 +213,7 @@ public class PostgresOffsetContext implements OffsetContext {
             final boolean snapshot = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.SNAPSHOT_KEY, Boolean.FALSE);
             final boolean lastSnapshotRecord = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, Boolean.FALSE);
             return new PostgresOffsetContext(connectorConfig, lsn, lastCompletelyProcessedLsn, lastCommitLsn, txId, useconds, snapshot, lastSnapshotRecord,
-                    TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, TableId.class));
+                    TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset));
         }
     }
 
@@ -246,7 +247,7 @@ public class PostgresOffsetContext implements OffsetContext {
                     false,
                     false,
                     new TransactionContext(),
-                    new IncrementalSnapshotContext<>());
+                    new SignalBasedIncrementalSnapshotContext<>());
         }
         catch (SQLException e) {
             throw new ConnectException("Database processing error", e);
