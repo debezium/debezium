@@ -1129,48 +1129,359 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 
   exit;
 ----
-
+// Type: assembly
+// ModuleID: deployment-of-debezium-oracle-connectors
+// Title: Deployment of {prodname} Oracle connectors
 [[oracle-deploying-a-connector]]
-== Deploying a Connector
+== Deployment
 
-Due to licensing requirements, the {prodname} Oracle Connector does not ship with the Oracle JDBC driver and the XStream API JAR.
-You can obtain them for free by downloading the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client].
+ifdef::community[]
+To deploy a {prodname} Oracle connector, you install the {prodname} Oracle connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
-Extract the archive and navigate to the Instant Client directory.
-Copy `ojdbc8.jar` and `xstreams.jar` (not needed when using the LogMiner-based capture implementation) into Kafka Connect's _libs_ directory.
-Lastly, create an environment variable, `LD_LIBRARY_PATH`, that points to the instant client directory, as shown below:
+.Prerequisites
+* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* Oracle Database is installed, and is {link-prefix}:{link-oracle-connector}#setting-up-oracle[configured to work with the {prodname} connector].
+* You have a copies of the Oracle JDBC driver and the XStream API JAR.
+Due to licensing requirements, the {prodname} Oracle Connector does not ship with these files.
++
+For more information, see {link-prefix}:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files].
 
+.Procedure
+
+. Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle connector plug-in archive].
++
+[NOTE]
+====
+As stated in the preceding prerequisites, the {prodname} Oracle connector does not include the Oracle JDBC driver or the XStream API JAR.
+====
+. Extract the files into your Kafka Connect environment.
+
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+
+  . {link-prefix}:{link-oracle-connector}#oracle-example-configuration[Configure the connector] and {link-prefix}:{link-oracle-connector}#oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+. Restart your Kafka Connect process to pick up the new JAR files.
+endif::community[]
+
+ifdef::product[]
+To deploy a {prodname} Oracle connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add connector configuration to your container.
+For details about deploying the {prodname} Oracle connector, see the following topics:
+
+* xref:obtaining-the-oracle-jdbc-driver[]
+* xref:deploying-debezium-oracle-server-connectors[]
+* xref:descriptions-of-debezium-oracle-server-connector-configuration-properties[]
+endif::product[]
+
+// Type: procedure
+// Title: Obtaining the Oracle JDBC driver
+// ModuleID: obtaining-the-oracle-jdbc-driver
+[id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
+=== Obtaining the Oracle JDBC driver and XStream API files
+
+ifdef::community[]
+Depending on your Oracle environment, you must have either the Oracle JDBC driver (`ojdbc8.jar`) or XStream API (`xstreams.jar`) to run the {prodname} Oracle connector.
+Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
+However, the required files are available for free download as part of the Oracle Instant Client.
+endif::community[]
+ifdef::product[]
+The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
+Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
+However, you can obtain the driver with a free download of the Oracle Instant Client.
+endif::product[]
+
+.Procedure
+
+. Download the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client] for your operating system.
++
+If you are not installing the Instant Client and want only the JAR files, those files are available in the *Basic Light Package*.
+. Extract the archive and then open the `instantclient` directory.
+ifdef::community[]
+. Copy the `ojdbc8.jar` and `xstreams.jar` files to the Kafka Connect _libs_ directory.
++
+For environments that use the Log Miner implementation, you need only the the `ojdbc8.jar` file.
+The `xstreams.jar` file is required only if you are using the Oracle XStreams implementation.
+. If you are using the XStreams implementation, create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
++
 [source,bash,indent=0]
 ----
 LD_LIBRARY_PATH=/path/to/instant_client/
 ----
++
+The environment variable is not required in environments that use the Log Miner implementation.
+endif::community[]
+ifdef::product[]
+ Copy the `ojdbc8.jar` file to the Kafka Connect _libs_ directory.
 
+// Type: procedure
+// ModuleID: deploying-debezium-oracle-server-connectors
+=== Deploying {prodname} Oracle connectors
+
+To deploy a {prodname} Oracle connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
+You then need to create the following custom resources (CRs):
+
+* A `KafkaConnect` CR that defines your Kafka Connect instance.
+  The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
+  You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
+  {StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
+
+* A `KafkaConnector` CR that defines your {prodname} Oracle connector.
+  Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
+
+  .Prerequisites
+
+* Oracle Database is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-oracle-for-use-with-the-debezium-oracle-connector[set up Oracle to work with a {prodname} connector].
+
+* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
+  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}]
+
+* Podman or Docker is installed.
+
+* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
+
+* You have a copy of the Oracle JDBC driver.
+Due to licensing requirements, the {prodname} Oracle connector does not include the required JDBC driver files.
++
+For more information, see {link-prefix}:{link-oracle-connector}#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+
+.Procedure
+
+. Create the {prodname} Oracle container for Kafka Connect:
+.. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[Oracle connector archive].
+
+.. Extract the {prodname} Oracle connector archive to create a directory structure for the connector plug-in, for example:
++
+[subs="+macros"]
+----
+./my-plugins/
+├── debezium-connector-oracle
+│   ├── ...
+----
+
+.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
++
+[source,shell,subs="+attributes,+quotes"]
+----
+cat <<EOF >debezium-container-for-oracle.yaml // <1>
+FROM {DockerKafkaConnect}
+USER root:root
+COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+USER 1001
+EOF
+----
+<1> You can specify any file name that you want.
+<2> Replace `my-plugins` with the name of your plug-ins directory.
++
+The command creates a Docker file with the name `debezium-container-for-oracle.yaml` in the current directory.
+
+.. Build the container image from the `debezium-container-for-oracle.yaml` Docker file that you created in the previous step.
+From the directory that contains the file, open a terminal window and enter one of the following commands:
++
+[source,shell,options="nowrap"]
+----
+podman build -t debezium-container-for-oracle:latest .
+----
++
+[source,shell,options="nowrap"]
+----
+docker build -t debezium-container-for-oracle:latest .
+----
+The preceding commands build a container image with the name `debezium-container-for-oracle`.
+
+.. Push your custom image to a container registry, such as quay.io or an internal container registry.
+The container registry must be available to the OpenShift instance where you want to deploy the image.
+Enter one of the following commands:
++
+[source,shell,subs="+quotes"]
+----
+podman push _<myregistry.io>_/debezium-container-for-oracle:latest
+----
++
+[source,shell,subs="+quotes"]
+----
+docker push _<myregistry.io>_/debezium-container-for-oracle:latest
+----
+
+.. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
+For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
++
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
+spec:
+  #...
+  image: debezium-container-for-oracle  // <2>
+----
+<1>  `metadata.annotations` indicates to the Cluster Operator that KafkaConnector resources are used to configure connectors in this Kafka Connect cluster.
+<2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator
+
+.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -f dbz-connect.yaml
+----
++
+The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
+
+. Create a `KafkaConnector` custom resource that configures your {prodname} Oracle connector instance.
++
+You configure a {prodname} Oracle connector in a `.yaml` file that specifies the configuration properties for the connector.
+The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
++
+The following example configures a {prodname} connector that connects to an Oracle host IP address, on port `1521`.
+This host has a database named `ORCLCDB`, and `server1` is the server's logical name.
++
+.Oracle `inventory-connector.yaml`
+[source,yaml,subs="+attributes,+quotes",options="nowrap"]
+----
+apiVersion: {KafkaConnectorApiVersion}
+kind: KafkaConnector
+metadata:
+  name: inventory-connector // <1>
+  labels:
+    strimzi.io/cluster: my-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: 'true'
+spec:
+  class: io.debezium.connector.oracle.OracleConnector // <2>
+  config:
+    database.hostname: _<ORACLE_IP_ADDRESS>_ // <3>
+    database.port: 1521 // <4>
+    database.user: c##dbzuser // <5>
+    database.password: dbz // <6>
+    database.dbname: ORCLCDB // <7>
+    database.pdb.name : ORCLPDB1, <8>
+    database.server.name: server1 // <9>
+    database.history.kafka.bootstrap.servers: kafka:9092 // <10>
+    database.history.kafka.topic: schema-changes.inventory // <11>
+----
++
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of our connector when we register it with a Kafka Connect service.
+
+|2
+|The name of this Oracle connector class.
+
+|3
+|The address of the Oracle instance.
+
+|4
+|The port number of the Oracle instance.
+
+|5
+|The name of the Oracle user.
+
+|6
+|The password for the Oracle user.
+
+|7
+|The name of the database to capture changes from.
+
+|9
+|Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+
+|10
+|The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
+
+|11
+|The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+
+|===
+
+. Create your connector instance with Kafka Connect.
+  For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
++
+[source,shell,options="nowrap"]
+----
+oc apply -f inventory-connector.yaml
+----
++
+The preceding command registers `inventory-connector` and the connector starts to run against the `server1` database as defined in the `KafkaConnector` CR.
+
+. Verify that the connector was created and has started:
+.. Display the Kafka Connect log output to verify that the connector was created and has started to capture changes in the specified database:
++
+[source,shell,options="nowrap"]
+----
+oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
+----
+
+.. Review the log output to verify that {prodname} performs the initial snapshot.
+The log displays output that is similar to the following messages:
++
+[source,shell,options="nowrap"]
+----
+... INFO Starting snapshot for ...
+... INFO Snapshot is using user 'c##dbzuser' ...
+----
++
+If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing.
+Downstream applications can subscribe to these topics.
+
+.. Verify that the connector created the topics by running the following command:
++
+[source,shell,options="nowrap"]
+----
+oc get kafkatopics
+----
+
+endif::product[]
+
+ifdef::community[]
 [[oracle-example-configuration]]
-=== Example Configuration
+=== Example: Oracle connector configuration
 
-The following shows an example JSON request for registering an instance of the {prodname} Oracle connector:
+The following example shows a JSON request for registering an instance of the {prodname} Oracle connector with logical name `server1` at port 1521:
+Typically, you configure the {prodname} Oracle connector in a JSON file by setting the configuration properties that are available for the connector.
 
-[source,json,indent=0]
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+
+[source,json,indent=0,subs="+quotes"]
 ----
 {
-    "name": "inventory-connector",
+    "name": "inventory-connector",  // <`>`
     "config": {
-        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-        "tasks.max" : "1",
-        "database.server.name" : "server1",
-        "database.hostname" : "<oracle ip>",
-        "database.port" : "1521",
-        "database.user" : "c##dbzuser",
-        "database.password" : "dbz",
-        "database.dbname" : "ORCLCDB",
-        "database.pdb.name" : "ORCLPDB1",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory"
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",  // <2>
+        "database.hostname" : "<ORACLE_IP_ADDRESS>",  // <3>
+        "database.port" : "1521",  // <4>
+        "database.user" : "c##dbzuser",  // <5>
+        "database.password" : "dbz",   // <6>
+        "database.dbname" : "ORCLCDB",  // <7>
+        "database.server.name" : "server1",  // <8>
+        "tasks.max" : "1",  // <9>
+        "database.pdb.name" : "ORCLPDB1",  // <10>
+        "database.history.kafka.bootstrap.servers" : "kafka:9092", // <11>
+        "database.history.kafka.topic": "schema-changes.inventory"  // <12>
     }
 }
 ----
+<1> The name of our connector when we register it with a Kafka Connect service.
+<2> The name of this Oracle connector class.
+<3> The address of the Oracle instance.
+<4> The port number of the Oracle instance.
+<5> The name of the Oracle user
+<6> The password for the Oracle user
+<7> The name of the database to capture changes from.
+<8> Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+<9> The maximum number of tasks to create for this connector.
+<10> The name of the Oracle pluggable database that the connector captures changes from. Used in container database (CDB) installations only.
+<11> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
+<12> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
-When using a more complex Oracle deployment or needing to use TNS names, then a raw JDBC url can be provided instead of a single hostname-port pair. Here is a similar example but that just passes the raw jdbc url:
+In more complex Oracle deployments, and those that use TNS names, you can provide a raw JDBC URL instead of a single hostname and port pair.
+The following JSON example describes a configuration that is similar to the preceding example, but that passes a raw JDBC URL rather than a hostname and port:
 
 [source,json,indent=0]
 ----
@@ -1240,8 +1551,43 @@ The {prodname} Oracle connector supports both deployment practices of pluggable 
 When using CDB installations, specify `database.pdb.name`. +
 When using a non-CDB installation, do *not* specify the `database.pdb.name`.
 ====
+endif::community[]
 
+For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see {link-prefix}:{link-oracle-connector}#oracle-connector-properties[Oracle connector properties].
 
+ifdef::community[]
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts a connector task that performs the following operations:
+
+* Connects to the Oracle database.
+* Reads the redo log.
+* Records change events to Kafka topics.
+*
+[[oracle-adding-connector-configuration]]
+=== Adding connector configuration
+
+To start running a {prodname} Oracle connector, create a connector configuration, and add the configuration to your Kafka Connect cluster.
+
+.Prerequisites
+
+* {link-prefix}:{link-oracle-connector}#setting-up-oracle[Oracle is configured for use with {prodname}].
+* The {prodname} Oracle connector is installed.
+
+.Procedure
+
+. Create a configuration for the Oracle connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+endif::community[]
+
+.Results
+
+When the connector starts, it {link-prefix}:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
+The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
+
+// Type: reference
+// Title: Descriptions of {prodname} Oracle connector configuration properties
+// ModuleID: descriptions-of-debezium-oracle-connector-configuration-properties
 [[oracle-connector-properties]]
 === Connector Properties
 
@@ -1696,7 +2042,7 @@ The {prodname} Oracle connector also provides the following additional streaming
 
 |[[oracle-streaming-metrics-totalparsetimeinmilliseconds]]<<oracle-streaming-metrics-totalparsetimeinmilliseconds, `+TotalParseTimeInMilliseconds+`>>
 |`long`
-|The time in milliseconds spent parsing DML event SQL sattements.
+|The time in milliseconds spent parsing DML event SQL statements.
 
 |[[oracle-streaming-metrics-lastminingsessionstarttimeinmilliseconds]]<<oracle-streaming-metrics-lastminingsessionstarttimeinmilliseconds, `+LastMiningSessionStartTimeInMilliseconds+`>>
 |`long`
@@ -1838,7 +2184,7 @@ This should always be `0`; however when allowing unparsable DDL to be skipped, t
 [[oracle-schema-history-metrics]]
 === Schema History Metrics
 
-The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
+The *MBean* is `debezium.oracle:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
@@ -2238,3 +2584,9 @@ SELECT IOT_NAME
 ```
 
 The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
+
+[id="oracle-sys-system-change-not-emitted"]
+=== LogMiner adapter does not capture changes made by SYS or SYSTEM
+
+Oracle uses the `SYS` and `SYSTEM` accounts for lots of internal changes and therefore the connector automatically filters changes made by these users when fetching changes from LogMiner.
+Please make sure to use a non-`SYS`, non-`SYSTEM` user account for changes to be emitted by the {prodname} Oracle connector.
