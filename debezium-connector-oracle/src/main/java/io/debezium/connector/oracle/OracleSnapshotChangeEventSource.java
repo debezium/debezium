@@ -274,14 +274,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected String getSnapshotSelectColumns(TableId tableId) {
         Table table = schema.tableFor(tableId);
-        List<String> columnNames = table.retrieveColumnNames().stream()
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
-                .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
-            columnNames = table.primaryKeyColumnNames();
-        }
+        List<String> columnNames = prepareSnapshotSelectColumns(table, tableId);
 
         return columnNames.stream()
                 .map(columnName -> {

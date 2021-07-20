@@ -227,14 +227,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected String getSnapshotSelectColumns(TableId tableId) {
         Table table = schema.tableFor(tableId);
-        List<String> columnNames = table.retrieveColumnNames().stream()
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
-                .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
-            columnNames = table.primaryKeyColumnNames();
-        }
+        List<String> columnNames = prepareSnapshotSelectColumns(table, tableId);
 
         // returns a list of column names wrapped around double quotes
         // in case the column name contains a double quote character, add another double quote character to it

@@ -260,15 +260,9 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected String getSnapshotSelectColumns(TableId tableId) {
         Table table = sqlServerDatabaseSchema.tableFor(tableId);
-        List<String> columnNames = table.retrieveColumnNames().stream()
+        List<String> columnNames = prepareSnapshotSelectColumns(table, tableId).stream()
                 .filter(columnName -> filterChangeTableColumns(tableId, columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
                 .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
-            columnNames = table.primaryKeyColumnNames();
-        }
 
         return columnNames.stream()
                 .map(columnName -> {

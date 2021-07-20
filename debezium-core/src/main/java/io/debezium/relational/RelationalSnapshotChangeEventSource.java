@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -434,13 +435,33 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     /**
      * Returns a comma-separated list of columns to be used in the snapshot select.
-     * The selected columns are based on the column include/exclude filters and if all columns are excluded,
-     * the list will contain all the primary key columns.
+     * The selected columns are based on the column include/exclude filters and if all columns are excluded
      *
      * @param tableId the table to generate a query for
      * @return comma-separated list of columns
      */
     protected abstract String getSnapshotSelectColumns(TableId tableId);
+
+    /**
+     * Returns a list of columns to be used in the snapshot select.
+     * The selected columns are based on the column include/exclude filters and if all columns are excluded,
+     * the list will contain all the primary key columns.
+     *
+     * @param table the table metadata for a query
+     * @param tableId the table to generate a query for
+     * @return list of snapshot select columns
+     */
+    protected List<String> prepareSnapshotSelectColumns(Table table, TableId tableId) {
+        List<String> columnNames = table.retrieveColumnNames().stream()
+                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
+                .collect(Collectors.toList());
+
+        if (columnNames.isEmpty()) {
+            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
+            columnNames = table.primaryKeyColumnNames();
+        }
+        return columnNames;
+    }
 
     /**
      * This method is overridden for Oracle to implement "as of SCN" predicate
