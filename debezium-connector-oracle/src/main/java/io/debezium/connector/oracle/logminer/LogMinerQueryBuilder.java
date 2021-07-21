@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -92,7 +93,7 @@ public class LogMinerQueryBuilder {
         }
 
         // Always ignore the flush table
-        query.append("AND TABLE_NAME != '").append(SqlUtils.LOGMNR_FLUSH_TABLE).append("' ");
+        query.append("AND TABLE_NAME != '").append(LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE).append("' ");
 
         // There are some common schemas that we automatically ignore when building the runtime Filter
         // predicates and we put that same list of schemas here and apply those in the generated SQL.
