@@ -31,6 +31,7 @@ import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
@@ -78,6 +79,7 @@ public class TransactionalBufferTest {
         }
     };
     private static final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+    private static OraclePartition partition;
     private static OracleOffsetContext offsetContext;
 
     private OracleTaskContext taskContext;
@@ -132,8 +134,9 @@ public class TransactionalBufferTest {
     @Test
     public void testIsEmptyWhenTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
+        partition = initializePartition();
         offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (String) null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
+        transactionalBuffer.commit(partition, TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(transactionalBuffer.isEmpty()).isTrue();
     }
 
@@ -167,8 +170,9 @@ public class TransactionalBufferTest {
     @Test
     public void testCalculateScnWhenTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
+        partition = initializePartition();
         offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
+        transactionalBuffer.commit(partition, TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(streamingMetrics.getOldestScn()).isEqualTo(SCN.toString());
         assertThat(transactionalBuffer.getRolledBackTransactionIds().isEmpty()).isTrue();
     }
@@ -177,14 +181,15 @@ public class TransactionalBufferTest {
     public void testCalculateScnWhenFirstTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
+        partition = initializePartition();
         offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
+        transactionalBuffer.commit(partition, TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
 
         // after commit, it stays the same because OTHER_TRANSACTION_ID is not committed yet
         assertThat(streamingMetrics.getOldestScn()).isEqualTo(SCN.toString());
         assertThat(transactionalBuffer.getRolledBackTransactionIds().isEmpty()).isTrue();
 
-        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
+        transactionalBuffer.commit(partition, OTHER_TRANSACTION_ID, OTHER_SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(streamingMetrics.getOldestScn()).isEqualTo(OTHER_SCN.toString());
     }
 
@@ -192,8 +197,9 @@ public class TransactionalBufferTest {
     public void testCalculateScnWhenSecondTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
+        partition = initializePartition();
         offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN, OTHER_SCN, null, false, true, new TransactionContext());
-        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
+        transactionalBuffer.commit(partition, OTHER_TRANSACTION_ID, OTHER_SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
 
         assertThat(streamingMetrics.getOldestScn()).isEqualTo(SCN.toString());
         // after committing OTHER_TRANSACTION_ID
@@ -223,6 +229,10 @@ public class TransactionalBufferTest {
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
         assertThat(transactionalBuffer.toString()).contains(String.valueOf(SCN));
         assertThat(transactionalBuffer.toString()).contains(String.valueOf(OTHER_SCN));
+    }
+
+    private OraclePartition initializePartition() {
+        return new OraclePartition("test");
     }
 
     private void registerDmlOperation(String txId, Scn scn, String rowId) {

@@ -72,9 +72,11 @@ class EventBuffer {
 
     /**
      * An entry point to the buffer that should be used by BinlogReader to push events.
+     *
+     * @param partition the partition to which the event belongs
      * @param event to be stored in the buffer
      */
-    public void add(MySqlOffsetContext offsetContext, Event event) {
+    public void add(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) {
         if (event == null) {
             return;
         }
@@ -83,7 +85,7 @@ class EventBuffer {
         // buffer was full and the end of the TX; in this case there's nothing to do
         // besides directly emitting the events
         if (isReplayingEventsBeyondBufferCapacity()) {
-            streamingChangeEventSource.handleEvent(offsetContext, event);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, event);
             return;
         }
 
@@ -92,23 +94,23 @@ class EventBuffer {
             LOGGER.debug("Received query command: {}", event);
             String sql = command.getSql().trim();
             if (sql.equalsIgnoreCase("BEGIN")) {
-                beginTransaction(offsetContext, event);
+                beginTransaction(partition, offsetContext, event);
             }
             else if (sql.equalsIgnoreCase("COMMIT")) {
-                completeTransaction(offsetContext, true, event);
+                completeTransaction(partition, offsetContext, true, event);
             }
             else if (sql.equalsIgnoreCase("ROLLBACK")) {
                 rollbackTransaction();
             }
             else {
-                consumeEvent(offsetContext, event);
+                consumeEvent(partition, offsetContext, event);
             }
         }
         else if (event.getHeader().getEventType() == EventType.XID) {
-            completeTransaction(offsetContext, true, event);
+            completeTransaction(partition, offsetContext, true, event);
         }
         else {
-            consumeEvent(offsetContext, event);
+            consumeEvent(partition, offsetContext, event);
         }
     }
 
@@ -157,19 +159,19 @@ class EventBuffer {
         return largeTxNotBufferedPosition != null;
     }
 
-    private void consumeEvent(MySqlOffsetContext offsetContext, Event event) {
+    private void consumeEvent(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) {
         if (txStarted) {
             addToBuffer(event);
         }
         else {
-            streamingChangeEventSource.handleEvent(offsetContext, event);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, event);
         }
     }
 
-    private void beginTransaction(MySqlOffsetContext offsetContext, Event event) {
+    private void beginTransaction(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) {
         if (txStarted) {
             LOGGER.warn("New transaction started but the previous was not completed, processing the buffer");
-            completeTransaction(offsetContext, false, null);
+            completeTransaction(partition, offsetContext, false, null);
         }
         else {
             txStarted = true;
@@ -181,10 +183,11 @@ class EventBuffer {
      * Sends all events from the buffer int a final handler. For large transactions it executes rewind
      * of binlog reader back to the first event that was not stored in the buffer.
      *
+     * @param partition the partition where the transaction was committed
      * @param wellFormed
      * @param event
      */
-    private void completeTransaction(MySqlOffsetContext offsetContext, boolean wellFormed, Event event) {
+    private void completeTransaction(MySqlPartition partition, MySqlOffsetContext offsetContext, boolean wellFormed, Event event) {
         LOGGER.debug("Committing transaction");
         if (event != null) {
             addToBuffer(event);
@@ -195,7 +198,7 @@ class EventBuffer {
         }
         LOGGER.debug("Executing events from buffer");
         for (Event e : buffer) {
-            streamingChangeEventSource.handleEvent(offsetContext, e);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, e);
         }
         LOGGER.debug("Executing events from binlog that have not fit into buffer");
         if (isInBufferFullMode()) {

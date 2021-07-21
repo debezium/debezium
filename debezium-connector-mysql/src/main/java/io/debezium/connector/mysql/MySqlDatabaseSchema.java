@@ -190,17 +190,20 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
     }
 
-    public List<SchemaChangeEvent> parseSnapshotDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime) {
+    public List<SchemaChangeEvent> parseSnapshotDdl(MySqlPartition partition, String ddlStatements, String databaseName,
+                                                    MySqlOffsetContext offset, Instant sourceTime) {
         LOGGER.debug("Processing snapshot DDL '{}' for database '{}'", ddlStatements, databaseName);
-        return parseDdl(ddlStatements, databaseName, offset, sourceTime, true);
+        return parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, true);
     }
 
-    public List<SchemaChangeEvent> parseStreamingDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime) {
+    public List<SchemaChangeEvent> parseStreamingDdl(MySqlPartition partition, String ddlStatements, String databaseName,
+                                                     MySqlOffsetContext offset, Instant sourceTime) {
         LOGGER.debug("Processing streaming DDL '{}' for database '{}'", ddlStatements, databaseName);
-        return parseDdl(ddlStatements, databaseName, offset, sourceTime, false);
+        return parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, false);
     }
 
-    private List<SchemaChangeEvent> parseDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime, boolean snapshot) {
+    private List<SchemaChangeEvent> parseDdl(MySqlPartition partition, String ddlStatements, String databaseName,
+                                             MySqlOffsetContext offset, Instant sourceTime, boolean snapshot) {
         final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>(3);
 
         if (ignoredQueryStatements.contains(ddlStatements)) {
@@ -249,24 +252,29 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                             offset.tableEvent(dbName, tableIds, sourceTime);
                             // For SET with multiple parameters
                             if (event instanceof TableCreatedEvent) {
-                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.CREATE, snapshot);
+                                emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
+                                        SchemaChangeEventType.CREATE, snapshot);
                             }
                             else if (event instanceof TableAlteredEvent || event instanceof TableIndexCreatedEvent || event instanceof TableIndexDroppedEvent) {
-                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.ALTER, snapshot);
+                                emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
+                                        SchemaChangeEventType.ALTER, snapshot);
                             }
                             else if (event instanceof TableDroppedEvent) {
-                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.DROP, snapshot);
+                                emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
+                                        SchemaChangeEventType.DROP, snapshot);
                             }
                             else if (event instanceof SetVariableEvent) {
                                 // SET statement with multiple variable emits event for each variable. We want to emit only
                                 // one change event
                                 final SetVariableEvent varEvent = (SetVariableEvent) event;
                                 if (varEvent.order() == 0) {
-                                    emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.DATABASE, snapshot);
+                                    emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event,
+                                            tableId, SchemaChangeEventType.DATABASE, snapshot);
                                 }
                             }
                             else {
-                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.DATABASE, snapshot);
+                                emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
+                                        SchemaChangeEventType.DATABASE, snapshot);
                             }
                         });
                     }
@@ -275,8 +283,9 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             else {
                 offset.databaseEvent(databaseName, sourceTime);
                 schemaChangeEvents
-                        .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
-                                databaseName, null, ddlStatements, (Table) null, SchemaChangeEventType.DATABASE, snapshot));
+                        .add(new SchemaChangeEvent(partition.getSourcePartition(), offset.getOffset(),
+                                offset.getSourceInfo(), databaseName, null, ddlStatements, (Table) null,
+                                SchemaChangeEventType.DATABASE, snapshot));
             }
         }
         else {
@@ -285,10 +294,10 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return schemaChangeEvents;
     }
 
-    private void emitChangeEvent(MySqlOffsetContext offset, List<SchemaChangeEvent> schemaChangeEvents,
-                                 final String sanitizedDbName, Event event, TableId tableId, SchemaChangeEvent.SchemaChangeEventType type,
+    private void emitChangeEvent(MySqlPartition partition, MySqlOffsetContext offset, List<SchemaChangeEvent> schemaChangeEvents,
+                                 final String sanitizedDbName, Event event, TableId tableId, SchemaChangeEventType type,
                                  boolean snapshot) {
-        schemaChangeEvents.add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
+        schemaChangeEvents.add(new SchemaChangeEvent(partition.getSourcePartition(), offset.getOffset(), offset.getSourceInfo(),
                 sanitizedDbName, null, event.statement(), tableId != null ? tableFor(tableId) : null, type, snapshot));
     }
 

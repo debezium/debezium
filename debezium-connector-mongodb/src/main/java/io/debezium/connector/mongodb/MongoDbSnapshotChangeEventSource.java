@@ -81,7 +81,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotResult<MongoDbOffsetContext> doExecute(ChangeEventSourceContext context, MongoDbOffsetContext previousOffset,
+    protected SnapshotResult<MongoDbOffsetContext> doExecute(ChangeEventSourceContext context,
+                                                             MongoDbPartition partition,
+                                                             MongoDbOffsetContext previousOffset,
                                                              SnapshotContext<MongoDbOffsetContext> snapshotContext,
                                                              SnapshottingTask snapshottingTask)
             throws Exception {
@@ -157,7 +159,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MongoDbOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext previousOffset) {
         if (previousOffset == null) {
             LOGGER.info("No previous offset has been found");
             if (connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER)) {
@@ -478,10 +480,11 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                                          ReplicaSet replicaSet) {
         final MongoDbOffsetContext offsetContext = snapshotContext.offset;
 
+        final ReplicaSetPartition replicaSetPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
 
-        return new MongoDbChangeRecordEmitter(replicaSetOffsetContext, getClock(), document, true);
+        return new MongoDbChangeRecordEmitter(replicaSetPartition, replicaSetOffsetContext, getClock(), document, true);
     }
 
     protected Clock getClock() {

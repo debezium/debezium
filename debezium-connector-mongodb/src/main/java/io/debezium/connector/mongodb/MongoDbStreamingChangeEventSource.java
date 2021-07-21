@@ -171,6 +171,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void readOplog(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
                            MongoDbOffsetContext offsetContext) {
+        final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
         final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
@@ -187,7 +188,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             throw new DebeziumException("Failed to find starting position '" + oplogStart + "' in oplog");
         }
 
-        ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsOffsetContext, primaryClient, replicaSet);
+        ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
 
         Bson filter = null;
         if (!txOrder.isPresent()) {
@@ -229,7 +230,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     }
 
                     try {
-                        dispatcher.dispatchHeartbeatEvent(oplogContext.getOffset());
+                        dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
                     }
                     catch (InterruptedException e) {
                         LOGGER.info("Replicator thread is interrupted");
@@ -337,14 +338,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 return true;
             }
             try {
-                dispatcher.dispatchTransactionStartedEvent(getTransactionId(event), oplogContext.getOffset());
+                dispatcher.dispatchTransactionStartedEvent(oplogContext.getPartition(), getTransactionId(event), oplogContext.getOffset());
                 for (Document change : txChanges) {
                     final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext, context);
                     if (!r) {
                         return false;
                     }
                 }
-                dispatcher.dispatchTransactionCommittedEvent(oplogContext.getOffset());
+                dispatcher.dispatchTransactionCommittedEvent(oplogContext.getPartition(), oplogContext.getOffset());
             }
             catch (InterruptedException e) {
                 LOGGER.error("Streaming transaction changes for replica set '{}' was interrupted", oplogContext.getReplicaSetName());
@@ -387,6 +388,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     return dispatcher.dispatchDataChangeEvent(
                             collectionId,
                             new MongoDbChangeRecordEmitter(
+                                    oplogContext.getPartition(),
                                     oplogContext.getOffset(),
                                     clock,
                                     event,
@@ -447,6 +449,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
      * A context associated with a given replica set oplog read operation.
      */
     private class ReplicaSetOplogContext {
+        private final ReplicaSetPartition partition;
         private final ReplicaSetOffsetContext offset;
         private final MongoPrimary primary;
         private final ReplicaSet replicaSet;
@@ -454,10 +457,16 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         private BsonTimestamp incompleteEventTimestamp;
         private long incompleteTxOrder = 0;
 
-        ReplicaSetOplogContext(ReplicaSetOffsetContext offsetContext, MongoPrimary primary, ReplicaSet replicaSet) {
+        ReplicaSetOplogContext(ReplicaSetPartition partition, ReplicaSetOffsetContext offsetContext,
+                               MongoPrimary primary, ReplicaSet replicaSet) {
+            this.partition = partition;
             this.offset = offsetContext;
             this.primary = primary;
             this.replicaSet = replicaSet;
+        }
+
+        ReplicaSetPartition getPartition() {
+            return partition;
         }
 
         ReplicaSetOffsetContext getOffset() {

@@ -8,6 +8,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.Partition;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.signal.Signal.Payload;
@@ -27,8 +28,8 @@ public class CloseIncrementalSnapshotWindow implements Signal.Action {
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
-    public boolean arrived(Payload signalPayload) throws InterruptedException {
-        dispatcher.getIncrementalSnapshotChangeEventSource().closeWindow(signalPayload.id, (EventDispatcher) dispatcher, signalPayload.offsetContext);
+    public boolean arrived(Partition partition, Payload signalPayload) throws InterruptedException {
+        dispatcher.getIncrementalSnapshotChangeEventSource().closeWindow(partition, signalPayload.id, (EventDispatcher) dispatcher, signalPayload.offsetContext);
         return true;
     }
 

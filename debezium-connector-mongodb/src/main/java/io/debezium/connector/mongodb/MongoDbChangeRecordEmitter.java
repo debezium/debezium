@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.common.Partition;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
@@ -46,8 +47,8 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeRecordEmitter(OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot) {
-        super(offsetContext, clock);
+    public MongoDbChangeRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot) {
+        super(partition, offsetContext, clock);
         this.oplogEvent = oplogEvent;
         this.isSnapshot = isSnapshot;
     }
@@ -70,7 +71,7 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
 
-        receiver.changeRecord(schema, getOperation(), newKey, value, getOffset(), null);
+        receiver.changeRecord(getPartition(), schema, getOperation(), newKey, value, getOffset(), null);
     }
 
     @Override
@@ -103,7 +104,7 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
 
-        receiver.changeRecord(schema, getOperation(), newKey, value, getOffset(), null);
+        receiver.changeRecord(getPartition(), schema, getOperation(), newKey, value, getOffset(), null);
     }
 
     public static boolean isValidOperation(String operation) {

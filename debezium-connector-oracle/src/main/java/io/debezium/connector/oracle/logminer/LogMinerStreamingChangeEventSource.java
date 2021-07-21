@@ -179,9 +179,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         try (ResultSet rs = miningView.executeQuery()) {
                             Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
                             streamingMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
-                            processor.processResult(rs);
+                            processor.processResult(partition, rs);
                             if (connectorConfig.isLobEnabled()) {
-                                startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
+                                startScn = transactionalBuffer.updateOffsetContext(partition, offsetContext, dispatcher);
                             }
                             else {
                                 if (transactionalBuffer.isEmpty()) {

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.Partition;
 import io.debezium.document.Array;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
@@ -43,7 +44,7 @@ public class ExecuteSnapshot implements Signal.Action {
     }
 
     @Override
-    public boolean arrived(Payload signalPayload) throws InterruptedException {
+    public boolean arrived(Partition partition, Payload signalPayload) throws InterruptedException {
         final Array dataCollectionsArray = signalPayload.data.getArray("data-collections");
         if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
             LOGGER.warn(

@@ -21,6 +21,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 
+import io.debezium.connector.common.Partition;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.data.Envelope.Operation;
@@ -46,6 +47,7 @@ import io.debezium.util.Strings;
 public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     private final ReplicationMessage message;
+    private final Partition partition;
     private final PostgresSchema schema;
     private final PostgresConnectorConfig connectorConfig;
     private final PostgresConnection connection;
@@ -54,11 +56,13 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final boolean nullToastedValuesMissingFromOld;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
-    public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection,
+    public PostgresChangeRecordEmitter(Partition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
+                                       PostgresConnection connection,
                                        ReplicationMessage message) {
-        super(offset, clock);
+        super(partition, offset, clock);
 
         this.schema = schema;
+        this.partition = partition;
         this.message = message;
         this.connectorConfig = connectorConfig;
         this.connection = connection;
@@ -94,7 +98,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     @Override
     protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
+        receiver.changeRecord(partition, tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
     }
 
     @Override

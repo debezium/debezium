@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.Partition;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -78,7 +79,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
 
     @Override
     @SuppressWarnings("unchecked")
-    public void closeWindow(String id, EventDispatcher<T> dispatcher, OffsetContext offsetContext) throws InterruptedException {
+    public void closeWindow(Partition partition, String id, EventDispatcher<T> dispatcher, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (!context.closeWindow(id)) {
             return;
@@ -86,18 +87,18 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
         LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
-            sendEvent(dispatcher, offsetContext, row);
+            sendEvent(dispatcher, partition, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
         readChunk();
     }
 
-    protected void sendEvent(EventDispatcher<T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
+    protected void sendEvent(EventDispatcher<T> dispatcher, Partition partition, OffsetContext offsetContext, Object[] row) throws InterruptedException {
         context.sendEvent(keyFromRow(row));
-        offsetContext.event((T) context.currentDataCollectionId(), clock.currentTimeAsInstant());
-        dispatcher.dispatchSnapshotEvent((T) context.currentDataCollectionId(),
-                getChangeRecordEmitter(context.currentDataCollectionId(), offsetContext, row),
+        offsetContext.event(context.currentDataCollectionId(), clock.currentTimeAsInstant());
+        dispatcher.dispatchSnapshotEvent(context.currentDataCollectionId(),
+                getChangeRecordEmitter(partition, context.currentDataCollectionId(), offsetContext, row),
                 dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
     }
 
@@ -105,9 +106,9 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
      * Returns a {@link ChangeRecordEmitter} producing the change records for
      * the given table row.
      */
-    protected ChangeRecordEmitter getChangeRecordEmitter(T dataCollectionId, OffsetContext offsetContext,
+    protected ChangeRecordEmitter getChangeRecordEmitter(Partition partition, T dataCollectionId, OffsetContext offsetContext,
                                                          Object[] row) {
-        return new SnapshotChangeRecordEmitter(offsetContext, row, clock);
+        return new SnapshotChangeRecordEmitter(partition, offsetContext, row, clock);
     }
 
     @Override

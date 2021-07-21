@@ -39,6 +39,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSchemaChangeEventEmitter.class);
 
+    private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final TableId tableId;
     private final OracleDatabaseSchema schema;
@@ -50,9 +51,11 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     private final TableFilter filters;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
-    public OracleSchemaChangeEventEmitter(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, TableId tableId,
-                                          String sourceDatabaseName, String objectOwner, String ddlText,
-                                          OracleDatabaseSchema schema, Instant changeTime, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    public OracleSchemaChangeEventEmitter(OracleConnectorConfig connectorConfig, OraclePartition partition,
+                                          OracleOffsetContext offsetContext, TableId tableId, String sourceDatabaseName,
+                                          String objectOwner, String ddlText, OracleDatabaseSchema schema,
+                                          Instant changeTime, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.tableId = tableId;
         this.sourceDatabaseName = sourceDatabaseName;
@@ -97,13 +100,13 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 events.forEach(event -> {
                     switch (event.type()) {
                         case CREATE_TABLE:
-                            changeEvents.add(createTableEvent((TableCreatedEvent) event));
+                            changeEvents.add(createTableEvent(partition, (TableCreatedEvent) event));
                             break;
                         case ALTER_TABLE:
-                            changeEvents.add(alterTableEvent((TableAlteredEvent) event));
+                            changeEvents.add(alterTableEvent(partition, (TableAlteredEvent) event));
                             break;
                         case DROP_TABLE:
-                            changeEvents.add(dropTableEvent(tableBefore, (TableDroppedEvent) event));
+                            changeEvents.add(dropTableEvent(partition, tableBefore, (TableDroppedEvent) event));
                             break;
                         default:
                             LOGGER.info("Skipped DDL event type {}: {}", event.type(), ddlText);
@@ -118,10 +121,10 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         }
     }
 
-    private SchemaChangeEvent createTableEvent(TableCreatedEvent event) {
+    private SchemaChangeEvent createTableEvent(OraclePartition partition, TableCreatedEvent event) {
         offsetContext.tableEvent(tableId, changeTime);
         return new SchemaChangeEvent(
-                offsetContext.getPartition(),
+                partition.getSourcePartition(),
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 tableId.catalog(),
@@ -132,14 +135,14 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 false);
     }
 
-    private SchemaChangeEvent alterTableEvent(TableAlteredEvent event) {
+    private SchemaChangeEvent alterTableEvent(OraclePartition partition, TableAlteredEvent event) {
         final Set<TableId> tableIds = new HashSet<>();
         tableIds.add(tableId);
         tableIds.add(event.tableId());
 
         offsetContext.tableEvent(tableIds, changeTime);
         return new SchemaChangeEvent(
-                offsetContext.getPartition(),
+                partition.getSourcePartition(),
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 tableId.catalog(),
@@ -150,10 +153,10 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 false);
     }
 
-    private SchemaChangeEvent dropTableEvent(Table tableSchemaBeforeDrop, TableDroppedEvent event) {
+    private SchemaChangeEvent dropTableEvent(OraclePartition partition, Table tableSchemaBeforeDrop, TableDroppedEvent event) {
         offsetContext.tableEvent(tableId, changeTime);
         return new SchemaChangeEvent(
-                offsetContext.getPartition(),
+                partition.getSourcePartition(),
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 tableId.catalog(),

@@ -89,10 +89,11 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         Map<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
                 new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
+        SqlServerPartition partition = getTheOnlyPartition(offsets);
         SqlServerOffsetContext previousOffset = getTheOnlyOffset(offsets);
 
         if (previousOffset != null) {
-            schema.recover(previousOffset);
+            schema.recover(partition, previousOffset);
         }
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);

@@ -86,7 +86,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     @Override
-    public SnapshotResult<O> doExecute(ChangeEventSourceContext context, O previousOffset, SnapshotContext<O> snapshotContext, SnapshottingTask snapshottingTask)
+    public SnapshotResult<O> doExecute(ChangeEventSourceContext context, P partition, O previousOffset,
+                                       SnapshotContext<O> snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception {
         final RelationalSnapshotContext<O> ctx = (RelationalSnapshotContext<O>) snapshotContext;
 
@@ -118,12 +119,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             determineSnapshotOffset(ctx, previousOffset);
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
-            readTableStructure(context, ctx, previousOffset);
+            readTableStructure(context, partition, ctx, previousOffset);
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
 
-                createSchemaChangeEventsForTables(context, ctx, snapshottingTask);
+                createSchemaChangeEventsForTables(context, partition, ctx, snapshottingTask);
 
                 // if we've been interrupted before, the TX rollback will cause any locks to be released
                 releaseSchemaSnapshotLocks(ctx);
@@ -134,17 +135,17 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 7 - Snapshotting data");
-                createDataEvents(context, ctx);
+                createDataEvents(context, partition, ctx);
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
-                releaseDataSnapshotLocks(ctx);
+                releaseDataSnapshotLocks(partition, ctx);
                 ctx.offset.preSnapshotCompletion();
                 ctx.offset.postSnapshotCompletion();
             }
 
             postSnapshot();
-            dispatcher.alwaysDispatchHeartbeatEvent(ctx.offset);
+            dispatcher.alwaysDispatchHeartbeatEvent(partition, ctx.offset);
             return SnapshotResult.completed(ctx.offset);
         }
         finally {
@@ -234,8 +235,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Reads the structure of all the captured tables, writing it to {@link RelationalSnapshotContext#tables}.
      */
-    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<O> snapshotContext,
-                                               O offsetContext)
+    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, P partition,
+                                               RelationalSnapshotContext<O> snapshotContext, O offsetContext)
             throws Exception;
 
     /**
@@ -246,10 +247,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Releases all locks established in order to create a consistent data snapshot.
      */
-    protected void releaseDataSnapshotLocks(RelationalSnapshotContext<O> snapshotContext) throws Exception {
+    protected void releaseDataSnapshotLocks(P partition, RelationalSnapshotContext<O> snapshotContext) throws Exception {
     }
 
-    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<O> snapshotContext,
+    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext,
+                                                     P partition,
+                                                     RelationalSnapshotContext<O> snapshotContext,
                                                      SnapshottingTask snapshottingTask)
             throws Exception {
         tryStartingSnapshot(snapshotContext);
@@ -272,7 +275,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 }
                 dispatcher.dispatchSchemaChangeEvent(table.id(), (receiver) -> {
                     try {
-                        receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
+                        receiver.schemaChangeEvent(getCreateTableEvent(partition, snapshotContext, table));
                     }
                     catch (Exception e) {
                         throw new DebeziumException(e);
@@ -285,9 +288,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Creates a {@link SchemaChangeEvent} representing the creation of the given table.
      */
-    protected abstract SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<O> snapshotContext, Table table) throws Exception;
+    protected abstract SchemaChangeEvent getCreateTableEvent(P partition, RelationalSnapshotContext<O> snapshotContext,
+                                                             Table table)
+            throws Exception;
 
-    private void createDataEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<O> snapshotContext) throws Exception {
+    private void createDataEvents(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext<O> snapshotContext) throws Exception {
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         tryStartingSnapshot(snapshotContext);
 
@@ -304,10 +309,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             LOGGER.debug("Snapshotting table {}", tableId);
 
-            createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
+            createDataEventsForTable(sourceContext, partition, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
         }
 
-        releaseDataSnapshotLocks(snapshotContext);
+        releaseDataSnapshotLocks(partition, snapshotContext);
         snapshotContext.offset.preSnapshotCompletion();
         snapshotReceiver.completeSnapshot();
         snapshotContext.offset.postSnapshotCompletion();
@@ -322,7 +327,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Dispatches the data change events for the records of a single table.
      */
-    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<O> snapshotContext,
+    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext<O> snapshotContext,
                                           SnapshotReceiver snapshotReceiver, Table table, int tableOrder, int tableCount)
             throws InterruptedException {
 
@@ -373,7 +378,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
                         lastSnapshotRecord(snapshotContext);
                     }
-                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
+                    dispatcher.dispatchSnapshotEvent(table.id(),
+                            getChangeRecordEmitter(partition, snapshotContext, table.id(), row), snapshotReceiver);
                 }
             }
             else if (snapshotContext.lastTable) {
@@ -407,9 +413,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
-    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext<O> snapshotContext, TableId tableId, Object[] row) {
+    protected ChangeRecordEmitter getChangeRecordEmitter(P partition, SnapshotContext<O> snapshotContext, TableId tableId, Object[] row) {
         snapshotContext.offset.event(tableId, getClock().currentTime());
-        return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
+        return new SnapshotChangeRecordEmitter(partition, snapshotContext.offset, row, getClock());
     }
 
     /**
