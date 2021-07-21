@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.Strings;
@@ -27,9 +29,14 @@ import io.debezium.util.Strings;
  */
 @ThreadSafe
 public final class FieldSelector {
+    protected final static Logger LOGGER = LoggerFactory.getLogger(FieldSelector.class);
 
     private static final Pattern DOT = Pattern.compile("\\.");
     private static final Pattern COLON = Pattern.compile(":");
+    private static final String QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>";
+    private static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
+
+    private static List<ConfigException> errors;
 
     /**
      * This filter is designed to exclude or rename fields in a document.
@@ -101,14 +108,23 @@ public final class FieldSelector {
          * @return the filter selector that returns the filter to exclude or rename fields in a document
          */
         public FieldSelector build() {
+            errors = new ArrayList<>();
             List<Path> result = new ArrayList<>();
             parse(fullyQualifiedFieldNames, name -> {
-                String[] nameNodes = parseIntoParts(name, name, length -> length < 3, DOT);
+                String[] nameNodes = parseIntoParts(name, name, length -> length < 3, DOT, errors);
+                if (!errors.isEmpty()) {
+                    LOGGER.error(errors.get(0) + " ( expecting " + QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN + ")");
+                    return null;
+                }
                 return new RemovePath(selectNamespacePartAsPattern(nameNodes), selectFieldPartAsNodes(nameNodes));
             }, result);
             parse(fullyQualifiedFieldReplacements, name -> {
-                String[] replacement = parseIntoParts(name, name, length -> length != 2, COLON);
-                String[] nameNodes = parseIntoParts(name, replacement[0], length -> length < 3, DOT);
+                String[] replacement = parseIntoParts(name, name, length -> length != 2, COLON, errors);
+                String[] nameNodes = parseIntoParts(name, replacement[0], length -> length < 3, DOT, errors);
+                if (!errors.isEmpty()) {
+                    LOGGER.error(errors.get(0) + " ( expecting " + QUALIFIED_FIELD_RENAMES_PATTERN + ")");
+                    return null;
+                }
                 return new RenamePath(selectNamespacePartAsPattern(nameNodes), selectFieldPartAsNodes(nameNodes), replacement[1]);
             }, result);
             return new FieldSelector(result);
@@ -120,10 +136,10 @@ public final class FieldSelector {
             }
         }
 
-        private String[] parseIntoParts(String name, String value, Predicate<Integer> lengthPredicate, Pattern delimiterPattern) {
+        private String[] parseIntoParts(String name, String value, Predicate<Integer> lengthPredicate, Pattern delimiterPattern, List<ConfigException> errors) {
             String[] nodes = delimiterPattern.split(value);
             if (lengthPredicate.test(nodes.length) || Arrays.stream(nodes).anyMatch(Strings::isNullOrEmpty)) {
-                throw new ConfigException("Invalid format: " + name);
+                errors.add(new ConfigException(name + " has invalid format "));
             }
             return nodes;
         }
@@ -142,6 +158,10 @@ public final class FieldSelector {
         private String[] selectFieldPartAsNodes(String[] expressionNodes) {
             return Arrays.copyOfRange(expressionNodes, 2, expressionNodes.length);
         }
+    }
+
+    public List<ConfigException> getErrors() {
+        return errors;
     }
 
     /**
