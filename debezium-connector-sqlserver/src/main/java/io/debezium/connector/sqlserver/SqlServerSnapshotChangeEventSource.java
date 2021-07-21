@@ -173,6 +173,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         // reading info only for the schemas we're interested in as per the set of captured tables;
         // while the passed table name filter alone would skip all non-included tables, reading the schema
         // would take much longer that way
+
         for (String schema : schemas) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
@@ -246,26 +247,22 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
      */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext, TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return Optional.of(String.format("SELECT %s FROM [%s].[%s]", modifiedColumns, tableId.schema(), tableId.table()));
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return Optional.of(String.format("SELECT %s FROM [%s].[%s]", snapshotSelectColumns, tableId.schema(), tableId.table()));
     }
 
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext, String overriddenSelect, TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return overriddenSelect.replaceAll("\\*", modifiedColumns);
+        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
     }
 
-    private String checkExcludedColumns(TableId tableId) {
+    @Override
+    protected String getSnapshotSelectColumns(TableId tableId) {
         Table table = sqlServerDatabaseSchema.tableFor(tableId);
-        List<String> columnNames = table.retrieveColumnNames().stream()
+        List<String> columnNames = prepareSnapshotSelectColumns(table, tableId).stream()
                 .filter(columnName -> filterChangeTableColumns(tableId, columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
                 .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            throw new IllegalArgumentException("Filtered column list for table " + tableId + " is empty");
-        }
 
         return columnNames.stream()
                 .map(columnName -> {
