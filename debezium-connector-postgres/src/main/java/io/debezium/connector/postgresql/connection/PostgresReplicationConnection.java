@@ -526,7 +526,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                             try {
                                 LOGGER.trace("Forcing status update with replication stream");
                                 stream.forceUpdateStatus();
-
                                 metronome.pause();
                             }
                             catch (Exception exp) {
