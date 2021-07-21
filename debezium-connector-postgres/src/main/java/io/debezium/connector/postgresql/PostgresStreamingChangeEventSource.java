@@ -191,6 +191,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             boolean receivedMessage = stream.readPending(message -> {
                 final Lsn lsn = stream.lastReceivedLsn();
 
+                if (message == null) {
+                    skipMessage(lsn);
+                    return;
+                }
+
                 if (message.isLastEventForLsn()) {
                     lastCompletelyProcessedLsn = lsn;
                 }
@@ -296,6 +301,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private void commitMessage(PostgresOffsetContext offsetContext, final Lsn lsn) throws SQLException, InterruptedException {
         lastCompletelyProcessedLsn = lsn;
         offsetContext.updateCommitPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
+        maybeWarnAboutGrowingWalBacklog(false);
+        dispatcher.dispatchHeartbeatEvent(offsetContext);
+    }
+
+    private void skipMessage(final Lsn lsn) throws SQLException, InterruptedException {
+        lastCompletelyProcessedLsn = lsn;
+        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
         maybeWarnAboutGrowingWalBacklog(false);
         dispatcher.dispatchHeartbeatEvent(offsetContext);
     }

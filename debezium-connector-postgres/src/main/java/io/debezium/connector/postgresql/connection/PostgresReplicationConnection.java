@@ -55,7 +55,7 @@ import io.debezium.util.Metronome;
  */
 public class PostgresReplicationConnection extends JdbcConnection implements ReplicationConnection {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
     private final String publicationName;
@@ -479,6 +479,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
 
                 if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startLsn, walPosition)) {
+                    messageDecoder.processMessage(null, processor, typeRegistry);
                     return true;
                 }
 
