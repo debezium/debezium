@@ -1090,7 +1090,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[vitess-property-database-server-name]]<<vitess-property-database-server-name, `+database.server.name+`>>
 |
-|Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters, hyphens and underscores must be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
+|Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
 |[[vitess-property-table-include-list]]<<vitess-property-table-include-list, `+table.include.list+`>>
 |
