@@ -1179,15 +1179,15 @@ endif::product[]
 [id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
 === Obtaining the Oracle JDBC driver and XStream API files
 
+The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
 ifdef::community[]
-Depending on your Oracle environment, you must have either the Oracle JDBC driver (`ojdbc8.jar`) or XStream API (`xstreams.jar`) to run the {prodname} Oracle connector.
+If the connector uses XStreams to access the database, you must also have the XStream API (`xstreams.jar`).
 Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
 However, the required files are available for free download as part of the Oracle Instant Client.
 The following steps describe how to download the Oracle Instant Client and extract the required files.
 
 endif::community[]
 ifdef::product[]
-The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
 Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
 You must download the required driver file directly from Oracle and add it to your Kafka Connect environment.
 The following steps describe how to download the Oracle Instant Client and extract the driver.
