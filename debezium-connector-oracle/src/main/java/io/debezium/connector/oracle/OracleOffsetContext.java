@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -30,6 +31,7 @@ public class OracleOffsetContext implements OffsetContext {
 
     private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
+    private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
 
     /**
      * Whether a snapshot has been completed or not.
@@ -37,13 +39,15 @@ public class OracleOffsetContext implements OffsetContext {
     private boolean snapshotCompleted;
 
     public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Scn commitScn, String lcrPosition,
-                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
-        this(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext);
+                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+                               IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
+        this(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext, incrementalSnapshotContext);
         sourceInfo.setCommitScn(commitScn);
     }
 
     public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, String lcrPosition,
-                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
+                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+                               IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
         sourceInfo = new SourceInfo(connectorConfig);
@@ -52,6 +56,7 @@ public class OracleOffsetContext implements OffsetContext {
         sourceInfoSchema = sourceInfo.schema();
 
         this.transactionContext = transactionContext;
+        this.incrementalSnapshotContext = incrementalSnapshotContext;
 
         this.snapshotCompleted = snapshotCompleted;
         if (this.snapshotCompleted) {
@@ -70,6 +75,7 @@ public class OracleOffsetContext implements OffsetContext {
         private boolean snapshot;
         private boolean snapshotCompleted;
         private TransactionContext transactionContext;
+        private IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
 
         public Builder logicalName(OracleConnectorConfig connectorConfig) {
             this.connectorConfig = connectorConfig;
@@ -101,8 +107,13 @@ public class OracleOffsetContext implements OffsetContext {
             return this;
         }
 
+        public Builder incrementalSnapshotContext(IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
+            this.incrementalSnapshotContext = incrementalSnapshotContext;
+            return this;
+        }
+
         OracleOffsetContext build() {
-            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext);
+            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext, incrementalSnapshotContext);
         }
     }
 
@@ -138,7 +149,7 @@ public class OracleOffsetContext implements OffsetContext {
                 offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : null);
                 offset.put(SourceInfo.COMMIT_SCN_KEY, commitScn != null ? commitScn.toString() : null);
             }
-            return transactionContext.store(offset);
+            return incrementalSnapshotContext.store(transactionContext.store(offset));
         }
     }
 
@@ -247,6 +258,16 @@ public class OracleOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
+    }
+
+    @Override
+    public void incrementalSnapshotEvents() {
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
+    }
+
+    @Override
+    public IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
+        return incrementalSnapshotContext;
     }
 
     /**

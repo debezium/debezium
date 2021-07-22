@@ -89,6 +89,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         readChunk();
     }
 
+    protected String getSignalTableName(String dataCollectionId) {
+        return dataCollectionId;
+    }
+
     protected void sendWindowEvents(OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
@@ -200,6 +204,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         try {
             // This commit should be unnecessary and might be removed later
             jdbcConnection.commit();
+            preReadChunk(context);
             context.startNewChunk();
             emitWindowOpen();
             while (context.snapshotRunning()) {
@@ -251,6 +256,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         }
         catch (SQLException e) {
             throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
+        }
+        finally {
+            postReadChunk(context);
         }
     }
 
@@ -375,5 +383,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     protected void setContext(IncrementalSnapshotContext<T> context) {
         this.context = context;
+    }
+
+    protected void preReadChunk(IncrementalSnapshotContext<T> context) {
+        // no-op
+    }
+
+    protected void postReadChunk(IncrementalSnapshotContext<T> context) {
+        // no-op
     }
 }

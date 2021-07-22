@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -126,6 +127,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 .logicalName(connectorConfig)
                 .scn(currentScn)
                 .transactionContext(new TransactionContext())
+                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
     }
 

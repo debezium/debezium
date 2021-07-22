@@ -32,7 +32,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
                                                            SnapshotProgressListener progressListener,
                                                            DataChangeEventListener dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
-        signalWindowStatement = "INSERT INTO " + config.getSignalingDataCollectionId()
+        signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
                 + " VALUES (?, ?, null)";
     }
 

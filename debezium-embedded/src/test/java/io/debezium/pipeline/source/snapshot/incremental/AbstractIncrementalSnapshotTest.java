@@ -51,6 +51,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract Configuration.Builder config();
 
+    protected String tableDataCollectionId() {
+        return tableName();
+    }
+
     protected void populateTable(JdbcConnection connection) throws SQLException {
         connection.setAutoCommit(false);
         for (int i = 0; i < ROW_COUNT; i++) {
@@ -118,7 +122,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         try (final JdbcConnection connection = databaseConnection()) {
             String query = String.format(
                     "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"%s\"]}')",
-                    signalTableName(), tableName());
+                    signalTableName(), tableDataCollectionId());
             logger.info("Sending signal with query {}", query);
             connection.execute(query);
         }
