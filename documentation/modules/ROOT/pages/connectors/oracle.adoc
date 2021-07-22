@@ -58,6 +58,8 @@ If the connector stops again for any reason, upon restart, the connector continu
 
 |===
 
+include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
 [[oracle-topic-names]]
 === Topics Names
 

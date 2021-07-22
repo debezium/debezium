@@ -43,6 +43,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
@@ -132,7 +133,7 @@ public class TransactionalBufferTest {
     @Test
     public void testIsEmptyWhenTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
-        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (String) null, false, true, new TransactionContext());
+        offsetContext = createOffsetContext(SCN, SCN);
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(transactionalBuffer.isEmpty()).isTrue();
     }
@@ -167,7 +168,7 @@ public class TransactionalBufferTest {
     @Test
     public void testCalculateScnWhenTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
-        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, null, false, true, new TransactionContext());
+        offsetContext = createOffsetContext(SCN, SCN);
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(streamingMetrics.getOldestScn()).isEqualTo(SCN.toString());
         assertThat(transactionalBuffer.getRolledBackTransactionIds().isEmpty()).isTrue();
@@ -177,7 +178,7 @@ public class TransactionalBufferTest {
     public void testCalculateScnWhenFirstTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
-        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, null, false, true, new TransactionContext());
+        offsetContext = createOffsetContext(SCN, SCN);
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
 
         // after commit, it stays the same because OTHER_TRANSACTION_ID is not committed yet
@@ -192,7 +193,7 @@ public class TransactionalBufferTest {
     public void testCalculateScnWhenSecondTransactionIsCommitted() throws InterruptedException {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
-        offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN, OTHER_SCN, null, false, true, new TransactionContext());
+        offsetContext = createOffsetContext(OTHER_SCN, OTHER_SCN);
         transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
 
         assertThat(streamingMetrics.getOldestScn()).isEqualTo(SCN.toString());
@@ -203,7 +204,7 @@ public class TransactionalBufferTest {
     @Test
     public void testAbandoningOneTransaction() {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
-        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (String) null, false, true, new TransactionContext());
+        offsetContext = createOffsetContext(SCN, SCN);
         transactionalBuffer.abandonLongTransactions(SCN, offsetContext);
         assertThat(transactionalBuffer.isEmpty()).isTrue();
     }
@@ -227,5 +228,10 @@ public class TransactionalBufferTest {
 
     private void registerDmlOperation(String txId, Scn scn, String rowId) {
         transactionalBuffer.registerDmlOperation(RowMapper.INSERT, txId, scn, TABLE_ID, DML_ENTRY, Instant.now(), rowId, null, 0L);
+    }
+
+    private OracleOffsetContext createOffsetContext(Scn scn, Scn commitScn) {
+        return new OracleOffsetContext(connectorConfig, scn, commitScn, null, false, true, new TransactionContext(),
+                new SignalBasedIncrementalSnapshotContext<TableId>());
     }
 }

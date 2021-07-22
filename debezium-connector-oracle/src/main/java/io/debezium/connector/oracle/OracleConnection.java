@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -404,6 +405,32 @@ public class OracleConnection extends JdbcConnection {
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
+    @Override
+    public String buildSelectWithRowLimits(TableId tableId,
+                                           int limit,
+                                           String projection,
+                                           Optional<String> condition,
+                                           String orderBy) {
+        final TableId table = new TableId(null, tableId.schema(), tableId.table());
+        final StringBuilder sql = new StringBuilder("SELECT ");
+        sql
+                .append(projection)
+                .append(" FROM ");
+        sql.append(quotedTableIdString(table));
+        if (condition.isPresent()) {
+            sql
+                    .append(" WHERE ")
+                    .append(condition.get());
+        }
+        sql
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" FETCH NEXT ")
+                .append(limit)
+                .append(" ROWS ONLY");
+        return sql.toString();
     }
 
     public static String connectionString(Configuration config) {
