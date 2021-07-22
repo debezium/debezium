@@ -326,7 +326,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
-    private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId) throws SQLException {
+    private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId)
+            throws SQLException {
         List<io.debezium.relational.Column> readColumns = new ArrayList<>();
         try {
             try (ResultSet columnMetadata = databaseMetadata.getColumns(null, tableId.schema(), tableId.table(), null)) {
