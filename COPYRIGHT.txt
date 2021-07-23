@@ -116,6 +116,7 @@ Hans-Peter Grahsl
 Harvey Yue
 Henryk Konsek
 Hoa Le
+Hongkai Wang
 Horia Chiorean
 Hossein Torabi
 Hussain Ansari
@@ -287,6 +288,7 @@ Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
+Tin Nguyen
 Tom Bentley
 Tomaz Lemos Fernandes
 Tommy Karlsson
