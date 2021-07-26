@@ -338,9 +338,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
         }
         catch (SQLException e) {
-            LOGGER.warn("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
+            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
             throw e;
-            // todo: DBZ-766 Should this throw the exception or just log the warning?
         }
 
         return readColumns;
