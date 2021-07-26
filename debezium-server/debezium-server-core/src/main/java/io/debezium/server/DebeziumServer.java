@@ -75,7 +75,7 @@ public class DebeziumServer {
     private static final String FORMAT_AVRO = Avro.class.getSimpleName().toLowerCase();
     private static final String FORMAT_PROTOBUF = Protobuf.class.getSimpleName().toLowerCase();
 
-    private static final Pattern PROPERTY_NAME_PATTERN = Pattern.compile("([a-z]*\\.[a-z]*)+$");
+    private static final Pattern SHELL_PROPERTY_NAME_PATTERN = Pattern.compile("^\\w+_+\\w+$");
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -154,7 +154,7 @@ public class DebeziumServer {
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
         for (String name : config.getPropertyNames()) {
             String updatedPropertyName = null;
-            if (!PROPERTY_NAME_PATTERN.asPredicate().test(name)) {
+            if (SHELL_PROPERTY_NAME_PATTERN.asPredicate().test(name)) {
                 updatedPropertyName = name.replace("_", ".").toLowerCase();
             }
             if (updatedPropertyName != null && updatedPropertyName.startsWith(oldPrefix)) {
