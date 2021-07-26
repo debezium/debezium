@@ -21,7 +21,7 @@ spec:
         runAsUser: 10001
       containers:
         - name: sqlserver
-          image: "mcr.microsoft.com/mssql/server:2019-latest"
+          image: ${ocp.image.sqlserver}
           ports:
             - containerPort: 1433
               protocol: TCP
