@@ -26,6 +26,14 @@
     <image.name>debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.name>
     <image.fullname>${image.registry}/${image.name}</image.fullname>
 
+
+    <!--Docker configuration-->
+    <docker.image.mysql>quay.io/debezium/example-mysql:latest</docker.image.mysql>
+    <docker.image.postgresql>quay.io/debezium/example-postgres:latest</docker.image.postgresql>
+    <docker.image.mongo>quay.io/debezium/example-mongodb:latest</docker.image.mongo>
+    <docker.image.sqlserver>mcr.microsoft.com/mssql/server:2019-latest</docker.image.sqlserver>
+    <docker.image.db2>quay.io/debezium/db2-cdc:latest</docker.image.db2>
+
     <!--OCP configuration-->
     <ocp.project.debezium>debezium</ocp.project.debezium>
     <ocp.project.registry>debezium-registry</ocp.project.registry>
@@ -35,10 +43,14 @@
     <ocp.project.sqlserver>debezium-sqlserver</ocp.project.sqlserver>
     <ocp.project.db2>debezium-db2</ocp.project.db2>
 
+    <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
+    <ocp.image.postgresql>${docker.image.postgresql}</ocp.image.postgresql>
+    <ocp.image.mongo>${docker.image.mongo}</ocp.image.mongo>
+    <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
+    <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
 
     <!--Strimzi configuration-->
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
-
 
     <!--MySQL configuration-->
     <database.mysql.port>3306</database.mysql.port>
@@ -447,6 +459,16 @@
               <trimStackTrace>false</trimStackTrace>
               <systemPropertyVariables>
                 <test.wait.scale>1</test.wait.scale>
+
+                <!--Docker Configuration-->
+                <test.docker.image.rhel.kafka>${docker.image.rhel.kafka}</test.docker.image.rhel.kafka>
+                <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
+                <test.docker.image.postgresql>${docker.image.postgresql}</test.docker.image.postgresql>
+                <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
+                <test.docker.image.sqlserver>${docker.image.sqlserver}</test.docker.image.sqlserver>
+                <test.docker.image.db2>${docker.image.db2}</test.docker.image.db2>
+
+                <!--OCP Configuration-->
                 <test.ocp.url>${ocp.url}</test.ocp.url>
                 <test.ocp.username>${ocp.username}</test.ocp.username>
                 <test.ocp.password>${ocp.password}</test.ocp.password>
@@ -459,9 +481,11 @@
                 <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
                 <test.ocp.project.db2>${ocp.project.db2}</test.ocp.project.db2>
 
+                <!--Strimzi Configuration-->
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
                 <test.strimzi.crd.version>v1beta2</test.strimzi.crd.version>
 
+                <!--MySQL configuration-->
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
                 <test.database.mysql.username>${database.mysql.username}</test.database.mysql.username>
                 <test.database.mysql.password>${database.mysql.password}</test.database.mysql.password>
@@ -469,6 +493,7 @@
                 <test.database.mysql.dbz.password>${database.mysql.dbz.password}</test.database.mysql.dbz.password>
                 <test.database.mysql.port>${database.mysql.port}</test.database.mysql.port>
 
+                <!--PostgreSQL configuration-->
                 <test.database.postgresql.host>${database.postgresql.host}</test.database.postgresql.host>
                 <test.database.postgresql.port>${database.postgresql.port}</test.database.postgresql.port>
                 <test.database.postgresql.username>${database.postgresql.username}</test.database.postgresql.username>
@@ -477,6 +502,7 @@
                 <test.database.postgresql.dbz.password>${database.postgresql.dbz.password}</test.database.postgresql.dbz.password>
                 <test.database.postgresql.dbname>${database.postgresql.dbname}</test.database.postgresql.dbname>
 
+                <!--Mongo configuration-->
                 <test.database.mongo.host>${database.mongo.host}</test.database.mongo.host>
                 <test.database.mongo.port>${database.mongo.port}</test.database.mongo.port>
                 <test.database.mongo.username>${database.mongo.username}</test.database.mongo.username>
@@ -486,6 +512,7 @@
                 <test.database.mongo.dbz.dbname>${database.mongo.dbz.dbname}</test.database.mongo.dbz.dbname>
                 <test.database.mongo.dbz.login.dbname>${database.mongo.dbz.login.dbname}</test.database.mongo.dbz.login.dbname>
 
+                <!--DB2 configuration-->
                 <test.database.db2.host>${database.db2.host}</test.database.db2.host>
                 <test.database.db2.port>${database.db2.port}</test.database.db2.port>
                 <test.database.db2.username>${database.db2.username}</test.database.db2.username>
