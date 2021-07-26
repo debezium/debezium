@@ -53,6 +53,12 @@ public class DebeziumServerTest {
         Properties properties = server.getProps();
         Assertions.assertThat(properties.getProperty("table.whitelist")).isNotNull();
         Assertions.assertThat(properties.getProperty("table.whitelist")).isEqualTo("public.table_name");
+
+        Assertions.assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isNotNull();
+        Assertions.assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isEqualTo("SELECT * FROM table_name WHERE 1>2");
+
+        Assertions.assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isNotNull();
+        Assertions.assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isEqualTo("true");
     }
 
     @Test
