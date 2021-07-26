@@ -203,12 +203,6 @@
     </dependency>
 
     <dependency>
-      <groupId>org.junit-pioneer</groupId>
-      <artifactId>junit-pioneer</artifactId>
-      <version>${version.junit5.pioneer}</version>
-    </dependency>
-
-    <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>${version.assertj}</version>
