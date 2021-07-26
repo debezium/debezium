@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * An adaptation of {@link Consumer} which allows for exceptions to pass through
+ * An adaptation of {@link Consumer} which allows for exceptions to passed through
  * @author Jakub Cechacek
  */
 @FunctionalInterface
