@@ -21,17 +21,6 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public class OcpPostgreSqlDeployer extends AbstractOcpDatabaseDeployer<OcpSqlDatabaseController> {
 
-    public static class Deployer extends DatabaseBuilder<OcpPostgreSqlDeployer.Deployer, OcpPostgreSqlDeployer> {
-        @Override
-        public OcpPostgreSqlDeployer build() {
-            return new OcpPostgreSqlDeployer(
-                    project,
-                    deployment,
-                    services,
-                    ocpClient);
-        }
-    }
-
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpPostgreSqlDeployer.class);
 
     public OcpPostgreSqlDeployer(
@@ -42,8 +31,20 @@ public class OcpPostgreSqlDeployer extends AbstractOcpDatabaseDeployer<OcpSqlDat
         super(project, deployment, services, ocp);
     }
 
+    @Override
     public OcpSqlDatabaseController getController(
                                                   Deployment deployment, List<Service> services, OpenShiftClient ocp) {
         return new OcpSqlDatabaseController(deployment, services, "postgresql", ocp);
+    }
+
+    public static class Deployer extends DatabaseBuilder<Deployer, OcpPostgreSqlDeployer> {
+        @Override
+        public OcpPostgreSqlDeployer build() {
+            return new OcpPostgreSqlDeployer(
+                    project,
+                    deployment,
+                    services,
+                    ocpClient);
+        }
     }
 }

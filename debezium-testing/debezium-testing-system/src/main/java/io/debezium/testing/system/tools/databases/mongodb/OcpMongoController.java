@@ -38,8 +38,8 @@ public class OcpMongoController
     }
 
     @Override
-    public String getDatabaseUrl() {
-        return "mongodb://" + getDatabaseHostname() + ":" + getDatabasePort();
+    public String getPublicDatabaseUrl() {
+        return "mongodb://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort();
     }
 
     public void initialize() throws InterruptedException {
@@ -64,6 +64,6 @@ public class OcpMongoController
     }
 
     public MongoDatabaseClient getDatabaseClient(String username, String password, String authSource) {
-        return new MongoDatabaseClient(getDatabaseUrl(), username, password, authSource);
+        return new MongoDatabaseClient(getPublicDatabaseUrl(), username, password, authSource);
     }
 }

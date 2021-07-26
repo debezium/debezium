@@ -91,6 +91,7 @@ public class ConnectorConfigBuilder {
         return connectorBuilder
                 .withNewMetadata()
                 .withLabels(new HashMap<>())
+                .withName(connectorName)
                 .endMetadata()
                 .withNewSpec()
                 .withClassName((String) crConfig.remove("connector.class"))

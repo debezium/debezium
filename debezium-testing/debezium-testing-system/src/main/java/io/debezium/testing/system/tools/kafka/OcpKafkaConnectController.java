@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,26 +24,23 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.HttpUtils;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.WaitConditions;
+import io.debezium.testing.system.tools.kafka.connectors.ConnectorDeployer;
+import io.debezium.testing.system.tools.kafka.connectors.ConnectorMetricsReader;
+import io.debezium.testing.system.tools.kafka.connectors.CustomResourceConnectorDeployer;
+import io.debezium.testing.system.tools.kafka.connectors.JsonConnectorDeployer;
+import io.debezium.testing.system.tools.kafka.connectors.RestPrometheusMetricReader;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPort;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPortBuilder;
-import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
-import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
-import io.strimzi.api.kafka.KafkaConnectorList;
 import io.strimzi.api.kafka.model.KafkaConnect;
-import io.strimzi.api.kafka.model.KafkaConnector;
 
 import okhttp3.HttpUrl;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 /**
  * This class provides control over Kafka Connect instance deployed in OpenShift
@@ -127,16 +123,14 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     /**
      * Wait until KafkaConnect instance is back and ready
      *
-     * @return {@link KafkaConnect} resource instance
      * @throws InterruptedException
      */
     @Override
-    public KafkaConnect waitForCluster() throws InterruptedException {
+    public void waitForCluster() throws InterruptedException {
         LOGGER.info("Waiting for Kafka Connect cluster '" + name + "'");
         kafkaConnect = Crds.kafkaConnectOperation(ocp).inNamespace(project)
                 .withName(name)
                 .waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
-        return kafkaConnect;
     }
 
     /**
@@ -205,63 +199,18 @@ public class OcpKafkaConnectController implements KafkaConnectController {
      */
     @Override
     public void deployConnector(ConnectorConfigBuilder config) throws IOException, InterruptedException {
-        String name = config.getConnectorName();
-        LOGGER.info("Deploying connector " + name);
+        LOGGER.info("Deploying connector " + config.getConnectorName());
+        getConnectorDeployer().deploy(config);
+
+    }
+
+    private ConnectorDeployer getConnectorDeployer() {
         if (connectorResources) {
-            deployConnectorCr(name, config);
+            return new CustomResourceConnectorDeployer(kafkaConnect, ocp);
         }
         else {
-            deployConnectorJson(name, config);
+            return new JsonConnectorDeployer(getApiURL(), http);
         }
-    }
-
-    private void deployConnectorJson(String name, ConnectorConfigBuilder config) throws IOException {
-        if (apiRoute == null) {
-            throw new IllegalStateException("KafkaConnect API was not exposed");
-        }
-
-        HttpUrl url = getApiURL().resolve("/connectors/" + name + "/config");
-        Request r = new Request.Builder()
-                .url(url)
-                .put(RequestBody.create(config.getJsonString(), MediaType.parse("application/json")))
-                .build();
-
-        try (Response res = http.newCall(r).execute()) {
-            if (!res.isSuccessful()) {
-                LOGGER.error(res.request().url().toString());
-                throw new RuntimeException("Connector registration request returned status code '" + res.code() + "'");
-            }
-            LOGGER.info("Registered kafka connector '" + name + "'");
-        }
-    }
-
-    private void deployConnectorCr(String name, ConnectorConfigBuilder config) throws InterruptedException {
-        LOGGER.info("Deploying connector CR");
-        KafkaConnector connector = config.getCustomResource();
-        connector.getMetadata().setName(name);
-        connector.getMetadata().getLabels().put("strimzi.io/cluster", kafkaConnect.getMetadata().getName());
-
-        kafkaConnectorOperation().createOrReplace(connector);
-        waitForKafkaConnector(connector.getMetadata().getName());
-    }
-
-    /**
-     * Waits until connector is properly deployed.
-     * Note: works only for CR deployment
-     *
-     * @param name name of the connector
-     * @throws InterruptedException     on wait error
-     * @throws IllegalArgumentException when deployment doesn't use custom resources
-     */
-    public KafkaConnector waitForKafkaConnector(String name) throws InterruptedException {
-        if (!connectorResources) {
-            throw new IllegalStateException("Unable to wait for connector, deployment doesn't use custom resources.");
-        }
-        return kafkaConnectorOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
-    }
-
-    private NonNamespaceOperation<KafkaConnector, KafkaConnectorList, Resource<KafkaConnector>> kafkaConnectorOperation() {
-        return Crds.kafkaConnectorOperation(ocp).inNamespace(project);
     }
 
     /**
@@ -273,118 +222,7 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     @Override
     public void undeployConnector(String name) throws IOException {
         LOGGER.info("Undeploying kafka connector " + name);
-        if (connectorResources) {
-            undeployConnectorCr(name);
-        }
-        else {
-            undeployConnectorJson(name);
-        }
-    }
-
-    private void undeployConnectorJson(String name) throws IOException {
-        if (apiRoute == null) {
-            throw new IllegalStateException("KafkaConnect API was not exposed");
-        }
-
-        HttpUrl url = getApiURL().resolve("/connectors/" + name);
-        Request r = new Request.Builder().url(url).delete().build();
-
-        try (Response res = http.newCall(r).execute()) {
-            if (!res.isSuccessful()) {
-                LOGGER.error(res.request().url().toString());
-                throw new RuntimeException("Connector deletion request returned status code '" + res.code() + "'");
-            }
-            LOGGER.info("Deleted kafka connector '" + name + "'");
-        }
-    }
-
-    private void undeployConnectorCr(String name) {
-        kafkaConnectorOperation().withName(name).delete();
-        await()
-                .atMost(1, MINUTES)
-                .pollInterval(5, SECONDS)
-                .until(() -> kafkaConnectorOperation().withName(name).get() == null);
-    }
-
-    public List<String> getConnectMetrics() throws IOException {
-        LOGGER.info("Retrieving connector metrics");
-        OkHttpClient httpClient = new OkHttpClient();
-        Request r = new Request.Builder().url(getMetricsURL()).get().build();
-
-        try (Response res = httpClient.newCall(r).execute()) {
-            String metrics = res.body().string();
-            return Stream.of(metrics.split("\\r?\\n")).collect(Collectors.toList());
-        }
-    }
-
-    /**
-     * Waits until Snapshot phase of given connector completes
-     *
-     * @param connectorName name of the connect
-     * @param metricName    name of the metric used to determine the state
-     * @throws IOException on metric request error
-     */
-    public void waitForSnapshot(String connectorName, String metricName) throws IOException {
-        LOGGER.info("Waiting for connector '" + connectorName + "' to finish snapshot");
-        await()
-                .atMost(scaled(5), TimeUnit.MINUTES)
-                .pollInterval(10, TimeUnit.SECONDS)
-                .until(() -> getConnectMetrics().stream().anyMatch(s -> s.contains(metricName) && s.contains(connectorName)));
-    }
-
-    /**
-     * Waits until snapshot phase of given MySQL connector completes
-     *
-     * @param connectorName connector name
-     * @throws IOException on metric request error
-     */
-    @Override
-    public void waitForMySqlSnapshot(String connectorName) throws IOException {
-        waitForSnapshot(connectorName, "debezium_mysql_connector_metrics_snapshotcompleted");
-    }
-
-    /**
-     * Waits until snapshot phase of given PostgreSQL connector completes
-     *
-     * @param connectorName connector name
-     * @throws IOException on metric request error
-     */
-    @Override
-    public void waitForPostgreSqlSnapshot(String connectorName) throws IOException {
-        waitForSnapshot(connectorName, "debezium_postgres_connector_metrics_snapshotcompleted");
-    }
-
-    /**
-     * Waits until snapshot phase of given SQL Server connector completes
-     *
-     * @param connectorName connector name
-     * @throws IOException on metric request error
-     */
-    @Override
-    public void waitForSqlServerSnapshot(String connectorName) throws IOException {
-        waitForSnapshot(connectorName, "debezium_sql_server_connector_metrics_snapshotcompleted");
-    }
-
-    /**
-     * Waits until snapshot phase of given MongoDB connector completes
-     *
-     * @param connectorName connector name
-     * @throws IOException on metric request error
-     */
-    @Override
-    public void waitForMongoSnapshot(String connectorName) throws IOException {
-        waitForSnapshot(connectorName, "debezium_mongodb_connector_metrics_snapshotcompleted");
-    }
-
-    /**
-     * Waits until snapshot phase of given DB2 connector completes
-     *
-     * @param connectorName connector name
-     * @throws IOException on metric request error
-     */
-    @Override
-    public void waitForDB2Snapshot(String connectorName) throws IOException {
-        waitForSnapshot(connectorName, "debezium_db2_server_connector_metrics_snapshotcompleted");
+        getConnectorDeployer().undeploy(name);
     }
 
     /**
@@ -392,6 +230,10 @@ public class OcpKafkaConnectController implements KafkaConnectController {
      */
     @Override
     public HttpUrl getApiURL() {
+        if (apiRoute == null) {
+            throw new IllegalStateException("KafkaConnect API was not exposed");
+        }
+
         return new HttpUrl.Builder()
                 .scheme("http")
                 .host(apiRoute.getSpec().getHost())
@@ -401,7 +243,6 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     /**
      * @return URL of metrics endpoint
      */
-    @Override
     public HttpUrl getMetricsURL() {
         return new HttpUrl.Builder()
                 .scheme("http")
@@ -417,5 +258,10 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     @Override
     public boolean undeploy() {
         return kafkaConnectOperation(ocp).delete(kafkaConnect);
+    }
+
+    @Override
+    public ConnectorMetricsReader getMetricsReader() {
+        return new RestPrometheusMetricReader(getMetricsURL());
     }
 }

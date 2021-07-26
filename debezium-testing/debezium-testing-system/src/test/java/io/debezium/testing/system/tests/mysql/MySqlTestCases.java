@@ -62,7 +62,7 @@ public interface MySqlTestCases extends TestRuntimeFixture<SqlDatabaseController
     @Test
     @Order(3)
     default void shouldSnapshotChanges() throws IOException {
-        getKafkaConnectController().waitForMySqlSnapshot(getConnectorConfig().getDbServerName());
+        getConnectorMetrics().waitForMySqlSnapshot(getConnectorConfig().getDbServerName());
 
         String topic = getConnectorConfig().getDbServerName() + ".inventory.customers";
         awaitAssert(() -> assertions().assertRecordsCount(topic, 4));

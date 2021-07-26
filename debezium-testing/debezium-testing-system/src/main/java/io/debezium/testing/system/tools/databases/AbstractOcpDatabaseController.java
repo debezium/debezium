@@ -47,11 +47,19 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         this.ocpUtils = new OpenShiftUtils(ocp);
     }
 
-    private Service getService() {
+    private Service getLoadBalancedService() {
         return ocp
                 .services()
                 .inNamespace(project)
                 .withName(deployment.getMetadata().getName() + "-lb")
+                .get();
+    }
+
+    private Service getService() {
+        return ocp
+                .services()
+                .inNamespace(project)
+                .withName(deployment.getMetadata().getName())
                 .get();
     }
 
@@ -60,7 +68,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         await()
                 .atMost(scaled(2), MINUTES)
                 .pollInterval(3, SECONDS)
-                .until(() -> getService().getStatus().getLoadBalancer().getIngress().size() > 0);
+                .until(() -> getLoadBalancedService().getStatus().getLoadBalancer().getIngress().size() > 0);
     }
 
     @Override
@@ -76,15 +84,28 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public String getDatabaseHostname() {
-        awaitIngress();
-        return getService().getStatus().getLoadBalancer()
-                .getIngress().get(0).getHostname();
+        return getService().getMetadata().getName() + "." + project + ".svc.cluster.local";
     }
 
     @Override
     public int getDatabasePort() {
-        awaitIngress();
         return getService().getSpec().getPorts().stream()
+                .filter(p -> p.getName().equals("db"))
+                .findAny()
+                .get().getPort();
+    }
+
+    @Override
+    public String getPublicDatabaseHostname() {
+        awaitIngress();
+        return getLoadBalancedService().getStatus().getLoadBalancer()
+                .getIngress().get(0).getHostname();
+    }
+
+    @Override
+    public int getPublicDatabasePort() {
+        awaitIngress();
+        return getLoadBalancedService().getSpec().getPorts().stream()
                 .filter(p -> p.getName().equals("db"))
                 .findAny()
                 .get().getPort();

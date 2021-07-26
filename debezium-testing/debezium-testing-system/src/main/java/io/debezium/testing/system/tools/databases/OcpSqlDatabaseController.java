@@ -32,7 +32,11 @@ public class OcpSqlDatabaseController
     }
 
     @Override
-    public String getDatabaseType() {
+    public String getPublicDatabaseUrl() {
+        return "jdbc:" + getDatabaseType() + "://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort() + "/";
+    }
+
+    protected String getDatabaseType() {
         return dbType;
     }
 }

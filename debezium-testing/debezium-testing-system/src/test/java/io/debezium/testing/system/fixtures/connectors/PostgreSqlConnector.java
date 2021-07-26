@@ -20,7 +20,7 @@ public interface PostgreSqlConnector
     @Override
     default void setupConnector() throws Exception {
         String connectorName = CONNECTOR_NAME + "-" + TestUtils.getUniqueId();
-        ConnectorConfigBuilder connectorConfig = new ConnectorFactories().postgresql(connectorName);
+        ConnectorConfigBuilder connectorConfig = new ConnectorFactories(getKafkaController()).postgresql(getDbController(), connectorName);
         decorateConnectorConfig(connectorConfig);
 
         setConnectorConfig(connectorConfig);
@@ -30,6 +30,6 @@ public interface PostgreSqlConnector
 
     @Override
     default void teardownConnector() throws Exception {
-        getKafkaConnectController().undeployConnector(getConnectorConfig().getDbServerName());
+        getKafkaConnectController().undeployConnector(getConnectorConfig().getConnectorName());
     }
 }

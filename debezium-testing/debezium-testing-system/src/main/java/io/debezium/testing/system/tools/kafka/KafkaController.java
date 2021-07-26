@@ -20,9 +20,16 @@ import java.util.Properties;
 public interface KafkaController {
 
     /**
-     * @return host and port for public bootstrap service
+     * The Bootstrap address returned by this method must be reachable form arbitrary network.
+     * @return Publicly reachable Kafka Bootstrap Server address
      */
-    String getKafkaBootstrapAddress();
+    String getPublicBootstrapAddress();
+
+    /**
+     * The Bootstrap address returned by this method may not be reachable form arbitrary network.
+     * @return Kafka Bootstrap Server address
+     */
+    String getBootstrapAddress();
 
     /**
      * Undeploy this Kafka cluster
@@ -41,7 +48,7 @@ public interface KafkaController {
      */
     default Properties getDefaultConsumerProperties() {
         Properties consumerProps = new Properties();
-        consumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getKafkaBootstrapAddress());
+        consumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
         consumerProps.put(GROUP_ID_CONFIG, "DEBEZIUM_IT_01");
         consumerProps.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumerProps.put(ENABLE_AUTO_COMMIT_CONFIG, false);
