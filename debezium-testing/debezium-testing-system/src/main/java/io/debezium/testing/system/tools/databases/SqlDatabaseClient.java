@@ -36,7 +36,7 @@ public class SqlDatabaseClient implements DatabaseClient<Connection, SQLExceptio
     }
 
     private boolean doExecute(Commands<Connection, SQLException> commands) throws SQLException {
-        try (Connection con = DriverManager.getConnection(url, username, password)) {
+        try (Connection con = connect()) {
             commands.execute(con);
         }
         return true;
@@ -71,5 +71,9 @@ public class SqlDatabaseClient implements DatabaseClient<Connection, SQLExceptio
                 stmt.execute(command);
             }
         });
+    }
+
+    public Connection connect() throws SQLException {
+        return DriverManager.getConnection(url, username, password);
     }
 }
