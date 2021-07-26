@@ -25,7 +25,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public interface DB2lTestCases extends TestRuntimeFixture<SqlDatabaseController> {
+public interface DB2TestCases extends TestRuntimeFixture<SqlDatabaseController> {
 
     default void insertCustomer(String firstName, String lastName, String email) throws SQLException {
         SqlDatabaseClient client = getDbController().getDatabaseClient(DATABASE_DB2_DBZ_USERNAME, DATABASE_DB2_DBZ_PASSWORD);
@@ -61,7 +61,7 @@ public interface DB2lTestCases extends TestRuntimeFixture<SqlDatabaseController>
     @Test
     @Order(3)
     default void shouldContainRecordsInCustomersTopic() throws IOException {
-        getKafkaConnectController().waitForDB2Snapshot(getConnectorConfig().getDbServerName());
+        getConnectorMetrics().waitForDB2Snapshot(getConnectorConfig().getDbServerName());
 
         String topic = getConnectorConfig().getDbServerName() + ".DB2INST1.CUSTOMERS";
         awaitAssert(() -> assertions().assertRecordsCount(topic, 4));

@@ -5,12 +5,11 @@
  */
 package io.debezium.testing.system.resources;
 
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_HOST;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_HOST;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_POSTGRESQL_HOST;
-
 import io.debezium.testing.system.tools.ConfigProperties;
+import io.debezium.testing.system.tools.databases.SqlDatabaseController;
+import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
+import io.debezium.testing.system.tools.kafka.KafkaController;
 
 /**
  *
@@ -18,30 +17,40 @@ import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
  */
 public class ConnectorFactories {
 
-    public ConnectorConfigBuilder mysql(String connectorName) {
+    private final KafkaController kafka;
+
+    public ConnectorFactories(KafkaController kafka) {
+        this.kafka = kafka;
+    }
+
+    public ConnectorConfigBuilder mysql(SqlDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
-        String dbHost = DATABASE_MYSQL_HOST.orElse("mysql." + ConfigProperties.OCP_PROJECT_MYSQL + ".svc.cluster.local");
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+
         return cb
                 .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.mysql.MySqlConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
-                .put("database.port", ConfigProperties.DATABASE_MYSQL_PORT)
+                .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_MYSQL_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_MYSQL_DBZ_PASSWORD)
-                .put("database.history.kafka.bootstrap.servers", "debezium-kafka-cluster-kafka-bootstrap." + ConfigProperties.OCP_PROJECT_DBZ + ".svc.cluster.local:9092")
+                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
                 .put("database.history.kafka.topic", "schema-changes.inventory");
     }
 
-    public ConnectorConfigBuilder postgresql(String connectorName) {
+    public ConnectorConfigBuilder postgresql(SqlDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
-        String dbHost = DATABASE_POSTGRESQL_HOST.orElse("postgresql." + ConfigProperties.OCP_PROJECT_POSTGRESQL + ".svc.cluster.local");
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+
         return cb
                 .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
-                .put("database.port", ConfigProperties.DATABASE_POSTGRESQL_PORT)
+                .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_POSTGRESQL_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_POSTGRESQL_DBZ_PASSWORD)
                 .put("database.dbname", ConfigProperties.DATABASE_POSTGRESQL_DBZ_DBNAME)
@@ -50,48 +59,54 @@ public class ConnectorFactories {
                 .put("plugin.name", "pgoutput");
     }
 
-    public ConnectorConfigBuilder sqlserver(String connectorName) {
+    public ConnectorConfigBuilder sqlserver(SqlDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
-        String dbHost = DATABASE_POSTGRESQL_HOST.orElse("sqlserver." + ConfigProperties.OCP_PROJECT_SQLSERVER + ".svc.cluster.local");
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+
         return cb
                 .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.sqlserver.SqlServerConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
-                .put("database.port", ConfigProperties.DATABASE_SQLSERVER_PORT)
+                .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD)
                 .put("database.dbname", ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAME)
-                .put("database.history.kafka.bootstrap.servers", "debezium-kafka-cluster-kafka-bootstrap." + ConfigProperties.OCP_PROJECT_DBZ + ".svc.cluster.local:9092")
+                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
                 .put("database.history.kafka.topic", "schema-changes.inventory");
     }
 
-    public ConnectorConfigBuilder mongo(String connectorName) {
+    public ConnectorConfigBuilder mongo(MongoDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
-        String dbHost = DATABASE_MONGO_HOST.orElse("mongo." + ConfigProperties.OCP_PROJECT_MONGO + ".svc.cluster.local");
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+
         return cb
                 .put("mongodb.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
                 .put("task.max", 1)
-                .put("mongodb.hosts", "rs0/" + dbHost + ":" + ConfigProperties.DATABASE_MONGO_PORT)
+                .put("mongodb.hosts", "rs0/" + dbHost + ":" + dbPort)
                 .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
                 .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD);
     }
 
-    public ConnectorConfigBuilder db2(String connectorName) {
+    public ConnectorConfigBuilder db2(SqlDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
-        String dbHost = DATABASE_POSTGRESQL_HOST.orElse("db2." + ConfigProperties.OCP_PROJECT_DB2 + ".svc.cluster.local");
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+
         return cb
                 .put("database.server.name", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.db2.Db2Connector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
-                .put("database.port", ConfigProperties.DATABASE_DB2_PORT)
+                .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_DB2_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_DB2_DBZ_PASSWORD)
                 .put("database.dbname", ConfigProperties.DATABASE_DB2_DBZ_DBNAME)
-                .put("database.cdcschema", "ASNCDC")
-                .put("database.history.kafka.bootstrap.servers", "debezium-kafka-cluster-kafka-bootstrap." + ConfigProperties.OCP_PROJECT_DBZ + ".svc.cluster.local:9092")
+                .put("database.cdcschema", ConfigProperties.DATABASE_DB2_CDC_SCHEMA)
+                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
                 .put("database.history.kafka.topic", "schema-changes.inventory");
     }
 }

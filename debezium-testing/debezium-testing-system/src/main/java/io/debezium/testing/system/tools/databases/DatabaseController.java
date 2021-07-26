@@ -8,19 +8,29 @@ package io.debezium.testing.system.tools.databases;
 public interface DatabaseController<C extends DatabaseClient<?, ?>> {
 
     /**
-     * @return hostname of the database
+     * @return available hostname of the database
      */
     String getDatabaseHostname();
 
     /**
-     * @return port of the database
+     * @return available port of the database
      */
     int getDatabasePort();
 
     /**
-     * @return connection url of the database
+     * @return publicly available hostname of the database
      */
-    String getDatabaseUrl();
+    String getPublicDatabaseHostname();
+
+    /**
+     * @return publicly available port of the database
+     */
+    int getPublicDatabasePort();
+
+    /**
+     * @return publicly available connection url of the database
+     */
+    String getPublicDatabaseUrl();
 
     /**
      * Creates database client for database using given username and password

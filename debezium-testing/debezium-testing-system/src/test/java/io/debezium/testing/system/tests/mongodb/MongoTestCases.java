@@ -66,7 +66,7 @@ public interface MongoTestCases extends TestRuntimeFixture<MongoDatabaseControll
     @Test
     @Order(3)
     default void shouldContainRecordsInCustomersTopic() throws IOException {
-        getKafkaConnectController().waitForMongoSnapshot(getConnectorConfig().getDbServerName());
+        getConnectorMetrics().waitForMongoSnapshot(getConnectorConfig().getDbServerName());
 
         String topic = getConnectorConfig().getDbServerName() + ".inventory.customers";
         awaitAssert(() -> assertions().assertRecordsCount(topic, 4));

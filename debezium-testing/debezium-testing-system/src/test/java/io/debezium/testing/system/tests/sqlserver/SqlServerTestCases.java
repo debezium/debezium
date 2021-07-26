@@ -60,7 +60,7 @@ public interface SqlServerTestCases extends TestRuntimeFixture<SqlDatabaseContro
     @Test
     @Order(3)
     default void shouldContainRecordsInCustomersTopic() throws IOException {
-        getKafkaConnectController().waitForSqlServerSnapshot(getConnectorConfig().getDbServerName());
+        getConnectorMetrics().waitForSqlServerSnapshot(getConnectorConfig().getDbServerName());
 
         String topic = getConnectorConfig().getDbServerName() + ".dbo.customers";
         awaitAssert(() -> assertions().assertRecordsCount(topic, 4));

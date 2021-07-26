@@ -113,7 +113,7 @@ public class OcpRegistryDeployer extends AbstractOcpDeployer<OcpRegistryControll
         return new OcpRegistryController(registry, ocp, http);
     }
 
-    public static class Builder implements Deployer.Builder<OcpRegistryDeployer> {
+    public static class Builder implements Deployer.Builder<Builder, OcpRegistryDeployer> {
 
         private String project;
         private OpenShiftClient ocpClient;

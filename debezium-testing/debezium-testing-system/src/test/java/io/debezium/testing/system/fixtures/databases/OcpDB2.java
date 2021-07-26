@@ -11,7 +11,7 @@ import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.databases.db2.OcpDB2Deployer;
 
-public interface OcpDb2 extends TestSetupFixture, SqlDatabaseFixture, OcpClient {
+public interface OcpDB2 extends TestSetupFixture, SqlDatabaseFixture, OcpClient {
 
     String DB_DEPLOYMENT_PATH = "/database-resources/db2/deployment.yaml";
     String DB_SERVICE_PATH_LB = "/database-resources/db2/service-lb.yaml";
@@ -26,6 +26,7 @@ public interface OcpDb2 extends TestSetupFixture, SqlDatabaseFixture, OcpClient 
                 .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
                 .build();
         SqlDatabaseController controller = deployer.deploy();
+        controller.initialize();
         setDbController(controller);
     }
 

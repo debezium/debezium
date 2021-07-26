@@ -7,7 +7,7 @@ package io.debezium.testing.system.tools.kafka;
 
 import java.io.IOException;
 
-import io.strimzi.api.kafka.model.KafkaConnect;
+import io.debezium.testing.system.tools.kafka.connectors.ConnectorMetricsReader;
 
 import okhttp3.HttpUrl;
 
@@ -53,14 +53,9 @@ public interface KafkaConnectController {
     HttpUrl getApiURL();
 
     /**
-     * @return url of metrics endpoint
-     */
-    HttpUrl getMetricsURL();
-
-    /**
      * Waits for cluster to be available
      */
-    KafkaConnect waitForCluster() throws InterruptedException;
+    void waitForCluster() throws InterruptedException;
 
     /**
      * Undeploy this Kafka connect cluster
@@ -69,13 +64,8 @@ public interface KafkaConnectController {
      */
     boolean undeploy();
 
-    void waitForMySqlSnapshot(String connectorName) throws IOException;
-
-    void waitForPostgreSqlSnapshot(String connectorName) throws IOException;
-
-    void waitForSqlServerSnapshot(String connectorName) throws IOException;
-
-    void waitForMongoSnapshot(String connectorName) throws IOException;
-
-    void waitForDB2Snapshot(String connectorName) throws IOException;
+    /**
+     * @return metrics reader for this kafka connect
+     */
+    ConnectorMetricsReader getMetricsReader();
 }

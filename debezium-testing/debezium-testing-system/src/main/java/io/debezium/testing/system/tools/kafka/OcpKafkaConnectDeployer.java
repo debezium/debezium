@@ -31,7 +31,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
     /**
      * Builder for {@link OcpKafkaConnectDeployer}
      */
-    public static class Builder implements Deployer.Builder<OcpKafkaConnectDeployer> {
+    public static class Builder implements Deployer.Builder<Builder, OcpKafkaConnectDeployer> {
 
         private String project;
         private String yamlPath;

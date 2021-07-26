@@ -50,13 +50,18 @@ public class OcpKafkaController implements KafkaController {
     }
 
     @Override
-    public String getKafkaBootstrapAddress() {
+    public String getPublicBootstrapAddress() {
         List<ListenerStatus> listeners = kafka.getStatus().getListeners();
         ListenerStatus listener = listeners.stream()
                 .filter(l -> l.getType().equalsIgnoreCase("external"))
                 .findAny().orElseThrow(() -> new IllegalStateException("No external listener found for Kafka cluster " + kafka.getMetadata().getName()));
         ListenerAddress address = listener.getAddresses().get(0);
         return address.getHost() + ":" + address.getPort();
+    }
+
+    @Override
+    public String getBootstrapAddress() {
+        return name + "-kafka-bootstrap." + project + ".svc.cluster.local:9092";
     }
 
     /**

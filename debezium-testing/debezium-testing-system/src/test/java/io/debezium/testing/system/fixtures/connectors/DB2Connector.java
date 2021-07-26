@@ -12,7 +12,7 @@ import io.debezium.testing.system.resources.ConnectorFactories;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 
-public interface Db2Connector
+public interface DB2Connector
         extends TestSetupFixture, ConnectorSetupFixture, TestRuntimeFixture<SqlDatabaseController> {
 
     String CONNECTOR_NAME = "inventory-connector-db2";
@@ -20,7 +20,7 @@ public interface Db2Connector
     @Override
     default void setupConnector() throws Exception {
         String connectorName = CONNECTOR_NAME + "-" + TestUtils.getUniqueId();
-        ConnectorConfigBuilder connectorConfig = new ConnectorFactories().db2(connectorName);
+        ConnectorConfigBuilder connectorConfig = new ConnectorFactories(getKafkaController()).db2(getDbController(), connectorName);
         decorateConnectorConfig(connectorConfig);
 
         setConnectorConfig(connectorConfig);
@@ -30,6 +30,6 @@ public interface Db2Connector
 
     @Override
     default void teardownConnector() throws Exception {
-        getKafkaConnectController().undeployConnector(getConnectorConfig().getDbServerName());
+        getKafkaConnectController().undeployConnector(getConnectorConfig().getConnectorName());
     }
 }

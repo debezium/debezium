@@ -47,7 +47,7 @@ public class OcpDB2Controller extends OcpSqlDatabaseController {
     }
 
     @Override
-    public String getDatabaseUrl() {
-        return super.getDatabaseUrl() + ConfigProperties.DATABASE_DB2_DBZ_DBNAME;
+    public String getPublicDatabaseUrl() {
+        return super.getPublicDatabaseUrl() + ConfigProperties.DATABASE_DB2_DBZ_DBNAME;
     }
 }

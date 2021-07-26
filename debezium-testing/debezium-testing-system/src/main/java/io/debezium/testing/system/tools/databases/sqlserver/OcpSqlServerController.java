@@ -39,7 +39,7 @@ public class OcpSqlServerController extends OcpSqlDatabaseController {
     private final Path initScript;
 
     public OcpSqlServerController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
-        super(deployment, services, dbType, ocp);
+        super(deployment, services, "sqlserver", ocp);
         try {
             initScript = Paths.get(getClass().getResource(DB_INIT_SCRIPT_PATH).toURI());
         }
@@ -49,8 +49,8 @@ public class OcpSqlServerController extends OcpSqlDatabaseController {
     }
 
     @Override
-    public String getDatabaseUrl() {
-        return "jdbc:" + getDatabaseType() + "://" + getDatabaseHostname() + ":" + getDatabasePort();
+    public String getPublicDatabaseUrl() {
+        return "jdbc:" + getDatabaseType() + "://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort();
 
     }
 
