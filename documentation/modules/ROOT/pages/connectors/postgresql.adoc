@@ -2850,6 +2850,12 @@ The connector may establish JDBC connections at its own discretion. Consequently
  +
 The connector does not execute these statements when it creates a connection for reading the transaction log. +
 
+|[[postgresql-property-status-update-interval-ms]]<<postgresql-property-status-update-interval-ms, `+status.update.interval.ms`>>
+|`10000`
+|Frequency for sending replication connection status updates to the server, given in milliseconds.
+ +
+The property also controls how frequently the database status is checked to detect a dead connection in case the database was shut down.
+
 |[[postgresql-property-heartbeat-interval-ms]]<<postgresql-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
 |Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
