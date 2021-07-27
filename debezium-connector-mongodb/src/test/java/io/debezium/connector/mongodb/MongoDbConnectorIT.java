@@ -51,6 +51,7 @@ import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
@@ -141,6 +142,96 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory", 1);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartIsOnlyProvided() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory.collectionA", 1);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldExcludeListDatabaseAndCollectionPartsAreMissing() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, ".name", 1);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldExcludeListFieldPartIsMissing() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.", 1);
+    }
+
+    @Test
+    public void shouldNotThrowExceptionWhenFieldExcludeListHasLeadingWhiteSpaces() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, " *.collectionA.name", 0);
+    }
+
+    @Test
+    public void shouldNotThrowExceptionWhenFieldExcludeListHasWhiteSpaces() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.name ,db2.collectionB.house ", 0);
+    }
+
+    @Test
+    public void shouldNotThrowExceptionWhenFieldExcludeListIsValid() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "db1.collectionA.name1", 0);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, ".name=new_name", 1);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.", 1);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.namenew_name", 1);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.=new_name", 1);
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.name=", 1);
+    }
+
+    @Test
+    public void shouldNotThrowExceptionWhenFieldRenamesHasLeadingWhiteSpaces() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, " db1.collectionA.name:newname", 0);
+    }
+
+    @Test
+    public void shouldNotThrowExceptionWhenFieldRenamesHasWhiteSpaces() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "*.collectionA.name:new_name, db2.collectionB.house:new_house ", 0);
+    }
+
+    @Test
+    public void shouldNotThrowExceptionWhenFieldRenamesIsValid() {
+        shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_RENAMES, "db1.collectionA.name1:new_name1", 0);
+    }
+
+    public void shouldValidateFilterFieldConfiguration(Field field, String value, int errorCount) {
+        config = TestHelper.getConfiguration().edit()
+                .with(field, value)
+                .build();
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+
+        if (errorCount == 0) {
+            assertNoConfigurationErrors(result, field);
+        }
+        else {
+            assertConfigurationErrors(result, field, errorCount);
+        }
     }
 
     @Test
