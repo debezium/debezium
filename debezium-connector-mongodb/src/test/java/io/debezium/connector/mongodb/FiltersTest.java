@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import org.apache.kafka.common.config.ConfigException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -160,41 +159,6 @@ public class FiltersTest {
         assertCollectionExcluded("db1.collectionA");
         assertCollectionIncluded("db1.collectionB");
         assertCollectionIncluded("db2.collectionA");
-    }
-
-    @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldBlacklistDatabaseAndCollectionPartsAreMissing() {
-        build.excludeFields(".name").createFilters();
-    }
-
-    @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldBlacklistFieldPartIsMissing() {
-        build.excludeFields("db1.collectionA.").createFilters();
-    }
-
-    @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
-        build.renameFields(".name=new_name").createFilters();
-    }
-
-    @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
-        build.renameFields("db1.collectionA.").createFilters();
-    }
-
-    @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
-        build.renameFields("db1.collectionA.namenew_name").createFilters();
-    }
-
-    @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
-        build.renameFields("db1.collectionA.=new_name").createFilters();
-    }
-
-    @Test(expected = ConfigException.class)
-    public void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
-        build.renameFields("db1.collectionA.name=").createFilters();
     }
 
     protected void assertCollectionIncluded(String fullyQualifiedCollectionName) {
