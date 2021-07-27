@@ -8,7 +8,8 @@ package io.debezium.connector.oracle.logminer.parser;
 import java.util.Arrays;
 import java.util.Objects;
 
-import io.debezium.connector.oracle.logminer.RowMapper;
+import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.processor.infinispan.VisibleForMarshalling;
 
 /**
  * This class holds one parsed DML LogMiner record details
@@ -16,39 +17,48 @@ import io.debezium.connector.oracle.logminer.RowMapper;
  */
 public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
 
-    private final int operation;
+    private final EventType eventType;
     private final Object[] newValues;
     private final Object[] oldValues;
     private String objectOwner;
     private String objectName;
 
-    private LogMinerDmlEntryImpl(int operation, Object[] newValues, Object[] oldValues) {
-        this.operation = operation;
+    @VisibleForMarshalling
+    public LogMinerDmlEntryImpl(int eventType, Object[] newValues, Object[] oldValues, String owner, String name) {
+        this.eventType = EventType.from(eventType);
+        this.newValues = newValues;
+        this.oldValues = oldValues;
+        this.objectOwner = owner;
+        this.objectName = name;
+    }
+
+    private LogMinerDmlEntryImpl(EventType eventType, Object[] newValues, Object[] oldValues) {
+        this.eventType = eventType;
         this.newValues = newValues;
         this.oldValues = oldValues;
     }
 
     public static LogMinerDmlEntry forInsert(Object[] newColumnValues) {
-        return new LogMinerDmlEntryImpl(RowMapper.INSERT, newColumnValues, new Object[0]);
+        return new LogMinerDmlEntryImpl(EventType.INSERT, newColumnValues, new Object[0]);
     }
 
     public static LogMinerDmlEntry forUpdate(Object[] newColumnValues, Object[] oldColumnValues) {
-        return new LogMinerDmlEntryImpl(RowMapper.UPDATE, newColumnValues, oldColumnValues);
+        return new LogMinerDmlEntryImpl(EventType.UPDATE, newColumnValues, oldColumnValues);
     }
 
     public static LogMinerDmlEntry forDelete(Object[] oldColumnValues) {
-        return new LogMinerDmlEntryImpl(RowMapper.DELETE, new Object[0], oldColumnValues);
+        return new LogMinerDmlEntryImpl(EventType.DELETE, new Object[0], oldColumnValues);
     }
 
     public static LogMinerDmlEntry forLobLocator(Object[] newColumnValues) {
         // TODO: can that copy be avoided?
         final Object[] oldColumnValues = Arrays.copyOf(newColumnValues, newColumnValues.length);
-        return new LogMinerDmlEntryImpl(RowMapper.SELECT_LOB_LOCATOR, newColumnValues, oldColumnValues);
+        return new LogMinerDmlEntryImpl(EventType.SELECT_LOB_LOCATOR, newColumnValues, oldColumnValues);
     }
 
     @Override
-    public int getOperation() {
-        return operation;
+    public EventType getEventType() {
+        return eventType;
     }
 
     @Override
@@ -90,18 +100,18 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
             return false;
         }
         LogMinerDmlEntryImpl that = (LogMinerDmlEntryImpl) o;
-        return operation == that.operation &&
+        return eventType == that.eventType &&
                 Arrays.equals(newValues, that.newValues) &&
                 Arrays.equals(oldValues, that.oldValues);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operation, newValues, oldValues);
+        return Objects.hash(eventType, newValues, oldValues);
     }
 
     @Override
     public String toString() {
-        return "{LogMinerDmlEntryImpl={operation=" + operation + ",newColumns=" + newValues + ",oldColumns=" + oldValues + "}";
+        return "{LogMinerDmlEntryImpl={eventType=" + eventType + ",newColumns=" + newValues + ",oldColumns=" + oldValues + "}";
     }
 }

@@ -7,8 +7,13 @@ package io.debezium.connector.oracle.logminer;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
 import io.debezium.doc.FixFor;
@@ -21,7 +26,11 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
 public class SelectLobParserTest {
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private static SelectLobParser parser = new SelectLobParser();
 
@@ -52,7 +61,7 @@ public class SelectLobParserTest {
 
         assertThat(entry.getObjectOwner()).isEqualTo("DEBEZIUM");
         assertThat(entry.getObjectName()).isEqualTo("CLOB_TEST");
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.SELECT_LOB_LOCATOR);
+        assertThat(entry.getEventType()).isEqualTo(EventType.SELECT_LOB_LOCATOR);
         assertThat(entry.getOldValues()).hasSize(3);
         assertThat(entry.getOldValues()[0]).isEqualTo("2");
         assertThat(entry.getOldValues()[1]).isEqualTo("Test2");
@@ -88,7 +97,7 @@ public class SelectLobParserTest {
 
         assertThat(entry.getObjectOwner()).isEqualTo("DEBEZIUM");
         assertThat(entry.getObjectName()).isEqualTo("BLOB_TEST");
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.SELECT_LOB_LOCATOR);
+        assertThat(entry.getEventType()).isEqualTo(EventType.SELECT_LOB_LOCATOR);
         assertThat(entry.getOldValues()).hasSize(3);
         assertThat(entry.getOldValues()[0]).isEqualTo("2");
         assertThat(entry.getOldValues()[1]).isEqualTo("Test2");
@@ -130,7 +139,7 @@ public class SelectLobParserTest {
 
         assertThat(entry.getObjectOwner()).isEqualTo("DEBEZIUM");
         assertThat(entry.getObjectName()).isEqualTo("BIG_TABLE");
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.SELECT_LOB_LOCATOR);
+        assertThat(entry.getEventType()).isEqualTo(EventType.SELECT_LOB_LOCATOR);
         assertThat(entry.getOldValues()).hasSize(7);
         assertThat(entry.getOldValues()[0]).isEqualTo("651900002");
         assertThat(entry.getOldValues()[1]).isEqualTo("person number 651900002");
@@ -180,7 +189,7 @@ public class SelectLobParserTest {
 
         assertThat(entry.getObjectOwner()).isEqualTo("DEBEZIUM");
         assertThat(entry.getObjectName()).isEqualTo("BIG_TABLE");
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.SELECT_LOB_LOCATOR);
+        assertThat(entry.getEventType()).isEqualTo(EventType.SELECT_LOB_LOCATOR);
         assertThat(entry.getOldValues()).hasSize(7);
         assertThat(entry.getOldValues()[0]).isEqualTo("651900002");
         assertThat(entry.getOldValues()[1]).isEqualTo("person number 651900002");

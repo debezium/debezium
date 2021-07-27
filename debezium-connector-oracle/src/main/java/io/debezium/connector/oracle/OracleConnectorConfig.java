@@ -288,6 +288,28 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Sets the specific archive log destination as the source for reading archive logs." +
                     "When not set, the connector will automatically select the first LOCAL and VALID destination.");
 
+    public static final Field LOG_MINING_BUFFER_TYPE = Field.create("log.mining.buffer.type")
+            .withDisplayName("Controls which buffer type implementation to be used")
+            .withEnum(LogMiningBufferType.class, LogMiningBufferType.MEMORY)
+            .withImportance(Importance.LOW);
+
+    public static final Field LOG_MINING_BUFFER_LOCATION = Field.create("log.mining.buffer.location")
+            .withDisplayName("Location where Infinispan stores buffer caches")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateBufferLocation)
+            .withDescription("Path to location where Infinispan will store buffer caches");
+
+    public static final Field LOG_MINING_BUFFER_DROP_ON_STOP = Field.create("log.mining.buffer.drop.on.stop")
+            .withDisplayName("Controls whether the buffer cache is dropped when connector is stopped")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("When set to true the underlying buffer cache is not retained when the connector is stopped. " +
+                    "When set to false (the default), the buffer cache is retained across restarts.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -328,7 +350,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
                     LOB_ENABLED,
                     LOG_MINING_USERNAME_EXCLUDE_LIST,
-                    LOG_MINING_ARCHIVE_DESTINATION_NAME)
+                    LOG_MINING_ARCHIVE_DESTINATION_NAME,
+                    LOG_MINING_BUFFER_TYPE,
+                    LOG_MINING_BUFFER_LOCATION,
+                    LOG_MINING_BUFFER_DROP_ON_STOP)
             .create();
 
     /**
@@ -373,6 +398,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean lobEnabled;
     private final Set<String> logMiningUsernameExcludes;
     private final String logMiningArchiveDestinationName;
+    private final LogMiningBufferType logMiningBufferType;
+    private final String logMiningBufferLocation;
+    private final boolean logMiningBufferDropOnStop;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
@@ -410,6 +438,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
         this.logMiningUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
+        this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        this.logMiningBufferLocation = config.getString(LOG_MINING_BUFFER_LOCATION);
+        this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
     }
 
     private static String toUpperCase(String property) {
@@ -730,6 +761,42 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
     }
 
+    public enum LogMiningBufferType implements EnumeratedValue {
+        MEMORY("memory"),
+        INFINISPAN("infinispan");
+
+        private final String value;
+
+        LogMiningBufferType(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static LogMiningBufferType parse(String value) {
+            if (value != null) {
+                value = value.trim();
+                for (LogMiningBufferType option : LogMiningBufferType.values()) {
+                    if (option.getValue().equalsIgnoreCase(value)) {
+                        return option;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static LogMiningBufferType parse(String value, String defaultValue) {
+            LogMiningBufferType type = parse(value);
+            if (type == null && defaultValue != null) {
+                type = parse(defaultValue);
+            }
+            return type;
+        }
+    }
+
     public enum LogMiningDmlParser implements EnumeratedValue {
         LEGACY("legacy"),
         FAST("fast");
@@ -952,6 +1019,27 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningArchiveDestinationName;
     }
 
+    /**
+     * @return the log mining buffer type implementation to be used
+     */
+    public LogMiningBufferType getLogMiningBufferType() {
+        return logMiningBufferType;
+    }
+
+    /**
+     * @return the log mining buffer storage location, may be {@code null}
+     */
+    public String getLogMiningBufferLocation() {
+        return logMiningBufferLocation;
+    }
+
+    /**
+     * @return whether buffer cache should be dropped on connector stop.
+     */
+    public boolean isLogMiningBufferDropOnStop() {
+        return logMiningBufferDropOnStop;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -982,4 +1070,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
+    public static int validateBufferLocation(Configuration config, Field field, ValidationOutput problems) {
+        // Require field only if using Infinispan buffer type.
+        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        if (LogMiningBufferType.INFINISPAN.equals(bufferType)) {
+            return Field.isRequired(config, field, problems);
+        }
+        return 0;
+    }
 }
