@@ -178,11 +178,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     public void init(OffsetContext offsetContext) {
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
+            postIncrementalSnapshotCompleted();
             return;
         }
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (!context.snapshotRunning()) {
             LOGGER.info("No incremental snapshot in progress, no action needed on start");
+            postIncrementalSnapshotCompleted();
             return;
         }
         LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
@@ -199,6 +201,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     protected void readChunk() throws InterruptedException {
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
+            postIncrementalSnapshotCompleted();
             return;
         }
         try {
@@ -259,6 +262,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         }
         finally {
             postReadChunk(context);
+            if (!context.snapshotRunning()) {
+                postIncrementalSnapshotCompleted();
+            }
         }
     }
 
@@ -390,6 +396,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     }
 
     protected void postReadChunk(IncrementalSnapshotContext<T> context) {
+        // no-op
+    }
+
+    protected void postIncrementalSnapshotCompleted() {
         // no-op
     }
 }

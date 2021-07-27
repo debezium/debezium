@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.SQLException;
+
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
@@ -22,7 +25,7 @@ import io.debezium.util.Clock;
 public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends SignalBasedIncrementalSnapshotChangeEventSource<TableId> {
 
     private final String pdbName;
-    private final JdbcConnection connection;
+    private final OracleConnection connection;
 
     public OracleSignalBasedIncrementalSnapshotChangeEventSource(CommonConnectorConfig config,
                                                                  JdbcConnection jdbcConnection,
@@ -33,7 +36,7 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
                                                                  DataChangeEventListener dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
         this.pdbName = ((OracleConnectorConfig) config).getPdbName();
-        this.connection = jdbcConnection;
+        this.connection = (OracleConnection) jdbcConnection;
     }
 
     @Override
@@ -45,14 +48,24 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
     @Override
     protected void preReadChunk(IncrementalSnapshotContext<TableId> context) {
         if (pdbName != null) {
-            ((OracleConnection) connection).setSessionToPdb(pdbName);
+            connection.setSessionToPdb(pdbName);
         }
     }
 
     @Override
     protected void postReadChunk(IncrementalSnapshotContext<TableId> context) {
         if (pdbName != null) {
-            ((OracleConnection) connection).resetSessionToCdb();
+            connection.resetSessionToCdb();
+        }
+    }
+
+    @Override
+    protected void postIncrementalSnapshotCompleted() {
+        try {
+            connection.close();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to close snapshot connection", e);
         }
     }
 }
