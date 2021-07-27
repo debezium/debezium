@@ -304,6 +304,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private void probeConnectionIfNeeded() throws SQLException {
         if (connectionProbeTimer.hasElapsed()) {
             connection.prepareQuery("SELECT 1");
+            connection.commit();
         }
     }
 
