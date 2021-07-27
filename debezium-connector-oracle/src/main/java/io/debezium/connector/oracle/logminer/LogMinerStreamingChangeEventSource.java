@@ -9,8 +9,6 @@ import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 
 import java.math.BigInteger;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.time.Duration;
@@ -21,7 +19,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -39,6 +36,9 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.infinispan.InfinispanLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -46,7 +46,6 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
-import io.debezium.util.Stopwatch;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
@@ -102,7 +101,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     @Override
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) {
-        try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(connectorConfig, schema, clock, errorHandler, streamingMetrics)) {
+        try {
             startScn = offsetContext.getScn();
 
             try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
@@ -114,15 +113,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 setNlsSessionParameters(jdbcConnection);
                 checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName(), schema);
 
-                initializeRedoLogsForMining(jdbcConnection, false, startScn);
-
-                final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context,
-                        connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher);
-
-                try (PreparedStatement miningView = getMiningViewStatement(jdbcConnection)) {
-
+                try (LogMinerEventProcessor processor = createProcessor(context, offsetContext)) {
                     currentRedoLogSequences = getCurrentRedoLogSequences();
-                    Stopwatch stopwatch = Stopwatch.reusable();
+                    initializeRedoLogsForMining(jdbcConnection, false, startScn);
+
                     while (context.isRunning()) {
                         // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
                         streamingMetrics.calculateTimeDifference(getDatabaseSystemTime(jdbcConnection));
@@ -137,62 +131,36 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             // At this point we use a new mining session
                             endMiningSession(jdbcConnection, offsetContext);
                             initializeRedoLogsForMining(jdbcConnection, true, startScn);
-                            abandonOldTransactionsIfExist(jdbcConnection, offsetContext, transactionalBuffer);
+
+                            processor.abandonTransactions(connectorConfig.getLogMiningTransactionRetention());
 
                             // This needs to be re-calculated because building the data dictionary will force the
                             // current redo log sequence to be advanced due to a complete log switch of all logs.
                             currentRedoLogSequences = getCurrentRedoLogSequences();
                         }
 
-                        startMiningSession(jdbcConnection, startScn, endScn);
+                        if (context.isRunning()) {
+                            startMiningSession(jdbcConnection, startScn, endScn);
+                            startScn = processor.process(startScn, endScn);
 
-                        LOGGER.trace("Fetching LogMiner view results SCN {} to {}", startScn, endScn);
-                        stopwatch.start();
-                        miningView.setFetchSize(connectorConfig.getMaxQueueSize());
-                        miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
-                        miningView.setString(1, startScn.toString());
-                        miningView.setString(2, endScn.toString());
-                        try (ResultSet rs = miningView.executeQuery()) {
-                            Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
-                            streamingMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
-                            processor.processResult(rs);
-                            if (connectorConfig.isLobEnabled()) {
-                                startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
-                            }
-                            else {
-                                if (transactionalBuffer.isEmpty()) {
-                                    LOGGER.debug("Buffer is empty, updating offset SCN to {}", endScn);
-                                    offsetContext.setScn(endScn);
-                                }
-                                startScn = endScn;
-                            }
+                            captureSessionMemoryStatistics(jdbcConnection);
+
+                            streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
+                            pauseBetweenMiningSessions();
                         }
-
-                        captureSessionMemoryStatistics(jdbcConnection);
-
-                        streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
-                        pauseBetweenMiningSessions();
                     }
                 }
             }
-            catch (Throwable t) {
-                logError(streamingMetrics, "Mining session stopped due to the {}", t);
-                errorHandler.setProducerThrowable(t);
-            }
-            finally {
-                LOGGER.info("startScn={}, endScn={}, offsetContext.getScn()={}", startScn, endScn, offsetContext.getScn());
-                LOGGER.info("Transactional buffer dump: {}", transactionalBuffer.toString());
-                LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
-            }
         }
-    }
-
-    private PreparedStatement getMiningViewStatement(OracleConnection connection) throws SQLException {
-        return connection.connection()
-                .prepareStatement(LogMinerQueryBuilder.build(connectorConfig),
-                        ResultSet.TYPE_FORWARD_ONLY,
-                        ResultSet.CONCUR_READ_ONLY,
-                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
+        catch (Throwable t) {
+            logError(streamingMetrics, "Mining session stopped due to the {}", t);
+            errorHandler.setProducerThrowable(t);
+        }
+        finally {
+            LOGGER.info("startScn={}, endScn={}", startScn, endScn);
+            LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
+            LOGGER.info("Offsets: {}", offsetContext);
+        }
     }
 
     private void captureSessionMemoryStatistics(OracleConnection connection) throws SQLException {
@@ -212,41 +180,12 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 format.format(sessionProcessGlobalAreaMaxMemory / 1024.f / 1024.f));
     }
 
-    private void abandonOldTransactionsIfExist(OracleConnection connection, OracleOffsetContext offsetContext, TransactionalBuffer transactionalBuffer) {
-        Duration transactionRetention = connectorConfig.getLogMiningTransactionRetention();
-        if (!Duration.ZERO.equals(transactionRetention)) {
-            final Scn offsetScn = offsetContext.getScn();
-            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetScn, transactionRetention);
-            lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
-                transactionalBuffer.abandonLongTransactions(thresholdScn, offsetContext);
-                offsetContext.setScn(thresholdScn);
-                startScn = endScn;
-            });
+    private LogMinerEventProcessor createProcessor(ChangeEventSourceContext context, OracleOffsetContext offsetContext) {
+        if (OracleConnectorConfig.LogMiningBufferType.INFINISPAN.equals(connectorConfig.getLogMiningBufferType())) {
+            return new InfinispanLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher, offsetContext,
+                    schema, streamingMetrics);
         }
-    }
-
-    /**
-     * Calculates the SCN as a watermark to abandon for long running transactions.
-     * The criteria is do not let the offset SCN expire from archives older the specified retention hours.
-     *
-     * @param connection database connection, should not be {@code null}
-     * @param offsetScn offset system change number, should not be {@code null}
-     * @param retention duration to tolerate long running transactions before being abandoned, must not be {@code null}
-     * @return an optional system change number as the watermark for transaction buffer abandonment
-     */
-    private Optional<Scn> getLastScnToAbandon(OracleConnection connection, Scn offsetScn, Duration retention) {
-        try {
-            Float diffInDays = connection.singleOptionalValue(SqlUtils.diffInDaysQuery(offsetScn), rs -> rs.getFloat(1));
-            if (diffInDays != null && (diffInDays * 24) > retention.toHours()) {
-                return Optional.of(offsetScn);
-            }
-            return Optional.empty();
-        }
-        catch (SQLException e) {
-            LOGGER.error("Cannot calculate days difference for transaction abandonment", e);
-            streamingMetrics.incrementErrorCount();
-            return Optional.of(offsetScn);
-        }
+        return new MemoryLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher, offsetContext, schema, streamingMetrics);
     }
 
     /**

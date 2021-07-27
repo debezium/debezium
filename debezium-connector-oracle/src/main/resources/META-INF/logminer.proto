@@ -1,0 +1,5 @@
+package io.debezium.connector.oracle.logminer.events;
+
+message Transaction {
+    required string transactionId = 1;
+}
