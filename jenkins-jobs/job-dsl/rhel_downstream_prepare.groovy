@@ -1,4 +1,4 @@
-pipelineJob('downstream-rhel-prepare-prepare-job') {
+pipelineJob('rhel-downstream-prepare-job') {
     displayName('AMQ Streams on RHEL Preparation')
     description('Prepares image for AMQ Streams on RHEL')
 
@@ -18,14 +18,14 @@ pipelineJob('downstream-rhel-prepare-prepare-job') {
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
         stringParam('DBZ_GIT_BRANCH', 'master', 'A branch/tag of Debezium sources')
 //        DEBEZIUM CONNECT IMAGE CONFIG
-        textParam('DBZ_CONNECTOR_ARCHIVE_URLS', "", "List of URLs to productised Debezium connectors")
+        textParam('DBZ_CONNECTOR_ARCHIVE_URLS', '', 'List of URLs to productised Debezium connectors')
 //        EXTRA CONFIG
-        textParam('DBZ_EXTRA_LIBS', "", "List of extra libraries added to connectors")
+        textParam('DBZ_EXTRA_LIBS', '', 'List of extra libraries added to connectors')
     }
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/downstream_rhel_prepare_pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/rhel_downstream_prepare_pipeline.groovy'))
             sandbox()
         }
     }
