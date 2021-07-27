@@ -1867,11 +1867,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted();
 
         // Expect duplicate records from the snapshot and while streaming is running
-        actualRecords = consumeRecordsByTopic(7);
+        actualRecords = consumeRecordsByTopic(8);
 
         s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
         s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
-        assertThat(s1recs.size()).isEqualTo(4);
+        assertThat(s1recs.size()).isEqualTo(5);
         assertThat(s2recs.size()).isEqualTo(3);
 
         // Validate the first record is from streaming
