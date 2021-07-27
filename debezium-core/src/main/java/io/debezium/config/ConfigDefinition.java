@@ -101,7 +101,7 @@ public class ConfigDefinition {
 
     private void addToConfigDef(ConfigDef configDef, String group, List<Field> fields) {
         if (!fields.isEmpty()) {
-            Field.group(configDef, group, fields.toArray(new Field[fields.size()]));
+            Field.group(configDef, group, fields.toArray(new Field[0]));
         }
     }
 }
