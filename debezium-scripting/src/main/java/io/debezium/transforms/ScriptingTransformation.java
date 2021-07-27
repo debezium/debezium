@@ -108,7 +108,7 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .required()
             .withDescription("An expression language used to evaluate the expression. Must begin with 'jsr223.', e.g.  'jsr223.groovy' or 'jsr223.graal.js'.");
 
     public static final Field NULL_HANDLING = Field.create("null.handling.mode")

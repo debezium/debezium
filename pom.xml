@@ -1,13 +1,14 @@
 <?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>org.jboss</groupId>
-    <artifactId>jboss-parent</artifactId>
-    <version>36</version>
-  </parent>
+    <parent>
+        <groupId>org.jboss</groupId>
+        <artifactId>jboss-parent</artifactId>
+        <version>36</version>
+    </parent>
 
-    <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
     <version>1.7.0-SNAPSHOT</version>
@@ -15,16 +16,19 @@
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
     <url>https://debezium.io</url>
+
     <scm>
         <connection>scm:git:git@github.com:debezium/debezium.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
         <url>https://github.com/debezium/debezium</url>
         <tag>HEAD</tag>
     </scm>
+
     <issueManagement>
         <system>jira</system>
         <url>http://issues.jboss.org/browse/DBZ</url>
     </issueManagement>
+
     <licenses>
         <license>
             <name>Apache Software License 2.0</name>
