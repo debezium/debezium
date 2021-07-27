@@ -558,10 +558,18 @@ public class StreamingSourceIT extends AbstractConnectorTest {
                 final JdbcConnection connection = db.connect();
                 final Connection jdbc = connection.connection();
                 final Statement statement = jdbc.createStatement()) {
+            if (mode == null) {
+                waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
+            }
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
 
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
+        if (mode == null) {
+            waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        }
+        else {
+            waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
+        }
         stopConnector();
         final Throwable e = exception.get();
         if (e != null) {
