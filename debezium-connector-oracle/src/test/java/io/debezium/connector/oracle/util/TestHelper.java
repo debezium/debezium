@@ -107,6 +107,9 @@ public class TestHelper {
         if (adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
         }
+        else {
+            builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
+        }
 
         // In the event that the environment variables do not specify a database.pdb.name setting,
         // the test suite will then assume default CDB mode and apply the default PDB name. If
