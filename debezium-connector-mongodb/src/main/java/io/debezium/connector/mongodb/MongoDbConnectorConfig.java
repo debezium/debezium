@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -38,6 +39,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static final String COLLECTION_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.whitelist\" is already specified";
     protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
     protected static final String DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.whitelist\" is already specified";
+
+    protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
+
+    protected static final Pattern FIELD_EXCLUDE_LIST_PATTERN = Pattern.compile("^[*|\\w|\\s*]+(?:\\.[\\w]+\\.[\\w]+)+(\\.[\\w]+)*\\s*$");
+    protected static final String QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>";
+    protected static final Pattern FIELD_RENAMES_PATTERN = Pattern.compile("^[*|\\w|\\s*]+(?:\\.[\\w]+\\.[\\w]+)+(\\.[\\w]+)*:(?:[\\w]+)+\\s*$");
+    protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -358,6 +366,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
+            .withValidation(MongoDbConnectorConfig::validateFieldExcludeList)
             .withDescription("A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values");
 
     /**
@@ -385,6 +394,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
+            .withValidation(MongoDbConnectorConfig::validateFieldRenamesList)
             .withDescription("");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
@@ -507,6 +517,36 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             ++count;
         }
         return count;
+    }
+
+    private static int validateFieldExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        int problemCount = 0;
+        String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
+
+        if (fieldExcludeList != null) {
+            for (String excludeField : PATTERN_SPILT.split(fieldExcludeList)) {
+                if (!FIELD_EXCLUDE_LIST_PATTERN.asPredicate().test(excludeField)) {
+                    problems.accept(FIELD_EXCLUDE_LIST, excludeField, excludeField + " has invalid format (expecting " + QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN + ")");
+                    problemCount++;
+                }
+            }
+        }
+        return problemCount;
+    }
+
+    private static int validateFieldRenamesList(Configuration config, Field field, ValidationOutput problems) {
+        int problemCount = 0;
+        String fieldRenamesList = config.getString(FIELD_RENAMES);
+
+        if (fieldRenamesList != null) {
+            for (String renameField : PATTERN_SPILT.split(fieldRenamesList)) {
+                if (!FIELD_RENAMES_PATTERN.asPredicate().test(renameField)) {
+                    problems.accept(FIELD_EXCLUDE_LIST, renameField, renameField + " has invalid format (expecting " + QUALIFIED_FIELD_RENAMES_PATTERN + ")");
+                    problemCount++;
+                }
+            }
+        }
+        return problemCount;
     }
 
     private static int validateCollectionExcludeList(Configuration config, Field field, ValidationOutput problems) {
