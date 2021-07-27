@@ -75,9 +75,6 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         // This is because Xstream does not allow any work on the connection while the LCR handler may be invoked
         // and LogMiner streams results from the CDB$ROOT container but we will need to stream changes from the
         // PDB when reading snapshot records.
-        //
-        // todo: consider adding a hook so that the connection can be lazily opened & closed when we're done with
-        // performing any and all incremental snapshot operations.
         return Optional.of(new OracleSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
                 new OracleConnection(jdbcConnection.config(), () -> getClass().getClassLoader()),
