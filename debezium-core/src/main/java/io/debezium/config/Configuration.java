@@ -832,7 +832,7 @@ public interface Configuration {
      * @return the configuration; never null
      */
     public static <T> Configuration from(Map<String, T> properties, Function<T, String> conversion) {
-        Map<String, Object> props = new HashMap<>();
+        Map<String, T> props = new HashMap<>();
         if (properties != null) {
             props.putAll(properties);
         }
