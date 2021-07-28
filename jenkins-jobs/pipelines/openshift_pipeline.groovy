@@ -59,6 +59,8 @@ pipeline {
                     env.OCP_PROJECT_MONGO = "debezium-${BUILD_NUMBER}-mongo"
                     env.OCP_PROJECT_DB2 = "debezium-${BUILD_NUMBER}-db2"
                     env.TEST_PROPERTY_VERSION_KAFKA = env.TEST_VERSION_KAFKA ? "-Dversion.kafka=${env.TEST_VERSION_KAFKA}" : ""
+                    env.TEST_PROPERTY_TAGS = env.TEST_TAGS ? "-Dgroups=${env.TEST_TAGS}" : ""
+                    env.TEST_PROPERTY_TAGS_EXLUDE = env.TEST_TAGS_EXCLUDE ? "-DexcludeGroups=${env.TEST_TAGS_EXCLUDE }" : ""
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
@@ -137,7 +139,8 @@ pipeline {
                     sh '''
                     set -x
                     cd ${WORKSPACE}/debezium
-                    mvn install -pl debezium-testing/debezium-testing-system -PopenshiftITs \\
+                    mvn install -pl debezium-testing/debezium-testing-system -PsystemITs \\
+                    -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.ocp.username="${OCP_USERNAME}" \\
                     -Dtest.ocp.password="${OCP_PASSWORD}" \\
                     -Dtest.ocp.url="${OCP_URL}" \\
@@ -147,11 +150,11 @@ pipeline {
                     -Dtest.ocp.project.sqlserver="${OCP_PROJECT_SQLSERVER}"  \\
                     -Dtest.ocp.project.mongo="${OCP_PROJECT_MONGO}" \\
                     -Dtest.ocp.project.db2="${OCP_PROJECT_DB2}" \\
-                    -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.ocp.pull.secret.paths="${SECRET_PATH}" \\
                     -Dtest.wait.scale="${TEST_WAIT_SCALE}" \\
-                    -Dtest.avro.serialisation="${TEST_APICURIO_REGISTRY}" \\
-                    ${TEST_PROPERTY_VERSION_KAFKA}
+                    ${TEST_PROPERTY_VERSION_KAFKA} \\
+                    ${TEST_PROPERTY_TAGS} \\
+                    ${TEST_PROPERTY_TAGS_EXCLUDE}
                     '''
                 }
             }

@@ -441,7 +441,7 @@
     </profile>
 
     <profile>
-      <id>openshiftITs</id>
+      <id>systemITs</id>
       <build>
         <plugins>
           <plugin>
@@ -517,9 +517,10 @@
                 <test.database.db2.cdc.schema>${database.db2.cdc.schema}</test.database.db2.cdc.schema>
               </systemPropertyVariables>
             </configuration>
+
             <executions>
               <execution>
-                <id>tests-openshift</id>
+                <id>tests-system</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
