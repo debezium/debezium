@@ -7,8 +7,9 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.Rule;
@@ -16,17 +17,17 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
+import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.ShouldFailWhen;
 import io.debezium.util.Testing;
 
-@ShouldFailWhen(ReadOnlyIncrementalSnapshotIT.IsGtidModeOff.class)
+@SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Read only connection requires GTID_MODE to be ON")
 public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     public static final String EXCLUDED_TABLE = "b";
     @Rule
-    public TestRule conditionalFail = new ConditionalFail();
+    public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
 
     protected Configuration.Builder config() {
         return super.config()
@@ -69,22 +70,18 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         }
     }
 
-    public static class IsGtidModeOff implements Supplier<Boolean> {
-
-        public Boolean get() {
-            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase("emptydb")) {
-                return db.queryAndMap(
-                        "SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'",
-                        rs -> {
-                            if (rs.next()) {
-                                return "OFF".equalsIgnoreCase(rs.getString(2));
-                            }
-                            throw new IllegalStateException("Cannot obtain GTID status");
-                        });
-            }
-            catch (SQLException e) {
-                throw new IllegalStateException("Cannot obtain GTID status", e);
-            }
+    @Test(expected = ConnectException.class)
+    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Read only connection requires GTID_MODE to be ON")
+    public void shouldFailIfGtidModeIsOff() throws Exception {
+        Testing.Print.enable();
+        populateTable();
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        startConnector((success, message, error) -> exception.set(error));
+        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        stopConnector();
+        final Throwable e = exception.get();
+        if (e != null) {
+            throw (RuntimeException) e;
         }
     }
 }
