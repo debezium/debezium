@@ -1914,30 +1914,34 @@ If the captured table(s) schema changes infrequently or never, this is the ideal
 
 |[[oracle-property-log-mining-buffer-type]]<<oracle-property-log-mining-buffer-type, `+log.mining.buffer.type+`>>
 |`memory`
-|The buffer type controls how the connector will manage buffering transaction data. +
+|The buffer type controls how the connector manages buffering transaction data. +
  +
 `memory` - Uses the JVM process' heap to buffer all transaction data.
-This is the ideal choice if you don't expect a lot of long-running or large transactions. +
-The buffer state is not persisted across restarts and will need to be recreated from the current offset's SCN value. +
+Choose this option if you don't expect the connector to process a high number of long-running or large transactions.
+When this option is active, the buffer state is not persisted across restarts.
+Following a restart, recreate the buffer from the SCN value of the current offset. +
  +
-`infinispan` - This uses an embedded Infinispan cache to buffer all transaction data and persist it to disk.
-This is the ideal choice if you expect long-running or large transactions.
+`infinispan` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk.
+Choose this option if you expect the connector to process long-running or large transactions.
+When this option is active, the buffer state is persisted across restarts.
+After a restart, there is no need to recreate the buffer.
 Since the buffer state is persisted across restarts, the buffer does not need to be recreated at restart.
-Using this mode requires the use of `log.mining.buffer.location` to designate where the cache files are to be written.
+The infinispan option requires that you specify a cache file directory.
+Use the `log.mining.buffer.location` property to define the location for storing cache files.
 
 |[[oracle-property-log-mining-buffer-location]]<<oracle-property-log-mining-buffer-location, `+log.mining.buffer.location+`>>
 |
-|Specifies a directory location to where the connector can read and write the buffer cache to disk.
-This directory should be shared and available across all nodes in a Kafka Cluster and should be unique for each connector deployment.
+|Specifies the location of the directory that the connector uses to read and write the buffer cache.
+Specify a directory that every node in the Kafka cluster can access and that is unique for the connector deployment.
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
 |`false`
-|Whether or not to delete the buffer state when the connector stops in a graceful, expected way. +
+|Specifies whether the buffer state is deleted after the connector stops in a graceful, expected way. +
  +
 This setting only impacts buffer implementations that persist state across restarts, such as `infinispan`. +
 The default behavior is that the buffer state is always retained between restarts. +
  +
-Set to `true` in only testing or development environments.
+Set to `true` only in testing or development environments.
 
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
