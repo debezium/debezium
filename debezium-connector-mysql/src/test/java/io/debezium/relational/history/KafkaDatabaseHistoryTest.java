@@ -134,10 +134,10 @@ public class KafkaDatabaseHistoryTest {
                 .with(KafkaDatabaseHistory.consumerConfigPropertyName(
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
-                    .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
-                    .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
-                    .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
-                    .build();
+                .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
+                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
+                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
+                .build();
         history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
         history.start();
 
