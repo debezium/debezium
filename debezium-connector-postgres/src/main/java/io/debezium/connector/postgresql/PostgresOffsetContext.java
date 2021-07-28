@@ -56,7 +56,8 @@ public class PostgresOffsetContext implements OffsetContext {
 
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
-        sourceInfo.update(lsn, time, txId, null, sourceInfo.xmin(), lastCommitLsn);
+        sourceInfo.update(lastCommitLsn, time, txId, null, sourceInfo.xmin(), true);
+        sourceInfo.update(lsn, time, txId, null, sourceInfo.xmin(), false);
         sourceInfoSchema = sourceInfo.schema();
 
         this.lastSnapshotRecord = lastSnapshotRecord;
@@ -140,13 +141,13 @@ public class PostgresOffsetContext implements OffsetContext {
 
     public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
-        sourceInfo.update(lsn, commitTime, txId, tableId, xmin);
+        sourceInfo.update(lsn, commitTime, txId, tableId, xmin, false);
     }
 
     public void updateCommitPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
-        this.lastCommitLsn = lastCompletelyProcessedLsn;
-        sourceInfo.update(lsn, commitTime, txId, tableId, xmin, lastCompletelyProcessedLsn);
+        this.lastCommitLsn = lsn;
+        sourceInfo.update(lsn, commitTime, txId, tableId, xmin, true);
     }
 
     boolean hasLastKnownPosition() {
