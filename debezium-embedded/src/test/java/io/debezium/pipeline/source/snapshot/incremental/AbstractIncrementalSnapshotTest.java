@@ -27,6 +27,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Testing;
 
@@ -126,9 +127,17 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         }
     }
 
+    protected void startConnector(DebeziumEngine.CompletionCallback callback) {
+        startConnector(Function.identity(), callback);
+    }
+
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
+        startConnector(custConfig, loggingCompletion());
+    }
+
+    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig, DebeziumEngine.CompletionCallback callback) {
         final Configuration config = custConfig.apply(config()).build();
-        start(connectorClass(), config);
+        start(connectorClass(), config, callback);
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
@@ -137,7 +146,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void startConnector() {
-        startConnector(Function.identity());
+        startConnector(Function.identity(), loggingCompletion());
     }
 
     protected void waitForConnectorToStart() {
