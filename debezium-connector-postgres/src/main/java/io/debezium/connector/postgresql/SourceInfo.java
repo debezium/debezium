@@ -134,6 +134,14 @@ public final class SourceInfo extends BaseSourceInfo {
         return this;
     }
 
+    /**
+     * Updates the source with the LSN of the last committed transaction.
+     */
+    protected SourceInfo updateLastCommit(Lsn lsn) {
+        this.lastCommitLsn = lsn;
+        return this;
+    }
+
     protected SourceInfo update(Instant timestamp, TableId tableId) {
         this.timestamp = timestamp;
         if (tableId != null && tableId.schema() != null) {
@@ -228,9 +236,6 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         if (tableName != null) {
             sb.append(", table=").append(tableName);
-        }
-        if (originName != null) {
-            sb.append(", origin name=").append(originName);
         }
         sb.append(']');
         return sb.toString();
