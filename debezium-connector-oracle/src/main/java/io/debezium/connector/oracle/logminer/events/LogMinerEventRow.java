@@ -32,6 +32,13 @@ public class LogMinerEventRow {
 
     private static final Calendar UTC_CALENDAR = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
 
+    /**
+     * Used by calls to {@link #fromResultSet(ResultSet, String, boolean)} to return the same instance
+     * but initialized with values from each row without creating multiple objects repeatedly
+     * during the result-set iteration.
+     */
+    private static final LogMinerEventRow row = new LogMinerEventRow();
+
     private static final int SCN = 1;
     private static final int SQL_REDO = 2;
     private static final int OPERATION_CODE = 3;
@@ -118,7 +125,37 @@ public class LogMinerEventRow {
         return redoSql;
     }
 
-    public LogMinerEventRow from(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+    /**
+     * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
+     *
+     * It's important to note that the instance returned by this method is never created as a new instance. The
+     * method uses an internal single instance that is initialized based on the values from the current row
+     * of the JDBC result-set to avoid creating lots of intermediate objects.
+     *
+     * @param resultSet the result set to be read, should never be {@code null}
+     * @param catalogName the catalog name, should never be {@code null}
+     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
+     * @return a populated instance of a LogMinerEventRow object.
+     * @throws SQLException if there was a problem reading the result set
+     */
+    public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+        row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue);
+        return row;
+    }
+
+    /**
+     * Initializes the instance from the JDBC {@link ResultSet}.
+     *
+     * @param resultSet the result set to be read, should never be {@code null}
+     * @param catalogName the catalog name, should never be {@code null}
+     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
+     * @throws SQLException if there was a problem reading the result set
+     */
+    private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+        // First reset the internal state
+        reset();
+
+        // Initialize the state from the result set
         this.scn = getScn(resultSet);
         this.tableName = resultSet.getString(TABLE_NAME);
         this.tablespaceName = resultSet.getString(TABLESPACE_NAME);
@@ -132,13 +169,28 @@ public class LogMinerEventRow {
         this.rsId = resultSet.getString(RS_ID);
         this.hash = resultSet.getLong(HASH);
         this.redoSql = getSqlRedo(resultSet);
-
-        this.tableId = null;
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }
+    }
 
-        return this;
+    /**
+     * Resets the internal state of the instance
+     */
+    private void reset() {
+        this.scn = null;
+        this.tableName = null;
+        this.tablespaceName = null;
+        this.eventType = null;
+        this.changeTime = null;
+        this.transactionId = null;
+        this.operation = null;
+        this.userName = null;
+        this.rowId = null;
+        this.rollbackFlag = false;
+        this.rsId = null;
+        this.redoSql = null;
+        this.tableId = null;
     }
 
     private String getTransactionId(ResultSet rs, boolean asRawValue) throws SQLException {

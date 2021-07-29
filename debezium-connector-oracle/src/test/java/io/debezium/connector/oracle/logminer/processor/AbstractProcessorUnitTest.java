@@ -93,7 +93,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     public void testCacheIsEmpty() throws Exception {
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
         try (T processor = getProcessor(config)) {
-            assertThat(processor.getCache().isEmpty()).isTrue();
+            assertThat(processor.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
@@ -103,7 +103,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         try (T processor = getProcessor(config)) {
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(1L), TRANSACTION_ID_1));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1));
-            assertThat(processor.getCache().isEmpty()).isFalse();
+            assertThat(processor.getTransactionCache().isEmpty()).isFalse();
         }
     }
 
@@ -115,7 +115,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(1L), TRANSACTION_ID_1));
             processor.handleDataEvent(insertRow);
             processor.handleCommit(getCommitLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1));
-            assertThat(processor.getCache().isEmpty()).isTrue();
+            assertThat(processor.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
@@ -126,7 +126,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(1L), TRANSACTION_ID_1));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1));
             processor.handleRollback(getRollbackLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1));
-            assertThat(processor.getCache().isEmpty()).isTrue();
+            assertThat(processor.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
@@ -139,7 +139,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_2));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(4L), TRANSACTION_ID_2));
             processor.handleRollback(getRollbackLogMinerEventRow(Scn.valueOf(5L), TRANSACTION_ID_1));
-            assertThat(processor.getCache().isEmpty()).isFalse();
+            assertThat(processor.getTransactionCache().isEmpty()).isFalse();
             assertThat(metrics.getRolledBackTransactionIds().contains(TRANSACTION_ID_1)).isTrue();
             assertThat(metrics.getRolledBackTransactionIds().contains(TRANSACTION_ID_2)).isFalse();
         }
@@ -154,7 +154,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_2));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(4L), TRANSACTION_ID_2));
             processor.handleRollback(getRollbackLogMinerEventRow(Scn.valueOf(5L), TRANSACTION_ID_2));
-            assertThat(processor.getCache().isEmpty()).isFalse();
+            assertThat(processor.getTransactionCache().isEmpty()).isFalse();
             assertThat(metrics.getRolledBackTransactionIds().contains(TRANSACTION_ID_2)).isTrue();
             assertThat(metrics.getRolledBackTransactionIds().contains(TRANSACTION_ID_1)).isFalse();
         }
@@ -219,7 +219,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1, changeTime));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1, changeTime));
             processor.abandonTransactions(Duration.ofHours(1L));
-            assertThat(processor.getCache().isEmpty()).isTrue();
+            assertThat(processor.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
@@ -239,9 +239,9 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(4L), TRANSACTION_ID_2));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(5L), TRANSACTION_ID_2));
             processor.abandonTransactions(Duration.ofHours(1L));
-            assertThat(processor.getCache().isEmpty()).isFalse();
-            assertThat(processor.getCache().get(TRANSACTION_ID_1)).isNull();
-            assertThat(processor.getCache().get(TRANSACTION_ID_2)).isNotNull();
+            assertThat(processor.getTransactionCache().isEmpty()).isFalse();
+            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_1)).isNull();
+            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_2)).isNotNull();
         }
     }
 

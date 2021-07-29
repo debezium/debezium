@@ -54,9 +54,38 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
     private final OracleOffsetContext offsetContext;
     private final EventDispatcher<TableId> dispatcher;
     private final ChangeEventSourceContext context;
+
+    /**
+     * A cache that stores the complete {@link Transaction} object keyed by the unique transaction id.
+     */
     private final InfinispanTransactionCache transactionCache;
+
+    /**
+     * A cache storing recently committed transactions key by the unique transaction id and
+     * the event's system change number.  This cache is used to filter events during re-mining
+     * when LOB support is enabled to skip the processing of already emitted transactions.
+     * Entries in this cache are removed when the offset low watermark (scn) advances beyond
+     * the system change number associated with the transaction.
+     */
     private final Cache<String, String> recentlyCommittedTransactionsCache;
+
+    /**
+     * A cache storing recently rolled back transactions keyed by the unique transaction id and
+     * the event's system change number.  This cache is used to filter events during re-mining
+     * when LOB support is enabled to skip the processing of already discarded transactions.
+     * Entries in this cache are removed when the offset low watermark (scn) advances beyond
+     * the system change number associated with the transaction.
+     */
     private final Cache<String, String> rollbackTransactionsCache;
+
+    /**
+     * A cache storing recently emitted schema changes keyed by the system change number of the
+     * schema change and the associated fully qualified TableId identifier value for the change.
+     * This cache is used to filter events during re-mining when LOB support is enabled to skip
+     * the processing of already emitted schema changes.  Entries in this cache are removed
+     * when the offset low watermark (scn) advances beyond the system change number associated
+     * with the schema change event.
+     */
     private final Cache<String, String> schemaChangesCache;
 
     private Scn currentOffsetScn = Scn.NULL;
@@ -104,7 +133,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
     }
 
     @Override
-    protected TransactionCache<?> getCache() {
+    protected TransactionCache<?> getTransactionCache() {
         return transactionCache;
     }
 
@@ -155,10 +184,8 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
                     }
                 }
 
-                LOGGER.debug("{} rows, {} DMLs, {} commits, {} rollbacks, {} inserts, {} updates, {} deletes. " +
-                        "Processed in {} ms. Lag: {}. Offset SCN: {}, Offset Commit SCN: {}. Active transactions: {}, Sleep: {}",
-                        counters.rows, counters.dmlCount, counters.commitCount, counters.rollbackCount,
-                        counters.insertCount, counters.updateCount, counters.deleteCount,
+                LOGGER.debug("{}.", counters);
+                LOGGER.debug("Processed in {} ms. Log: {}. Offset SCN: {}, Offset Commit SCN: {}, Active Transactions: {}, Sleep: {}",
                         totalTime.toMillis(), metrics.getLagFromSourceInMilliseconds(), offsetContext.getScn(),
                         offsetContext.getCommitScn(), metrics.getNumberOfActiveTransactions(),
                         metrics.getMillisecondToSleepBetweenMiningQuery());
@@ -318,7 +345,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
     @Override
     protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
         if (isTransactionIdAllowed(transactionId)) {
-            Transaction transaction = getCache().get(transactionId);
+            Transaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
                 LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
                 transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime());
@@ -331,8 +358,8 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
                 transaction.getEvents().add(eventSupplier.get());
             }
             // When using Infinispan, this extra put is required so that the state is properly synchronized
-            getCache().put(transactionId, transaction);
-            metrics.setActiveTransactions(getCache().size());
+            getTransactionCache().put(transactionId, transaction);
+            metrics.setActiveTransactions(getTransactionCache().size());
             metrics.calculateLagMetrics(row.getChangeTime());
         }
     }

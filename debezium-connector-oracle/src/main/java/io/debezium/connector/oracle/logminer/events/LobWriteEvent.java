@@ -19,6 +19,11 @@ public class LobWriteEvent extends LogMinerEvent {
 
     private final String data;
 
+    public LobWriteEvent(LogMinerEventRow row, String data) {
+        super(row);
+        this.data = data;
+    }
+
     public LobWriteEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime, String data) {
         super(eventType, scn, tableId, rowId, rsId, changeTime);
         this.data = data;

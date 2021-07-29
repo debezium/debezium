@@ -9,7 +9,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.processor.infinispan.VisibleForMarshalling;
+import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.VisibleForMarshalling;
 
 /**
  * This class holds one parsed DML LogMiner record details
