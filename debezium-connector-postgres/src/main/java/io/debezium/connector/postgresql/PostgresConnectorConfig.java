@@ -1202,4 +1202,17 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase());
         }
     }
+
+    public static final Field SKIP_OARIGIN_NAME_REGEX = Field.create("skip.origin.name.regex")
+            .withDisplayName("Regex for origin name to skip.")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isRegex)
+            .withDescription("The regular expression for the origin names that needs to be skipped. Defaults to not skip any origin.");
+
+    public String skipOriginNameRegex() {
+        return getConfig().getString(SKIP_OARIGIN_NAME_REGEX);
+    }
+
 }
