@@ -42,6 +42,7 @@
 
         <!-- Oracle dependencies -->
         <version.infinispan>12.1.6.Final</version.infinispan>
+        <version.infinispan.protostream>4.4.1.Final</version.infinispan.protostream>
 
         <!-- Tracing -->
         <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
@@ -441,6 +442,12 @@
                 <groupId>org.infinispan</groupId>
                 <artifactId>infinispan-core</artifactId>
                 <version>${version.infinispan}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.infinispan.protostream</groupId>
+                <artifactId>protostream-processor</artifactId>
+                <version>${version.infinispan.protostream}</version>
+                <scope>provided</scope>
             </dependency>
 
             <!-- Testing utilities -->
