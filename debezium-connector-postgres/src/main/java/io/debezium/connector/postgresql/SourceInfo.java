@@ -109,14 +109,10 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
      * @param tableId the table that should be included in the source info; may be null
      * @param xmin the xmin of the slot, may be null
-     * @param isCommit whether this event is a commit.
      * @return this instance
      */
-    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin, boolean isCommit) {
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lsn = lsn;
-        if (isCommit) {
-            this.lastCommitLsn = lsn;
-        }
         if (commitTime != null) {
             this.timestamp = commitTime;
         }
@@ -128,6 +124,14 @@ public final class SourceInfo extends BaseSourceInfo {
         if (tableId != null && tableId.table() != null) {
             this.tableName = tableId.table();
         }
+        return this;
+    }
+
+    /**
+     * Updates the source with the LSN of the last committed transaction.
+     */
+    protected SourceInfo updateLastCommit(Lsn lsn) {
+        this.lastCommitLsn = lsn;
         return this;
     }
 
