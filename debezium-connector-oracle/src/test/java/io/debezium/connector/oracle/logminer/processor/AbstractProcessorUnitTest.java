@@ -8,6 +8,8 @@ package io.debezium.connector.oracle.logminer.processor;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_BATCH_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,6 +41,7 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -281,6 +284,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
 
         OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.connection(Mockito.anyBoolean())).thenReturn(conn);
+        Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(2.f);
         return connection;
     }
 
