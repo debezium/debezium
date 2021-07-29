@@ -19,6 +19,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<OraclePartition, OracleOffsetContext> {
 
@@ -71,6 +72,12 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
                                                                                                                               OracleOffsetContext offsetContext,
                                                                                                                               SnapshotProgressListener snapshotProgressListener,
                                                                                                                               DataChangeEventListener dataChangeEventListener) {
+        // If no data collection id is provided, don't return an instance as the implementation requires
+        // that a signal data collection id be provided to work.
+        if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
+            return Optional.empty();
+        }
+
         // Incremental snapshots requires a secondary database connection
         // This is because Xstream does not allow any work on the connection while the LCR handler may be invoked
         // and LogMiner streams results from the CDB$ROOT container but we will need to stream changes from the
