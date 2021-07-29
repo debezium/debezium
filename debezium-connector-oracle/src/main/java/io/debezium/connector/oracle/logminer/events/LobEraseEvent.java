@@ -16,6 +16,10 @@ import io.debezium.relational.TableId;
  * @author Chris Cranford
  */
 public class LobEraseEvent extends LogMinerEvent {
+    public LobEraseEvent(LogMinerEventRow row) {
+        super(row);
+    }
+
     public LobEraseEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime) {
         super(eventType, scn, tableId, rowId, rsId, changeTime);
     }

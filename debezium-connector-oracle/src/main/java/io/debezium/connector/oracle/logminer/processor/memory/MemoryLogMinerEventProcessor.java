@@ -84,7 +84,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected TransactionCache<?> getCache() {
+    protected TransactionCache<?> getTransactionCache() {
         return transactionCache;
     }
 
@@ -123,10 +123,8 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                     }
                 }
 
-                LOGGER.debug("{} rows, {} DMLs, {} commits, {} rollbacks, {} inserts, {} updates, {} deletes. " +
-                        "Processed in {} ms. Lag: {}. Offset SCN: {}, Offset Commit SCN: {}. Active transactions: {}, Sleep: {}",
-                        counters.rows, counters.dmlCount, counters.commitCount, counters.rollbackCount,
-                        counters.insertCount, counters.updateCount, counters.deleteCount,
+                LOGGER.debug("{}.", counters);
+                LOGGER.debug("Processed in {} ms. Log: {}. Offset SCN: {}, Offset Commit SCN: {}, Active Transactions: {}, Sleep: {}",
                         totalTime.toMillis(), metrics.getLagFromSourceInMilliseconds(), offsetContext.getScn(),
                         offsetContext.getCommitScn(), metrics.getNumberOfActiveTransactions(),
                         metrics.getMillisecondToSleepBetweenMiningQuery());

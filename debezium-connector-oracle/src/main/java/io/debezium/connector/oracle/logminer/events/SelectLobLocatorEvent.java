@@ -21,6 +21,12 @@ public class SelectLobLocatorEvent extends DmlEvent {
     private final String columnName;
     private final boolean binary;
 
+    public SelectLobLocatorEvent(LogMinerEventRow row, LogMinerDmlEntry dmlEntry, String columnName, boolean binary) {
+        super(row, dmlEntry);
+        this.columnName = columnName;
+        this.binary = binary;
+    }
+
     public SelectLobLocatorEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime,
                                  LogMinerDmlEntry dmlEntry, String columnName, boolean binary) {
         super(eventType, scn, tableId, rowId, rsId, changeTime, dmlEntry);

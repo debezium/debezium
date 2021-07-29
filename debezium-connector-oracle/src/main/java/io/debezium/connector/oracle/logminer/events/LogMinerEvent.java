@@ -25,6 +25,10 @@ public class LogMinerEvent {
     private final String rsId;
     private final Instant changeTime;
 
+    public LogMinerEvent(LogMinerEventRow row) {
+        this(row.getEventType(), row.getScn(), row.getTableId(), row.getRowId(), row.getRsId(), row.getChangeTime());
+    }
+
     public LogMinerEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime) {
         this.eventType = eventType;
         this.scn = scn;

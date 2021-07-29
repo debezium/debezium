@@ -25,6 +25,14 @@ public enum EventType {
     ROLLBACK(36),
     UNSUPPORTED(255);
 
+    private static EventType[] types = new EventType[256];
+
+    static {
+        for (EventType option : EventType.values()) {
+            types[option.getValue()] = option;
+        }
+    }
+
     private int value;
 
     EventType(int value) {
@@ -42,11 +50,6 @@ public enum EventType {
      * @return the event type, will be {@link #UNSUPPORTED} if the code is not supported.
      */
     public static EventType from(int value) {
-        for (EventType option : EventType.values()) {
-            if (option.getValue() == value) {
-                return option;
-            }
-        }
-        return EventType.UNSUPPORTED;
+        return value < types.length ? types[value] : EventType.UNSUPPORTED;
     }
 }

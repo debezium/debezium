@@ -20,6 +20,11 @@ public class DmlEvent extends LogMinerEvent {
 
     private final LogMinerDmlEntry dmlEntry;
 
+    public DmlEvent(LogMinerEventRow row, LogMinerDmlEntry dmlEntry) {
+        super(row);
+        this.dmlEntry = dmlEntry;
+    }
+
     public DmlEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime, LogMinerDmlEntry dmlEntry) {
         super(eventType, scn, tableId, rowId, rsId, changeTime);
         this.dmlEntry = dmlEntry;

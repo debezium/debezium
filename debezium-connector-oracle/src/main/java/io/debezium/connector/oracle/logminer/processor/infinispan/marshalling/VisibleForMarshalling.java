@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.processor.infinispan;
+package io.debezium.connector.oracle.logminer.processor.infinispan.marshalling;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
  * @author Chris Cranford
  */
 @Documented
-@Target({ ElementType.CONSTRUCTOR })
+@Target({ ElementType.CONSTRUCTOR, ElementType.METHOD })
 @Retention(RetentionPolicy.SOURCE)
 public @interface VisibleForMarshalling {
 }
