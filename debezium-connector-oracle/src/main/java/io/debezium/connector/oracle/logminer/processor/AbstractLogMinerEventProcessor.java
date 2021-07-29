@@ -126,7 +126,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * Returns the {@code TransactionCache} implementation.
      * @return the transaction cache, never {@code null}
      */
-    protected abstract TransactionCache<?> getCache();
+    protected abstract TransactionCache<?> getTransactionCache();
 
     // todo: can this be removed in favor of a single implementation?
     protected boolean isTrxIdRawValue() {
@@ -141,10 +141,9 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * @throws InterruptedException if the dispatcher was interrupted sending an event
      */
     protected void processResults(ResultSet resultSet) throws SQLException, InterruptedException {
-        final LogMinerEventRow row = new LogMinerEventRow();
         while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
             counters.rows++;
-            processRow(row.from(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
+            processRow(LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
         }
     }
 
@@ -204,11 +203,10 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      */
     protected void handleStart(LogMinerEventRow row) {
         final String transactionId = row.getTransactionId();
-        final Transaction transaction = getCache().get(transactionId);
+        final Transaction transaction = getTransactionCache().get(transactionId);
         if (transaction == null && !isRecentlyCommitted(transactionId)) {
-            // LOGGER.trace("Start: {}", row);
-            getCache().put(transactionId, new Transaction(transactionId, row.getScn(), row.getChangeTime()));
-            metrics.setActiveTransactions(getCache().size());
+            getTransactionCache().put(transactionId, new Transaction(transactionId, row.getScn(), row.getChangeTime()));
+            metrics.setActiveTransactions(getTransactionCache().size());
         }
     }
 
@@ -285,12 +283,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
 
         addToTransaction(row.getTransactionId(),
                 row,
-                () -> new SelectLobLocatorEvent(row.getEventType(),
-                        row.getScn(),
-                        row.getTableId(),
-                        row.getRowId(),
-                        row.getRsId(),
-                        row.getChangeTime(),
+                () -> new SelectLobLocatorEvent(row,
                         dmlEntry,
                         selectLobParser.getColumnName(),
                         selectLobParser.isBinary()));
@@ -319,15 +312,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
 
         if (row.getRedoSql() != null) {
             final String lobWriteSql = parseLobWriteSql(row.getRedoSql());
-            addToTransaction(row.getTransactionId(),
-                    row,
-                    () -> new LobWriteEvent(row.getEventType(),
-                            row.getScn(),
-                            row.getTableId(),
-                            row.getRowId(),
-                            row.getRsId(),
-                            row.getChangeTime(),
-                            lobWriteSql));
+            addToTransaction(row.getTransactionId(), row, () -> new LobWriteEvent(row, lobWriteSql));
         }
     }
 
@@ -350,14 +335,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             return;
         }
 
-        addToTransaction(row.getTransactionId(),
-                row,
-                () -> new LobEraseEvent(row.getEventType(),
-                        row.getScn(),
-                        row.getTableId(),
-                        row.getRowId(),
-                        row.getRsId(),
-                        row.getChangeTime()));
+        addToTransaction(row.getTransactionId(), row, () -> new LobEraseEvent(row));
     }
 
     /**
@@ -403,18 +381,12 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             // with a rollback flag to indicate that the prior event should be omitted. In this
             // use case, the transaction can still be committed, so we need to manually rollback
             // the previous DML event when this use case occurs.
-            final Transaction transaction = getCache().get(row.getTransactionId());
+            final Transaction transaction = getTransactionCache().get(row.getTransactionId());
             if (transaction == null) {
                 LOGGER.warn("Cannot undo change '{}' since transaction was not found.", row);
             }
             else {
-                transaction.getEvents().removeIf(o -> {
-                    if (o.getRowId().equals(row.getRowId())) {
-                        LOGGER.trace("Undo applied for '{}'.", row);
-                        return true;
-                    }
-                    return false;
-                });
+                transaction.removeEventWithRowId(row.getRowId());
             }
             return;
         }
@@ -423,15 +395,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         dmlEntry.setObjectName(row.getTableName());
         dmlEntry.setObjectOwner(row.getTablespaceName());
 
-        addToTransaction(row.getTransactionId(),
-                row,
-                () -> new DmlEvent(row.getEventType(),
-                        row.getScn(),
-                        row.getTableId(),
-                        row.getRowId(),
-                        row.getRsId(),
-                        row.getChangeTime(),
-                        dmlEntry));
+        addToTransaction(row.getTransactionId(), row, () -> new DmlEvent(row, dmlEntry));
 
         metrics.incrementRegisteredDmlCount();
     }
@@ -489,11 +453,11 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      */
     protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
         if (isTransactionIdAllowed(transactionId)) {
-            Transaction transaction = getCache().get(transactionId);
+            Transaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
                 LOGGER.trace("Transaction {} not in cache, creating.", transactionId);
                 transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime());
-                getCache().put(transactionId, transaction);
+                getTransactionCache().put(transactionId, transaction);
             }
 
             // The event will only be registered with the transaction if the computed hash value
@@ -505,7 +469,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
                 }
                 LOGGER.trace("Adding {} to transaction {} for table '{}'.", row.getOperation(), transactionId, row.getTableId());
                 transaction.getEvents().add(eventSupplier.get());
-                metrics.setActiveTransactions(getCache().size());
+                metrics.setActiveTransactions(getTransactionCache().size());
                 metrics.calculateLagMetrics(row.getChangeTime());
             }
         }
@@ -549,6 +513,8 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * @throws SQLException if an exception occurred obtaining the DDL statement
      */
     private String getTableMetadataDdl(TableId tableId) throws SQLException {
+        counters.tableMetadataCount++;
+        LOGGER.info("Getting database metadata for table '{}'", tableId);
         // A separate connection must be used for this out-of-bands query while processing LogMiner results.
         // This should have negligible overhead since this use case should happen rarely.
         try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader())) {
@@ -633,6 +599,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         public int deleteCount;
         public int commitCount;
         public int rollbackCount;
+        public int tableMetadataCount;
         public long rows;
 
         public void reset() {
@@ -644,7 +611,24 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             deleteCount = 0;
             commitCount = 0;
             rollbackCount = 0;
+            tableMetadataCount = 0;
             rows = 0;
+        }
+
+        @Override
+        public String toString() {
+            return "Counters{" +
+                    "rows=" + rows +
+                    ", stuckCount=" + stuckCount +
+                    ", dmlCount=" + dmlCount +
+                    ", ddlCount=" + ddlCount +
+                    ", insertCount=" + insertCount +
+                    ", updateCount=" + updateCount +
+                    ", deleteCount=" + deleteCount +
+                    ", commitCount=" + commitCount +
+                    ", rollbackCount=" + rollbackCount +
+                    ", tableMetadataCount=" + tableMetadataCount +
+                    '}';
         }
     }
 }

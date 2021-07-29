@@ -41,11 +41,7 @@
         <version.google.protos>1.17.0</version.google.protos>
 
         <!-- Oracle dependencies -->
-        <version.cache.api>1.1.1</version.cache.api>
         <version.infinispan>12.1.6.Final</version.infinispan>
-
-        <!-- Oracle dependencies, only needed at compile time -->
-        <version.infinispan.protostream>4.4.1.Final</version.infinispan.protostream>
 
         <!-- Tracing -->
         <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
@@ -442,20 +438,9 @@
 
             <!-- Oracle dependencies -->
             <dependency>
-                <groupId>javax.cache</groupId>
-                <artifactId>cache-api</artifactId>
-                <version>${version.cache.api}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-jcache</artifactId>
+                <artifactId>infinispan-core</artifactId>
                 <version>${version.infinispan}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.infinispan.protostream</groupId>
-                <artifactId>protostream-processor</artifactId>
-                <version>${version.infinispan.protostream}</version>
-                <scope>provided</scope>
             </dependency>
 
             <!-- Testing utilities -->

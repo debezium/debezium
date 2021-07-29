@@ -12,8 +12,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.processor.infinispan.VisibleForMarshalling;
+import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.VisibleForMarshalling;
 
 /**
  * A logical database transaction
@@ -21,6 +24,8 @@ import io.debezium.connector.oracle.logminer.processor.infinispan.VisibleForMars
  * @author Chris Cranford
  */
 public class Transaction {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Transaction.class);
 
     private String transactionId;
     private Scn startScn;
@@ -59,6 +64,21 @@ public class Transaction {
 
     public Set<Long> getHashes() {
         return hashes;
+    }
+
+    /**
+     * Removes any all events within the transaction with the specified {code rowId}.
+     *
+     * @param rowId the row id for the SQL event that should be removed
+     */
+    public void removeEventWithRowId(String rowId) {
+        events.removeIf(event -> {
+            if (event.getRowId().equals(rowId)) {
+                LOGGER.trace("Undo applied for event {}.", event);
+                return true;
+            }
+            return false;
+        });
     }
 
     @Override
