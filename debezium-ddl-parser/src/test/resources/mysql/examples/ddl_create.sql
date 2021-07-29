@@ -68,6 +68,19 @@ CREATE TABLE table_items_with_subpartitions (id INT, purchased DATE)
             SUBPARTITION s5
         )
     );
+
+CREATE TABLE positions_rollover (
+    id bigint(20) NOT NULL AUTO_INCREMENT,
+    time datetime NOT NULL,
+    partition_index int(10) unsigned NOT NULL DEFAULT 0,
+    PRIMARY KEY (id,partition_index),
+    KEY time (time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+PARTITION BY LIST (partition_index) (
+    PARTITION positions_rollover_partition VALUES IN (0) ENGINE = InnoDB,
+    PARTITION default_positions_rollover_partition DEFAULT ENGINE = InnoDB
+);
+
 CREATE TABLE `tab_with_json_value` (
    `col0` JSON NOT NULL,
    `col1` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
