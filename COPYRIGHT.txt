@@ -43,6 +43,7 @@ Ben Williams
 Bin Li
 Bingqin Zhou
 Björn Häuser
+Blake Peno
 Bob Roldan
 Braden Groom
 Braden Staudacher
@@ -164,6 +165,7 @@ Juan Antonio Pedraza
 Jun Du
 Jure Kajzer
 Justin Hiza
+Katerina Galieva
 Kaushik Iyer
 Kazuki MATSUDA / 松田一樹
 Keith Barber
@@ -223,6 +225,7 @@ Omar Al-Safi
 Ori Popowski
 Orr Ganani
 Patrick Chu
+Pavel Strashkin
 Paul Mellor
 Peng Lyu
 Peter Goransson
@@ -281,12 +284,14 @@ Tapani Moilanen
 Tautvydas Januskevicius
 Taylor Rolison
 Teo Stocco
+Thiago Dantas
 Theofanis Despoudis
 Thierry De Leeuw
 Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
+Tin Nguyen
 Tom Bentley
 Tomaz Lemos Fernandes
 Tommy Karlsson

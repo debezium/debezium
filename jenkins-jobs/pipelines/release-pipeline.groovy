@@ -56,7 +56,8 @@ CONNECTORS_PER_VERSION = [
     '1.3' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
     '1.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
     '1.5' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
-    '1.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess']
+    '1.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
+    '1.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess']
 ]
 
 CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
@@ -72,7 +73,7 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
     echo "Additional repository $repository will be used"
 }
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'ui']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://s01.oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
