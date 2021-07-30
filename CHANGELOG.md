@@ -2,6 +2,75 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.7.0.Alpha1
+July 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354171)
+
+### New features since 1.6.0.Final
+
+* Implement incremental snapshotting for Oracle [DBZ-3692](https://issues.jboss.org/browse/DBZ-3692)
+* Implement a LogMiner event buffer SPI [DBZ-3752](https://issues.jboss.org/browse/DBZ-3752)
+* Remove `artifacts.url` property from UI config.js [DBZ-3209](https://issues.jboss.org/browse/DBZ-3209)
+* Do not mark offset for commit log files with error [DBZ-3366](https://issues.jboss.org/browse/DBZ-3366)
+* Support read-only MySQL connection in incremental snapshot [DBZ-3577](https://issues.jboss.org/browse/DBZ-3577)
+* CloudEventsConverter does not support Oracle, Db2, or Vitess [DBZ-3668](https://issues.jboss.org/browse/DBZ-3668)
+* Allow usernames to be excluded in logminer query [DBZ-3671](https://issues.jboss.org/browse/DBZ-3671)
+* Track Oracle session PGA memory consumption [DBZ-3756](https://issues.jboss.org/browse/DBZ-3756)
+* Performance issue due to inefficient ObjectMapper initialization [DBZ-3770](https://issues.jboss.org/browse/DBZ-3770)
+* Add more smoke tests [DBZ-3789](https://issues.jboss.org/browse/DBZ-3789)
+
+
+### Breaking changes since 1.6.0.Final
+
+None
+
+
+### Fixes since 1.6.0.Final
+
+* UI frontend build fails for exported checkout which has no .git dir [DBZ-3265](https://issues.jboss.org/browse/DBZ-3265)
+* Broken links in Avro and Outbox Event Router documentation [DBZ-3430](https://issues.jboss.org/browse/DBZ-3430)
+* Cassandra connector generates invalid schema name for its CDC records [DBZ-3590](https://issues.jboss.org/browse/DBZ-3590)
+* Support invisible columns with MySql 8.0.23+ [DBZ-3623](https://issues.jboss.org/browse/DBZ-3623)
+* Db2Connector is unable to establish validation connection [DBZ-3632](https://issues.jboss.org/browse/DBZ-3632)
+* Status stays in RUNNING for Postgres Connector after Postgres is stopped [DBZ-3655](https://issues.jboss.org/browse/DBZ-3655)
+* Change connection validation log level for better visibility [DBZ-3677](https://issues.jboss.org/browse/DBZ-3677)
+* OracleSchemaMigrationIT can throw false positive test failures if test artifacts remain [DBZ-3684](https://issues.jboss.org/browse/DBZ-3684)
+* MySQL Connector error after execute a "create role" statement [DBZ-3686](https://issues.jboss.org/browse/DBZ-3686)
+* ERROR in Entry module not found: Error: Can't resolve './src' [DBZ-3716](https://issues.jboss.org/browse/DBZ-3716)
+* Error parsing query, even with database.history.skip.unparseable.ddl [DBZ-3717](https://issues.jboss.org/browse/DBZ-3717)
+* Support for TABLE_TYPE missing form MySQL grammar [DBZ-3718](https://issues.jboss.org/browse/DBZ-3718)
+* Oracle LogMiner DdlParser Error [DBZ-3723](https://issues.jboss.org/browse/DBZ-3723)
+* Debezium mysql connector plugin throws SQL syntax error during incremental snapshot [DBZ-3725](https://issues.jboss.org/browse/DBZ-3725)
+* DDL statement couldn't be parsed [DBZ-3755](https://issues.jboss.org/browse/DBZ-3755)
+* Debezium Oracle connector stops with DDL parsing error [DBZ-3759](https://issues.jboss.org/browse/DBZ-3759)
+* Exception thrown from getTableColumnsFromDatabase [DBZ-3769](https://issues.jboss.org/browse/DBZ-3769)
+* Incorrect regex parsing in start script of kafka image [DBZ-3791](https://issues.jboss.org/browse/DBZ-3791)
+* Dropdown items list visibility blocked by wizard footer  [DBZ-3794](https://issues.jboss.org/browse/DBZ-3794)
+* Permission issues with DB2 example image [DBZ-3795](https://issues.jboss.org/browse/DBZ-3795)
+
+
+### Other changes since 1.6.0.Final
+
+* Make consumer of outbox example more resilient [DBZ-1709](https://issues.jboss.org/browse/DBZ-1709)
+* Set up CI for debezium-examples repo [DBZ-1749](https://issues.jboss.org/browse/DBZ-1749)
+* Refactor LogMinerHelper and SqlUtils [DBZ-2552](https://issues.jboss.org/browse/DBZ-2552)
+* Implement tests for UI components [DBZ-3050](https://issues.jboss.org/browse/DBZ-3050)
+* Add documentation about new capturing implementation for the MySQL connector to downstream product [DBZ-3140](https://issues.jboss.org/browse/DBZ-3140)
+* Remove JSimpleParser [DBZ-3155](https://issues.jboss.org/browse/DBZ-3155)
+* Ability to build KC image with Apicurio converters [DBZ-3433](https://issues.jboss.org/browse/DBZ-3433)
+* Remove `log.mining.history.xxx` deprecated options  [DBZ-3581](https://issues.jboss.org/browse/DBZ-3581)
+* Un-document deprecated options and metrics [DBZ-3681](https://issues.jboss.org/browse/DBZ-3681)
+* Capture changes made by connector user & document that SYS/SYSTEM changes are not captured [DBZ-3683](https://issues.jboss.org/browse/DBZ-3683)
+* Use Debezium thread factory for PG keep-alive [DBZ-3685](https://issues.jboss.org/browse/DBZ-3685)
+* Time for another community newsletter [DBZ-3695](https://issues.jboss.org/browse/DBZ-3695)
+* Improve signalling documentation [DBZ-3699](https://issues.jboss.org/browse/DBZ-3699)
+* Example end-to-end fails due to an API incompatibility with Maven 3.6+ [DBZ-3705](https://issues.jboss.org/browse/DBZ-3705)
+* Example debezium-server-name-mapper fails due to an API incompatibility with Maven 3.6+ [DBZ-3706](https://issues.jboss.org/browse/DBZ-3706)
+* Doc clarification on connector rewrite [DBZ-3711](https://issues.jboss.org/browse/DBZ-3711)
+* Support RHEL deployments in system-test tooling [DBZ-3724](https://issues.jboss.org/browse/DBZ-3724)
+* Misc. tutorial updates [DBZ-3747](https://issues.jboss.org/browse/DBZ-3747)
+* Update Oracle connector deployment instructions for consistency [DBZ-3772](https://issues.jboss.org/browse/DBZ-3772)
+
+
 ## 1.6.0.Final
 June 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358966)
 

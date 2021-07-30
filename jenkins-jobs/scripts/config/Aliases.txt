@@ -85,3 +85,5 @@ chriscollingwood,Chris Collingwood
 jackey.zhang,Jackey Zhang
 gvaquez-ubi,Gilles Vaquez
 camile.sing,Camile Sing
+bep7520,Blake Peno
+Kate,Katerina Galieva
