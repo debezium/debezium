@@ -93,8 +93,7 @@ case $1 in
         #
         for VAR in `env`
         do
-          env_var=`echo "$VAR" | sed "s/=.*//"`
-          echo "$env_var + $VAR"
+          env_var=`echo "$VAR" | sed "s/=.*//"` 
           if [[ $env_var =~ ^KAFKA_ && $env_var != "KAFKA_VERSION" && $env_var != "KAFKA_HOME"  && $env_var != "KAFKA_LOG4J_OPTS" && $env_var != "KAFKA_JMX_OPTS" ]]; then
             prop_name=`echo "$VAR" | sed -r "s/^KAFKA_(.*)=.*/\1/g" | tr '[:upper:]' '[:lower:]' | tr _ .`
             if egrep -q "(^|^#)$prop_name=" $KAFKA_HOME/config/server.properties; then
@@ -102,7 +101,7 @@ case $1 in
                 sed -r -i "s@(^|^#)($prop_name)=(.*)@\2=${!env_var}@g" $KAFKA_HOME/config/server.properties
             else
                 #echo "Adding property $prop_name=${!env_var}"
-                echo "$prop_name\=${!env_var}" >> $KAFKA_HOME/config/server.properties
+                echo "$prop_name=${!env_var}" >> $KAFKA_HOME/config/server.properties
             fi
           fi
         done
