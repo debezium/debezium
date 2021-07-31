@@ -133,6 +133,20 @@ transforms.Reroute.key.enforce.uniqueness=false
 ...
 ----
 
+// Type: concept
+// Title: Options for applying the topic routing transformation selectively
+// ModuleID: options-for-applying-the-topic-routing-transformation-selectively
+[id="options-for-applying-the-transformation-selectively"]
+== Options for applying the topic routing transformation selectively
+
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+
+You can use one of the following methods to configure the connector to apply the SMT selectively:
+
+* {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+* Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
+
 ifdef::community[]
 [[configuration-options]]
 endif::community[]
