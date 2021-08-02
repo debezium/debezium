@@ -18,6 +18,8 @@
         <version.eventhubs>5.1.1</version.eventhubs>
         <version.jedis>3.5.2</version.jedis>
         <version.pravega>0.9.1</version.pravega>
+        <version.nats>2.8.0</version.nats>
+        <version.stan>2.2.3</version.stan>
 
         <version.commons.logging>1.2</version.commons.logging>
     </properties>
@@ -90,6 +92,11 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-server-nats_streaming</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-server-core</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
@@ -122,6 +129,16 @@
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${version.jedis}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.nats</groupId>
+                <artifactId>jnats</artifactId>
+                <version>${version.nats}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.nats</groupId>
+                <artifactId>java-nats-streaming</artifactId>
+                <version>${version.stan}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>

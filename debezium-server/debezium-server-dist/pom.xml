@@ -96,6 +96,10 @@
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-server-pravega</artifactId>
                 </dependency>
+                <dependency>
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-server-nats_streaming</artifactId>
+                </dependency>
             </dependencies>
             <build>
                 <plugins>
