@@ -48,7 +48,7 @@ It's important that for a given Quarkus application, *all* implementations of th
 
 == Example
 
-The following illustrates an implementation of the `ExportedEvent` interface representing an order that has been created:
+The following example illustrates an implementation of the `ExportedEvent` interface representing an order that has been created:
 
 .OrderCreatedEvent.java
 [source,java,indent=0]
@@ -70,7 +70,7 @@ public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
 
     @Override
     public String getAggregateId() {
-        return String.valeuOf(orderId);
+        return String.valueOf(orderId);
     }
 
     @Override
