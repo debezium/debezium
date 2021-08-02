@@ -38,7 +38,7 @@ case $1 in
             ls ${KAFKA_CONNECT_PLUGINS}
             cp -R ${KAFKA_CONNECT_PLUGINS}/* $KAFKA_HOME/connector-plugins/ 
         fi    
-
+        export CONNECT_PLUGIN_PATH=$KAFKA_HOME/connector-plugins
         if [ -z "$1" ]; then
             exec /scripts/kafka-connect-start.sh start
         else

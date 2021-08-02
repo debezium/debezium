@@ -8,6 +8,7 @@ LABEL maintainer="Debezium QE"
 #
 ARG KAFKA_SOURCE_PATH
 ARG DEBEZIUM_CONNECTORS
+ARG DEBEZIUM_VERSION=1.7
 
 ENV KAFKA_HOME=/opt/kafka \
     ZK_DATA=/var/lib/zookeeper \
@@ -66,6 +67,15 @@ COPY $DEBEZIUM_CONNECTORS $KAFKA_HOME/connector-plugins/
 
 COPY metrics.yaml $KAFKA_HOME/config
 
+
+#
+# Download kafka and kafka-connect start scripts
+#
+RUN mkdir /scripts
+RUN curl -L https://raw.githubusercontent.com/debezium/docker-images/master/kafka/${DEBEZIUM_VERSION}/docker-entrypoint.sh -o /scripts/kafka-start.sh
+RUN curl -L https://raw.githubusercontent.com/debezium/docker-images/master/connect-base/${DEBEZIUM_VERSION}/docker-entrypoint.sh -o /scripts/kafka-connect-start.sh
+
+
 #
 # Setup original config directories
 #
@@ -87,14 +97,13 @@ RUN chmod -R g+w,o+w $KAFKA_HOME
 WORKDIR $KAFKA_HOME
 
 #
-# Expose the ports and set up volumes for the data and logs directories
+# Set up volumes for the data and logs directories
 #
 VOLUME ["${ZK_DATA}","${KAFKA_DATA}","${KAFKA_HOME}/config", "${KAFKA_CONNECT_PLUGINS}"]
 
 #
-# Copy execute scripts, entrypoint script and switch user
+# Copy entrypoint script and switch user
 #
-COPY ./scripts /scripts
 COPY ./docker-entrypoint.sh /
 RUN chmod 755 /docker-entrypoint.sh && chmod -R 755 /scripts
 USER kafka
