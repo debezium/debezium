@@ -2643,17 +2643,26 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
 
-|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `+column.mask.hash._hashAlgorithm_.with.salt._salt_+`>>
+|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified columns are replaced with pseudonyms. +
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
+
+A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
+Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
  +
-A pseudonym consists of the hashed value that results from applying the specifed _hashAlgorithm_ and _salt_. Based on the hash function that is used, referential integrity is kept while column values are replaced with pseudonyms. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
+In the following example, `CzQMA0cB5K` is a randomly selected salt. +
+
+----
+column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
+----
+
+If necessary, the pseudonym is automatically shortened to the length of the column.
+The connector configuration can include multiple properties that specify different hash algorithms and salts. +
  +
-If necessary, the pseudonym is automatically shortened to the length of the column. You can specify multiple properties with different hash algorithms and salts in a single configuration. In the following example, `CzQMA0cB5K` is a randomly selected salt. +
- +
-`column.mask.hash.SHA-256.with.salt.CzQMA0cB5K =inventory.orders.customerName,inventory.shipment.customerName` +
- +
-Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting masked data set might not be completely masked.
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
 
 |[[postgresql-property-column-propagate-source-type]]<<postgresql-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
