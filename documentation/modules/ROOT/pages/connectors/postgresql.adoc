@@ -2624,7 +2624,7 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 |[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
