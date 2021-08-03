@@ -13,6 +13,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import io.debezium.testing.system.fixtures.connectors.MySqlConnector;
 import io.debezium.testing.system.fixtures.databases.OcpMySql;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
+import io.debezium.testing.system.fixtures.registry.ApicurioAvroConnectorDecorator;
 import io.debezium.testing.system.fixtures.registry.OcpApicurio;
 import io.debezium.testing.system.tests.OcpConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
@@ -28,5 +29,5 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class OcpAvroMySqlConnectorIT
         extends OcpConnectorTest<SqlDatabaseController>
-        implements OcpKafka, OcpMySql, MySqlConnector, MySqlTestCases, OcpApicurio {
+        implements OcpKafka, OcpMySql, MySqlConnector, OcpApicurio, ApicurioAvroConnectorDecorator, MySqlTestCases {
 }

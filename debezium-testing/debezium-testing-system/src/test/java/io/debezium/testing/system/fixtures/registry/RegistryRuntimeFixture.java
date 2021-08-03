@@ -7,15 +7,11 @@ package io.debezium.testing.system.fixtures.registry;
 
 import java.util.Optional;
 
-import io.debezium.testing.system.fixtures.TestSetupFixture;
 import io.debezium.testing.system.tools.registry.RegistryController;
 
-public interface RegistryRuntimeFixture extends TestSetupFixture {
-    default Optional<RegistryController> getRegistryController() {
-        return Optional.empty();
-    }
+public interface RegistryRuntimeFixture {
 
-    default void setRegistryController(RegistryController controller) {
-        // no-op
-    }
+    Optional<RegistryController> getRegistryController();
+
+    void setRegistryController(RegistryController controller);
 }
