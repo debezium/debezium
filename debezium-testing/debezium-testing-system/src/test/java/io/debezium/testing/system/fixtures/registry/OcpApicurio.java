@@ -5,29 +5,49 @@
  */
 package io.debezium.testing.system.fixtures.registry;
 
+import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_CRD_VERSION;
+import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_CRD_VERSION;
+
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.TestSetupFixture;
-import io.debezium.testing.system.fixtures.connectors.ConnectorDecoratorFixture;
 import io.debezium.testing.system.fixtures.kafka.KafkaRuntimeFixture;
 import io.debezium.testing.system.tools.ConfigProperties;
-import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.registry.OcpApicurioV1Controller;
 import io.debezium.testing.system.tools.registry.OcpApicurioV1Deployer;
-import io.debezium.testing.system.tools.registry.RegistryController;
-import okhttp3.OkHttpClient;
+import io.debezium.testing.system.tools.registry.OcpApicurioV2Controller;
+import io.debezium.testing.system.tools.registry.OcpApicurioV2Deployer;
 
-import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_CRD_VERSION;
+import okhttp3.OkHttpClient;
 
 public interface OcpApicurio
         extends TestSetupFixture, RegistrySetupFixture, RegistryRuntimeFixture,
-        KafkaRuntimeFixture, OcpClient, ConnectorDecoratorFixture {
+        KafkaRuntimeFixture, OcpClient {
 
     String REGISTRY_V1_DEPLOYMENT_PATH = "/registry-resources/v1alpha1/030-registry-streams.yaml";
+    String REGISTRY_V2_DEPLOYMENT_PATH = "/registry-resources/v1/010-registry-kafkasql.yaml";
     String REGISTRY_STORAGE_TOPIC_PATH = "/registry-resources/" + STRIMZI_CRD_VERSION + "/010-storage-topic.yaml";
     String REGISTRY_ID_TOPIC_PATH = "/registry-resources/" + STRIMZI_CRD_VERSION + "/020-global-id-topic.yaml";
 
     @Override
     default void setupRegistry() throws Exception {
+        switch (APICURIO_CRD_VERSION) {
+            case "v1":
+                setupApicurioV2();
+                break;
+            case ("v1alpha1"):
+                setupApicurioV1();
+                break;
+            default:
+                throw new IllegalStateException("Unsupported Apicurio CR version " + APICURIO_CRD_VERSION);
+        }
+    }
+
+    @Override
+    default void teardownRegistry() {
+        // getRegistryController().ifPresent(RegistryController::undeploy);
+    }
+
+    default void setupApicurioV1() throws InterruptedException {
         OcpApicurioV1Deployer deployer = new OcpApicurioV1Deployer.Builder()
                 .withOcpClient(getOcpClient())
                 .withHttpClient(new OkHttpClient())
@@ -41,16 +61,15 @@ public interface OcpApicurio
         setRegistryController(controller);
     }
 
-    @Override
-    default void teardownRegistry() {
-        getRegistryController().ifPresent(RegistryController::undeploy);
-    }
+    default void setupApicurioV2() throws InterruptedException {
+        OcpApicurioV2Deployer deployer = new OcpApicurioV2Deployer.Builder()
+                .withOcpClient(getOcpClient())
+                .withHttpClient(new OkHttpClient())
+                .withProject(ConfigProperties.OCP_PROJECT_REGISTRY)
+                .withYamlPath(REGISTRY_V2_DEPLOYMENT_PATH)
+                .build();
 
-    @Override
-    default void decorateConnectorConfig(ConnectorConfigBuilder config) {
-        config.addApicurioAvroSupport(
-                getRegistryController()
-                        .orElseThrow(() -> new IllegalStateException("No registry controller"))
-                        .getRegistryApiAddress());
+        OcpApicurioV2Controller controller = deployer.deploy();
+        setRegistryController(controller);
     }
 }

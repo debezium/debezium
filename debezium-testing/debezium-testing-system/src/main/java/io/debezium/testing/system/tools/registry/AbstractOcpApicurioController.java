@@ -5,7 +5,11 @@
  */
 package io.debezium.testing.system.tools.registry;
 
+import static io.debezium.testing.system.tools.WaitConditions.scaled;
+import static org.awaitility.Awaitility.await;
+
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import io.apicurio.registry.operator.api.model.ApicurioRegistry;
 import io.apicurio.registry.operator.api.model.ApicurioRegistryList;
@@ -44,12 +48,19 @@ public abstract class AbstractOcpApicurioController implements RegistryControlle
     }
 
     protected String getPublicRegistryAddress() {
-        List<Route> items = ocp.routes().inNamespace(project).withLabel(APICURIO_NAME_LBL, name).list().getItems();
-        if (items.isEmpty()) {
-            throw new IllegalStateException("No route for registry '" + registry.getMetadata().getName() + "'");
-        }
-        String host = items.get(0).getSpec().getHost();
-        return "http://" + host;
+        await()
+                .atMost(scaled(30), TimeUnit.SECONDS)
+                .pollInterval(5, TimeUnit.SECONDS)
+                .pollDelay(5, TimeUnit.SECONDS)
+                .until(() -> !getRoutes().isEmpty());
+
+        return getRoutes().get(0).getSpec().getHost();
+    }
+
+    private List<Route> getRoutes() {
+        return ocp.routes().inNamespace(project)
+                .withLabel(APICURIO_NAME_LBL, name)
+                .list().getItems();
     }
 
     protected Service getRegistryService() {
