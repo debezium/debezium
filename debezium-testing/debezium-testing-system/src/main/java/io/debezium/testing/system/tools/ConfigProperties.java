@@ -50,6 +50,9 @@ public final class ConfigProperties {
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
     public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
 
+    // Apicurio Registry configuration
+    public static final String APICURIO_CRD_VERSION = System.getProperty("test.apicurio.crd.version", "v1alpha1");
+
     // MySql Configuration
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");
     public static final String DATABASE_MYSQL_PASSWORD = System.getProperty("test.database.mysql.password", "mysqlpw");

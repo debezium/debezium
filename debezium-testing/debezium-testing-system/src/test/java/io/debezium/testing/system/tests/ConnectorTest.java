@@ -19,7 +19,7 @@ import io.debezium.testing.system.tools.databases.DatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
-import io.debezium.testing.system.tools.registry.OcpRegistryController;
+import io.debezium.testing.system.tools.registry.RegistryController;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class ConnectorTest<D extends DatabaseController<?>>
@@ -38,7 +38,7 @@ public abstract class ConnectorTest<D extends DatabaseController<?>>
     private ConnectorConfigBuilder connectorConfig;
 
     // Registry control
-    private OcpRegistryController registryController;
+    private RegistryController registryController;
 
     @BeforeAll
     public void setupFixtures() throws Exception {
@@ -98,12 +98,12 @@ public abstract class ConnectorTest<D extends DatabaseController<?>>
     }
 
     @Override
-    public Optional<OcpRegistryController> getRegistryController() {
+    public Optional<RegistryController> getRegistryController() {
         return Optional.ofNullable(registryController);
     }
 
     @Override
-    public void setRegistryController(OcpRegistryController controller) {
+    public void setRegistryController(RegistryController controller) {
         this.registryController = controller;
     }
 
