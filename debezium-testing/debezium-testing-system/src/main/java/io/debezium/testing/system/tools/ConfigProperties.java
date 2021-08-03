@@ -51,7 +51,7 @@ public final class ConfigProperties {
     public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
 
     // Apicurio Registry configuration
-    public static final String APICURIO_CRD_VERSION = System.getProperty("test.apicurio.crd.version", "v1alpha1");
+    public static final String APICURIO_CRD_VERSION = System.getProperty("test.apicurio.crd.version", "v1");
 
     // MySql Configuration
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");
