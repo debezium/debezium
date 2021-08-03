@@ -1971,23 +1971,24 @@ If you include this property in the configuration, do not set the `column.includ
 
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._<hashAlgorithm>_.with.salt._<salt>_`>>
 |No default
-|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values you want to convert to pseudonyms in the change event messages.
-The property specifies the conversion values with a field value consisting of the hashed value using the algorithm `_<hash_algorithm>_` and the cryptographic salt `_<salt>_`.
-Based on the hash function that is used, referential integrity is maintained when data is pseudonymized.
-Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
-The hash is automatically shortened to the length of the column.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
-// Multiple properties with different lengths can be used in a single configuration.
-// The length of each  must be a positive integer or zero.
-Fully-qualified names for columns are of the form `_pdbName_._schemaName_._tableName_._columnName_`.
+A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
+Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
+ +
+In the following example, `CzQMA0cB5K` is a randomly selected salt. +
 
-Example:
+----
+column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
+----
 
-    column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
-
-where `CzQMA0cB5K` is a randomly selected salt.
-
-Note: Depending on the `_hashAlgorithm_` that is used, the value of the `_salt_`, and the actual data set, the resulting masked data set might not be completely anonymized.
+If necessary, the pseudonym is automatically shortened to the length of the column.
+The connector configuration can include multiple properties that specify different hash algorithms and salts. +
+ +
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
