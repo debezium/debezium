@@ -182,7 +182,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
 
         // DBZ-3331 Verify that the start position is in the oplog; throw exception if not.
-        if (oplog.countDocuments(Filters.eq("ts", oplogStart)) == 0L) {
+        if (!isStartPositionInOplog(oplogStart, oplog)) {
             throw new DebeziumException("Failed to find starting position '" + oplogStart + "' in oplog");
         }
 
@@ -246,6 +246,20 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 }
             }
         }
+    }
+
+    private boolean isStartPositionInOplog(BsonTimestamp startTime, MongoCollection<Document> oplog) {
+        final MongoCursor<Document> iterator = oplog.find().sort(new Document("$natural", 1)).iterator();
+        if (!iterator.hasNext()) {
+            return false;
+        }
+
+        final BsonTimestamp timestamp = iterator.next().get("ts", BsonTimestamp.class);
+        if (timestamp == null) {
+            return false;
+        }
+
+        return timestamp.compareTo(startTime) <= 0;
     }
 
     private Bson getSkippedOperationsFilter() {
