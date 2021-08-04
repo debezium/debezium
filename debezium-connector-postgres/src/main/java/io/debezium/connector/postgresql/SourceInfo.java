@@ -162,7 +162,7 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     public String sequence() {
-        List<String> sequence = new ArrayList<String>();
+        List<String> sequence = new ArrayList<String>(2);
         String lastCommitLsn = (this.lastCommitLsn != null)
                 ? Long.toString(this.lastCommitLsn.asLong())
                 : null;
