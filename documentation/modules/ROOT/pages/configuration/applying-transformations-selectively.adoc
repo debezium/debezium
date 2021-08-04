@@ -27,7 +27,7 @@ Messages that do not match the condition are sent to Kafka unmodified.
 
 The situation is similar for predicates that you define for a sink connector SMT.
 The connector reads messages from a Kafka topic and Kafka Connect evaluates the messages against the predicate condition.
-If a message matches the condition, Kafka Connect applies the transformation and then passes the messages to the sink consumer.
+If a message matches the condition, Kafka Connect applies the transformation and then passes the messages to the sink connector.
 
 After you define a predicate, you can reuse it and apply it to multiple transforms.
 Predicates also include a `negate` option that you can use to invert a predicate so that the predicate condition is applied only to records that do _not_ match the condition that is defined in the predicate statement.
@@ -59,7 +59,7 @@ When a {prodname} connector processes a delete operation in the source database,
 * A delete operation (`"op" : "d"`) event that provides the previous value of the database record.
 * A tombstone event that has the same key, but a `null` value.
 +
-The tombstone represents a delete marker for the the row.
+The tombstone represents a delete marker for the row.
 When link:{link-kafka-docs}#compaction[log compaction] is enabled for Kafka, the presence of a tombstone causes Kafka to remove all events with the same key when it compacts the topic.
 Even after the earlier messages are removed, the presence of the tombstone event enables consumers to read the topic from the beginning and retrieve the current state of any events.
 Log compaction occurs periodically, with the compaction interval controlled by the link:{link-kafka-docs}#topicconfigs_delete.retention.ms[`delete.retention.ms`] setting for the topic.
