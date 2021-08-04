@@ -116,7 +116,7 @@ A database `DELETE` operation causes {prodname} to generate two Kafka records:
 
 * A record that contains `"op": "d",` the `before` row data, and some other fields.
 * A tombstone record that has the same key as the deleted row and a value of `null`. This record is a marker for Apache Kafka. It indicates that
-link:https://kafka.apache.org/documentation/#compaction[log compaction] can remove all records that have this key.
+link:{link-kafka-docs}/#compaction[log compaction] can remove all records that have this key.
 
 Instead of dropping the record that contains the `before` row data, you can configure the event flattening SMT to do one of the following:
 
