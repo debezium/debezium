@@ -17,6 +17,8 @@ pipelineJob('rhel-downstream-prepare-job') {
 //        DEBEZIUM CONFIG
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
         stringParam('DBZ_GIT_BRANCH', 'master', 'A branch/tag of Debezium sources')
+//        IMAGE NAME
+        stringParam('IMAGE_TAG', '', 'Tag of built image')
 //        DEBEZIUM CONNECT IMAGE CONFIG
         textParam('DBZ_CONNECTOR_ARCHIVE_URLS', '', 'List of URLs to productised Debezium connectors')
 //        EXTRA CONFIG
