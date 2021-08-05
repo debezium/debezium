@@ -17,8 +17,7 @@
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.21</version.commons.compress>
     <version.strimzi>0.24.0</version.strimzi>
-    <version.junit5>5.5.1</version.junit5>
-    <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
+    <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
 
     <!--KC image configuration-->
@@ -193,14 +192,7 @@
 
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>${version.junit5}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <version>${version.junit5}</version>
       <scope>test</scope>
     </dependency>

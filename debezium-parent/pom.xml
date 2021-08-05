@@ -32,7 +32,7 @@
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.1.1</version.javadoc.plugin>
         <version.code.formatter>2.15.0</version.code.formatter>
-        <version.surefire.plugin>3.0.0-M5</version.surefire.plugin>
+        <version.surefire.plugin>3.0.0-M4</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.6.0</version.impsort>
