@@ -250,7 +250,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private boolean isStartPositionInOplog(BsonTimestamp startTime, MongoCollection<Document> oplog) {
-        final MongoCursor<Document> iterator = oplog.find().sort(new Document("$natural", 1)).iterator();
+        final MongoCursor<Document> iterator = oplog.find().iterator();
         if (!iterator.hasNext()) {
             return false;
         }
