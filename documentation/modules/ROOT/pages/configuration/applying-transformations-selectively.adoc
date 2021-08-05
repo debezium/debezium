@@ -48,6 +48,7 @@ The following predicate types are available by default:
 HasHeaderKey:: Specifies a key name in the header in the event message that you want Kafka Connect to evaluate.
 The predicate evaluates to true for any records that include a header key that has the specified name.
 
+[[record-is-tombstone]]
 RecordIsTombstone:: Matches Kafka _tombstone_ records.
 The predicate evaluates to `true` for any record that has a `null` value.
 Use this predicate in combination with a filter SMT to remove tombstone records.
@@ -60,12 +61,12 @@ When a {prodname} connector processes a delete operation in the source database,
 * A tombstone event that has the same key, but a `null` value.
 +
 The tombstone represents a delete marker for the row.
-When link:{link-kafka-docs}#compaction[log compaction] is enabled for Kafka, the presence of a tombstone causes Kafka to remove all events with the same key when it compacts the topic.
-Even after the earlier messages are removed, the presence of the tombstone event enables consumers to read the topic from the beginning and retrieve the current state of any events.
+When link:{link-kafka-docs}#compaction[log compaction] is enabled for Kafka, during compaction Kafka removes all events that share the same key as the tombstone.
 Log compaction occurs periodically, with the compaction interval controlled by the link:{link-kafka-docs}#topicconfigs_delete.retention.ms[`delete.retention.ms`] setting for the topic.
 +
-In some cases you might want to configure {prodname} so that it does not emit tombstone events.
-For more information, see xref:ignoring-tombstone-events[Ignoring tombstone events].
+Although it is possible to xref:ignoring-tombstone-events[configure {prodname} so that it does not emit tombstone events], it's best to permit {prodname} to emit tombstones to maintain the expected behavior during log compaction.
+Suppressing tombstones prevents Kafka from removing records for a deleted key during log compaction.
+If your environment includes sink connectors that cannot process tombstones, you can configure the sink connector to use an SMT with the `RecordIsTombstone` predicate to filter out the tombstone records.
 
 TopicNameMatches:: A regular expression that specifies the name of a topic that you want Kafka Connect to match.
 The predicate is true for connector records in which the topic name matches the specified regular expression.
@@ -145,7 +146,7 @@ The preceding property inverts the set of records that the predicate matches, so
 
 .Example: TopicNameMatch predicate for the outbox event router transformation
 
-The following example shows a {prodname} connector configuration that applies the outbox event router transformation only to messages that Debezium emits to the Kafka `outbox.event.order` topic.
+The following example shows a {prodname} connector configuration that applies the outbox event router transformation only to messages that {prodname} emits to the Kafka `outbox.event.order` topic.
 
 Because the `TopicNameMatch` predicate evaluates to _true_ only for messages from the outbox table (`outbox.event.*`), the transformation is not applied to messages that originate from other tables in the database.
 
@@ -165,19 +166,22 @@ predicates.IsOutboxTable.pattern=outbox.event.*
 == Ignoring tombstone events
 
 You can control whether {prodname} emits tombstone events, and how long Kafka retains them.
-Depending on your data pipeline, you might want to configure {prodname} so that it does not emit tombstone events.
+Depending on your data pipeline, you might want to set the `tombstones.on.delete` property for a connector so that {prodname} does not emit tombstone events.
 
 Whether you enable {prodname} to emit tombstones depends on how topics are consumed in your environment and by the characteristics of the sink consumer.
 Some sink connectors rely on tombstone events to remove records from downstream data stores.
 In cases where sink connectors rely on tombstone records to indicate when to delete records in downstream data stores, configure {prodname} to emit them.
 
-To ensure that sink connectors receive tombstone events, set the retention policy for topics, so that the connector are able to read the event messages before Kafka removes them during log compaction.
+When you configure {prodname} to generate tombstones, further configuration is required to ensure that sink connectors receive the tombstone events.
+The retention policy for a topic must be set so that the connector has time to read event messages before Kafka removes them during log compaction.
 The length of time that a topic retains tombstones before compaction is controlled by the link:{link-kafka-docs}#topicconfigs_delete.retention.ms[`delete.retention.ms`] property for the topic.
 
-Some sink connectors or downstream Kafka consumers are unable to process records with a null value.
-To avoid errors in sink connectors that cannot handle tombstone records, you can configure {prodname} to strip out tombstone records before it saves event records to Kafka topic.
+By default, the `tombstones.on.delete` property for a connector is set to `true` so that the connector generates a tombstone after each delete event.
+If you set the property to `false` to prevent {prodname} from saving tombstone records to Kafka topics, the absence of tombstone records might lead to unintended consequences.
+Kafka relies on tombstone during log compaction to remove records that are related to a deleted key.
 
-If you support downstream consumers that cannot process tombstones, rather than using the `RecordIsTombstone` predicate to remove tombstone messages after {prodname} emits them, you can prevent {prodname} from emitting tombstones in the first place.
+If you need to support sink connectors or downstream Kafka consumers that cannot process records with null values, rather than preventing {prodname} from emitting tombstones,
+consider configuring an SMT for the connector with a predicate that uses the xref:record-is-tombstone[`RecordIsTombstone`] predicate type to remove tombstone messages before consumers read them.
 
 .Procedure
 * To prevent {prodname} from emitting tombstone events for deleted database records, set the connector option `tombstones.on.delete` to `false`.
