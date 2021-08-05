@@ -119,7 +119,8 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         // Create strategies by host
         for (String hostName : hosts) {
             try {
-                flushStrategies.put(hostName, createHostFlushStrategy(hostName));
+                final String[] parts = hostName.split(":");
+                flushStrategies.put(hostName, createHostFlushStrategy(parts[0], Integer.parseInt(parts[1])));
             }
             catch (SQLException e) {
                 throw new DebeziumException("Cannot connect to RAC node '" + hostName + "'", e);
@@ -127,9 +128,10 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         }
     }
 
-    private CommitLogWriterFlushStrategy createHostFlushStrategy(String hostName) throws SQLException {
+    private CommitLogWriterFlushStrategy createHostFlushStrategy(String hostName, Integer port) throws SQLException {
         JdbcConfiguration jdbcHostConfig = JdbcConfiguration.adapt(jdbcConfiguration.edit()
-                .with(JdbcConfiguration.HOSTNAME, hostName).build());
+                .with(JdbcConfiguration.HOSTNAME, hostName)
+                .with(JdbcConfiguration.PORT, port).build());
 
         LOGGER.debug("Creating flush connection to RAC node '{}'", hostName);
         return new CommitLogWriterFlushStrategy(jdbcHostConfig);

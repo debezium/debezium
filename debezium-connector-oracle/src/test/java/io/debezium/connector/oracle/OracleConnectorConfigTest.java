@@ -200,4 +200,35 @@ public class OracleConnectorConfigTest {
         connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isFalse();
     }
+
+    @Test
+    @FixFor("DBZ-3813")
+    public void testDatabasePortAndRacNodeConfigurations() throws Exception {
+        final Field racNodes = OracleConnectorConfig.RAC_NODES;
+        final Field port = OracleConnectorConfig.PORT;
+
+        // Test backward compatibility of rac.nodes using no port with database.port
+        Configuration config = Configuration.create().with(port, "1521").with(racNodes, "1.2.3.4,1.2.3.5").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
+
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getRacNodes()).hasSize(2);
+        assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1521", "1.2.3.5:1521");
+
+        // Test rac.nodes using combination of with/without port with database.port
+        config = Configuration.create().with(port, "1521").with(racNodes, "1.2.3.4,1.2.3.5:1522").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
+
+        connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getRacNodes()).hasSize(2);
+        assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1521", "1.2.3.5:1522");
+
+        // Test rac.nodes using no port with no database port
+        config = Configuration.create().with(racNodes, "1.2.3.4,1.2.3.5").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isFalse();
+
+        // Test rac.nodes using combination of with/without port and no database.port
+        config = Configuration.create().with(racNodes, "1.2.3.4,1.2.3.5:1522").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isFalse();
+    }
 }
