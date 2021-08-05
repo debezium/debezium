@@ -35,6 +35,7 @@ pipeline {
                         --archive-urls="${DBZ_CONNECTOR_ARCHIVE_URLS}"              \\
                         --libs="${DBZ_EXTRA_LIBS}"                                  \\
                         --image="${RHEL_IMAGE}"                                     \\
+                        --tag="${IMAGE_TAG}"                                        \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
                         --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
                         --img-output="${WORKSPACE}/published_image_dbz.txt"
