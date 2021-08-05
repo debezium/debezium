@@ -40,7 +40,7 @@ for archive in ${ARCHIVE_URLS}; do
 done
 
 for input in ${EXTRA_LIBS}; do
-    echo "[Processing] input"
+    echo "[Processing] ${input} "
     lib=$(echo ${input} | awk -F "::"  '{print $1}' | xargs)
     dest=$(echo ${input} |  awk -F "::"  '{print $2}' | xargs)
 
