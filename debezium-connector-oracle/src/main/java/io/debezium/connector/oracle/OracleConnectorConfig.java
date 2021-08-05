@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -175,19 +176,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions.  By default, all transactions are retained.");
 
-    public static final Field RAC_SYSTEM = Field.create("database.rac")
-            .withDisplayName("Oracle RAC")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDefault(false)
-            .withDescription("Flag to if it is RAC system");
-
     public static final Field RAC_NODES = Field.create("rac.nodes")
             .withDisplayName("Oracle RAC nodes")
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
+            .withValidation(OracleConnectorConfig::validateRacNodes)
             .withDescription("A comma-separated list of RAC node hostnames or ip addresses");
 
     public static final Field URL = Field.create(DATABASE_CONFIG_PREFIX + "url")
@@ -338,7 +332,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .connector(
                     SNAPSHOT_ENHANCEMENT_TOKEN,
                     SNAPSHOT_LOCKING_MODE,
-                    RAC_SYSTEM,
                     RAC_NODES,
                     LOG_MINING_HISTORY_RECORDER_CLASS,
                     LOG_MINING_HISTORY_RETENTION,
@@ -425,7 +418,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
         this.logMiningHistoryRetentionHours = config.getLong(LOG_MINING_HISTORY_RETENTION);
-        this.racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+        this.racNodes = resovleRacNodes(config);
         this.logMiningContinuousMine = config.getBoolean(CONTINUOUS_MINE);
         this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
@@ -1019,6 +1012,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return Module.name();
     }
 
+    private Set<String> resovleRacNodes(Configuration config) {
+        final boolean portProvided = config.hasKey(PORT.name());
+        final Set<String> nodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+        return nodes.stream().map(node -> {
+            if (portProvided && !node.contains(":")) {
+                return node + ":" + config.getInteger(PORT);
+            }
+            else {
+                if (!portProvided && !node.contains(":")) {
+                    throw new DebeziumException("RAC node '" + node + "' must specify a port.");
+                }
+                return node;
+            }
+        }).collect(Collectors.toSet());
+    }
+
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
             return Field.isRequired(config, field, problems);
@@ -1044,4 +1053,23 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
+    public static int validateRacNodes(Configuration config, Field field, ValidationOutput problems) {
+        int errors = 0;
+        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            // If no "database.port" is specified, guarantee that "rac.nodes" (if not empty) specifies the
+            // port designation for each comma-delimited value.
+            final boolean portProvided = config.hasKey(PORT.name());
+            if (!portProvided) {
+                final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+                for (String racNode : racNodes) {
+                    String[] parts = racNode.split(":");
+                    if (parts.length == 1) {
+                        problems.accept(field, racNode, "Must be specified as 'ip:port' since no 'database.port' is provided");
+                        errors++;
+                    }
+                }
+            }
+        }
+        return errors;
+    }
 }
