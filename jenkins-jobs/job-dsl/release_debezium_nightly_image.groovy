@@ -3,11 +3,11 @@
 freeStyleJob('release-debezium-nightly-image') {
 
     displayName('Debezium Nightly Image')
-    description('Triggers a Docker Hub build for a Connect image nightly tag')
+    description('Build and deploy nightly image to the registry')
     label('Slave')
 
     properties {
-        githubProjectUrl('https://github.com/debezium/debezium')
+        githubProjectUrl('https://github.com/debezium/docker-images')
     }
 
     logRotator {
@@ -16,7 +16,10 @@ freeStyleJob('release-debezium-nightly-image') {
 
     wrappers {
         timeout {
-            noActivity(5)
+            noActivity(600)
+        }
+        credentialsBinding {
+            usernamePassword('DOCKER_USERNAME', 'DOCKER_PASSWORD', 'debezium-dockerhub')
         }
     }
 
@@ -26,6 +29,17 @@ freeStyleJob('release-debezium-nightly-image') {
 
     publishers {
         mailer('jpechane@redhat.com', false, true)
+    }
+
+    parameters {
+        stringParam('DEBEZIUM_REPOSITORY', 'debezium/debezium', 'Repository from which Debezium is built')
+        stringParam('DEBEZIUM_BRANCH', 'master', 'Branch used to build Debezium')
+        stringParam('IMAGES_REPOSITORY', 'https://github.com/debezium/docker-images.git', 'Repository with Debezium Dockerfiles')
+        stringParam('IMAGES_BRANCH', 'master', 'Branch used for images repository')
+    }
+
+   scm {
+        git('$IMAGES_REPOSITORY', '$IMAGES_BRANCH')
     }
 
     steps {
