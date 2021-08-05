@@ -2200,7 +2200,29 @@ To capture large object values and serialized them in change events, set this op
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |No default
 |A comma-separated list of Oracle Real Application Clusters (RAC) node host names or addresses.
-This field is required to enable use with Oracle RAC.
+This field is required to enable Oracle RAC support.
+Specify the list of RAC nodes by using one of the following methods:
+
+* Specify a value for xref:oracle-property-database-port[`database.port`], and use the specified port value for each address in the `rac.nodes` list.
+For example:
++
+[source,properties]
+----
+database.port=1521
+rac.nodes=192.168.1.100,192.168.1.101
+----
+
+* Specify a value for xref:oracle-property-database-port[`database.port`], and override the default port for one or more entries in the list.
+The list can include entries that use the default `database.port` value, and entries that define their own unique port values.
+For example:
++
+[source,properties]
+----
+database.port=1521
+rac.nodes=192.168.1.100,192.168.1.101:1522
+----
+
+If you supply a raw JDBC URL for the database by using the xref:oracle-property-database-url[`database.url`] property, instead of defining a value for `database.port`, each RAC node entry must explicitly specify a port value.
 
 |[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
 |No default
