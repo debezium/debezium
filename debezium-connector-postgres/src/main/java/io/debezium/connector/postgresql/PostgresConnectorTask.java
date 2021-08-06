@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -38,6 +37,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
@@ -94,10 +94,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
         schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector, valueConverterBuilder.build(typeRegistry));
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
-        final Map<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
+        final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
                 new PostgresPartition.Provider(connectorConfig), new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
-        final PostgresOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
+        final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {

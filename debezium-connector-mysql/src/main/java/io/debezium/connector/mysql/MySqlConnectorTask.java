@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -29,6 +28,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.schema.TopicSelector;
@@ -83,7 +83,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         validateBinlogConfiguration(connectorConfig);
 
-        Map<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(new MySqlPartition.Provider(connectorConfig),
+        Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(
+                new MySqlPartition.Provider(connectorConfig),
                 new MySqlOffsetContext.Loader(connectorConfig));
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
@@ -99,7 +100,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             throw new DebeziumException(e);
         }
 
-        MySqlOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
+        MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         validateAndLoadDatabaseHistory(connectorConfig, previousOffset, schema);
 
@@ -114,8 +115,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         // If the binlog position is not available it is necessary to reexecute snapshot
         if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {
-            MySqlPartition partition = getTheOnlyPartition(previousOffsets);
-            previousOffsets.put(partition, null);
+            MySqlPartition partition = previousOffsets.getTheOnlyPartition();
+            previousOffsets.resetOffset(partition);
         }
 
         taskContext = new MySqlTaskContext(connectorConfig, schema);
