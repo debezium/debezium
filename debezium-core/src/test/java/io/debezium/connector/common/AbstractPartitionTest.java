@@ -9,6 +9,8 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import org.junit.Test;
 
+import io.debezium.pipeline.spi.Partition;
+
 abstract public class AbstractPartitionTest<P extends Partition> {
 
     @Test

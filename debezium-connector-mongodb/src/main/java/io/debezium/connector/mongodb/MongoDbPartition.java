@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.Map;
 
-import io.debezium.connector.common.Partition;
+import io.debezium.pipeline.spi.Partition;
 
 public class MongoDbPartition implements Partition {
 

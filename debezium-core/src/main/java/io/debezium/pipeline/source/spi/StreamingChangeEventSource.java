@@ -7,8 +7,8 @@ package io.debezium.pipeline.source.spi;
 
 import java.util.Map;
 
-import io.debezium.connector.common.Partition;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * A change event source that emits events from a DB log, such as MySQL's binlog or similar.

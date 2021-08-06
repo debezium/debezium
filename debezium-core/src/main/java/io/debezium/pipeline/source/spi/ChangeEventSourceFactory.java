@@ -7,9 +7,9 @@ package io.debezium.pipeline.source.spi;
 
 import java.util.Optional;
 
-import io.debezium.connector.common.Partition;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 
 /**
