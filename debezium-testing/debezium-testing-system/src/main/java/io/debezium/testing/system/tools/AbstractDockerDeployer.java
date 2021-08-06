@@ -30,10 +30,14 @@ public abstract class AbstractDockerDeployer<T, C extends GenericContainer<?>>
 
     protected abstract T getController(C container);
 
+    protected Logger getCurrentLogger() {
+        return LoggerFactory.getLogger(getClass());
+    }
+
     @Override
     public T deploy() {
         Startables.deepStart(Stream.of(container)).join();
-        this.container.followOutput(new Slf4jLogConsumer(LOGGER));
+        this.container.followOutput(new Slf4jLogConsumer(getCurrentLogger()));
         return getController(container);
     }
 
