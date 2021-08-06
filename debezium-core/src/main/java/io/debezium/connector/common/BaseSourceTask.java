@@ -30,6 +30,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
