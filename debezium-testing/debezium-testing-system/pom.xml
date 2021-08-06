@@ -51,6 +51,8 @@
     <!--Strimzi configuration-->
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
 
+    <apicurio.log.level>INFO</apicurio.log.level>
+
     <!--MySQL configuration-->
     <database.mysql.port>3306</database.mysql.port>
     <database.mysql.username>mysqluser</database.mysql.username>
