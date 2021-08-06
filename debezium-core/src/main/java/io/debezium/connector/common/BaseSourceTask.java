@@ -23,13 +23,13 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
@@ -301,7 +301,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     /**
      * Loads the connector's persistent offsets (if present) via the given loader.
      */
-    protected Map<P, O> getPreviousOffsets(Partition.Provider<P> provider, OffsetContext.Loader<O> loader) {
+    protected Offsets<P, O> getPreviousOffsets(Partition.Provider<P> provider, OffsetContext.Loader<O> loader) {
         Set<P> partitions = provider.getPartitions();
         OffsetReader<P, O, OffsetContext.Loader<O>> reader = new OffsetReader<>(
                 context.offsetStorageReader(), loader);
@@ -321,36 +321,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             LOGGER.info("No previous offsets found");
         }
 
-        return offsets;
-    }
-
-    /**
-     * Returns the offset of the only partition that the task is configured to use.
-     *
-     * This method is meant to be used only by the connectors that do not implement handling
-     * multiple partitions per task.
-     */
-    protected P getTheOnlyPartition(Map<P, O> offsets) {
-        if (offsets.size() != 1) {
-            throw new DebeziumException("The task must be configured to use exactly one partition, "
-                    + offsets.size() + " found");
-        }
-
-        return offsets.entrySet().iterator().next().getKey();
-    }
-
-    /**
-     * Returns the offset of the only partition that the task is configured to use.
-     *
-     * This method is meant to be used only by the connectors that do not implement handling
-     * multiple partitions per task.
-     */
-    protected O getTheOnlyOffset(Map<P, O> offsets) {
-        if (offsets.size() != 1) {
-            throw new DebeziumException("The task must be configured to use exactly one partition, "
-                    + offsets.size() + " found");
-        }
-
-        return offsets.entrySet().iterator().next().getValue();
+        return new Offsets<>(offsets);
     }
 }
