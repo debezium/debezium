@@ -74,13 +74,8 @@ public class CustomResourceConnectorDeployer implements ConnectorDeployer {
      * @param name name of the connector
      */
     private void waitForKafkaConnector(String name) {
-        try {
-            kafkaConnectorOperation()
-                    .withName(name)
-                    .waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        kafkaConnectorOperation()
+                .withName(name)
+                .waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
     }
 }
