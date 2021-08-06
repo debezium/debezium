@@ -32,7 +32,6 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
 
     @Override
     default void setupKafka() throws Exception {
-        setupOcpClient();
         OpenShiftClient ocp = getOcpClient();
         KafkaController controller = deployKafkaCluster(ocp);
         KafkaConnectController connectController = deployKafkaConnectCluster(ocp);
@@ -43,7 +42,8 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
 
     @Override
     default void teardownKafka() throws Exception {
-        teardownOcpClient();
+        // no-op
+        // kafka is reused across tests
     }
 
     default KafkaController deployKafkaCluster(OpenShiftClient ocp) throws Exception {
