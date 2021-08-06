@@ -13,7 +13,7 @@
   <name>Debezium system integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>5.2.1</version.fabric8.client>
+    <version.fabric8.client>5.5.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.21</version.commons.compress>
     <version.strimzi>0.24.0</version.strimzi>
