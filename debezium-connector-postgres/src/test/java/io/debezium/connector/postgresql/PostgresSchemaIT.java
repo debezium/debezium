@@ -414,6 +414,7 @@ public class PostgresSchemaIT {
                 // macaddr8
                 // money
                 "numeric NUMERIC(10, 5) default 12345.67891, " +
+                "numeric_var NUMERIC default 0, " +
                 // path
                 // pg_lsn
                 // point
@@ -478,6 +479,7 @@ public class PostgresSchemaIT {
             assertColumnDefault("jsonb", "{}", columns);
 
             assertColumnDefault("numeric", new BigDecimal("12345.67891"), columns);
+            assertColumnDefault("numeric_var", null, columns);
             assertColumnDefault("real", 1234567890.5f, columns);
             assertColumnDefault("smallint", (short) 32767, columns);
 
