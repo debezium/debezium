@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.system.tests;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +24,20 @@ public abstract class OcpConnectorTest<D extends DatabaseController<?>>
     // OpenShift control
     protected OpenShiftClient ocp;
     Logger LOGGER = LoggerFactory.getLogger(OcpConnectorTest.class);
+
+    @Override
+    @BeforeAll
+    public void setupFixtures() throws Exception {
+        setupOcpClient();
+        super.setupFixtures();
+    }
+
+    @Override
+    @AfterAll
+    public void teardownFixtures() throws Exception {
+        super.teardownFixtures();
+        teardownOcpClient();
+    }
 
     @Override
     public OpenShiftClient getOcpClient() {
