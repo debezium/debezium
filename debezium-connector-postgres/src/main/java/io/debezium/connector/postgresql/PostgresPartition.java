@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import io.debezium.connector.common.Partition;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 
 public class PostgresPartition implements Partition {
