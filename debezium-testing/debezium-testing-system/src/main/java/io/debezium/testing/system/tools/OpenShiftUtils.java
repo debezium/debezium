@@ -206,12 +206,7 @@ public class OpenShiftUtils {
         PodList pods = podsWithLabels(project, labels);
 
         for (Pod p : pods.getItems()) {
-            try {
-                client.resource(p).waitUntilReady(scaled(5), TimeUnit.MINUTES);
-            }
-            catch (InterruptedException e) {
-                throw new IllegalStateException("Error when waiting for pod " + p.getMetadata().getName() + " to get ready", e);
-            }
+            client.resource(p).waitUntilReady(scaled(5), TimeUnit.MINUTES);
         }
     }
 }
