@@ -43,6 +43,7 @@ public class JsonConnectorDeployer implements ConnectorDeployer {
         try (Response res = http.newCall(r).execute()) {
             if (!res.isSuccessful()) {
                 LOGGER.error(res.request().url().toString());
+                LOGGER.error(res.body().toString());
                 throw new RuntimeException("Connector registration request returned status code '" + res.code() + "'");
             }
             LOGGER.info("Registered kafka connector '" + config.getConnectorName() + "'");
