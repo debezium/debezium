@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.postgresql.jdbc.TimestampUtils;
 import org.postgresql.util.PGInterval;
 import org.slf4j.Logger;
@@ -76,6 +77,11 @@ class PostgresDefaultValueConverter {
         try {
             Object rawDefaultValue = mapper.parse(defaultValue);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
+            if (convertedDefaultValue instanceof Struct) {
+                // Workaround for KAFKA-12694
+                LOGGER.warn("Mapper for column '{}' returns Struct which is not supported.", column.name());
+                return Optional.empty();
+            }
             return Optional.of(convertedDefaultValue);
         }
         catch (Exception e) {
