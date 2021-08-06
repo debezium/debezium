@@ -44,7 +44,7 @@
     <ocp.project.db2>debezium-db2</ocp.project.db2>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
-    <ocp.image.postgresql>${docker.image.postgresql}</ocp.image.postgresql>
+    <ocp.image.postgresql>quay.io/debezium/example-postgres-ocp:latest</ocp.image.postgresql>
     <ocp.image.mongo>${docker.image.mongo}</ocp.image.mongo>
     <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
     <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
