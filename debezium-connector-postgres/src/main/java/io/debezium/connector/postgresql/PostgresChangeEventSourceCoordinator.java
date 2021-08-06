@@ -6,7 +6,6 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
-import java.util.Map;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
@@ -23,6 +22,7 @@ import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.DatabaseSchema;
 
 /**
@@ -36,7 +36,7 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
     private final Snapshotter snapshotter;
     private final SlotState slotInfo;
 
-    public PostgresChangeEventSourceCoordinator(Map<PostgresPartition, PostgresOffsetContext> previousOffsets,
+    public PostgresChangeEventSourceCoordinator(Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets,
                                                 ErrorHandler errorHandler,
                                                 Class<? extends SourceConnector> connectorType,
                                                 CommonConnectorConfig connectorConfig,

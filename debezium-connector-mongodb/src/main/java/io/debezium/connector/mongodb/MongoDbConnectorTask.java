@@ -28,6 +28,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.SchemaNameAdjuster;
@@ -105,7 +106,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     schemaNameAdjuster);
 
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                    Collections.singletonMap(new MongoDbPartition(), previousOffset),
+                    new Offsets<>(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,

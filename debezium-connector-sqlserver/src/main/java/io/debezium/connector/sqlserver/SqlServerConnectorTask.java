@@ -7,7 +7,6 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -24,6 +23,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
@@ -86,10 +86,10 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
         this.schema.initializeStorage();
 
-        Map<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
+        Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
                 new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
-        SqlServerOffsetContext previousOffset = getTheOnlyOffset(offsets);
+        SqlServerOffsetContext previousOffset = offsets.getTheOnlyOffset();
 
         if (previousOffset != null) {
             schema.recover(previousOffset);
