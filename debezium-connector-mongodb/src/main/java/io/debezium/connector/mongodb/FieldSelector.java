@@ -116,12 +116,12 @@ public final class FieldSelector {
 
         private void parse(String value, Function<String, Path> pathCreator, List<Path> result) {
             if (!Strings.isNullOrEmpty(value)) {
-                Arrays.stream(value.split(",")).forEach(name -> result.add(pathCreator.apply(name)));
+                Arrays.stream(value.trim().split(",")).forEach(name -> result.add(pathCreator.apply(name)));
             }
         }
 
         private String[] parseIntoParts(String name, String value, Predicate<Integer> lengthPredicate, Pattern delimiterPattern) {
-            String[] nodes = delimiterPattern.split(value);
+            String[] nodes = delimiterPattern.split(value.trim());
             if (lengthPredicate.test(nodes.length) || Arrays.stream(nodes).anyMatch(Strings::isNullOrEmpty)) {
                 throw new ConfigException("Invalid format: " + name);
             }
@@ -132,7 +132,7 @@ public final class FieldSelector {
             String databaseName = expressionNodes[0];
             String collectionName = expressionNodes[1];
             String namespaceRegex = toRegex(databaseName) + "\\." + toRegex(collectionName);
-            return Pattern.compile(namespaceRegex, Pattern.CASE_INSENSITIVE);
+            return Pattern.compile(namespaceRegex.trim(), Pattern.CASE_INSENSITIVE);
         }
 
         private String toRegex(String value) {
