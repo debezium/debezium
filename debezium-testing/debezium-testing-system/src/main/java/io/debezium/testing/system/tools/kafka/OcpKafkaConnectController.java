@@ -95,7 +95,7 @@ public class OcpKafkaConnectController implements KafkaConnectController {
                 .withName(name + "-connect")
                 .scale(0);
         await()
-                .atMost(30, SECONDS)
+                .atMost(scaled(30), SECONDS)
                 .pollDelay(5, SECONDS)
                 .pollInterval(3, SECONDS)
                 .until(() -> ocp.pods().inNamespace(project).withLabel("strimzi.io/kind", "KafkaConnect").list().getItems().isEmpty());
