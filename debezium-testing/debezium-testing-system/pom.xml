@@ -54,7 +54,6 @@
     <strimzi.crd.version>v1beta2</strimzi.crd.version>
 
     <!--Apicurio configuration-->
-    <apicurio.crd.version>v1</apicurio.crd.version>
     <apicurio.log.level>INFO</apicurio.log.level>
 
     <!--MySQL configuration-->
@@ -296,10 +295,13 @@
       <id>apicurioV1</id>
       <activation>
         <property>
-          <name>apicurio.crd.version</name>
-          <value>v1alpha1</value>
+          <name>apicurioV1</name>
         </property>
       </activation>
+
+      <properties>
+        <apicurio.crd.version>v1alpha1</apicurio.crd.version>
+      </properties>
 
       <dependencies>
         <dependency>
@@ -314,10 +316,13 @@
       <id>apicurioV2</id>
       <activation>
         <property>
-          <name>apicurio.crd.version</name>
-          <value>v1</value>
+          <name>!apicurioV1</name>
         </property>
       </activation>
+
+      <properties>
+        <apicurio.crd.version>v1</apicurio.crd.version>
+      </properties>
 
       <dependencies>
         <dependency>
