@@ -50,7 +50,10 @@
 
     <!--Strimzi configuration-->
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
+    <strimzi.crd.version>v1beta2</strimzi.crd.version>
 
+    <!--Apicurio configuration-->
+    <apicurio.crd.version>v1</apicurio.crd.version>
     <apicurio.log.level>INFO</apicurio.log.level>
 
     <!--MySQL configuration-->
@@ -488,7 +491,11 @@
 
                 <!--Strimzi Configuration-->
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
-                <test.strimzi.crd.version>v1beta2</test.strimzi.crd.version>
+                <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
+
+                <!--Apicurio configuration-->
+                <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
+                <test.apicurio.log.level>${apicurio.log.level}</test.apicurio.log.level>
 
                 <!--MySQL configuration-->
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
