@@ -260,12 +260,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.github.jcechace.apicurio-model-generator</groupId>
-      <artifactId>kubernetes-apicurio-registry-model</artifactId>
-      <version>6601010c</version>
-    </dependency>
-
-    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
     </dependency>
@@ -298,6 +292,42 @@
   </dependencies>
 
   <profiles>
+    <profile>
+      <id>apicurioV1</id>
+      <activation>
+        <property>
+          <name>apicurio.crd.version</name>
+          <value>v1alpha1</value>
+        </property>
+      </activation>
+
+      <dependencies>
+        <dependency>
+          <groupId>com.github.jcechace.apicurio-model-generator</groupId>
+          <artifactId>kubernetes-apicurio-registry-model</artifactId>
+          <version>a5c02b71</version>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <profile>
+      <id>apicurioV2</id>
+      <activation>
+        <property>
+          <name>apicurio.crd.version</name>
+          <value>v1</value>
+        </property>
+      </activation>
+
+      <dependencies>
+        <dependency>
+          <groupId>com.github.jcechace.apicurio-model-generator</groupId>
+          <artifactId>kubernetes-apicurio-registry-model</artifactId>
+          <version>6601010c</version>
+        </dependency>
+      </dependencies>
+    </profile>
+
     <profile>
       <id>image</id>
 
