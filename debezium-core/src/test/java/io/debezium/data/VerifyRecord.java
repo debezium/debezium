@@ -299,7 +299,7 @@ public class VerifyRecord {
     public static void isValidTruncate(SourceRecord record) {
         assertThat(record.key()).isNull();
 
-        assertThat(record.valueSchema()).isNull();
+        assertThat(record.keySchema()).isNull();
         Struct value = (Struct) record.value();
         assertThat(value).isNotNull();
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.TRUNCATE.code());
