@@ -191,8 +191,10 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 // Continue anyway, since RDS (among others) don't allow setting a global lock
                 assert !isGloballyLocked();
             }
-            // FLUSH TABLES resets TX and isolation level
-            connection.executeWithoutCommitting("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+            if (!connectorConfig.getSnapshotLockingMode().equals(MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA)) {
+                // FLUSH TABLES resets TX and isolation level
+                connection.executeWithoutCommitting("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+            }
         }
     }
 
