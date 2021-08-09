@@ -11,6 +11,12 @@ else
   JAVA_BINARY="$JAVA_HOME/bin/java"
 fi
 
+if [ "$OSTYPE" = "msys" ] || [ "$OSTYPE" = "cygwin" ]; then
+  PATH_SEP=";"
+else
+  PATH_SEP=":"
+fi
+
 RUNNER=$(ls debezium-server-*runner.jar)
 
-exec $JAVA_BINARY $DEBEZIUM_OPTS $JAVA_OPTS -cp "$RUNNER:conf:lib/*" io.debezium.server.Main
+exec $JAVA_BINARY $DEBEZIUM_OPTS $JAVA_OPTS -cp "$RUNNER"$PATH_SEP"conf"$PATH_SEP"lib/*" io.debezium.server.Main
