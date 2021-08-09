@@ -515,6 +515,7 @@ public class BinlogReaderIT {
 
     @Test(expected = ConnectException.class)
     @FixFor("DBZ-1208")
+    @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
     public void shouldFailOnUnknownTlsProtocol() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(DB_HISTORY_PATH);
