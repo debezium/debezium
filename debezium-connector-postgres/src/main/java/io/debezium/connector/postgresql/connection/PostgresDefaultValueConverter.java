@@ -79,7 +79,7 @@ class PostgresDefaultValueConverter {
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
             if (convertedDefaultValue instanceof Struct) {
                 // Workaround for KAFKA-12694
-                LOGGER.warn("Mapper for column '{}' returns Struct which is not supported.", column.name());
+                LOGGER.warn("Struct can't be used as default value for column '{}', will use null instead.", column.name());
                 return Optional.empty();
             }
             return Optional.of(convertedDefaultValue);
