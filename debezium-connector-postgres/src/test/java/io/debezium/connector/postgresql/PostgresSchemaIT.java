@@ -479,6 +479,7 @@ public class PostgresSchemaIT {
             assertColumnDefault("jsonb", "{}", columns);
 
             assertColumnDefault("numeric", new BigDecimal("12345.67891"), columns);
+            // KAFKA-12694: default value for Struct currently exported as null
             assertColumnDefault("numeric_var", null, columns);
             assertColumnDefault("real", 1234567890.5f, columns);
             assertColumnDefault("smallint", (short) 32767, columns);
