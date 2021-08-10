@@ -29,7 +29,7 @@ public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
     @Override
     protected Object readTimeField(ResultSet rs, int columnIndex) throws SQLException {
         Blob b = rs.getBlob(columnIndex);
-        if (b == null) {
+        if (b == null || b.length() == 0) {
             return null; // Don't continue parsing time field if it is null
         }
 
