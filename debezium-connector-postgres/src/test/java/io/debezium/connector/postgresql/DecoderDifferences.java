@@ -47,6 +47,15 @@ public class DecoderDifferences {
         return wal2Json();
     }
 
+    /**
+     * Non-streaming wal2json plugin sends uses a single LSN for all events in the transaction
+     * including COMMIT.
+     */
+    public static boolean singleLsnPerTransaction() {
+        return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON
+                || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS;
+    }
+
     private static boolean wal2Json() {
         return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON
                 || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS
