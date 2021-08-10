@@ -80,6 +80,7 @@ pipeline {
                     sh '''
                     set -x
                     sed -i "s/namespace: .*/namespace: ${OCP_PROJECT_DEBEZIUM}/" strimzi/install/cluster-operator/*RoleBinding*.yaml
+                    oc delete -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM} --ignore-not-found
                     oc create -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM}
                     '''
                     sh '''
