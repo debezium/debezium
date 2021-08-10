@@ -31,4 +31,8 @@ public interface SnapshotChangeEventSourceMetricsMXBean extends ChangeEventSourc
     String getChunkFrom();
 
     String getChunkTo();
+
+    String getTableFrom();
+
+    String getTableTo();
 }
