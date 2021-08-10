@@ -44,6 +44,8 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     private final AtomicReference<String> chunkId = new AtomicReference<>();
     private final AtomicReference<Object[]> chunkFrom = new AtomicReference<>();
     private final AtomicReference<Object[]> chunkTo = new AtomicReference<>();
+    private final AtomicReference<Object[]> tableFrom = new AtomicReference<>();
+    private final AtomicReference<Object[]> tableTo = new AtomicReference<>();
 
     private final Set<String> capturedTables = Collections.synchronizedSet(new HashSet<>());
 
@@ -158,10 +160,17 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     }
 
     @Override
-    public void currentChunk(String chunkId, Object[] from, Object[] to) {
+    public void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo) {
         this.chunkId.set(chunkId);
-        this.chunkFrom.set(from);
-        this.chunkTo.set(to);
+        this.chunkFrom.set(chunkFrom);
+        this.chunkTo.set(chunkTo);
+    }
+
+    @Override
+    public void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo, Object tableTo[]) {
+        currentChunk(chunkId, chunkFrom, chunkTo);
+        this.tableFrom.set(chunkFrom);
+        this.tableTo.set(tableTo);
     }
 
     @Override
@@ -171,12 +180,26 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
 
     @Override
     public String getChunkFrom() {
-        return Arrays.toString(chunkFrom.get());
+        return arrayToString(chunkFrom.get());
     }
 
     @Override
     public String getChunkTo() {
-        return Arrays.toString(chunkTo.get());
+        return arrayToString(chunkTo.get());
+    }
+
+    @Override
+    public String getTableFrom() {
+        return arrayToString(tableFrom.get());
+    }
+
+    @Override
+    public String getTableTo() {
+        return arrayToString(tableTo.get());
+    }
+
+    private String arrayToString(Object[] array) {
+        return (array == null) ? null : Arrays.toString(array);
     }
 
     @Override
@@ -193,5 +216,7 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
         chunkId.set(null);
         chunkFrom.set(null);
         chunkTo.set(null);
+        tableFrom.set(null);
+        tableTo.set(null);
     }
 }
