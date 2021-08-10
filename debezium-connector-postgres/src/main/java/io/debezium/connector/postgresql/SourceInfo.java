@@ -132,6 +132,7 @@ public final class SourceInfo extends BaseSourceInfo {
      */
     protected SourceInfo updateLastCommit(Lsn lsn) {
         this.lastCommitLsn = lsn;
+        this.lsn = lsn;
         return this;
     }
 
