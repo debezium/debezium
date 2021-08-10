@@ -27,7 +27,8 @@ pipelineJob('ocp-debezium-testing-system') {
         stringParam('TEST_WAIT_SCALE', '1', 'Wait time scaling factor')
         stringParam('TEST_VERSION_KAFKA', '', 'Kafka version')
         booleanParam('TEST_APICURIO_REGISTRY', false, 'Run tests with Apicurio Registry and Avro serialization')
-        stringParam('TEST_TAGS', '', '')
+        stringParam('TEST_TAGS', '', 'Which test tags to run (empty for all)')
+        stringParam('TEST_TAGS_EXCLUDE', '', 'Which test tags to skip (empty for none)')
     }
 
     definition {
