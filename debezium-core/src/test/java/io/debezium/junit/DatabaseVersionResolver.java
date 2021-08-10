@@ -45,11 +45,11 @@ public interface DatabaseVersionResolver {
                 return true;
             }
             else if (dbVersionMajor == major) {
-                if (minor == -1 || (minor != -1 && dbVersionMinor < minor)) {
+                if (minor == -1 || dbVersionMinor < minor) {
                     return true;
                 }
                 else if (dbVersionMinor == minor) {
-                    if (patch == -1 || (patch != -1 && dbVersionPatch < patch)) {
+                    if (patch == -1 || dbVersionPatch < patch) {
                         return true;
                     }
                 }
@@ -63,8 +63,8 @@ public interface DatabaseVersionResolver {
 
         public boolean isEqualTo(int major, int minor, int patch) {
             if (dbVersionMajor == major) {
-                if (minor == -1 || (minor != -1 && dbVersionMinor == minor)) {
-                    if (patch == -1 || (patch != -1 && dbVersionPatch == patch)) {
+                if (minor == -1 || dbVersionMinor == minor) {
+                    if (patch == -1 || dbVersionPatch == patch) {
                         return true;
                     }
                 }
@@ -81,11 +81,11 @@ public interface DatabaseVersionResolver {
                 return true;
             }
             else if (dbVersionMajor == major) {
-                if (minor == -1 || (minor != -1 && dbVersionMinor > minor)) {
+                if (minor == -1 || dbVersionMinor > minor) {
                     return true;
                 }
                 else if (dbVersionMinor == minor) {
-                    if (patch == -1 || (patch != -1 && dbVersionPatch > patch)) {
+                    if (patch == -1 || dbVersionPatch > patch) {
                         return true;
                     }
                 }
