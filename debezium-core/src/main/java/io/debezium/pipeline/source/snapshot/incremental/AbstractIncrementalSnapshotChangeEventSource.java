@@ -332,8 +332,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             }
             final Object[] firstKey = keyFromRow(firstRow);
             final Object[] lastKey = keyFromRow(lastRow);
+            if (context.isNonInitialChunk()) {
+                progressListener.currentChunk(context.currentChunkId(), firstKey, lastKey);
+            }
+            else {
+                progressListener.currentChunk(context.currentChunkId(), firstKey, lastKey, context.maximumKey().orElse(null));
+            }
             context.nextChunkPosition(lastKey);
-            progressListener.currentChunk(context.currentChunkId(), firstKey, lastKey);
             if (lastRow != null) {
                 LOGGER.debug("\t Next window will resume from '{}'", context.chunkEndPosititon());
             }
@@ -355,6 +360,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     private void tableScanCompleted() {
         progressListener.dataCollectionSnapshotCompleted(currentTable.id(), totalRowsScanned);
         totalRowsScanned = 0;
+        // Reset chunk/table information in metrics
+        progressListener.currentChunk(null, null, null, null);
     }
 
     protected PreparedStatement readTableChunkStatement(String sql) throws SQLException {
