@@ -400,8 +400,9 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         else if (collationNode != null && collationNode.getText() != null) {
             final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
             for (int index = 0; index < CharsetMapping.MAP_SIZE; index++) {
-                if (collationName.equals(CharsetMapping.COLLATION_INDEX_TO_COLLATION_NAME[index])) {
-                    charsetName = CharsetMapping.getMysqlCharsetNameForCollationIndex(index);
+                if (collationName.equals(
+                        CharsetMapping.getStaticCollationNameForCollationIndex(index))) {
+                    charsetName = CharsetMapping.getStaticMysqlCharsetNameForCollationIndex(index);
                     break;
                 }
             }
