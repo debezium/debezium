@@ -22,8 +22,8 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
  * @author Jakub Cechacek
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Tag("acceptance")
 @Tag("db2 ")
+@Tag("openshift")
 @Tag("avro")
 @Tag("apicurio")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
