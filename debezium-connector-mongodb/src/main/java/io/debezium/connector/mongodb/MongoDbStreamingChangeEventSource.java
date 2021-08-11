@@ -15,6 +15,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -209,10 +210,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             filter = Filters.and(filter, operationFilter);
         }
 
-        final FindIterable<Document> results = oplog.find(filter)
+        FindIterable<Document> results = oplog.find(filter)
                 .sort(new Document("$natural", 1))
                 .oplogReplay(true)
                 .cursorType(CursorType.TailableAwait);
+
+        if (connectorConfig.getCursorMaxAwaitTime() > 0) {
+            results = results.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
+        }
 
         try (MongoCursor<Document> cursor = results.iterator()) {
             // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
