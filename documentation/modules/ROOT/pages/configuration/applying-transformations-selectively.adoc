@@ -1,6 +1,6 @@
 // Category: debezium-using
 // Type: assembly
-// ModuleId: applying-transformations-selectively-with-smt-predicates
+// ModuleID: applying-transformations-selectively-with-smt-predicates
 // Title: Applying transformations selectively with SMT predicates
 [id="applying-transformations-selectively"]
 = Applying transformations selectively
