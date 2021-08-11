@@ -2040,7 +2040,7 @@ For {prodname} to specify the capture configuration, the value of {link-prefix}:
 [[postgresql-host-replication-permissions]]
 === Configuring PostgreSQL to allow replication with the {prodname} connector host
 
-To enable {prodname] to replicate PostgreSQL data, you must configure the database to permit replication with the host that runs the PostgreSQL connector.
+To enable {prodname} to replicate PostgreSQL data, you must configure the database to permit replication with the host that runs the PostgreSQL connector.
 To specify the clients that are permitted to replicate with the database, add entries to the PostgreSQL host-based authentication file, `pg_hba.conf`.
 For more information about the `pg_hba.conf` file, see link:https://www.postgresql.org/docs/10/auth-pg-hba-conf.html[the PostgreSQL] documentation.
 
