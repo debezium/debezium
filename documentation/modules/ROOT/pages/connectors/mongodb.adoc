@@ -1462,9 +1462,9 @@ The {prodname} MongoDB connector also provides the following custom streaming me
 // Type: concept
 // ModuleID: how-debezium-mongodb-connectors-handle-faults-and-problems
 // Title: How {prodname} MongoDB connectors handle faults and problems
-[[mongodb-fault-tolerance]]
 [[mongodb-when-things-go-wrong]]
 == MongoDB connector common issues
+[[mongodb-fault-tolerance]]
 
 {prodname} is a distributed system that captures all changes in multiple upstream databases, and will never miss or lose an event.
 When the system is operating normally and is managed carefully, then {prodname} provides _exactly once_ delivery of every change event.
