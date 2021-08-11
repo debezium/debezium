@@ -18,7 +18,8 @@ pipelineJob('ocp-debezium-testing-system') {
 //        DEBEZIUM CONFIG
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
         stringParam('DBZ_GIT_BRANCH', 'master', 'A branch/tag of Debezium sources')
-        stringParam('DBZ_CONNECT_IMAGE', '', 'Kafka Connect Image with DBZ plugins.')
+        stringParam('DBZ_CONNECT_IMAGE', '', 'Kafka Connect Strimzi Image with DBZ plugins.')
+        stringParam('DBZ_CONNECT_RHEL_IMAGE', '', 'Kafka Connect RHEL Image with DBZ plugins.')
 //        STRIMZI CONFIG
         stringParam('STRZ_GIT_REPOSITORY', 'https://github.com/strimzi/strimzi-kafka-operator.git', 'Repository from which Strimzi is cloned')
         stringParam('STRZ_GIT_BRANCH', 'main', 'A branch/tag from which Debezium is built')
