@@ -192,7 +192,7 @@ The following example shows a typical schema change message in JSON format:
       "lcr_position" : null
     },
     "databaseName": "ORCLPDB1", // <1>
-    "schemaName": "DEBEZIUM", // <1>
+    "schemaName": "DEBEZIUM", // 
     "ddl": "CREATE TABLE \"DEBEZIUM\".\"CUSTOMERS\" \n   (    \"ID\" NUMBER(9,0) NOT NULL ENABLE, \n    \"FIRST_NAME\" VARCHAR2(255), \n    \"LAST_NAME" VARCHAR2(255), \n    \"EMAIL\" VARCHAR2(255), \n     PRIMARY KEY (\"ID\") ENABLE, \n     SUPPLEMENTAL LOG DATA (ALL) COLUMNS\n   ) SEGMENT CREATION IMMEDIATE \n  PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 \n NOCOMPRESS LOGGING\n  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645\n  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1\n  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)\n  TABLESPACE \"USERS\" ", // <2>
     "tableChanges": [ // <3>
       {
@@ -448,7 +448,7 @@ The schema describes the structure of the payload, while the payload contains th
 
 [WARNING]
 ====
-Changes that are performed by the `SYS` or `SYSTEM` user accounts are not be captured by the connector.
+Changes that are performed by the `SYS` or `SYSTEM` user accounts are not captured by the connector.
 ====
 ifdef::product[]
 The following topics contain more details about data change events:
@@ -2266,7 +2266,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 
 // Type: assembly
 // ModuleID: monitoring-debezium-oracle-connector-performance
-// Title: Monitoring {prodname} SQL Server connector performance
+// Title: Monitoring {prodname} Oracle connector performance
 [[oracle-monitoring]]
 == Monitoring
 
@@ -2945,4 +2945,4 @@ The connector's `table.include.list` or `table.exclude.list` configuration optio
 === LogMiner adapter does not capture changes made by SYS or SYSTEM
 
 Oracle uses the `SYS` and `SYSTEM` accounts for lots of internal changes and therefore the connector automatically filters changes made by these users when fetching changes from LogMiner.
-Please make sure to use a non-`SYS`, non-`SYSTEM` user account for changes to be emitted by the {prodname} Oracle connector.
+Never use the `SYS` or `SYSTEM` user accounts for changes to be emitted by the {prodname} Oracle connector.
