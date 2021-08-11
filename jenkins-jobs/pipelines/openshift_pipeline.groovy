@@ -142,6 +142,7 @@ pipeline {
                     cd ${WORKSPACE}/debezium
                     mvn install -pl debezium-testing/debezium-testing-system -PsystemITs \\
                     -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
+                    -Dtest.docker.image.rhel.kafka=${DBZ_CONNECT_RHEL_IMAGE} \\
                     -Dtest.ocp.username="${OCP_USERNAME}" \\
                     -Dtest.ocp.password="${OCP_PASSWORD}" \\
                     -Dtest.ocp.url="${OCP_URL}" \\
