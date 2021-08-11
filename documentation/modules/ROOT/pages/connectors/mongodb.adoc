@@ -1396,6 +1396,11 @@ A value of `0` disables this behavior.
 |30000 (30 seconds)
 |The number of milliseconds the driver will wait to select a server before it times out and throws an error.
 
+|[[mongodb-property-cursor-max-await-time-ms]]<<mongodb-property-cursor-max-await-time-ms, `+cursor.max.await.time.ms+`>>
+|`0`
+|Specifies the maximum number of milliseconds the oplog cursor will wait for the server to produce a result before causing an execution timeout exception.
+A value of `0` indicates using the server/driver default wait timeout.
+
 |===
 
 // Type: assembly

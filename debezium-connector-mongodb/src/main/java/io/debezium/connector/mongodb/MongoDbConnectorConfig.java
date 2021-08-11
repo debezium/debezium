@@ -445,6 +445,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + " the initial snapshot may be a subset of data present in the data source. The subset would be defined"
                     + " by mongodb filter query specified as value for property snapshot.collection.filter.override.<dbname>.<collectionName>");
 
+    public static final Field CURSOR_MAX_AWAIT_TIME_MS = Field.create("cursor.max.await.time.ms")
+            .withDisplayName("Server's oplog streaming cursor max await time")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -463,7 +470,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     MAX_FAILED_CONNECTIONS,
                     AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
-                    SSL_ALLOW_INVALID_HOSTNAMES)
+                    SSL_ALLOW_INVALID_HOSTNAMES,
+                    CURSOR_MAX_AWAIT_TIME_MS)
             .events(
                     DATABASE_WHITELIST,
                     DATABASE_INCLUDE_LIST,
@@ -495,6 +503,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private final int snapshotMaxThreads;
+    private final int cursorMaxAwaitTimeMs;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -503,6 +512,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
+        this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -591,6 +601,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
+    }
+
+    public int getCursorMaxAwaitTime() {
+        return cursorMaxAwaitTimeMs;
     }
 
     @Override
