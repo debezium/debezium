@@ -1512,6 +1512,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
+        waitForStreamingRunning("sql_server", "server1");
         connection.execute("INSERT INTO excluded_column_table_a VALUES(10, 'some_name', 120)");
 
         final SourceRecords records = consumeRecordsByTopic(1);
