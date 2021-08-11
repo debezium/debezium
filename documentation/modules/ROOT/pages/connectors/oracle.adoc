@@ -2289,6 +2289,8 @@ The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+
 // Type: reference
 // ModuleID: debezium-oracle-connector-streaming-metrics
 // Title: {prodname} Oracle connector streaming metrics

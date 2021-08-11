@@ -2487,6 +2487,8 @@ The *MBean* is `debezium.sql_server:type=connector-metrics,context=snapshot,serv
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+
 // Type: reference
 // ModuleID: debezium-sql-server-connector-streaming-metrics
 // Title: {prodname} SQL Server connector streaming metrics
