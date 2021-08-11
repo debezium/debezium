@@ -8,8 +8,12 @@ package io.debezium.connector.mysql;
 import java.io.UnsupportedEncodingException;
 import java.sql.Blob;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Calendar;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -21,6 +25,8 @@ import io.debezium.relational.Table;
  */
 public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MysqlTextProtocolFieldReader.class);
+
     /**
      * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
      *
@@ -29,8 +35,16 @@ public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
     @Override
     protected Object readTimeField(ResultSet rs, int columnIndex) throws SQLException {
         Blob b = rs.getBlob(columnIndex);
-        if (b == null || b.length() == 0) {
+        if (b == null) {
             return null; // Don't continue parsing time field if it is null
+        }
+        else if (b.length() == 0) {
+            LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
+            final ResultSetMetaData metadata = rs.getMetaData();
+            for (int i = 1; i <= metadata.getColumnCount(); ++i) {
+                LOGGER.warn("Column '{}' value is '{}'", metadata.getColumnName(i), rs.getObject(i));
+            }
+            return null;
         }
 
         try {
