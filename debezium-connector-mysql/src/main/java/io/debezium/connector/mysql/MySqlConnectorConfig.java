@@ -381,6 +381,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             return !value.equals(NONE.value);
         }
 
+        public boolean flushResetsIsolationLevel() {
+            return !value.equals(MINIMAL_PERCONA.value);
+        }
+
         /**
         * Determine which flavour of MySQL locking to use.
         *
