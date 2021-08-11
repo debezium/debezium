@@ -17,18 +17,19 @@ The UI is implemented as a https://quarkus.io/[Quarkus]-based web application.  
 
 == Installation and Configuration
 
-==== debezium-ui docker image
+==== debezium-ui container image
 
-The debezium-ui https://hub.docker.com/r/debezium/debezium-ui[docker image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance:
+The debezium-ui https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URI supplies the comma-separated list of available URI(s)):
 
 ----
-$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URI=http://connect:8083 debezium/debezium-ui:1.5
+$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URI=http://connect:8083 debezium/debezium-ui:1.7
 ----
 
-( where KAFKA_CONNECT_URI supplies the comma-separated list of available URI(s) )
+The UI connects to Kafka Connect via REST, so you need to make sure that the latter is reachable, e.g. by running both components on the same Docker network.
+
 [NOTE]
 ====
-The UI requires a network connection to a Kafka Connect instance, (i.e. running on the same docker network).
+Currently, the UI connects to un-authenticated Kafka Connect instances.  Also, there's no authorization or authentication implemented in the UI itself yet.  Until that is the case, you should secure the components e.g. with your own proxy for authorization, if needed.
 ====
 
 ==== Self-contained example
@@ -40,7 +41,7 @@ A self-contained example https://github.com/debezium/debezium-examples/tree/mast
 === UI Connector List
 The main page of the UI displays all the registered connectors.  Some of the highlights of the main page are as follows:
 
-* *Kafka connect cluster* can be selected via the dropdown in the upper right of the header.
+* *Kafka connect cluster* can be selected via the dropdown in the header.
 * Connector table shows each connector with it's type (MySQL, PostgreSQL, MongoDB), connector status and connector tasks.
 * A connector row can be expanded to show more details, as shown below with the 'testPostgres' connector.  Metrics are shown in the expansion area (*Note:* this feature is still under development and not functional yet).  Connector tasks are shown, with ability to *Restart* the task if desired.
 * The kebab menu at the right of each connector row provides actions which allow the user to *Pause, Resume, Restart or Delete* the connector.
@@ -70,4 +71,5 @@ The Additional properties are optional and can be summarized as follows:
 ==== Create Connector - Review
 The *Review* step provides a summary of the configuration that will be used to create the connector.  If happy with the selections, click 'Finish' to create the connector.  If the properties need adjustment, navigate back to the earlier steps.
 
+image::debezium-ui-create-connector-review.png[{prodname} UI Create connector review]
 
