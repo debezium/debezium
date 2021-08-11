@@ -2142,6 +2142,8 @@ The *MBean* is `debezium.db2:type=connector-metrics,context=snapshot,server=_<da
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+
 // Type: reference
 // ModuleID: monitoring-debezium-db2-connector-record-streaming
 // Title: Monitoring {prodname} Db2 connector record streaming

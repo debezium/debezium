@@ -2953,6 +2953,8 @@ The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+
 // Type: reference
 // ModuleID: monitoring-debezium-postgresql-connector-record-streaming
 // Title: Monitoring {prodname} PostgreSQL connector record streaming
