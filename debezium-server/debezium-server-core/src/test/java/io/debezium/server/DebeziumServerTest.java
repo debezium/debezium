@@ -54,6 +54,9 @@ public class DebeziumServerTest {
         Assertions.assertThat(properties.getProperty("table.whitelist")).isNotNull();
         Assertions.assertThat(properties.getProperty("table.whitelist")).isEqualTo("public.table_name");
 
+        Assertions.assertThat(properties.getProperty("offset.flush.interval.ms.test")).isNotNull();
+        Assertions.assertThat(properties.getProperty("offset.flush.interval.ms.test")).isEqualTo("0");
+
         Assertions.assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isNotNull();
         Assertions.assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isEqualTo("SELECT * FROM table_name WHERE 1>2");
 
