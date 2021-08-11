@@ -7,8 +7,12 @@ package io.debezium.connector.mysql;
 
 import java.sql.Blob;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Calendar;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mysql.cj.protocol.a.NativeConstants;
 
@@ -24,15 +28,26 @@ import io.debezium.relational.Table;
  */
 public class MysqlBinaryProtocolFieldReader extends AbstractMysqlFieldReader {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MysqlBinaryProtocolFieldReader.class);
+
     /**
      * @see <a href="https://dev.mysql.com/doc/internals/en/binary-protocol-value.html#packet-ProtocolBinary::MYSQL_TYPE_TIME">ProtocolBinary::MYSQL_TYPE_TIME</a>
      */
     @Override
     protected Object readTimeField(ResultSet rs, int columnIndex) throws SQLException {
         Blob b = rs.getBlob(columnIndex);
-        if (b == null || b.length() == 0) {
+        if (b == null) {
             return null; // Don't continue parsing time field if it is null
         }
+        else if (b.length() == 0) {
+            LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
+            final ResultSetMetaData metadata = rs.getMetaData();
+            for (int i = 1; i <= metadata.getColumnCount(); ++i) {
+                LOGGER.warn("Column '{}' value is '{}'", metadata.getColumnName(i), rs.getObject(i));
+            }
+            return null;
+        }
+
         // if micro_seconds is 0, length is 8; otherwise length is 12
         if (b.length() != NativeConstants.BIN_LEN_TIME_NO_FRAC && b.length() != NativeConstants.BIN_LEN_TIME_WITH_MICROS) {
             throw new RuntimeException(String.format("Invalid length when read MySQL TIME value. BIN_LEN_TIME is %d", b.length()));
