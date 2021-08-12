@@ -477,6 +477,8 @@ public class MySqlConnection extends JdbcConnection {
     public static class MySqlConnectionConfiguration {
 
         protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
+        protected static final String JDBC_PROPERTY_CONNECTION_TIME_ZONE = "connectionTimeZone";
+        protected static final String JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE = "serverTimezone";
 
         private final Configuration jdbcConfig;
         private final ConnectionFactory factory;
@@ -506,6 +508,19 @@ public class MySqlConnection extends JdbcConnection {
             }
             else if ("true".equals(legacyDateTime)) {
                 LOGGER.warn("'{}' is set to 'true'. This setting is not recommended and can result in timezone issues.", JDBC_PROPERTY_LEGACY_DATETIME);
+            }
+
+            // Debezium by default expects timezoned data delivered in server timezone
+            final String connectionTimeZone = dbConfig.getString(JDBC_PROPERTY_CONNECTION_TIME_ZONE);
+            if (connectionTimeZone == null) {
+                jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, "SERVER");
+            }
+
+            final String serverTimeZone = dbConfig.getString(JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE);
+            if (serverTimeZone != null) {
+                LOGGER.warn("Database configuration option '{}' is set but is obsolete, please use '{}' instead", JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE,
+                        JDBC_PROPERTY_CONNECTION_TIME_ZONE);
+                jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, serverTimeZone);
             }
 
             this.jdbcConfig = jdbcConfigBuilder.build();
