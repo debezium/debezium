@@ -1,0 +1,80 @@
+[id="debezium-ui"]
+= {prodname} UI
+
+:linkattrs:
+:icons: font
+:toc:
+:toclevels: 3
+:toc-placement: macro
+
+toc::[]
+
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics and behaviours etc. may change in future revisions, based on the feedback we receive.
+Please let us know about your feature requests or if you encounter any problems while using the {prodname} UI.
+====
+
+The {prodname} UI allows users to set up and operate connectors more easily. For instance, a list of all connectors can be viewed along with their status, etc.  The Create Connector wizard allows the user to configure connectors, guiding and validating the property entries along the way.
+
+== Design Considerations
+
+The UI is implemented as a https://quarkus.io/[Quarkus]-based web application.  The backend is configured with the URL(s) of one or more Kafka Connect clusters and provides a REST interface for the frontend.  The frontend user interface uses https://reactjs.org/[ReactJS] as the primary technology, utilizing https://www.patternfly.org/v4/[Patternfly] react components and design patterns.
+
+== Installation and Configuration
+
+==== Debezium UI container image
+
+The Debezium UI https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URI supplies the comma-separated list of available URI(s)):
+
+----
+$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URI=http://connect:8083 debezium/debezium-ui:{debezium-version}
+----
+
+The UI connects to Kafka Connect via REST, so you need to make sure that the latter is reachable, e.g. by running both components on the same Docker network.
+
+[NOTE]
+====
+Currently, the UI connects to un-authenticated Kafka Connect instances.  Also, there's no authorization or authentication implemented in the UI itself yet.  Until that is the case, you should secure the components e.g. with your own proxy for authorization, if needed.
+====
+
+==== Self-contained example
+
+A self-contained example https://github.com/debezium/debezium-examples/tree/master/ui-demo[ui-demo] is available, which is included under https://github.com/debezium/debezium-examples[debezium-examples] on Github.  The ui-demo includes a docker-compose file which brings up several sources with data as well as the UI. Please refer to the https://github.com/debezium/debezium-examples/tree/master/ui-demo[README file] for more details on running the Debezium ui-demo.
+
+== UI Operation
+
+=== UI Connector List
+The main page of the UI displays all the registered connectors.  Some of the highlights of the main page are as follows:
+
+* *Kafka connect cluster* can be selected via the dropdown in the header.
+* Connector table shows each connector with it's type (MySQL, PostgreSQL, MongoDB), connector status and connector tasks.
+* A connector row can be expanded to show more details, as shown below with the 'testPostgres' connector.  Metrics are shown in the expansion area (*Note:* this feature is still under development and not functional yet).  Connector tasks are shown, with ability to *Restart* the task if desired.
+* The kebab menu at the right of each connector row provides actions which allow the user to *Pause, Resume, Restart or Delete* the connector.
+
+image::debezium-ui-connectors-list.png[{prodname} UI connectors]
+
+=== UI Create Connector Wizard
+The user can create a connector by clicking on the *Create a connector* button on the main page.  The first two steps of the wizard are required, but the remaining steps are optional. Each step will validate the user entries and provide feedback if there are problems.  After completing steps 1 and 2 successfully, the user can proceed to the final page to review and create the connector.
+
+==== Create Connector - Connector type (required)
+Choose the type of connector in step 1.  Currently the *MongoDB, MySQL and PostgreSQL* connector types are supported.  Addition of more connector types is currently in progress.
+
+image::debezium-ui-create-connector-step1.png[{prodname} UI Create connector step1]
+
+==== Create Connector - Properties (required)
+The basic connection properties for the selected connector are entered in step 2, and the properties must be validated before proceeding.  Advanced connection properties are also provided in a separate section of this step.  Upon successful validation, the user may proceed to the next steps (Additional properties) - or they can elect to bypass the additional properties and proceed directly to Review.
+
+image::debezium-ui-create-connector-step2.png[{prodname} UI Create connector step2]
+
+==== Create Connector - Additional properties (optional)
+The Additional properties are optional and can be summarized as follows:
+
+* *Filter definition* - entry of *regular expressions* which define the filters for inclusion/exclusion of the items that will be included for CDC.  The included items are displayed as the filters are entered and applied.
+* *Data options* - *Snapshot* and *Mapping* properties (optional).  The defaults can be viewed and changed if desired.
+* *Runtime options* - *Engine* and *Heartbeat* properties (optional).  The defaults can be viewed and changed if desired.
+
+==== Create Connector - Review
+The *Review* step provides a summary of the configuration that will be used to create the connector.  If happy with the selections, click 'Finish' to create the connector.  If the properties need adjustment, navigate back to the earlier steps.
+
+image::debezium-ui-create-connector-review.png[{prodname} UI Create connector review]
