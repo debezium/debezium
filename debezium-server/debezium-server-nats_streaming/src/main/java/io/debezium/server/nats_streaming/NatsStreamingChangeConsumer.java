@@ -78,12 +78,12 @@ public class NatsStreamingChangeConsumer extends BaseChangeConsumer
                 .connectionListener(new ConnectionListener() {
                     public void connectionEvent(Connection natsConnection, Events event) {
                         if (event == Events.DISCONNECTED) {
-                            Panic("NATS Streaming disconnected.");
+                            throw new DebeziumException("NATS Streaming disconnected.");
                         }
                     }
                 })
                 .connectionLostHandler((streamingConnection, e) -> {
-                    Panic("NATS Streaming connection lost.");
+                    throw new DebeziumException("NATS Streaming connection lost.");
                 })
                 .build();
         try {
@@ -128,10 +128,5 @@ public class NatsStreamingChangeConsumer extends BaseChangeConsumer
             committer.markProcessed(record);
         }
         committer.markBatchFinished();
-    }
-
-    public static void Panic(String message) {
-        LOGGER.error(message);
-        Runtime.getRuntime().halt(0);
     }
 }
