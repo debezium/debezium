@@ -584,19 +584,19 @@ https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data str
 |Default
 |Description
 
-|[[nats_streaming-type]]<<nats_streaming-type, `debezium.sink.type`>>
+|[[nats-streaming-type]]<<nats-streaming-type, `debezium.sink.type`>>
 |
-|Must be set to `nats_streaming`.
+|Must be set to `nats-streaming`.
 
-|[[nats_streaming-url]]<<nats_streaming-url, `debezium.sink.nats_streaming.url`>>
+|[[nats-streaming-url]]<<nats-streaming-url, `debezium.sink.nats-streaming.url`>>
 |
 | URL (or comma separated list of URLs) to a node or nodes in the cluster formatted as `nats://host:port`.
 
-|[[nats_streaming-cluster-id]]<<nats_streaming-cluster-id, `debezium.sink.nats_streaming.cluster.id`>>
+|[[nats-streaming-cluster-id]]<<nats-streaming-cluster-id, `debezium.sink.nats-streaming.cluster.id`>>
 |
 |NATS Streaming Cluster ID.
 
-|[[nats_streaming-client-id]]<<nats_streaming-client-id, `debezium.sink.nats_streaming.client.id`>>
+|[[nats-streaming-client-id]]<<nats-streaming-client-id, `debezium.sink.nats-streaming.client.id`>>
 |
 |NATS Streaming Client ID.
 
@@ -618,7 +618,7 @@ When the alternative implementations are not available then the default ones are
 |`@CustomConsumerBuilder`
 |Custom configured instance of a `StreamingConnection` used to publish messages to target subjects.
 
-|[[nats_streaming-ext-stream-name-mapper]]<<nats_streaming-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|[[nats-streaming-ext-stream-name-mapper]]<<nats-streaming-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
 |Custom implementation maps the planned destination (topic) name into a physical NATS Streaming subject name.
 By default the same name is used.
