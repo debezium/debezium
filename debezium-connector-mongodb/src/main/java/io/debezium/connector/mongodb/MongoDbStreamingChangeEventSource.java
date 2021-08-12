@@ -213,7 +213,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         FindIterable<Document> results = oplog.find(filter)
                 .sort(new Document("$natural", 1))
                 .oplogReplay(true)
-                .cursorType(CursorType.TailableAwait);
+                .cursorType(CursorType.TailableAwait)
+                .noCursorTimeout(true);
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             results = results.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
