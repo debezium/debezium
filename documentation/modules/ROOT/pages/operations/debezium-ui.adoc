@@ -17,12 +17,12 @@ The UI is implemented as a https://quarkus.io/[Quarkus]-based web application.  
 
 == Installation and Configuration
 
-==== debezium-ui container image
+==== Debezium UI container image
 
-The debezium-ui https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URI supplies the comma-separated list of available URI(s)):
+The Debezium UI https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URI supplies the comma-separated list of available URI(s)):
 
 ----
-$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URI=http://connect:8083 debezium/debezium-ui:1.7
+$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URI=http://connect:8083 debezium/debezium-ui:{debezium-version}
 ----
 
 The UI connects to Kafka Connect via REST, so you need to make sure that the latter is reachable, e.g. by running both components on the same Docker network.
@@ -72,4 +72,3 @@ The Additional properties are optional and can be summarized as follows:
 The *Review* step provides a summary of the configuration that will be used to create the connector.  If happy with the selections, click 'Finish' to create the connector.  If the properties need adjustment, navigate back to the earlier steps.
 
 image::debezium-ui-create-connector-review.png[{prodname} UI Create connector review]
-
