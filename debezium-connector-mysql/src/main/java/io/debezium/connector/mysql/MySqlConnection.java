@@ -510,22 +510,30 @@ public class MySqlConnection extends JdbcConnection {
                 LOGGER.warn("'{}' is set to 'true'. This setting is not recommended and can result in timezone issues.", JDBC_PROPERTY_LEGACY_DATETIME);
             }
 
-            // Debezium by default expects timezoned data delivered in server timezone
-            final String connectionTimeZone = dbConfig.getString(JDBC_PROPERTY_CONNECTION_TIME_ZONE);
-            if (connectionTimeZone == null) {
-                jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, "SERVER");
-            }
-
-            final String serverTimeZone = dbConfig.getString(JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE);
-            if (serverTimeZone != null) {
-                LOGGER.warn("Database configuration option '{}' is set but is obsolete, please use '{}' instead", JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE,
-                        JDBC_PROPERTY_CONNECTION_TIME_ZONE);
-                jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, serverTimeZone);
-            }
+            jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, determineConnectionTimeZone(dbConfig));
 
             this.jdbcConfig = jdbcConfigBuilder.build();
             String driverClassName = this.jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
             factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader());
+        }
+
+        private static String determineConnectionTimeZone(final Configuration dbConfig) {
+            // Debezium by default expects timezoned data delivered in server timezone
+            String connectionTimeZone = dbConfig.getString(JDBC_PROPERTY_CONNECTION_TIME_ZONE);
+
+            if (connectionTimeZone != null) {
+                return connectionTimeZone;
+            }
+
+            // fall back to legacy property
+            final String serverTimeZone = dbConfig.getString(JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE);
+            if (serverTimeZone != null) {
+                LOGGER.warn("Database configuration option '{}' is set but is obsolete, please use '{}' instead", JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE,
+                        JDBC_PROPERTY_CONNECTION_TIME_ZONE);
+                connectionTimeZone = serverTimeZone;
+            }
+
+            return connectionTimeZone != null ? connectionTimeZone : "SERVER";
         }
 
         public Configuration config() {
