@@ -84,7 +84,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with("database.serverTimezone", DATABASE.timezone())
+                .with("database.connectionTimeZone", DATABASE.timezone())
                 .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -371,7 +371,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
-                .with("database.serverTimezone", DATABASE.timezone())
+                .with("database.connectionTimeZone", DATABASE.timezone())
                 .build();
         // Start the connector ...
         start(MySqlConnector.class, config);

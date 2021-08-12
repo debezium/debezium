@@ -1337,7 +1337,7 @@ The `DATETIME` type represents a local date and time such as "2018-01-13 09:48:2
 * `DATETIME` with a value of `2018-06-20 06:37:03` becomes `1529476623000`.
 * `TIMESTAMP` with a value of `2018-06-20 06:37:03` becomes `2018-06-20T13:37:03Z`.
 
-Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone. The time zone will be queried from the server by default. If this fails, it must be specified explicitly by the database `serverTimezone` MySQL configuration option. For example, if the database’s time zone (either globally or configured for the connector by means of the `serverTimezone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
+Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone. The time zone will be queried from the server by default. If this fails, it must be specified explicitly by the database `connectionTimeZone` MySQL configuration option. For example, if the database’s time zone (either globally or configured for the connector by means of the `connectionTimeZone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
 
 The time zone of the JVM running Kafka Connect and Debezium does not affect these conversions.
 
