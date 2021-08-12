@@ -50,9 +50,9 @@ public class NatsStreamingChangeConsumer extends BaseChangeConsumer
     private static final String PROP_CLIENT_ID = PROP_PREFIX + "client.id";
 
     private String url;
-    private String clusterID;
-    private String clientID;
-
+    private String clusterId;
+    private String clientId;
+    
     @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
     String nullKey;
 
@@ -73,8 +73,8 @@ public class NatsStreamingChangeConsumer extends BaseChangeConsumer
         // Read config
         final Config config = ConfigProvider.getConfig();
         url = config.getValue(PROP_URL, String.class);
-        clusterID = config.getValue(PROP_CLUSTER_ID, String.class);
-        clientID = config.getValue(PROP_CLIENT_ID, String.class);
+        clusterId = config.getValue(PROP_CLUSTER_ID, String.class);
+        clientId = config.getValue(PROP_CLIENT_ID, String.class);
 
         // Setup NATS Streaming connection
         Options stanOptions = new Options.Builder()
@@ -91,7 +91,7 @@ public class NatsStreamingChangeConsumer extends BaseChangeConsumer
                 })
                 .build();
         try {
-            sc = NatsStreaming.connect(clusterID, clientID, stanOptions);
+            sc = NatsStreaming.connect(clusterId, clientId, stanOptions);
         }
         catch (Exception e) {
             throw new DebeziumException(e);
