@@ -16,7 +16,6 @@ import javax.inject.Named;
 
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,9 +51,6 @@ public class NatsStreamingChangeConsumer extends BaseChangeConsumer
     private String url;
     private String clusterId;
     private String clientId;
-    
-    @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
-    String nullKey;
 
     private StreamingConnection sc;
 
