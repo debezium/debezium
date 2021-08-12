@@ -74,12 +74,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
         void error(String message, Exception exception);
     }
 
-    // TODO: This needs to be cleaned, or rejected by maintainer. Including in draft PR for comment.
+    /**
+     * Helper to gain access to protected method
+     */
     private final static class CharsetMappingWrapper extends CharsetMapping {
         String getJavaEncodingForMysqlCharSet(String mySqlCharsetName) {
             return CharsetMapping.getStaticJavaEncodingForMysqlCharset(mySqlCharsetName);
         }
-
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
