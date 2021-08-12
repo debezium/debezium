@@ -73,7 +73,7 @@ Such table could be created with a DDL command similar to:
 
 [source,sql]
 ----
-CREATE TABLE debezium_signal (id VARCHAR(32) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
+CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
 ----
 
 .Example of a signal record
