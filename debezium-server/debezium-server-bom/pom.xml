@@ -92,7 +92,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-nats_streaming</artifactId>
+                <artifactId>debezium-server-nats-streaming</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

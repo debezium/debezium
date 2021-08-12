@@ -36,14 +36,14 @@ import io.nats.streaming.StreamingConnection;
  *
  * @author Thiago Avancini
  */
-@Named("nats_streaming")
+@Named("nats-streaming")
 @Dependent
 public class NatsStreamingChangeConsumer extends BaseChangeConsumer
         implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NatsStreamingChangeConsumer.class);
 
-    private static final String PROP_PREFIX = "debezium.sink.nats_streaming.";
+    private static final String PROP_PREFIX = "debezium.sink.nats-streaming.";
     private static final String PROP_URL = PROP_PREFIX + "url";
     private static final String PROP_CLUSTER_ID = PROP_PREFIX + "cluster.id";
     private static final String PROP_CLIENT_ID = PROP_PREFIX + "client.id";

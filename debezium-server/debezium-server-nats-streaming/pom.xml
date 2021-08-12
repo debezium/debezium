@@ -7,7 +7,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>debezium-server-nats_streaming</artifactId>
+    <artifactId>debezium-server-nats-streaming</artifactId>
     <name>Debezium Server NATS Streaming Sink Adapter</name>
     <packaging>jar</packaging>
 
