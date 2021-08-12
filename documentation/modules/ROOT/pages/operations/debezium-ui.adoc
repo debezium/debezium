@@ -9,7 +9,13 @@
 
 toc::[]
 
-The {prodname} UI allows users to set up and operate connectors more easily.  A list of all connectors can be viewed along with their status, etc.  The Create Connector wizard allows the user to configure connectors, guiding and validating the property entries along the way.
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics and behaviours etc. may change in future revisions, based on the feedback we receive.
+Please let us know about your feature requests or if you encounter any problems while using the {prodname} UI.
+====
+
+The {prodname} UI allows users to set up and operate connectors more easily. For instance, a list of all connectors can be viewed along with their status, etc.  The Create Connector wizard allows the user to configure connectors, guiding and validating the property entries along the way.
 
 == Design Considerations
 
