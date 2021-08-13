@@ -242,6 +242,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                                     connectorConfig,
                                     schema,
                                     connection,
+                                    tableId,
                                     message));
 
                     maybeWarnAboutGrowingWalBacklog(dispatched);

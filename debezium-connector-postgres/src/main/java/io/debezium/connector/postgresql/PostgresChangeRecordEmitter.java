@@ -56,7 +56,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
     public PostgresChangeRecordEmitter(Partition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
-                                       PostgresConnection connection,
+                                       PostgresConnection connection, TableId tableId,
                                        ReplicationMessage message) {
         super(partition, offset, clock);
 
@@ -65,10 +65,10 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         this.connectorConfig = connectorConfig;
         this.connection = connection;
 
-        this.tableId = PostgresSchema.parse(message.getTable());
+        this.tableId = tableId;
         this.unchangedToastColumnMarkerMissing = !connectorConfig.plugin().hasUnchangedToastColumnMarker();
         this.nullToastedValuesMissingFromOld = !connectorConfig.plugin().sendsNullToastedValuesInOld();
-        Objects.requireNonNull(tableId);
+        Objects.requireNonNull(this.tableId);
     }
 
     @Override
@@ -134,12 +134,12 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     private DataCollectionSchema synchronizeTableSchema(DataCollectionSchema tableSchema) {
-        final boolean metadataInMessage = message.hasTypeMetadata();
-        final TableId tableId = (TableId) tableSchema.id();
-        final Table table = schema.tableFor(tableId);
         if (getOperation() == Operation.DELETE || !message.shouldSchemaBeSynchronized()) {
             return tableSchema;
         }
+        final boolean metadataInMessage = message.hasTypeMetadata();
+        final TableId tableId = (TableId) tableSchema.id();
+        final Table table = schema.tableFor(tableId);
         final List<ReplicationMessage.Column> columns = message.getNewTupleList();
         // check if we need to refresh our local schema due to DB schema changes for this table
         if (schemaChanged(columns, table, metadataInMessage)) {
