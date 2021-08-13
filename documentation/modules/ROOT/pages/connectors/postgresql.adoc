@@ -114,7 +114,7 @@ To use the {prodname} connector to stream changes from a PostgreSQL database, th
 Although one way to grant the necessary privileges is to provide the user with `superuser` privileges, doing so potentially exposes your PostgreSQL data to unauthorized access.
 Rather than granting excessive privileges to the {prodname} user, it is best to create a dedicated {prodname} replication user to which you grant specific privileges.
 
-For more information about configuring privileges for the {prodname} PostgreSQL user, see xref:postgresql-permissions[Setting up permissions].
+For more information about configuring privileges for the {prodname} PostgreSQL user, see {link-prefix}:{link-postgresql-connector}#postgresql-permissions[Setting up permissions].
 For more information about PostgreSQL logical replication security, see the link:https://www.postgresql.org/docs/current/logical-replication-security.html[PostgreSQL documentation].
 
 // Type: concept
@@ -1978,7 +1978,7 @@ endif::community[]
 Setting up a PostgreSQL server to run a {prodname} connector requires a database user that can perform replications.
 Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
 
-Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in xref:postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
+Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in {link-prefix}:{link-postgresql-connector}#postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
 Instead, create a {prodname} user that has the the minimum required privileges.
 
 .Prerequisites
@@ -2726,9 +2726,9 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
  +
 `skip` causes those event to be omitted (the default). +
  +
-`include` causes hos events to be included. +
-+
-Please see xref:postgresql-truncate-events[] for the structure of _truncate_ events and their ordering semantics.
+`include` causes those events to be included. +
+ +
+For information about the structure of _truncate_ events and about their ordering semantics, see xref:postgresql-truncate-events[].
 
 |===
 
