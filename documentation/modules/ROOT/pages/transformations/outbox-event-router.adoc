@@ -22,7 +22,7 @@ To implement the outbox pattern in a {prodname} application, configure a {prodna
 * Apply the {prodname} outbox event router single message transformation (SMT)
 
 A {prodname} connector that is configured to apply the outbox SMT should capture changes that occur in an outbox table only.
-For more information, see xref:options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
+For more information, see {link-prefix}:{link-outbox-event-router}#options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
 
 A connector can capture changes in more than one outbox table only if each outbox table has the same structure.
 
@@ -186,7 +186,7 @@ Because the structure of these other messages different from the structure of th
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
 * {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
-* Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
+* Use the xref:outbox-event-router-property-route-topic-regex[route.topic.regex] configuration option for the SMT.
 
 // Type: concept
 // Title: Using Avro as the payload format in {prodname} outbox messages
