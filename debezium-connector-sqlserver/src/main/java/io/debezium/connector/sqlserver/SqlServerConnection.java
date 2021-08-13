@@ -35,7 +35,6 @@ import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
@@ -74,10 +73,7 @@ public class SqlServerConnection extends JdbcConnection {
     protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET(sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
-    private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM cdc.index_columns WHERE object_id=?";
     private static final Pattern BRACKET_PATTERN = Pattern.compile("[\\[\\]]");
-
-    private static final int CHANGE_TABLE_DATA_COLUMN_OFFSET = 5;
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "};databaseName=${"
             + JdbcConfiguration.DATABASE + "}";
@@ -247,23 +243,6 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     /**
-     * Provides all changes recorded by the SQL Server CDC capture process for a given table.
-     *
-     * @param tableId - the requested table changes
-     * @param fromLsn - closed lower bound of interval of changes to be provided
-     * @param toLsn  - closed upper bound of interval  of changes to be provided
-     * @param consumer - the change processor
-     * @throws SQLException
-     */
-    public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
-        final String query = getAllChangesForTable.replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
-        prepareQuery(query, statement -> {
-            statement.setBytes(1, fromLsn.getBinary());
-            statement.setBytes(2, toLsn.getBinary());
-        }, consumer);
-    }
-
-    /**
      * Provides all changes recorder by the SQL Server CDC capture process for a set of tables.
      *
      * @param changeTables - the requested tables to obtain changes for
@@ -423,36 +402,6 @@ public class SqlServerConnection extends JdbcConnection {
         final List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, changeTable.getSourceTableId()).stream()
                 .filter(column -> changeTable.getCapturedColumns().contains(column))
                 .collect(Collectors.toList());
-        Collections.sort(columns);
-        return Table.editor()
-                .tableId(changeTable.getSourceTableId())
-                .addColumns(columns)
-                .setPrimaryKeyNames(pkColumnNames)
-                .create();
-    }
-
-    public Table getTableSchemaFromChangeTable(SqlServerChangeTable changeTable) throws SQLException {
-        final DatabaseMetaData metadata = connection().getMetaData();
-        final TableId changeTableId = changeTable.getChangeTableId();
-
-        List<ColumnEditor> columnEditors = new ArrayList<>();
-        try (ResultSet rs = metadata.getColumns(databaseName, changeTableId.schema(), changeTableId.table(), null)) {
-            while (rs.next()) {
-                readTableColumn(rs, changeTableId, null).ifPresent(columnEditors::add);
-            }
-        }
-
-        // The first 5 columns and the last column of the change table are CDC metadata
-        final List<Column> columns = columnEditors.subList(CHANGE_TABLE_DATA_COLUMN_OFFSET, columnEditors.size() - 1).stream()
-                .map(c -> c.position(c.position() - CHANGE_TABLE_DATA_COLUMN_OFFSET).create())
-                .collect(Collectors.toList());
-
-        final List<String> pkColumnNames = new ArrayList<>();
-        prepareQuery(GET_LIST_OF_KEY_COLUMNS, ps -> ps.setInt(1, changeTable.getChangeTableObjectId()), rs -> {
-            while (rs.next()) {
-                pkColumnNames.add(rs.getString(2));
-            }
-        });
         Collections.sort(columns);
         return Table.editor()
                 .tableId(changeTable.getSourceTableId())
