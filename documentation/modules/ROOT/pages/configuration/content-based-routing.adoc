@@ -175,7 +175,7 @@ You can use one of the following methods to configure the connector to apply the
 == Language specifics
 
 The way that you express content-based routing conditions depends on the scripting language that you use.
-For example, as shown in the xref:example-basic-content-based-routing-configuration[basic configuration example], when you use `Groovy` as the expression language,
+For example, as shown in the {link-prefix}:{link-content-based-routing}#example-basic-content-based-routing-configuration[basic configuration example], when you use `Groovy` as the expression language,
 the following expression reroutes all update (`u`) records to the `updates` topic, while routing other records to the default topic:
 
 [source,groovy]

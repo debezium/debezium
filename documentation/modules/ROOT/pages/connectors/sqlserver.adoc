@@ -2308,8 +2308,8 @@ As a {prodname} user, you must coordinate tasks with the SQL Server database ope
 
 You can use one of the following methods to update capture tables after a schema change:
 
-* xref:offline-schema-updates[]. In offline schema updates, capture tables are updated after you stop the {prodname} connector.
-* xref:online-schema-updates[]. In online schema updates, capture tables are updated while the {prodname} connector is running.
+* {link-prefix}:{link-sqlserver-connector}#offline-schema-updates[Offline schema updates] require you to stop the {prodname} connector before you can update capture tables.
+* {link-prefix}:{link-sqlserver-connector}#online-schema-updates[Online schema updates] can update capture tables while the {prodname} connector is running.
 
 There are advantages and disadvantages to using each type of procedure.
 
@@ -2471,9 +2471,9 @@ GO
 The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 The connector provides the following metrics:
 
-* <<sqlserver-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots.
-* <<sqlserver-streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data.
-* <<sqlserver-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history.
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
 
 For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation].
 
