@@ -1412,7 +1412,7 @@ A value of `0` indicates using the server/driver default wait timeout.
 The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
 * {link-prefix}:{link-mongodb-connector}#mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
-* {link-prefix}:{link-mongodb-connector}#mongodb-streaming-metrics[Steaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
+* {link-prefix}:{link-mongodb-connector}#mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
 The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose these metrics by using JMX.
 
