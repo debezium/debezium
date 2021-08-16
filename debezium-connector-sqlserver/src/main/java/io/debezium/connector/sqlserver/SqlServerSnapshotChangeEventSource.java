@@ -81,7 +81,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected SnapshotContext<SqlServerPartition, SqlServerOffsetContext> prepare(SqlServerPartition partition)
             throws Exception {
-        return new SqlServerSnapshotContext(partition, jdbcConnection.getRealDatabaseName());
+        return new SqlServerSnapshotContext(partition, jdbcConnection.getDatabaseName());
     }
 
     @Override
