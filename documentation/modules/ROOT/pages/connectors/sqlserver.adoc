@@ -2246,17 +2246,6 @@ ifdef::community[]
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 endif::community[]
 
-|[[sqlserver-property-database-server-timezone]]<<sqlserver-property-database-server-timezone, `+database.server.timezone+`>>
-|
-| Timezone of the server.
-
-This property defines the timezone of the transaction timestamp (`ts_ms`) that is retrieved from the server (which is actually not zoned).
-By default, the value is unset.
-Set a value for the property only when running on SQL Server 2014 or older, and the database server and the JVM running the {prodname} connector use different timezones.
-
-When unset, default behavior is to use the timezone of the VM running the {prodname} connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
-Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
-
 |[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.

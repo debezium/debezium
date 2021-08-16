@@ -115,6 +115,7 @@
                                     <SA_PASSWORD>${sqlserver.password}</SA_PASSWORD>
                                     <MSSQL_PID>Standard</MSSQL_PID>
                                     <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>
+                                    <TZ>Asia/Kathmandu</TZ>
                                 </env>
                                 <ports>
                                     <port>${sqlserver.port}:1433</port>

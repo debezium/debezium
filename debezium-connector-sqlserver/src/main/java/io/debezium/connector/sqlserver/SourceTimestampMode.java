@@ -27,24 +27,18 @@ public enum SourceTimestampMode implements EnumeratedValue {
     COMMIT("commit") {
         @Override
         protected Instant getTimestamp(SqlServerConnection connection, Clock clock, ResultSet resultSet) throws SQLException {
-            return connection.normalize(resultSet.getTimestamp(resultSet.getMetaData().getColumnCount()));
+            return resultSet.getTimestamp(resultSet.getMetaData().getColumnCount()).toInstant();
         }
 
         /**
-         * Returns the query for obtaining the LSN-to-TIMESTAMP query. On SQL Server
-         * 2016 and newer, the query will normalize the value to UTC. This means that
-         * the {@link SqlServerConnection#SERVER_TIMEZONE_PROP_NAME} is not necessary to be given. The
+         * Returns the query for obtaining the LSN-to-TIMESTAMP query. The
          * returned TIMESTAMP will be adjusted by the JDBC driver using this VM's TZ (as
          * required by the JDBC spec), and that same TZ will be applied when converting
          * the TIMESTAMP value into an {@code Instant}.
          */
         @Override
-        protected String lsnTimestampSelectStatement(boolean supportsAtTimeZone) {
-            String result = ", " + SqlServerConnection.LSN_TIMESTAMP_SELECT_STATEMENT;
-            if (supportsAtTimeZone) {
-                result += " " + SqlServerConnection.AT_TIME_ZONE_UTC;
-            }
-            return result;
+        protected String lsnTimestampSelectStatement() {
+            return ", " + SqlServerConnection.LSN_TIMESTAMP_SELECT_STATEMENT;
         }
     },
 
@@ -61,7 +55,7 @@ public enum SourceTimestampMode implements EnumeratedValue {
         }
 
         @Override
-        protected String lsnTimestampSelectStatement(boolean supportsAtTimeZone) {
+        protected String lsnTimestampSelectStatement() {
             return "";
         }
     };
@@ -88,10 +82,8 @@ public enum SourceTimestampMode implements EnumeratedValue {
 
     /**
      * Returns the SQL fragment to be embedded into the {@code GET_ALL_CHANGES_FOR_TABLE} query depending on the mode.
-     *
-     * @param supportsAtTimeZone Whether the server supports the {@code AT TIME ZONE} clause
      */
-    protected abstract String lsnTimestampSelectStatement(boolean supportsAtTimeZone);
+    protected abstract String lsnTimestampSelectStatement();
 
     /**
      * Returns the names of the data columns returned by the {@code GET_ALL_CHANGES_FOR_TABLE} query.

@@ -225,6 +225,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isOptional)
             .withDescription("The SQL Server instance name");
 
+    /**
+     * @deprecated The connector will determine the database server timezone offset automatically.
+     */
+    @Deprecated
     public static final Field SERVER_TIMEZONE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.SERVER_TIMEZONE_PROP_NAME)
             .withDisplayName("Server timezone")
             .withType(Type.STRING)
@@ -243,7 +247,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 return 0;
             })
             .withDescription("The timezone of the server used to correctly shift the commit transaction timestamp on the client side"
-                    + "Options include: Any valid Java ZoneId");
+                    + "Options include: Any valid Java ZoneId (deprecated, the connector will determine the database server timezone offset automatically)");
 
     public static final Field MAX_LSN_OPTIMIZATION = Field.createInternal("streaming.lsn.optimization")
             .withDisplayName("Max LSN Optimization")
