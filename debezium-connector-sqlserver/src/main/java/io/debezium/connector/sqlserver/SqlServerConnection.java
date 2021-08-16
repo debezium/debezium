@@ -10,11 +10,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.sql.Types;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,6 +48,10 @@ import io.debezium.util.Clock;
  */
 public class SqlServerConnection extends JdbcConnection {
 
+    /**
+     * @deprecated The connector will determine the database server timezone offset automatically.
+     */
+    @Deprecated
     public static final String SERVER_TIMEZONE_PROP_NAME = "server.timezone";
     public static final String INSTANCE_NAME = "instance";
 
@@ -67,12 +67,10 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String GET_MIN_LSN = "SELECT sys.fn_cdc_get_min_lsn('#')";
     private static final String LOCK_TABLE = "SELECT * FROM [#] WITH (TABLOCKX)";
-    private static final String SQL_SERVER_VERSION = "SELECT @@VERSION AS 'SQL Server Version'";
     private static final String INCREMENT_LSN = "SELECT sys.fn_cdc_increment_lsn(?)";
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT *# FROM cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private final String get_all_changes_for_table;
-    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "sys.fn_cdc_map_lsn_to_time([__$start_lsn])";
-    protected static final String AT_TIME_ZONE_UTC = "AT TIME ZONE 'UTC'";
+    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET(sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM cdc.index_columns WHERE object_id=?";
@@ -91,7 +89,6 @@ public class SqlServerConnection extends JdbcConnection {
      * actual name of the database, which could differ in casing from the database name given in the connector config.
      */
     private final String realDatabaseName;
-    private final ZoneId transactionTimezone;
     private final String getAllChangesForTable;
     private final int queryFetchSize;
 
@@ -122,9 +119,12 @@ public class SqlServerConnection extends JdbcConnection {
     public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters,
                                Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations) {
         super(config, FACTORY, classLoaderSupplier);
+
+        if (config().hasKey(SERVER_TIMEZONE_PROP_NAME)) {
+            LOGGER.warn("The '{}' option is deprecated and is not taken into account", SERVER_TIMEZONE_PROP_NAME);
+        }
+
         realDatabaseName = retrieveRealDatabaseName();
-        boolean supportsAtTimeZone = supportsAtTimeZone();
-        transactionTimezone = retrieveTransactionTimezone(supportsAtTimeZone);
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
 
@@ -158,7 +158,7 @@ public class SqlServerConnection extends JdbcConnection {
         }
 
         getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
-                Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(supportsAtTimeZone)));
+                Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement()));
     }
 
     /**
@@ -306,20 +306,6 @@ public class SqlServerConnection extends JdbcConnection {
             LOGGER.trace("Increasing lsn from {} to {}", lsn, ret);
             return ret;
         }, "Increment LSN query must return exactly one value"));
-    }
-
-    protected Instant normalize(Timestamp timestamp) {
-        Instant instant = timestamp.toInstant();
-
-        // in case the incoming timestamp was not based on UTC, shift it as per the
-        // configured timezone which must match the value used by the database
-        if (!transactionTimezone.getId().equals("UTC")) {
-            instant = instant.atZone(transactionTimezone)
-                    .toLocalDateTime()
-                    .toInstant(ZoneOffset.UTC);
-        }
-
-        return instant;
     }
 
     /**
@@ -470,28 +456,6 @@ public class SqlServerConnection extends JdbcConnection {
         return realDatabaseName;
     }
 
-    private ZoneId retrieveTransactionTimezone(boolean supportsAtTimeZone) {
-        final String serverTimezoneConfig = config().getString(SERVER_TIMEZONE_PROP_NAME);
-
-        if (supportsAtTimeZone) {
-            if (serverTimezoneConfig != null) {
-                LOGGER.warn("The '{}' option should not be specified with SQL Server 2016 and newer", SERVER_TIMEZONE_PROP_NAME);
-            }
-        }
-        else {
-            if (serverTimezoneConfig == null) {
-                LOGGER.warn(
-                        "The '{}' option should be specified to avoid incorrect timestamp values in case of different timezones between the database server and this connector's JVM.",
-                        SERVER_TIMEZONE_PROP_NAME);
-            }
-        }
-
-        // Assuming UTC to be used for the ts_ms TIMESTAMP column
-        // In case AT TIME ZONE is supported, UTC is what we'll request;
-        // Otherwise, UTC is as good as any other guess
-        return serverTimezoneConfig == null ? ZoneId.of("UTC") : ZoneId.of(serverTimezoneConfig, ZoneId.SHORT_IDS);
-    }
-
     private String retrieveRealDatabaseName() {
         try {
             return queryAndMap(
@@ -500,37 +464,6 @@ public class SqlServerConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             throw new RuntimeException("Couldn't obtain database name", e);
-        }
-    }
-
-    /**
-     * SELECT ... AT TIME ZONE only works on SQL Server 2016 and newer.
-     */
-    private boolean supportsAtTimeZone() {
-        try {
-            // Always expect the support if database is not standalone SQL Server, e.g. Azure
-            return getSqlServerVersion().orElse(Integer.MAX_VALUE) > 2016;
-        }
-        catch (Exception e) {
-            LOGGER.error("Couldn't obtain database server version; assuming 'AT TIME ZONE' is not supported.", e);
-            return false;
-        }
-    }
-
-    private Optional<Integer> getSqlServerVersion() {
-        try {
-            // As per https://www.mssqltips.com/sqlservertip/1140/how-to-tell-what-sql-server-version-you-are-running/
-            // Always beginning with 'Microsoft SQL Server NNNN' but only in case SQL Server is standalone
-            String version = queryAndMap(
-                    SQL_SERVER_VERSION,
-                    singleResultMapper(rs -> rs.getString(1), "Could not obtain SQL Server version"));
-            if (!version.startsWith("Microsoft SQL Server ")) {
-                return Optional.empty();
-            }
-            return Optional.of(Integer.valueOf(version.substring(21, 25)));
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Couldn't obtain database server version", e);
         }
     }
 
