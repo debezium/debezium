@@ -891,8 +891,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int TABLES = 1;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tableb")
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "^dbo.tableb$")
                 .build();
         connection.execute(
                 "INSERT INTO tableb VALUES(1, 'b')");
@@ -901,7 +901,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         // Wait for snapshot completion
-        consumeRecordsByTopic(1);
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        Assertions.assertThat(snapshotRecords.recordsForTopic("server1.dbo.tableb")).isNotEmpty();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
