@@ -299,6 +299,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         // For R/W database it is important to execute regular commits to maintain the size of TempDB
         if (connectorConfig.isReadOnlyDatabaseConnection() || pauseBetweenCommits.hasElapsed()) {
             dataConnection.commit();
+            metadataConnection.commit();
         }
     }
 
