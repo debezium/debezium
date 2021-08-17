@@ -223,6 +223,22 @@ public class OracleConnectorConfigTest {
         assertThat(connectorConfig.getRacNodes()).hasSize(2);
         assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1521", "1.2.3.5:1522");
 
+        // Test rac.nodes using different ports with no database.port
+        config = Configuration.create().with(racNodes, "1.2.3.4:1523,1.2.3.5:1522").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
+
+        connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getRacNodes()).hasSize(2);
+        assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1523", "1.2.3.5:1522");
+
+        // Test rac.nodes using different ports that differ from database.port
+        config = Configuration.create().with(port, "1521").with(racNodes, "1.2.3.4:1523,1.2.3.5:1522").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
+
+        connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getRacNodes()).hasSize(2);
+        assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1523", "1.2.3.5:1522");
+
         // Test rac.nodes using no port with no database port
         config = Configuration.create().with(racNodes, "1.2.3.4,1.2.3.5").build();
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isFalse();
