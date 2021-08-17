@@ -418,7 +418,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
         this.logMiningHistoryRetentionHours = config.getLong(LOG_MINING_HISTORY_RETENTION);
-        this.racNodes = resovleRacNodes(config);
+        this.racNodes = resolveRacNodes(config);
         this.logMiningContinuousMine = config.getBoolean(CONTINUOUS_MINE);
         this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
@@ -1012,7 +1012,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return Module.name();
     }
 
-    private Set<String> resovleRacNodes(Configuration config) {
+    private Set<String> resolveRacNodes(Configuration config) {
         final boolean portProvided = config.hasKey(PORT.name());
         final Set<String> nodes = Strings.setOf(config.getString(RAC_NODES), String::new);
         return nodes.stream().map(node -> {
