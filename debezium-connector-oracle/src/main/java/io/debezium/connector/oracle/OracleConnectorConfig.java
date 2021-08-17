@@ -1064,7 +1064,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 for (String racNode : racNodes) {
                     String[] parts = racNode.split(":");
                     if (parts.length == 1) {
-                        problems.accept(field, racNode, "Must be specified as 'ip:port' since no 'database.port' is provided");
+                        problems.accept(field, racNode, "Must be specified as 'ip/hostname:port' since no 'database.port' is provided");
                         errors++;
                     }
                 }
