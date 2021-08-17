@@ -443,16 +443,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
         }
 
-        return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId)) : getSnapshotSelect(snapshotContext, tableId);
-    }
+        if (overriddenSelect != null) {
+            return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
+        }
 
-    /**
-     * Returns a comma-separated list of columns to be used in the snapshot select.
-     *
-     * @param tableId the table to generate a query for
-     * @return comma-separated list of columns
-     */
-    protected abstract String getSnapshotSelectColumns(TableId tableId);
+        List<String> columns = getPreparedColumnNames(schema.tableFor(tableId));
+
+        return getSnapshotSelect(snapshotContext, tableId, columns);
+    }
 
     /**
      * Prepares a list of columns to be used in the snapshot select.
@@ -461,14 +459,15 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      *
      * @return list of snapshot select columns
      */
-    protected List<String> getPreparedColumnNames(Table table, TableId tableId) {
-        List<String> columnNames = table.retrieveColumnNames().stream()
-                .map(columnName -> resolveColumnName(tableId, columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
+    private List<String> getPreparedColumnNames(Table table) {
+        List<String> columnNames = table.retrieveColumnNames()
+                .stream()
+                .map(columnName -> resolveColumnName(table.id(), columnName))
+                .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
                 .collect(Collectors.toList());
 
         if (columnNames.isEmpty()) {
-            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", tableId);
+            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", table.id());
             columnNames = table.primaryKeyColumnNames();
         }
         return columnNames;
@@ -493,7 +492,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext,
-                                                          TableId tableId);
+                                                          TableId tableId, List<String> columns);
 
     protected abstract String resolveColumnName(TableId tableId, String columnName);
 
