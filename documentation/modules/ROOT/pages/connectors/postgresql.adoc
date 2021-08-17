@@ -977,7 +977,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * Connector type and name
 * Database and table that contains the new row
 * Schema name
-* If the event was part of a snapshot (alwas `false` for _update_ events)
+* If the event was part of a snapshot (always `false` for _update_ events)
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
