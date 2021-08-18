@@ -2004,6 +2004,15 @@ The following configuration properties are _required_ unless a default value is 
 |[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbname+`>>
 |
 |The name of the SQL Server database from which to stream the changes
+Must not be used with `database.names`.
+
+|[[sqlserver-property-database-names]]<<sqlserver-property-database-names, `+database.names+`>>
+|
+|The comma-separated list of the SQL Server database names from which to stream the changes.
+Currently, only one database name is supported. Must not be used with `database.dbname`.
+
+This option is *experimental* and must not be used in production. Using it will make the behavior of the connector
+incompatible with the default configuration with no upgrade or downgrade path.
 
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |
