@@ -154,7 +154,7 @@ public class DebeziumServer {
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
         for (String name : config.getPropertyNames()) {
             String updatedPropertyName = null;
-            if (SHELL_PROPERTY_NAME_PATTERN.asPredicate().test(name)) {
+            if (SHELL_PROPERTY_NAME_PATTERN.matcher(name).matches()) {
                 updatedPropertyName = name.replace("_", ".").toLowerCase();
             }
             if (updatedPropertyName != null && updatedPropertyName.startsWith(oldPrefix)) {
