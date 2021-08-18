@@ -73,7 +73,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
         dataConnection = new SqlServerConnection(jdbcConfig, clock, connectorConfig.getSourceTimestampMode(), valueConverters, () -> getClass().getClassLoader(),
-                connectorConfig.getSkippedOperations(), false);
+                connectorConfig.getSkippedOperations());
         metadataConnection = new SqlServerConnection(jdbcConfig, clock, connectorConfig.getSourceTimestampMode(), valueConverters, () -> getClass().getClassLoader(),
                 connectorConfig.getSkippedOperations());
 

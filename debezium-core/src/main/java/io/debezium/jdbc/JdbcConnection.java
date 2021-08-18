@@ -90,11 +90,6 @@ public class JdbcConnection implements AutoCloseable {
             });
 
     /**
-     * The auto-commit mode to be set on the underlying connection.
-     */
-    private final Boolean autoCommit;
-
-    /**
      * Establishes JDBC connections.
      */
     @FunctionalInterface
@@ -333,7 +328,7 @@ public class JdbcConnection implements AutoCloseable {
      * @param connectionFactory the connection factory; may not be null
      */
     public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier) {
-        this(config, connectionFactory, null, null, classLoaderSupplier, null);
+        this(config, connectionFactory, null, null, classLoaderSupplier);
     }
 
     /**
@@ -359,22 +354,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
                              Consumer<Configuration.Builder> adapter) {
-        this(config, connectionFactory, initialOperations, adapter, null, null);
-    }
-
-    /**
-     * Create a new instance with the given configuration and connection factory, and specify the operations that should be
-     * run against each newly-established connection.
-     *
-     * @param config the configuration; may not be null
-     * @param connectionFactory the connection factory; may not be null
-     * @param initialOperations the initial operations that should be run on each new connection; may be null
-     * @param adapter the function that can be called to update the configuration with defaults
-     * @param autoCommit auto-commit mode to be set on the underlying connection
-     */
-    protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Consumer<Configuration.Builder> adapter, Boolean autoCommit) {
-        this(config, connectionFactory, initialOperations, adapter, null, autoCommit);
+        this(config, connectionFactory, initialOperations, adapter, null);
     }
 
     /**
@@ -388,11 +368,10 @@ public class JdbcConnection implements AutoCloseable {
      * @param classLoaderSupplier class loader supplier
      */
     protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Consumer<Configuration.Builder> adapter, Supplier<ClassLoader> classLoaderSupplier, Boolean autoCommit) {
+                             Consumer<Configuration.Builder> adapter, Supplier<ClassLoader> classLoaderSupplier) {
         this.config = adapter == null ? config : config.edit().apply(adapter).build();
         this.factory = classLoaderSupplier == null ? connectionFactory : new ConnectionFactoryDecorator(connectionFactory, classLoaderSupplier);
         this.initialOps = initialOperations;
-        this.autoCommit = autoCommit;
         this.conn = null;
     }
 
@@ -920,9 +899,6 @@ public class JdbcConnection implements AutoCloseable {
             if (statements != null && executeOnConnect) {
                 final List<String> splitStatements = parseSqlStatementString(statements);
                 execute(splitStatements.toArray(new String[splitStatements.size()]));
-            }
-            if (autoCommit != null) {
-                conn.setAutoCommit(autoCommit);
             }
         }
         return conn;

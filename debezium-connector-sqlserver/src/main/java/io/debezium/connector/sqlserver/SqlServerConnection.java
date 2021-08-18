@@ -6,6 +6,7 @@
 
 package io.debezium.connector.sqlserver;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -118,23 +119,7 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters,
                                Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations) {
-        this(config, clock, sourceTimestampMode, valueConverters, classLoaderSupplier, skippedOperations, null);
-    }
-
-    /**
-     * Creates a new connection using the supplied configuration.
-     *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param clock the clock
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param valueConverters {@link SqlServerValueConverters} instance
-     * @param classLoaderSupplier class loader supplier
-     * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
-     * @param autoCommit auto-commit mode to be set on the underlying connection
-     */
-    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters,
-                               Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations, Boolean autoCommit) {
-        super(config, FACTORY, null, null, classLoaderSupplier, autoCommit);
+        super(config, FACTORY, null, null, classLoaderSupplier);
 
         if (config().hasKey(SERVER_TIMEZONE_PROP_NAME)) {
             LOGGER.warn("The '{}' option is deprecated and is not taken into account", SERVER_TIMEZONE_PROP_NAME);
@@ -184,6 +169,18 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public String connectionString() {
         return connectionString(URL_PATTERN);
+    }
+
+    @Override
+    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
+        boolean connected = isConnected();
+        Connection connection = super.connection(executeOnConnect);
+
+        if (!connected) {
+            connection.setAutoCommit(false);
+        }
+
+        return connection;
     }
 
     /**
