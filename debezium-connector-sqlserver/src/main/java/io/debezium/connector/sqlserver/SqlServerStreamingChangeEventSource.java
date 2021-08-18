@@ -71,8 +71,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final SqlServerConnection dataConnection;
 
     /**
-     * A separate connection for retrieving timestamps; without it, adaptive
-     * buffering will not work.
+     * A separate connection for retrieving details of the schema changes; without it, adaptive buffering will not work.
      *
      * @link https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
      */
@@ -264,7 +263,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             offsetContext.event(
                                     tableWithSmallestLsn.getChangeTable().getSourceTableId(),
                                     connectorConfig.getSourceTimestampMode().getTimestamp(
-                                            metadataConnection, clock, tableWithSmallestLsn.getResultSet()));
+                                            clock, tableWithSmallestLsn.getResultSet()));
 
                             dispatcher
                                     .dispatchDataChangeEvent(

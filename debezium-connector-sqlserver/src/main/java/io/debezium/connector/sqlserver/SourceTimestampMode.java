@@ -26,7 +26,7 @@ public enum SourceTimestampMode implements EnumeratedValue {
      */
     COMMIT("commit") {
         @Override
-        protected Instant getTimestamp(SqlServerConnection connection, Clock clock, ResultSet resultSet) throws SQLException {
+        protected Instant getTimestamp(Clock clock, ResultSet resultSet) throws SQLException {
             return resultSet.getTimestamp(resultSet.getMetaData().getColumnCount()).toInstant();
         }
 
@@ -50,7 +50,7 @@ public enum SourceTimestampMode implements EnumeratedValue {
     @Deprecated
     PROCESSING("processing") {
         @Override
-        protected Instant getTimestamp(SqlServerConnection connection, Clock clock, ResultSet resultSet) {
+        protected Instant getTimestamp(Clock clock, ResultSet resultSet) {
             return clock.currentTime();
         }
 
@@ -74,11 +74,10 @@ public enum SourceTimestampMode implements EnumeratedValue {
     /**
      * Returns the timestamp to be put in the source metadata of the event depending on the mode.
      *
-     * @param connection Server connection used to fetch the result set
      * @param clock System clock to source processing time from
      * @param resultSet  Result set representing the CDC event and its commit timestamp, if required by the mode
      */
-    protected abstract Instant getTimestamp(SqlServerConnection connection, Clock clock, ResultSet resultSet) throws SQLException;
+    protected abstract Instant getTimestamp(Clock clock, ResultSet resultSet) throws SQLException;
 
     /**
      * Returns the SQL fragment to be embedded into the {@code GET_ALL_CHANGES_FOR_TABLE} query depending on the mode.
