@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -54,7 +55,17 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             throw new IllegalArgumentException("Only a single connector task may be started");
         }
 
-        return Collections.singletonList(properties);
+        Map<String, String> taskConfig = new HashMap<>(properties);
+
+        Configuration config = Configuration.from(properties);
+        try (SqlServerConnection connection = connect(config)) {
+            taskConfig.put(RelationalDatabaseConnectorConfig.DATABASE_NAME.name(), connection.retrieveRealDatabaseName());
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve real database name", e);
+        }
+
+        return Collections.singletonList(taskConfig);
     }
 
     @Override
@@ -75,11 +86,9 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
-        SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
         // Try to connect to the database ...
-        try (SqlServerConnection connection = new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
-                sqlServerConfig.getSourceTimestampMode(), null)) {
-            // SqlServerConnection will try retrieving database, no need to run another query.
+        try (SqlServerConnection connection = connect(config)) {
+            connection.execute("SELECT @@VERSION");
             LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                     connection.username());
         }
@@ -94,5 +103,11 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(SqlServerConnectorConfig.ALL_FIELDS);
+    }
+
+    private SqlServerConnection connect(Configuration config) {
+        SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
+        return new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
+                sqlServerConfig.getSourceTimestampMode(), null);
     }
 }
