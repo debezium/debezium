@@ -685,7 +685,7 @@ on_comp_partitioned_table
 on_comp_partitioned_clause
     : PARTITION partition_name?
         (segment_attributes_clause | key_compression)*
-        UNUSABLE index_subpartition_clause?
+        UNUSABLE? index_subpartition_clause?
     ;
 
 index_subpartition_clause
@@ -1980,7 +1980,9 @@ hash_subparts_by_quantity
     ;
 
 range_values_clause
-    : VALUES LESS THAN '(' literal (',' literal)* ')'
+    : VALUES LESS THAN
+        ('(' literal (',' literal)* ')' |
+            '(' TIMESTAMP literal (',' TIMESTAMP literal)* ')')
     ;
 
 list_values_clause
@@ -2892,6 +2894,7 @@ substitutable_column_clause
 
 partition_name
     : regular_id
+    | DELIMITED_ID
     ;
 
 supplemental_logging_props
