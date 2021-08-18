@@ -75,7 +75,7 @@ public class DebeziumServer {
     private static final String FORMAT_AVRO = Avro.class.getSimpleName().toLowerCase();
     private static final String FORMAT_PROTOBUF = Protobuf.class.getSimpleName().toLowerCase();
 
-    private static final Pattern SHELL_PROPERTY_NAME_PATTERN = Pattern.compile("^\\w+_+\\w+$");
+    private static final Pattern SHELL_PROPERTY_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+_+[a-zA-Z0-9_]+$");
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
