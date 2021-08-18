@@ -983,6 +983,17 @@ public interface Configuration {
     }
 
     /**
+     * Determine whether this configuration contains a key-value pair associated with the given field and the value
+     * is non-null.
+     *
+     * @param field the field; may not be null
+     * @return true if the configuration contains the key, or false otherwise
+     */
+    default boolean hasKey(Field field) {
+        return hasKey(field.name());
+    }
+
+    /**
      * Get the set of keys in this configuration.
      *
      * @return the set of keys; never null but possibly empty

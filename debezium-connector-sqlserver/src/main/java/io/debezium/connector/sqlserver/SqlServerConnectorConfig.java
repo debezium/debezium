@@ -225,6 +225,18 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isOptional)
             .withDescription("The SQL Server instance name");
 
+    public static final Field DATABASE_NAME = RelationalDatabaseConnectorConfig.DATABASE_NAME
+            .withNoValidation()
+            .withValidation(SqlServerConnectorConfig::validateDatabaseName);
+
+    public static final Field DATABASE_NAMES = Field.create(DATABASE_CONFIG_PREFIX + "names")
+            .withDisplayName("Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(SqlServerConnectorConfig::validateDatabaseNames)
+            .withDescription("The names of the databases from which the connector should capture changes");
+
     /**
      * @deprecated The connector will determine the database server timezone offset automatically.
      */
@@ -309,6 +321,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .name("SQL Server")
             .type(
                     DATABASE_NAME,
+                    DATABASE_NAMES,
                     HOSTNAME,
                     PORT,
                     USER,
@@ -344,12 +357,29 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SourceTimestampMode sourceTimestampMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
+    private final boolean multiPartitionMode;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
                 ColumnFilterMode.SCHEMA);
 
-        this.databaseName = config.getString(DATABASE_NAME);
+        final String databaseName = config.getString(DATABASE_NAME.name());
+        final String databaseNames = config.getString(DATABASE_NAMES.name());
+
+        if (databaseName != null) {
+            multiPartitionMode = false;
+            this.databaseName = databaseName;
+        }
+        else if (databaseNames != null) {
+            multiPartitionMode = true;
+            this.databaseName = databaseNames;
+            LOGGER.info("Multi-partition mode is enabled");
+        }
+        else {
+            multiPartitionMode = false;
+            this.databaseName = null;
+        }
+
         this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
@@ -380,6 +410,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public String getInstanceName() {
         return instanceName;
+    }
+
+    public boolean isMultiPartitionModeEnabled() {
+        return multiPartitionMode;
     }
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {
@@ -446,5 +480,31 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    private static int validateDatabaseName(Configuration config, Field field, Field.ValidationOutput problems) {
+        if (config.hasKey(field) && config.hasKey(DATABASE_NAMES)) {
+            problems.accept(field, null, "Cannot be specified alongside " + DATABASE_NAMES);
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private static int validateDatabaseNames(Configuration config, Field field, Field.ValidationOutput problems) {
+        String databaseNames = config.getString(field);
+        int count = 0;
+        if (databaseNames != null) {
+            if (config.hasKey(DATABASE_NAME)) {
+                problems.accept(field, null, "Cannot be specified alongside " + DATABASE_NAME);
+                ++count;
+            }
+            if (databaseNames.contains(",")) {
+                problems.accept(field, databaseNames, "Only a single database name is currently supported");
+                ++count;
+            }
+        }
+
+        return count;
     }
 }
