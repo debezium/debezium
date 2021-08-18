@@ -182,7 +182,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isRequired)
-            .withDescription("The name of the database the connector should be monitoring");
+            .withDescription("The name of the database from which the connector should capture changes");
 
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
             .withDisplayName("Namespace")
