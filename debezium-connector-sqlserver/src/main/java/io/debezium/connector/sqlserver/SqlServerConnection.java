@@ -6,6 +6,7 @@
 
 package io.debezium.connector.sqlserver;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -88,7 +89,7 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * actual name of the database, which could differ in casing from the database name given in the connector config.
      */
-    private final String realDatabaseName;
+    private final String databaseName;
     private final String getAllChangesForTable;
     private final int queryFetchSize;
 
@@ -124,7 +125,7 @@ public class SqlServerConnection extends JdbcConnection {
             LOGGER.warn("The '{}' option is deprecated and is not taken into account", SERVER_TIMEZONE_PROP_NAME);
         }
 
-        realDatabaseName = retrieveRealDatabaseName();
+        databaseName = config.getString(JdbcConfiguration.DATABASE);
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
 
@@ -168,6 +169,18 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public String connectionString() {
         return connectionString(URL_PATTERN);
+    }
+
+    @Override
+    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
+        boolean connected = isConnected();
+        Connection connection = super.connection(executeOnConnect);
+
+        if (!connected) {
+            connection.setAutoCommit(false);
+        }
+
+        return connection;
     }
 
     /**
@@ -355,7 +368,7 @@ public class SqlServerConnection extends JdbcConnection {
             while (rs.next()) {
                 changeTables.add(
                         new SqlServerChangeTable(
-                                new TableId(realDatabaseName, rs.getString(1), rs.getString(2)),
+                                new TableId(databaseName, rs.getString(1), rs.getString(2)),
                                 rs.getString(3),
                                 rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
@@ -393,7 +406,7 @@ public class SqlServerConnection extends JdbcConnection {
 
         List<Column> columns = new ArrayList<>();
         try (ResultSet rs = metadata.getColumns(
-                realDatabaseName,
+                databaseName,
                 changeTable.getSourceTableId().schema(),
                 changeTable.getSourceTableId().table(),
                 null)) {
@@ -423,7 +436,7 @@ public class SqlServerConnection extends JdbcConnection {
         final TableId changeTableId = changeTable.getChangeTableId();
 
         List<ColumnEditor> columnEditors = new ArrayList<>();
-        try (ResultSet rs = metadata.getColumns(realDatabaseName, changeTableId.schema(), changeTableId.table(), null)) {
+        try (ResultSet rs = metadata.getColumns(databaseName, changeTableId.schema(), changeTableId.table(), null)) {
             while (rs.next()) {
                 readTableColumn(rs, changeTableId, null).ifPresent(columnEditors::add);
             }
@@ -452,19 +465,22 @@ public class SqlServerConnection extends JdbcConnection {
         return captureName + "_CT";
     }
 
-    public String getRealDatabaseName() {
-        return realDatabaseName;
+    public String getDatabaseName() {
+        return databaseName;
     }
 
-    private String retrieveRealDatabaseName() {
-        try {
-            return queryAndMap(
-                    GET_DATABASE_NAME,
-                    singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
-        }
-        catch (SQLException e) {
-            throw new RuntimeException("Couldn't obtain database name", e);
-        }
+    /**
+     * Retrieve the name of the database in the original case as it's defined on the server.
+     *
+     * Although SQL Server supports case-insensitive collations, the connector uses the database name to build the
+     * produced records' source info and, subsequently, the keys of its committed offset messages. This value
+     * must remain the same during the lifetime of the connector regardless of the case used in the connector
+     * configuration.
+     */
+    public String retrieveRealDatabaseName() throws SQLException {
+        return queryAndMap(
+                GET_DATABASE_NAME,
+                singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
     }
 
     @Override
