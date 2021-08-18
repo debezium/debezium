@@ -2829,4 +2829,4 @@ The connector's `table.include.list` or `table.exclude.list` configuration optio
 === LogMiner adapter does not capture changes made by SYS or SYSTEM
 
 Oracle uses the `SYS` and `SYSTEM` accounts for lots of internal changes and therefore the connector automatically filters changes made by these users when fetching changes from LogMiner.
-Never use the `SYS` or`SYSTEM` user accounts for changes to be emitted by the {prodname} Oracle connector.
+Never use the `SYS` or `SYSTEM` user accounts for changes to be emitted by the {prodname} Oracle connector.
