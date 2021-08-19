@@ -22,7 +22,6 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
-import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -44,7 +43,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                              PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
                                              SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
-        super(connectorConfig, jdbcConnection, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
@@ -249,11 +248,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             sb.append("\"").append(columnName).append("\"");
         }
         return sb.toString();
-    }
-
-    @Override
-    protected RelationalDatabaseSchema schema() {
-        return schema;
     }
 
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {

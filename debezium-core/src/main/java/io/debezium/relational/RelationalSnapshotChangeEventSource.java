@@ -65,13 +65,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
-    private final HistorizedRelationalDatabaseSchema schema;
+    private final RelationalDatabaseSchema schema;
     protected final EventDispatcher<TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
+                                               JdbcConnection jdbcConnection, RelationalDatabaseSchema schema,
                                                EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
@@ -80,12 +80,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
-    }
-
-    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               JdbcConnection jdbcConnection,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
-        this(connectorConfig, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
