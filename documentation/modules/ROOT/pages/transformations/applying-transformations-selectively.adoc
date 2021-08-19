@@ -1,3 +1,4 @@
+:page-aliases:configuration/applying-transformations-selectively.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleId: applying-transformations-selectively-with-smt-predicates
