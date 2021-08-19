@@ -224,9 +224,9 @@ Although extracting the archive to each directory duplicates the files, by doing
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. 
 In the following example, replace _my-plugins_ with the name of your plug-ins directory:
 +
-[subs=+macros]
+[subs="+attributes,+macros"]
 ----
-FROM registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
+FROM {DockerKafkaConnect}
 USER root:root
 pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
 USER 1001
