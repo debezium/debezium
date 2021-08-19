@@ -250,23 +250,17 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     /**
-     * Generate a valid sqlserver query string for the specified table
+     * Generate a valid SQL Server query string for the specified table
      *
      * @param tableId the table to generate a query for
      * @return a valid query string
      */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
-                                                 TableId tableId) {
-        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+                                                 TableId tableId, List<String> columns) {
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
         return Optional.of(String.format("SELECT %s FROM [%s].[%s]", snapshotSelectColumns, tableId.schema(), tableId.table()));
-    }
-
-    @Override
-    protected String getSnapshotSelectColumns(TableId tableId) {
-        Table table = sqlServerDatabaseSchema.tableFor(tableId);
-        return getPreparedColumnNames(table, tableId).stream().collect(Collectors.joining(","));
-
     }
 
     @Override
@@ -287,7 +281,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                              String overriddenSelect, TableId tableId) {
-        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        String snapshotSelectColumns = getPreparedColumnNames(sqlServerDatabaseSchema.tableFor(tableId)).stream()
+                .collect(Collectors.joining(", "));
         return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
     }
 

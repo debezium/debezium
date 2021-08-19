@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -245,11 +246,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                                              String overriddenSelect, TableId tableId) {
         String snapshotOffset = (String) snapshotContext.offset.getOffset().get(SourceInfo.SCN_KEY);
         String token = connectorConfig.getTokenToReplaceInSnapshotPredicate();
-        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
         if (token != null) {
-            return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotOffset).replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
+            return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotOffset);
         }
-        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
+        return overriddenSelect;
     }
 
     @Override
@@ -268,20 +268,21 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 true);
     }
 
+    /**
+     * Generate a valid Oracle query string for the specified table and columns
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
+     */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                                 TableId tableId) {
+                                                 TableId tableId, List<String> columns) {
         final OracleOffsetContext offset = snapshotContext.offset;
         final String snapshotOffset = offset.getScn().toString();
-        final String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
         assert snapshotOffset != null;
         return Optional.of(String.format("SELECT %s FROM %s AS OF SCN %s", snapshotSelectColumns, quote(tableId), snapshotOffset));
-    }
-
-    @Override
-    protected String getSnapshotSelectColumns(TableId tableId) {
-        Table table = schema.tableFor(tableId);
-        return getPreparedColumnNames(table, tableId).stream().collect(Collectors.joining(","));
     }
 
     @Override

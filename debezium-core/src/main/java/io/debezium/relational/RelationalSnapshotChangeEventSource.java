@@ -459,7 +459,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      *
      * @return list of snapshot select columns
      */
-    private List<String> getPreparedColumnNames(Table table) {
+    protected List<String> getPreparedColumnNames(Table table) {
         List<String> columnNames = table.retrieveColumnNames()
                 .stream()
                 .map(columnName -> resolveColumnName(table.id(), columnName))

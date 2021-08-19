@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -220,24 +221,18 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         snapshotter.snapshotCompleted();
     }
 
-    @Override
-    protected String enhanceOverriddenSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
-                                             String overriddenSelect, TableId tableId) {
-        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
-        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
-    }
-
+    /**
+     * Generate a valid Postgres query string for the specified table and columns
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
+     */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
-                                                 TableId tableId) {
-        String snapshotSelectColumns = getSnapshotSelectColumns(tableId);
+                                                 TableId tableId, List<String> columns) {
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
         return snapshotter.buildSnapshotQuery(tableId, snapshotSelectColumns);
-    }
-
-    @Override
-    protected String getSnapshotSelectColumns(TableId tableId) {
-        Table table = schema.tableFor(tableId);
-        return getPreparedColumnNames(table, tableId).stream().collect(Collectors.joining(","));
     }
 
     @Override
