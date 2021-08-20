@@ -1545,6 +1545,43 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-3893")
+    public void shouldStreamNotNullClobUsingEmptyClobFunction() throws Exception {
+        TestHelper.dropTable(connection, "dbz3898");
+        try {
+            connection.execute("CREATE TABLE dbz3898 (id numeric(9,0), data clob not null, primary key(id))");
+            TestHelper.streamTable(connection, "dbz3898");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3898")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Empty function usage
+            connection.execute("INSERT INTO dbz3898 (id,data) values (1,EMPTY_CLOB())");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DBZ3898"))).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic(topicName("DBZ3898")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("");
+
+            // As a sanity check, there should be no more records.
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3898");
+        }
+    }
+
     private Clob createClob(String data) throws SQLException {
         Clob clob = connection.connection().createClob();
         clob.setString(1, data);

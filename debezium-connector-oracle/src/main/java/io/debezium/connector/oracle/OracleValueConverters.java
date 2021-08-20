@@ -267,7 +267,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof String) {
             String s = (String) data;
             if (EMPTY_CLOB_FUNCTION.equals(s)) {
-                return null;
+                return column.isOptional() ? null : "";
             }
             else if (s.startsWith(UNISTR_FUNCTION_START) && s.endsWith(UNISTR_FUNCTION_END)) {
                 return convertOracleUnistr(column, fieldDefn, s.substring(8, s.length() - 2));
@@ -303,7 +303,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             if (data instanceof String) {
                 String str = (String) data;
                 if (EMPTY_BLOB_FUNCTION.equals(str)) {
-                    return null;
+                    if (column.isOptional()) {
+                        return null;
+                    }
+                    data = "";
                 }
                 else if (isHexToRawFunctionCall(str)) {
                     data = RAW.hexString2Bytes(getHexToRawHexString(str));
