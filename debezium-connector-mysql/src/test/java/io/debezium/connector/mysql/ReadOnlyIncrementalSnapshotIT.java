@@ -36,6 +36,22 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     }
 
     @Test
+    public void emptyHighWatermark() throws Exception {
+        Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
     public void filteredEvents() throws Exception {
         Testing.Print.enable();
 
