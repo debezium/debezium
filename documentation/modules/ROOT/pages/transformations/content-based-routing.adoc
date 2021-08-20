@@ -1,3 +1,4 @@
+:page-aliases: configuration/content-based-routing.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleID: routing-change-event-records-to-topics-according-to-event-content
