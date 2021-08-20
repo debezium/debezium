@@ -37,6 +37,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresVa
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.util.Throwables;
 
 /**
  * A utility for integration test cases to connect the PostgreSQL server running in the Docker container created by this module's
@@ -160,6 +161,9 @@ public final class TestHelper {
             else {
                 jdbcConn.rollback();
             }
+        }
+        catch (RuntimeException e) {
+            throw e;
         }
         catch (Exception e) {
             throw new RuntimeException(e);
@@ -291,7 +295,9 @@ public final class TestHelper {
             execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
         }
         catch (Exception e) {
-            LOGGER.debug("Error while dropping default replication slot", e);
+            if (!Throwables.getRootCause(e).getMessage().equals("ERROR: replication slot \"debezium\" does not exist")) {
+                throw e;
+            }
         }
     }
 
