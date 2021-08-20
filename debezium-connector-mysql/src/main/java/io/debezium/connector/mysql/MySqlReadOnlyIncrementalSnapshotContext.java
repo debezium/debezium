@@ -80,7 +80,7 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
             return true;
         }
         String[] gtid = GTID_DELIMITER.split(currentGtid);
-        GtidSet.UUIDSet uuidSet = highWatermark.forServerWithId(gtid[0]);
+        GtidSet.UUIDSet uuidSet = getUuidSet(gtid[0]);
         if (uuidSet != null) {
             long maxTransactionId = uuidSet.getIntervals().stream()
                     .mapToLong(GtidSet.Interval::getEnd)
@@ -95,6 +95,10 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
             }
         }
         return false;
+    }
+
+    private GtidSet.UUIDSet getUuidSet(String serverId) {
+        return highWatermark.getUUIDSets().isEmpty() ? lowWatermark.forServerWithId(serverId) : highWatermark.forServerWithId(serverId);
     }
 
     public boolean serverUuidChanged() {
