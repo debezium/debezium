@@ -87,8 +87,6 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
     @After
     public void tearDown() {
         stopConnector();
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
         postgresContainer.stop();
         System.setProperty("database.port", oldContainerPort);
     }
