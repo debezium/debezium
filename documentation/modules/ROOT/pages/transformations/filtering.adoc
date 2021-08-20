@@ -1,3 +1,4 @@
+:page-aliases: configuration/filtering.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleID: filtering-debezium-change-event-records

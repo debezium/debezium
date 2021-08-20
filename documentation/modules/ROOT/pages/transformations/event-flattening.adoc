@@ -1,3 +1,4 @@
+:page-aliases: configuration/event-flattening.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleID: extracting-source-record-after-state-from-debezium-change-events
