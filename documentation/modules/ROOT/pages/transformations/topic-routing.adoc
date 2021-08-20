@@ -1,4 +1,4 @@
-:page-aliases:configuration/topic-routing.adoc
+:page-aliases: configuration/topic-routing.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleID: routing-debezium-event-records-to-topics-that-you-specify

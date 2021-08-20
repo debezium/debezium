@@ -1,4 +1,4 @@
-:page-aliases:configuration/outbox-event-router.adoc
+:page-aliases: configuration/outbox-event-router.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleID: configuring-debezium-connectors-to-use-the-outbox-pattern
