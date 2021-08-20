@@ -350,6 +350,13 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 offsetContext.setScn(endScn);
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
+            else {
+                final Scn minStartScn = transactionCache.getMinimumScn();
+                if (!minStartScn.isNull()) {
+                    offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
+                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+                }
+            }
             return endScn;
         }
     }
