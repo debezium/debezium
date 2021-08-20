@@ -354,6 +354,8 @@ public class OracleConnection extends JdbcConnection {
             // The storage and segment attributes aren't necessary
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
+            // The semicolon will be necessary some cases. Enable it.
+            executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', true); end;");
             return queryAndMap("SELECT dbms_metadata.get_ddl('TABLE','" + tableId.table() + "','" + tableId.schema() + "') FROM DUAL", rs -> {
                 if (!rs.next()) {
                     throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
