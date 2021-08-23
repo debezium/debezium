@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -1048,6 +1049,10 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         try {
             final LogInterceptor logInterceptor = new LogInterceptor();
 
+            // AbstractLogMinerEventProcessor logs DDL events using TRACE logging level now
+            // This toggles TRACE logging for the Awaitility check below.
+            logInterceptor.setLoggerLevel(AbstractLogMinerEventProcessor.class, "TRACE");
+
             // These roles are needed in order to perform certain DDL operations below.
             // Any roles granted here should be revoked in the finally block.
             TestHelper.grantRole("CREATE PROCEDURE");
@@ -1060,7 +1065,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
-            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // todo: do we need to add more here?
             final int expected = 7;
