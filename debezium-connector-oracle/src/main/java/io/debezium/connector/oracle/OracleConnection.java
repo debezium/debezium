@@ -353,6 +353,9 @@ public class OracleConnection extends JdbcConnection {
             // The storage and segment attributes aren't necessary
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
+            // In case DDL is returned as multiple DDL statements, this allows the parser to parse each separately.
+            // This is only critical during streaming as during snapshot the table structure is built from JDBC driver queries.
+            executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', true); end;");
             return queryAndMap("SELECT dbms_metadata.get_ddl('TABLE','" + tableId.table() + "','" + tableId.schema() + "') FROM DUAL", rs -> {
                 if (!rs.next()) {
                     throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
