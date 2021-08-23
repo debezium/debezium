@@ -8,6 +8,8 @@ package io.debezium.testing.testcontainers;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 
+import io.debezium.util.ContainerImageVersions;
+
 public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistryContainer> {
 
     private static final String APICURIO_VERSION = getApicurioVersion();
