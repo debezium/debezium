@@ -198,7 +198,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void twoRecordsInQueue() throws Exception {
+    public void oneRecordInQueue() throws Exception {
         // Testing.Print.enable();
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         TestHelper.execute(INIT_STATEMENTS, INSERT_STATEMENTS);
@@ -269,51 +269,6 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
                     long value = (long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes");
                     return value == 0;
                 });
-        Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes")).isEqualTo(0L);
-        stopConnector();
-    }
-
-    @Test
-    public void oneRecordInQueue() throws Exception {
-        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        TestHelper.execute(INIT_STATEMENTS, INSERT_STATEMENTS);
-        final int recordCount = 2;
-
-        Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, 10)
-                .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 1)
-                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, 5000L)
-                .with(PostgresConnectorConfig.MAX_QUEUE_SIZE_IN_BYTES, 10L);
-        start(PostgresConnector.class, configBuilder.build());
-
-        waitForStreamingToStart();
-        for (int i = 0; i < recordCount - 1; i++) {
-            TestHelper.execute(INSERT_STATEMENTS);
-        }
-        Awaitility.await()
-                .alias("MBean attribute was not an expected value")
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
-                .ignoreException(InstanceNotFoundException.class)
-                .until(() -> {
-                    long value = (long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes");
-                    return value > 0;
-                });
-        Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes")).isNotEqualTo(0L);
-        Awaitility.await()
-                .alias("MBean attribute was not an expected value")
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
-                .ignoreException(InstanceNotFoundException.class)
-                .until(() -> {
-                    int value = (int) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueRemainingCapacity");
-                    return value == 9;
-                });
-        Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueRemainingCapacity")).isEqualTo(9);
-
-        SourceRecords records = consumeRecordsByTopic(recordCount);
         Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes")).isEqualTo(0L);
         stopConnector();
     }
