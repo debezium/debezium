@@ -483,8 +483,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     private static int validateDatabaseName(Configuration config, Field field, Field.ValidationOutput problems) {
-        if (config.hasKey(field) && config.hasKey(DATABASE_NAMES)) {
-            problems.accept(field, null, "Cannot be specified alongside " + DATABASE_NAMES);
+        if (!config.hasKey(field) && !config.hasKey(DATABASE_NAMES)) {
+            problems.accept(field, null, "Either " + DATABASE_NAME + " or " + DATABASE_NAMES + " must be specified");
             return 1;
         }
 
