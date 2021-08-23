@@ -47,6 +47,8 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.converters.CloudEventsConverterTest;
+import io.debezium.converters.CloudEventsMaker;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SchemaAndValueField;
@@ -2000,6 +2002,78 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTables(connection, "dbz3616", "dbz3616");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3668")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        connection.execute("INSERT INTO customer (id,name,score) values (1001, 'DBZ3668', 100)");
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        List<SourceRecord> customers = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(customers).hasSize(1);
+
+        for (SourceRecord customer : customers) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(customer, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(customer, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(customer, "oracle", "server1", false);
+        }
+
+        connection.execute("INSERT INTO customer (id,name,score) values (1002, 'DBZ3668', 95)");
+        records = consumeRecordsByTopic(1);
+
+        customers = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(customers).hasSize(1);
+
+        for (SourceRecord customer : customers) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(customer, false, jsonNode -> {
+                assertThat(jsonNode.get(CloudEventsMaker.FieldName.ID).asText()).contains("scn:");
+            });
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(customer, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(customer, "oracle", "server1", false);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3896")
+    public void shouldCaptureTableMetadataWithMultipleStatements() throws Exception {
+        try {
+            Configuration config = TestHelper.defaultConfig().with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3896").build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("CREATE TABLE dbz3896 (id number(9,0), name varchar2(50), data varchar2(50))",
+                    "CREATE UNIQUE INDEX dbz3896_pk ON dbz3896 (\"ID\", \"NAME\")",
+                    "ALTER TABLE dbz3896 ADD CONSTRAINT idx_dbz3896 PRIMARY KEY (\"ID\", \"NAME\") USING INDEX \"DBZ3896_PK\"");
+            TestHelper.streamTable(connection, "dbz3896");
+            connection.execute("INSERT INTO dbz3896 (id,name,data) values (1,'First','Test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3896")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ3896").get(0);
+            assertThat(record.key()).isNotNull();
+            assertThat(record.keySchema().field("ID")).isNotNull();
+            assertThat(record.keySchema().field("NAME")).isNotNull();
+            assertThat(((Struct) record.key()).get("ID")).isEqualTo(1);
+            assertThat(((Struct) record.key()).get("NAME")).isEqualTo("First");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3896");
         }
     }
 
