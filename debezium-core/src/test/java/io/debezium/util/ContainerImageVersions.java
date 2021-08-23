@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.testing.testcontainers;
+package io.debezium.util;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,6 +20,10 @@ import javax.net.ssl.HttpsURLConnection;
 public class ContainerImageVersions {
 
     private static final String BASE_URL = "https://hub.docker.com/v2/repositories/%s/tags/";
+
+    public static String getStableImage(String image) {
+        return image + ":" + getStableVersion(image);
+    }
 
     public static String getStableVersion(String image) {
         try {
