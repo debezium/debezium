@@ -78,7 +78,7 @@ public class ChunkColumnValues {
             if (!values.isEmpty()) {
                 ChunkColumnValue firstChunk = values.get(0);
                 if (firstChunk.isEmptyChunk()) {
-                    return ByteBuffer.allocate((int) size).array();
+                    return ByteBuffer.allocate(0).array();
                 }
             }
             return null;
