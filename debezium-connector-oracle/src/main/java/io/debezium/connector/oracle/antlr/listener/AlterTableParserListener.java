@@ -224,4 +224,35 @@ public class AlterTableParserListener extends BaseParserListener {
         }, tableEditor);
         super.exitRename_column_clause(ctx);
     }
+
+    @Override
+    public void enterConstraint_clauses(PlSqlParser.Constraint_clausesContext ctx) {
+        parser.runIfNotNull(() -> {
+            if (ctx.ADD() != null) {
+                // ALTER TABLE ADD PRIMARY KEY
+                List<String> primaryKeyColumns = new ArrayList<>();
+                for (PlSqlParser.Out_of_line_constraintContext constraint : ctx.out_of_line_constraint()) {
+                    if (constraint.PRIMARY() != null && constraint.KEY() != null) {
+                        for (PlSqlParser.Column_nameContext columnNameContext : constraint.column_name()) {
+                            primaryKeyColumns.add(getColumnName(columnNameContext));
+                        }
+                    }
+                }
+                if (!primaryKeyColumns.isEmpty()) {
+                    tableEditor.setPrimaryKeyNames(primaryKeyColumns);
+                }
+            }
+            else if (ctx.MODIFY() != null && ctx.PRIMARY() != null && ctx.KEY() != null) {
+                // ALTER TABLE MODIFY PRIMARY KEY columns
+                List<String> primaryKeyColumns = new ArrayList<>();
+                for (PlSqlParser.Column_nameContext columnNameContext : ctx.column_name()) {
+                    primaryKeyColumns.add(getColumnName(columnNameContext));
+                }
+                if (!primaryKeyColumns.isEmpty()) {
+                    tableEditor.setPrimaryKeyNames(primaryKeyColumns);
+                }
+            }
+        }, tableEditor);
+        super.enterConstraint_clauses(ctx);
+    }
 }
