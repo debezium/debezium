@@ -477,6 +477,31 @@ When the alternative implementations are not available then the default ones are
 
 |===
 
+==== HTTP Client
+
+The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
+Debezium act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[httpclient-type]]<<httpclient-type, `debezium.sink.type` >>
+|
+|Must be set to `http`
+
+|[[httpclient-url]]<<httpclient-url, `debezium.sink.http.url` >>
+|
+|The HTTP Server URL to stream events to. This can also be set by defining the `K_SINK` environment variable, which is used by the Knative source framework.
+
+|[[httpclient-timeout]]<<httpclient-timeout, `debezium.sink.http.timeout.ms` >>
+|60000
+|The number of seconds to wait for a response from the server before timing out. (default of 60s)
+
+|===
+
 ==== Apache Pulsar
 
 https://pulsar.apache.org/[Apache Pulsar] is high-performance, low-latency server for server-to-server messaging.
