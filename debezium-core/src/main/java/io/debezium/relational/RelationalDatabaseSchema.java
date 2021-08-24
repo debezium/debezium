@@ -114,6 +114,11 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         return tableFilter.isIncluded(id) ? tables.forTable(id) : null;
     }
 
+    @Override
+    public boolean isHistorized() {
+        return false;
+    }
+
     protected Tables tables() {
         return tables;
     }

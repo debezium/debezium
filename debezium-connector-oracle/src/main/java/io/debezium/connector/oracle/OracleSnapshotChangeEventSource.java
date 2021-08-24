@@ -40,7 +40,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
-    private final OracleDatabaseSchema schema;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
                                            OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -49,7 +48,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
-        this.schema = schema;
     }
 
     @Override

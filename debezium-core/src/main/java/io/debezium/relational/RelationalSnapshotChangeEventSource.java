@@ -266,13 +266,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             Table table = snapshotContext.tables.forTable(tableId);
 
-            if (schema != null) {
+            if (schema.isHistorized()) {
                 snapshotContext.offset.event(tableId, getClock().currentTime());
 
                 // If data are not snapshotted then the last schema change must set last snapshot flag
                 if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
                     lastSnapshotRecord(snapshotContext);
                 }
+
                 dispatcher.dispatchSchemaChangeEvent(table.id(), (receiver) -> {
                     try {
                         receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
