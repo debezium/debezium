@@ -30,11 +30,9 @@ import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.ColumnFilterMode;
-import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
@@ -1287,32 +1285,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
         return new MySqlHistoryRecordComparator(gtidSourceFilter());
-    }
-
-    private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(catalogName, null, tableName), columnName));
-            }
-        };
-    }
-
-    private static ColumnNameFilter getColumnIncludeNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.includes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(catalogName, null, tableName), columnName));
-            }
-        };
     }
 
     public static boolean isBuiltInDatabase(String databaseName) {
