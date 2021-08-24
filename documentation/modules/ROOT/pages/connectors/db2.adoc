@@ -2242,7 +2242,7 @@ You stop the {prodname} Db2 connector before you perform an offline schema updat
 . Stop the {prodname} connector.
 . Apply all changes to the source table schema.
 . In the ASN register table, mark the tables with updated schemas as `INACTIVE`.
-. {link-prefix}:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.
+. {link-prefix}:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service].
 . Remove the source table with the old schema from capture mode by {link-prefix}:{link-db2-connector}#debezium-db2-remove-capture-mode[running the {prodname} UDF for removing tables from capture mode].
 . Add the source table with the new schema to capture mode by {link-prefix}:{link-db2-connector}#debezium-db2-put-capture-mode[running the {prodname} UDF for adding tables to capture mode].
 . In the ASN register table, mark the updated source tables as `ACTIVE`.
