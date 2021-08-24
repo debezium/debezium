@@ -54,6 +54,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
     @Override
     protected void emitWindowOpen() throws SQLException {
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
+            LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
         });
@@ -63,6 +64,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
     @Override
     protected void emitWindowClose() throws SQLException {
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
+            LOGGER.trace("Emitting close window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-close");
             x.setString(2, CloseIncrementalSnapshotWindow.NAME);
         });
