@@ -238,8 +238,12 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                         "SELECT (SELECT transaction_id FROM sys.dm_tran_session_transactions AS t WHERE s.session_id=t.session_id) FROM sys.dm_exec_sessions AS s WHERE program_name='"
                                 + appId + "'",
                         rs -> {
-                            rs.next();
-                            txIds.add(rs.getLong(1));
+                            while (rs.next()) {
+                                final long txId = rs.getLong(1);
+                                if (txId != 0) {
+                                    txIds.add(txId);
+                                }
+                            }
                         });
                 return txIds.size() > 2;
             });
