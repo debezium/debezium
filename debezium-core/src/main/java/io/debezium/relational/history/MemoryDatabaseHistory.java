@@ -13,7 +13,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.FunctionalReadWriteLock;
 
 /**
- * A {@link DatabaseHistory} implementation that stores the schema history in a local file.
+ * A {@link DatabaseHistory} implementation that stores the schema history in memory.
  *
  * @author Randall Hauch
  */
