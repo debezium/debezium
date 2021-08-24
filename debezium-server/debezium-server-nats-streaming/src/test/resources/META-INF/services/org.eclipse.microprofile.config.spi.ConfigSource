@@ -1,1 +1,1 @@
-io.debezium.server.nats_streaming.NatsStreamingTestConfigSource
+io.debezium.server.nats.streaming.NatsStreamingTestConfigSource
