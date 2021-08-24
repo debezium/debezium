@@ -147,8 +147,6 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(1);
         Awaitility.await()
                 .alias("Found warning message in logs")
                 .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
