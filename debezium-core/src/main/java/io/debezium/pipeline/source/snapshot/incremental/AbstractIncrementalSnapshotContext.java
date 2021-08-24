@@ -78,8 +78,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     public boolean openWindow(String id) {
-        if (!id.startsWith(currentChunkId)) {
-            LOGGER.info("Arrived request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
+        if (notExpectedChunk(id)) {
+            LOGGER.info("Received request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
             return false;
         }
         LOGGER.debug("Opening window for incremental snapshot chunk");
@@ -88,13 +88,24 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     public boolean closeWindow(String id) {
-        if (!id.startsWith(currentChunkId)) {
-            LOGGER.info("Arrived request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
+        if (notExpectedChunk(id)) {
+            LOGGER.info("Received request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
             return false;
         }
         LOGGER.debug("Closing window for incremental snapshot chunk");
         windowOpened = false;
         return true;
+    }
+
+    /**
+     * The snapshotting process can receive out-of-order windowing signals after connector restart
+     * as depending on committed offset position some signals can be replayed.
+     * In extreme case a signal can be received even when the incremental snapshot was completed just
+     * before the restart.
+     * Such windowing signals are ignored.
+     */
+    private boolean notExpectedChunk(String id) {
+        return currentChunkId == null || !id.startsWith(currentChunkId);
     }
 
     public boolean deduplicationNeeded() {
