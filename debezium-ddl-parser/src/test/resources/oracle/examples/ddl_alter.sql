@@ -16,3 +16,4 @@ alter table dbz1211 add constraint name unique (id,data) using index tablespace 
 alter table dbz1211_child add constraint name unique (id) using index tablespace ts;
 -- Alter table add primary key using index
 ALTER TABLE "IDENTITYDB"."CHANGE_NUMBERS" ADD CONSTRAINT "IDX_CHANGENUMBERS_PK" PRIMARY KEY ("CHANGE_NO", "EXPIRY_TIME") USING INDEX "IDENTITYDB"."IDX_CHANGENUMBERS_PK"  ENABLE NOVALIDATE;
+ALTER TABLE "MYSCHEMA"."MY_PLANT" DROP PRIMARY KEY DROP INDEX;
