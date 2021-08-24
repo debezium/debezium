@@ -774,6 +774,7 @@ public class JdbcConnection implements AutoCloseable {
         if (preparer != null) {
             preparer.accept(statement);
         }
+        LOGGER.trace("Executing statement '{}'", stmt);
         statement.execute();
         return this;
     }
