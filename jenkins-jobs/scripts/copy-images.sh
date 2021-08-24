@@ -1,11 +1,8 @@
 #! /usr/bin/env bash
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-INSTALL_SOURCE_DIR="${WORKSPACE}/strimzi/install/cluster-operator"
 COPY_IMAGES=true
 REGISTRY="quay.io"
-BUILD_DBZ_DOCKERFILE=${DIR}/../docker/Dockerfile.AMQ
-DEPLOYMENT_DESC="060-Deployment-strimzi-cluster-operator.yaml"
 
 OPTS=`getopt -o d:i:r:o:f:s --long dir:,images:,registry:,organisation:,deployment-desc:,skip-copy,dest-creds:,src-creds:,img-output: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
@@ -33,9 +30,9 @@ function process_image() {
     registry=$2
     organisation=$3
 
-    prefix=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\1/p'`
-    name=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\2/p'`
-    tag=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\3/p'`
+    prefix=`echo $source | sed -rn 's|.*/[^/]+/([^-]*)-(.*):(.*)$|\1|p'`
+    name=`echo $source | sed -rn 's|.*/[^/]+/([^-]*)-(.*):(.*)$|\2|p'`
+    tag=`echo $source | sed -rn 's|.*/[^/]+/([^-]*)-(.*):(.*)$|\3|p'`
     target=${registry}/${organisation}/${prefix}-${name}:${tag}
 
 
@@ -49,7 +46,6 @@ function process_image() {
     echo "[Deployment Transformation] replacing image ${target}"
     sed -i "s@registry.redhat.io/.*/${name}:.*\$@${target}@" "${INSTALL_SOURCE_DIR}/${DEPLOYMENT_DESC}"
 }
-
 
 for image in $IMAGES; do
     echo "[Processing] $image"
