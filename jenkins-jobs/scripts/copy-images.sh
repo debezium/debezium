@@ -39,12 +39,12 @@ function process_image() {
     if [ "$COPY_IMAGES" = true ] ; then
         echo "[Image Copy] Pushing image $target"
         skopeo --override-os "linux" copy --src-tls-verify=false ${DEST_CREDS} "docker://$source" "docker://$target"
-        [[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo $target >> ${IMAGE_OUTPUT_FILE}
     fi
 
     # Replace images
     echo "[Deployment Transformation] replacing image ${target}"
     sed -i "s@registry.redhat.io/.*/${name}:.*\$@${target}@" "${INSTALL_SOURCE_DIR}/${DEPLOYMENT_DESC}"
+    [[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo $target >> ${IMAGE_OUTPUT_FILE}
 }
 
 for image in $IMAGES; do

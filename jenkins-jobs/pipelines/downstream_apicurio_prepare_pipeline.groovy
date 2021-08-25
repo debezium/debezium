@@ -48,7 +48,8 @@ pipeline {
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
                         --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
                         --deployment-desc="${APIC_RESOURCES_DEPLOYMENT_DESCRIPTOR}" \\
-                        --img-output="${WORKSPACE}/published_images.txt"            
+                        --img-output="${WORKSPACE}/published_images.txt"            \\
+                        `if [ $PUSH_IMAGES = false ]; then echo " -s"; fi`            
                     '''
                     zip(archive: true, zipFile: 'apicurio-registry-install-examples.zip', dir: 'apicurio')
                 }
