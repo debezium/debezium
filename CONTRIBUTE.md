@@ -274,7 +274,7 @@ Here's a quick check list for a good pull request (PR):
 ### PR Handling (For Committers)
 
 * Don't merge your own PRs, ensure four eyes principle (unless it's trivial typo fixes and the like)
-* Ensure there are no "Octocat" commits
+* Ensure there are no https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile["Octocat" commits]
 * Don't do force pushes to master/main branches (it's disabled for all repos)
 * Always apply PRs via rebasing instead of merges (there should be a linear commit history)
 * Optional: squash commits into one if there's lots of forth and back on a PR which isn't relevant for the history in the long run
