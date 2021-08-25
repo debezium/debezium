@@ -149,7 +149,7 @@ To obtain this value from a different outbox table column, set the {link-prefix}
 To obtain the event key from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-key[`table.field.event.key` SMT option] in the connector configuration.
 
 |`payload`
-|A representation of the outbox change event. The default structure is JSON. By default, the Kafka message value is solely comprised of the `payload` value. However, if the outbox event is configured to include additional fields, the Kafka message value will contain an envelope encapsulating both payload and the additional fields, and each field is represented separately. For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields].
+|A representation of the outbox change event. The default structure is JSON. By default, the Kafka message value is solely comprised of the `payload` value. However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately. For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields].
 
 To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
 
