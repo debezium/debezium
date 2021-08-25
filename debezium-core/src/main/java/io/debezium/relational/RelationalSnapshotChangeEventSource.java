@@ -457,6 +457,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected List<String> getPreparedColumnNames(Table table) {
         List<String> columnNames = table.retrieveColumnNames()
                 .stream()
+                .filter(columnName -> additionalColumnFilter(table.id(), columnName))
                 .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
                 .map(columnName -> JdbcConnection.quotedColumnIdString(table.id(), columnName))
                 .collect(Collectors.toList());
@@ -466,6 +467,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             columnNames = table.primaryKeyColumnNames();
         }
         return columnNames;
+    }
+
+    /**
+     * Additional filter handling for preparing column names for snapshot select
+     */
+    protected boolean additionalColumnFilter(TableId tableId, String columnName) {
+        return false;
     }
 
     /**

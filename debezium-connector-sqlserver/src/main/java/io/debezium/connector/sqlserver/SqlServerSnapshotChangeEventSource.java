@@ -271,6 +271,11 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
     }
 
+    @Override
+    protected boolean additionalColumnFilter(TableId tableId, String columnName) {
+        return filterChangeTableColumns(tableId, columnName);
+    }
+
     private boolean filterChangeTableColumns(TableId tableId, String columnName) {
         SqlServerChangeTable changeTable = changeTables.get(tableId);
         if (changeTable != null) {
