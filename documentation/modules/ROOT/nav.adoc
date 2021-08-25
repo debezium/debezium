@@ -9,6 +9,7 @@
 ** xref:configuration/topic-auto-create-config.adoc[Customizing Topic Auto-Creation]
 ** xref:configuration/signalling.adoc[Sending Signals to Debezium]
 * Transformations
+** xref:transformations/index.adoc[Overview]
 ** xref:transformations/topic-routing.adoc[Topic Routing]
 ** xref:transformations/event-flattening.adoc[New Record State Extraction]
 ** xref:transformations/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
