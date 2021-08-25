@@ -1,5 +1,5 @@
 pipelineJob('ocp-downstream-apicurio-prepare-job') {
-    displayName('Apicurio image republishment')
+    displayName('Apicurio deployment preparation')
     description('Republishes apicurio registry images to quay.io and replaces them in deployment descriptor')
 
     properties {
@@ -17,6 +17,8 @@ pipelineJob('ocp-downstream-apicurio-prepare-job') {
 //        DEBEZIUM CONFIG
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
         stringParam('DBZ_GIT_BRANCH', 'master', 'A branch/tag of Debezium sources')
+//        EXTRA CONFIG
+        booleanParam('PUSH_IMAGES', true, 'Push images to quay.io')
     }
 
     definition {
