@@ -284,19 +284,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected String resolveColumnName(TableId tableId, String columnName) {
-        StringBuilder sb = new StringBuilder();
-        if (!columnName.contains(tableId.table())) {
-            sb.append(tableId.table())
-                    .append(".").append(columnName);
-        }
-        else {
-            sb.append(columnName);
-        }
-        return sb.toString();
-    }
-
-    @Override
     protected void complete(SnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.resetSessionToCdb();

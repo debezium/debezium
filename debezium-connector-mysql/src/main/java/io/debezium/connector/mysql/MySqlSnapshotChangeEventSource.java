@@ -415,19 +415,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         return Optional.of(String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table()));
     }
 
-    @Override
-    protected String resolveColumnName(TableId tableId, String columnName) {
-        StringBuilder sb = new StringBuilder();
-        if (!columnName.contains(tableId.table())) {
-            sb.append(tableId.table())
-                    .append(".").append(columnName);
-        }
-        else {
-            sb.append(columnName);
-        }
-        return sb.toString();
-    }
-
     private boolean isGloballyLocked() {
         return globalLockAcquiredAt != -1;
     }

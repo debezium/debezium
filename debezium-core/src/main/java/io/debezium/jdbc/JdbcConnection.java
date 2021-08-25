@@ -310,6 +310,7 @@ public class JdbcConnection implements AutoCloseable {
     private final ConnectionFactory factory;
     private final Operations initialOps;
     private volatile Connection conn;
+    private static String defaultQuoteCharacter = "\"";
 
     /**
      * Create a new instance with the given configuration and connection factory.
@@ -317,8 +318,9 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory) {
+    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, String quoteCharacter) {
         this(config, connectionFactory, (Operations) null);
+        this.defaultQuoteCharacter = quoteCharacter;
     }
 
     /**
@@ -327,8 +329,9 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier) {
+    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String quoteCharacter) {
         this(config, connectionFactory, null, null, classLoaderSupplier);
+        this.defaultQuoteCharacter = quoteCharacter;
     }
 
     /**
@@ -1496,5 +1499,29 @@ public class JdbcConnection implements AutoCloseable {
      */
     public String quotedTableIdString(TableId tableId) {
         return tableId.toDoubleQuotedString();
+    }
+
+    /**
+     * Prepares qualified column names with appropriate quote character as per the specific database's rules
+     *
+     * @param tableId
+     * @param columnName
+     * @return formatted string
+     */
+    public static String quotedColumnIdString(TableId tableId, String columnName) {
+        if (columnName.contains("\"")) {
+            columnName = columnName.replaceAll("\"", "\"\"");
+        }
+
+        // SQL Server opening and closing quote char checking condition
+        if (defaultQuoteCharacter.equals("[")) {
+            String closingQuoteCharacter = "]";
+            return defaultQuoteCharacter + tableId.table() + closingQuoteCharacter + "." + defaultQuoteCharacter + columnName + closingQuoteCharacter;
+        }
+        // Postgres takes quoted tableId with column name
+        else if (defaultQuoteCharacter.equals("\"")) {
+            return tableId.toDoubleQuotedString() + "." + defaultQuoteCharacter + columnName + defaultQuoteCharacter;
+        }
+        return defaultQuoteCharacter + tableId.table() + defaultQuoteCharacter + "." + defaultQuoteCharacter + columnName + defaultQuoteCharacter;
     }
 }

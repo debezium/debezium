@@ -74,6 +74,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC [#db].sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final Pattern BRACKET_PATTERN = Pattern.compile("[\\[\\]]");
+    private static final String QUOTED_CHARACTER = "[";
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
 
@@ -108,7 +109,7 @@ public class SqlServerConnection extends JdbcConnection {
     public SqlServerConnection(Configuration config, SourceTimestampMode sourceTimestampMode,
                                SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
                                Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode) {
-        super(config, createConnectionFactory(multiPartitionMode), classLoaderSupplier);
+        super(config, createConnectionFactory(multiPartitionMode), classLoaderSupplier, QUOTED_CHARACTER);
 
         if (config().hasKey(SERVER_TIMEZONE_PROP_NAME)) {
             LOGGER.warn("The '{}' option is deprecated and is not taken into account", SERVER_TIMEZONE_PROP_NAME);

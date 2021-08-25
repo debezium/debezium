@@ -264,21 +264,6 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected String resolveColumnName(TableId tableId, String columnName) {
-        StringBuilder sb = new StringBuilder();
-        if (filterChangeTableColumns(tableId, columnName)) {
-            if (!columnName.contains(tableId.table())) {
-                sb.append("[").append(tableId.table()).append("]")
-                        .append(".[").append(columnName).append("]");
-            }
-            else {
-                sb.append("[").append(columnName).append("]");
-            }
-        }
-        return sb.toString();
-    }
-
-    @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                              String overriddenSelect, TableId tableId) {
         String snapshotSelectColumns = getPreparedColumnNames(sqlServerDatabaseSchema.tableFor(tableId)).stream()

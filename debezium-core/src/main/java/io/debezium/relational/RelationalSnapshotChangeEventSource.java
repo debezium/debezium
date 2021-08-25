@@ -458,7 +458,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         List<String> columnNames = table.retrieveColumnNames()
                 .stream()
                 .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
-                .map(columnName -> resolveColumnName(table.id(), columnName))
+                .map(columnName -> JdbcConnection.quotedColumnIdString(table.id(), columnName))
                 .collect(Collectors.toList());
 
         if (columnNames.isEmpty()) {
@@ -488,8 +488,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     // scn xyz")
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext,
                                                           TableId tableId, List<String> columns);
-
-    protected abstract String resolveColumnName(TableId tableId, String columnName);
 
     protected RelationalDatabaseSchema schema() {
         return schema;

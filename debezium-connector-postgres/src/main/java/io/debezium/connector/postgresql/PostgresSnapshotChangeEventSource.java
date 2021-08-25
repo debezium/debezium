@@ -232,22 +232,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         return snapshotter.buildSnapshotQuery(tableId, columns);
     }
 
-    @Override
-    protected String resolveColumnName(TableId tableId, String columnName) {
-        StringBuilder sb = new StringBuilder();
-        if (columnName.contains("\"")) {
-            columnName = columnName.replaceAll("\"", "\"\"");
-        }
-        if (!columnName.contains(tableId.table())) {
-            sb.append(tableId.toDoubleQuotedString())
-                    .append(".\"").append(columnName).append("\"");
-        }
-        else {
-            sb.append("\"").append(columnName).append("\"");
-        }
-        return sb.toString();
-    }
-
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {
         LOGGER.info("Setting isolation level");
         String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo);
