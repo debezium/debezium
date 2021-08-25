@@ -148,16 +148,16 @@ To obtain this value from a different outbox table column, set the {link-prefix}
  +
 To obtain the event key from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-key[`table.field.event.key` SMT option] in the connector configuration.
 
-|`type`
-|A user-defined value that helps categorize or organize events.
-
-a|`payload`
+|`payload`
 |The representation of the event itself. The default structure is JSON. The content in this field becomes one of these:
 
 * Part of the outbox message `payload`.
 * If other metadata, including `eventType` is delivered as headers, the payload becomes the message itself without encapsulation in an envelope.
 
 To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
+
+|Additional custom columns
+|Any additional columns from the outbox table can be {link-prefix}:{link-outbox-event-router}#outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. One example could be a column `eventType` which conveys a user-defined value that helps to categorize or organize events.
 
 |===
 
@@ -182,12 +182,13 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 == Options for applying the transformation selectively
 
 In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
-Because the structure of these other messages different from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+Because the structure of these other messages is different from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
 * {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:outbox-event-router-property-route-topic-regex[route.topic.regex] configuration option for the SMT.
 
+ifdef::community[]
 // Type: concept
 // Title: Using Avro as the payload format in {prodname} outbox messages
 // ModuleID: using-avro-as-the-payload-format-in-debezium-outbox-messages
@@ -227,6 +228,7 @@ value.converter.delegate.converter.type.schemas.enable=false
 
 The delegate `Converter` implementation is specified by the `delegate.converter.type` option.
 If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
+endif::community[]
 
 // Type: concept
 // Title: Emitting additional fields in {prodname} outbox messages
@@ -371,6 +373,6 @@ endif::community[]
 |===
 ifdef::community[]
 == Distributed tracing
-The extension has support for the distributed tracing.
+The extension has support for distributed tracing.
 See link:/documentation/reference/integrations/tracing[tracing documentation] for more details.
 endif::community[]
