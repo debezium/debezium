@@ -235,7 +235,7 @@ and then make the changes on that branch and either add a new commit or ammend y
 
 GitHub will automatically update the pull request with your latest changes, but we ask that you go to the pull request and add a comment summarizing what you did. This process may continue until the reviewers are satisfied.
 
-By the way, please don't take offense if the reviewers ask you to make additional changes, even if you think those changes are minor. The reviewers have a broach understanding of the codebase, and their job is to ensure the code remains as uniform as possible, is of sufficient quality, and is thoroughly tested. When they believe your pull request has those attributes, they will merge your pull request into the official upstream repository.
+By the way, please don't take offense if the reviewers ask you to make additional changes, even if you think those changes are minor. The reviewers have a broad understanding of the codebase, and their job is to ensure the code remains as uniform as possible, is of sufficient quality, and is thoroughly tested. When they believe your pull request has those attributes, they will merge your pull request into the official upstream repository.
 
 Once your pull request has been merged, feel free to delete your topic branch both in your local repository:
 
@@ -270,3 +270,11 @@ Here's a quick check list for a good pull request (PR):
 * New/changed features have been documented
 * A full build completes successfully
 * Do a rebase on upstream `master`
+
+### PR Handling (For Committers)
+
+* Don't merge your own PRs, ensure four eyes principle (unless it's trivial typo fixes and the like)
+* Ensure there are no https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile["Octocat" commits]
+* Don't do force pushes to master/main branches (it's disabled for all repos)
+* Always apply PRs via rebasing instead of merges (there should be a linear commit history)
+* Optional: squash commits into one if there's lots of forth and back on a PR which isn't relevant for the history in the long run
