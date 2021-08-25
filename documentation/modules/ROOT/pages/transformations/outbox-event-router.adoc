@@ -157,7 +157,8 @@ To obtain the event key from a different outbox table column, set the {link-pref
 To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
 
 |Additional custom columns
-|Any additional columns from the outbox table can be {link-prefix}:{link-outbox-event-router}#outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. One example could be a column `eventType` which conveys a user-defined value that helps to categorize or organize events.
+|Any additional columns from the outbox table can be {link-prefix}:{link-outbox-event-router}#outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header.
+One example could be a column `eventType` which conveys a user-defined value that helps to categorize or organize events.
 
 |===
 
@@ -182,7 +183,7 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 == Options for applying the transformation selectively
 
 In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
-Because the structure of these other messages is different from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
 * {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
