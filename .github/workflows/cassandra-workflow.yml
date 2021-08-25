@@ -2,6 +2,8 @@ name: Build Connector Cassandra
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
@@ -10,6 +12,8 @@ on:
       - 'pom.xml'
       - '.github/workflows/cassandra-workflow.yml'
   pull_request:
+    branches:
+      - master
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
