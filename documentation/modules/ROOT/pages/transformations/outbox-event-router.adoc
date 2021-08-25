@@ -149,15 +149,13 @@ To obtain this value from a different outbox table column, set the {link-prefix}
 To obtain the event key from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-key[`table.field.event.key` SMT option] in the connector configuration.
 
 |`payload`
-|The representation of the event itself. The default structure is JSON. The content in this field becomes one of these:
-
-* Part of the outbox message `payload`.
-* If other metadata, including `eventType` is delivered as headers, the payload becomes the message itself without encapsulation in an envelope.
+|The representation of the event itself. The default structure is JSON. By default, the content in this field becomes the sole content of the Kafka message value; if further fields are configured to be included in the outbox event, the Kafka message value will contain an envelope structure containing any additional field(s) and the payload in a field `payload`.
 
 To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
 
 |Additional custom columns
 |Any additional columns from the outbox table can be {link-prefix}:{link-outbox-event-router}#outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header.
++
 One example could be a column `eventType` which conveys a user-defined value that helps to categorize or organize events.
 
 |===
