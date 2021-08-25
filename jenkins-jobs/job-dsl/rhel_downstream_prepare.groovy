@@ -8,12 +8,12 @@ pipelineJob('rhel-downstream-prepare-job') {
 
     parameters {
 //        QUAY CONFIG
-        stringParam('QUAY_CREDENTIALS', 'rh-integration-quay-creds', "Quay.io credentials id")
-        stringParam('QUAY_ORGANISATION', '', "Organisation where images are copied")
+        stringParam('QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id')
+        stringParam('QUAY_ORGANISATION', '', 'Organisation where images are copied')
 //        RHEL CONFIG
-        stringParam('RHEL_IMAGE', 'registry.access.redhat.com/ubi8:latest', "Base RHEL image")
+        stringParam('RHEL_IMAGE', 'registry.access.redhat.com/ubi8:latest', 'Base RHEL image')
 //        KAFKA CONFIG
-        stringParam('KAFKA_URL', '', "AMQ streams kafka")
+        stringParam('KAFKA_URL', '', 'AMQ streams kafka')
 //        DEBEZIUM CONFIG
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
         stringParam('DBZ_GIT_BRANCH', 'master', 'A branch/tag of Debezium sources')
