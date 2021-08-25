@@ -393,12 +393,12 @@ node('Slave') {
                     it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
                 }
                 sh "git commit -a -m '[release] Development version for testing module deps'"
-            }
-            if (!DRY_RUN) {
-                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                    sh """
-                       git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY} HEAD:${CANDIDATE_BRANCH}
-                    """
+                if (!DRY_RUN) {
+                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh """
+                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY} HEAD:${CANDIDATE_BRANCH}
+                        """
+                    }
                 }
             }
             ADDITIONAL_REPOSITORIES.each { id, repo ->
