@@ -139,17 +139,27 @@ To obtain the unique ID of the event from a different outbox table column, set t
 |[[route-by-field-example]]`aggregatetype`
 |Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
  +
-For example, in a default configuration, the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the `route.topic.replacement` SMT option is set to `outbox.event.pass:[${routedByValue}]`. Suppose that your application adds two records to the outbox table. In the first record, the value in the `aggregatetype` column is `customers`. In the second record, the value in the `aggregatetype` column is `orders`. The connector emits the first record to the `outbox.event.customers` topic. The connector emits the second record to the `outbox.event.orders` topic. +
+For example, in a default configuration, the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option is set to `outbox.event.pass:[${routedByValue}]`.
+Suppose that your application adds two records to the outbox table. In the first record, the value in the `aggregatetype` column is `customers`.
+In the second record, the value in the `aggregatetype` column is `orders`.
+The connector emits the first record to the `outbox.event.customers` topic.
+The connector emits the second record to the `outbox.event.orders` topic. +
  +
 To obtain this value from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field` SMT option] in the connector configuration.
 
 |`aggregateid`
-|Contains the event key, which provides an ID for the payload. The SMT uses this value as the key in the emitted outbox message. This is important for maintaining correct order in Kafka partitions. +
+|Contains the event key, which provides an ID for the payload.
+The SMT uses this value as the key in the emitted outbox message.
+This is important for maintaining correct order in Kafka partitions. +
  +
 To obtain the event key from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-key[`table.field.event.key` SMT option] in the connector configuration.
 
 |`payload`
-|A representation of the outbox change event. The default structure is JSON. By default, the Kafka message value is solely comprised of the `payload` value. However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately. For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields].
+|A representation of the outbox change event.
+The default structure is JSON.
+By default, the Kafka message value is solely comprised of the `payload` value.
+However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately.
+For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields].
 
 To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
 
@@ -323,9 +333,9 @@ Configuration examples are in {link-prefix}:{link-outbox-event-router}#emitting-
 |[[outbox-event-router-property-route-topic-regex]]<<outbox-event-router-property-route-topic-regex, `route.topic.regex`>>
 |`(?<routedByValue>.*)`
 |Router
-|Specifies a regular expression that the outbox SMT applies in the RegexRouter to outbox table records. This regular expression is part of the setting of the `route.topic.replacement` SMT option. +
+|Specifies a regular expression that the outbox SMT applies in the RegexRouter to outbox table records. This regular expression is part of the setting of the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
  +
-The default behavior is that the SMT replaces the default `pass:[${routedByValue}]` variable in the setting of the `route.topic.replacement` SMT option with the setting of the `route.by.field` outbox SMT option.
+The default behavior is that the SMT replaces the default `pass:[${routedByValue}]` variable in the setting of the `route.topic.replacement` SMT option with the setting of the xref:outbox-event-router-property-route-by-field[`route.by.field`] outbox SMT option.
 
 |[[outbox-event-router-property-route-topic-replacement]]<<outbox-event-router-property-route-topic-replacement, `route.topic.replacement`>>
 |`outbox.event{zwsp}.pass:[${routedByValue}]`
@@ -335,8 +345,8 @@ The default topic name is `outbox.event.` followed by the `aggregatetype` column
  +
 To change the topic name, you can: +
 
-* Set the `route.by.field` option to a different column.
-* Set the `route.topic.regex` option to a different regular expression.
+* Set the xref:outbox-event-router-property-route-by-field[`route.by.field`] option to a different column.
+* Set the xref:outbox-event-router-property-route-topic-regex[route.topic.regex] option to a different regular expression.
 
 |[[outbox-event-router-property-route-tombstone-on-empty-payload]]<<outbox-event-router-property-route-tombstone-on-empty-payload, `route.tombstone.on.empty.payload`>>
 |`false`
@@ -352,7 +362,8 @@ a|Determines the behavior of the SMT when there is an `UPDATE` operation on the 
 * `error` - The SMT logs an error and continues to the next outbox table record.
 * `fatal` - The SMT logs an error and the connector stops processing.
 
-All changes in an outbox table are expected to be `INSERT` operations. That is, an outbox table functions as a queue; updates to records in an outbox table are not allowed. The SMT automatically filters out `DELETE` operations on an outbox table.
+All changes in an outbox table are expected to be `INSERT` operations. That is, an outbox table functions as a queue; updates to records in an outbox table are not allowed.
+The SMT automatically filters out `DELETE` operations on an outbox table.
 ifdef::community[]
 |[[outbox-event-router-property-tracing-span-context-field]]<<outbox-event-router-property-tracing-span-context-field, `tracing.span.context.field`>>
 |`tracingspancontext`
