@@ -43,30 +43,33 @@ public class CreateTableParserListener extends BaseParserListener {
             throw new IllegalArgumentException("Only relational tables are supported");
         }
         TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
-        if (parser.databaseTables().forTable(tableId) == null) {
-            tableEditor = parser.databaseTables().editOrCreateTable(tableId);
-            super.enterCreate_table(ctx);
+        if (parser.getTableFilter().isIncluded(tableId)) {
+            if (parser.databaseTables().forTable(tableId) == null) {
+                tableEditor = parser.databaseTables().editOrCreateTable(tableId);
+                super.enterCreate_table(ctx);
+            }
         }
     }
 
     @Override
     public void exitCreate_table(PlSqlParser.Create_tableContext ctx) {
-        if (inlinePrimaryKey != null) {
-            if (!tableEditor.primaryKeyColumnNames().isEmpty()) {
-                throw new ParsingException(null, "Can only specify in-line or out-of-line primary keys but not both");
-            }
-            tableEditor.setPrimaryKeyNames(inlinePrimaryKey);
-        }
-
-        Table table = getTable();
-        assert table != null;
-
         parser.runIfNotNull(() -> {
-            listeners.remove(columnDefinitionParserListener);
-            columnDefinitionParserListener = null;
-            parser.databaseTables().overwriteTable(table);
-            parser.signalCreateTable(tableEditor.tableId(), ctx);
-        }, tableEditor, table);
+            if (inlinePrimaryKey != null) {
+                if (!tableEditor.primaryKeyColumnNames().isEmpty()) {
+                    throw new ParsingException(null, "Can only specify in-line or out-of-line primary keys but not both");
+                }
+                tableEditor.setPrimaryKeyNames(inlinePrimaryKey);
+            }
+
+            Table table = getTable();
+            assert table != null;
+            parser.runIfNotNull(() -> {
+                listeners.remove(columnDefinitionParserListener);
+                columnDefinitionParserListener = null;
+                parser.databaseTables().overwriteTable(table);
+                parser.signalCreateTable(tableEditor.tableId(), ctx);
+            }, table);
+        }, tableEditor);
 
         super.exitCreate_table(ctx);
     }
