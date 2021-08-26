@@ -1288,7 +1288,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1962")
+    @FixFor("DBZ-2525")
     public void shouldConsumeEventsWithIncludedColumnsForKeywordNamedTable() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
 

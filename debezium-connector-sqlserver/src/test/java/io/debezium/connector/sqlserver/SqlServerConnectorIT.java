@@ -1243,7 +1243,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         // should be no more records
         assertNoRecordsToConsume();
 
-        final String message = "All columns in table testDB.dbo.tablea were excluded due to include/exclude lists, defaulting to selecting primary keys only";
+        final String message = "All columns in table testDB.dbo.tablea were excluded due to include/exclude lists, defaulting to selecting all columns";
         stopConnector(value -> assertThat(logInterceptor.containsMessage(message)).isTrue());
     }
 

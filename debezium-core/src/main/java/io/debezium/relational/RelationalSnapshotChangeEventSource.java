@@ -337,7 +337,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
-        LOGGER.info("\t Exporting data from table '{}' ({} of {} tables)", table.id(), tableOrder, tableCount);
+        LOGGER.info("Exporting data from table '{}' ({} of {} tables)", table.id(), tableOrder, tableCount);
 
         final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
         if (!selectStatement.isPresent()) {
@@ -463,9 +463,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .collect(Collectors.toList());
 
         if (columnNames.isEmpty()) {
-            LOGGER.info("All columns in table {} were excluded due to include/exclude lists, defaulting to selecting primary keys only", table.id());
-            columnNames = table.primaryKeyColumnNames();
+            LOGGER.info("\t All columns in table {} were excluded due to include/exclude lists, defaulting to selecting all columns", table.id());
+
+            columnNames = table.retrieveColumnNames()
+                    .stream()
+                    .map(columnName -> JdbcConnection.quotedColumnIdString(table.id(), columnName))
+                    .collect(Collectors.toList());
         }
+
         return columnNames;
     }
 
@@ -473,7 +478,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Additional filter handling for preparing column names for snapshot select
      */
     protected boolean additionalColumnFilter(TableId tableId, String columnName) {
-        return false;
+        return true;
     }
 
     /**
