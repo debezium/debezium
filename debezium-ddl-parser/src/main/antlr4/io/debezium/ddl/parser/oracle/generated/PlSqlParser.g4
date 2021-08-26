@@ -2562,6 +2562,7 @@ alter_table_partitioning
     | modify_table_partition
     | split_table_partition
     | truncate_table_partition
+    | exchange_table_partition
     ;
 
 add_table_partition
@@ -2590,6 +2591,12 @@ split_table_partition
 
 truncate_table_partition
     : TRUNCATE PARTITION partition_name
+    ;
+
+exchange_table_partition
+    : EXCHANGE PARTITION partition_name WITH TABLE tableview_name
+            ((INCLUDING|EXCLUDING) INDEXES)?
+            ((WITH | WITHOUT) VALIDATION)?
     ;
 
 alter_iot_clauses
