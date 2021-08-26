@@ -1,4 +1,4 @@
-create table TEST
+create table DEBEZIUM.TEST
 (id number(19) not null,
 col1 numeric(4,2),
 col2 varchar2(255) default 'debezium' not null ,
