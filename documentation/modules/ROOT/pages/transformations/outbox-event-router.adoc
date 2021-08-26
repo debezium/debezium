@@ -159,13 +159,13 @@ To obtain the event key from a different outbox table column, set the {link-pref
 The default structure is JSON.
 By default, the Kafka message value is solely comprised of the `payload` value.
 However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately.
-For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields].
-
+For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields]. +
+ +
 To obtain the event payload from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
 
 |Additional custom columns
-|Any additional columns from the outbox table can be {link-prefix}:{link-outbox-event-router}#outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header.
-+
+|Any additional columns from the outbox table can be {link-prefix}:{link-outbox-event-router}#outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. +
+ +
 One example could be a column `eventType` which conveys a user-defined value that helps to categorize or organize events.
 
 |===
@@ -381,8 +381,9 @@ ifdef::community[]
 |When `true` only events that have serialized context field should be traced.
 endif::community[]
 |===
+
 ifdef::community[]
 == Distributed tracing
-The extension has support for distributed tracing.
+The outbox event routing SMT has support for distributed tracing.
 See link:/documentation/reference/integrations/tracing[tracing documentation] for more details.
 endif::community[]
