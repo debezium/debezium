@@ -84,7 +84,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
      */
     public PostgresConnection(Configuration config, PostgresValueConverterBuilder valueConverterBuilder) {
-        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
+        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings, "\"", "\"");
 
         if (Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
@@ -104,7 +104,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param typeRegistry an existing/already-primed {@link TypeRegistry} instance
      */
     public PostgresConnection(Configuration config, TypeRegistry typeRegistry) {
-        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
+        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings, "\"", "\"");
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;

@@ -68,7 +68,7 @@ public class OracleConnection extends JdbcConnection {
     private static final String QUOTED_CHARACTER = "\"";
 
     public OracleConnection(Configuration config, Supplier<ClassLoader> classLoaderSupplier) {
-        super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER);
+        super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER, QUOTED_CHARACTER);
 
         this.databaseVersion = resolveOracleDatabaseVersion();
         LOGGER.info("Database Version: {}", databaseVersion.getBanner());

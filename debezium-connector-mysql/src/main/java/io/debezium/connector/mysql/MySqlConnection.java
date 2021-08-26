@@ -64,7 +64,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param fieldReader binary or text protocol based readers
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MysqlFieldReader fieldReader) {
-        super(connectionConfig.config(), connectionConfig.factory(), QUOTED_CHARACTER);
+        super(connectionConfig.config(), connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = connectionConfig;
         this.mysqlFieldReader = fieldReader;
     }
