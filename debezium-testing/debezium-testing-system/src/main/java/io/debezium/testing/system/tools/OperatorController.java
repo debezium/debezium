@@ -10,7 +10,6 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
+import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -92,7 +93,6 @@ public class OperatorController {
      */
     public void setImagePullSecret(String secret) {
         LOGGER.info("Using " + secret + " as image pull secret for deployment '" + name + "'");
-        List<LocalObjectReference> pullSecrets = Collections.singletonList(new LocalObjectReference(secret));
         ocpUtils.ensureHasPullSecret(operator, secret);
     }
 
@@ -119,14 +119,30 @@ public class OperatorController {
      * Updates Operator's {@link Deployment} resource
      * @return {@link Deployment} resource of the operator
      */
-    public Deployment updateOperator() throws InterruptedException {
+    public Deployment updateOperator() {
         operator = ocp.apps().deployments().inNamespace(project).createOrReplace(operator);
         operator = waitForAvailable();
         return operator;
     }
 
-    private Deployment waitForAvailable() throws InterruptedException {
-        return ocp.apps().deployments().inNamespace(project).withName(name).waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), MINUTES);
+    /**
+     * Deploys pull secret and links it to "default" service account in the project
+     * @param yamlPath path to Secret descriptor
+     * @return deployed pull secret
+     */
+    public Secret deployPullSecret(String yamlPath) {
+        LOGGER.info("Deploying Secret from " + yamlPath);
+        Secret secret = ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
+        String secretName = secret.getMetadata().getName();
+        ocp.serviceAccounts().inNamespace(project).withName("default").edit(sa -> new ServiceAccountBuilder(sa)
+                .removeFromImagePullSecrets(new LocalObjectReference(secretName))
+                .addNewImagePullSecret(secretName)
+                .build());
+        return secret;
     }
 
+    private Deployment waitForAvailable() {
+        return ocp.apps().deployments().inNamespace(project).withName(name)
+                .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), MINUTES);
+    }
 }
