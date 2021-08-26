@@ -41,6 +41,7 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.RequireDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
@@ -664,41 +665,45 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
         TestHelper.dropTable(connection, "debezium.customer2");
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER2")
+                    .build();
 
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER2")
-                .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
 
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            String ddl = "create table debezium.customer2 (" +
+                    "  id numeric(9,0) not null, " +
+                    "  name varchar2(1000), " +
+                    "  score decimal(6, 2), " +
+                    "  registered timestamp, " +
+                    "  primary key (id)" +
+                    ")";
 
-        String ddl = "create table debezium.customer2 (" +
-                "  id numeric(9,0) not null, " +
-                "  name varchar2(1000), " +
-                "  score decimal(6, 2), " +
-                "  registered timestamp, " +
-                "  primary key (id)" +
-                ")";
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.customer2");
 
-        connection.execute(ddl);
-        TestHelper.streamTable(connection, "debezium.customer2");
+            connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+            connection.execute("COMMIT");
 
-        connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
-        connection.execute("COMMIT");
+            SourceRecords records = consumeRecordsByTopic(1);
 
-        SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER2");
+            assertThat(testTableRecords).hasSize(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER2");
-        assertThat(testTableRecords).hasSize(1);
-
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 2);
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
-        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
-        assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
+            VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 2);
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
+            assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+            assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.customer2");
+        }
     }
 
     @Test
@@ -2032,6 +2037,40 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz3896");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3898")
+    public void shouldIgnoreAllTablesInExcludedSchemas() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz3898");
+
+            connection.execute("CREATE TABLE dbz3898 (id number(9,0), data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz3898");
+
+            // Explicitly uses CATALOG_IN_REDO mining strategy
+            // This strategy makes changes to several LOGMNR tables as DDL tracking gets enabled
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, LogMiningStrategy.CATALOG_IN_REDO)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz3898 (id,data) values (1,'Test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3898")).hasSize(1);
+
+            // Wait 2 minutes to let the connector run a few cycles
+            // Then check that there is absolutely nothing to consume and that no exceptions are thrown
+            Awaitility.await().atMost(Duration.ofMinutes(3)).pollDelay(Duration.ofMinutes(2)).until(() -> true);
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3898");
         }
     }
 

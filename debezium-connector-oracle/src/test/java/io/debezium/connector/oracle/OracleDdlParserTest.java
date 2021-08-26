@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -40,7 +41,8 @@ public class OracleDdlParserTest {
 
     @Before
     public void setUp() {
-        parser = new OracleDdlParser(true, null, null);
+        final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
+        parser = new OracleDdlParser(true, null, config.getTableFilters().dataCollectionFilter());
         tables = new Tables();
     }
 
@@ -48,8 +50,10 @@ public class OracleDdlParserTest {
     public void shouldParseCreateAndAlterTable() throws Exception {
         final String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
         Objects.requireNonNull(createStatement);
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
         parser.parse(createStatement, tables);
-        Table table = tables.forTable(new TableId(null, null, TABLE_NAME));
+        Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
 
         assertThat(tables.size()).isEqualTo(1);
         assertThat(table.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11", "COL12",
@@ -87,7 +91,7 @@ public class OracleDdlParserTest {
 
         String ddl = "alter table " + TABLE_NAME + " add (col21 varchar2(20), col22 number(19));";
         parser.parse(ddl, tables);
-        Table alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
+        Table alteredTable = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
         assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
                 "COL12", "COL13",
                 "COL21",
@@ -106,7 +110,7 @@ public class OracleDdlParserTest {
         }
         ddl = "alter table " + TABLE_NAME + " add (col23 varchar2(20) not null);";
         parser.parse(ddl, tables);
-        alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
+        alteredTable = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
         assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
                 "COL12", "COL13",
                 "COL21",
@@ -115,7 +119,7 @@ public class OracleDdlParserTest {
 
         ddl = "alter table " + TABLE_NAME + " drop (col22, col23);";
         parser.parse(ddl, tables);
-        alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
+        alteredTable = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
         assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
                 "COL12", "COL13",
                 "COL21");
