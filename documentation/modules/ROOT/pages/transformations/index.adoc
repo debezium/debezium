@@ -29,7 +29,7 @@ The following SMTs are provided by {prodname}:
 
 |===
 
-By means of |xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.
+By means of xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.
 
 [NOTE]
 ====
