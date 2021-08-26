@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -627,13 +626,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     @Override
-    protected ByteBuffer toByteBuffer(Column column, byte[] data) {
+    protected byte[] normalizeBinaryData(Column column, byte[] data) {
         // DBZ-254 right-pad fixed-length binary column values with 0x00 (zero byte)
         if (column.jdbcType() == Types.BINARY && data.length < column.length()) {
             data = Arrays.copyOf(data, column.length());
         }
 
-        return super.toByteBuffer(column, data);
+        return super.normalizeBinaryData(column, data);
     }
 
     /**
