@@ -79,7 +79,7 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
         List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_254_binary_column_test"));
         assertThat(dmls).hasSize(4);
 
-        // source value has a trailing "00" which is not distinguishable from
+        // source value has a trailing "00" which is not distinguishable from a value that needs padding
         SourceRecord insert = dmls.get(0);
         Struct after = (Struct) ((Struct) insert.value()).get("after");
         assertThat(encodeToBase64String((ByteBuffer) after.get("file_uuid"))).isEqualTo("ZRrtCDkPSJOy8TaSPnt0AA==");
@@ -127,7 +127,7 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
         List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_254_binary_column_test"));
         assertThat(dmls).hasSize(4);
 
-        // source value has a trailing "00" which is not distinguishable from
+        // source value has a trailing "00" which is not distinguishable from a value that needs padding
         SourceRecord insert = dmls.get(0);
         Struct after = (Struct) ((Struct) insert.value()).get("after");
         assertThat(after.get("file_uuid")).isEqualTo("651aed08390f4893b2f136923e7b7400");
@@ -175,7 +175,7 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
         List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_254_binary_column_test"));
         assertThat(dmls).hasSize(4);
 
-        // source value has a trailing "00" which is not distinguishable from
+        // source value has a trailing "00" which is not distinguishable from a value that needs padding
         SourceRecord insert = dmls.get(0);
         Struct after = (Struct) ((Struct) insert.value()).get("after");
         assertThat(after.get("file_uuid")).isEqualTo("ZRrtCDkPSJOy8TaSPnt0AA==");
