@@ -61,3 +61,4 @@ asciidoc:
     link-install-debezium: 'install.adoc'
     link-topic-auto-creation: 'configuration/topic-auto-create-config.adoc'
     link-vitess-connector: 'connectors/vitess.adoc'
+    link-debezium-server: 'operations/debezium-server.adoc'

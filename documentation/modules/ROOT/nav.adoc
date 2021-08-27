@@ -8,15 +8,6 @@
 ** xref:configuration/avro.adoc[Avro Serialization]
 ** xref:configuration/topic-auto-create-config.adoc[Customizing Topic Auto-Creation]
 ** xref:configuration/signalling.adoc[Sending Signals to Debezium]
-* Transformations
-** xref:transformations/index.adoc[Overview]
-** xref:transformations/topic-routing.adoc[Topic Routing]
-** xref:transformations/event-flattening.adoc[New Record State Extraction]
-** xref:transformations/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
-** xref:transformations/outbox-event-router.adoc[Outbox Event Router]
-** xref:transformations/filtering.adoc[Message Filtering]
-** xref:transformations/content-based-routing.adoc[Content-Based Routing]
-** xref:transformations/applying-transformations-selectively.adoc[Using SMT Predicates to Selectively Apply Transformations]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
@@ -27,6 +18,15 @@
 ** xref:connectors/db2.adoc[Db2]
 ** xref:connectors/cassandra.adoc[Cassandra]
 ** xref:connectors/vitess.adoc[Vitess]
+* Transformations
+** xref:transformations/index.adoc[Overview]
+** xref:transformations/topic-routing.adoc[Topic Routing]
+** xref:transformations/event-flattening.adoc[New Record State Extraction]
+** xref:transformations/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
+** xref:transformations/outbox-event-router.adoc[Outbox Event Router]
+** xref:transformations/filtering.adoc[Message Filtering]
+** xref:transformations/content-based-routing.adoc[Content-Based Routing]
+** xref:transformations/applying-transformations-selectively.adoc[Using SMT Predicates to Selectively Apply Transformations]
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]
