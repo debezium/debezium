@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -13,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.mysql.signal.ExecuteSnapshotKafkaSignal;
+import io.debezium.connector.mysql.signal.KafkaSignalThread;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
@@ -76,6 +79,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotChangeEventSource.class);
     private final String showMasterStmt = "SHOW MASTER STATUS";
+    private final KafkaSignalThread<T> kafkaSignal;
 
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(CommonConnectorConfig config, JdbcConnection jdbcConnection,
                                                              EventDispatcher<T> dispatcher,
@@ -83,6 +87,17 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                                                              SnapshotProgressListener progressListener,
                                                              DataChangeEventListener dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
+        kafkaSignal = new KafkaSignalThread<>(MySqlConnector.class, config, this);
+    }
+
+    @Override
+    public void init(OffsetContext offsetContext) {
+        super.init(offsetContext);
+        Long signalOffset = getContext().getSignalOffset();
+        if (signalOffset != null) {
+            kafkaSignal.seek(signalOffset);
+        }
+        kafkaSignal.start();
     }
 
     @Override
@@ -91,6 +106,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkEnqueuedSnapshotSignals(offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
@@ -108,6 +124,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkEnqueuedSnapshotSignals(offsetContext);
         while (getContext().snapshotRunning() && getContext().reachedHighWatermark(offsetContext)) {
             sendWindowEvents(partition, offsetContext);
             readChunk();
@@ -120,11 +137,16 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkEnqueuedSnapshotSignals(offsetContext);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
             readChunk();
         }
+    }
+
+    public void enqueueDataCollectionNamesToSnapshot(List<String> dataCollectionIds, long signalOffset) {
+        getContext().enqueueDataCollectionsToSnapshot(dataCollectionIds, signalOffset);
     }
 
     protected void updateLowWatermark() {
@@ -185,6 +207,17 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         window.clear();
         context.revertChunk();
         readChunk();
+    }
+
+    private void checkEnqueuedSnapshotSignals(OffsetContext offsetContext) throws InterruptedException {
+        while (getContext().hasExecuteSnapshotSignals()) {
+            addDataCollectionNamesToSnapshot(getContext().getExecuteSnapshotSignals(), offsetContext);
+        }
+    }
+
+    private void addDataCollectionNamesToSnapshot(ExecuteSnapshotKafkaSignal executeSnapshotSignal, OffsetContext offsetContext) throws InterruptedException {
+        super.addDataCollectionNamesToSnapshot(executeSnapshotSignal.getDataCollections(), offsetContext);
+        getContext().setSignalOffset(executeSnapshotSignal.getSignalOffset());
     }
 
     private MySqlReadOnlyIncrementalSnapshotContext<T> getContext() {
