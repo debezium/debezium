@@ -1,3 +1,9 @@
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_`.
+
+Snapshot metrics are not exposed unless a snapshot operation is active, or if a snapshot has occurred since the last connector start.
+
+The following table lists the shapshot metrics that are available.
+
 [cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description

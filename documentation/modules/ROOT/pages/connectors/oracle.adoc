@@ -4,6 +4,7 @@
 = {prodname} Connector for Oracle
 
 :context: oracle
+:mbean-name: {context}
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -192,7 +193,7 @@ The following example shows a typical schema change message in JSON format:
       "lcr_position" : null
     },
     "databaseName": "ORCLPDB1", // <1>
-    "schemaName": "DEBEZIUM", // 
+    "schemaName": "DEBEZIUM", //
     "ddl": "CREATE TABLE \"DEBEZIUM\".\"CUSTOMERS\" \n   (    \"ID\" NUMBER(9,0) NOT NULL ENABLE, \n    \"FIRST_NAME\" VARCHAR2(255), \n    \"LAST_NAME" VARCHAR2(255), \n    \"EMAIL\" VARCHAR2(255), \n     PRIMARY KEY (\"ID\") ENABLE, \n     SUPPLEMENTAL LOG DATA (ALL) COLUMNS\n   ) SEGMENT CREATION IMMEDIATE \n  PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 \n NOCOMPRESS LOGGING\n  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645\n  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1\n  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)\n  TABLESPACE \"USERS\" ", // <2>
     "tableChanges": [ // <3>
       {
@@ -2307,7 +2308,6 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium
 === Snapshot Metrics
 
 [[oracle-monitoring-snapshots]]
-The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
@@ -2320,7 +2320,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 === Streaming Metrics
 
 [[oracle-monitoring-streaming]]
-The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
@@ -2553,7 +2552,6 @@ This should always be `0`; however when allowing unparsable DDL to be skipped, t
 === Schema History Metrics
 
 [[oracle-monitoring-schema-history]]
-The *MBean* is `debezium.oracle:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
