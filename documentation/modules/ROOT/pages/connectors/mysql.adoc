@@ -409,19 +409,53 @@ a|Records the completed snapshot in the connector offsets.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
-===== Read-only Incremental snapshot
+==== Read-only Incremental snapshot
 
 The MySql connector supports Incremental snapshot with read-only connection to the database.
 It's achieved by using executed GTID set as high and low watermarks.
 The state of chunk's window gets updated by comparing GTIDs of binlog events or server's heartbeats against low and high watermarks.
 
-To switch to read-only implementation set {link-prefix}:#{link-mysql-connector}-property-read-only[read.only] to `true`.
+To switch to read-only implementation set {link-prefix}:{link-mysql-connector}#mysql-property-read-only[read.only] to `true`.
 
 .Prerequisites
 
 * {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[`enable-mysql-gtids`]
 * If connector is reading from a replica, then for multithreaded replicas (replicas on which `replica_parallel_workers` is set to a value greater than 0)
 it's required to set `replica_preserve_commit_order=1` or `slave_preserve_commit_order=1`
+
+==== Ad-hoc read-only Incremental snapshot
+
+An alternative way to {link-prefix}:{link-signalling}[signalling table] mechanism to execute a new snapshot when the MySQL connection is read-only is to send a message to the Kafka topic configured with
+{link-prefix}:{link-mysql-connector}#mysql-property-signal-kafka-topic[signal.kafka.topic] property.
+
+The key of the Kafka message has to match the connector's name.
+
+The value is a json with `type` and `data` fields.
+
+The signal type is `execute-snapshot` and the `data` field must have the following fields:
+
+.Execute snapshot data fields
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to be executed. Currently only `incremental` is supported. +
+See the next section for more details.
+
+|`data-collections`
+|_N/A_
+| An array of qualified names of table to be snapshotted. +
+The format of the names is the same as for {link-prefix}:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
+
+|===
+
+An example of the execute-snapshot Kafka message:
+
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
 
 ifdef::community[]
 
@@ -2608,6 +2642,42 @@ The name format is _database-name.table-name_.
 ==== {prodname} connector database history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector kafka signals configuration properties
+
+When MySQL connector is configured as read-only the alternative for the signalling table is the signals Kafka topic.
+
+{prodname} provides a set of `signal.*` properties that control how the connector interacts with the Kafka signals topic.
+
+The following table describes the `signal` properties.
+
+.Kafka signals configuration properties
+[cols="33%a,17%a,50%a",options="header",subs="+attributes"]
+|===
+|Property |Default |Description
+|[[{context}-property-signal-kafka-topic]]<<{context}-property-signal-kafka-topic, `+signal.kafka.topic+`>>
+|
+|The name of the Kafka topic that connector monitors for ad-hoc signals.
+
+|[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
+|
+|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
+
+|[[{context}-property-signal-kafka-poll-timeout-ms]]<<{context}-property-signal-kafka-poll-timeout-ms, `+signal.kafka.poll.timeout.ms+`>>
+|`100`
+|An integer value that specifies the maximum number of milliseconds the connector should wait when polling signals. The default is 100ms.
+
+|===
+
+[id="debezium-{context}-connector-pass-through-signals-kafka-consumer-configuration-properties"]
+==== {prodname} connector pass-through signals Kafka consumer client configuration properties
+
+The {prodname} connector provides for pass-through configuration of the signals Kafka consumer.
+Pass-through signals properties begin with the prefix `signals.consumer.*`.
+For example, the connector passes properties such as `signal.consumer.security.protocol=SSL` to the Kafka consumer.
+
+As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database history clients], {prodname} strips the prefixes from the properties before it passes them to the Kafka signals consumer.
 
 [id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties

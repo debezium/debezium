@@ -7,13 +7,18 @@ package io.debezium.connector.mysql;
 
 import static io.debezium.connector.mysql.GtidSet.GTID_DELIMITER;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.mysql.signal.ExecuteSnapshotKafkaSignal;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 
 @NotThreadSafe
@@ -22,6 +27,9 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotContext.class);
     private GtidSet lowWatermark = null;
     private GtidSet highWatermark = null;
+    private Long signalOffset;
+    private final Queue<ExecuteSnapshotKafkaSignal> executeSnapshotSignals = new ConcurrentLinkedQueue<>();
+    public static final String SIGNAL_OFFSET = INCREMENTAL_SNAPSHOT_KEY + "_signal_offset";
 
     public MySqlReadOnlyIncrementalSnapshotContext() {
         this(true);
@@ -29,6 +37,13 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
 
     public MySqlReadOnlyIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         super(useCatalogBeforeSchema);
+    }
+
+    protected static <U> IncrementalSnapshotContext<U> init(MySqlReadOnlyIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
+        AbstractIncrementalSnapshotContext.init(context, offsets);
+        final Long signalOffset = (Long) offsets.get(SIGNAL_OFFSET);
+        context.setSignalOffset(signalOffset);
+        return context;
     }
 
     public static <U> MySqlReadOnlyIncrementalSnapshotContext<U> load(Map<String, ?> offsets) {
@@ -103,5 +118,31 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
 
     public boolean serverUuidChanged() {
         return highWatermark.getUUIDSets().size() > 1;
+    }
+
+    public Long getSignalOffset() {
+        return signalOffset;
+    }
+
+    public void setSignalOffset(Long signalOffset) {
+        this.signalOffset = signalOffset;
+    }
+
+    public Map<String, Object> store(Map<String, Object> offset) {
+        Map<String, Object> snapshotOffset = super.store(offset);
+        snapshotOffset.put(SIGNAL_OFFSET, signalOffset);
+        return snapshotOffset;
+    }
+
+    public void enqueueDataCollectionsToSnapshot(List<String> dataCollectionIds, long signalOffset) {
+        executeSnapshotSignals.add(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset));
+    }
+
+    public ExecuteSnapshotKafkaSignal getExecuteSnapshotSignals() {
+        return executeSnapshotSignals.poll();
+    }
+
+    public boolean hasExecuteSnapshotSignals() {
+        return !executeSnapshotSignals.isEmpty();
     }
 }
