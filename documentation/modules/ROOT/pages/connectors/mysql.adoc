@@ -4,6 +4,7 @@
 = {prodname} connector for MySQL
 
 :context: mysql
+:mbean-name: {context}
 ifdef::community[]
 
 :toc:
@@ -2606,8 +2607,6 @@ The {prodname} MySQL connector provides three types of metrics that are in addit
 [[mysql-snapshot-metrics]]
 === Snapshot metrics
 
-The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snapshot metric. This metric is set to a Boolean value that indicates whether the connector currently holds a global or table write lock.
@@ -2617,8 +2616,6 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 // Title: Monitoring {prodname} MySQL connector record streaming
 [[mysql-streaming-metrics]]
 === Streaming metrics
-
-The *MBean* is `debezium.mysql:type=connector-metrics,context=streaming,server=<database.server.name>`.
 
 Transaction-related attributes are available only if binlog event buffering is enabled. See {link-prefix}:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
 
@@ -2674,8 +2671,6 @@ The {prodname} MySQL connector also provides the following additional streaming 
 // Title: Monitoring {prodname} MySQL connector schema history
 [[mysql-schema-history-metrics]]
 === Schema history metrics
-
-The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 

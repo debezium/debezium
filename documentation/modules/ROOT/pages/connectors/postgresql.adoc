@@ -4,6 +4,7 @@
 = {prodname} connector for PostgreSQL
 
 :context: postgresql
+:mbean-name: postgres
 ifdef::community[]
 
 :toc:
@@ -2943,8 +2944,6 @@ The {prodname} PostgreSQL connector provides two types of metrics that are in ad
 [[postgresql-snapshot-metrics]]
 === Snapshot metrics
 
-The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
@@ -2952,8 +2951,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 // Title: Monitoring {prodname} PostgreSQL connector record streaming
 [[postgresql-streaming-metrics]]
 === Streaming metrics
-
-The *MBean* is `debezium.postgres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 

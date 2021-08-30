@@ -4,6 +4,7 @@
 = {prodname} Connector for Oracle
 
 :context: oracle
+:mbean-name: {context}
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -2246,7 +2247,6 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium
 === Snapshot Metrics
 
 [[oracle-monitoring-snapshots]]
-The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
@@ -2257,7 +2257,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 === Streaming Metrics
 
 [[oracle-monitoring-streaming]]
-The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
@@ -2474,7 +2473,6 @@ This should always be `0`; however when allowing unparsable DDL to be skipped, t
 === Schema History Metrics
 
 [[oracle-monitoring-schema-history]]
-The *MBean* is `debezium.oracle:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
