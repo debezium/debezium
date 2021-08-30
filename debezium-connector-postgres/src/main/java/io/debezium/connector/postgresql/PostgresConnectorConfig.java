@@ -1198,7 +1198,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return errors;
             }
             if (truncateHandlingMode == TruncateHandlingMode.INCLUDE) {
-                LogicalDecoder logicalDecoder = config.getInstance(PLUGIN_NAME, LogicalDecoder.class);
+                final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
                 if (!logicalDecoder.supportsTruncate()) {
                     String message = String.format(
                             "%s '%s' is not supported with configuration %s '%s'",
