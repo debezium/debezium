@@ -202,17 +202,6 @@ The same applies when changing existing behaviors, e.g. type mappings, removing 
 The documentation is written using AsciiDoc/Antora and can be found in the Debezium [source code repository](https://github.com/debezium/debezium/tree/master/documentation).
 Any documentation update should be part of the pull request you submit for the code change.
 
-Generally, two versions of documentation are published on the website at a given time:
-
-* The documentation for the current _stable_ release (e.g. 0.9.5.Final at the time of writing)
-* The documentation for the current _development_ release (e.g. 0.10.0.Beta4)
-
-Documentation changes applying to the development release will be published on the website when the release containing the documented features is done.
-In order to apply immediate changes to the documentation without awaiting the next release,
-submit a pull request targeting the [development_docs](https://github.com/debezium/debezium/tree/development_docs/documentation) branch.
-This should only be done for critical fixes such as correcting wrong documentation; minor changes such as typo fixes should simply be done on the `master` branch.
-Upon each release, the `development_docs` branch is rebased to `master`, resulting in the publication of all doc changes done on the `master` branch since the last release.
-
 ### Creating a pull request
 
 Once you're finished making your changes, your topic branch should have your commit(s) and you should have verified that your branch builds successfully. At this point, you can shared your proposed changes and create a pull request. To do this, first push your topic branch (and its commits) to your fork repository (called `origin`) on GitHub:
