@@ -93,20 +93,6 @@ This should report:
 
 Only if this is the case can you proceed with the release.
 
-## Rebase and merge development docs branch
-
-The documentation of the current development version is published from the `development_docs` branch,
-which always is based off of the latest development release tag.
-
-The branch may contain critical documentation updates for the development release documentation,
-which couldn't wait until the next release.
-In this case rebase the branch to the current master and merge it:
-
-    $ git checkout development_docs
-    $ git rebase master
-    $ git checkout master
-    $ git merge development_docs
-
 ## Update versions and tag
 
 Once the codebase is in a state that is ready to be released, use the following command to automatically update the POM to use the release number, commit the changes to your local Git repository, tag that commit, and then update the POM to use snapshot versions and commit to your local Git repository:
