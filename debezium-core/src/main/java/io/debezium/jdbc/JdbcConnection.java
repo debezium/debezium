@@ -1496,19 +1496,11 @@ public class JdbcConnection implements AutoCloseable {
     /**
      * Prepares qualified column names with appropriate quote character as per the specific database's rules
      *
-     * @param tableId
+     * @param tableName
      * @param columnName
      * @return formatted string
      */
-    public String quotedColumnIdString(TableId tableId, String columnName) {
-        String tableName = tableId.table();
-        if (tableName.contains("\"")) {
-            tableName = tableName.replaceAll("\"", "\"\"");
-        }
-        if (columnName.contains("\"")) {
-            columnName = columnName.replaceAll("\"", "\"\"");
-        }
-
+    public String quotedColumnIdString(String tableName, String columnName) {
         return openingQuoteCharacter + tableName + closingQuoteCharacter + "." + openingQuoteCharacter + columnName + closingQuoteCharacter;
     }
 }

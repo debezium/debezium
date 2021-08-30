@@ -494,6 +494,18 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
+    public String quotedColumnIdString(String tableName, String columnName) {
+        if (tableName.contains("\"")) {
+            tableName = tableName.replaceAll("\"", "\"\"");
+        }
+        if (columnName.contains("\"")) {
+            columnName = columnName.replaceAll("\"", "\"\"");
+        }
+
+        return super.quotedColumnIdString(tableName, columnName);
+    }
+
+    @Override
     protected int resolveNativeType(String typeName) {
         return getTypeRegistry().get(typeName).getRootType().getOid();
     }
