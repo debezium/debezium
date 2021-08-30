@@ -1659,7 +1659,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 [source,json,indent=0,subs="+quotes"]
 ----
 {
-    "name": "inventory-connector",  // <`>`
+    "name": "inventory-connector",  // <1>
     "config": {
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",  // <2>
         "database.hostname" : "<ORACLE_IP_ADDRESS>",  // <3>
