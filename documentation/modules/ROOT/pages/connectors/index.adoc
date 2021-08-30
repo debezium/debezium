@@ -16,4 +16,5 @@ We currently have the following connectors:
 [NOTE]
 ====
 An incubating connector is one that has been released for preview purposes and is subject to changes that may not always be backward compatible.
+For all the connectors that allow to track transactions, please note that this information is limited to transactions created after Debezium was installed and configured.
 ====
