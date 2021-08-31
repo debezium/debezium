@@ -2578,7 +2578,7 @@ endif::community[]
 
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `+skipped.operations+`>>
 |
-|Comma-separated list of operation types to skip during streaming. The following values are possible: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
+|Comma-separated list of operation types to skip during streaming. The following values are possible: `r` for reads, `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
 
 |[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection, `+signal.data.collection+`>>
 |
