@@ -82,6 +82,9 @@ public class SqlServerConnection extends JdbcConnection {
 
     /**
      * Queries the list of capture instances in the given database.
+     *
+     * We use a query instead of {@code sys.sp_cdc_help_change_data_capture} because the stored procedure doesn't allow
+     * filtering capture instances by start LSN.
      */
     private static final String GET_CHANGE_TABLES = "SELECT s.name AS source_schema, o.name AS source_table, ct.capture_instance, ct.object_id, ct.start_lsn FROM [#db].cdc.change_tables ct INNER JOIN [#db].sys.objects o ON ct.source_object_id = o.object_id INNER JOIN [#db].sys.schemas s ON s.schema_id = o.schema_id";
 
@@ -376,6 +379,10 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     public List<SqlServerChangeTable> getChangeTables(String databaseName) throws SQLException {
+        return getChangeTables(databaseName, Lsn.NULL);
+    }
+
+    public List<SqlServerChangeTable> getChangeTables(String databaseName, Lsn toLsn) throws SQLException {
         Map<Integer, List<String>> columns = queryAndMap(
                 replaceDatabaseNamePlaceholder(GET_CAPTURED_COLUMNS, databaseName),
                 rs -> {
@@ -390,7 +397,7 @@ public class SqlServerConnection extends JdbcConnection {
                     }
                     return result;
                 });
-        return queryAndMap(replaceDatabaseNamePlaceholder(GET_CHANGE_TABLES, databaseName), rs -> {
+        final ResultSetMapper<List<SqlServerChangeTable>> mapper = rs -> {
             final List<SqlServerChangeTable> changeTables = new ArrayList<>();
             while (rs.next()) {
                 int changeTableObjectId = rs.getInt(4);
@@ -403,7 +410,18 @@ public class SqlServerConnection extends JdbcConnection {
                                 columns.get(changeTableObjectId)));
             }
             return changeTables;
-        });
+        };
+
+        String query = replaceDatabaseNamePlaceholder(GET_CHANGE_TABLES, databaseName);
+
+        if (toLsn.isAvailable()) {
+            return prepareQueryAndMap(query + " WHERE ct.start_lsn <= ?",
+                    ps -> ps.setBytes(1, toLsn.getBinary()),
+                    mapper);
+        }
+        else {
+            return queryAndMap(query, mapper);
+        }
     }
 
     public List<SqlServerChangeTable> getNewChangeTables(String databaseName, Lsn fromLsn, Lsn toLsn) throws SQLException {
