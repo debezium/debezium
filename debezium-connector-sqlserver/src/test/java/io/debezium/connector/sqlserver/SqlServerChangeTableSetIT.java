@@ -172,25 +172,48 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void addColumnToTableEndOfBatch() throws Exception {
-        addColumnToTable(true);
+    public void addColumnToTableEndOfBatchWithoutLsnLimit() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .build();
+        addColumnToTable(config, true);
     }
 
     @Test
-    public void addColumnToTableMiddleOfBatch() throws Exception {
-        addColumnToTable(false);
+    @FixFor("DBZ-3992")
+    public void addColumnToTableEndOfBatchWithLsnLimit() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.MAX_TRANSACTIONS_PER_ITERATION, 1)
+                .build();
+        addColumnToTable(config, true);
     }
 
-    private void addColumnToTable(boolean pauseAfterCaptureChange) throws Exception {
+    @Test
+    public void addColumnToTableMiddleOfBatchWithoutLsnLimit() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .build();
+        addColumnToTable(config, false);
+    }
+
+    @Test
+    @FixFor("DBZ-3992")
+    public void addColumnToTableMiddleOfBatchWithLsnLimit() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.MAX_TRANSACTIONS_PER_ITERATION, 1)
+                .build();
+        addColumnToTable(config, true);
+    }
+
+    private void addColumnToTable(Configuration config, boolean pauseAfterCaptureChange) throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
         final int ID_START_2 = 100;
         final int ID_START_3 = 1000;
         final int ID_START_4 = 10000;
-        final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();

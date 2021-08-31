@@ -126,7 +126,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             final SqlServerStreamingExecutionContext streamingExecutionContext = streamingExecutionContexts.getOrDefault(partition,
                     new SqlServerStreamingExecutionContext(
                             new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn())),
-                            new AtomicReference<>(getChangeTablesToQuery(partition, offsetContext)),
+                            new AtomicReference<>(),
                             offsetContext.getChangePosition(),
                             new AtomicBoolean(false),
                             // LSN should be increased for the first run only immediately after snapshot completion
@@ -173,7 +173,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     migrateTable(partition, schemaChangeCheckpoints, offsetContext);
                 }
                 if (!dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn).isEmpty()) {
-                    final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext);
+                    final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn);
                     tablesSlot.set(tables);
                     for (SqlServerChangeTable table : tables) {
                         if (table.getStartLsn().isBetween(fromLsn, toLsn)) {
@@ -181,6 +181,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             schemaChangeCheckpoints.add(table);
                         }
                     }
+                }
+                if (tablesSlot.get() == null) {
+                    tablesSlot.set(getChangeTablesToQuery(partition, offsetContext, toLsn));
                 }
                 try {
                     dataConnection.getChangesForTables(databaseName, tablesSlot.get(), fromLsn, toLsn, resultSets -> {
@@ -340,17 +343,18 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         if (m.matches() && m.group(1).equals(databaseName)) {
             final String captureName = m.group(2);
             LOGGER.info("Table is no longer captured with capture instance {}", captureName);
-            return Arrays.asList(currentChangeTables).stream()
+            return Arrays.stream(currentChangeTables)
                     .filter(x -> !x.getCaptureInstance().equals(captureName))
-                    .collect(Collectors.toList()).toArray(new SqlServerChangeTable[0]);
+                    .toArray(SqlServerChangeTable[]::new);
         }
         throw exception;
     }
 
-    private SqlServerChangeTable[] getChangeTablesToQuery(SqlServerPartition partition, SqlServerOffsetContext offsetContext)
+    private SqlServerChangeTable[] getChangeTablesToQuery(SqlServerPartition partition, SqlServerOffsetContext offsetContext,
+                                                          Lsn toLsn)
             throws SQLException, InterruptedException {
         final String databaseName = partition.getDatabaseName();
-        final List<SqlServerChangeTable> changeTables = dataConnection.getChangeTables(databaseName);
+        final List<SqlServerChangeTable> changeTables = dataConnection.getChangeTables(databaseName, toLsn);
         if (changeTables.isEmpty()) {
             LOGGER.warn("No table has enabled CDC or security constraints prevents getting the list of change tables");
         }
