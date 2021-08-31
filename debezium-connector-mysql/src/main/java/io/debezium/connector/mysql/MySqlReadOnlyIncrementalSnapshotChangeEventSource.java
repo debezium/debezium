@@ -16,6 +16,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -189,5 +190,17 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private MySqlReadOnlyIncrementalSnapshotContext<T> getContext() {
         return (MySqlReadOnlyIncrementalSnapshotContext<T>) context;
+    }
+
+    @Override
+    protected void preReadChunk(IncrementalSnapshotContext<T> context) {
+        try {
+            if (!jdbcConnection.isConnected()) {
+                jdbcConnection.connect();
+            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(String.format("Database error while checking jdbcConnection in preReadChunk"), e);
+        }
     }
 }
