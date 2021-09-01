@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import java.util.regex.Pattern;
+
 /**
  * A utility/helper class to support decoding Oracle Unicode String function values, {@code UNISTR}.
  *
@@ -14,6 +16,7 @@ public class UnistrHelper {
 
     private static final String UNITSTR_FUNCTION_START = "UNISTR('";
     private static final String UNISTR_FUNCTION_END = "')";
+    private static final Pattern CONCATENATION_PATTERN = Pattern.compile("\\|\\|");
 
     public static boolean isUnistrFunction(String data) {
         return data != null && data.startsWith(UNITSTR_FUNCTION_START) && data.endsWith(UNISTR_FUNCTION_END);
@@ -26,7 +29,7 @@ public class UnistrHelper {
 
         // Multiple UNISTR function calls maybe concatenated together using "||".
         // We split the values into their respective parts before parsing each one separately.
-        final String[] parts = data.split("\\|\\|");
+        final String[] parts = CONCATENATION_PATTERN.split(data);
 
         // Iterate each part and if the part is a UNISTR function call, decode it
         // Append each part's value to the final result
