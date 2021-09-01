@@ -200,7 +200,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             }
         }
         catch (SQLException e) {
-            throw new DebeziumException(String.format("Database error while checking jdbcConnection in preReadChunk"), e);
+            throw new DebeziumException("Database error while checking jdbcConnection in preReadChunk", e);
         }
     }
 }
