@@ -304,6 +304,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("When set to true the underlying buffer cache is not retained when the connector is stopped. " +
                     "When set to false (the default), the buffer cache is retained across restarts.");
 
+    public static final Field LOG_MINING_BUFFER_MEMORY_TRIM_FACTOR = Field.create("log.mining.buffer.memory.trim.factor")
+            .withDisplayName("The factor between current and maximum buffer size to trigger collection trim")
+            .withType(Type.INT)
+            .withDefault(10)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The factor between current and maximum memory buffer sizes that tells the memory buffer " +
+                    "implementation to reduce its memory footprint to the current size of the buffer.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -346,7 +355,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_LOCATION,
-                    LOG_MINING_BUFFER_DROP_ON_STOP)
+                    LOG_MINING_BUFFER_DROP_ON_STOP,
+                    LOG_MINING_BUFFER_MEMORY_TRIM_FACTOR)
             .create();
 
     /**
@@ -394,6 +404,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final LogMiningBufferType logMiningBufferType;
     private final String logMiningBufferLocation;
     private final boolean logMiningBufferDropOnStop;
+    private final int logMiningBufferMemoryTrimFactor;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
@@ -434,6 +445,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         this.logMiningBufferLocation = config.getString(LOG_MINING_BUFFER_LOCATION);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
+        this.logMiningBufferMemoryTrimFactor = config.getInteger(LOG_MINING_BUFFER_MEMORY_TRIM_FACTOR);
     }
 
     private static String toUpperCase(String property) {
@@ -1031,6 +1043,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningBufferDropOnStop() {
         return logMiningBufferDropOnStop;
+    }
+
+    /**
+     * @return the factor at which the memory buffer should be trimmed
+     */
+    public int getLogMiningBufferMemoryTrimFactor() {
+        return logMiningBufferMemoryTrimFactor;
     }
 
     @Override

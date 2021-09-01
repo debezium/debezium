@@ -31,4 +31,9 @@ public interface TransactionCache<I> extends AutoCloseable {
     Iterator<I> iterator();
 
     Scn getMinimumScn();
+
+    /**
+     * Reduces the memory footprint of the transaction cache, if the cache supports it.
+     */
+    void trimToSize();
 }

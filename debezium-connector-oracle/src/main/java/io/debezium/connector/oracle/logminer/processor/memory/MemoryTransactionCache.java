@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.Transaction;
 import io.debezium.connector.oracle.logminer.processor.TransactionCache;
@@ -20,7 +23,15 @@ import io.debezium.connector.oracle.logminer.processor.TransactionCache;
  */
 public class MemoryTransactionCache implements TransactionCache<Map.Entry<String, Transaction>> {
 
-    public final Map<String, Transaction> cache = new HashMap<>();
+    private static final Logger LOGGER = LoggerFactory.getLogger(MemoryTransactionCache.class);
+
+    private final int trimFactor;
+    private Map<String, Transaction> cache = new HashMap<>();
+    private int maxSize;
+
+    public MemoryTransactionCache(int trimFactor) {
+        this.trimFactor = trimFactor;
+    }
 
     @Override
     public Transaction get(String transactionId) {
@@ -30,6 +41,9 @@ public class MemoryTransactionCache implements TransactionCache<Map.Entry<String
     @Override
     public void put(String transactionId, Transaction transaction) {
         cache.put(transactionId, transaction);
+        if (cache.size() > maxSize) {
+            maxSize = cache.size();
+        }
     }
 
     @Override
@@ -63,6 +77,17 @@ public class MemoryTransactionCache implements TransactionCache<Map.Entry<String
                 .map(Transaction::getStartScn)
                 .min(Scn::compareTo)
                 .orElse(Scn.NULL);
+    }
+
+    @Override
+    public void trimToSize() {
+        final int factor = (int) ((float) maxSize / (float) cache.size());
+        if (factor >= trimFactor) {
+            // If the maximum cache size was more than x-times the current size, then force a trim/reallocate
+            LOGGER.debug("Cache maxSize={} currentSize={}, trimming to size.", maxSize, cache.size());
+            cache = new HashMap<>(cache);
+            maxSize = cache.size();
+        }
     }
 
     @Override

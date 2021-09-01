@@ -149,6 +149,9 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             counters.rows++;
             processRow(LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
         }
+
+        // Checks and trims the transaction cache memory footprint, if supported by the cache implementation
+        getTransactionCache().trimToSize();
     }
 
     /**

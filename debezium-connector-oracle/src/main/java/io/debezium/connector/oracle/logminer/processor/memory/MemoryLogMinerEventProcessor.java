@@ -84,7 +84,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.metrics = metrics;
-        this.transactionCache = new MemoryTransactionCache();
+        this.transactionCache = new MemoryTransactionCache(connectorConfig.getLogMiningBufferMemoryTrimFactor());
     }
 
     @Override

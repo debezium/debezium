@@ -82,6 +82,11 @@ public class InfinispanTransactionCache implements TransactionCache<Cache.Entry<
     }
 
     @Override
+    public void trimToSize() {
+        // no-op
+    }
+
+    @Override
     public void close() throws Exception {
         cache.stop();
     }
