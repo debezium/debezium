@@ -62,6 +62,13 @@ public class LogMinerQueryBuilder {
 
         // These bind parameters will be bound when the query is executed by the caller.
         query.append("WHERE SCN > ? AND SCN <= ? ");
+
+        // Restrict to configured PDB if one is supplied
+        final String pdbName = connectorConfig.getPdbName();
+        if (!Strings.isNullOrEmpty(pdbName)) {
+            query.append("AND ").append("SRC_CON_NAME = '").append(pdbName.toUpperCase()).append("' ");
+        }
+
         query.append("AND (");
 
         // Always include START, COMMIT, MISSING_SCN, and ROLLBACK operations

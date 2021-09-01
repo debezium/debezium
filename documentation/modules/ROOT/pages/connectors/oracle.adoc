@@ -2804,6 +2804,12 @@ END;
 exit;
 ----
 
+[NOTE]
+====
+When setting up an XStream Outbound Server to capture changes from a pluggable database,
+the `source_container_name` parameter should be provided specifying the pluggable database name.
+====
+
 .Configure the XStream user account to connect to the XStream Outbound Server
 [source,indent=0]
 ----
