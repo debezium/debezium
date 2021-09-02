@@ -43,15 +43,18 @@ Ben Williams
 Bin Li
 Bingqin Zhou
 Björn Häuser
+Blake Peno
 Bob Roldan
 Braden Groom
 Braden Staudacher
 Brandon Brown
 Brandon Maguire
+Brennan Vincent
 Camile Sing
 Cao Manh Dat
 Cheng Pan
 Ching Tsai
+Chris Baumbauer
 Chris Collingwood
 Chris Cranford
 Chris Egerton
@@ -89,6 +92,7 @@ Emrul Islam
 Eric Slep
 Eric Weaver
 Eric S. Kreiseir
+Erik Malm
 Ewen Cheslack-Postava
 Fabian Aussems
 Fabio Cantarini
@@ -116,7 +120,6 @@ Hans-Peter Grahsl
 Harvey Yue
 Henryk Konsek
 Hoa Le
-Hongkai Wang
 Horia Chiorean
 Hossein Torabi
 Hussain Ansari
@@ -165,6 +168,7 @@ Juan Antonio Pedraza
 Jun Du
 Jure Kajzer
 Justin Hiza
+Katerina Galieva
 Kaushik Iyer
 Kazuki MATSUDA / 松田一樹
 Keith Barber
@@ -189,6 +193,7 @@ MaoXiang Pan
 Marc Zbyszynski
 Mario Mueller
 Mariusz Strzelecki
+Mark Drilling
 Martin Sillence
 Matt Beary
 Matteo Capitanio
@@ -203,6 +208,7 @@ Michael Cizmar
 Michael Wang
 Mickaël Isaert
 Mike Graham
+Mike Kamornikov
 Mincong Huang
 Mohamed Pudukulathan
 Moira Tagle
@@ -224,6 +230,7 @@ Omar Al-Safi
 Ori Popowski
 Orr Ganani
 Patrick Chu
+Pavel Strashkin
 Paul Mellor
 Peng Lyu
 Peter Goransson
@@ -282,6 +289,8 @@ Tapani Moilanen
 Tautvydas Januskevicius
 Taylor Rolison
 Teo Stocco
+Thiago Avancini
+Thiago Dantas
 Theofanis Despoudis
 Thierry De Leeuw
 Thomas Aregger
@@ -317,4 +326,7 @@ Yilong Chang
 Yiming Liu
 Yoann Rodière
 Zheng Wang
+Zoran Regvart
 志飞 张
+李宗文
+민규 김
