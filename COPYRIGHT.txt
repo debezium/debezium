@@ -120,6 +120,7 @@ Hans-Peter Grahsl
 Harvey Yue
 Henryk Konsek
 Hoa Le
+Hongkai Wang
 Horia Chiorean
 Hossein Torabi
 Hussain Ansari
@@ -127,6 +128,7 @@ Hyunjin Oh
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
+Indra Shukla
 ismail Simsek
 Ivan Klass
 Ivan Kovbas
