@@ -1282,6 +1282,7 @@ public class JdbcConnection implements AutoCloseable {
             column.nativeType(resolveNativeType(column.typeName()));
             column.jdbcType(resolveJdbcType(columnMetadata.getInt(5), column.nativeType()));
             if (defaultValue != null) {
+                column.defaultValueExpression(defaultValue);
                 getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
             }
             return Optional.of(column);

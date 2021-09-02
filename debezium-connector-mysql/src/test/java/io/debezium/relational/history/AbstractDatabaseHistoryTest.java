@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.util.Collect;
@@ -37,6 +38,7 @@ public abstract class AbstractDatabaseHistoryTest {
     protected Tables t4;
     protected Tables all;
     protected DdlParser parser;
+    protected DefaultValueConverter defaultValueConverter;
 
     @Before
     public void beforeEach() {
@@ -87,7 +89,7 @@ public abstract class AbstractDatabaseHistoryTest {
 
     protected Tables recover(long pos, int entry) {
         Tables result = new Tables();
-        history.recover(source1, position("a.log", pos, entry), result, parser);
+        history.recover(source1, position("a.log", pos, entry), result, parser, defaultValueConverter);
         return result;
     }
 

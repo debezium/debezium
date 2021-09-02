@@ -129,6 +129,13 @@ public interface Column extends Comparable<Column> {
     boolean isGenerated();
 
     /**
+     * Get the database-specific complete expression defining the column's default value.
+     *
+     * @return the complete type expression
+     */
+    String defaultValueExpression();
+
+    /**
      * Get the default value of the column
      *
      * @return the default value

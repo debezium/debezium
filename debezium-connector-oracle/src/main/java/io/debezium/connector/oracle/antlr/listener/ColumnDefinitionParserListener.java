@@ -85,6 +85,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
             // todo move to enterExpression and apply type conversion
             if (ctx.DEFAULT() != null) {
                 String defaultValue = ctx.expression().getText();
+                columnEditor.defaultValueExpression(defaultValue);
                 columnEditor.defaultValue(defaultValue);
             }
         }

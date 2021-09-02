@@ -56,29 +56,29 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         }
         if (ctx.constant() != null) {
             if (ctx.constant().stringLiteral() != null) {
-                columnEditor.defaultValue(sign + unquote(ctx.constant().stringLiteral().getText()));
+                columnEditor.defaultValueExpression(sign + unquote(ctx.constant().stringLiteral().getText()));
             }
             else if (ctx.constant().decimalLiteral() != null) {
-                columnEditor.defaultValue(sign + ctx.constant().decimalLiteral().getText());
+                columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
             }
             else if (ctx.constant().BIT_STRING() != null) {
-                columnEditor.defaultValue(unquoteBinary(ctx.constant().BIT_STRING().getText()));
+                columnEditor.defaultValueExpression(unquoteBinary(ctx.constant().BIT_STRING().getText()));
             }
             else if (ctx.constant().booleanLiteral() != null) {
-                columnEditor.defaultValue(ctx.constant().booleanLiteral().getText());
+                columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
             }
             else if (ctx.constant().REAL_LITERAL() != null) {
-                columnEditor.defaultValue(ctx.constant().REAL_LITERAL().getText());
+                columnEditor.defaultValueExpression(ctx.constant().REAL_LITERAL().getText());
             }
         }
         else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {
             if (ctx.currentTimestamp().size() > 1 || (ctx.ON() == null && ctx.UPDATE() == null)) {
                 final CurrentTimestampContext currentTimestamp = ctx.currentTimestamp(0);
                 if (currentTimestamp.CURRENT_TIMESTAMP() != null || currentTimestamp.NOW() != null) {
-                    columnEditor.defaultValue("1970-01-01 00:00:00");
+                    columnEditor.defaultValueExpression("1970-01-01 00:00:00");
                 }
                 else {
-                    columnEditor.defaultValue(currentTimestamp.getText());
+                    columnEditor.defaultValueExpression(currentTimestamp.getText());
                 }
             }
         }

@@ -77,7 +77,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         metadataConnection = new SqlServerConnection(jdbcConfig, connectorConfig.getSourceTimestampMode(), valueConverters, () -> getClass().getClassLoader(),
                 connectorConfig.getSkippedOperations(), connectorConfig.isMultiPartitionModeEnabled());
 
-        this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
+        this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection::getDefaultValue, valueConverters, topicSelector, schemaNameAdjuster);
         this.schema.initializeStorage();
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
