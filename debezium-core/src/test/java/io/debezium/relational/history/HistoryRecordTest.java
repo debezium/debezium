@@ -10,6 +10,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.sql.Types;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Test;
@@ -17,6 +18,7 @@ import org.junit.Test;
 import io.debezium.document.Array;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.Column;
+import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges.TableChangesSerializer;
@@ -34,7 +36,7 @@ public class HistoryRecordTest {
         Map<String, Object> position = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 1);
         String databaseName = "db";
         String schemaName = "myschema";
-        String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL COMMENT 'first comment' ) COMMENT='table comment';";
+        String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL COMMENT 'first comment', second ENUM('1','2') NOT NULL DEFAULT '1' ) COMMENT='table comment';";
 
         Table table = Table.editor()
                 .tableId(new TableId(databaseName, schemaName, "foo"))
@@ -45,6 +47,15 @@ public class HistoryRecordTest {
                         .length(22)
                         .optional(false)
                         .comment("first comment")
+                        .create())
+                .addColumn(Column.editor()
+                        .name("second")
+                        .jdbcType(Types.INTEGER)
+                        .type("ENUM", "ENUM")
+                        .optional(false)
+                        .defaultValueExpression("1")
+                        .defaultValue("1")
+                        .enumValues(Collect.arrayListOf("1", "2"))
                         .create())
                 .setPrimaryKeyNames("first")
                 .setComment("table comment")
@@ -72,8 +83,15 @@ public class HistoryRecordTest {
         assertThat(deserialized.ddl()).isEqualTo(ddl);
 
         System.out.println(record);
+        final DefaultValueConverter mockDefaultValueConverter = new DefaultValueConverter() {
+            @Override
+            public Optional<Object> parseDefaultValue(Column column, String defaultValue) {
+                return Optional.ofNullable(defaultValue);
+            }
+        };
+
         final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
-        assertThat((Object) tableChangesSerializer.deserialize(deserialized.tableChanges(), true)).isEqualTo(tableChanges);
+        assertThat((Object) tableChangesSerializer.deserialize(deserialized.tableChanges(), true, mockDefaultValueConverter)).isEqualTo(tableChanges);
 
         final TableChangesSerializer<List<Struct>> connectTableChangeSerializer = new ConnectTableChangeSerializer();
         Struct struct = connectTableChangeSerializer.serialize(tableChanges).get(0);

@@ -569,6 +569,7 @@ public class PostgresConnection extends JdbcConnection {
 
             final String defaultValue = columnMetadata.getString(13);
             if (defaultValue != null) {
+                column.defaultValueExpression(defaultValue);
                 getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
             }
 

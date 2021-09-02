@@ -115,6 +115,13 @@ public interface ColumnEditor {
     boolean isGenerated();
 
     /**
+     * Get the database-specific complete expression defining the column's default value.
+     *
+     * @return the complete type expression
+     */
+    String defaultValueExpression();
+
+    /**
      * Get the default value of the column.
      *
      * @return the default value
@@ -257,6 +264,14 @@ public interface ColumnEditor {
     ColumnEditor defaultValue(Object defaultValue);
 
     /**
+     * Set the default value expression of the column;
+     *
+     * @param defaultValueExpression the default value expression
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor defaultValueExpression(String defaultValueExpression);
+
+    /**
      * Set the list of enumeration values.
      *
      * @param enumValues the enumeration values
@@ -278,6 +293,14 @@ public interface ColumnEditor {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor unsetDefaultValue();
+
+    /**
+     * Unsets the default value expression of the column, reverting the editor to the state where {@link #defaultValueExpression(Object))}
+     * has never been called
+     *
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor unsetDefaultValueExpression();
 
     /**
      * Obtain an immutable column definition representing the current state of this editor. Typically, an editor is created and

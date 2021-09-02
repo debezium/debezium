@@ -22,6 +22,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
+import io.debezium.connector.mysql.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -29,6 +30,7 @@ import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
@@ -74,6 +76,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
 
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final DdlParser ddlParser;
+    private final DefaultValueConverter defaultValueConverter;
     private final Filters filters;
     private final DatabaseHistory dbHistory;
     private final DdlChanges ddlChanges;
@@ -126,6 +129,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         this.storeOnlyCapturedTablesDdl = Boolean.valueOf(
                 dbHistoryConfig.getFallbackStringPropertyWithWarning(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL));
 
+        MySqlValueConverters valueConverters = getValueConverters(configuration);
+        this.defaultValueConverter = new MySqlDefaultValueConverter(valueConverters);
         this.ddlParser = new MySqlAntlrDdlParser(
                 true,
                 false,
@@ -275,7 +280,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      */
     public void loadHistory(SourceInfo startingPoint) {
         tables().clear();
-        dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables(), ddlParser);
+        dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables(), ddlParser, defaultValueConverter);
         recoveredTables = !tableIds().isEmpty();
         refreshSchemas();
     }

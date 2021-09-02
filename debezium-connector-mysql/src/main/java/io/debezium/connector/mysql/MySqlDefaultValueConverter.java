@@ -17,6 +17,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -27,6 +28,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.Collect;
 
@@ -39,7 +41,7 @@ import io.debezium.util.Collect;
  * @see com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer
  */
 @Immutable
-public class MySqlDefaultValueConverter {
+public class MySqlDefaultValueConverter implements DefaultValueConverter {
 
     private static final Pattern EPOCH_EQUIVALENT_TIMESTAMP = Pattern.compile("(\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}) (00:00:00(\\.\\d{1,6})?)");
 
@@ -66,6 +68,19 @@ public class MySqlDefaultValueConverter {
 
     public MySqlDefaultValueConverter(MySqlValueConverters converters) {
         this.converters = converters;
+    }
+
+    /**
+     * This interface is used by a DDL parser to convert the string default value to a Java type
+     * recognized by value converters for a subset of types.
+     *
+     * @param column       the column definition describing the {@code data} value; never null
+     * @param defaultValue the default value; may be null
+     * @return value converted to a Java type; optional
+     */
+    @Override
+    public Optional<Object> parseDefaultValue(Column column, String defaultValue) {
+        return Optional.ofNullable(convert(column, defaultValue));
     }
 
     /**
@@ -404,12 +419,13 @@ public class MySqlDefaultValueConverter {
         return sb.toString();
     }
 
+    @Override
     public ColumnEditor setColumnDefaultValue(ColumnEditor columnEditor) {
         final Column column = columnEditor.create();
 
         // if converters is not null and the default value is not null, we need to convert default value
-        if (converters != null && columnEditor.defaultValue() != null) {
-            Object defaultValue = columnEditor.defaultValue();
+        if (converters != null && columnEditor.defaultValueExpression() != null) {
+            String defaultValueExpression = columnEditor.defaultValueExpression();
             final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
             if (schemaBuilder == null) {
                 return columnEditor;
@@ -420,12 +436,12 @@ public class MySqlDefaultValueConverter {
             // So we can set any number here;
             final Field field = new Field(columnEditor.name(), -1, schema);
             final ValueConverter valueConverter = converters.converter(columnEditor.create(), field);
-            if (defaultValue instanceof String) {
-                defaultValue = convert(column, (String) defaultValue);
-            }
+
+            Object defaultValue = convert(column, defaultValueExpression);
             defaultValue = valueConverter.convert(defaultValue);
             columnEditor.defaultValue(defaultValue);
         }
         return columnEditor;
     }
+
 }

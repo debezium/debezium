@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -29,7 +30,10 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDatabaseSchema.class);
 
-    public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, ValueConverterProvider valueConverter, TopicSelector<TableId> topicSelector,
+    private final DefaultValueConverter defaultValueConverter;
+
+    public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, DefaultValueConverter defaultValueConverter,
+                                   ValueConverterProvider valueConverter, TopicSelector<TableId> topicSelector,
                                    SchemaNameAdjuster schemaNameAdjuster) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
@@ -40,6 +44,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                         connectorConfig.getSanitizeFieldNames(),
                         connectorConfig.isMultiPartitionModeEnabled()),
                 false, connectorConfig.getKeyMapper());
+        this.defaultValueConverter = defaultValueConverter;
     }
 
     @Override
@@ -68,4 +73,10 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
     protected DdlParser getDdlParser() {
         return null;
     }
+
+    @Override
+    public DefaultValueConverter getDefaultValueConverter() {
+        return defaultValueConverter;
+    }
+
 }

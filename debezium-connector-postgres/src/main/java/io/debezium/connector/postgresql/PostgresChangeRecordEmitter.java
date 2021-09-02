@@ -373,6 +373,10 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                             // as long as default value is not added to the decoded message metadata, we must apply
                             // the current default read from the database
                             Optional.ofNullable(table.columnWithName(column.getName()))
+                                    .map(Column::defaultValueExpression)
+                                    .ifPresent(columnEditor::defaultValueExpression);
+
+                            Optional.ofNullable(table.columnWithName(column.getName()))
                                     .map(Column::defaultValue)
                                     .ifPresent(columnEditor::defaultValue);
 
