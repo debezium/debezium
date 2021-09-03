@@ -42,6 +42,7 @@ import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
 import io.debezium.util.Strings;
+
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;

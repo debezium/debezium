@@ -342,7 +342,6 @@ public class LogMinerDmlParserTest {
         // test concatenation in INSERT column values
         String sql = "insert into \"DEBEZIUM\".\"TEST\"(\"COL1\",\"COL2\") values ('1',UNISTR('\0412\044B') || UNISTR('\043F\043E'));";
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
         assertThat(entry.getNewValues()[0]).isEqualTo("1");
@@ -351,7 +350,6 @@ public class LogMinerDmlParserTest {
         // test concatenation in SET statement
         sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = UNISTR('\0412\044B') || UNISTR('\043F\043E') where \"COL1\" = '1' and \"COL2\" IS NULL;";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[1]).isNull();
@@ -362,7 +360,6 @@ public class LogMinerDmlParserTest {
         // test concatenation in update WHERE statement
         sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = NULL where \"COL1\" = '1' and \"COL2\" = UNISTR('\0412\044B') || UNISTR('\043F\043E');";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[1]).isEqualTo("UNISTR('\0412\044B') || UNISTR('\043F\043E')");
@@ -373,7 +370,6 @@ public class LogMinerDmlParserTest {
         // test concatenation in delete WHERE statement
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"COL1\" = '1' and \"COL2\" = UNISTR('\0412\044B') || UNISTR('\043F\043E');";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[1]).isEqualTo("UNISTR('\0412\044B') || UNISTR('\043F\043E')");
