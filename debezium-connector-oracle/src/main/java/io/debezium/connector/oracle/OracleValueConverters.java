@@ -30,6 +30,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.connector.oracle.logminer.UnistrHelper;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -41,7 +42,6 @@ import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
 import io.debezium.util.Strings;
-
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
@@ -95,8 +95,6 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private static final String EMPTY_BLOB_FUNCTION = "EMPTY_BLOB()";
     private static final String EMPTY_CLOB_FUNCTION = "EMPTY_CLOB()";
-    private static final String UNISTR_FUNCTION_START = "UNISTR('";
-    private static final String UNISTR_FUNCTION_END = "')";
     private static final String HEXTORAW_FUNCTION_START = "HEXTORAW('";
     private static final String HEXTORAW_FUNCTION_END = "')";
 
@@ -270,38 +268,12 @@ public class OracleValueConverters extends JdbcValueConverters {
             if (EMPTY_CLOB_FUNCTION.equals(s)) {
                 return column.isOptional() ? null : "";
             }
-            else if (s.startsWith(UNISTR_FUNCTION_START) && s.endsWith(UNISTR_FUNCTION_END)) {
-                return convertOracleUnistr(column, fieldDefn, s.substring(8, s.length() - 2));
+            else if (UnistrHelper.isUnistrFunction(s)) {
+                return UnistrHelper.convert(s);
             }
         }
 
         return super.convertString(column, fieldDefn, data);
-    }
-
-    private String convertOracleUnistr(Column column, Field fieldDefn, String data) {
-        if (data != null && data.length() > 0) {
-            StringBuilder result = new StringBuilder();
-            for (int i = 0; i < data.length(); ++i) {
-                char c = data.charAt(i);
-                if (c == '\\') {
-                    // handle special legacy parser use case where '\' is actually '\\', necessitated by JSqlParser
-                    // can safely be removed when SimpleDmlParser is retired
-                    if (data.charAt(i + 1) == '\\') {
-                        // advance by 1
-                        i += 1;
-                    }
-                    if (data.length() >= (i + 4)) {
-                        // Read next 4 character hex and convert to character.
-                        result.append(Character.toChars(Integer.parseInt(data.substring(i + 1, i + 5), 16)));
-                        i += 4;
-                        continue;
-                    }
-                }
-                result.append(c);
-            }
-            return result.toString();
-        }
-        return data;
     }
 
     @Override
