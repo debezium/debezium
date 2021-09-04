@@ -199,9 +199,9 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         synchronized (this) {
             while (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
                 // notify poll() to drain queue
-                this.notifyAll();
-                // wait (indefinitely without any timeout) until poll() to drain queue and notify back
-                this.wait();
+                this.notify();
+                // queue size or queue sizeInBytes threshold reached, so wait a bit
+                this.wait(pollInterval.toMillis());
             }
 
             queue.add(record);
@@ -214,7 +214,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
             if (queue.size() >= maxBatchSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
                 // notify poll() to start draining queue and do not wait
-                this.notifyAll();
+                this.notify();
             }
         }
     }
@@ -244,14 +244,14 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
                     long remainingTimeoutMills = timeout.remaining().toMillis();
                     if (remainingTimeoutMills > 0) {
                         // notify doEnqueue() to resume processing (if anything is on wait())
-                        this.notifyAll();
+                        this.notify();
                         // no records yet, so wait a bit
                         this.wait(remainingTimeoutMills);
                     }
                     LOGGER.debug("checking for more records...");
                 }
                 // notify doEnqueue() to resume processing
-                this.notifyAll();
+                this.notify();
                 return records;
             }
         }
@@ -297,7 +297,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     }
 
     @Override
-    public synchronized int remainingCapacity() {
+    public int remainingCapacity() {
         return maxQueueSize - queue.size();
     }
 
@@ -307,7 +307,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     }
 
     @Override
-    public synchronized long currentQueueSizeInBytes() {
+    public long currentQueueSizeInBytes() {
         return currentQueueSizeInBytes;
     }
 }
