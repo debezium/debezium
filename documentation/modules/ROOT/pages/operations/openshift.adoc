@@ -93,7 +93,7 @@ strimzi-cluster-operator-d77476b8f-rblqf   1/1       Running       0          5m
 +
 Alternatively, go to the "Pods" view of your OpenShift Web Console (https://myhost:8443/console/project/myproject/browse/pods) to confirm that all pods are up and running:
 +
-image::/images/openshift_pods.png[width=771,align="center"]
+image::openshift_pods.png[width=771,align="center"]
 
 == Verifying the Deployment
 
