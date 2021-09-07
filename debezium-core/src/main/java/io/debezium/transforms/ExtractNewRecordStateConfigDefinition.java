@@ -88,10 +88,11 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "rewrite - __deleted field is added to records.");
 
     public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
-            .withDisplayName("The column which determines how the events will be routed, the value will replace the topic name.")
+            .withDisplayName("Route by field name")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The column which determines how the events will be routed, the value will replace the topic name.")
             .withDefault("");
 
     public static final Field ADD_FIELDS_PREFIX = Field.create("add.fields.prefix")
