@@ -50,7 +50,8 @@ public class LegacyV1SourceInfoTest {
     @Test
     @FixFor("DBZ-934")
     public void canHandleNullValues() {
-        source.update(null, null, null, null, null, "");
+        source.update(null, null, null, null, null, false, null);
+        source.update(null, null, null, null, null, true, null);
     }
 
     @Test
@@ -74,6 +75,7 @@ public class LegacyV1SourceInfoTest {
                 .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .field("last_snapshot_record", Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field("xmin", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("origin_name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
 
         assertThat(source.struct().schema()).isEqualTo(schema);

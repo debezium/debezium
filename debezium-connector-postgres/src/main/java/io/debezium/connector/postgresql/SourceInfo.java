@@ -88,13 +88,13 @@ public final class SourceInfo extends BaseSourceInfo {
     private final String dbName;
 
     private Lsn lsn;
-    private Lsn[] sequence;
+    private Lsn lastCommitLsn;
     private Long txId;
     private Long xmin;
     private Instant timestamp;
     private String schemaName;
     private String tableName;
-    private String orignName;
+    private String originName;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -111,16 +111,14 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
      * @param tableId the table that should be included in the source info; may be null
      * @param xmin the xmin of the slot, may be null
+     * @param isCommit whether this event is a commit.
      * @return this instance
      */
-    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin, Lsn lastCommitLsn) {
-        update(lsn, commitTime, txId, tableId, xmin, (String) null);
-        this.sequence = new Lsn[]{ lastCommitLsn, lsn };
-        return this;
-    }
-
-    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin, String originName) {
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin, boolean isCommit, String originName) {
         this.lsn = lsn;
+        if (isCommit) {
+            this.lastCommitLsn = lsn;
+        }
         if (commitTime != null) {
             this.timestamp = commitTime;
         }
@@ -132,7 +130,7 @@ public final class SourceInfo extends BaseSourceInfo {
         if (tableId != null && tableId.table() != null) {
             this.tableName = tableId.table();
         }
-        this.orignName = originName;
+        this.originName = originName;
         return this;
     }
 
@@ -157,16 +155,14 @@ public final class SourceInfo extends BaseSourceInfo {
 
     public String sequence() {
         List<String> sequence = new ArrayList<String>();
-        if (this.sequence != null) {
-            for (Lsn lsn : this.sequence) {
-                if (lsn == null) {
-                    sequence.add(null);
-                }
-                else {
-                    sequence.add(Long.toString(lsn.asLong()));
-                }
-            }
-        }
+        String lastCommitLsn = (this.lastCommitLsn != null)
+                ? Long.toString(this.lastCommitLsn.asLong())
+                : null;
+        String lsn = (this.lsn != null)
+                ? Long.toString(this.lsn.asLong())
+                : null;
+        sequence.add(lastCommitLsn);
+        sequence.add(lsn);
         try {
             return MAPPER.writeValueAsString(sequence);
         }
@@ -189,7 +185,7 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     String orignName() {
-        return orignName;
+        return originName;
     }
 
     @Override
@@ -220,8 +216,8 @@ public final class SourceInfo extends BaseSourceInfo {
         if (xmin != null) {
             sb.append(", xmin=").append(xmin);
         }
-        if (sequence != null) {
-            sb.append(", sequence=").append(sequence);
+        if (lastCommitLsn != null) {
+            sb.append(", lastCommitLsn=").append(lastCommitLsn);
         }
         if (timestamp != null) {
             sb.append(", timestamp=").append(timestamp);
@@ -233,8 +229,8 @@ public final class SourceInfo extends BaseSourceInfo {
         if (tableName != null) {
             sb.append(", table=").append(tableName);
         }
-        if (orignName != null) {
-            sb.append(", orign name=").append(orignName);
+        if (originName != null) {
+            sb.append(", origin name=").append(originName);
         }
         sb.append(']');
         return sb.toString();
