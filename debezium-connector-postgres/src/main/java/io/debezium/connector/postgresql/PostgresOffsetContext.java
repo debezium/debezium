@@ -52,7 +52,7 @@ public class PostgresOffsetContext implements OffsetContext {
 
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
-        sourceInfo.update(lsn, time, txId, null, sourceInfo.xmin());
+        sourceInfo.update(lsn, time, txId, null, sourceInfo.xmin(), null);
         sourceInfo.updateLastCommit(lastCommitLsn);
         sourceInfoSchema = sourceInfo.schema();
 
