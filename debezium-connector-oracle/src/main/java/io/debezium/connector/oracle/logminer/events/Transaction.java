@@ -32,6 +32,7 @@ public class Transaction {
     private Instant changeTime;
     private List<LogMinerEvent> events;
     private Set<Long> hashes;
+    private String userName;
 
     @VisibleForMarshalling
     public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, Set<Long> hashes) {
@@ -81,6 +82,16 @@ public class Transaction {
         });
     }
 
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        if (userName != null && !"UNKNOWN".equalsIgnoreCase(userName)) {
+            this.userName = userName;
+        }
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -102,7 +113,7 @@ public class Transaction {
     public String toString() {
         return "Transaction{" +
                 "transactionId='" + transactionId + '\'' +
-                ", startScn=" + startScn +
-                '}';
+                ", startScn=" + startScn + ", userName='" + userName +
+                "'}";
     }
 }

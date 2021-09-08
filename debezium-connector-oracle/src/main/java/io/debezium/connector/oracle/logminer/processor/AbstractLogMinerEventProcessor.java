@@ -209,7 +209,9 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         final String transactionId = row.getTransactionId();
         final Transaction transaction = getTransactionCache().get(transactionId);
         if (transaction == null && !isRecentlyCommitted(transactionId)) {
-            getTransactionCache().put(transactionId, new Transaction(transactionId, row.getScn(), row.getChangeTime()));
+            Transaction newTransaction = new Transaction(transactionId, row.getScn(), row.getChangeTime());
+            newTransaction.setUserName(row.getUserName());
+            getTransactionCache().put(transactionId, newTransaction);
             metrics.setActiveTransactions(getTransactionCache().size());
         }
     }
@@ -460,8 +462,9 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         if (isTransactionIdAllowed(transactionId)) {
             Transaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
-                LOGGER.trace("Transaction {} not in cache, creating.", transactionId);
+                LOGGER.debug("Transaction {} not in cache for DML, creating.", transactionId);
                 transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime());
+                transaction.setUserName(row.getUserName());
                 getTransactionCache().put(transactionId, transaction);
             }
 
