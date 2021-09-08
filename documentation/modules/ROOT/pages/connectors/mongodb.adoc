@@ -4,6 +4,7 @@
 = {prodname} connector for MongoDB
 
 :context: mongodb
+:mbean-name: {context}
 ifdef::community[]
 
 :toc:
@@ -1190,7 +1191,7 @@ The following configuration properties are _required_ unless a default value is 
 |[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
 |
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors. Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
-Only alphanumeric characters, hyphens and underscores must be used.
+Only alphanumeric characters, hyphens, dots and underscores must be used.
 
 |[[mongodb-property-mongodb-user]]<<mongodb-property-mongodb-user, `+mongodb.user+`>>
 |
@@ -1396,6 +1397,11 @@ A value of `0` disables this behavior.
 |30000 (30 seconds)
 |The number of milliseconds the driver will wait to select a server before it times out and throws an error.
 
+|[[mongodb-property-cursor-max-await-time-ms]]<<mongodb-property-cursor-max-await-time-ms, `+cursor.max.await.time.ms+`>>
+|`0`
+|Specifies the maximum number of milliseconds the oplog cursor will wait for the server to produce a result before causing an execution timeout exception.
+A value of `0` indicates using the server/driver default wait timeout.
+
 |===
 
 // Type: assembly
@@ -1406,8 +1412,8 @@ A value of `0` disables this behavior.
 
 The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<mongodb-snapshot-metrics, Snapshot metrics>> provide information about connector operation while performing a snapshot.
-* <<mongodb-streaming-metrics, Streaming metrics>> provide information about connector operation when the connector is capturing changes and streaming change event records.
+* {link-prefix}:{link-mongodb-connector}#mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* {link-prefix}:{link-mongodb-connector}#mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
 The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose these metrics by using JMX.
 
@@ -1416,8 +1422,6 @@ The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} moni
 // Title: Monitoring {prodname} during MongoDB snapshots
 [[mongodb-snapshot-metrics]]
 === Snapshot Metrics
-
-The *MBean* is `debezium.mongodb:type=connector-metrics,context=snapshot,server=_<mongodb.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
@@ -1438,8 +1442,6 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 // Title: Monitoring {prodname} MongoDB connector record streaming
 [[mongodb-streaming-metrics]]
 === Streaming Metrics
-
-The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 

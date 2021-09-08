@@ -79,12 +79,14 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SnapshotContext<SqlServerOffsetContext> prepare(ChangeEventSourceContext context) throws Exception {
-        return new SqlServerSnapshotContext(jdbcConnection.getRealDatabaseName());
+    protected SnapshotContext<SqlServerPartition, SqlServerOffsetContext> prepare(SqlServerPartition partition)
+            throws Exception {
+        return new SqlServerSnapshotContext(partition);
     }
 
     @Override
-    protected void connectionCreated(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext) throws Exception {
+    protected void connectionCreated(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext)
+            throws Exception {
         ((SqlServerSnapshotContext) snapshotContext).isolationLevelBeforeStart = jdbcConnection.connection().getTransactionIsolation();
 
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.SNAPSHOT) {
@@ -98,12 +100,14 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<SqlServerOffsetContext> ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> ctx)
+            throws Exception {
         return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext)
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
+                                               RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.READ_UNCOMMITTED) {
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
@@ -133,7 +137,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
 
                     LOGGER.info("Locking table {}", tableId);
 
-                    String query = String.format("SELECT TOP(0) * FROM [%s].[%s] WITH (TABLOCKX)", tableId.schema(), tableId.table());
+                    String query = String.format("SELECT TOP(0) * FROM [%s].[%s].[%s] WITH (TABLOCKX)",
+                            tableId.catalog(), tableId.schema(), tableId.table());
                     statement.executeQuery(query).close();
                 }
             }
@@ -144,7 +149,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext)
+            throws SQLException {
         // Exclusive mode: locks should be kept until the end of transaction.
         // read_uncommitted mode; snapshot mode: no locks have been acquired.
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
@@ -154,16 +160,19 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext<SqlServerOffsetContext> ctx, SqlServerOffsetContext previousOffset) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> ctx,
+                                           SqlServerOffsetContext previousOffset)
+            throws Exception {
         ctx.offset = new SqlServerOffsetContext(
                 connectorConfig,
-                TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
+                TxLogPosition.valueOf(jdbcConnection.getMaxLsn(ctx.partition.getDatabaseName())),
                 false,
                 false);
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext,
+    protected void readTableStructure(ChangeEventSourceContext sourceContext,
+                                      RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                       SqlServerOffsetContext offsetContext)
             throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
@@ -188,7 +197,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                     false);
 
             // Save changeTables for sql select later.
-            changeTables = jdbcConnection.listOfChangeTables().stream()
+            changeTables = jdbcConnection.listOfChangeTables(snapshotContext.partition.getDatabaseName()).stream()
                     .collect(Collectors.toMap(SqlServerChangeTable::getSourceTableId, changeTable -> changeTable,
                             (changeTable1, changeTable2) -> changeTable1.getStartLsn().compareTo(changeTable2.getStartLsn()) > 0
                                     ? changeTable1
@@ -213,9 +222,11 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
+                                                    Table table)
+            throws SQLException {
         return new SchemaChangeEvent(
-                snapshotContext.offset.getPartition(),
+                snapshotContext.partition.getSourcePartition(),
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
@@ -227,7 +238,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected void complete(SnapshotContext<SqlServerOffsetContext> snapshotContext) {
+    protected void complete(SnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext) {
         try {
             jdbcConnection.connection().setTransactionIsolation(((SqlServerSnapshotContext) snapshotContext).isolationLevelBeforeStart);
             LOGGER.info("Removing locking timeout");
@@ -239,46 +250,30 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     /**
-     * Generate a valid sqlserver query string for the specified table
+     * Generate a valid SQL Server query string for the specified table
      *
      * @param tableId the table to generate a query for
      * @return a valid query string
      */
     @Override
-    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext, TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return Optional.of(String.format("SELECT %s FROM [%s].[%s]", modifiedColumns, tableId.schema(), tableId.table()));
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
+                                                 TableId tableId, List<String> columns) {
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
+        return Optional.of(String.format("SELECT %s FROM [%s].[%s].[%s]", snapshotSelectColumns, tableId.catalog(), tableId.schema(), tableId.table()));
     }
 
     @Override
-    protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerOffsetContext> snapshotContext, String overriddenSelect, TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return overriddenSelect.replaceAll("\\*", modifiedColumns);
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
+                                             String overriddenSelect, TableId tableId) {
+        String snapshotSelectColumns = getPreparedColumnNames(sqlServerDatabaseSchema.tableFor(tableId)).stream()
+                .collect(Collectors.joining(", "));
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
     }
 
-    private String checkExcludedColumns(TableId tableId) {
-        Table table = sqlServerDatabaseSchema.tableFor(tableId);
-        List<String> columnNames = table.retrieveColumnNames().stream()
-                .filter(columnName -> filterChangeTableColumns(tableId, columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
-                .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            throw new IllegalArgumentException("Filtered column list for table " + tableId + " is empty");
-        }
-
-        return columnNames.stream()
-                .map(columnName -> {
-                    StringBuilder sb = new StringBuilder();
-                    if (!columnName.contains(tableId.table())) {
-                        sb.append("[").append(tableId.table()).append("]")
-                                .append(".[").append(columnName).append("]");
-                    }
-                    else {
-                        sb.append("[").append(columnName).append("]");
-                    }
-                    return sb.toString();
-                }).collect(Collectors.joining(","));
+    @Override
+    protected boolean additionalColumnFilter(TableId tableId, String columnName) {
+        return filterChangeTableColumns(tableId, columnName);
     }
 
     private boolean filterChangeTableColumns(TableId tableId, String columnName) {
@@ -294,13 +289,13 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class SqlServerSnapshotContext extends RelationalSnapshotContext<SqlServerOffsetContext> {
+    private static class SqlServerSnapshotContext extends RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> {
 
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public SqlServerSnapshotContext(String catalogName) throws SQLException {
-            super(catalogName);
+        public SqlServerSnapshotContext(SqlServerPartition partition) throws SQLException {
+            super(partition, partition.getDatabaseName());
         }
     }
 

@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -29,6 +28,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.schema.TopicSelector;
@@ -83,7 +83,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         validateBinlogConfiguration(connectorConfig);
 
-        Map<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(new MySqlPartition.Provider(connectorConfig),
+        Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(
+                new MySqlPartition.Provider(connectorConfig),
                 new MySqlOffsetContext.Loader(connectorConfig));
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
@@ -99,9 +100,10 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             throw new DebeziumException(e);
         }
 
-        MySqlOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
+        MySqlPartition partition = previousOffsets.getTheOnlyPartition();
+        MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadDatabaseHistory(connectorConfig, previousOffset, schema);
+        validateAndLoadDatabaseHistory(connectorConfig, partition, previousOffset, schema);
 
         LOGGER.info("Reconnecting after finishing schema recovery");
 
@@ -114,8 +116,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         // If the binlog position is not available it is necessary to reexecute snapshot
         if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {
-            MySqlPartition partition = getTheOnlyPartition(previousOffsets);
-            previousOffsets.put(partition, null);
+            previousOffsets.resetOffset(partition);
         }
 
         taskContext = new MySqlTaskContext(connectorConfig, schema);
@@ -299,7 +300,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         return found;
     }
 
-    private boolean validateAndLoadDatabaseHistory(MySqlConnectorConfig config, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
+    private boolean validateAndLoadDatabaseHistory(MySqlConnectorConfig config, MySqlPartition partition, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
         if (offset == null) {
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 // We are in schema only recovery mode, use the existing binlog position
@@ -329,7 +330,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             schema.initializeStorage();
             return true;
         }
-        schema.recover(offset);
+        schema.recover(partition, offset);
         return false;
     }
 

@@ -4,6 +4,7 @@
 = {prodname} connector for PostgreSQL
 
 :context: postgresql
+:mbean-name: postgres
 ifdef::community[]
 
 :toc:
@@ -114,7 +115,7 @@ To use the {prodname} connector to stream changes from a PostgreSQL database, th
 Although one way to grant the necessary privileges is to provide the user with `superuser` privileges, doing so potentially exposes your PostgreSQL data to unauthorized access.
 Rather than granting excessive privileges to the {prodname} user, it is best to create a dedicated {prodname} replication user to which you grant specific privileges.
 
-For more information about configuring privileges for the {prodname} PostgreSQL user, see xref:postgresql-permissions[Setting up permissions].
+For more information about configuring privileges for the {prodname} PostgreSQL user, see {link-prefix}:{link-postgresql-connector}#postgresql-permissions[Setting up permissions].
 For more information about PostgreSQL logical replication security, see the link:https://www.postgresql.org/docs/current/logical-replication-security.html[PostgreSQL documentation].
 
 // Type: concept
@@ -214,15 +215,16 @@ public interface Snapshotter {
     default boolean shouldStreamEventsStartingFromSnapshot() {
         return true;
     }
-
     /**
      * Generate a valid postgres query string for the specified table, or an empty {@link Optional}
      * to skip snapshotting this table (but that table will still be streamed from)
      *
      * @param tableId the table to generate a query for
+     * @param snapshotSelectColumns the columns to be used in the snapshot select based on the column
+     *                              include/exclude filters
      * @return a valid query string, or none to skip snapshotting this table
      */
-    Optional<String> buildSnapshotQuery(TableId tableId);
+    Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns);
 
     /**
      * Return a new string that set up the transaction for snapshotting
@@ -962,7 +964,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * Connector type and name
 * Database and table that contains the new row
 * Schema name
-* If the event was part of a snapshot (alwas `false` for _update_ events)
+* If the event was part of a snapshot (always `false` for _update_ events)
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
@@ -1052,7 +1054,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * Connector type and name
 * Database and table that contained the deleted row
 * Schema name
-* If the event was part of a snapshot (alwas `false` for _delete_ events)
+* If the event was part of a snapshot (always `false` for _delete_ events)
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
@@ -1127,7 +1129,7 @@ a|Mandatory field that describes the source metadata for the event. In a _trunca
 * Connector type and name
 * Database and table that contains the new row
 * Schema name
-* If the event was part of a snapshot (alwas `false` for _delete_ events)
+* If the event was part of a snapshot (always `false` for _delete_ events)
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
@@ -1703,7 +1705,7 @@ For format details, see http://www.opengeospatial.org/standards/sfa[Open Geospat
 [id="postgresql-toasted-values"]
 === Toasted values
 PostgreSQL has a hard limit on the page size.
-This means that values that are larger than around 8 KBs need to be stored by using link::https://www.postgresql.org/docs/current/storage-toast.html[TOAST storage].
+This means that values that are larger than around 8 KBs need to be stored by using link:https://www.postgresql.org/docs/current/storage-toast.html[TOAST storage].
 This impacts replication messages that are coming from the database. Values that were stored by using the TOAST mechanism and that have not been changed are not included in the message, unless they are part of the table's replica identity.
 There is no safe way for {prodname} to read the missing value out-of-bands directly from the database, as this would potentially lead to race conditions. Consequently, {prodname} follows these rules to handle toasted values:
 
@@ -1978,7 +1980,7 @@ endif::community[]
 Setting up a PostgreSQL server to run a {prodname} connector requires a database user that can perform replications.
 Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
 
-Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in xref:postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
+Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in {link-prefix}:{link-postgresql-connector}#postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
 Instead, create a {prodname} user that has the the minimum required privileges.
 
 .Prerequisites
@@ -2062,7 +2064,7 @@ For {prodname} to specify the capture configuration, the value of {link-prefix}:
 [[postgresql-host-replication-permissions]]
 === Configuring PostgreSQL to allow replication with the {prodname} connector host
 
-To enable {prodname] to replicate PostgreSQL data, you must configure the database to permit replication with the host that runs the PostgreSQL connector.
+To enable {prodname} to replicate PostgreSQL data, you must configure the database to permit replication with the host that runs the PostgreSQL connector.
 To specify the clients that are permitted to replicate with the database, add entries to the PostgreSQL host-based authentication file, `pg_hba.conf`.
 For more information about the `pg_hba.conf` file, see link:https://www.postgresql.org/docs/10/auth-pg-hba-conf.html[the PostgreSQL] documentation.
 
@@ -2531,7 +2533,7 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-database-server-name]]<<postgresql-property-database-server-name, `+database.server.name+`>>
 |
-|Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters, hyphens and underscores must be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
+|Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
 |[[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list, `+schema.include.list+`>>
 |
@@ -2643,17 +2645,26 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
 
-|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `+column.mask.hash._hashAlgorithm_.with.salt._salt_+`>>
+|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified columns are replaced with pseudonyms. +
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
+
+A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
+Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
  +
-A pseudonym consists of the hashed value that results from applying the specifed _hashAlgorithm_ and _salt_. Based on the hash function that is used, referential integrity is kept while column values are replaced with pseudonyms. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
+In the following example, `CzQMA0cB5K` is a randomly selected salt. +
+
+----
+column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
+----
+
+If necessary, the pseudonym is automatically shortened to the length of the column.
+The connector configuration can include multiple properties that specify different hash algorithms and salts. +
  +
-If necessary, the pseudonym is automatically shortened to the length of the column. You can specify multiple properties with different hash algorithms and salts in a single configuration. In the following example, `CzQMA0cB5K` is a randomly selected salt. +
- +
-`column.mask.hash.SHA-256.with.salt.CzQMA0cB5K =inventory.orders.customerName,inventory.shipment.customerName` +
- +
-Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting masked data set might not be completely masked.
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
 
 |[[postgresql-property-column-propagate-source-type]]<<postgresql-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
@@ -2717,9 +2728,9 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
  +
 `skip` causes those event to be omitted (the default). +
  +
-`include` causes hos events to be included. +
-+
-Please see xref:postgresql-truncate-events[] for the structure of _truncate_ events and their ordering semantics.
+`include` causes those events to be included. +
+ +
+For information about the structure of _truncate_ events and about their ordering semantics, see xref:postgresql-truncate-events[].
 
 |===
 
@@ -2769,7 +2780,7 @@ endif::community[]
 |
 |Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events that are generated by the logical decoding plug-in. Specify a comma-separated list of fully-qualified table names in the form _databaseName.tableName_. +
  +
-For each table that you specify, also specify another configuration property: `snapshot.select.statement.overrides._DB_NAME_._TABLE_NAME_`, for example: `snapshot.select.statement.overrides.customers.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table. +
+For each table that you specify, also specify another configuration property: `snapshot.select.statement.overrides._DB_NAME_._TABLE_NAME_`, for example: `snapshot.select.statement.overrides.inventory.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table. +
  +
 A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
 
@@ -2940,17 +2951,15 @@ The {prodname} PostgreSQL connector provides two types of metrics that are in ad
 [[postgresql-snapshot-metrics]]
 === Snapshot metrics
 
-The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: monitoring-debezium-postgresql-connector-record-streaming
 // Title: Monitoring {prodname} PostgreSQL connector record streaming
 [[postgresql-streaming-metrics]]
 === Streaming metrics
-
-The *MBean* is `debezium.postgres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 

@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -38,6 +39,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static final String COLLECTION_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.whitelist\" is already specified";
     protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
     protected static final String DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.whitelist\" is already specified";
+
+    protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
+
+    protected static final Pattern FIELD_EXCLUDE_LIST_PATTERN = Pattern.compile("^[*|\\w|\\s*]+(?:\\.[\\w]+\\.[\\w]+)+(\\.[\\w]+)*\\s*$");
+    protected static final String QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>";
+    protected static final Pattern FIELD_RENAMES_PATTERN = Pattern.compile("^[*|\\w|\\s*]+(?:\\.[\\w]+\\.[\\w]+)+(\\.[\\w]+)*:(?:[\\w]+)+\\s*$");
+    protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -115,6 +123,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field HOSTS = Field.create("mongodb.hosts")
             .withDisplayName("Hosts")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(MongoDbConnectorConfig::validateHosts)
@@ -124,9 +133,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field LOGICAL_NAME = Field.create("mongodb.name")
             .withDisplayName("Namespace")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .required()
             .withDescription("Unique name that identifies the MongoDB replica set or cluster and all recorded offsets, and"
                     + "that is used as a prefix for all schemas and topics. "
                     + "Each distinct MongoDB installation should have a separate namespace and monitored by "
@@ -135,6 +145,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Database user for connecting to MongoDB, if necessary.");
@@ -142,6 +153,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field PASSWORD = Field.create("mongodb.password")
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Password to be used when connecting to MongoDB, if necessary.");
@@ -149,6 +161,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field AUTH_SOURCE = Field.create("mongodb.authsource")
             .withDisplayName("Credentials Database")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(ReplicaSetDiscovery.ADMIN_DATABASE_NAME)
@@ -168,6 +181,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(30_000L)
@@ -177,6 +191,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field SSL_ENABLED = Field.create("mongodb.ssl.enabled")
             .withDisplayName("Enable SSL connection to MongoDB")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(false)
@@ -186,6 +201,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field SSL_ALLOW_INVALID_HOSTNAMES = Field.create("mongodb.ssl.invalid.hostname.allowed")
             .withDisplayName("Allow invalid hostnames for SSL connection")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(false)
@@ -206,6 +222,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
             .withDisplayName("Initial delay before reconnection (ms)")
             .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(TimeUnit.SECONDS.toMillis(1))
@@ -216,6 +233,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field CONNECT_BACKOFF_MAX_DELAY_MS = Field.create("connect.backoff.max.delay.ms")
             .withDisplayName("Maximum delay before reconnection (ms)")
             .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(TimeUnit.SECONDS.toMillis(120))
@@ -226,6 +244,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field MAX_FAILED_CONNECTIONS = Field.create("connect.max.attempts")
             .withDisplayName("Connection attempt limit")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDefault(16)
@@ -239,6 +258,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
             .withDisplayName("Auto-discovery")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
@@ -255,6 +275,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field DATABASE_INCLUDE_LIST = Field.create("database.include.list")
             .withDisplayName("Include Databases")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
@@ -281,6 +302,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field DATABASE_EXCLUDE_LIST = Field.create("database.exclude.list")
             .withDisplayName("Exclude Databases")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
@@ -308,6 +330,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field COLLECTION_INCLUDE_LIST = Field.create("collection.include.list")
             .withDisplayName("Include Collections")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 2))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
@@ -333,6 +356,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * Must not be used with {@link #COLLECTION_INCLUDE_LIST}.
      */
     public static final Field COLLECTION_EXCLUDE_LIST = Field.create("collection.exclude.list")
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 3))
             .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateCollectionExcludeList)
             .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded");
@@ -356,8 +380,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field FIELD_EXCLUDE_LIST = Field.create("field.exclude.list")
             .withDisplayName("Exclude Fields")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 5))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
+            .withValidation(MongoDbConnectorConfig::validateFieldExcludeList)
             .withDescription("A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values");
 
     /**
@@ -383,13 +409,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field FIELD_RENAMES = Field.create("field.renames")
             .withDisplayName("Rename Fields")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
+            .withValidation(MongoDbConnectorConfig::validateFieldRenamesList)
             .withDescription("");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -400,6 +429,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(10_000)
@@ -408,6 +438,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field SERVER_SELECTION_TIMEOUT_MS = Field.create("mongodb.server.selection.timeout.ms")
             .withDisplayName("Server selection timeout MS")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 5))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(30_000)
@@ -416,6 +447,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field SOCKET_TIMEOUT_MS = Field.create("mongodb.socket.timeout.ms")
             .withDisplayName("Socket timeout MS")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 6))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
@@ -429,11 +461,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field SNAPSHOT_FILTER_QUERY_BY_COLLECTION = Field.create("snapshot.collection.filter.overrides")
             .withDisplayName("Snapshot mode")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("This property contains a comma-separated list of <dbName>.<collectionName>, for which "
                     + " the initial snapshot may be a subset of data present in the data source. The subset would be defined"
                     + " by mongodb filter query specified as value for property snapshot.collection.filter.override.<dbname>.<collectionName>");
+
+    public static final Field CURSOR_MAX_AWAIT_TIME_MS = Field.create("cursor.max.await.time.ms")
+            .withDisplayName("Server's oplog streaming cursor max await time")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
 
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
@@ -453,7 +493,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     MAX_FAILED_CONNECTIONS,
                     AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
-                    SSL_ALLOW_INVALID_HOSTNAMES)
+                    SSL_ALLOW_INVALID_HOSTNAMES,
+                    CURSOR_MAX_AWAIT_TIME_MS)
             .events(
                     DATABASE_WHITELIST,
                     DATABASE_INCLUDE_LIST,
@@ -485,6 +526,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private final int snapshotMaxThreads;
+    private final int cursorMaxAwaitTimeMs;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -493,6 +535,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
+        this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -507,6 +550,36 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             ++count;
         }
         return count;
+    }
+
+    private static int validateFieldExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        int problemCount = 0;
+        String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
+
+        if (fieldExcludeList != null) {
+            for (String excludeField : PATTERN_SPILT.split(fieldExcludeList)) {
+                if (!FIELD_EXCLUDE_LIST_PATTERN.asPredicate().test(excludeField)) {
+                    problems.accept(FIELD_EXCLUDE_LIST, excludeField, excludeField + " has invalid format (expecting " + QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN + ")");
+                    problemCount++;
+                }
+            }
+        }
+        return problemCount;
+    }
+
+    private static int validateFieldRenamesList(Configuration config, Field field, ValidationOutput problems) {
+        int problemCount = 0;
+        String fieldRenamesList = config.getString(FIELD_RENAMES);
+
+        if (fieldRenamesList != null) {
+            for (String renameField : PATTERN_SPILT.split(fieldRenamesList)) {
+                if (!FIELD_RENAMES_PATTERN.asPredicate().test(renameField)) {
+                    problems.accept(FIELD_EXCLUDE_LIST, renameField, renameField + " has invalid format (expecting " + QUALIFIED_FIELD_RENAMES_PATTERN + ")");
+                    problemCount++;
+                }
+            }
+        }
+        return problemCount;
     }
 
     private static int validateCollectionExcludeList(Configuration config, Field field, ValidationOutput problems) {
@@ -551,6 +624,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
+    }
+
+    public int getCursorMaxAwaitTime() {
+        return cursorMaxAwaitTimeMs;
     }
 
     @Override

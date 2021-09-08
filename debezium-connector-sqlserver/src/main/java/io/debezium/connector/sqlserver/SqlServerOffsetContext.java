@@ -6,7 +6,6 @@
 package io.debezium.connector.sqlserver;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -23,12 +22,10 @@ import io.debezium.util.Collect;
 
 public class SqlServerOffsetContext implements OffsetContext {
 
-    private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
-    private final Map<String, String> partition;
     private boolean snapshotCompleted;
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
@@ -41,7 +38,6 @@ public class SqlServerOffsetContext implements OffsetContext {
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot,
                                   boolean snapshotCompleted, long eventSerialNo, TransactionContext transactionContext,
                                   IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
@@ -62,11 +58,6 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
         this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>());
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        return partition;
     }
 
     @Override
@@ -172,7 +163,6 @@ public class SqlServerOffsetContext implements OffsetContext {
         return "SqlServerOffsetContext [" +
                 "sourceInfoSchema=" + sourceInfoSchema +
                 ", sourceInfo=" + sourceInfo +
-                ", partition=" + partition +
                 ", snapshotCompleted=" + snapshotCompleted +
                 ", eventSerialNo=" + eventSerialNo +
                 "]";

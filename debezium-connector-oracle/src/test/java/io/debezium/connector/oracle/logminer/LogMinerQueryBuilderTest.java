@@ -49,7 +49,9 @@ public class LogMinerQueryBuilderTest {
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE1 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, " +
             "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
-            "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? AND ((" +
+            "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
+            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
+            "AND ((" +
             "OPERATION_CODE IN (6,7,34,36) OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM') " +
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
@@ -69,7 +71,9 @@ public class LogMinerQueryBuilderTest {
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE2 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, " +
             "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
-            "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? AND ((" +
+            "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
+            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
+            "AND ((" +
             "OPERATION_CODE IN (6,7,34,36)) OR " +
             "((OPERATION_CODE IN ${operationCodes} OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM') " +

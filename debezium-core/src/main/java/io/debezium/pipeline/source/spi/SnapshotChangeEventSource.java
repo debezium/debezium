@@ -5,8 +5,8 @@
  */
 package io.debezium.pipeline.source.spi;
 
-import io.debezium.connector.common.Partition;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 
 /**

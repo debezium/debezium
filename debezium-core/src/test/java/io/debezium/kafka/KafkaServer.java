@@ -216,7 +216,7 @@ public class KafkaServer {
         try {
             LOGGER.debug("Starting Kafka broker {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             server = new kafka.server.KafkaServer(new KafkaConfig(config), Time.SYSTEM, scala.Option.apply(null),
-                    new scala.collection.mutable.ArraySeq<>(0));
+                    false);
             server.startup();
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             adminZkClient = new AdminZkClient(server.zkClient());
@@ -309,7 +309,7 @@ public class KafkaServer {
      */
     public void createTopic(String topic, int numPartitions, int replicationFactor) {
         RackAwareMode rackAwareMode = null;
-        getAdminZkClient().createTopic(topic, numPartitions, replicationFactor, new Properties(), rackAwareMode);
+        getAdminZkClient().createTopic(topic, numPartitions, replicationFactor, new Properties(), rackAwareMode, false);
     }
 
     /**

@@ -1,0 +1,27 @@
+The connector also provides the following additional snapshot metrics when an incremental snapshot is executed:
+
+[cols="45%a,25%a,30%a",options="header"]
+|===
+|Attributes |Type |Description
+
+|[[connectors-insnap-metric-chunkid_{context}]]<<connectors-insnap-metric-chunkid_{context}, `ChunkId`>>
+|`string`
+|The identifier of the current snapshot chunk.
+
+|[[connectors-insnap-metric-chunkfrom_{context}]]<<connectors-insnap-metric-chunkfrom_{context}, `ChunkFrom`>>
+|`string`
+|The lower bound of the primary key set defining the current chunk.
+
+|[[connectors-insnap-metric-chunkto_{context}]]<<connectors-insnap-metric-chunkto_{context}, `ChunkTo`>>
+|`string`
+|The upper bound of the primary key set defining the current chunk.
+
+|[[connectors-insnap-metric-tablefrom_{context}]]<<connectors-insnap-metric-tablefrom_{context}, `TableFrom`>>
+|`string`
+|The lower bound of the primary key set of the currently snapshotted table.
+
+|[[connectors-insnap-metric-tableto_{context}]]<<connectors-insnap-metric-tableto_{context}, `TableTo`>>
+|`string`
+|The upper bound of the primary key set of the currently snapshotted table.
+
+|===

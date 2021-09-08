@@ -8,8 +8,13 @@ package io.debezium.connector.oracle.logminer;
 import static org.fest.assertions.Assertions.assertThat;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.doc.FixFor;
@@ -20,7 +25,11 @@ import io.debezium.relational.TableId;
 /**
  * @author Chris Cranford
  */
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
 public class LogMinerDmlParserTest {
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private LogMinerDmlParser fastDmlParser;
 
@@ -55,7 +64,7 @@ public class LogMinerDmlParserTest {
                 "TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'),Unsupported Type,NULL,NULL);";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(9);
         assertThat(entry.getNewValues()[0]).isEqualTo("1");
@@ -94,7 +103,7 @@ public class LogMinerDmlParserTest {
                 "\"UT2\" = Unsupported Type and \"C1\" = NULL and \"IS\" IS NULL and \"IS2\" IS NULL;";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(10);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[1]).isEqualTo("Acme");
@@ -140,7 +149,7 @@ public class LogMinerDmlParserTest {
                 "\"IS\" IS NULL and \"IS2\" IS NULL;";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
         assertThat(entry.getOldValues()).hasSize(8);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[1]).isEqualTo("Acme");
@@ -167,7 +176,7 @@ public class LogMinerDmlParserTest {
         String sql = "update \"DEBEZIUM\".\"TEST\" set \"COL1\" = '1', \"COL2\" = NULL, \"COL3\" = 'Hello';";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(4);
         assertThat(entry.getOldValues()[0]).isNull();
         assertThat(entry.getOldValues()[1]).isNull();
@@ -194,7 +203,7 @@ public class LogMinerDmlParserTest {
         String sql = "delete from \"DEBEZIUM\".\"TEST\";";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
         assertThat(entry.getOldValues()).hasSize(4);
         assertThat(entry.getOldValues()[0]).isNull();
         assertThat(entry.getOldValues()[1]).isNull();
@@ -214,7 +223,7 @@ public class LogMinerDmlParserTest {
         String sql = "insert into \"UNKNOWN\".\"OBJ# 74858\"(\"COL 1\") values (1)";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(1);
         assertThat(entry.getNewValues()[0]).isEqualTo("1");
@@ -235,7 +244,7 @@ public class LogMinerDmlParserTest {
                 "\"PAY_STATUS\" = '10111015', \"IS_DEL\" = '0', \"TM_UPDATE\" = TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS');";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(5);
         assertThat(entry.getOldValues()[0]).isNull();
         assertThat(entry.getOldValues()[1]).isNull();
@@ -262,7 +271,7 @@ public class LogMinerDmlParserTest {
         String sql = "insert into \"DEBEZIUM\".\"TEST\" (\"C1\",\"C2\") values (UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09'),NULL);";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
         assertThat(entry.getNewValues()[0])
@@ -273,7 +282,7 @@ public class LogMinerDmlParserTest {
                 "\"C2\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09') " +
                 "where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0])
                 .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
@@ -286,7 +295,7 @@ public class LogMinerDmlParserTest {
 
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0])
                 .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
@@ -305,7 +314,7 @@ public class LogMinerDmlParserTest {
 
         String sql = "insert into \"DEBEZIUM\".\"TEST\"(\"COL1\",\"COL2\") values ('Bob''s dog','0');";
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
         assertThat(entry.getNewValues()[0]).isEqualTo("Bob''s dog");
@@ -313,7 +322,7 @@ public class LogMinerDmlParserTest {
 
         sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = '1' where \"COL1\" = 'Bob''s dog' and \"COL2\" = '0';";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0]).isEqualTo("Bob''s dog");
         assertThat(entry.getOldValues()[1]).isEqualTo("0");
@@ -323,10 +332,60 @@ public class LogMinerDmlParserTest {
 
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"COL1\" = 'Bob''s dog' and \"COL2\" = '1';";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0]).isEqualTo("Bob''s dog");
         assertThat(entry.getOldValues()[1]).isEqualTo("1");
         assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-3892")
+    public void shouldParseConcatenatedUnistrValues() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.TEST"))
+                .addColumn(Column.editor().name("COL1").create())
+                .addColumn(Column.editor().name("COL2").create())
+                .create();
+
+        // test concatenation in INSERT column values
+        String sql = "insert into \"DEBEZIUM\".\"TEST\"(\"COL1\",\"COL2\") values ('1',UNISTR('\0412\044B') || UNISTR('\043F\043E'));";
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isEqualTo("UNISTR('\0412\044B') || UNISTR('\043F\043E')");
+
+        // test concatenation in SET statement
+        sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = UNISTR('\0412\044B') || UNISTR('\043F\043E') where \"COL1\" = '1' and \"COL2\" IS NULL;";
+        entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isEqualTo("UNISTR('\0412\044B') || UNISTR('\043F\043E')");
+
+        // test concatenation in update WHERE statement
+        sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = NULL where \"COL1\" = '1' and \"COL2\" = UNISTR('\0412\044B') || UNISTR('\043F\043E');";
+        entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isEqualTo("UNISTR('\0412\044B') || UNISTR('\043F\043E')");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isNull();
+
+        // test concatenation in delete WHERE statement
+        sql = "delete from \"DEBEZIUM\".\"TEST\" where \"COL1\" = '1' and \"COL2\" = UNISTR('\0412\044B') || UNISTR('\043F\043E');";
+        entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isEqualTo("UNISTR('\0412\044B') || UNISTR('\043F\043E')");
+        assertThat(entry.getNewValues()).hasSize(0);
     }
 }

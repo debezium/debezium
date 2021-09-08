@@ -7,8 +7,10 @@ package io.debezium.connector.oracle.logminer;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
+import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
 
@@ -17,30 +19,30 @@ import io.debezium.util.Clock;
  */
 public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object> {
 
-    private final int operation;
+    private final EventType eventType;
     private final Object[] oldValues;
     private final Object[] newValues;
 
-    public LogMinerChangeRecordEmitter(OffsetContext offset, int operation, Object[] oldValues,
+    public LogMinerChangeRecordEmitter(Partition partition, OffsetContext offset, EventType eventType, Object[] oldValues,
                                        Object[] newValues, Table table, Clock clock) {
-        super(offset, table, clock);
-        this.operation = operation;
+        super(partition, offset, table, clock);
+        this.eventType = eventType;
         this.oldValues = oldValues;
         this.newValues = newValues;
     }
 
     @Override
     protected Operation getOperation() {
-        switch (operation) {
-            case RowMapper.INSERT:
+        switch (eventType) {
+            case INSERT:
                 return Operation.CREATE;
-            case RowMapper.UPDATE:
-            case RowMapper.SELECT_LOB_LOCATOR:
+            case UPDATE:
+            case SELECT_LOB_LOCATOR:
                 return Operation.UPDATE;
-            case RowMapper.DELETE:
+            case DELETE:
                 return Operation.DELETE;
             default:
-                throw new DebeziumException("Unsupported operation type: " + operation);
+                throw new DebeziumException("Unsupported operation type: " + eventType);
         }
     }
 

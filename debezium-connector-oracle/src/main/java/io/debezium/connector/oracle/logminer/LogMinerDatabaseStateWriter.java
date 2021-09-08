@@ -35,7 +35,7 @@ public class LogMinerDatabaseStateWriter {
             }
             LOGGER.debug("Archive logs for last 48 hours:");
             try {
-                logQueryResults(connection, "SELECT * FROM V$ARCHIVED_LOG WHERE FIST_TIME >= SYSDATE - 2");
+                logQueryResults(connection, "SELECT * FROM V$ARCHIVED_LOG WHERE FIRST_TIME >= SYSDATE - 2");
             }
             catch (SQLException e) {
                 LOGGER.debug("Failed to obtain archive log table entries", e);

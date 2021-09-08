@@ -10,6 +10,7 @@ import java.io.Serializable;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.util.Clock;
 
@@ -25,8 +26,8 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final Object[] before;
     private final Object[] after;
 
-    public MySqlChangeRecordEmitter(OffsetContext offset, Clock clock, Envelope.Operation operation, Serializable[] before, Serializable[] after) {
-        super(offset, clock);
+    public MySqlChangeRecordEmitter(Partition partition, OffsetContext offset, Clock clock, Envelope.Operation operation, Serializable[] before, Serializable[] after) {
+        super(partition, offset, clock);
         this.offset = offset;
         this.operation = operation;
         this.before = before;

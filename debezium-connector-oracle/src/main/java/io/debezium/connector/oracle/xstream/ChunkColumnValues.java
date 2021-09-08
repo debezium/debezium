@@ -75,6 +75,12 @@ public class ChunkColumnValues {
      */
     public byte[] getByteArray() throws SQLException {
         if (size == 0) {
+            if (!values.isEmpty()) {
+                ChunkColumnValue firstChunk = values.get(0);
+                if (firstChunk.isEmptyChunk()) {
+                    return ByteBuffer.allocate(0).array();
+                }
+            }
             return null;
         }
         if (size > Integer.MAX_VALUE) {

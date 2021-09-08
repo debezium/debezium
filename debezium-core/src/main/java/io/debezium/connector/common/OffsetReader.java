@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * Provides access to the partition offsets stored by connectors.

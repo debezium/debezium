@@ -13,19 +13,17 @@
   <name>Debezium system integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>5.2.1</version.fabric8.client>
+    <version.fabric8.client>5.5.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
-    <version.commons.compress>1.20</version.commons.compress>
+    <version.commons.compress>1.21</version.commons.compress>
     <version.strimzi>0.24.0</version.strimzi>
-    <version.junit5>5.5.1</version.junit5>
-    <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
+    <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
-    <version.apicurio.converter>1.3.2.Final</version.apicurio.converter>
 
+    <!--KC image configuration-->
     <image.registry>quay.io</image.registry>
     <image.name>debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.name>
     <image.fullname>${image.registry}/${image.name}</image.fullname>
-
 
     <!--Docker configuration-->
     <docker.image.mysql>quay.io/debezium/example-mysql:latest</docker.image.mysql>
@@ -44,13 +42,17 @@
     <ocp.project.db2>debezium-db2</ocp.project.db2>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
-    <ocp.image.postgresql>${docker.image.postgresql}</ocp.image.postgresql>
+    <ocp.image.postgresql>quay.io/debezium/example-postgres-ocp:latest</ocp.image.postgresql>
     <ocp.image.mongo>${docker.image.mongo}</ocp.image.mongo>
     <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
     <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
 
     <!--Strimzi configuration-->
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
+    <strimzi.crd.version>v1beta2</strimzi.crd.version>
+
+    <!--Apicurio configuration-->
+    <apicurio.log.level>INFO</apicurio.log.level>
 
     <!--MySQL configuration-->
     <database.mysql.port>3306</database.mysql.port>
@@ -93,6 +95,9 @@
     <database.db2.dbz.password>${database.db2.password}</database.db2.dbz.password>
     <database.db2.dbname>TESTDB</database.db2.dbname>
     <database.db2.cdc.schema>ASNCDC</database.db2.cdc.schema>
+
+    <!--Debezium connector versions-->
+    <version.debezium.connector>${project.version}</version.debezium.connector>
   </properties>
 
   <dependencyManagement>
@@ -103,6 +108,43 @@
         <version>${version.fabric8.client}</version>
         <scope>import</scope>
         <type>pom</type>
+      </dependency>
+
+      <!-- Debezium dependencies -->
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-mysql</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-postgres</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-sqlserver</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-mongodb</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-db2</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -190,14 +232,7 @@
 
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>${version.junit5}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <version>${version.junit5}</version>
       <scope>test</scope>
     </dependency>
@@ -255,12 +290,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.github.jcechace.apicurio-model-generator</groupId>
-      <artifactId>kubernetes-apicurio-registry-model</artifactId>
-      <version>a5c02b71</version>
-    </dependency>
-
-    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
     </dependency>
@@ -294,13 +323,57 @@
 
   <profiles>
     <profile>
+      <id>apicurioV1</id>
+      <activation>
+        <property>
+          <name>apicurioV1</name>
+        </property>
+      </activation>
+
+      <properties>
+        <apicurio.crd.version>v1alpha1</apicurio.crd.version>
+      </properties>
+
+      <dependencies>
+        <dependency>
+          <groupId>com.github.jcechace.apicurio-model-generator</groupId>
+          <artifactId>kubernetes-apicurio-registry-model</artifactId>
+          <version>a5c02b71</version>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <profile>
+      <id>apicurioV2</id>
+      <activation>
+        <property>
+          <name>!apicurioV1</name>
+        </property>
+      </activation>
+
+      <properties>
+        <apicurio.crd.version>v1</apicurio.crd.version>
+      </properties>
+
+      <dependencies>
+        <dependency>
+          <groupId>com.github.jcechace.apicurio-model-generator</groupId>
+          <artifactId>kubernetes-apicurio-registry-model</artifactId>
+          <version>6601010c</version>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <profile>
       <id>image</id>
 
       <properties>
         <image.push.skip>true</image.push.skip>
         <image.version.strimzi>latest</image.version.strimzi>
         <image.base.name>quay.io/strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
-        <version.db2-connector>${project.version}</version.db2-connector>
+
+        <!--Apicurio versions-->
+        <version.apicurio.converter>1.3.2.Final</version.apicurio.converter>
       </properties>
 
       <dependencies>
@@ -309,35 +382,30 @@
           <artifactId>debezium-connector-mysql</artifactId>
           <classifier>plugin</classifier>
           <type>zip</type>
-          <version>${project.version}</version>
         </dependency>
         <dependency>
           <groupId>io.debezium</groupId>
           <artifactId>debezium-connector-postgres</artifactId>
           <classifier>plugin</classifier>
           <type>zip</type>
-          <version>${project.version}</version>
         </dependency>
         <dependency>
           <groupId>io.debezium</groupId>
           <artifactId>debezium-connector-sqlserver</artifactId>
           <classifier>plugin</classifier>
           <type>zip</type>
-          <version>${project.version}</version>
         </dependency>
         <dependency>
           <groupId>io.debezium</groupId>
           <artifactId>debezium-connector-mongodb</artifactId>
           <classifier>plugin</classifier>
           <type>zip</type>
-          <version>${project.version}</version>
         </dependency>
         <dependency>
           <groupId>io.debezium</groupId>
           <artifactId>debezium-connector-db2</artifactId>
           <classifier>plugin</classifier>
           <type>zip</type>
-          <version>${version.db2-connector}</version>
         </dependency>
         <dependency>
           <groupId>io.apicurio</groupId>
@@ -477,7 +545,11 @@
 
                 <!--Strimzi Configuration-->
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
-                <test.strimzi.crd.version>v1beta2</test.strimzi.crd.version>
+                <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
+
+                <!--Apicurio configuration-->
+                <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
+                <test.apicurio.log.level>${apicurio.log.level}</test.apicurio.log.level>
 
                 <!--MySQL configuration-->
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>

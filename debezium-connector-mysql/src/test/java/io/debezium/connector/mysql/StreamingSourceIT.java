@@ -31,6 +31,7 @@ import javax.management.MBeanServer;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -50,6 +51,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
@@ -485,6 +487,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
     @Test(expected = DebeziumException.class)
     @FixFor("DBZ-1208")
+    @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
     public void shouldFailOnUnknownTlsProtocol() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(DB_HISTORY_PATH);
@@ -524,6 +527,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     }
 
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
+        final LogInterceptor logInterceptor = new LogInterceptor();
         Configuration.Builder builder = simpleConfig()
                 .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("orders"));
@@ -565,6 +569,8 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         }
 
         if (mode == null) {
+            Awaitility.await().atMost(Duration.ofSeconds(waitTimeForRecords()))
+                    .until(() -> logInterceptor.containsMessage("Error during binlog processing."));
             waitForConnectorShutdown("mysql", DATABASE.getServerName());
         }
         else {

@@ -38,6 +38,7 @@ import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
@@ -114,9 +115,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
-        this.historizedSchema = schema instanceof HistorizedDatabaseSchema
-                ? (HistorizedDatabaseSchema<T>) schema
-                : null;
+        this.historizedSchema = schema.isHistorized() ? (HistorizedDatabaseSchema<T>) schema : null;
         this.queue = queue;
         this.filter = filter;
         this.changeEventCreator = changeEventCreator;
@@ -166,14 +165,15 @@ public class EventDispatcher<T extends DataCollectionId> {
         changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver() {
 
             @Override
-            public void changeRecord(DataCollectionSchema schema,
+            public void changeRecord(Partition partition,
+                                     DataCollectionSchema schema,
                                      Operation operation,
                                      Object key, Struct value,
                                      OffsetContext offset,
                                      ConnectHeaders headers)
                     throws InterruptedException {
                 eventListener.onEvent(dataCollectionSchema.id(), offset, key, value);
-                receiver.changeRecord(dataCollectionSchema, operation, key, value, offset, headers);
+                receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
             }
         });
     }
@@ -201,7 +201,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             if (!filter.isIncluded(dataCollectionId)) {
                 LOGGER.trace("Filtered data change event for {}", dataCollectionId);
                 eventListener.onFilteredEvent("source = " + dataCollectionId);
-                dispatchFilteredEvent(changeRecordEmitter.getOffset());
+                dispatchFilteredEvent(changeRecordEmitter.getPartition(), changeRecordEmitter.getOffset());
             }
             else {
                 DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
@@ -218,23 +218,24 @@ public class EventDispatcher<T extends DataCollectionId> {
                 changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver() {
 
                     @Override
-                    public void changeRecord(DataCollectionSchema schema,
+                    public void changeRecord(Partition partition,
+                                             DataCollectionSchema schema,
                                              Operation operation,
                                              Object key, Struct value,
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
                         if (operation == Operation.CREATE && signal.isSignal(dataCollectionId)) {
-                            signal.process(value, offset);
+                            signal.process(partition, value, offset);
                         }
 
                         if (neverSkip || !skippedOperations.contains(operation)) {
-                            transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
+                            transactionMonitor.dataEvent(partition, dataCollectionId, offset, key, value);
                             eventListener.onEvent(dataCollectionId, offset, key, value);
                             if (incrementalSnapshotChangeEventSource != null) {
-                                incrementalSnapshotChangeEventSource.processMessage(dataCollectionId, key, offset);
+                                incrementalSnapshotChangeEventSource.processMessage(partition, dataCollectionId, key, offset);
                             }
-                            streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
+                            streamingReceiver.changeRecord(partition, schema, operation, key, value, offset, headers);
                         }
                     }
                 });
@@ -242,7 +243,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             }
 
             heartbeat.heartbeat(
-                    changeRecordEmitter.getOffset().getPartition(),
+                    changeRecordEmitter.getPartition().getSourcePartition(),
                     changeRecordEmitter.getOffset().getOffset(),
                     this::enqueueHeartbeat);
 
@@ -267,18 +268,18 @@ public class EventDispatcher<T extends DataCollectionId> {
         }
     }
 
-    public void dispatchFilteredEvent(OffsetContext offset) throws InterruptedException {
+    public void dispatchFilteredEvent(Partition partition, OffsetContext offset) throws InterruptedException {
         if (incrementalSnapshotChangeEventSource != null) {
-            incrementalSnapshotChangeEventSource.processFilteredEvent(offset);
+            incrementalSnapshotChangeEventSource.processFilteredEvent(partition, offset);
         }
     }
 
-    public void dispatchTransactionCommittedEvent(OffsetContext offset) throws InterruptedException {
-        transactionMonitor.transactionComittedEvent(offset);
+    public void dispatchTransactionCommittedEvent(Partition partition, OffsetContext offset) throws InterruptedException {
+        transactionMonitor.transactionComittedEvent(partition, offset);
     }
 
-    public void dispatchTransactionStartedEvent(String transactionId, OffsetContext offset) throws InterruptedException {
-        transactionMonitor.transactionStartedEvent(transactionId, offset);
+    public void dispatchTransactionStartedEvent(Partition partition, String transactionId, OffsetContext offset) throws InterruptedException {
+        transactionMonitor.transactionStartedEvent(partition, transactionId, offset);
     }
 
     public void dispatchConnectorEvent(ConnectorEvent event) {
@@ -327,16 +328,16 @@ public class EventDispatcher<T extends DataCollectionId> {
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
     }
 
-    public void alwaysDispatchHeartbeatEvent(OffsetContext offset) throws InterruptedException {
+    public void alwaysDispatchHeartbeatEvent(Partition partition, OffsetContext offset) throws InterruptedException {
         heartbeat.forcedBeat(
-                offset.getPartition(),
+                partition.getSourcePartition(),
                 offset.getOffset(),
                 this::enqueueHeartbeat);
     }
 
-    public void dispatchHeartbeatEvent(OffsetContext offset) throws InterruptedException {
+    public void dispatchHeartbeatEvent(Partition partition, OffsetContext offset) throws InterruptedException {
         heartbeat.heartbeat(
-                offset.getPartition(),
+                partition.getSourcePartition(),
                 offset.getOffset(),
                 this::enqueueHeartbeat);
     }
@@ -357,9 +358,9 @@ public class EventDispatcher<T extends DataCollectionId> {
         queue.enqueue(new DataChangeEvent(record));
     }
 
-    public void dispatchServerHeartbeatEvent(OffsetContext offset) throws InterruptedException {
+    public void dispatchServerHeartbeatEvent(Partition partition, OffsetContext offset) throws InterruptedException {
         if (incrementalSnapshotChangeEventSource != null) {
-            incrementalSnapshotChangeEventSource.processHeartbeat(offset);
+            incrementalSnapshotChangeEventSource.processHeartbeat(partition, offset);
         }
     }
 
@@ -375,7 +376,8 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
 
         @Override
-        public void changeRecord(DataCollectionSchema dataCollectionSchema,
+        public void changeRecord(Partition partition,
+                                 DataCollectionSchema dataCollectionSchema,
                                  Operation operation,
                                  Object key, Struct value,
                                  OffsetContext offsetContext,
@@ -391,7 +393,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                     : dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
-            SourceRecord record = new SourceRecord(offsetContext.getPartition(),
+            SourceRecord record = new SourceRecord(partition.getSourcePartition(),
                     offsetContext.getOffset(),
                     topicName, null,
                     keySchema, key,
@@ -423,7 +425,8 @@ public class EventDispatcher<T extends DataCollectionId> {
         private Supplier<DataChangeEvent> bufferedEvent;
 
         @Override
-        public void changeRecord(DataCollectionSchema dataCollectionSchema,
+        public void changeRecord(Partition partition,
+                                 DataCollectionSchema dataCollectionSchema,
                                  Operation operation,
                                  Object key, Struct value,
                                  OffsetContext offsetContext,
@@ -443,7 +446,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             // the record is produced lazily, so to have the correct offset as per the pre/post completion callbacks
             bufferedEvent = () -> {
                 SourceRecord record = new SourceRecord(
-                        offsetContext.getPartition(),
+                        partition.getSourcePartition(),
                         offsetContext.getOffset(),
                         topicName, null,
                         keySchema, key,
@@ -483,7 +486,8 @@ public class EventDispatcher<T extends DataCollectionId> {
         }
 
         @Override
-        public void changeRecord(DataCollectionSchema dataCollectionSchema,
+        public void changeRecord(Partition partition,
+                                 DataCollectionSchema dataCollectionSchema,
                                  Operation operation,
                                  Object key, Struct value,
                                  OffsetContext offsetContext,
@@ -497,7 +501,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
             SourceRecord record = new SourceRecord(
-                    offsetContext.getPartition(),
+                    partition.getSourcePartition(),
                     offsetContext.getOffset(),
                     topicName, null,
                     keySchema, key,
@@ -557,8 +561,6 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     /**
      * Enable support for incremental snapshotting.
-     *
-     * @param eventListener
      */
     public void setIncrementalSnapshotChangeEventSource(Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> incrementalSnapshotChangeEventSource) {
         this.incrementalSnapshotChangeEventSource = (IncrementalSnapshotChangeEventSource<T>) incrementalSnapshotChangeEventSource.orElse(null);

@@ -685,7 +685,7 @@ on_comp_partitioned_table
 on_comp_partitioned_clause
     : PARTITION partition_name?
         (segment_attributes_clause | key_compression)*
-        UNUSABLE index_subpartition_clause?
+        UNUSABLE? index_subpartition_clause?
     ;
 
 index_subpartition_clause
@@ -1980,7 +1980,9 @@ hash_subparts_by_quantity
     ;
 
 range_values_clause
-    : VALUES LESS THAN '(' literal (',' literal)* ')'
+    : VALUES LESS THAN
+        ('(' literal (',' literal)* ')' |
+            '(' TIMESTAMP literal (',' TIMESTAMP literal)* ')')
     ;
 
 list_values_clause
@@ -2167,7 +2169,7 @@ truncate_table
     ;
 
 drop_table
-    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? SEMICOLON
+    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? SEMICOLON
     ;
 
 drop_view
@@ -2560,6 +2562,7 @@ alter_table_partitioning
     | modify_table_partition
     | split_table_partition
     | truncate_table_partition
+    | exchange_table_partition
     ;
 
 add_table_partition
@@ -2588,6 +2591,12 @@ split_table_partition
 
 truncate_table_partition
     : TRUNCATE PARTITION partition_name
+    ;
+
+exchange_table_partition
+    : EXCHANGE PARTITION partition_name WITH TABLE tableview_name
+            ((INCLUDING|EXCLUDING) INDEXES)?
+            ((WITH | WITHOUT) VALIDATION)?
     ;
 
 alter_iot_clauses
@@ -2892,6 +2901,7 @@ substitutable_column_clause
 
 partition_name
     : regular_id
+    | DELIMITED_ID
     ;
 
 supplemental_logging_props
@@ -2927,7 +2937,7 @@ drop_constraint_clause
     ;
 
 drop_primary_key_or_unique_or_generic_clause
-    : (PRIMARY KEY | UNIQUE '(' column_name (',' column_name)* ')') CASCADE? (KEEP | DROP)?
+    : (PRIMARY KEY | UNIQUE '(' column_name (',' column_name)* ')') CASCADE? ((KEEP | DROP) INDEX)? ONLINE?
     | CONSTRAINT constraint_name CASCADE?
     ;
 

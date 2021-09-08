@@ -13,6 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.spi.LoggingEvent;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,10 @@ public class LogInterceptor extends AppenderSkeleton {
     @Override
     public boolean requiresLayout() {
         return false;
+    }
+
+    public void setLoggerLevel(Class<?> loggerClass, String level) {
+        LogManager.getLogger(loggerClass).setLevel(Level.toLevel(level));
     }
 
     public long countOccurrences(String text) {

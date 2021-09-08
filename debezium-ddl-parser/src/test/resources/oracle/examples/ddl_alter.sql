@@ -11,6 +11,10 @@ ALTER TABLE customers MODIFY PARTITION south_india ADD VALUES ('KOCHI', 'MANGALO
 ALTER TABLE customers MODIFY PARTITION south_india DROP VALUES ('KOCHI','MANGALORE');
 ALTER TABLE sales split partition p5 into (Partition p6 values less than (1996), Partition p7 values less than (MAXVALUE));
 ALTER TABLE sales truncate partition p5;
+ALTER TABLE "SYSTEM". LOGMNR_ATTRCOL$ exchange partition P1023 with table LOGMNRT_1023_ATTRCOL$ including  indexes without validation;
 -- Alter table add unique index
 alter table dbz1211 add constraint name unique (id,data) using index tablespace ts;
 alter table dbz1211_child add constraint name unique (id) using index tablespace ts;
+-- Alter table add primary key using index
+ALTER TABLE "IDENTITYDB"."CHANGE_NUMBERS" ADD CONSTRAINT "IDX_CHANGENUMBERS_PK" PRIMARY KEY ("CHANGE_NO", "EXPIRY_TIME") USING INDEX "IDENTITYDB"."IDX_CHANGENUMBERS_PK"  ENABLE NOVALIDATE;
+ALTER TABLE "MYSCHEMA"."MY_PLANT" DROP PRIMARY KEY DROP INDEX;

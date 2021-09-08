@@ -7,7 +7,6 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -23,6 +22,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
@@ -57,12 +57,13 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector, tableNameCaseSensitivity);
         this.schema.initializeStorage();
-        Map<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
+        Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());
-        OracleOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
+        OraclePartition partition = previousOffsets.getTheOnlyPartition();
+        OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         if (previousOffset != null) {
-            schema.recover(previousOffset);
+            schema.recover(partition, previousOffset);
         }
 
         taskContext = new OracleTaskContext(connectorConfig, schema);

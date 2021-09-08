@@ -1282,7 +1282,66 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 fail("The 'order_date' field was found but should be filtered");
             }
             catch (DataException e) {
-                // Expected, this field should be filtered by the whitelist
+                // Expected, this field should be filtered by the include list
+            }
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-2525")
+    public void shouldConsumeEventsWithIncludedColumnsForKeywordNamedTable() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(RO_DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(String.format("CREATE TABLE %s.`order` ("
+                        + " id INT(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,"
+                        + " `select` VARCHAR(255) NOT NULL,"
+                        + " not_included VARCHAR(255) NOT NULL);", RO_DATABASE.getDatabaseName()));
+
+                connection.execute(String.format("INSERT INTO %s.`order` VALUES (100001,'included','not included');", RO_DATABASE.getDatabaseName()));
+            }
+        }
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = RO_DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, RO_DATABASE.qualifiedTableName("order"))
+                .with(MySqlConnectorConfig.COLUMN_INCLUDE_LIST, RO_DATABASE.qualifiedTableName("order") + ".select")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("order")).size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        // More records may have been written (if this method were run after the others), but we don't care ...
+        stopConnector();
+
+        // Check that orders.order_number is present ...
+        records.recordsForTopic(RO_DATABASE.topicForTable("order")).forEach(record -> {
+            print(record);
+            Struct value = ((Struct) record.value()).getStruct("after");
+            try {
+                value.get("select");
+            }
+            catch (DataException e) {
+                fail("The 'select' field was not found but should exist");
+            }
+
+            try {
+                value.get("not_included");
+                fail("The 'not_included' field was found but should be filtered");
+            }
+            catch (DataException e) {
+                // Expected, this field should be filtered by the include list
             }
         });
     }

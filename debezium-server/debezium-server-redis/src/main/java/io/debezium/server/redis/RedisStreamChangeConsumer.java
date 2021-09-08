@@ -22,6 +22,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
@@ -111,14 +112,20 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             throws InterruptedException {
 
         for (ChangeEvent<Object, Object> record : records) {
-            LOGGER.trace("Received event '{}'", record);
+            try {
 
-            String destination = streamNameMapper.map(record.destination());
-            String key = (record.key() != null) ? getString(record.key()) : nullKey;
-            String value = getString(record.value());
-            client.xadd(destination, null, Collections.singletonMap(key, value));
+                LOGGER.trace("Received event '{}'", record);
 
-            committer.markProcessed(record);
+                String destination = streamNameMapper.map(record.destination());
+                String key = (record.key() != null) ? getString(record.key()) : nullKey;
+                String value = getString(record.value());
+                client.xadd(destination, null, Collections.singletonMap(key, value));
+
+                committer.markProcessed(record);
+            }
+            catch (Exception e) {
+                throw new DebeziumException(e);
+            }
         }
         committer.markBatchFinished();
     }

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -54,7 +55,25 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             throw new IllegalArgumentException("Only a single connector task may be started");
         }
 
-        return Collections.singletonList(properties);
+        Map<String, String> taskConfig = new HashMap<>(properties);
+
+        Configuration config = Configuration.from(properties);
+        final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
+        final String databaseName = sqlServerConfig.getDatabaseName();
+        try (SqlServerConnection connection = connect(sqlServerConfig)) {
+            final String realDatabaseName = connection.retrieveRealDatabaseName(databaseName);
+            if (!sqlServerConfig.isMultiPartitionModeEnabled()) {
+                taskConfig.put(SqlServerConnectorConfig.DATABASE_NAME.name(), realDatabaseName);
+            }
+            else {
+                taskConfig.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), realDatabaseName);
+            }
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve real database name", e);
+        }
+
+        return Collections.singletonList(taskConfig);
     }
 
     @Override
@@ -68,18 +87,19 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
-        final ConfigValue databaseValue = configValues.get(RelationalDatabaseConnectorConfig.DATABASE_NAME.name());
-        if (!databaseValue.errorMessages().isEmpty()) {
-            return;
+        final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
+
+        if (Strings.isNullOrEmpty(sqlServerConfig.getDatabaseName())) {
+            throw new IllegalArgumentException("Either '" + SqlServerConnectorConfig.DATABASE_NAME
+                    + "' or '" + SqlServerConnectorConfig.DATABASE_NAMES
+                    + "' option must be specified");
         }
 
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
-        SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
         // Try to connect to the database ...
-        try (SqlServerConnection connection = new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
-                sqlServerConfig.getSourceTimestampMode(), null)) {
-            // SqlServerConnection will try retrieving database, no need to run another query.
+        try (SqlServerConnection connection = connect(sqlServerConfig)) {
+            connection.execute("SELECT @@VERSION");
             LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                     connection.username());
         }
@@ -94,5 +114,11 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(SqlServerConnectorConfig.ALL_FIELDS);
+    }
+
+    private SqlServerConnection connect(SqlServerConnectorConfig sqlServerConfig) {
+        return new SqlServerConnection(sqlServerConfig.jdbcConfig(),
+                sqlServerConfig.getSourceTimestampMode(), null,
+                sqlServerConfig.isMultiPartitionModeEnabled());
     }
 }

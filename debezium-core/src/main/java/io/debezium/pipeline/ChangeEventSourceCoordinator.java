@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +21,6 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.connector.common.Partition;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
@@ -34,6 +32,8 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.schema.DataCollectionId;
@@ -56,7 +56,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
      */
     public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
 
-    private final Map<P, O> previousOffsets;
+    private final Offsets<P, O> previousOffsets;
     private final ErrorHandler errorHandler;
     private final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
     private final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
@@ -71,7 +71,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
 
-    public ChangeEventSourceCoordinator(Map<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
+    public ChangeEventSourceCoordinator(Offsets<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema) {
@@ -86,15 +86,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                    EventMetadataProvider metadataProvider) {
-        if (previousOffsets.size() != 1) {
-            throw new ConnectException("The coordinator must be provided with exactly one partition, "
-                    + previousOffsets.size() + " found");
-        }
-
-        Map.Entry<P, O> entry = previousOffsets.entrySet().iterator().next();
-
-        final P partition = entry.getKey();
-        final O previousOffset = entry.getValue();
+        final P partition = previousOffsets.getTheOnlyPartition();
+        final O previousOffset = previousOffsets.getTheOnlyOffset();
 
         AtomicReference<LoggingContext.PreviousContext> previousLogContext = new AtomicReference<>();
         try {

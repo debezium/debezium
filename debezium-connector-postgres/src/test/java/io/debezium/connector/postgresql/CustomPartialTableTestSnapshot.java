@@ -6,15 +6,16 @@
 
 package io.debezium.connector.postgresql;
 
+import java.util.List;
 import java.util.Optional;
 
 import io.debezium.relational.TableId;
 
 public class CustomPartialTableTestSnapshot extends CustomStartFromStreamingTestSnapshot {
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId) {
+    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
         if (tableId.schema().equals("s1") && tableId.table().equals("a")) {
-            return super.buildSnapshotQuery(tableId);
+            return super.buildSnapshotQuery(tableId, snapshotSelectColumns);
         }
 
         return Optional.empty();

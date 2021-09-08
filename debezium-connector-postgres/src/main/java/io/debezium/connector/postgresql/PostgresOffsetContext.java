@@ -7,7 +7,6 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,13 +32,11 @@ import io.debezium.util.Clock;
 public class PostgresOffsetContext implements OffsetContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresSnapshotChangeEventSource.class);
 
-    private static final String SERVER_PARTITION_KEY = "server";
     public static final String LAST_COMPLETELY_PROCESSED_LSN_KEY = "lsn_proc";
     public static final String LAST_COMMIT_LSN_KEY = "lsn_commit";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
-    private final Map<String, String> partition;
     private boolean lastSnapshotRecord;
     private Lsn lastCompletelyProcessedLsn;
     private Lsn lastCommitLsn;
@@ -51,12 +48,12 @@ public class PostgresOffsetContext implements OffsetContext {
                                   boolean snapshot,
                                   boolean lastSnapshotRecord, TransactionContext transactionContext,
                                   IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
-        sourceInfo.update(lsn, time, txId, null, sourceInfo.xmin(), lastCommitLsn);
+        sourceInfo.update(lsn, time, txId, null, sourceInfo.xmin());
+        sourceInfo.updateLastCommit(lastCommitLsn);
         sourceInfoSchema = sourceInfo.schema();
 
         this.lastSnapshotRecord = lastSnapshotRecord;
@@ -68,11 +65,6 @@ public class PostgresOffsetContext implements OffsetContext {
         }
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        return partition;
     }
 
     @Override
@@ -143,10 +135,10 @@ public class PostgresOffsetContext implements OffsetContext {
         sourceInfo.update(lsn, commitTime, txId, tableId, xmin, originName);
     }
 
-    public void updateCommitPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
+    public void updateCommitPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
-        this.lastCommitLsn = lastCompletelyProcessedLsn;
-        sourceInfo.update(lsn, commitTime, txId, tableId, xmin, lastCompletelyProcessedLsn);
+        this.lastCommitLsn = lsn;
+        sourceInfo.updateLastCommit(lsn);
     }
 
     boolean hasLastKnownPosition() {
@@ -220,7 +212,7 @@ public class PostgresOffsetContext implements OffsetContext {
     @Override
     public String toString() {
         return "PostgresOffsetContext [sourceInfoSchema=" + sourceInfoSchema + ", sourceInfo=" + sourceInfo
-                + ", partition=" + partition + ", lastSnapshotRecord=" + lastSnapshotRecord
+                + ", lastSnapshotRecord=" + lastSnapshotRecord
                 + ", lastCompletelyProcessedLsn=" + lastCompletelyProcessedLsn + ", lastCommitLsn=" + lastCommitLsn
                 + ", streamingStoppingLsn=" + streamingStoppingLsn + ", transactionContext=" + transactionContext
                 + ", incrementalSnapshotContext=" + incrementalSnapshotContext + "]";

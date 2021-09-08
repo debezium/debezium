@@ -202,17 +202,6 @@ The same applies when changing existing behaviors, e.g. type mappings, removing 
 The documentation is written using AsciiDoc/Antora and can be found in the Debezium [source code repository](https://github.com/debezium/debezium/tree/master/documentation).
 Any documentation update should be part of the pull request you submit for the code change.
 
-Generally, two versions of documentation are published on the website at a given time:
-
-* The documentation for the current _stable_ release (e.g. 0.9.5.Final at the time of writing)
-* The documentation for the current _development_ release (e.g. 0.10.0.Beta4)
-
-Documentation changes applying to the development release will be published on the website when the release containing the documented features is done.
-In order to apply immediate changes to the documentation without awaiting the next release,
-submit a pull request targeting the [development_docs](https://github.com/debezium/debezium/tree/development_docs/documentation) branch.
-This should only be done for critical fixes such as correcting wrong documentation; minor changes such as typo fixes should simply be done on the `master` branch.
-Upon each release, the `development_docs` branch is rebased to `master`, resulting in the publication of all doc changes done on the `master` branch since the last release.
-
 ### Creating a pull request
 
 Once you're finished making your changes, your topic branch should have your commit(s) and you should have verified that your branch builds successfully. At this point, you can shared your proposed changes and create a pull request. To do this, first push your topic branch (and its commits) to your fork repository (called `origin`) on GitHub:
@@ -235,7 +224,7 @@ and then make the changes on that branch and either add a new commit or ammend y
 
 GitHub will automatically update the pull request with your latest changes, but we ask that you go to the pull request and add a comment summarizing what you did. This process may continue until the reviewers are satisfied.
 
-By the way, please don't take offense if the reviewers ask you to make additional changes, even if you think those changes are minor. The reviewers have a broach understanding of the codebase, and their job is to ensure the code remains as uniform as possible, is of sufficient quality, and is thoroughly tested. When they believe your pull request has those attributes, they will merge your pull request into the official upstream repository.
+By the way, please don't take offense if the reviewers ask you to make additional changes, even if you think those changes are minor. The reviewers have a broad understanding of the codebase, and their job is to ensure the code remains as uniform as possible, is of sufficient quality, and is thoroughly tested. When they believe your pull request has those attributes, they will merge your pull request into the official upstream repository.
 
 Once your pull request has been merged, feel free to delete your topic branch both in your local repository:
 
@@ -270,3 +259,11 @@ Here's a quick check list for a good pull request (PR):
 * New/changed features have been documented
 * A full build completes successfully
 * Do a rebase on upstream `master`
+
+### PR Handling (For Committers)
+
+* Don't merge your own PRs, ensure four eyes principle (unless it's trivial typo fixes and the like)
+* Ensure there are no https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile["Octocat" commits]
+* Don't do force pushes to master/main branches (it's disabled for all repos)
+* Always apply PRs via rebasing instead of merges (there should be a linear commit history)
+* Optional: squash commits into one if there's lots of forth and back on a PR which isn't relevant for the history in the long run

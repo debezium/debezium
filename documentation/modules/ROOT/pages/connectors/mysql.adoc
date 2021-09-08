@@ -4,6 +4,7 @@
 = {prodname} connector for MySQL
 
 :context: mysql
+:mbean-name: {context}
 ifdef::community[]
 
 :toc:
@@ -1337,7 +1338,7 @@ The `DATETIME` type represents a local date and time such as "2018-01-13 09:48:2
 * `DATETIME` with a value of `2018-06-20 06:37:03` becomes `1529476623000`.
 * `TIMESTAMP` with a value of `2018-06-20 06:37:03` becomes `2018-06-20T13:37:03Z`.
 
-Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone. The time zone will be queried from the server by default. If this fails, it must be specified explicitly by the database `serverTimezone` MySQL configuration option. For example, if the database’s time zone (either globally or configured for the connector by means of the `serverTimezone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
+Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone. The time zone will be queried from the server by default. If this fails, it must be specified explicitly by the database `connectionTimeZone` MySQL configuration option. For example, if the database’s time zone (either globally or configured for the connector by means of the `connectionTimeZone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
 
 The time zone of the JVM running Kafka Connect and Debezium does not affect these conversions.
 
@@ -2201,7 +2202,7 @@ The following configuration properties are _required_ unless a default value is 
 |[[mysql-property-database-server-name]]<<mysql-property-database-server-name, `+database.server.name+`>>
 |
 |Logical name that identifies and provides a namespace for the particular MySQL database server/cluster in which {prodname} is capturing changes. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names that receive events emitted by this connector.
-Only alphanumeric characters, hyphens and underscores must be used in the database server logical name.
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
 
 |[[mysql-property-database-server-id]]<<mysql-property-database-server-id, `+database.server.id+`>>
 |_random_
@@ -2243,20 +2244,26 @@ Do not also specify the `table.include.list` connector configuration property.
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. You can configure multiple properties with different lengths in a single configuration. Each length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
-|[[mysql-property-column-mask-hash]]<<mysql-property-column-mask-hash, `+column.mask.hash._hashAlgorithm_.with.salt._salt_+`>>
+|[[mysql-property-column-mask-hash]]<<mysql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
-a|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event record values. Pseudonyms consist of the hashed value obtained by applying the algorithm `_hashAlgorithm_` and salt `_salt_`. +
+a|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
+
+A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
+Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
  +
-Based on the hash function used, referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
-The hash result is automatically shortened to the length of the column. +
+In the following example, `CzQMA0cB5K` is a randomly selected salt. +
+
+----
+column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
+----
+
+If necessary, the pseudonym is automatically shortened to the length of the column.
+The connector configuration can include multiple properties that specify different hash algorithms and salts. +
  +
-You can configure multiple properties with different lengths in a single configuration. Each length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. For example: +
- +
-`column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName` +
- +
-`CzQMA0cB5K` is a randomly selected salt.
- +
-Depending on the configured `_hashAlgorithm_`, the selected `_salt_`, and the actual data set, the resulting masked data set might not be completely anonymized.
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
 
 |[[mysql-property-column-propagate-source-type]]<<mysql-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
@@ -2507,7 +2514,7 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 |
 |Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events captured from the binlog. Specify a comma-separated list of fully-qualified table names in the form _databaseName.tableName_. +
  +
-For each table that you specify, also specify another configuration property: `snapshot.select.statement.overrides._DB_NAME_._TABLE_NAME_`. For example, the name of the other configuration property might be:  `snapshot.select.statement.overrides.customers.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table. +
+For each table that you specify, also specify another configuration property: `snapshot.select.statement.overrides._DB_NAME_._TABLE_NAME_`. For example, the name of the other configuration property might be:  `snapshot.select.statement.overrides.inventory.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table. +
  +
 A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
 
@@ -2618,9 +2625,9 @@ The {prodname} MySQL connector provides three types of metrics that are in addit
 [[mysql-snapshot-metrics]]
 === Snapshot metrics
 
-The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
 The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snapshot metric. This metric is set to a Boolean value that indicates whether the connector currently holds a global or table write lock.
 
@@ -2629,8 +2636,6 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 // Title: Monitoring {prodname} MySQL connector record streaming
 [[mysql-streaming-metrics]]
 === Streaming metrics
-
-The *MBean* is `debezium.mysql:type=connector-metrics,context=streaming,server=<database.server.name>`.
 
 Transaction-related attributes are available only if binlog event buffering is enabled. See {link-prefix}:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
 
@@ -2686,8 +2691,6 @@ The {prodname} MySQL connector also provides the following additional streaming 
 // Title: Monitoring {prodname} MySQL connector schema history
 [[mysql-schema-history-metrics]]
 === Schema history metrics
-
-The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 

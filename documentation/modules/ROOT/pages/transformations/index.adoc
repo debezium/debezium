@@ -1,0 +1,37 @@
+= Transformations
+
+Connectors can be configured with transformations to make lightweight per message modifications. {prodname} provides several link:{link-kafka-docs}/#connect_transforms[single message transformations] (SMTs) that you can use to either modify records before they are sent to Apache Kafka (by applying them to the {prodname} connectors), or when they are read from Kafka by a sink connector. Also {link-prefix}:{link-debezium-server}[{prodname} Server] supports the usage of SMTs.
+
+The following SMTs are provided by {prodname}:
+
+[cols="30%a,70%a",options="header"]
+|===
+|Transform
+|Description
+
+|xref:transformations/topic-routing.adoc[Topic Routing]
+|Re-routes records to different topics based on a regular expression applied to the original topic name.
+
+|xref:transformations/content-based-routing.adoc[Content-Based Routing]
+|Reroute selected events to other topics, based on the event content.
+
+|xref:transformations/event-flattening.adoc[New Record State Extraction]
+|Extracts the flat structure of field names and values from Debezium change events, facilitating sink connectors which cannot process Debezium's complex event structure.
+
+|xref:transformations/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
+|The MongoDB-specific counter-part to the xref:transformations/event-flattening.adoc[New Record State Extraction] SMT.
+
+|xref:transformations/outbox-event-router.adoc[Outbox Event Router]
+|Provides a way to safely and reliably exchange data between multiple (micro) services.
+
+|xref:transformations/filtering.adoc[Message Filtering]
+|Applies a filter to the change events emitted by the connectors, based on their content. This lets you propagate only those records that are relevant to you. 
+
+|===
+
+By means of xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.
+
+[NOTE]
+====
+Most of the above SMTs are available by default with the {prodname} container image, but you need to opt-in for the scripting-based ones (Message Filtering or Content-based Routing). See the link:https://github.com/debezium/docker-images/tree/master/connect/1.7#enable_debezium_scripting[README] file of the container image for more details.
+====
