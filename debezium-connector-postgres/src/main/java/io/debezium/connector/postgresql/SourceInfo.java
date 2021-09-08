@@ -189,7 +189,7 @@ public final class SourceInfo extends BaseSourceInfo {
         return tableName;
     }
 
-    String orignName() {
+    String originName() {
         return orignName;
     }
 
