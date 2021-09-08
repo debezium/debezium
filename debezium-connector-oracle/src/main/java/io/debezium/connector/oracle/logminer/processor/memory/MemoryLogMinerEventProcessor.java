@@ -215,6 +215,14 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             return;
         }
 
+        if (transaction.getUserName() == null && !transaction.getEvents().isEmpty()) {
+            LOGGER.warn("Got transaction with null username {}", transaction);
+        }
+        else if (getConfig().getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
+            LOGGER.debug("Skipping transaction with excluded username {}", transaction);
+            return;
+        }
+
         final Scn smallestScn = transactionCache.getMinimumScn();
         metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
         abandonedTransactionsCache.remove(transactionId);
