@@ -238,6 +238,9 @@ public final class SourceInfo extends BaseSourceInfo {
         if (tableName != null) {
             sb.append(", table=").append(tableName);
         }
+        if (originName != null) {
+            sb.append(", origin name=").append(originName);
+        }
         sb.append(']');
         return sb.toString();
     }
