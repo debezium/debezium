@@ -192,12 +192,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return Year.builder();
         }
         if (matches(typeName, "ENUM")) {
-            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
-            return io.debezium.data.Enum.builder(commaSeperatedOptions);
+            String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
+            return io.debezium.data.Enum.builder(commaSeparatedOptions);
         }
         if (matches(typeName, "SET")) {
-            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
-            return io.debezium.data.EnumSet.builder(commaSeperatedOptions);
+            String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
+            return io.debezium.data.EnumSet.builder(commaSeparatedOptions);
         }
         if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")
                 || matches(typeName, "INT2 UNSIGNED") || matches(typeName, "INT2 UNSIGNED ZEROFILL")) {
