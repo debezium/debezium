@@ -126,6 +126,11 @@ class PgProtoReplicationMessage implements ReplicationMessage {
         return true;
     }
 
+    @Override
+    public String getOriginName() {
+        return null;
+    }
+
     public Object getValue(String columnName, PostgresType type, String fullType, PgProto.DatumMessage datumMessage, final PgConnectionSupplier connection,
                            boolean includeUnknownDatatypes) {
         final PgProtoColumnValue columnValue = new PgProtoColumnValue(datumMessage);

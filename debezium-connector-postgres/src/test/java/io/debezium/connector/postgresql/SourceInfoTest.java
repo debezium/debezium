@@ -50,7 +50,7 @@ public class SourceInfoTest {
     @Test
     @FixFor("DBZ-934")
     public void canHandleNullValues() {
-        source.update(null, null, null, null, null);
+        source.update(null, null, null, null, null, "");
     }
 
     @Test
@@ -74,6 +74,7 @@ public class SourceInfoTest {
                 .field("txId", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("xmin", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("origin_name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
 
         VerifyRecord.assertConnectSchemasAreEqual(null, source.struct().schema(), schema);

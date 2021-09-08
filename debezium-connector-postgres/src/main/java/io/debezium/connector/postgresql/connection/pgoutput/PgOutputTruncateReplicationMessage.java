@@ -13,8 +13,8 @@ public class PgOutputTruncateReplicationMessage extends PgOutputReplicationMessa
     private final boolean lastTableInTruncate;
 
     public PgOutputTruncateReplicationMessage(Operation op, String table, Instant commitTimestamp, long transactionId,
-                                              boolean lastTableInTruncate) {
-        super(op, table, commitTimestamp, transactionId, null, null);
+                                              boolean lastTableInTruncate, String originName) {
+        super(op, table, commitTimestamp, transactionId, null, null, originName);
         this.lastTableInTruncate = lastTableInTruncate;
     }
 

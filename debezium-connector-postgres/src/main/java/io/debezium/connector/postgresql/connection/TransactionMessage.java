@@ -68,6 +68,11 @@ public class TransactionMessage implements ReplicationMessage {
     }
 
     @Override
+    public String getOriginName() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public String toString() {
         return "TransactionMessage [transationId=" + transationId + ", commitTime=" + commitTime + ", operation="
                 + operation + "]";

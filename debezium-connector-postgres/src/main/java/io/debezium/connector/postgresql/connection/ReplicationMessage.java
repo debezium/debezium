@@ -167,6 +167,11 @@ public interface ReplicationMessage {
     public List<Column> getNewTupleList();
 
     /**
+     * @return message operator origin name
+     */
+    public String getOriginName();
+
+    /**
      * @return true if type metadata are passed as a part of message
      */
     boolean hasTypeMetadata();
@@ -241,6 +246,11 @@ public interface ReplicationMessage {
         public Instant getCommitTime() {
             return commitTime;
         }
+
+        @Override
+        public String getOriginName() {
+            return null;
+        }
     };
 
     /**
@@ -297,6 +307,11 @@ public interface ReplicationMessage {
         @Override
         public Instant getCommitTime() {
             return commitTime;
+        }
+
+        @Override
+        public String getOriginName() {
+            throw new UnsupportedOperationException();
         }
     }
 }

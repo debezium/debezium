@@ -26,14 +26,17 @@ public class PgOutputReplicationMessage implements ReplicationMessage {
     private String table;
     private List<Column> oldColumns;
     private List<Column> newColumns;
+    private String originName;
 
-    public PgOutputReplicationMessage(Operation op, String table, Instant commitTimestamp, long transactionId, List<Column> oldColumns, List<Column> newColumns) {
+    public PgOutputReplicationMessage(Operation op, String table, Instant commitTimestamp, long transactionId, List<Column> oldColumns, List<Column> newColumns,
+                                      String originName) {
         this.op = op;
         this.commitTimestamp = commitTimestamp;
         this.transactionId = transactionId;
         this.table = table;
         this.oldColumns = oldColumns;
         this.newColumns = newColumns;
+        this.originName = originName;
     }
 
     @Override
@@ -79,6 +82,11 @@ public class PgOutputReplicationMessage implements ReplicationMessage {
     @Override
     public boolean shouldSchemaBeSynchronized() {
         return false;
+    }
+
+    @Override
+    public String getOriginName() {
+        return originName;
     }
 
     /**

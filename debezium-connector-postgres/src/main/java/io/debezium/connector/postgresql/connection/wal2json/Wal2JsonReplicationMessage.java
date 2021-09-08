@@ -98,6 +98,11 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         return hasMetadata;
     }
 
+    @Override
+    public String getOriginName() {
+        return null;
+    }
+
     private List<ReplicationMessage.Column> transform(final Document data, final String nameField, final String typeField, final String valueField,
                                                       final String optionalsField) {
         final Array columnNames = data.getArray(nameField);

@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
@@ -71,10 +70,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private Instant commitTimestamp;
     private int transactionId;
 
-    private boolean isSkipNextMsg;
-    private final boolean skipOriginEnable;
-    private final Pattern originNameRegex;
-
+    private String orignName;
 
     public enum MessageType {
         RELATION,
@@ -116,15 +112,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     public PgOutputMessageDecoder(MessageDecoderContext decoderContext) {
         this.decoderContext = decoderContext;
         this.connection = new PostgresConnection(decoderContext.getConfig().getJdbcConfig(), decoderContext.getSchema().getTypeRegistry());
-        String skipOriginNameRegex = decoderContext.getConfig().skipOriginNameRegex();
-        if (Strings.isNullOrEmpty(skipOriginNameRegex)) {
-            this.skipOriginEnable = false;
-            this.originNameRegex = null;
-        } else {
-            LOGGER.info("Skip origin name is enable, will to skip all data which origin name match [{}].", skipOriginNameRegex);
-            this.skipOriginEnable = true;
-            this.originNameRegex = Pattern.compile(skipOriginNameRegex);
-        }
     }
 
     @Override
@@ -184,32 +171,22 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 handleBeginMessage(buffer, processor);
                 break;
             case COMMIT:
-                isSkipNextMsg = false;
                 handleCommitMessage(buffer, processor);
                 break;
             case RELATION:
-                if (!isSkipNextMsg) {
-                    handleRelationMessage(buffer, typeRegistry);
-                }
+                handleRelationMessage(buffer, typeRegistry);
                 break;
             case INSERT:
-                if (!isSkipNextMsg) {
-                    decodeInsert(buffer, typeRegistry, processor);
-                }
+                decodeInsert(buffer, typeRegistry, processor);
                 break;
             case UPDATE:
-                if (!isSkipNextMsg) {
-                    decodeUpdate(buffer, typeRegistry, processor);
-                }
+                decodeUpdate(buffer, typeRegistry, processor);
                 break;
             case DELETE:
-                if (!isSkipNextMsg) {
-                    decodeDelete(buffer, typeRegistry, processor);
-                }
+                decodeDelete(buffer, typeRegistry, processor);
                 break;
             case TRUNCATE:
-                if (decoderContext.getConfig().truncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE
-                        && !isSkipNextMsg) {
+                if (decoderContext.getConfig().truncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
                     decodeTruncate(buffer, typeRegistry, processor);
                 } else {
                     LOGGER.trace("Message Type {} skipped, not processed.", messageType);
@@ -245,6 +222,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
         this.commitTimestamp = PG_EPOCH.plus(buffer.getLong(), ChronoUnit.MICROS);
         this.transactionId = buffer.getInt();
+        this.orignName = ""; // reset origin name
         LOGGER.trace("Event: {}", MessageType.BEGIN);
         LOGGER.trace("Final LSN of transaction: {}", lsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
@@ -263,6 +241,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN of the commit
         final Lsn endLsn = Lsn.valueOf(buffer.getLong()); // End LSN of the transaction
         Instant commitTimestamp = PG_EPOCH.plus(buffer.getLong(), ChronoUnit.MICROS);
+        orignName = "";
         LOGGER.trace("Event: {}", MessageType.COMMIT);
         LOGGER.trace("Flags: {} (currently unused and most likely 0)", flags);
         LOGGER.trace("Commit LSN: {}", lsn);
@@ -424,7 +403,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     commitTimestamp,
                     transactionId,
                     null,
-                    columns));
+                    columns,
+                    orignName));
         }
     }
 
@@ -471,7 +451,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     commitTimestamp,
                     transactionId,
                     oldColumns,
-                    columns));
+                    columns,
+                    orignName));
         }
     }
 
@@ -504,7 +485,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     commitTimestamp,
                     transactionId,
                     columns,
-                    null));
+                    null,
+                    orignName));
         }
     }
 
@@ -556,7 +538,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     table.id().toDoubleQuotedString(),
                     commitTimestamp,
                     transactionId,
-                    lastTableInTruncate));
+                    lastTableInTruncate,
+                    orignName));
         }
     }
 
@@ -633,20 +616,13 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      */
     private void handleOriginMessage(ByteBuffer buffer) throws SQLException, InterruptedException {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
-        String originName = readString(buffer);
-        if (skipOriginEnable && isOriginNameMatch(originName)) {
-            isSkipNextMsg = true;
-        }
+        orignName = readString(buffer);
         LOGGER.trace("Event: {}", MessageType.ORIGIN);
         LOGGER.trace("Final LSN of transaction: {}", lsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
         LOGGER.trace("XID of transaction: {}", transactionId);
+        LOGGER.trace("Origin name of transaction: {}", orignName);
     }
-
-    private boolean isOriginNameMatch(String originName) {
-        return originNameRegex.matcher(originName).matches();
-    }
-
 
     /**
      * Reads the replication stream up to the next null-terminator byte and returns the contents as a string.

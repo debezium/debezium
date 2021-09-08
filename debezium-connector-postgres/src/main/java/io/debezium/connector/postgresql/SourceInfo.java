@@ -81,6 +81,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String XMIN_KEY = "xmin";
     public static final String LSN_KEY = "lsn";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
+    public static final String ORIGIN_NAME_KEY = "origin_name";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -93,6 +94,7 @@ public final class SourceInfo extends BaseSourceInfo {
     private Instant timestamp;
     private String schemaName;
     private String tableName;
+    private String orignName;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -112,12 +114,12 @@ public final class SourceInfo extends BaseSourceInfo {
      * @return this instance
      */
     protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin, Lsn lastCommitLsn) {
-        update(lsn, commitTime, txId, tableId, xmin);
+        update(lsn, commitTime, txId, tableId, xmin, (String) null);
         this.sequence = new Lsn[]{ lastCommitLsn, lsn };
         return this;
     }
 
-    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin, String originName) {
         this.lsn = lsn;
         if (commitTime != null) {
             this.timestamp = commitTime;
@@ -130,6 +132,7 @@ public final class SourceInfo extends BaseSourceInfo {
         if (tableId != null && tableId.table() != null) {
             this.tableName = tableId.table();
         }
+        this.orignName = originName;
         return this;
     }
 
@@ -185,6 +188,10 @@ public final class SourceInfo extends BaseSourceInfo {
         return tableName;
     }
 
+    String orignName() {
+        return orignName;
+    }
+
     @Override
     protected Instant timestamp() {
         return timestamp;
@@ -225,6 +232,9 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         if (tableName != null) {
             sb.append(", table=").append(tableName);
+        }
+        if (orignName != null) {
+            sb.append(", orign name=").append(orignName);
         }
         sb.append(']');
         return sb.toString();
