@@ -188,7 +188,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             case TRUNCATE:
                 if (decoderContext.getConfig().truncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
                     decodeTruncate(buffer, typeRegistry, processor);
-                } else {
+                }
+                else {
                     LOGGER.trace("Message Type {} skipped, not processed.", messageType);
                 }
                 break;

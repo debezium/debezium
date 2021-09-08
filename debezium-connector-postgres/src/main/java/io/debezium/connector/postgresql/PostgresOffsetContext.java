@@ -132,7 +132,7 @@ public class PostgresOffsetContext implements OffsetContext {
 
     public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, TableId tableId, Long xmin, String originName) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
-        sourceInfo.update(lsn, commitTime, txId, tableId, xmin, false, originName);
+        sourceInfo.update(lsn, commitTime, txId, tableId, xmin, originName);
     }
 
     public void updateCommitPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn) {
