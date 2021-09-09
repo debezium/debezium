@@ -22,6 +22,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.ddl.DataType;
+import io.debezium.util.Strings;
 
 /**
  * Parser listener that is parsing column definition part of MySQL statements.
@@ -193,7 +194,19 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
             if (dimensionDataTypeContext.lengthTwoOptionalDimension() != null) {
                 List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoOptionalDimension().decimalLiteral();
-                length = Integer.valueOf(decimalLiterals.get(0).getText());
+                if (decimalLiterals.get(0).REAL_LITERAL() != null) {
+                    String[] digits = decimalLiterals.get(0).getText().split("\\.");
+                    if (Strings.isNullOrEmpty(digits[0]) || Integer.valueOf(digits[0]) == 0) {
+                        // Set default value 10 according mysql engine
+                        length = 10;
+                    }
+                    else {
+                        length = Integer.valueOf(digits[0]);
+                    }
+                }
+                else {
+                    length = Integer.valueOf(decimalLiterals.get(0).getText());
+                }
 
                 if (decimalLiterals.size() > 1) {
                     scale = Integer.valueOf(decimalLiterals.get(1).getText());
