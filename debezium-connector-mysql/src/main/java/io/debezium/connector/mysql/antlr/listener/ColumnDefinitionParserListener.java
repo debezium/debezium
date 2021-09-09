@@ -9,6 +9,7 @@ package io.debezium.connector.mysql.antlr.listener;
 import java.sql.Types;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
@@ -22,6 +23,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.ddl.DataType;
+import io.debezium.util.Strings;
 
 /**
  * Parser listener that is parsing column definition part of MySQL statements.
@@ -30,6 +32,7 @@ import io.debezium.relational.ddl.DataType;
  */
 public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
+    private static final Pattern DOT = Pattern.compile("\\.");
     private final MySqlAntlrDdlParser parser;
     private final DataTypeResolver dataTypeResolver;
     private final TableEditor tableEditor;
@@ -193,7 +196,19 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
             if (dimensionDataTypeContext.lengthTwoOptionalDimension() != null) {
                 List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoOptionalDimension().decimalLiteral();
-                length = Integer.valueOf(decimalLiterals.get(0).getText());
+                if (decimalLiterals.get(0).REAL_LITERAL() != null) {
+                    String[] digits = DOT.split(decimalLiterals.get(0).getText());
+                    if (Strings.isNullOrEmpty(digits[0]) || Integer.valueOf(digits[0]) == 0) {
+                        // Set default value 10 according mysql engine
+                        length = 10;
+                    }
+                    else {
+                        length = Integer.valueOf(digits[0]);
+                    }
+                }
+                else {
+                    length = Integer.valueOf(decimalLiterals.get(0).getText());
+                }
 
                 if (decimalLiterals.size() > 1) {
                     scale = Integer.valueOf(decimalLiterals.get(1).getText());
