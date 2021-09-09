@@ -285,7 +285,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field LOG_MINING_BUFFER_TYPE = Field.create("log.mining.buffer.type")
             .withDisplayName("Controls which buffer type implementation to be used")
             .withEnum(LogMiningBufferType.class, LogMiningBufferType.MEMORY)
-            .withImportance(Importance.LOW);
+            .withImportance(Importance.LOW)
+            .withDescription("The buffer type controls how the connector manages buffering transaction data." + System.lineSeparator() +
+                    System.lineSeparator() +
+                    "memory - Uses the JVM process' heap to buffer all transaction data." + System.lineSeparator() +
+                    System.lineSeparator() +
+                    "infinispan - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk." +
+                    " Use the log.mining.buffer.location property to define the location for storing cache files.");
 
     public static final Field LOG_MINING_BUFFER_LOCATION = Field.create("log.mining.buffer.location")
             .withDisplayName("Location where Infinispan stores buffer caches")

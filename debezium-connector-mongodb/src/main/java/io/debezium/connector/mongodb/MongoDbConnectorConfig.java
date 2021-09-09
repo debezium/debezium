@@ -413,7 +413,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(MongoDbConnectorConfig::validateFieldRenamesList)
-            .withDescription("");
+            .withDescription("A comma-separated list of the fully-qualified replacements of fields that" +
+                    " should be used to rename fields in change event message values. Fully-qualified replacements" +
+                    " for fields are of the form databaseName.collectionName.fieldName.nestedFieldName:newNestedFieldName," +
+                    " where databaseName and collectionName may contain the wildcard (*) which matches any characters," +
+                    " the colon character (:) is used to determine rename mapping of field.");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
