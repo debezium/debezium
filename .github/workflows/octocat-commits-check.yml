@@ -6,8 +6,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout action
-        uses: actions/checkout@v2
       - name: Check if octocat commits are present?
         id: octocat
         env:
