@@ -452,12 +452,12 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1220")
     public void shouldParseFloatVariants() {
-        final String ddl = "CREATE TABLE mytable (id SERIAL, f1 FLOAT, f2 FLOAT(4), f3 FLOAT(7,4));";
+        final String ddl = "CREATE TABLE mytable (id SERIAL, f1 FLOAT, f2 FLOAT(4), f3 FLOAT(7,4), f4 FLOAT(7.4));";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
 
         final Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns().size()).isEqualTo(4);
+        assertThat(table.columns().size()).isEqualTo(5);
 
         final Column f1 = table.columnWithName("f1");
         assertThat(f1.typeName()).isEqualTo("FLOAT");
@@ -473,6 +473,46 @@ public class MySqlAntlrDdlParserTest {
         assertThat(f3.typeName()).isEqualTo("FLOAT");
         assertThat(f3.length()).isEqualTo(7);
         assertThat(f3.scale().get()).isEqualTo(4);
+
+        final Column f4 = table.columnWithName("f4");
+        assertThat(f4.typeName()).isEqualTo("FLOAT");
+        assertThat(f4.length()).isEqualTo(7);
+        assertThat(f4.scale().isPresent()).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-3984")
+    public void shouldParseDecimalVariants() {
+        String ddl = "CREATE TABLE foo (c1 decimal(19), c2 decimal(19.5), c3 decimal(0.0), c4 decimal(0.2), c5 decimal(19,2));";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        final Table table = tables.forTable(null, null, "foo");
+
+        final Column c1 = table.columnWithName("c1");
+        assertThat(c1.typeName()).isEqualTo("DECIMAL");
+        assertThat(c1.length()).isEqualTo(19);
+        assertThat(c1.scale().get()).isEqualTo(0);
+
+        final Column c2 = table.columnWithName("c2");
+        assertThat(c2.typeName()).isEqualTo("DECIMAL");
+        assertThat(c2.length()).isEqualTo(19);
+        assertThat(c2.scale().get()).isEqualTo(0);
+
+        final Column c3 = table.columnWithName("c3");
+        assertThat(c3.typeName()).isEqualTo("DECIMAL");
+        assertThat(c3.length()).isEqualTo(10);
+        assertThat(c3.scale().get()).isEqualTo(0);
+
+        final Column c4 = table.columnWithName("c4");
+        assertThat(c4.typeName()).isEqualTo("DECIMAL");
+        assertThat(c4.length()).isEqualTo(10);
+        assertThat(c4.scale().get()).isEqualTo(0);
+
+        final Column c5 = table.columnWithName("c5");
+        assertThat(c5.typeName()).isEqualTo("DECIMAL");
+        assertThat(c5.length()).isEqualTo(19);
+        assertThat(c5.scale().get()).isEqualTo(2);
     }
 
     @Test
