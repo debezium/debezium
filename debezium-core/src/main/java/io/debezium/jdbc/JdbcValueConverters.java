@@ -727,7 +727,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object convertBinaryToBytes(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BYTE_ZERO, (r) -> {
             if (data instanceof String) {
-                r.deliver(toByteBuffer(((String) data)));
+                r.deliver(toByteBuffer((((String) data).trim())));
             }
             else if (data instanceof char[]) {
                 r.deliver(toByteBuffer((char[]) data));
@@ -757,7 +757,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             Encoder base64Encoder = Base64.getEncoder();
 
             if (data instanceof String) {
-                r.deliver(new String(base64Encoder.encode(((String) data).getBytes(StandardCharsets.UTF_8))));
+                r.deliver(new String(base64Encoder.encode((((String) data).trim()).getBytes(StandardCharsets.UTF_8))));
             }
             else if (data instanceof char[]) {
                 r.deliver(new String(base64Encoder.encode(toByteArray((char[]) data)), StandardCharsets.UTF_8));
@@ -786,7 +786,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, "", (r) -> {
 
             if (data instanceof String) {
-                r.deliver(HexConverter.convertToHexString(((String) data).getBytes(StandardCharsets.UTF_8)));
+                r.deliver(HexConverter.convertToHexString((((String) data).trim()).getBytes(StandardCharsets.UTF_8)));
             }
             else if (data instanceof char[]) {
                 r.deliver(HexConverter.convertToHexString(toByteArray((char[]) data)));
@@ -871,7 +871,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NumberConversions.getShort((Boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Short.valueOf((String) data));
+                r.deliver(Short.valueOf(((String) data).trim()));
             }
         });
     }
@@ -898,7 +898,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NumberConversions.getInteger((Boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Integer.valueOf((String) data));
+                r.deliver(Integer.valueOf(((String) data).trim()));
             }
         });
     }
@@ -925,7 +925,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NumberConversions.getLong((Boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Long.valueOf((String) data));
+                r.deliver(Long.valueOf(((String) data).trim()));
             }
         });
     }
@@ -1054,7 +1054,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(BigDecimal.valueOf(((Double) data).doubleValue()));
             }
             else if (data instanceof String) {
-                r.deliver(new BigDecimal((String) data));
+                r.deliver(new BigDecimal(((String) data).trim()));
             }
         });
     }
