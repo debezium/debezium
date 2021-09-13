@@ -25,7 +25,7 @@ while true; do
   esac
 done
 
-if [ -z "${DEST_LOGIN}" ] ; then
+if [ ! -z "${DEST_LOGIN}" ] ; then
   docker login -u "${DEST_LOGIN}" -p "${DEST_PASS}" "${REGISTRY}"
 fi
 
