@@ -364,7 +364,16 @@ In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_da
 [[postgresql-transaction-metadata]]
 === Transaction metadata
 
-{prodname} can generate events that represent transaction boundaries and that enrich data change event messages. For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
+{prodname} can generate events that represent transaction boundaries and that enrich data change event messages.
+
+[NOTE]
+.Limits on when {prodname} receives transaction metadata
+====
+{prodname} registers and receives metadata only for transactions that occur after you deploy the connector.
+Metadata for transactions that occur before you deploy the connector is not available.
+====
+
+For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
 
 * `status` - `BEGIN` or `END`
 * `id` - string representation of unique transaction identifier

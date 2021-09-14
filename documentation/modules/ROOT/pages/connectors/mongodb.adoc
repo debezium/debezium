@@ -254,6 +254,14 @@ This ensures that all events for a specific document are always totally ordered.
 === Transaction Metadata
 
 {prodname} can generate events that represents transaction metadata boundaries and enrich change data event messages.
+
+[NOTE]
+.Limits on when {prodname} receives transaction metadata
+====
+{prodname} registers and receives metadata only for transactions that occur after you deploy the connector.
+Metadata for transactions that occur before you deploy the connector is not available.
+====
+
 For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
 
 `status`:: `BEGIN` or `END`

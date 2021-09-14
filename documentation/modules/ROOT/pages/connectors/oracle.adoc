@@ -344,6 +344,13 @@ In the following example, the `payload` field contains the key:
 
 {prodname} can generate events that represent transaction metadata boundaries and that enrich data change event messages.
 
+[NOTE]
+.Limits on when {prodname} receives transaction metadata
+====
+{prodname} registers and receives metadata only for transactions that occur after you deploy the connector.
+Metadata for transactions that occur before you deploy the connector is not available.
+====
+
 Database transactions are represented by a statement block that is enclosed between the `BEGIN` and `END` keywords.
 {prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
 Transaction boundary events contain the following fields:
