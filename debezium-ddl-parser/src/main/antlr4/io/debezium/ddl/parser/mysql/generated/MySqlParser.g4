@@ -2059,7 +2059,7 @@ dottedId
 //    Literals
 
 decimalLiteral
-    : DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL
+    : DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL | REAL_LITERAL
     ;
 
 fileSizeLiteral

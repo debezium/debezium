@@ -1228,21 +1228,23 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3505")
-    public void shouldFailOnInvalidColumnFilter() throws Exception {
+    public void shouldHandleInvalidColumnFilter() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.COLUMN_INCLUDE_LIST, ".^")
                 .build();
         final LogInterceptor logInterceptor = new LogInterceptor();
 
         start(SqlServerConnector.class, config);
-        waitForConnectorShutdown("sql_server", "server1");
+        assertConnectorIsRunning();
 
-        consumeRecord();
-        Awaitility.await()
-                .alias("Found error message in logs")
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
-                .until(() -> logInterceptor.containsStacktraceElement("Filtered column list for table testDB.dbo.tablea is empty")
-                        && !engine.isRunning());
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        // should be no more records
+        assertNoRecordsToConsume();
+
+        final String message = "All columns in table testDB.dbo.tablea were excluded due to include/exclude lists, defaulting to selecting all columns";
+        stopConnector(value -> assertThat(logInterceptor.containsMessage(message)).isTrue());
     }
 
     @Test

@@ -250,49 +250,30 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     /**
-     * Generate a valid sqlserver query string for the specified table
+     * Generate a valid SQL Server query string for the specified table
      *
      * @param tableId the table to generate a query for
      * @return a valid query string
      */
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
-                                                 TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return Optional.of(String.format("SELECT %s FROM [%s].[%s].[%s]",
-                modifiedColumns, tableId.catalog(), tableId.schema(), tableId.table()));
+                                                 TableId tableId, List<String> columns) {
+        String snapshotSelectColumns = columns.stream()
+                .collect(Collectors.joining(", "));
+        return Optional.of(String.format("SELECT %s FROM [%s].[%s].[%s]", snapshotSelectColumns, tableId.catalog(), tableId.schema(), tableId.table()));
     }
 
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                              String overriddenSelect, TableId tableId) {
-        String modifiedColumns = checkExcludedColumns(tableId);
-        return overriddenSelect.replaceAll("\\*", modifiedColumns);
+        String snapshotSelectColumns = getPreparedColumnNames(sqlServerDatabaseSchema.tableFor(tableId)).stream()
+                .collect(Collectors.joining(", "));
+        return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
     }
 
-    private String checkExcludedColumns(TableId tableId) {
-        Table table = sqlServerDatabaseSchema.tableFor(tableId);
-        List<String> columnNames = table.retrieveColumnNames().stream()
-                .filter(columnName -> filterChangeTableColumns(tableId, columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
-                .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            throw new IllegalArgumentException("Filtered column list for table " + tableId + " is empty");
-        }
-
-        return columnNames.stream()
-                .map(columnName -> {
-                    StringBuilder sb = new StringBuilder();
-                    if (!columnName.contains(tableId.table())) {
-                        sb.append("[").append(tableId.table()).append("]")
-                                .append(".[").append(columnName).append("]");
-                    }
-                    else {
-                        sb.append("[").append(columnName).append("]");
-                    }
-                    return sb.toString();
-                }).collect(Collectors.joining(","));
+    @Override
+    protected boolean additionalColumnFilter(TableId tableId, String columnName) {
+        return filterChangeTableColumns(tableId, columnName);
     }
 
     private boolean filterChangeTableColumns(TableId tableId, String columnName) {

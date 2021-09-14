@@ -76,13 +76,12 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                 try {
                     // Make sure the file exists ...
                     if (!storageExists()) {
-                        // Create parent directories if we have them ...
-                        if (path.getParent() != null) {
-                            try {
-                                Files.createDirectories(path.getParent());
-                            }catch (FileAlreadyExistsException ex){
-                                // do nothing
-                            }
+                        // Create parent directories if we have to.
+                        // Checking for existence of the parent directory explicitly, as createDirectories()
+                        // will raise an exception (despite stating the contrary in its JavaDoc) if the parent
+                        // exists but is a sym-linked directory
+                        if (path.getParent() != null && !Files.exists(path.getParent())) {
+                            Files.createDirectories(path.getParent());
                         }
                         try {
                             Files.createFile(path);

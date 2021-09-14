@@ -6,15 +6,11 @@
 package io.debezium.testing.system.tools.kafka;
 
 import java.util.Collections;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OperatorController;
-import io.debezium.testing.system.tools.YAML;
-import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -24,12 +20,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public class StrimziOperatorController extends OperatorController {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaController.class);
-
-    private final OpenShiftClient ocp;
-    private final String project;
-    private final String name;
-
-    private Deployment operator;
+    private static final String DEPLOYMENT_NAME = "strimzi-cluster-operator";
 
     public static StrimziOperatorController forProject(String project, OpenShiftClient ocp) {
         Deployment operator = ocp.apps().deployments().inNamespace(project).withName("strimzi-cluster-operator").get();
@@ -38,10 +29,6 @@ public class StrimziOperatorController extends OperatorController {
 
     private StrimziOperatorController(Deployment operator, OpenShiftClient ocp) {
         super(operator, Collections.singletonMap("strimzi.io/kind", "cluster-operator"), ocp);
-        this.operator = operator;
-        this.name = operator.getMetadata().getName();
-        this.project = operator.getMetadata().getNamespace();
-        this.ocp = ocp;
     }
 
     /**
@@ -60,29 +47,9 @@ public class StrimziOperatorController extends OperatorController {
     }
 
     /**
-     * Sets pull policy of the operator to 'Always'
-     */
-    public void setAlwaysPullPolicy() {
-        LOGGER.info("Using 'Always' pull policy for all containers of deployment " + name + "'");
-        List<Container> containers = operator.getSpec().getTemplate().getSpec().getContainers();
-        containers.forEach(c -> c.setImagePullPolicy("Always"));
-    }
-
-    /**
      * Sets pull policy of operands to 'Always'
      */
     public void setOperandAlwaysPullPolicy() {
         setEnvVar("STRIMZI_IMAGE_PULL_POLICY", "Always");
     }
-
-    /**
-     * Deploys pull secret and links it to "default" service account in the project
-     * @param yamlPath path to Secret descriptor
-     * @return deployed pull secret
-     */
-    public Secret deployPullSecret(String yamlPath) {
-        LOGGER.info("Deploying Secret from " + yamlPath);
-        return ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
-    }
-
 }

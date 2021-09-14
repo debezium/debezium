@@ -96,4 +96,9 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
             LOGGER.warn(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING);
         }
     }
+
+    @Override
+    public boolean isHistorized() {
+        return false;
+    }
 }

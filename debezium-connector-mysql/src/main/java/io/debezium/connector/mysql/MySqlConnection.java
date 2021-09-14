@@ -49,6 +49,7 @@ public class MySqlConnection extends JdbcConnection {
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
+    private static final String QUOTED_CHARACTER = "`";
 
     protected static final String URL_PATTERN = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
 
@@ -63,7 +64,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param fieldReader binary or text protocol based readers
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MysqlFieldReader fieldReader) {
-        super(connectionConfig.config(), connectionConfig.factory());
+        super(connectionConfig.config(), connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = connectionConfig;
         this.mysqlFieldReader = fieldReader;
     }

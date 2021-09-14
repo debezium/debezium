@@ -1,3 +1,7 @@
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=schema-history,server=_<{context}.server.name>_`.
+
+The following table lists the schema history metrics that are available.
+
 [cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description

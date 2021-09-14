@@ -47,7 +47,55 @@ pipeline {
             }
         }
 
+        stage('Checkout - Upstream Apicurio') {
+            when {
+                expression { !params.PRODUCT_BUILD && params.TEST_APICURIO_REGISTRY }
+            }
+            steps {
+                error('Upstream Apicurio testing is not supported by the pipeline')
+            }
+        }
 
+        stage('Checkout - Downstream Service registry') {
+            when {
+                expression { params.PRODUCT_BUILD && params.TEST_APICURIO_REGISTRY }
+            }
+            steps {
+                script {
+                    env.APIC_RESOURCES = "${env.WORKSPACE}/apicurio/install/"
+                }
+                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', filter: 'apicurio-registry-install-examples.zip', selector: lastSuccessful()
+                unzip zipFile: 'apicurio-registry-install-examples.zip', dir: 'apicurio'
+            }
+        }
+
+        stage('Configure - Apicurio') {
+            when {
+                expression { params.TEST_APICURIO_REGISTRY }
+            }
+            steps {
+                script {
+                    env.OCP_PROJECT_REGISTRY = "debezium-${BUILD_NUMBER}-registry"
+                }
+                withCredentials([
+                        usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
+                        usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
+
+                ]) {
+                    sh '''
+                    set -x            
+                    oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
+                    oc new-project ${OCP_PROJECT_REGISTRY}
+                    '''
+                    sh '''
+                    set -x
+                    sed -i "s/namespace: apicurio-registry-operator-namespace /namespace: ${OCP_PROJECT_REGISTRY}/" ${APIC_RESOURCES}/install.yaml
+                    oc delete -f ${APIC_RESOURCES} -n ${OCP_PROJECT_REGISTRY} --ignore-not-found
+                    oc create -f ${APIC_RESOURCES} -n ${OCP_PROJECT_REGISTRY}
+                    '''
+                }
+            }
+        }
 
         stage('Configure') {
             steps {

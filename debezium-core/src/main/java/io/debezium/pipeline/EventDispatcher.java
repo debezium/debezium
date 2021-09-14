@@ -115,9 +115,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
-        this.historizedSchema = schema instanceof HistorizedDatabaseSchema
-                ? (HistorizedDatabaseSchema<T>) schema
-                : null;
+        this.historizedSchema = schema.isHistorized() ? (HistorizedDatabaseSchema<T>) schema : null;
         this.queue = queue;
         this.filter = filter;
         this.changeEventCreator = changeEventCreator;
