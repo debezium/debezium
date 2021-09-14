@@ -37,7 +37,8 @@ pipeline {
                         --image="${RHEL_IMAGE}"                                     \\
                         --tag="${IMAGE_TAG}"                                        \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
-                        --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
+                        --dest-login="${QUAY_USERNAME}"                             \\
+                        --dest-pass="${QUAY_PASSWORD}"                              \\
                         --img-output="${WORKSPACE}/published_image_dbz.txt"
                     '''
                 }
