@@ -46,7 +46,8 @@ pipeline {
                         --dir="${APIC_RESOURCES}"                                   \\
                         --images="${APIC_IMAGES}"                                   \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
-                        --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
+                        --dest-login="${QUAY_USERNAME}"                             \\
+                        --dest-pass="${QUAY_PASSWORD}"                              \\
                         --deployment-desc="${APIC_RESOURCES_DEPLOYMENT_DESCRIPTOR}" \\
                         --img-output="${WORKSPACE}/published_images.txt"            \\
                         `if [ $PUSH_IMAGES = false ]; then echo " -s"; fi`            
