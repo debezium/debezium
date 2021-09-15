@@ -12,7 +12,7 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          ! git log --format='format:%s' refs/remotes/origin/$BASE_REF.. | tail -n +2 | grep -Ev '^(DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\]|(\[docs\]) '
+          ! git log --format='format:%s' refs/remotes/origin/$BASE_REF.. | tail -n +2 | grep -Ev '^(DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\]) '
       - name: Create Comment
         if: ${{ failure() }}
         uses: peter-evans/create-or-update-comment@v1
