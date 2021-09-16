@@ -2165,7 +2165,7 @@ upgrade_table_clause
     ;
     
 truncate_table
-    : TRUNCATE TABLE tableview_name PURGE? SEMICOLON
+    : TRUNCATE TABLE tableview_name PURGE? ((DROP ALL?|REUSE) STORAGE)? CASCADE? SEMICOLON
     ;
 
 drop_table
@@ -2591,6 +2591,7 @@ split_table_partition
 
 truncate_table_partition
     : TRUNCATE PARTITION partition_name
+    | TRUNCATE SUBPARTITION partition_name (UPDATE INDEXES)?
     ;
 
 exchange_table_partition
