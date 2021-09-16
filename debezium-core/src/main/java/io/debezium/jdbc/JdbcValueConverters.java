@@ -70,6 +70,11 @@ import io.debezium.util.NumberConversions;
 @Immutable
 public class JdbcValueConverters implements ValueConverterProvider {
 
+    /**
+     * Schema param key for String columns
+     */
+    public static final String PARAM_SIZE = "size";
+
     public enum DecimalMode {
         PRECISE,
         DOUBLE,
@@ -202,12 +207,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.CHAR:
             case Types.NCHAR:
             case Types.NVARCHAR:
+                return SchemaBuilder.string().parameter(PARAM_SIZE, String.valueOf(column.length()));
             case Types.LONGNVARCHAR:
             case Types.NCLOB:
                 return SchemaBuilder.string();
 
             // Variable-length string values
             case Types.VARCHAR:
+                return SchemaBuilder.string().parameter(PARAM_SIZE, String.valueOf(column.length()));
             case Types.LONGVARCHAR:
             case Types.CLOB:
             case Types.DATALINK:
