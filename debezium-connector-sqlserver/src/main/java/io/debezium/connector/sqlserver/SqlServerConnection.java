@@ -91,19 +91,6 @@ public class SqlServerConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
      * @param valueConverters {@link SqlServerValueConverters} instance
-     */
-    public SqlServerConnection(Configuration config, SourceTimestampMode sourceTimestampMode,
-                               SqlServerValueConverters valueConverters, boolean multiPartitionMode) {
-        this(config, sourceTimestampMode, valueConverters, null, Collections.emptySet(),
-                multiPartitionMode);
-    }
-
-    /**
-     * Creates a new connection using the supplied configuration.
-     *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param valueConverters {@link SqlServerValueConverters} instance
      * @param classLoaderSupplier class loader supplier
      * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
      */
