@@ -12,12 +12,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Commit messages in format DBZ-xxx
+        id: check
         env:
-          BASE_REF: ${{ github.base_ref }}
+          pull_request_number: ${{ github.event.pull_request.number }}
         run: |
-          ! git log --format='format:%s' refs/remotes/origin/$BASE_REF.. | tail -n +2 | grep -Ev '^(DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\]) '
+          curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq -r '.message' >> COMMIT_MESSAGE.txt
+          while IFS=" " read -r MSG;
+          do
+            if [[ ! $MSG =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\]) ]]; then
+              echo "::set-output name=PREFIX::false"
+            fi
+          done < COMMIT_MESSAGE.txt
       - name: Create Comment
-        if: ${{ failure() }}
+        if: ${{ steps.check.outputs.PREFIX == 'false' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
