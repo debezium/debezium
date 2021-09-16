@@ -32,6 +32,7 @@ Arik Cohen
 Arkoprabho Chakraborti
 artiship
 Ashhar Hasan
+Ashmeet Lamba
 Attila Szucs
 Aykut Farsak
 Babur Duisenov
@@ -81,6 +82,7 @@ Denis Mikhaylov
 Dennis Campagna
 Dennis Persson
 Derek Moore
+Dhrubajyoti G
 Duncan Sands
 Echo Xu
 Ed Laur
@@ -116,6 +118,7 @@ Gurnaaz Randhawa
 Guy Pascarella
 Grzegorz Kołakowski
 Jan Hendrik Dolling
+Jiabao Sun
 Hans-Peter Grahsl
 Harvey Yue
 Henryk Konsek
@@ -127,6 +130,7 @@ Hyunjin Oh
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
+Indra Shukla
 ismail Simsek
 Ivan Klass
 Ivan Kovbas
@@ -325,6 +329,7 @@ yangsanity
 Yilong Chang
 Yiming Liu
 Yoann Rodière
+Yuan Zhang
 Zheng Wang
 Zoran Regvart
 志飞 张
