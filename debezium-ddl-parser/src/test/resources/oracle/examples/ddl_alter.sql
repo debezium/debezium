@@ -18,3 +18,5 @@ alter table dbz1211_child add constraint name unique (id) using index tablespace
 -- Alter table add primary key using index
 ALTER TABLE "IDENTITYDB"."CHANGE_NUMBERS" ADD CONSTRAINT "IDX_CHANGENUMBERS_PK" PRIMARY KEY ("CHANGE_NO", "EXPIRY_TIME") USING INDEX "IDENTITYDB"."IDX_CHANGENUMBERS_PK"  ENABLE NOVALIDATE;
 ALTER TABLE "MYSCHEMA"."MY_PLANT" DROP PRIMARY KEY DROP INDEX;
+-- Alter table truncate subpartition
+alter table tdo_001 truncate subpartition inbound_full_pwork update indexes;
