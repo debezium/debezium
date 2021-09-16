@@ -250,7 +250,7 @@ oc exec -it $(oc get pods -o custom-columns=NAME:.metadata.name --no-headers -l 
 # For example, run UPDATE customers SET email="sally.thomas@example.com" WHERE ID = 1001;
 ----
 +
-You should now see additional change messages in the consumer started previously.
+You should now see additional change events in the consumer started previously.
 
 If you have any questions or requests related to running {prodname} on Kubernetes or OpenShift,
 let us know in our https://groups.google.com/forum/#!forum/debezium[user group] or in the {prodname} https://gitter.im/debezium/dev[developer's chat].
