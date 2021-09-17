@@ -455,7 +455,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !(t.schema().toLowerCase().equals("cdc") ||
+            return t.schema() != null && !(t.schema().toLowerCase().equals("cdc") ||
                     t.schema().toLowerCase().equals("sys") ||
                     t.table().toLowerCase().equals("systranschemas"));
         }
