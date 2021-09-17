@@ -875,7 +875,11 @@ public class JdbcConnection implements AutoCloseable {
         if (conn == null) {
             return false;
         }
-        return !conn.isClosed() && conn.isValid(CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC);
+        return !conn.isClosed();
+    }
+
+    public synchronized boolean isValid() throws SQLException {
+        return isConnected() && conn.isValid(CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC);
     }
 
     public synchronized Connection connection() throws SQLException {
