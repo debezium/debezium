@@ -897,6 +897,65 @@ public class EventRouterTest {
         assertThat(eventRoutedTombstone.valueSchema()).isNotNull();
     }
 
+    @Test
+    public void canExpandJSONPayloadIfConfigured() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{\"fullName\": \"John Doe\", \"rating\": 4.9, \"age\": 42, \"pets\": [\"dog\", \"cat\"]}",
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+
+        assertThat(valueSchema.fields().size()).isEqualTo(4);
+        assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
+        assertThat(valueSchema.field("rating").schema().type().getName()).isEqualTo("float64");
+        assertThat(valueSchema.field("age").schema().type().getName()).isEqualTo("int32");
+        assertThat(valueSchema.field("pets").schema().type().getName()).isEqualTo("array");
+
+        Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("fullName")).isEqualTo("John Doe");
+        assertThat(valueStruct.get("rating")).isEqualTo(4.9);
+        assertThat(valueStruct.get("age")).isEqualTo(42);
+        assertThat(valueStruct.getArray("pets").size()).isEqualTo(2);
+        assertThat(valueStruct.getArray("pets").get(1)).isEqualTo("cat");
+    }
+
+    @Test
+    public void shouldNotExpandJSONPayloadIfNotConfigured() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        router.configure(new HashMap<>());
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{\"fullName\": \"John Doe\", \"rating\": 4.9, \"age\": 42}",
+                new HashMap<>(),
+                new HashMap<>());
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(eventRouted.valueSchema().type()).isEqualTo(SchemaBuilder.string().type());
+        assertThat(eventRouted.value()).isEqualTo("{\"fullName\": \"John Doe\", \"rating\": 4.9, \"age\": 42}");
+    }
+
     private SourceRecord createEventRecord() {
         return createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
