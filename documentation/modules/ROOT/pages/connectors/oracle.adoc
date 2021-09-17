@@ -2171,7 +2171,7 @@ The infinispan option requires that you specify a cache file directory.
 Use the `log.mining.buffer.location` property to define the location for storing cache files.
 
 |[[oracle-property-log-mining-buffer-location]]<<oracle-property-log-mining-buffer-location, `+log.mining.buffer.location+`>>
-|
+|No default
 |Specifies the location of the directory that the connector uses to read and write the buffer cache.
 Specify a directory that every node in the Kafka cluster can access and that is unique for the connector deployment.
 
