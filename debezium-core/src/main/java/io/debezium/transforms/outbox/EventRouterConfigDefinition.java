@@ -227,6 +227,16 @@ public class EventRouterConfigDefinition {
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process");
 
+    static final Field EXPAND_JSON_PAYLOAD = Field.create("debezium.expand.json.payload")
+            .withDisplayName("Expand Payload escaped string as real JSON")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Whether or not to try unescaping a JSON string and make it real JSON. It will infer schema information" +
+                    " from payload and update the record schema accordingly. If content is not JSON, it just produces a warning" +
+                    " and emits the record unchanged");
+
     static final Field[] CONFIG_FIELDS = {
             FIELD_EVENT_ID,
             FIELD_EVENT_KEY,
@@ -240,7 +250,8 @@ public class EventRouterConfigDefinition {
             ROUTE_TOPIC_REGEX,
             ROUTE_TOPIC_REPLACEMENT,
             ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
-            OPERATION_INVALID_BEHAVIOR
+            OPERATION_INVALID_BEHAVIOR,
+            EXPAND_JSON_PAYLOAD
     };
 
     /**
@@ -265,7 +276,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Debezium",
-                OPERATION_INVALID_BEHAVIOR);
+                OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
                 "Tracing",
