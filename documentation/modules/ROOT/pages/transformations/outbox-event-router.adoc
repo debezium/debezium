@@ -264,6 +264,49 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 transforms.outbox.table.fields.additional.placement=type:envelope:eventType
 ----
 
+// Type: concept
+// Title: Expanding escaped JSON String as JSON
+// ModuleID: expanding-escaped-json-string-as-json
+[[expanding-escaped-json-string-as-json]]
+== Expanding escaped JSON String as JSON
+
+You may have noticed that the Debezium outbox message contains the `payload` represented as a String.
+So when this string, is actually JSON, it appears as escaped in the result Kafka message like shown below:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
+# Kafka Message Timestamp: 1556890294484
+{
+  "{\"id\": 1, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
+}
+----
+
+The outbox event router allows you to expand this message content to "real" JSON with the companion schema
+being deduced from the JSON document itself. That way the result in Kafka message looks like:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
+# Kafka Message Timestamp: 1556890294484
+{
+  "{"id": 1, "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123}"
+}
+----
+
+To enable this transformation, you have to set the `debezium.expand.json.payload` to true like below:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.debezium.expand.json.payload=true
+----
+
 // Type: reference
 // ModuleID: options-for-configuring-outbox-event-router-transformation
 // Title: Options for configuring outbox event router transformation
@@ -364,6 +407,12 @@ a|Determines the behavior of the SMT when there is an `UPDATE` operation on the 
 
 All changes in an outbox table are expected to be `INSERT` operations. That is, an outbox table functions as a queue; updates to records in an outbox table are not allowed.
 The SMT automatically filters out `DELETE` operations on an outbox table.
+
+|[[outbox-event-router-property-debezium-expand-json-payload]]<<outbox-event-router-property-debezium-expand-json-payload, `debezium.expand.json.payload`>>
+|`false`
+|{prodname}
+a| Indicates whether the JSON expansion of a String payload should be done. If no content found or in case of parsing error, the content is kept "as is".
+
 ifdef::community[]
 |[[outbox-event-router-property-tracing-span-context-field]]<<outbox-event-router-property-tracing-span-context-field, `tracing.span.context.field`>>
 |`tracingspancontext`
