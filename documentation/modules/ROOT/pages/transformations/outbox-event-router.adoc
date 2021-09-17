@@ -294,7 +294,7 @@ being deduced from the JSON document itself. That way the result in Kafka messag
 # Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
 # Kafka Message Timestamp: 1556890294484
 {
-  "{"id": 1, "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123}"
+  "id": 1, "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123
 }
 ----
 
