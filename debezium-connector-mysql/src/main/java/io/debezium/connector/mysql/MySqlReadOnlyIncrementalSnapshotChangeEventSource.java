@@ -195,7 +195,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     @Override
     protected void preReadChunk(IncrementalSnapshotContext<T> context) {
         try {
-            if (!jdbcConnection.isConnected()) {
+            if (!jdbcConnection.isValid()) {
                 jdbcConnection.connect();
             }
         }
