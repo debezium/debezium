@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -16,6 +17,8 @@ import java.time.temporal.TemporalAdjuster;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.junit.Assert;
 import org.junit.Test;
 
 import io.debezium.DebeziumException;
@@ -25,6 +28,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -180,6 +184,50 @@ public class MySqlValueConvertersTest {
         Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).build());
 
         assertEquals(BigDecimal.ZERO.setScale(scale), converters.converter(colA, fieldA).convert(null));
+
+    }
+
+    @Test
+    @FixFor("DBZ-3989")
+    public void testConvertIntegerWithWhiteSpace() {
+        ColumnEditor columnEditor = Column.editor();
+        Column column = columnEditor.name("col1").type("INTEGER").jdbcType(Types.INTEGER).defaultValue("1 ").create();
+        Field field = new Field("test", -1, Schema.INT32_SCHEMA);
+        MySqlValueConverters converters = new MySqlValueConverters(
+                JdbcValueConverters.DecimalMode.STRING,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BASE64);
+
+        Object convertedData = converters.converter(column, field).convert("1 ");
+
+        Assert.assertEquals(1, convertedData);
+    }
+
+    @Test
+    @FixFor("DBZ-3989")
+    public void testConvertIntegerWithoutWhiteSpace() {
+        ColumnEditor columnEditor = Column.editor();
+        Column column = columnEditor.name("col1").type("INTEGER").jdbcType(Types.INTEGER).defaultValue("1 ").create();
+        Field field = new Field("test", -1, Schema.INT32_SCHEMA);
+        JdbcValueConverters converters = new JdbcValueConverters();
+
+        Object convertedData = converters.converter(column, field).convert(1);
+
+        Assert.assertEquals(1, convertedData);
+    }
+
+    @Test
+    @FixFor("DBZ-3989")
+    public void testConvertStringWithWhiteSpace() {
+        ColumnEditor columnEditor = Column.editor();
+        Column column = columnEditor.name("col1").type("STRING").jdbcType(Types.VARCHAR).defaultValue("1 ").create();
+        Field field = new Field("test", -1, Schema.STRING_SCHEMA);
+        JdbcValueConverters converters = new JdbcValueConverters();
+
+        Object convertedData = converters.converter(column, field).convert("abca ");
+
+        Assert.assertEquals("abca ", convertedData);
     }
 
     protected LocalDate localDateWithYear(int year) {
