@@ -216,11 +216,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                 currentTable = databaseSchema.tableFor(currentTableId);
                 if (currentTable == null) {
                     LOGGER.warn("Schema not found for table '{}', known tables {}", currentTableId, databaseSchema.tableIds());
-                    break;
+                    nextDataCollection();
+                    continue;
                 }
                 if (currentTable.primaryKeyColumns().isEmpty()) {
                     LOGGER.warn("Incremental snapshot for table '{}' skipped cause the table has no primary keys", currentTableId);
-                    break;
+                    nextDataCollection();
+                    continue;
                 }
                 if (!context.maximumKey().isPresent()) {
                     context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
@@ -234,7 +236,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
                                 currentTableId);
-                        context.nextDataCollection();
+                        nextDataCollection();
                         continue;
                     }
                     if (LOGGER.isInfoEnabled()) {
@@ -247,10 +249,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                     LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                             currentTableId);
                     tableScanCompleted();
-                    context.nextDataCollection();
-                    if (!context.snapshotRunning()) {
-                        progressListener.snapshotCompleted();
-                    }
+                    nextDataCollection();
                 }
                 else {
                     break;
@@ -266,6 +265,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             if (!context.snapshotRunning()) {
                 postIncrementalSnapshotCompleted();
             }
+        }
+    }
+
+    private void nextDataCollection() {
+        context.nextDataCollection();
+        if (!context.snapshotRunning()) {
+            progressListener.snapshotCompleted();
         }
     }
 
