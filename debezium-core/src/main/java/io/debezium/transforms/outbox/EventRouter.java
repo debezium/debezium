@@ -26,6 +26,9 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
@@ -69,6 +72,9 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
 
     private boolean onlyHeadersInOutputMessage = false;
+
+    private boolean expandJSONPayload;
+    private ObjectMapper objectMapper;
 
     private SmtManager<R> smtManager;
 
@@ -126,6 +132,27 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
         Headers headers = r.headers();
         headers.add("id", eventId, eventIdField.schema());
+
+        // Check to expand JSON string into real JSON.
+        if (expandJSONPayload) {
+            if (!(payload instanceof String)) {
+                LOGGER.warn("Expand JSON payload is turned on but payload is not a string in {}", r.key());
+            }
+            else {
+                final String payloadString = (String) payload;
+
+                try {
+                    // Parse and get Jackson JsonNode.
+                    final JsonNode jsonPayload = parseJSONPayload(payloadString);
+                    // Build a new Schema and new payload Struct that replace existing ones.
+                    payloadSchema = SchemaBuilderUtil.jsonNodeToSchema(jsonPayload);
+                    payload = StructBuilderUtil.jsonNodeToStruct(jsonPayload, payloadSchema);
+                }
+                catch (Exception e) {
+                    LOGGER.warn("ExpandJSONPayload: " + e.getMessage(), e);
+                }
+            }
+        }
 
         final Schema structValueSchema = onlyHeadersInOutputMessage ? null
                 : (fieldSchemaVersion == null)
@@ -254,6 +281,14 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         }
     }
 
+    /** */
+    private JsonNode parseJSONPayload(String jsonString) throws Exception {
+        if (jsonString.startsWith("{") || jsonString.startsWith("[")) {
+            return objectMapper.readTree(jsonString);
+        }
+        throw new Exception("Unable to parse payload starting with '" + jsonString.charAt(0) + "'");
+    }
+
     @Override
     public ConfigDef config() {
         return EventRouterConfigDefinition.configDef();
@@ -280,6 +315,11 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
         invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
                 config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR));
+
+        expandJSONPayload = config.getBoolean(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
+        if (expandJSONPayload) {
+            objectMapper = new ObjectMapper();
+        }
 
         fieldEventId = config.getString(EventRouterConfigDefinition.FIELD_EVENT_ID);
         fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
