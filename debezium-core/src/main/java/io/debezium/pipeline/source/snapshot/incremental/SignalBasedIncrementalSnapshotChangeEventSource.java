@@ -214,12 +214,14 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
                 final TableId currentTableId = (TableId) context.currentDataCollectionId();
                 currentTable = databaseSchema.tableFor(currentTableId);
                 if (currentTable == null) {
-                    break;
+                    LOGGER.warn("Schema not found for table '{}', known tables {}", currentTableId, databaseSchema.tableIds());
+                    nextDataCollection();
+                    continue;
                 }
                 if (currentTable.primaryKeyColumns().isEmpty()) {
                     LOGGER.warn("Incremental snapshot for table '{}' skipped cause the table has no primary keys", currentTableId);
-                    break;
-
+                    nextDataCollection();
+                    continue;
                 }
                 if (!context.maximumKey().isPresent()) {
                     context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
@@ -246,10 +248,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
                     LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                             currentTableId);
                     tableScanCompleted();
-                    context.nextDataCollection();
-                    if (!context.snapshotRunning()) {
-                        progressListener.snapshotCompleted();
-                    }
+                    nextDataCollection();
                 }
                 else {
                     break;
@@ -260,6 +259,13 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
         }
         catch (SQLException e) {
             throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
+        }
+    }
+
+    private void nextDataCollection() {
+        context.nextDataCollection();
+        if (!context.snapshotRunning()) {
+            progressListener.snapshotCompleted();
         }
     }
 

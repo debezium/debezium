@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -113,13 +115,24 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return "pk";
     }
 
-    protected void sendAdHocSnapshotSignal() throws SQLException {
+    protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
+        final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
+                .map(x -> '"' + x + '"')
+                .collect(Collectors.joining(", "));
         try (final JdbcConnection connection = databaseConnection()) {
-            connection.execute(
-                    String.format(
-                            "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"%s\"]}')",
-                            signalTableName(), tableName()));
+            String query = String.format(
+                    "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
+                    signalTableName(), dataCollectionIdsList);
+            logger.info("Sending signal with query {}", query);
+            connection.execute(query);
         }
+        catch (Exception e) {
+            logger.warn("Failed to send signal", e);
+        }
+    }
+
+    protected void sendAdHocSnapshotSignal() throws SQLException {
+        sendAdHocSnapshotSignal(tableName());
     }
 
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
@@ -148,6 +161,22 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector();
 
         sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void invalidTablesInTheList() throws Exception {
+        Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal("invalid1", tableName(), "invalid2");
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
