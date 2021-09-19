@@ -22,6 +22,9 @@ import io.debezium.text.TokenStream.Tokens;
 class TableIdParser {
 
     private static final char SEPARATOR = '.';
+    private static final String SINGLE_QUOTES = "''";
+    private static final String DOUBLE_QUOTES = "\"\"";
+    private static final String BACKTICKS = "``";
 
     public static List<String> parse(String identifier) {
         TokenStream stream = new TokenStream(identifier, new TableIdTokenizer(identifier), true);
@@ -30,7 +33,10 @@ class TableIdParser {
         List<String> parts = new ArrayList<>();
 
         while (stream.hasNext()) {
-            parts.add(stream.consume().replaceAll("''", "'").replaceAll("\"\"", "\"").replaceAll("``", "`"));
+            parts.add(stream.consume()
+                    .replace(SINGLE_QUOTES, "'")
+                    .replace(DOUBLE_QUOTES, "\"")
+                    .replace(BACKTICKS, "`"));
         }
 
         return parts;
