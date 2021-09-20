@@ -40,6 +40,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
+    private final OracleDatabaseSchema databaseSchema;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
                                            OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -48,6 +49,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
+        this.databaseSchema = schema;
     }
 
     @Override
@@ -57,11 +59,20 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
-            snapshotSchema = false;
+            LOGGER.info("The previous offset has been found.");
+            snapshotSchema = databaseSchema.isStorageInitializationExecuted();
             snapshotData = false;
         }
         else {
+            LOGGER.info("No previous offset has been found.");
             snapshotData = connectorConfig.getSnapshotMode().includeData();
+        }
+
+        if (snapshotData && snapshotSchema) {
+            LOGGER.info("According to the connector configuration both schema and data will be snapshot.");
+        }
+        else if (snapshotSchema) {
+            LOGGER.info("According to the connector configuration only schema will be snapshot.");
         }
 
         return new SnapshottingTask(snapshotSchema, snapshotData);
@@ -117,6 +128,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected void determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
                                            OracleOffsetContext previousOffset)
             throws Exception {
+        // Support the existence of the case when the previous offset.
+        // e.g., schema_only_recovery snapshot mode
+        if (previousOffset != null) {
+            ctx.offset = previousOffset;
+            tryStartingSnapshot(ctx);
+            return;
+        }
+
         Optional<Scn> latestTableDdlScn = getLatestTableDdlScn(ctx);
         Scn currentScn;
 

@@ -30,6 +30,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private final OracleDdlParser ddlParser;
     private final OracleValueConverters valueConverters;
+    private boolean storageInitializationExecuted = false;
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
@@ -84,5 +85,22 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
         }
+    }
+
+    @Override
+    public void initializeStorage() {
+        super.initializeStorage();
+        storageInitializationExecuted = true;
+    }
+
+    public boolean isStorageInitializationExecuted() {
+        return storageInitializationExecuted;
+    }
+
+    /**
+     * Return true if the database history entity exists
+     */
+    public boolean historyExists() {
+        return databaseHistory.exists();
     }
 }
