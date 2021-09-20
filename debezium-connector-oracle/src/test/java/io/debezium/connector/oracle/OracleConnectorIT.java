@@ -16,6 +16,7 @@ import static org.fest.assertions.MapAssert.entry;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -33,6 +34,8 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.storage.FileOffsetBackingStore;
+import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionTimeoutException;
@@ -43,6 +46,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
@@ -60,9 +64,12 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.relational.history.MemoryDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -2266,5 +2273,127 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     private long toMicroSecondsSinceEpoch(LocalDateTime localDateTime) {
         return localDateTime.toEpochSecond(ZoneOffset.UTC) * MICROS_PER_SECOND;
+    }
+
+    @Test(expected = DebeziumException.class)
+    @FixFor("DBZ-3986")
+    public void shouldCreateSnapshotSchemaOnlyRecoveryExceptionWithoutOffset() {
+        final Path path = Testing.Files.createTestingPath("missing-history.txt").toAbsolutePath();
+        Configuration config = defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(FileDatabaseHistory.FILE_PATH, path)
+                .build();
+
+        // Start the connector ...
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        start(OracleConnector.class, config, (success, message, error) -> exception.set(error));
+        Testing.Files.delete(path);
+        throw (RuntimeException) exception.get();
+    }
+
+    @Test
+    @FixFor("DBZ-3986")
+    public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
+        try {
+            Configuration.Builder builder = defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
+                    .with(OracleConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName())
+                    .with(EmbeddedEngine.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
+            Configuration config = builder.build();
+            consumeRecords(config);
+
+            // Insert a row of data in advance
+            connection.execute("INSERT INTO DBZ3986 (ID, DATA) values (3, 'asuka')");
+            builder.with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY);
+            config = builder.build();
+
+            start(OracleConnector.class, config);
+
+            int recordCount = 1;
+            SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+
+            // Compare data
+            assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(3, struct.get("ID"));
+            assertEquals("asuka", struct.get("DATA"));
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ3986");
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    @FixFor("DBZ-3986")
+    public void shouldCreateSnapshotSchemaOnlyExceptionWithoutHistory() throws Exception {
+        try {
+            Configuration.Builder builder = defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
+                    .with(OracleConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName())
+                    .with(EmbeddedEngine.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
+            Configuration config = builder.build();
+            consumeRecords(config);
+
+            AtomicReference<Throwable> exception = new AtomicReference<>();
+            start(OracleConnector.class, config, (success, message, error) -> exception.set(error));
+            throw (RuntimeException) exception.get();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ3986");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3986")
+    public void shouldSkipDataOnSnapshotSchemaOnly() throws Exception {
+        try {
+            Configuration.Builder builder = defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
+                    .with(OracleConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName())
+                    .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class.getName());
+            Configuration config = builder.build();
+            consumeRecords(config);
+
+            // Insert a row of data in advance. And should skip the data
+            connection.execute("INSERT INTO DBZ3986 (ID, DATA) values (3, 'asuka')");
+
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO DBZ3986 (ID, DATA) values (4, 'debezium')");
+            int recordCount = 1;
+            SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+
+            // Compare data
+            assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(4, struct.get("ID"));
+            assertEquals("debezium", struct.get("DATA"));
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ3986");
+        }
+    }
+
+    @FixFor("DBZ-3986")
+    private void consumeRecords(Configuration config) throws SQLException, InterruptedException {
+        // Poll for records ...
+        TestHelper.dropTable(connection, "DBZ3986");
+        connection.execute("CREATE TABLE DBZ3986 (ID number(9,0), DATA varchar2(50))");
+        TestHelper.streamTable(connection, "DBZ3986");
+
+        // Start the connector ...
+        start(OracleConnector.class, config);
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        connection.execute("INSERT INTO DBZ3986 (ID, DATA) values (1, 'Test')");
+        connection.execute("INSERT INTO DBZ3986 (ID, DATA) values (2, 'ashlin')");
+        int recordCount = 2;
+        SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+        stopConnector();
     }
 }

@@ -482,4 +482,20 @@ public class OracleConnection extends JdbcConnection {
     private static ConnectionFactory resolveConnectionFactory(Configuration config) {
         return JdbcConnection.patternBasedFactory(connectionString(config));
     }
+
+    /**
+     * Determine whether the Oracle server has the archive log enabled.
+     *
+     * @return {@code true} if the server's {@code LOG_MODE} is set to {@code ARCHIVELOG}, or {@code false} otherwise
+     */
+    protected boolean isArchiveLogMode() {
+        try {
+            final String mode = queryAndMap("SELECT LOG_MODE FROM V$DATABASE", rs -> rs.next() ? rs.getString(1) : "");
+            LOGGER.debug("LOG_MODE={}", mode);
+            return "ARCHIVELOG".equalsIgnoreCase(mode);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unexpected error while connecting to Oracle and looking at LOG_MODE mode: ", e);
+        }
+    }
 }

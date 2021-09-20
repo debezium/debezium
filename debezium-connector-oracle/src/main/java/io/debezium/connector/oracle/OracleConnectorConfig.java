@@ -500,19 +500,29 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL("initial", true),
+        INITIAL("initial", true, false),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false);
+        SCHEMA_ONLY("schema_only", false, false),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
+         * This can be used for recovery only if the connector has existing offsets and the database.history.kafka.topic does not exist (deleted).
+         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
+         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
+         */
+        SCHEMA_ONLY_RECOVERY("schema_only_recovery", false, true);
 
         private final String value;
         private final boolean includeData;
+        private final boolean shouldSnapshotOnSchemaError;
 
-        private SnapshotMode(String value, boolean includeData) {
+        private SnapshotMode(String value, boolean includeData, boolean shouldSnapshotOnSchemaError) {
             this.value = value;
             this.includeData = includeData;
+            this.shouldSnapshotOnSchemaError = shouldSnapshotOnSchemaError;
         }
 
         @Override
@@ -526,6 +536,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          */
         public boolean includeData() {
             return includeData;
+        }
+
+        /**
+         * Whether the schema can be recovered if database history is corrupted.
+         */
+        public boolean shouldSnapshotOnSchemaError() {
+            return shouldSnapshotOnSchemaError;
         }
 
         /**
