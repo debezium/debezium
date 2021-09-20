@@ -20,3 +20,4 @@ ALTER TABLE "IDENTITYDB"."CHANGE_NUMBERS" ADD CONSTRAINT "IDX_CHANGENUMBERS_PK" 
 ALTER TABLE "MYSCHEMA"."MY_PLANT" DROP PRIMARY KEY DROP INDEX;
 -- Alter table truncate subpartition
 alter table tdo_001 truncate subpartition inbound_full_pwork update indexes;
+alter table tcd_abc_int truncate partition (p1);
