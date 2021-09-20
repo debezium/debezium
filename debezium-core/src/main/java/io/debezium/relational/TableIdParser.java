@@ -30,7 +30,8 @@ class TableIdParser {
         TokenStream stream = new TokenStream(identifier, new TableIdTokenizer(identifier), true);
         stream.start();
 
-        List<String> parts = new ArrayList<>();
+        // at max three parts - catalog.schema.table
+        List<String> parts = new ArrayList<>(3);
 
         while (stream.hasNext()) {
             parts.add(stream.consume()
