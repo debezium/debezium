@@ -2590,14 +2590,25 @@ split_table_partition
     ;
 
 truncate_table_partition
-    : TRUNCATE PARTITION partition_name
-    | TRUNCATE SUBPARTITION partition_name (UPDATE INDEXES)?
+    : TRUNCATE (partition_extended_names|subpartition_extended_names)
     ;
 
 exchange_table_partition
     : EXCHANGE PARTITION partition_name WITH TABLE tableview_name
             ((INCLUDING|EXCLUDING) INDEXES)?
             ((WITH | WITHOUT) VALIDATION)?
+    ;
+
+partition_extended_names
+    : (PARTITION|PARTITIONS) partition_name
+    | (PARTITION|PARTITIONS) '(' partition_name (',' partition_name)* ')'
+    | (PARTITION|PARTITIONS) FOR '('? partition_key_value (',' partition_key_value)* ')'?
+    ;
+
+subpartition_extended_names
+    : (SUBPARTITION|SUBPARTITIONS) partition_name (UPDATE INDEXES)?
+    | (SUBPARTITION|SUBPARTITIONS) '(' partition_name (',' partition_name)* ')'
+    | (SUBPARTITION|SUBPARTITIONS) FOR '('? subpartition_key_value (',' subpartition_key_value)* ')'?
     ;
 
 alter_iot_clauses
