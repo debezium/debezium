@@ -406,7 +406,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     }
 
     protected void preReadChunk(IncrementalSnapshotContext<T> context) {
-        // no-op
+        try {
+            if (!jdbcConnection.isValid()) {
+                jdbcConnection.connect();
+            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Database error while checking jdbcConnection in preReadChunk", e);
+        }
     }
 
     protected void postReadChunk(IncrementalSnapshotContext<T> context) {
