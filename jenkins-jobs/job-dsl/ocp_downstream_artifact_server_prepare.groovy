@@ -17,6 +17,9 @@ pipelineJob('ocp-downstream-artifact-server-prepare-job') {
         textParam('DBZ_CONNECTOR_ARCHIVE_URLS', '', 'List of URLs to productised Debezium connectors')
 //        EXTRA CONFIG
         textParam('DBZ_EXTRA_LIBS', '', 'List of extra libraries added to connectors')
+//        IMAGE NAME
+        booleanParam('AUTO_TAG', true, 'Use automatically generated tag')
+        textParam('EXTRA_IMAGE_TAGS', 'latest', 'List of extra texts tags for multiple images')
     }
 
     definition {

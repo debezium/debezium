@@ -30,11 +30,12 @@ pipeline {
                     sh '''
                     set -x
                     cd "${WORKSPACE}/debezium"
-                    ./jenkins-jobs/scripts/copy-plugins.sh                \\
+                    ./jenkins-jobs/scripts/copy-plugins.sh                          \\
                         --dir="${WORKSPACE}"                                        \\
                         --archive-urls="${DBZ_CONNECTOR_ARCHIVE_URLS}"              \\
                         --libs="${DBZ_EXTRA_LIBS}"                                  \\
-                        --tag="${IMAGE_TAG}"                                        \\
+                        --tags="${EXTRA_IMAGE_TAGS}"                                \\
+                        --auto-tag="${AUTO_TAG}"                                    \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
                         --dest-login="${QUAY_USERNAME}"                             \\
                         --dest-pass="${QUAY_PASSWORD}"                              \\

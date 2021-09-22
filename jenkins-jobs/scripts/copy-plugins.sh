@@ -5,7 +5,8 @@ DOCKER_FILE=${DIR}/../docker/artifact-server/Dockerfile
 PLUGIN_DIR="plugins"
 EXTRA_LIBS=""
 
-OPTS=$(getopt -o d:a:l:f:r:o:t: --long dir:,archive-urls:,libs:,dockerfile:,registry:,organisation:,tag:,dest-login:,dest-pass:,img-output: -n 'parse-options' -- "$@")
+
+OPTS=$(getopt -o d:a:l:f:r:o:t:a: --long dir:,archive-urls:,libs:,dockerfile:,registry:,organisation:,tags:,auto-tag:,dest-login:,dest-pass:,img-output: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -18,7 +19,8 @@ while true; do
     -f | --dockerfile )         DOCKER_FILE=$2;                     shift; shift ;;
     -r | --registry )           REGISTRY=$2;                        shift; shift ;;
     -o | --organisation )       ORGANISATION=$2;                    shift; shift ;;
-    -t | --tag )                TAG=$2;                             shift; shift ;;
+    -t | --tags )               TAGS=$2;                            shift; shift ;;
+    -a | --auto-tag )           AUTO_TAG=$2;                         shift; shift ;;
     --dest-login )              DEST_LOGIN=$2;                      shift; shift ;;
     --dest-pass )               DEST_PASS=$2;                       shift; shift ;;
     --img-output )              IMAGE_OUTPUT_FILE=$2;               shift; shift ;;
@@ -27,6 +29,10 @@ while true; do
     * ) break ;;
   esac
 done
+
+if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = false ]; then
+  echo "Cannot push image without tag." >&2 ; exit 1 ;
+fi
 
 if [ ! -z "${DEST_LOGIN}" ] ; then
   docker login -u "${DEST_LOGIN}" -p "${DEST_PASS}" "${REGISTRY}"
@@ -46,7 +52,7 @@ for archive in ${ARCHIVE_URLS}; do
     else
       mkdir -p "${dest}" && pushd ${dest} && curl -OJs "${lib}" && popd || exit
     fi
-    connectors_version=$(echo "$archive" | sed -rn 's|.*AMQ-CDC-(.*)/.*$|\1|p')
+    connectors_version=$(echo "$archive" | sed -rn 's|.*AMQ-CDC-(.*)/.*$|dbz-\1|p')
 done
 
 for input in ${EXTRA_LIBS}; do
@@ -69,18 +75,26 @@ cp "${DIR}"/../docker/artifact-server/* "$BUILD_DIR"
 echo "Copying Dockerfile to" "${BUILD_DIR}"
 cp "$DOCKER_FILE" "$BUILD_DIR"
 
-if [ -z "$TAG" ] ; then
-  image_dbz=dbz-artifact-server:dbz-${connectors_version}
-  target=${REGISTRY}/${ORGANISATION}/${image_dbz}
-else
-  target=$TAG
-fi
+image_dbz=dbz-artifact-server
+target=${REGISTRY}/${ORGANISATION}/${image_dbz}:${connectors_version}
 
 pushd "${BUILD_DIR}" || exit
-echo "[Build] Building ${image_dbz}"
+echo "[Build] Building $target"
 docker build . -t "$target"
 popd || exit
 
-echo "[Build] Pushing image ${target}"
-docker push ${target}
-[[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo $target >> ${IMAGE_OUTPUT_FILE}
+if [ "${AUTO_TAG}" ] ; then
+  echo "[Build] Pushing image ${target}"
+  docker push ${target}
+  [[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo $target >> ${IMAGE_OUTPUT_FILE}
+fi
+for tag in ${TAGS}; do
+  new_target="${REGISTRY}/${ORGANISATION}/${image_dbz}:${tag}"
+  echo "[Build] Pushing image ${new_target}"
+  docker tag "${target}" "${new_target}"
+  docker push "${new_target}"
+  [[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo "$new_target" >> ${IMAGE_OUTPUT_FILE}
+done
+
+
+
