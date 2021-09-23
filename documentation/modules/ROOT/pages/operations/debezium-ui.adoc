@@ -23,7 +23,37 @@ The UI is implemented as a https://quarkus.io/[Quarkus]-based web application.  
 
 == Installation and Configuration
 
-==== Debezium UI container image
+
+=== Configure the Debezium UI
+The following table shows the environment variables for the https://hub.docker.com/r/debezium/debezium-ui[Debezium UI container image] and the related parameter names inside `application.properties` when running the Java application without the container.
+
+[cols="1,2,2,2,6",options="header"]
+
+|===
+|Item |Environment variable |Parameter name in application.properties |Default value |Description
+
+|1
+|DEPLOYMENT_MODE[[DEPLOYMENT_MODE]]
+|`deployment.mode`
+|default
+|Specifies how the Debezium UI is deployed. +
+ +
+For example, in some environments it might not be possible to reach the underlying backend, Kafka Connect REST interface or databases, then the link:#DEPLOYMENT_MODE[deployment mode] can be switched to match the underlying infrastructure. +
+ +
+`default` The default deployment mode. It uses the Debezium UI backend with the configured Kafka Connect clusters via the Kafka Connect REST interface (see link:#KAFKA_CONNECT_URI[KAFKA_CONNECT_URI] how they are configured). +
+ +
+ +
+`validation.disabled` When set to validation.disabled the UI frontend will not call the backend to validate the user input nor check the availability and proper configuration of database connections. That mode is used to only generate the Debezium connector JSON configuration without the UI backend validation. +
+ +
+|2
+|KAFKA_CONNECT_URI[[KAFKA_CONNECT_URI]]
+|`kafka.connect.uri`
+|http://connect:8083
+|A comma-separated list to one or more URLs of Kafka Connect REST interfaces to specify the Kafka Connect clusters that should be managed by the Debezium UI.
+
+|===
+
+=== Debezium UI container image
 
 The Debezium UI https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URI supplies the comma-separated list of available URI(s)):
 
@@ -38,7 +68,8 @@ The UI connects to Kafka Connect via REST, so you need to make sure that the lat
 Currently, the UI connects to un-authenticated Kafka Connect instances.  Also, there's no authorization or authentication implemented in the UI itself yet.  Until that is the case, you should secure the components e.g. with your own proxy for authorization, if needed.
 ====
 
-==== Self-contained example
+
+=== Self-contained example
 
 A self-contained example https://github.com/debezium/debezium-examples/tree/master/ui-demo[ui-demo] is available, which is included under https://github.com/debezium/debezium-examples[debezium-examples] on Github.  The ui-demo includes a docker-compose file which brings up several sources with data as well as the UI. Please refer to the https://github.com/debezium/debezium-examples/tree/master/ui-demo[README file] for more details on running the Debezium ui-demo.
 
