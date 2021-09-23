@@ -221,27 +221,4 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             assertEndTransaction(record, expectedTxId, 2, Collect.hashMapOf(dbName + ".DEBEZIUM.CUSTOMER", 1, dbName + ".DEBEZIUM.ORDERS", 1));
         }
     }
-
-    @Test
-    public void filterUser() throws Exception {
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.ORDERS")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(OracleConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(OracleConnectorConfig.LOG_MINING_STRATEGY, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG)
-                .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
-                .build();
-
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-        connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
-        connection.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (1, TO_DATE('2021-02-01', 'yyyy-mm-dd'), 1001, 1, 102)");
-        connection.execute("COMMIT");
-
-        // all messages are filtered out
-        assertThat(waitForAvailableRecords(10, TimeUnit.SECONDS)).isFalse();
-    }
 }
