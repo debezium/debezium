@@ -40,8 +40,8 @@ public class TransactionAdapter {
      * @return the constructed Transaction instance
      */
     @ProtoFactory
-    public Transaction factory(String transactionId, String scn, String changeTime, List<LogMinerEvent> events, Set<Long> hashes) {
-        return new Transaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), events, hashes);
+    public Transaction factory(String transactionId, String scn, String changeTime, List<LogMinerEvent> events, Set<Long> hashes, String userName) {
+        return new Transaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), events, hashes, userName);
     }
 
     /**
@@ -100,5 +100,10 @@ public class TransactionAdapter {
     @ProtoField(number = 5)
     public Set<Long> getHashes(Transaction transaction) {
         return transaction.getHashes();
+    }
+
+    @ProtoField(number = 6)
+    public String getUserName(Transaction transaction) {
+        return transaction.getUserName();
     }
 }

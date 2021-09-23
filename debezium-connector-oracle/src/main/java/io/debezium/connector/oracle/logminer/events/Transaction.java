@@ -35,16 +35,19 @@ public class Transaction {
     private String userName;
 
     @VisibleForMarshalling
-    public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, Set<Long> hashes) {
+    public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, Set<Long> hashes, String userName) {
         this.transactionId = transactionId;
         this.startScn = startScn;
         this.changeTime = changeTime;
         this.events = events;
         this.hashes = hashes;
+        if (!"UNKNOWN".equalsIgnoreCase(userName)) {
+            this.userName = userName;
+        }
     }
 
-    public Transaction(String transactionId, Scn startScn, Instant changeTime) {
-        this(transactionId, startScn, changeTime, new ArrayList<>(), new HashSet<>());
+    public Transaction(String transactionId, Scn startScn, Instant changeTime, String userName) {
+        this(transactionId, startScn, changeTime, new ArrayList<>(), new HashSet<>(), userName);
     }
 
     public String getTransactionId() {
@@ -86,12 +89,6 @@ public class Transaction {
         return userName;
     }
 
-    public void setUserName(String userName) {
-        if (userName != null && !"UNKNOWN".equalsIgnoreCase(userName)) {
-            this.userName = userName;
-        }
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -113,7 +110,8 @@ public class Transaction {
     public String toString() {
         return "Transaction{" +
                 "transactionId='" + transactionId + '\'' +
-                ", startScn=" + startScn + ", userName='" + userName +
+                ", startScn=" + startScn +
+                ", userName='" + userName +
                 "'}";
     }
 }
