@@ -2039,6 +2039,43 @@ table_compression
     | NOCOMPRESS
     ;
 
+inmemory_table_clause
+    : INMEMORY inmemory_attributes inmemory_columns_clause
+    | NO INMEMORY inmemory_columns_clause
+    ;
+
+inmemory_attributes
+    : inmemory_memcompress? inmemory_priority? inmemory_distribute? inmemory_duplicate?
+    ;
+
+inmemory_memcompress
+    : MEMCOMPRESS FOR (DML | (QUERY|CAPACITY) (LOW|HIGH)?)
+    | NO MEMCOMPRESS
+    ;
+
+inmemory_priority
+    : PRIORITY (NONE|LOW|MEDIUM|HIGH|CRITICAL)
+    ;
+
+inmemory_distribute
+    : DISTRIBUTE
+        (AUTO | BY (ROWID RANGE|PARTITION|SUBPARTITION))?
+        (FOR SERVICE (DEFAULT|ALL|service_name|NONE))?
+    ;
+
+inmemory_duplicate
+    : DUPLICATE ALL?
+    | NO DUPLICATE
+    ;
+
+inmemory_columns_clause
+    : inmemory_column_clause*
+    ;
+
+inmemory_column_clause
+    : (INMEMORY inmemory_memcompress?|NO INMEMORY) '(' column_name (',' column_name)* ')'
+    ;
+
 physical_attributes_clause
     : (PCTFREE pctfree=UNSIGNED_INTEGER
       | PCTUSED pctused=UNSIGNED_INTEGER
@@ -2093,7 +2130,7 @@ external_table_data_props
     ;
 
 physical_properties
-    : deferred_segment_creation?  segment_attributes_clause table_compression?
+    : deferred_segment_creation? inmemory_table_clause? segment_attributes_clause table_compression?
     | deferred_segment_creation? (
         ORGANIZATION (
             (HEAP segment_attributes_clause? heap_org_table_clause) |
@@ -2101,6 +2138,7 @@ physical_properties
             (EXTERNAL external_table_clause)) |
         EXTERNAL PARTITION ATTRIBUTES external_table_clause (REJECT LIMIT)?
         )
+    | CLUSTER cluster_name '(' column_name (',' column_name)* ')'
     ;
 
 row_movement_clause
@@ -4351,6 +4389,10 @@ collection_name
     ;
 
 link_name
+    : identifier
+    ;
+
+service_name
     : identifier
     ;
 
@@ -6652,6 +6694,7 @@ non_reserved_keywords_pre12c
     | TIMEOUT
     | TIMES
     | TIMESTAMP
+    | TIMEZONE
     | TIMEZONE_ABBR
     | TIMEZONE_HOUR
     | TIMEZONE_MINUTE
