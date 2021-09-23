@@ -353,7 +353,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             Transaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
                 LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
-                transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime());
+                transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime(), row.getUserName());
             }
             if (row.getHash() == 0L || !transaction.getHashes().contains(row.getHash())) {
                 LOGGER.trace("Adding {} to transaction {} for table '{}'", row.getOperation(), transactionId, row.getTableId());
