@@ -109,7 +109,7 @@
         <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
-        <quarkus.version>2.0.0.Final</quarkus.version>
+        <quarkus.version>2.2.3.Final</quarkus.version>
 
         <!-- Databases, should align with database drivers in debezium-bom -->
         <version.mysql.server>5.7</version.mysql.server>
