@@ -26,13 +26,14 @@ import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.Vi
 public class Transaction {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Transaction.class);
+    private static final String UNKNOWN = "UNKNOWN";
 
-    private String transactionId;
-    private Scn startScn;
-    private Instant changeTime;
-    private List<LogMinerEvent> events;
-    private Set<Long> hashes;
-    private String userName;
+    private final String transactionId;
+    private final Scn startScn;
+    private final Instant changeTime;
+    private final List<LogMinerEvent> events;
+    private final Set<Long> hashes;
+    private final String userName;
 
     @VisibleForMarshalling
     public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, Set<Long> hashes, String userName) {
@@ -41,9 +42,7 @@ public class Transaction {
         this.changeTime = changeTime;
         this.events = events;
         this.hashes = hashes;
-        if (!"UNKNOWN".equalsIgnoreCase(userName)) {
-            this.userName = userName;
-        }
+        this.userName = !UNKNOWN.equalsIgnoreCase(userName) ? userName : null;
     }
 
     public Transaction(String transactionId, Scn startScn, Instant changeTime, String userName) {
