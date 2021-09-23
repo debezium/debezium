@@ -5,18 +5,16 @@
  */
 package io.debezium.relational.mapping;
 
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
+import org.junit.Test;
 
 import java.sql.Types;
 
-import org.junit.Test;
-
-import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
+import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
- *
  */
 public class MaskStringsTest {
 
@@ -40,10 +38,16 @@ public class MaskStringsTest {
     @Test
     public void shouldTransformSameInputsToSameResultsForCharsetType() {
         converter = new MaskStrings("salt".getBytes(), "SHA-256").create(column);
-        assertThat(converter.convert("hello")).isEqualTo("af5843a0f0e728ab0332c8888b6e1190bfb79e584f0d40538de8f10df6ef29c6");
-        assertThat(converter.convert("hello")).isEqualTo("af5843a0f0e728ab0332c8888b6e1190bfb79e584f0d40538de8f10df6ef29c6");
-        assertThat(converter.convert("world")).isEqualTo("4588e1f2dcdc7fefc1515d3acd5acb9033478eace68286f383c337b9ff4464a3");
-        assertThat(converter.convert("world")).isEqualTo("4588e1f2dcdc7fefc1515d3acd5acb9033478eace68286f383c337b9ff4464a3");
+        assertThat(converter.convert("hello")).isEqualTo("cd31b3b98ece60cb739c0bf770b2de892ae0ad133f645513c3d83f08757a843a");
+        assertThat(converter.convert("hello")).isEqualTo("cd31b3b98ece60cb739c0bf770b2de892ae0ad133f645513c3d83f08757a843a");
+        assertThat(converter.convert("world")).isEqualTo("e84ac3142870113ddc6710c06f76421befc8e8ca6de64e98d2993ed8d41f4085");
+        assertThat(converter.convert("world")).isEqualTo("e84ac3142870113ddc6710c06f76421befc8e8ca6de64e98d2993ed8d41f4085");
     }
 
+    @Test
+    public void shouldTransformSameInputsToSameResultsForCharsetTypeWithMD5() {
+        converter = new MaskStrings("salt".getBytes(), "MD5").create(column);
+        assertThat(converter.convert("hello")).isEqualTo("06decc8b095724f80103712c235586be");
+        assertThat(converter.convert("world")).isEqualTo("172c8e95398cc72ab5358ead6981e7e5");
+    }
 }

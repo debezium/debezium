@@ -5,24 +5,20 @@
  */
 package io.debezium.relational.mapping;
 
-import java.io.ByteArrayOutputStream;
+import io.debezium.annotation.Immutable;
+import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Types;
 import java.util.Objects;
 import java.util.function.Function;
-
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.annotation.Immutable;
-import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
 
 /**
  * A {@link ColumnMapper} implementation that ensures that string values are masked.
@@ -142,12 +138,8 @@ public class MaskStrings implements ColumnMapper {
         private String toHash(Serializable value) throws IOException {
             hashAlgorithm.reset();
             hashAlgorithm.update(salt);
-
-            try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    ObjectOutput out = new ObjectOutputStream(bos)) {
-                out.writeObject(value);
-                return convertToHexadecimalFormat(hashAlgorithm.digest(bos.toByteArray()));
-            }
+            byte[] data = value.toString().getBytes();
+            return convertToHexadecimalFormat(hashAlgorithm.digest(data));
         }
 
         private String convertToHexadecimalFormat(byte[] bytes) {
