@@ -475,7 +475,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         if (isTransactionIdAllowed(transactionId)) {
             Transaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
-                LOGGER.debug("Transaction {} not in cache for DML, creating.", transactionId);
+                LOGGER.trace("Transaction {} not in cache for DML, creating.", transactionId);
                 transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime(), row.getUserName());
                 getTransactionCache().put(transactionId, transaction);
             }
