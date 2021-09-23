@@ -14,6 +14,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.MapAssert.entry;
 
+import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
@@ -28,6 +29,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import javax.management.JMException;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -2247,6 +2252,52 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-3978")
+    public void shouldFilterUser() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz3978");
+
+            connection.execute("CREATE TABLE dbz3978 (id number(9,0), data varchar2(50), primary key (id))");
+            TestHelper.streamTable(connection, "dbz3978");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3978")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO debezium.dbz3978 VALUES (1, 'Test1')");
+            connection.executeWithoutCommitting("INSERT INTO debezium.dbz3978 VALUES (2, 'Test2')");
+            connection.execute("COMMIT");
+
+            // all messages are filtered out
+            assertThat(waitForAvailableRecords(10, TimeUnit.SECONDS)).isFalse();
+
+            // There should be at least 2 DML events captured but ignored
+            Long totalDmlCount = getStreamingMetric("TotalCapturedDmlCount");
+            assertThat(totalDmlCount).isGreaterThanOrEqualTo(2L);
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3978");
+        }
+
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T getStreamingMetric(String metricName) throws JMException {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        final ObjectName objectName = getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        return (T) mbeanServer.getAttribute(objectName, metricName);
+    }
+    
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
