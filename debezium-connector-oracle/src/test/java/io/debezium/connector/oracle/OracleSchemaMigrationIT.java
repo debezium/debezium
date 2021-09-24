@@ -1104,6 +1104,102 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4037")
+    public void shouldParseSchemaChangeWithoutErrorOnFilteredTableWithRawDataType() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor();
+        try {
+            TestHelper.dropTable(connection, "dbz4037a");
+            TestHelper.dropTable(connection, "dbz4037b");
+
+            connection.execute("CREATE TABLE dbz4037a (id number(9,0), data varchar2(50), primary key(id))");
+            TestHelper.streamTable(connection, "dbz4037a");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4037A")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            assertNoRecordsToConsume();
+
+            // Verify Oracle DDL parser ignores CREATE TABLE with RAW data types
+            connection.execute("CREATE TABLE dbz4037b (id number(9,0), data raw(8), primary key(id))");
+            Awaitility.await()
+                    .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
+                    .until(() -> interceptor.containsMessage(getIgnoreCreateTable("ORCLPDB1.DEBEZIUM.DBZ4037B")));
+
+            // Verify Oracle DDL parser ignores ALTER TABLE with RAW data types
+            connection.execute("ALTER TABLE dbz4037b ADD data2 raw(10)");
+            Awaitility.await()
+                    .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
+                    .until(() -> interceptor.containsMessage(getIgnoreAlterTable("ORCLPDB1.DEBEZIUM.DBZ4037B")));
+
+            // Capture a simple change on different table
+            connection.execute("INSERT INTO dbz4037a (id,data) values (1, 'Test')");
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DEBEZIUM", "DBZ4037A"))).hasSize(1);
+            SourceRecord record = records.recordsForTopic(topicName("DEBEZIUM", "DBZ4037A")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test");
+
+            // Check no records to consume
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4037b");
+            TestHelper.dropTable(connection, "dbz4037a");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4037")
+    public void shouldParseSchemaChangeOnTableWithRawDataType() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz4037");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4037")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            assertNoRecordsToConsume();
+
+            // Verify that Oracle DDL parser allows RAW column types for CREATE TABLE (included)
+            connection.execute("CREATE TABLE dbz4037 (id number(9,0), data raw(8), primary key(id))");
+            TestHelper.streamTable(connection, "dbz4037");
+
+            // Verify that Oracle DDL parser allows RAW column types for ALTER TABLE (included)
+            connection.execute("ALTER TABLE dbz4037 ADD data2 raw(10)");
+
+            connection.prepareUpdate("INSERT INTO dbz4037 (id,data,data2) values (1,?,?)", preparer -> {
+                preparer.setBytes(1, "Test".getBytes());
+                preparer.setBytes(2, "T".getBytes());
+            });
+            connection.commit();
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DEBEZIUM", "DBZ4037"))).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic(topicName("DEBEZIUM", "DBZ4037")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isNull();
+            assertThat(after.get("DATA2")).isNull();
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4037");
+        }
+    }
+
     private static String getTableIdString(String schemaName, String tableName) {
         return new TableId(TestHelper.getDatabaseName(), schemaName, tableName).toDoubleQuotedString();
     }
@@ -1154,4 +1250,11 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         return TestHelper.SERVER_NAME + "." + schema + "." + table;
     }
 
+    private static String getIgnoreCreateTable(String tableName) {
+        return "Ignoring CREATE TABLE statement for non-captured table " + tableName;
+    }
+
+    private static String getIgnoreAlterTable(String tableName) {
+        return "Ignoring ALTER TABLE statement for non-captured table " + tableName;
+    }
 }
