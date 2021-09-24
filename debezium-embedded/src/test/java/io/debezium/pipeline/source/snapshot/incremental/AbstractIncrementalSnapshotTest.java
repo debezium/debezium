@@ -189,7 +189,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         populateTable();
         startConnector();
 
-        sendAdHocSnapshotSignal("invalid1", tableName(), "invalid2");
+        sendAdHocSnapshotSignal("invalid1", tableDataCollectionId(), "invalid2");
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
