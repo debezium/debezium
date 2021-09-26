@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -337,9 +338,11 @@ public class OracleConnection extends JdbcConnection {
      * @throws IllegalStateException if the query does not return at least one row
      */
     public Scn getCurrentScn() throws SQLException {
-        return queryAndMap("SELECT CURRENT_SCN FROM V$DATABASE", (rs) -> {
+        return queryAndMap("SELECT CURRENT_SCN,scn_to_timestamp(CURRENT_SCN) FROM V$DATABASE", (rs) -> {
             if (rs.next()) {
-                return Scn.valueOf(rs.getString(1));
+                Scn scn = Scn.valueOf(rs.getString(1));
+                scn.setTime(rs.getObject(2, OffsetDateTime.class));
+                return scn;
             }
             throw new IllegalStateException("Could not get SCN");
         });
