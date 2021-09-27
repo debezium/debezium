@@ -45,6 +45,7 @@ LINE_COMMENT:                        (
 // Common Keywords
 
 ADD:                                 'ADD';
+ADMIN:                               'ADMIN';
 ALL:                                 'ALL';
 ALTER:                               'ALTER';
 ALWAYS:                              'ALWAYS';
