@@ -131,7 +131,7 @@ If a placeholder `{}` is added to the message it will be replaced with streaming
 
 
 === Triggering an Incremental Snapshot
-*Available for MySQL, PostgresSQL, SQL Server and Db2 connectors*
+*Available for MySQL, PostgresSQL, Oracle, SQL Server and Db2 connectors*
 
 The type of the action is `execute-snapshot`.
 It will start an incremental snapshot operation. The operation first reads the first and last primary key values and use those as start and end point for each table.
@@ -152,6 +152,7 @@ Formatting should be: +
 * MySQL: `"some_database.some_table"`
 * PostgresSQL and Db2: `"some_schema.some_table"`
 * SQL Server: `"some_database.some_schema.some_table"`
+* Oracle: `"some_schema.some_table"`
 
 |===
 
