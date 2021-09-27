@@ -5,8 +5,11 @@
  */
 package io.debezium.connector.oracle.util;
 
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import io.debezium.config.Configuration;
@@ -413,6 +416,18 @@ public class TestHelper {
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to clean database");
+        }
+    }
+
+    public static List<BigInteger> getCurrentRedoLogSequences() throws SQLException {
+        try (OracleConnection connection = adminConnection()) {
+            return connection.queryAndMap("SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT'", rs -> {
+                List<BigInteger> sequences = new ArrayList<>();
+                while (rs.next()) {
+                    sequences.add(new BigInteger(rs.getString(1)));
+                }
+                return sequences;
+            });
         }
     }
 }

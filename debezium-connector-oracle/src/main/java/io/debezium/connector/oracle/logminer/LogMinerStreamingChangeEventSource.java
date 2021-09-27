@@ -114,6 +114,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName(), schema);
 
                 try (LogMinerEventProcessor processor = createProcessor(context, partition, offsetContext)) {
+
+                    if (archiveLogOnlyMode && !waitForStartScnInArchiveLogs(context, startScn)) {
+                        return;
+                    }
+
                     currentRedoLogSequences = getCurrentRedoLogSequences();
                     initializeRedoLogsForMining(jdbcConnection, false, startScn);
 
@@ -121,8 +126,21 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
                         streamingMetrics.calculateTimeDifference(getDatabaseSystemTime(jdbcConnection));
 
+                        if (archiveLogOnlyMode && !waitForStartScnInArchiveLogs(context, startScn)) {
+                            break;
+                        }
+
                         Instant start = Instant.now();
                         endScn = calculateEndScn(jdbcConnection, startScn, endScn);
+
+                        // This is a small window where when archive log only mode has completely caught up to the last
+                        // record in the archive logs that both the start and end values are identical. In this use
+                        // case we want to pause and restart the loop waiting for a new archive log before proceeding.
+                        if (archiveLogOnlyMode && startScn.equals(endScn)) {
+                            pauseBetweenMiningSessions();
+                            continue;
+                        }
+
                         flushStrategy.flush(jdbcConnection.getCurrentScn());
 
                         if (hasLogSwitchOccurred()) {
@@ -427,7 +445,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if the current max system change number cannot be obtained from the database
      */
     private Scn calculateEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn) throws SQLException {
-        Scn currentScn = connection.getCurrentScn();
+        Scn currentScn = archiveLogOnlyMode
+                ? connection.getMaxArchiveLogScn(archiveDestinationName)
+                : connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
         // Add the current batch size to the starting system change number
@@ -573,6 +593,49 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             return new RacCommitLogWriterFlushStrategy(connectorConfig, jdbcConfiguration, streamingMetrics);
         }
         return new CommitLogWriterFlushStrategy(jdbcConnection);
+    }
+
+    /**
+     * Waits for the starting system change number to exist in the archive logs before returning.
+     *
+     * @param context the change event source context
+     * @param startScn the starting system change number
+     * @return true if the code should continue, false if the code should end.
+     * @throws SQLException if a database exception occurred
+     * @throws InterruptedException if the pause between checks is interrupted
+     */
+    private boolean waitForStartScnInArchiveLogs(ChangeEventSourceContext context, Scn startScn) throws SQLException, InterruptedException {
+        boolean showStartScnNotInArchiveLogs = true;
+        while (context.isRunning() && !isStartScnInArchiveLogs(startScn)) {
+            if (showStartScnNotInArchiveLogs) {
+                LOGGER.warn("Starting SCN {} is not yet in archive logs, waiting for archive log switch.", startScn);
+                showStartScnNotInArchiveLogs = false;
+                pauseBetweenMiningSessions();
+                continue;
+            }
+        }
+
+        if (!context.isRunning()) {
+            return false;
+        }
+
+        if (!showStartScnNotInArchiveLogs) {
+            LOGGER.info("Starting SCN {} is now available in archive logs, log mining unpaused.", startScn);
+        }
+        return true;
+    }
+
+    /**
+     * Returns whether the starting system change number is in the archive logs.
+     *
+     * @param startScn the starting system change number
+     * @return true if the starting system change number is in the archive logs; false otherwise.
+     * @throws SQLException if a database exception occurred
+     */
+    private boolean isStartScnInArchiveLogs(Scn startScn) throws SQLException {
+        List<LogFile> logs = LogMinerHelper.getLogFilesForOffsetScn(jdbcConnection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
+        return logs.stream()
+                .anyMatch(l -> l.getFirstScn().compareTo(startScn) <= 0 && l.getNextScn().compareTo(startScn) > 0 && l.getType().equals(LogFile.Type.ARCHIVE));
     }
 
     @Override
