@@ -31,6 +31,7 @@ public class SqlServerErrorHandler extends ErrorHandler {
                 && (throwable.getMessage().contains("Connection timed out (Read failed)")
                         || throwable.getMessage().contains("Connection timed out (Write failed)")
                         || throwable.getMessage().contains("The connection has been closed.")
+                        || throwable.getMessage().contains("The connection is closed.")
                         || throwable.getMessage().contains("Connection reset")
                         || throwable.getMessage().contains("SHUTDOWN is in progress")
                         || throwable.getMessage().contains("The server failed to resume the transaction")
