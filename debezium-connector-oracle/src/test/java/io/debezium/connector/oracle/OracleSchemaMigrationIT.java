@@ -1172,13 +1172,13 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             assertNoRecordsToConsume();
 
             // Verify that Oracle DDL parser allows RAW column types for CREATE TABLE (included)
-            connection.execute("CREATE TABLE dbz4037 (id number(9,0), data raw(8), primary key(id))");
+            connection.execute("CREATE TABLE dbz4037 (id number(9,0), data raw(8), name varchar(50), primary key(id))");
             TestHelper.streamTable(connection, "dbz4037");
 
             // Verify that Oracle DDL parser allows RAW column types for ALTER TABLE (included)
             connection.execute("ALTER TABLE dbz4037 ADD data2 raw(10)");
 
-            connection.prepareUpdate("INSERT INTO dbz4037 (id,data,data2) values (1,?,?)", preparer -> {
+            connection.prepareUpdate("INSERT INTO dbz4037 (id,data,name,data2) values (1,?,'Acme 123',?)", preparer -> {
                 preparer.setBytes(1, "Test".getBytes());
                 preparer.setBytes(2, "T".getBytes());
             });
@@ -1192,6 +1192,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("DATA")).isNull();
             assertThat(after.get("DATA2")).isNull();
+            assertThat(after.get("NAME")).isEqualTo("Acme 123");
 
             assertNoRecordsToConsume();
         }
