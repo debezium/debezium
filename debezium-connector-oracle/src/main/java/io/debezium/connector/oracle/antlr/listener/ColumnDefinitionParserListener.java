@@ -260,6 +260,13 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .jdbcType(Types.CLOB)
                         .type("CLOB");
             }
+            else if (ctx.native_datatype_element().RAW() != null) {
+                columnEditor
+                        .jdbcType(OracleTypes.RAW)
+                        .type("RAW");
+
+                setPrecision(precisionPart, columnEditor);
+            }
             else {
                 throw new IllegalArgumentException("Unsupported column type: " + ctx.native_datatype_element().getText());
             }

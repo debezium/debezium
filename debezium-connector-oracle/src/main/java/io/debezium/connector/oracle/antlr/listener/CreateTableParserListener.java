@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
@@ -20,6 +22,8 @@ import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
 
 public class CreateTableParserListener extends BaseParserListener {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableParserListener.class);
 
     private final List<ParseTreeListener> listeners;
     private TableEditor tableEditor;
@@ -48,6 +52,9 @@ public class CreateTableParserListener extends BaseParserListener {
                 tableEditor = parser.databaseTables().editOrCreateTable(tableId);
                 super.enterCreate_table(ctx);
             }
+        }
+        else {
+            LOGGER.debug("Ignoring CREATE TABLE statement for non-captured table {}", tableId);
         }
     }
 
