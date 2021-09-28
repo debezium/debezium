@@ -16,13 +16,24 @@ jobs:
         env:
           pull_request_number: ${{ github.event.pull_request.number }}
         run: |
-          curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq -r '.message' >> COMMIT_MESSAGE.txt
-          while IFS=" " read -r MSG;
+          COMMIT_MSGS=$(curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq '.message' | cut -c 2-)
+          NON_PREFIX_COMMITS=""
+          while IFS= read -r line ;
           do
-            if [[ ! $MSG =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\]) ]]; then
-              echo "::set-output name=PREFIX::false"
+            line=${line%\"}
+            echo "-> checking: $line"
+            if [[ ! $line =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\]) ]]; then
+              NON_PREFIX_COMMITS="${NON_PREFIX_COMMITS} -> ${line} \n"
             fi
-          done < COMMIT_MESSAGE.txt
+          done <<< "$COMMIT_MSGS"
+
+          if [[ $NON_PREFIX_COMMITS != "" ]]; then
+            echo "========================================================================"
+            echo "              COMMIT MESSAGES WITH MISSING \"DBZ\" PREFIX"
+            echo "========================================================================"
+            echo -e "$NON_PREFIX_COMMITS"
+            echo "::set-output name=PREFIX::false"
+          fi
       - name: Create Comment
         if: ${{ steps.check.outputs.PREFIX == 'false' }}
         uses: peter-evans/create-or-update-comment@v1
