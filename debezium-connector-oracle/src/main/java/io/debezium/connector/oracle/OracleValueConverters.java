@@ -210,6 +210,9 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return (data) -> convertIntervalYearMonth(column, fieldDefn, data);
             case OracleTypes.INTERVALDS:
                 return (data) -> convertIntervalDaySecond(column, fieldDefn, data);
+            case OracleTypes.RAW:
+                // Raw data types are not supported
+                return null;
         }
 
         return super.converter(column, fieldDefn);
