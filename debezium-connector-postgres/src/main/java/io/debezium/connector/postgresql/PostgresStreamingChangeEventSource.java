@@ -15,6 +15,7 @@ import org.postgresql.core.BaseConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
@@ -89,6 +90,16 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     }
 
+    public void init() {
+        // refresh the schema so we have a latest view of the DB tables
+        try {
+            taskContext.refreshSchema(connection, true);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Error whil executing initial schema load");
+        }
+    }
+
     @Override
     public void execute(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext)
             throws InterruptedException {
@@ -126,8 +137,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             ReplicationStream stream = this.replicationStream.get();
             stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
 
-            // refresh the schema so we have a latest view of the DB tables
-            taskContext.refreshSchema(connection, true);
+            init();
 
             // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
             // but normally we want to start streaming without any open transactions.
