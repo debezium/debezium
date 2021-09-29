@@ -215,12 +215,13 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             return;
         }
 
+        boolean skipExcludedUserName = false;
         if (transaction.getUserName() == null && !transaction.getEvents().isEmpty()) {
-            LOGGER.warn("Got transaction with null username {}", transaction);
+            LOGGER.debug("Got transaction with null username {}", transaction);
         }
         else if (getConfig().getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
-            LOGGER.debug("Skipping transaction with excluded username {}", transaction);
-            return;
+            LOGGER.trace("Skipping transaction with excluded username {}", transaction);
+            skipExcludedUserName = true;
         }
 
         final Scn smallestScn = transactionCache.getMinimumScn();
@@ -267,19 +268,21 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
             // after reconciliation all events should be DML
             final DmlEvent dmlEvent = (DmlEvent) event;
-            dispatcher.dispatchDataChangeEvent(event.getTableId(),
-                    new LogMinerChangeRecordEmitter(
-                            partition,
-                            offsetContext,
-                            dmlEvent.getEventType(),
-                            dmlEvent.getDmlEntry().getOldValues(),
-                            dmlEvent.getDmlEntry().getNewValues(),
-                            getSchema().tableFor(event.getTableId()),
-                            Clock.system()));
+            if(!skipExcludedUserName) {
+                dispatcher.dispatchDataChangeEvent(event.getTableId(),
+                        new LogMinerChangeRecordEmitter(
+                                partition,
+                                offsetContext,
+                                dmlEvent.getEventType(),
+                                dmlEvent.getDmlEntry().getOldValues(),
+                                dmlEvent.getDmlEntry().getNewValues(),
+                                getSchema().tableFor(event.getTableId()),
+                                Clock.system()));
+            }
         }
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
-        if (!transaction.getEvents().isEmpty()) {
+        if (!transaction.getEvents().isEmpty() && !skipExcludedUserName) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
         }
         else {
