@@ -269,7 +269,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
             // after reconciliation all events should be DML
             final DmlEvent dmlEvent = (DmlEvent) event;
-            if(!skipExcludedUserName) {
+            if (!skipExcludedUserName) {
                 dispatcher.dispatchDataChangeEvent(event.getTableId(),
                         new LogMinerChangeRecordEmitter(
                                 partition,

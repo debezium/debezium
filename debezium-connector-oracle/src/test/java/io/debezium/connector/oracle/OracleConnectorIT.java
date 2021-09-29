@@ -2297,7 +2297,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final ObjectName objectName = getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
         return (T) mbeanServer.getAttribute(objectName, metricName);
     }
-    
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
