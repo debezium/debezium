@@ -255,7 +255,6 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             skipExcludedUserName = true;
         }
 
-
         final Scn smallestScn = transactionCache.getMinimumScn();
         metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
 
@@ -299,7 +298,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             // after reconciliation all events should be DML
             // todo: do we want to move dml entry up and just let it be null to avoid cast?
             final DmlEvent dmlEvent = (DmlEvent) event;
-            if(!skipExcludedUserName) {
+            if (!skipExcludedUserName) {
                 dispatcher.dispatchDataChangeEvent(event.getTableId(),
                         new LogMinerChangeRecordEmitter(
                                 partition,
