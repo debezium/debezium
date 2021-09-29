@@ -124,13 +124,17 @@ public class LogMinerHelper {
      * @param prevEndScn previous end SCN
      * @param streamingMetrics the streaming metrics
      * @param lobEnabled specifies whether LOB support is enabled
+     * @param archiveLogOnlyMode specifies whether archive log only mode is enabled
+     * @param archiveLogDestinationName the archive log destination name
      * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
     static Scn getEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize,
-                         boolean lobEnabled)
+                         boolean lobEnabled, boolean archiveLogOnlyMode, String archiveLogDestinationName)
             throws SQLException {
-        Scn currentScn = connection.getCurrentScn();
+        Scn currentScn = archiveLogOnlyMode
+                ? connection.getMaxArchiveLogScn(archiveLogDestinationName)
+                : connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
         Scn topScnToMine = startScn.add(Scn.valueOf(streamingMetrics.getBatchSize()));

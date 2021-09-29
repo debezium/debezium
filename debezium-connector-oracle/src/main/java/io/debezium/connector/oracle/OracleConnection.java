@@ -37,6 +37,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
 
@@ -338,6 +339,41 @@ public class OracleConnection extends JdbcConnection {
                 return Scn.valueOf(rs.getString(1));
             }
             throw new IllegalStateException("Could not get SCN");
+        });
+    }
+
+    /**
+     * Get the maximum system change number in the archive logs.
+     *
+     * @param archiveLogDestinationName the archive log destination name to be queried, can be {@code null}.
+     * @return the maximum system change number in the archive logs
+     * @throws SQLException if a database exception occurred
+     * @throws DebeziumException if the maximum archive log system change number could not be found
+     */
+    public Scn getMaxArchiveLogScn(String archiveLogDestinationName) throws SQLException {
+        String query = "SELECT MAX(NEXT_CHANGE#) FROM V$ARCHIVED_LOG " +
+                "WHERE NAME IS NOT NULL " +
+                "AND ARCHIVED = 'YES' " +
+                "AND STATUS = 'A' " +
+                "AND DEST_ID IN (" +
+                "SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS " +
+                "WHERE STATUS = 'VALID' " +
+                "AND TYPE = 'LOCAL' ";
+
+        if (Strings.isNullOrEmpty(archiveLogDestinationName)) {
+            query += "AND ROWNUM = 1";
+        }
+        else {
+            query += "AND UPPER(DEST_NAME) = '" + archiveLogDestinationName + "'";
+        }
+
+        query += ")";
+
+        return queryAndMap(query, (rs) -> {
+            if (rs.next()) {
+                return Scn.valueOf(rs.getString(1)).subtract(Scn.valueOf(1));
+            }
+            throw new DebeziumException("Could not obtain maximum archive log scn.");
         });
     }
 

@@ -5,8 +5,11 @@
  */
 package io.debezium.connector.oracle.util;
 
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import io.debezium.config.Configuration;
@@ -106,6 +109,10 @@ public class TestHelper {
 
         if (adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
+        }
+        else {
+            // Tests will always use the online catalog strategy due to speed.
+            builder.withDefault(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog");
         }
 
         // In the event that the environment variables do not specify a database.pdb.name setting,
@@ -386,5 +393,17 @@ public class TestHelper {
     public static OracleConnectorConfig.ConnectorAdapter adapter() {
         final String s = System.getProperty(OracleConnectorConfig.CONNECTOR_ADAPTER.name());
         return (s == null || s.length() == 0) ? OracleConnectorConfig.ConnectorAdapter.LOG_MINER : OracleConnectorConfig.ConnectorAdapter.parse(s);
+    }
+
+    public static List<BigInteger> getCurrentRedoLogSequences() throws SQLException {
+        try (OracleConnection connection = adminConnection()) {
+            return connection.queryAndMap("SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT'", rs -> {
+                List<BigInteger> sequences = new ArrayList<>();
+                while (rs.next()) {
+                    sequences.add(new BigInteger(rs.getString(1)));
+                }
+                return sequences;
+            });
+        }
     }
 }
