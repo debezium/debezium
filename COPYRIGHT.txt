@@ -101,7 +101,7 @@ Fabio Cantarini
 Fahim Farook
 Faizan
 Fatih Güçlü Akkaya
-Fándly Gergő 
+Fándly Gergő
 Felix Eckhardt
 Fintan Bolton
 Frank Koornstra
@@ -170,6 +170,7 @@ Josh Arenberg
 Josh Stanfield
 Joy Gao
 Juan Antonio Pedraza
+Judah Rand
 Jun Du
 Jure Kajzer
 Justin Hiza
