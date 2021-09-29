@@ -2087,6 +2087,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE, true)
+                    .with(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS, 2000)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3712")
                     .build();
 
@@ -2122,6 +2123,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             TestHelper.streamTable(connection, "dbz3712");
 
             Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS, 2000)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3712")
                     .build();
 
@@ -2142,6 +2144,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE, true)
+                    .with(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS, 2000)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3712")
                     .build();
 
