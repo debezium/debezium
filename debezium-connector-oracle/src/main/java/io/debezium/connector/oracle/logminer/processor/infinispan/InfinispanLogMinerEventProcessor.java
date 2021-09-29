@@ -246,6 +246,16 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             return;
         }
 
+        boolean skipExcludedUserName = false;
+        if (transaction.getUserName() == null && !transaction.getEvents().isEmpty()) {
+            LOGGER.debug("Got transaction with null username {}", transaction);
+        }
+        else if (getConfig().getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
+            LOGGER.trace("Skipping transaction with excluded username {}", transaction);
+            skipExcludedUserName = true;
+        }
+
+
         final Scn smallestScn = transactionCache.getMinimumScn();
         metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
 
@@ -289,19 +299,21 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             // after reconciliation all events should be DML
             // todo: do we want to move dml entry up and just let it be null to avoid cast?
             final DmlEvent dmlEvent = (DmlEvent) event;
-            dispatcher.dispatchDataChangeEvent(event.getTableId(),
-                    new LogMinerChangeRecordEmitter(
-                            partition,
-                            offsetContext,
-                            dmlEvent.getEventType(),
-                            dmlEvent.getDmlEntry().getOldValues(),
-                            dmlEvent.getDmlEntry().getNewValues(),
-                            getSchema().tableFor(event.getTableId()),
-                            Clock.system()));
+            if(!skipExcludedUserName) {
+                dispatcher.dispatchDataChangeEvent(event.getTableId(),
+                        new LogMinerChangeRecordEmitter(
+                                partition,
+                                offsetContext,
+                                dmlEvent.getEventType(),
+                                dmlEvent.getDmlEntry().getOldValues(),
+                                dmlEvent.getDmlEntry().getNewValues(),
+                                getSchema().tableFor(event.getTableId()),
+                                Clock.system()));
+            }
         }
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
-        if (!transaction.getEvents().isEmpty()) {
+        if (!transaction.getEvents().isEmpty() && !skipExcludedUserName) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
         }
         else {
