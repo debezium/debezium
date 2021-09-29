@@ -17,6 +17,15 @@ import io.debezium.pipeline.spi.OffsetContext;
 public interface StreamingChangeEventSource<O extends OffsetContext> extends ChangeEventSource {
 
     /**
+     * Initializes the streaming source.
+     * Called before incremental snapshot init.
+     *
+     * @throws InterruptedException
+     */
+    default void init() throws InterruptedException {
+    }
+
+    /**
      * Executes this source. Implementations should regularly check via the given context if they should stop. If that's
      * the case, they should abort their processing and perform any clean-up needed, such as rolling back pending
      * transactions, releasing locks etc.

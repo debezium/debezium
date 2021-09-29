@@ -155,6 +155,7 @@ public class ChangeEventSourceCoordinator<O extends OffsetContext> {
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         LOGGER.info("Starting streaming");
+        streamingSource.init();
         incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(offsetContext));
         streamingSource.execute(context, offsetContext);
         LOGGER.info("Finished streaming");
