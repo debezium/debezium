@@ -91,3 +91,4 @@ Kate,Katerina Galieva
 pkgonan,민규 김
 jiabao.sun,Jiabao Sun
 indraraj,Indra Shukla
+dima-starosud,Dmytro Starosud
