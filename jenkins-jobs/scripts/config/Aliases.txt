@@ -85,3 +85,4 @@ chriscollingwood,Chris Collingwood
 jackey.zhang,Jackey Zhang
 gvaquez-ubi,Gilles Vaquez
 camile.sing,Camile Sing
+spicy-sauce,Yossi Shirizli
