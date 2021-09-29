@@ -161,6 +161,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         LOGGER.info("Starting streaming");
+        streamingSource.init();
         incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(offsetContext));
         streamingSource.execute(context, partition, offsetContext);
         LOGGER.info("Finished streaming");
