@@ -57,6 +57,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static Duration MIN_SLEEP_TIME = Duration.ZERO;
     protected final static Duration SLEEP_TIME_INCREMENT = Duration.ofMillis(200);
 
+    protected final static Duration ARCHIVE_LOG_ONLY_POLL_TIME = Duration.ofMillis(10_000);
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -258,6 +260,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "When set to `true`, the connector will only mine archive logs. There are circumstances where its advantageous to only " +
                     "mine archive logs and accept latency in event emission due to frequent revolving redo logs.");
 
+    public static final Field LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS = Field.create("log.mining.archive.log.only.scn.poll.interval.ms")
+            .withDisplayName("The interval in milliseconds to wait between polls when SCN is not yet in the archive logs")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(ARCHIVE_LOG_ONLY_POLL_TIME.toMillis())
+            .withDescription("The interval in milliseconds to wait between polls checking to see if the SCN is in the archive logs.");
+
     public static final Field LOB_ENABLED = Field.create("lob.enabled")
             .withDisplayName("Specifies whether the connector supports mining LOB fields and operations")
             .withType(Type.BOOLEAN)
@@ -352,7 +362,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_LOCATION,
-                    LOG_MINING_BUFFER_DROP_ON_STOP)
+                    LOG_MINING_BUFFER_DROP_ON_STOP,
+                    LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS)
             .create();
 
     /**
@@ -394,6 +405,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningSleepTimeIncrement;
     private final Duration logMiningTransactionRetention;
     private final boolean archiveLogOnlyMode;
+    private final Duration archiveLogOnlyScnPollTime;
     private final boolean lobEnabled;
     private final Set<String> logMiningUsernameExcludes;
     private final String logMiningArchiveDestinationName;
@@ -440,6 +452,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         this.logMiningBufferLocation = config.getString(LOG_MINING_BUFFER_LOCATION);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
+        this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
     }
 
     private static String toUpperCase(String property) {
@@ -995,6 +1008,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isArchiveLogOnlyMode() {
         return archiveLogOnlyMode;
+    }
+
+    /**
+     * @return the duration that archive log only will use to wait between polling scn availability
+     */
+    public Duration getArchiveLogOnlyScnPollTime() {
+        return archiveLogOnlyScnPollTime;
     }
 
     /**

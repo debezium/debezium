@@ -610,8 +610,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (showStartScnNotInArchiveLogs) {
                 LOGGER.warn("Starting SCN {} is not yet in archive logs, waiting for archive log switch.", startScn);
                 showStartScnNotInArchiveLogs = false;
-                pauseBetweenMiningSessions();
-                continue;
+                Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), clock).pause();
             }
         }
 

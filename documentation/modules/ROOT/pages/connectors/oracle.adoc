@@ -2243,6 +2243,11 @@ Set this option to `true` to force the connector to mine archive logs only.
 After you set the connector to mine only the archive logs, the latency between an operation being committed and the connector emitting an associated change event might increase.
 The degree of latency depends on how frequently the database is configured to archive online redo logs.
 
+|[[oracle-property-log-mining-archive-log-only-scn-poll-interval-ms]]<<oracle-property-log-mining-archive-log-only-scn-poll-interval-ms, `+log.mining.archive.log.only.scn.poll.interval.ms+`>>
+|`10000`
+|The number of milliseconds the connector will sleep in between polling to determine if the starting system change number is in the archive logs.
+If `log.mining.archive.log.only.mode` is not enabled, this setting is not used.
+
 |[[oracle-property-log-mining-transaction-retention-hours]]<<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>>
 |`0`
 |Positive integer value that specifies the number of hours to retain long running transactions between redo log switches.
