@@ -141,6 +141,7 @@ class PostgresDefaultValueConverter {
         result.put("serial", v -> Integer.parseInt(extractDefault(v, "0")));
         result.put("int8", v -> Long.parseLong(extractDefault(v, "0"))); // Sample values: `123`, `'9223372036854775807'::bigint`
         result.put("bigserial", v -> Long.parseLong(extractDefault(v, "0")));
+        result.put("smallserial", v -> Short.parseShort(extractDefault(v, "0")));
 
         result.put("json", v -> extractDefault(v, "{}")); // Sample value: '{}'::json
         result.put("jsonb", v -> extractDefault(v, "{}")); // Sample value: '{}'::jsonb
