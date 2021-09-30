@@ -49,6 +49,18 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- Override Quarkus default driver versions -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${version.mysql.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${version.postgresql.driver}</version>
+            </dependency>
+
             <!-- Debezium dependencies -->
             <dependency>
                 <groupId>io.debezium</groupId>
