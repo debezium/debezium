@@ -331,6 +331,7 @@ yangsanity
 Yilong Chang
 Yiming Liu
 Yoann Rodière
+Yossi Shirizli
 Yuan Zhang
 Zheng Wang
 Zoran Regvart

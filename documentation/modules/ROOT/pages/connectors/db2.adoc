@@ -1457,6 +1457,18 @@ After you set up the Db2 server, use the UDFs to control Db2 replication (ASN) w
 ----
 VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');
 ----
++ 
+This will return one of these:
++
+.. asncap is already running
+.. start +-->+ <COMMAND>
++
+In this case, run the retrieved <COMMAND> in the terminal, for example:
++
+[source,shell]
+----
+/database/config/db2inst1/sqllib/bin/asncap capture_schema=asncdc capture_server=SAMPLE &
+----
 
 . Put tables into capture mode. Invoke the following statement for each table that you want to put into capture. Replace `MYSCHEMA`  with the name of the schema that contains the table you want to put into capture mode. Likewise, replace `MYTABLE` with the name of the table to put into capture mode:
 +
