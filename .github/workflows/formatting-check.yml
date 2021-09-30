@@ -2,6 +2,8 @@ name: Formatting Check
 on:
   pull_request:
     branches: [ master ]
+    paths-ignore:
+      - '.github/**'
 jobs:
   build:
     runs-on: ubuntu-latest
