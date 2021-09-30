@@ -407,6 +407,12 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
         }
         else {
 
+            if (!getLastProcessedScn().isNull() && getLastProcessedScn().compareTo(endScn) < 0) {
+                // If the last processed SCN is before the endScn we need to use the last processed SCN as the
+                // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
+                endScn = getLastProcessedScn();
+            }
+
             // update offsets
             offsetContext.setScn(endScn);
             metrics.setOldestScn(endScn);
