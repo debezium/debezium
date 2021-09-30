@@ -3,6 +3,43 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 1.7.0.Final
+September 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12374879)
+
+### New features since 1.7.0.CR2
+
+* DBZ-UI - Provide list of configurations [DBZ-3960](https://issues.jboss.org/browse/DBZ-3960)
+
+
+### Breaking changes since 1.7.0.CR2
+
+* Cassandra UUID handling [DBZ-3885](https://issues.jboss.org/browse/DBZ-3885)
+
+
+### Fixes since 1.7.0.CR2
+
+* java.lang.RuntimeException: com.microsoft.sqlserver.jdbc.SQLServerException: The connection is closed [DBZ-3346](https://issues.jboss.org/browse/DBZ-3346)
+* Oracle connector unable to start in archive only mode [DBZ-3712](https://issues.jboss.org/browse/DBZ-3712)
+* DDL statement couldn't be parsed [DBZ-4026](https://issues.jboss.org/browse/DBZ-4026)
+* Question about handling Raw column types [DBZ-4037](https://issues.jboss.org/browse/DBZ-4037)
+* Fixing wrong log dir location in Kafka container image [DBZ-4048](https://issues.jboss.org/browse/DBZ-4048)
+* Incremental snapshotting of a table can be prematurely terminated after restart [DBZ-4057](https://issues.jboss.org/browse/DBZ-4057)
+* Documentation - Setting up Db2 - Step 10 (Start the ASN agent) is not accurate [DBZ-4044](https://issues.jboss.org/browse/DBZ-4044)
+* Debezium Server uses MySQL driver version as defined in Quarkus not in Debezium [DBZ-4049](https://issues.jboss.org/browse/DBZ-4049)
+* Events are missed with Oracle connector due to LGWR buffer not being flushed to redo logs [DBZ-4067](https://issues.jboss.org/browse/DBZ-4067)
+* Postgres JDBC Driver version causes connection issues on some cloud Postgres instances [DBZ-4060](https://issues.jboss.org/browse/DBZ-4060)
+
+
+### Other changes since 1.7.0.CR2
+
+* Oracle IncrementalSnapshotIT invalid table test fails [DBZ-4040](https://issues.jboss.org/browse/DBZ-4040)
+* Document how to enable schema for JSON messages [DBZ-4041](https://issues.jboss.org/browse/DBZ-4041)
+* Trigger contributor check action only when PR is opened [DBZ-4058](https://issues.jboss.org/browse/DBZ-4058)
+* Provide JMH benchmark for ChangeEventQueue [DBZ-4050](https://issues.jboss.org/browse/DBZ-4050)
+* Commit message action fails for multi-line commit messages [DBZ-4047](https://issues.jboss.org/browse/DBZ-4047)
+
+
+
 ## 1.7.0.CR2
 Spetember 23rd 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12374333)
 
@@ -39,7 +76,7 @@ None
 
 
 ## 1.7.0.CR1
-Spetember 16th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12373513)
+September 16th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12373513)
 
 ### New features since 1.7.0.Beta1
 
