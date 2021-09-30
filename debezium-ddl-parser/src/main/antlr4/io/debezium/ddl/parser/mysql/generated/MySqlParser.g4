@@ -357,6 +357,7 @@ columnDefinition
 columnConstraint
     : nullNotnull                                                   #nullColumnConstraint
     | DEFAULT defaultValue                                          #defaultColumnConstraint
+    | (VISIBLE | INVISIBLE)                                         #invisibleColumnConstraint
     | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                 #autoIncrementColumnConstraint
     | PRIMARY? KEY                                                  #primaryKeyColumnConstraint
     | UNIQUE KEY?                                                   #uniqueKeyColumnConstraint
@@ -415,7 +416,7 @@ indexColumnDefinition
     ;
 
 tableOption
-    : ENGINE '='? engineName                                        #tableOptionEngine
+    : ENGINE '='? engineName?                                       #tableOptionEngine
     | AUTO_INCREMENT '='? decimalLiteral                            #tableOptionAutoIncrement
     | AVG_ROW_LENGTH '='? decimalLiteral                            #tableOptionAverage
     | DEFAULT? (CHARACTER SET | CHARSET) '='? (charsetName|DEFAULT) #tableOptionCharset
@@ -443,9 +444,14 @@ tableOption
     | STATS_PERSISTENT '='? extBoolValue=(DEFAULT | '0' | '1')      #tableOptionPersistent
     | STATS_SAMPLE_PAGES '='? decimalLiteral                        #tableOptionSamplePage
     | TABLESPACE uid tablespaceStorage?                             #tableOptionTablespace
+    | TABLE_TYPE '=' tableType                                      #tableOptionTableType
     | tablespaceStorage                                             #tableOptionTablespace
     | TRANSACTIONAL '='? ('0' | '1')                                #tableOptionTransactional
     | UNION '='? '(' tables ')'                                     #tableOptionUnion
+    ;
+
+tableType
+    : MYSQL | ODBC
     ;
 
 tablespaceStorage
@@ -515,7 +521,7 @@ subpartitionDefinition
     ;
 
 partitionOption
-    : STORAGE? ENGINE '='? engineName                               #partitionOptionEngine
+    : DEFAULT? STORAGE? ENGINE '='? engineName                      #partitionOptionEngine
     | COMMENT '='? comment=STRING_LITERAL                           #partitionOptionComment
     | DATA DIRECTORY '='? dataDirectory=STRING_LITERAL              #partitionOptionDataDirectory
     | INDEX DIRECTORY '='? indexDirectory=STRING_LITERAL            #partitionOptionIndexDirectory
@@ -1505,9 +1511,17 @@ grantStatement
           (tlsNone=NONE | tlsOption (AND? tlsOption)* )
         )?
       (WITH (GRANT OPTION | userResourceOption)* )?
+      (AS userName WITH ROLE roleOption)?
     | GRANT uid (',' uid)*
       TO (userName | uid) (',' (userName | uid))*
       (WITH ADMIN OPTION)?
+    ;
+
+roleOption
+    : DEFAULT
+    | NONE
+    | ALL (EXCEPT userName (',' userName)*)?
+    | userName (',' userName)*
     ;
 
 grantProxy
@@ -1990,6 +2004,7 @@ engineName
     | TOKUDB
     | ID
     | STRING_LITERAL | REVERSE_QUOTE_ID
+    | CONNECT
     ;
 
 uuidSet
@@ -2044,7 +2059,7 @@ dottedId
 //    Literals
 
 decimalLiteral
-    : DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL
+    : DECIMAL_LITERAL | ZERO_DECIMAL | ONE_DECIMAL | TWO_DECIMAL | REAL_LITERAL
     ;
 
 fileSizeLiteral
@@ -2499,7 +2514,7 @@ keywordsCanBeId
     | CHANNEL | CHECKSUM | PAGE_CHECKSUM | CATALOG_NAME | CIPHER
     | CLASS_ORIGIN | CLIENT | CLONE_ADMIN | CLOSE | COALESCE | CODE
     | COLUMNS | COLUMN_FORMAT | COLUMN_NAME | COMMENT | COMMIT | COMPACT
-    | COMPLETION | COMPRESSED | COMPRESSION | CONCURRENT
+    | COMPLETION | COMPRESSED | COMPRESSION | CONCURRENT | CONNECT
     | CONNECTION | CONNECTION_ADMIN | CONSISTENT | CONSTRAINT_CATALOG | CONSTRAINT_NAME
     | CONSTRAINT_SCHEMA | CONTAINS | CONTEXT
     | CONTRIBUTORS | COPY | COUNT | CPU | CURRENT | CURSOR_NAME
@@ -2507,7 +2522,7 @@ keywordsCanBeId
     | DEFAULT_AUTH | DEFINER | DELAY_KEY_WRITE | DES_KEY_FILE | DIAGNOSTICS | DIRECTORY
     | DISABLE | DISCARD | DISK | DO | DUMPFILE | DUPLICATE
     | DYNAMIC | ENABLE | ENCRYPTION | ENCRYPTION_KEY_ADMIN | END | ENDS | ENGINE | ENGINES
-    | ERROR | ERRORS | ESCAPE | EVEN | EVENT | EVENTS | EVERY
+    | ERROR | ERRORS | ESCAPE | EVEN | EVENT | EVENTS | EVERY | EXCEPT
     | EXCHANGE | EXCLUSIVE | EXPIRE | EXPORT | EXTENDED | EXTENT_SIZE | FAILED_LOGIN_ATTEMPTS | FAST | FAULTS
     | FIELDS | FILE_BLOCK_SIZE | FILTER | FIREWALL_ADMIN | FIREWALL_USER | FIRST | FIXED | FLUSH
     | FOLLOWS | FOUND | FULL | FUNCTION | GENERAL | GLOBAL | GRANTS | GROUP | GROUP_CONCAT
@@ -2529,7 +2544,7 @@ keywordsCanBeId
     | MAX_USER_CONNECTIONS | MEDIUM | MEMBER | MEMORY | MERGE | MESSAGE_TEXT
     | MID | MIGRATE
     | MIN | MIN_ROWS | MODE | MODIFY | MUTEX | MYSQL | MYSQL_ERRNO | NAME | NAMES
-    | NCHAR | NDB_STORED_USER | NEVER | NEXT | NO | NODEGROUP | NONE | NUMBER | OFFLINE | OFFSET
+    | NCHAR | NDB_STORED_USER | NEVER | NEXT | NO | NODEGROUP | NONE | NUMBER | ODBC | OFFLINE | OFFSET
     | OF | OJ | OLD_PASSWORD | ONE | ONLINE | ONLY | OPEN | OPTIMIZER_COSTS
     | OPTIONAL | OPTIONS | ORDER | OWNER | PACK_KEYS | PAGE | PARSER | PARTIAL
     | PARTITIONING | PARTITIONS | PASSWORD | PASSWORD_LOCK_TIME | PERSIST_RO_VARIABLES_ADMIN | PHASE | PLUGINS

@@ -49,7 +49,7 @@ to encode the changes in either https://github.com/google/protobuf[Protobuf] for
 
 [TIP]
 ====
-For simplicity, {prodname} also provides a Docker image based on a vanilla https://github.com/debezium/docker-images/tree/master/postgres/9.6[PostgreSQL server image]
+For simplicity, {prodname} also provides a container image based on a vanilla https://github.com/debezium/docker-images/tree/master/postgres/9.6[PostgreSQL server image]
 on top of which it compiles and installs the plug-ins.
 ====
 
@@ -82,7 +82,7 @@ More information about the logical decoding and output plug-ins can be found at:
 At the current installation example, the https://github.com/eulerto/wal2json[wal2json] output plug-in for logical decoding is used.
 The wal2json output plug-in produces a JSON object per transaction. All of the new/old tuples are available in the JSON object.
 The plug-in *compilation and installation* is performed by executing the related commands extracted from the
-https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile[{prodname} docker image file].
+https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile[{prodname} Dockerfile].
 
 Before executing the commands, make sure that the user has the privileges to write the `wal2json` library at the PostgreSQL `_lib_`
 directory (at the test environment, the directory is: `/usr/pgsql-9.6/lib/`).

@@ -27,6 +27,7 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.function.Predicates;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
@@ -54,19 +55,20 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final boolean nullToastedValuesMissingFromOld;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
-    public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection,
+    public PostgresChangeRecordEmitter(Partition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
+                                       PostgresConnection connection, TableId tableId,
                                        ReplicationMessage message) {
-        super(offset, clock);
+        super(partition, offset, clock);
 
         this.schema = schema;
         this.message = message;
         this.connectorConfig = connectorConfig;
         this.connection = connection;
 
-        this.tableId = PostgresSchema.parse(message.getTable());
+        this.tableId = tableId;
         this.unchangedToastColumnMarkerMissing = !connectorConfig.plugin().hasUnchangedToastColumnMarker();
         this.nullToastedValuesMissingFromOld = !connectorConfig.plugin().sendsNullToastedValuesInOld();
-        Objects.requireNonNull(tableId);
+        Objects.requireNonNull(this.tableId);
     }
 
     @Override
@@ -94,7 +96,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     @Override
     protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
+        receiver.changeRecord(getPartition(), tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
     }
 
     @Override
@@ -132,12 +134,12 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     private DataCollectionSchema synchronizeTableSchema(DataCollectionSchema tableSchema) {
-        final boolean metadataInMessage = message.hasTypeMetadata();
-        final TableId tableId = (TableId) tableSchema.id();
-        final Table table = schema.tableFor(tableId);
         if (getOperation() == Operation.DELETE || !message.shouldSchemaBeSynchronized()) {
             return tableSchema;
         }
+        final boolean metadataInMessage = message.hasTypeMetadata();
+        final TableId tableId = (TableId) tableSchema.id();
+        final Table table = schema.tableFor(tableId);
         final List<ReplicationMessage.Column> columns = message.getNewTupleList();
         // check if we need to refresh our local schema due to DB schema changes for this table
         if (schemaChanged(columns, table, metadataInMessage)) {

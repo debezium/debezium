@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.document.Array;
+import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
 import io.debezium.schema.DataCollectionId;
@@ -44,20 +45,11 @@ public class ExecuteSnapshot implements Signal.Action {
 
     @Override
     public boolean arrived(Payload signalPayload) throws InterruptedException {
-        final Array dataCollectionsArray = signalPayload.data.getArray("data-collections");
-        if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
-            LOGGER.warn(
-                    "Execute snapshot signal '{}' has arrived but the requested field '{}' is missing from data or is empty",
-                    signalPayload, FIELD_DATA_COLLECTIONS);
+        final List<String> dataCollections = getDataCollections(signalPayload.data);
+        if (dataCollections == null) {
             return false;
         }
-        final List<String> dataCollections = dataCollectionsArray.streamValues().map(v -> v.asString().trim())
-                .collect(Collectors.toList());
-        final String typeStr = signalPayload.data.getString(FIELD_TYPE);
-        SnapshotType type = SnapshotType.INCREMENTAL;
-        if (typeStr != null) {
-            type = SnapshotType.valueOf(typeStr);
-        }
+        SnapshotType type = getSnapshotType(signalPayload.data);
         LOGGER.info("Requested '{}' snapshot of data collections '{}'", type, dataCollections);
         switch (type) {
             case INCREMENTAL:
@@ -65,6 +57,28 @@ public class ExecuteSnapshot implements Signal.Action {
                 break;
         }
         return true;
+    }
+
+    public static SnapshotType getSnapshotType(Document data) {
+        final String typeStr = data.getString(FIELD_TYPE);
+        SnapshotType type = SnapshotType.INCREMENTAL;
+        if (typeStr != null) {
+            type = SnapshotType.valueOf(typeStr);
+        }
+        return type;
+    }
+
+    public static List<String> getDataCollections(Document data) {
+        final Array dataCollectionsArray = data.getArray(FIELD_DATA_COLLECTIONS);
+        if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
+            LOGGER.warn(
+                    "Execute snapshot signal '{}' has arrived but the requested field '{}' is missing from data or is empty",
+                    data, FIELD_DATA_COLLECTIONS);
+            return null;
+        }
+        return dataCollectionsArray.streamValues()
+                .map(v -> v.asString().trim())
+                .collect(Collectors.toList());
     }
 
 }

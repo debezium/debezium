@@ -82,9 +82,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext)
             throws InterruptedException {
 
-        LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext,
-                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)), this,
-                streamingMetrics);
+        LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
+                partition, offsetContext,
+                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)),
+                this, streamingMetrics);
 
         try (OracleConnection xsConnection = new OracleConnection(jdbcConnection.config(), () -> getClass().getClassLoader())) {
             try {
@@ -105,7 +106,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 while (context.isRunning()) {
                     LOGGER.trace("Receiving LCR");
                     xsOut.receiveLCRCallback(eventHandler, XStreamOut.DEFAULT_MODE);
-                    dispatcher.dispatchHeartbeatEvent(offsetContext);
+                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 }
             }
             finally {

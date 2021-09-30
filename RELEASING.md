@@ -10,27 +10,47 @@ Refer to [Automated Release](#automated-release) below for the details.
 The following describes the individual steps of the release process,
 which may be useful for updating the automated pipeline or in case a manual release is necessary.
 
+## Configure Debezium versions in Jira
+
+Start off from the [__Releases__](https://issues.redhat.com/projects/DBZ?selectedItem=com.atlassian.jira.jira-projects-plugin%3Arelease-page&status=released-unreleased)
+page of the Debezium Jira project.
+
+First, rename the current version (e.g. `1.7-next`) to the new version that
+will be released (e.g. `1.7.0.Beta1`). All issues previously assigned to the old
+_next_ version are now set to the version of the release.  
+Then create a new `next` version, e.g. `1.7-next`.
+
 ## Verify Jira issues
 
-All issues planned for this release must be resolved. If not, they have to either be re-planned to another release or rejected. Use JQL query to find offending issues
+All issues planned for this release must be resolved.
+If not, they have to either be re-planned to another release or rejected.
+Use JQL query to find offending issues
 ```
 project=DBZ AND fixVersion=<VERSION> AND status NOT IN ('Resolved', 'Closed')
 ```
 
+or navigate to the specific release on the [_Releases_](https://issues.redhat.com/projects/DBZ?selectedItem=com.atlassian.jira.jira-projects-plugin%3Arelease-page&status=released-unreleased)
+page. 
+
 Also make sure that each issue is assigned to a component ("mysql-connector" etc.).
 
-## Update the changelog
+## Update the changelog and breaking changes
 
-The change log should be updated with all relevant info on new features, bug fixes and breaking changes.
-It currently exists in two versions, one in the main code repo and one on the website:
+Create two branches for pull requests to add changelogs (and release announcement) for this
+main repository and the [`debezium.github.io` repository](https://github.com/debezium/debezium.github.io).
+The change log should be updated with all relevant info on new features, bug fixes and breaking changes and
+can be generated with the `Release Notes` tool in JIRA on the version's detail page.
 
 * https://github.com/debezium/debezium/blob/master/CHANGELOG.md
-* https://github.com/debezium/debezium.github.io/blob/develop/docs/releases.asciidoc
+* https://github.com/debezium/debezium.github.io/blob/develop/_data/releases/1.7/1.7.0.Beta1.yml
+* https://github.com/debezium/debezium.github.io/blob/develop/releases/1.7/release-notes.asciidoc
+* https://github.com/debezium/debezium.github.io/blob/develop/_data/releases/1.7/series.yml
 
 JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
-Search for them using [this query](https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the implications and required steps for upgrading in the changelog on the website.
+Search for them using [this query](https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the
+implications and required steps for upgrading in the changelog on the website.
 
-## Update antora.yml
+## Update antora.yml and series.yml
 
 The `antora.yml` file in the `master` branch always used the version _master_.
 During the release process, this file's `version` attribute should be changed to reference the correct major/minor version number.
@@ -44,6 +64,15 @@ to
 ```
 version: '2.1'
 ```
+
+`series.yml` holds metadata for the `Tested Versions` section on the Debezium [Releases](https://debezium.io/releases/)
+site and should be updated when dependencies were updated with the new release.
+
+
+# Manual Release
+
+You can skip this section to [__Automated Release__](#automated-release) when
+using the Jenkins CI/CD Release pipeline for the rest of the release process.
 
 ## Start with the correct branch
 
@@ -63,20 +92,6 @@ This should report:
     nothing to commit, working directory clean
 
 Only if this is the case can you proceed with the release.
-
-## Rebase and merge development docs branch
-
-The documentation of the current development version is published from the `development_docs` branch,
-which always is based off of the latest development release tag.
-
-The branch may contain critical documentation updates for the development release documentation,
-which couldn't wait until the next release.
-In this case rebase the branch to the current master and merge it:
-
-    $ git checkout development_docs
-    $ git rebase master
-    $ git checkout master
-    $ git merge development_docs
 
 ## Update versions and tag
 
@@ -255,6 +270,7 @@ Then, create a pull request with your changes and wait for a committer to approv
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
 
+
 # Automated Release
 
 There are few manual steps to be completed before the execution:
@@ -265,5 +281,5 @@ There are few manual steps to be completed before the execution:
 
 To perform a release automatically, invoke the Jenkins job on the release infrastructure. Two parameters are requested:
 
-* `RELEASE_VERSION` - a version to be released in format x.y.z
-* `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT
+* `RELEASE_VERSION` - a version to be released in format x.y.z (e.g. `1.7.0.Beta1`)
+* `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT (e.g. `1.7.0-SNAPSHOT`)

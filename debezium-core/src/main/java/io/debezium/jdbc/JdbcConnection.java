@@ -76,6 +76,7 @@ public class JdbcConnection implements AutoCloseable {
     private static final char STATEMENT_DELIMITER = ';';
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
+    private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
     private final Map<String, PreparedStatement> statementCache = new BoundedConcurrentHashMap<>(STATEMENT_CACHE_CAPACITY, 16, Eviction.LIRS,
             new EvictionListener<String, PreparedStatement>() {
 
@@ -309,6 +310,8 @@ public class JdbcConnection implements AutoCloseable {
     private final Configuration config;
     private final ConnectionFactory factory;
     private final Operations initialOps;
+    private final String openingQuoteCharacter;
+    private final String closingQuoteCharacter;
     private volatile Connection conn;
 
     /**
@@ -317,8 +320,8 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory) {
-        this(config, connectionFactory, (Operations) null);
+    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
+        this(config, connectionFactory, null, null, null, openingQuoteCharacter, closingQuoteCharacter);
     }
 
     /**
@@ -327,20 +330,9 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier) {
-        this(config, connectionFactory, null, null, classLoaderSupplier);
-    }
-
-    /**
-     * Create a new instance with the given configuration and connection factory, and specify the operations that should be
-     * run against each newly-established connection.
-     *
-     * @param config the configuration; may not be null
-     * @param connectionFactory the connection factory; may not be null
-     * @param initialOperations the initial operations that should be run on each new connection; may be null
-     */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations) {
-        this(config, connectionFactory, initialOperations, null);
+    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String openingQuoteCharacter,
+                          String closingQuoteCharacter) {
+        this(config, connectionFactory, null, null, classLoaderSupplier, openingQuoteCharacter, closingQuoteCharacter);
     }
 
     /**
@@ -353,8 +345,8 @@ public class JdbcConnection implements AutoCloseable {
      * @param adapter the function that can be called to update the configuration with defaults
      */
     protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Consumer<Configuration.Builder> adapter) {
-        this(config, connectionFactory, initialOperations, adapter, null);
+                             Consumer<Configuration.Builder> adapter, String openingQuotingChar, String closingQuotingChar) {
+        this(config, connectionFactory, initialOperations, adapter, null, openingQuotingChar, closingQuotingChar);
     }
 
     /**
@@ -366,12 +358,16 @@ public class JdbcConnection implements AutoCloseable {
      * @param initialOperations the initial operations that should be run on each new connection; may be null
      * @param adapter the function that can be called to update the configuration with defaults
      * @param classLoaderSupplier class loader supplier
+     * @param openingQuotingChar the opening quoting character
+     * @param closingQuotingChar the closing quoting character
      */
     protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Consumer<Configuration.Builder> adapter, Supplier<ClassLoader> classLoaderSupplier) {
+                             Consumer<Configuration.Builder> adapter, Supplier<ClassLoader> classLoaderSupplier, String openingQuotingChar, String closingQuotingChar) {
         this.config = adapter == null ? config : config.edit().apply(adapter).build();
         this.factory = classLoaderSupplier == null ? connectionFactory : new ConnectionFactoryDecorator(connectionFactory, classLoaderSupplier);
         this.initialOps = initialOperations;
+        this.openingQuoteCharacter = openingQuotingChar;
+        this.closingQuoteCharacter = closingQuotingChar;
         this.conn = null;
     }
 
@@ -705,6 +701,19 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Executes a SQL query, preparing it if encountering it for the first time.
+     *
+     * @param preparedQueryString the prepared query string
+     * @return this object for chaining methods together
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     */
+    public JdbcConnection prepareQuery(String preparedQueryString) throws SQLException {
+        final PreparedStatement statement = createPreparedStatement(preparedQueryString);
+        statement.executeQuery();
+        return this;
+    }
+
+    /**
      * Execute a SQL prepared query.
      *
      * @param preparedQueryString the prepared query string
@@ -761,6 +770,7 @@ public class JdbcConnection implements AutoCloseable {
         if (preparer != null) {
             preparer.accept(statement);
         }
+        LOGGER.trace("Executing statement '{}'", stmt);
         statement.execute();
         return this;
     }
@@ -866,6 +876,10 @@ public class JdbcConnection implements AutoCloseable {
             return false;
         }
         return !conn.isClosed();
+    }
+
+    public synchronized boolean isValid() throws SQLException {
+        return isConnected() && conn.isValid(CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC);
     }
 
     public synchronized Connection connection() throws SQLException {
@@ -1482,5 +1496,12 @@ public class JdbcConnection implements AutoCloseable {
      */
     public String quotedTableIdString(TableId tableId) {
         return tableId.toDoubleQuotedString();
+    }
+
+    /**
+     * Prepares qualified column names with appropriate quote character as per the specific database's rules.
+     */
+    public String quotedColumnIdString(String columnName) {
+        return openingQuoteCharacter + columnName + closingQuoteCharacter;
     }
 }

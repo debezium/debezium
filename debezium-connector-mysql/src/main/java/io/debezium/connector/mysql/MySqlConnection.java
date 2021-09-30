@@ -49,6 +49,7 @@ public class MySqlConnection extends JdbcConnection {
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
+    private static final String QUOTED_CHARACTER = "`";
 
     protected static final String URL_PATTERN = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
 
@@ -63,7 +64,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param fieldReader binary or text protocol based readers
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MysqlFieldReader fieldReader) {
-        super(connectionConfig.config(), connectionConfig.factory());
+        super(connectionConfig.config(), connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = connectionConfig;
         this.mysqlFieldReader = fieldReader;
     }
@@ -477,6 +478,8 @@ public class MySqlConnection extends JdbcConnection {
     public static class MySqlConnectionConfiguration {
 
         protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
+        protected static final String JDBC_PROPERTY_CONNECTION_TIME_ZONE = "connectionTimeZone";
+        protected static final String JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE = "serverTimezone";
 
         private final Configuration jdbcConfig;
         private final ConnectionFactory factory;
@@ -508,9 +511,30 @@ public class MySqlConnection extends JdbcConnection {
                 LOGGER.warn("'{}' is set to 'true'. This setting is not recommended and can result in timezone issues.", JDBC_PROPERTY_LEGACY_DATETIME);
             }
 
+            jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, determineConnectionTimeZone(dbConfig));
+
             this.jdbcConfig = jdbcConfigBuilder.build();
             String driverClassName = this.jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
             factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader());
+        }
+
+        private static String determineConnectionTimeZone(final Configuration dbConfig) {
+            // Debezium by default expects timezoned data delivered in server timezone
+            String connectionTimeZone = dbConfig.getString(JDBC_PROPERTY_CONNECTION_TIME_ZONE);
+
+            if (connectionTimeZone != null) {
+                return connectionTimeZone;
+            }
+
+            // fall back to legacy property
+            final String serverTimeZone = dbConfig.getString(JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE);
+            if (serverTimeZone != null) {
+                LOGGER.warn("Database configuration option '{}' is set but is obsolete, please use '{}' instead", JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE,
+                        JDBC_PROPERTY_CONNECTION_TIME_ZONE);
+                connectionTimeZone = serverTimeZone;
+            }
+
+            return connectionTimeZone != null ? connectionTimeZone : "SERVER";
         }
 
         public Configuration config() {

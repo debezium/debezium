@@ -85,4 +85,10 @@ chriscollingwood,Chris Collingwood
 jackey.zhang,Jackey Zhang
 gvaquez-ubi,Gilles Vaquez
 camile.sing,Camile Sing
+camilesing,Camile Sing
 spicy-sauce,Yossi Shirizli
+bep7520,Blake Peno
+Kate,Katerina Galieva
+pkgonan,민규 김
+jiabao.sun,Jiabao Sun
+indraraj,Indra Shukla

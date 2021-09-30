@@ -583,7 +583,7 @@ create_index
     : CREATE (UNIQUE | BITMAP)? INDEX index_name
        ON (cluster_index_clause | table_index_clause | bitmap_join_index_clause)
        UNUSABLE?
-       ';'
+       ';'?
     ;
 
 cluster_index_clause
@@ -685,7 +685,7 @@ on_comp_partitioned_table
 on_comp_partitioned_clause
     : PARTITION partition_name?
         (segment_attributes_clause | key_compression)*
-        UNUSABLE index_subpartition_clause?
+        UNUSABLE? index_subpartition_clause?
     ;
 
 index_subpartition_clause
@@ -1980,7 +1980,9 @@ hash_subparts_by_quantity
     ;
 
 range_values_clause
-    : VALUES LESS THAN '(' literal (',' literal)* ')'
+    : VALUES LESS THAN
+        ('(' literal (',' literal)* ')' |
+            '(' TIMESTAMP literal (',' TIMESTAMP literal)* ')')
     ;
 
 list_values_clause
@@ -2032,7 +2034,46 @@ table_compression
               | (QUERY | ARCHIVE) (LOW | HIGH)?
               )
         )?
+    | ROW STORE COMPRESS (BASIC | ADVANCED)?
+    | COLUMN STORE COMPRESS (FOR (QUERY | ARCHIVE) (LOW | HIGH)?)? ((NO)? ROW LEVEL LOCKING)?
     | NOCOMPRESS
+    ;
+
+inmemory_table_clause
+    : INMEMORY inmemory_attributes inmemory_columns_clause
+    | NO INMEMORY inmemory_columns_clause
+    ;
+
+inmemory_attributes
+    : inmemory_memcompress? inmemory_priority? inmemory_distribute? inmemory_duplicate?
+    ;
+
+inmemory_memcompress
+    : MEMCOMPRESS FOR (DML | (QUERY|CAPACITY) (LOW|HIGH)?)
+    | NO MEMCOMPRESS
+    ;
+
+inmemory_priority
+    : PRIORITY (NONE|LOW|MEDIUM|HIGH|CRITICAL)
+    ;
+
+inmemory_distribute
+    : DISTRIBUTE
+        (AUTO | BY (ROWID RANGE|PARTITION|SUBPARTITION))?
+        (FOR SERVICE (DEFAULT|ALL|service_name|NONE))?
+    ;
+
+inmemory_duplicate
+    : DUPLICATE ALL?
+    | NO DUPLICATE
+    ;
+
+inmemory_columns_clause
+    : inmemory_column_clause*
+    ;
+
+inmemory_column_clause
+    : (INMEMORY inmemory_memcompress?|NO INMEMORY) '(' column_name (',' column_name)* ')'
     ;
 
 physical_attributes_clause
@@ -2056,6 +2097,7 @@ storage_clause
          | OPTIMAL (size_clause | NULL_ )
          | BUFFER_POOL (KEEP | RECYCLE | DEFAULT)
          | FLASH_CACHE (KEEP | NONE | DEFAULT)
+         | CELL_FLASH_CACHE (KEEP | NONE | DEFAULT)
          | ENCRYPT
          )+
        ')'
@@ -2068,12 +2110,35 @@ deferred_segment_creation
 segment_attributes_clause
     : ( physical_attributes_clause
       | TABLESPACE tablespace_name=id_expression
+      // Added to support an unusual, undocumented syntax with Oracle 19
+      | table_compression
       | logging_clause
       )+
     ;
 
+external_table_clause
+    : '('? (TYPE access_driver_type)? external_table_data_props? ')'? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
+    ;
+
+access_driver_type
+    : regular_id
+    ;
+
+external_table_data_props
+    : DEFAULT DIRECTORY quoted_string
+    | LOCATION
+    ;
+
 physical_properties
-    : deferred_segment_creation?  segment_attributes_clause table_compression?
+    : deferred_segment_creation? inmemory_table_clause? segment_attributes_clause table_compression?
+    | deferred_segment_creation? (
+        ORGANIZATION (
+            (HEAP segment_attributes_clause? heap_org_table_clause) |
+            (INDEX segment_attributes_clause? index_org_table_clause) |
+            (EXTERNAL external_table_clause)) |
+        EXTERNAL PARTITION ATTRIBUTES external_table_clause (REJECT LIMIT)?
+        )
+    | CLUSTER cluster_name '(' column_name (',' column_name)* ')'
     ;
 
 row_movement_clause
@@ -2138,11 +2203,11 @@ upgrade_table_clause
     ;
     
 truncate_table
-    : TRUNCATE TABLE tableview_name PURGE? SEMICOLON
+    : TRUNCATE TABLE tableview_name PURGE? ((DROP ALL?|REUSE) STORAGE)? CASCADE? SEMICOLON
     ;
 
 drop_table
-    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? SEMICOLON
+    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? SEMICOLON
     ;
 
 drop_view
@@ -2535,6 +2600,7 @@ alter_table_partitioning
     | modify_table_partition
     | split_table_partition
     | truncate_table_partition
+    | exchange_table_partition
     ;
 
 add_table_partition
@@ -2562,7 +2628,25 @@ split_table_partition
     ;
 
 truncate_table_partition
-    : TRUNCATE PARTITION partition_name
+    : TRUNCATE (partition_extended_names|subpartition_extended_names)
+    ;
+
+exchange_table_partition
+    : EXCHANGE PARTITION partition_name WITH TABLE tableview_name
+            ((INCLUDING|EXCLUDING) INDEXES)?
+            ((WITH | WITHOUT) VALIDATION)?
+    ;
+
+partition_extended_names
+    : (PARTITION|PARTITIONS) partition_name
+    | (PARTITION|PARTITIONS) '(' partition_name (',' partition_name)* ')'
+    | (PARTITION|PARTITIONS) FOR '('? partition_key_value (',' partition_key_value)* ')'?
+    ;
+
+subpartition_extended_names
+    : (SUBPARTITION|SUBPARTITIONS) partition_name (UPDATE INDEXES)?
+    | (SUBPARTITION|SUBPARTITIONS) '(' partition_name (',' partition_name)* ')'
+    | (SUBPARTITION|SUBPARTITIONS) FOR '('? subpartition_key_value (',' subpartition_key_value)* ')'?
     ;
 
 alter_iot_clauses
@@ -2622,6 +2706,10 @@ exceptions_clause
 
 move_table_clause
     : MOVE ONLINE? segment_attributes_clause? table_compression? index_org_table_clause? ((lob_storage_clause | varray_col_properties)+)? parallel_clause?
+    ;
+
+heap_org_table_clause
+    : table_compression?
     ;
 
 index_org_table_clause
@@ -2863,6 +2951,7 @@ substitutable_column_clause
 
 partition_name
     : regular_id
+    | DELIMITED_ID
     ;
 
 supplemental_logging_props
@@ -2898,7 +2987,7 @@ drop_constraint_clause
     ;
 
 drop_primary_key_or_unique_or_generic_clause
-    : (PRIMARY KEY | UNIQUE '(' column_name (',' column_name)* ')') CASCADE? (KEEP | DROP)?
+    : (PRIMARY KEY | UNIQUE '(' column_name (',' column_name)* ')') CASCADE? ((KEEP | DROP) INDEX)? ONLINE?
     | CONSTRAINT constraint_name CASCADE?
     ;
 
@@ -4311,6 +4400,10 @@ collection_name
     ;
 
 link_name
+    : identifier
+    ;
+
+service_name
     : identifier
     ;
 
@@ -6612,6 +6705,7 @@ non_reserved_keywords_pre12c
     | TIMEOUT
     | TIMES
     | TIMESTAMP
+    | TIMEZONE
     | TIMEZONE_ABBR
     | TIMEZONE_HOUR
     | TIMEZONE_MINUTE

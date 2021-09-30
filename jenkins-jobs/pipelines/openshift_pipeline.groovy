@@ -47,7 +47,55 @@ pipeline {
             }
         }
 
+        stage('Checkout - Upstream Apicurio') {
+            when {
+                expression { !params.PRODUCT_BUILD && params.TEST_APICURIO_REGISTRY }
+            }
+            steps {
+                error('Upstream Apicurio testing is not supported by the pipeline')
+            }
+        }
 
+        stage('Checkout - Downstream Service registry') {
+            when {
+                expression { params.PRODUCT_BUILD && params.TEST_APICURIO_REGISTRY }
+            }
+            steps {
+                script {
+                    env.APIC_RESOURCES = "${env.WORKSPACE}/apicurio/install/"
+                }
+                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', filter: 'apicurio-registry-install-examples.zip', selector: lastSuccessful()
+                unzip zipFile: 'apicurio-registry-install-examples.zip', dir: 'apicurio'
+            }
+        }
+
+        stage('Configure - Apicurio') {
+            when {
+                expression { params.TEST_APICURIO_REGISTRY }
+            }
+            steps {
+                script {
+                    env.OCP_PROJECT_REGISTRY = "debezium-${BUILD_NUMBER}-registry"
+                }
+                withCredentials([
+                        usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
+                        usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
+
+                ]) {
+                    sh '''
+                    set -x            
+                    oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
+                    oc new-project ${OCP_PROJECT_REGISTRY}
+                    '''
+                    sh '''
+                    set -x
+                    sed -i "s/namespace: apicurio-registry-operator-namespace /namespace: ${OCP_PROJECT_REGISTRY}/" ${APIC_RESOURCES}/install.yaml
+                    oc delete -f ${APIC_RESOURCES} -n ${OCP_PROJECT_REGISTRY} --ignore-not-found
+                    oc create -f ${APIC_RESOURCES} -n ${OCP_PROJECT_REGISTRY}
+                    '''
+                }
+            }
+        }
 
         stage('Configure') {
             steps {
@@ -59,6 +107,8 @@ pipeline {
                     env.OCP_PROJECT_MONGO = "debezium-${BUILD_NUMBER}-mongo"
                     env.OCP_PROJECT_DB2 = "debezium-${BUILD_NUMBER}-db2"
                     env.TEST_PROPERTY_VERSION_KAFKA = env.TEST_VERSION_KAFKA ? "-Dversion.kafka=${env.TEST_VERSION_KAFKA}" : ""
+                    env.TEST_PROPERTY_TAGS = env.TEST_TAGS ? "-Dgroups=${env.TEST_TAGS}" : ""
+                    env.TEST_PROPERTY_TAGS_EXLUDE = env.TEST_TAGS_EXCLUDE ? "-DexcludeGroups=${env.TEST_TAGS_EXCLUDE }" : ""
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
@@ -78,6 +128,7 @@ pipeline {
                     sh '''
                     set -x
                     sed -i "s/namespace: .*/namespace: ${OCP_PROJECT_DEBEZIUM}/" strimzi/install/cluster-operator/*RoleBinding*.yaml
+                    oc delete -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM} --ignore-not-found
                     oc create -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM}
                     '''
                     sh '''
@@ -137,7 +188,9 @@ pipeline {
                     sh '''
                     set -x
                     cd ${WORKSPACE}/debezium
-                    mvn install -pl debezium-testing/debezium-testing-system -PopenshiftITs \\
+                    mvn install -pl debezium-testing/debezium-testing-system -PsystemITs \\
+                    -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
+                    -Dtest.docker.image.rhel.kafka=${DBZ_CONNECT_RHEL_IMAGE} \\
                     -Dtest.ocp.username="${OCP_USERNAME}" \\
                     -Dtest.ocp.password="${OCP_PASSWORD}" \\
                     -Dtest.ocp.url="${OCP_URL}" \\
@@ -147,11 +200,11 @@ pipeline {
                     -Dtest.ocp.project.sqlserver="${OCP_PROJECT_SQLSERVER}"  \\
                     -Dtest.ocp.project.mongo="${OCP_PROJECT_MONGO}" \\
                     -Dtest.ocp.project.db2="${OCP_PROJECT_DB2}" \\
-                    -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.ocp.pull.secret.paths="${SECRET_PATH}" \\
                     -Dtest.wait.scale="${TEST_WAIT_SCALE}" \\
-                    -Dtest.avro.serialisation="${TEST_APICURIO_REGISTRY}" \\
-                    ${TEST_PROPERTY_VERSION_KAFKA}
+                    ${TEST_PROPERTY_VERSION_KAFKA} \\
+                    ${TEST_PROPERTY_TAGS} \\
+                    ${TEST_PROPERTY_TAGS_EXCLUDE}
                     '''
                 }
             }

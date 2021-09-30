@@ -8,6 +8,8 @@ package io.debezium.connector.oracle;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -17,10 +19,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlChanges;
+import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.util.IoUtil;
 
 /**
@@ -36,7 +41,8 @@ public class OracleDdlParserTest {
 
     @Before
     public void setUp() {
-        parser = new OracleDdlParser(true, null, null);
+        final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
+        parser = new OracleDdlParser(true, null, config.getTableFilters().dataCollectionFilter());
         tables = new Tables();
     }
 
@@ -44,8 +50,10 @@ public class OracleDdlParserTest {
     public void shouldParseCreateAndAlterTable() throws Exception {
         final String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
         Objects.requireNonNull(createStatement);
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
         parser.parse(createStatement, tables);
-        Table table = tables.forTable(new TableId(null, null, TABLE_NAME));
+        Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
 
         assertThat(tables.size()).isEqualTo(1);
         assertThat(table.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11", "COL12",
@@ -83,7 +91,7 @@ public class OracleDdlParserTest {
 
         String ddl = "alter table " + TABLE_NAME + " add (col21 varchar2(20), col22 number(19));";
         parser.parse(ddl, tables);
-        Table alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
+        Table alteredTable = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
         assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
                 "COL12", "COL13",
                 "COL21",
@@ -102,7 +110,7 @@ public class OracleDdlParserTest {
         }
         ddl = "alter table " + TABLE_NAME + " add (col23 varchar2(20) not null);";
         parser.parse(ddl, tables);
-        alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
+        alteredTable = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
         assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
                 "COL12", "COL13",
                 "COL21",
@@ -111,7 +119,7 @@ public class OracleDdlParserTest {
 
         ddl = "alter table " + TABLE_NAME + " drop (col22, col23);";
         parser.parse(ddl, tables);
-        alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
+        alteredTable = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
         assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
                 "COL12", "COL13",
                 "COL21");
@@ -167,6 +175,81 @@ public class OracleDdlParserTest {
 
         assertThat(table.columns()).hasSize(4);
         assertThat(table.isPrimaryKeyColumn("ID"));
+    }
+
+    @Test
+    public void testParsingMultiStatementTableMetadataResult() throws Exception {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("IDENTITYDB");
+
+        String MULTI_STATEMENT_DDL = "  CREATE TABLE \"IDENTITYDB\".\"CHANGE_NUMBERS\"\n" +
+                "   (    \"CHANGE_NO\" NUMBER(*,0) NOT NULL ENABLE,\n" +
+                "    \"SOURCE_INFO\" VARCHAR2(128) NOT NULL ENABLE,\n" +
+                "    \"CHANGED_TIME\" TIMESTAMP (6) DEFAULT SYSDATE,\n" +
+                "    \"ENTITY_TYPE\" VARCHAR2(36) NOT NULL ENABLE,\n" +
+                "    \"ORGANIZATIONID\" VARCHAR2(36),\n" +
+                "    \"PROCESSED\" NUMBER(1,0) DEFAULT 1 NOT NULL ENABLE,\n" +
+                "    \"TRACKING_ID\" VARCHAR2(256) NOT NULL ENABLE,\n" +
+                "    \"EXPIRY_TIME\" TIMESTAMP (6),\n" +
+                "    \"ACTOR\" VARCHAR2(36),\n" +
+                "    \"ENTITY_ID\" VARCHAR2(36)\n" +
+                "   )\n" +
+                "  PARTITION BY RANGE (\"EXPIRY_TIME\") INTERVAL (NUMTODSINTERVAL(7, 'DAY'))\n" +
+                "  SUBPARTITION BY HASH (\"CHANGE_NO\")\n" +
+                "  SUBPARTITIONS 16\n" +
+                " (PARTITION \"SYS_P44414\"  VALUES LESS THAN (TIMESTAMP' 2021-07-06 00:00:00')\n" +
+                " ( SUBPARTITION \"SYS_SUBP44398\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44399\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44400\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44401\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44402\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44403\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44404\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44405\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44406\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44407\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44408\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44409\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44410\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44411\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44412\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44413\" ) );\n" +
+                "  CREATE UNIQUE INDEX \"IDENTITYDB\".\"IDX_CHANGENUMBERS_PK\" ON \"IDENTITYDB\".\"CHANGE_NUMBERS\" (\"CHANGE_NO\", \"EXPIRY_TIME\")\n" +
+                "   LOCAL\n" +
+                " (PARTITION \"SYS_P44414\" NOCOMPRESS\n" +
+                " ( SUBPARTITION \"SYS_SUBP44398\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44399\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44400\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44401\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44402\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44403\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44404\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44405\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44406\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44407\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44408\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44409\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44410\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44411\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44412\" ,\n" +
+                "  SUBPARTITION \"SYS_SUBP44413\" ) );\n" +
+                "ALTER TABLE \"IDENTITYDB\".\"CHANGE_NUMBERS\" ADD CONSTRAINT \"IDX_CHANGENUMBERS_PK\" PRIMARY KEY (\"CHANGE_NO\", \"EXPIRY_TIME\")\n" +
+                "  USING INDEX \"IDENTITYDB\".\"IDX_CHANGENUMBERS_PK\"  ENABLE NOVALIDATE;";
+
+        parser.parse(MULTI_STATEMENT_DDL, tables);
+        final DdlChanges changes = parser.getDdlChanges();
+
+        final List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
+        changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
+            events.forEach(event -> eventTypes.add(event.type()));
+        });
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE, DdlParserListener.EventType.ALTER_TABLE);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "IDENTITYDB", "CHANGE_NUMBERS"));
+        List<String> columnNames = table.retrieveColumnNames();
+        assertThat(columnNames).contains("CHANGE_NO", "SOURCE_INFO", "CHANGED_TIME", "ENTITY_TYPE", "ORGANIZATIONID", "PROCESSED", "TRACKING_ID", "EXPIRY_TIME", "ACTOR",
+                "ENTITY_ID");
+        assertThat(table.primaryKeyColumnNames()).containsExactly("CHANGE_NO", "EXPIRY_TIME");
     }
 
     private void testColumn(@NotNull Table table, @NotNull String name, boolean isOptional,

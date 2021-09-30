@@ -2,6 +2,8 @@ name: Build SQL Server Connector
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'support/checkstyle/**'
       - 'support/ide-configs/**'
@@ -19,6 +21,8 @@ on:
       - 'pom.xml'
       - '.github/workflows/sqlserver-workflow.yml'
   pull_request:
+    branches:
+      - master
     paths:
       - 'support/checkstyle/**'
       - 'support/ide-configs/**'
@@ -49,4 +53,4 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Check changes in Debezium Connector SQL Server
-        run: mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Ddebezium.test.records.waittime=10

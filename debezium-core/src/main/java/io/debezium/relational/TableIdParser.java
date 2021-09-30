@@ -22,15 +22,22 @@ import io.debezium.text.TokenStream.Tokens;
 class TableIdParser {
 
     private static final char SEPARATOR = '.';
+    private static final String SINGLE_QUOTES = "''";
+    private static final String DOUBLE_QUOTES = "\"\"";
+    private static final String BACKTICKS = "``";
 
     public static List<String> parse(String identifier) {
         TokenStream stream = new TokenStream(identifier, new TableIdTokenizer(identifier), true);
         stream.start();
 
-        List<String> parts = new ArrayList<>();
+        // at max three parts - catalog.schema.table
+        List<String> parts = new ArrayList<>(3);
 
         while (stream.hasNext()) {
-            parts.add(stream.consume().replaceAll("''", "'").replaceAll("\"\"", "\"").replaceAll("``", "`"));
+            parts.add(stream.consume()
+                    .replace(SINGLE_QUOTES, "'")
+                    .replace(DOUBLE_QUOTES, "\"")
+                    .replace(BACKTICKS, "`"));
         }
 
         return parts;

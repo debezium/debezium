@@ -29,6 +29,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Threads;
 
 /**
@@ -62,6 +63,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final AtomicReference<ReplicationStream> replicationStream = new AtomicReference<>();
     private final Snapshotter snapshotter;
     private final DelayStrategy pauseNoMessage;
+    private final ElapsedTimeStrategy connectionProbeTimer;
 
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
@@ -83,6 +85,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
         this.replicationConnection = replicationConnection;
+        this.connectionProbeTimer = ElapsedTimeStrategy.constant(Clock.system(), connectorConfig.statusUpdateInterval());
+
     }
 
     @Override
@@ -150,7 +154,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 stream = this.replicationStream.get();
                 stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
-            processMessages(context, offsetContext, stream);
+            processMessages(context, partition, offsetContext, stream);
         }
         catch (Throwable e) {
             errorHandler.setProducerThrowable(e);
@@ -181,7 +185,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void processMessages(ChangeEventSourceContext context, PostgresOffsetContext offsetContext, final ReplicationStream stream)
+    private void processMessages(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext, final ReplicationStream stream)
             throws SQLException, InterruptedException {
         LOGGER.info("Processing messages");
         int noMessageIterations = 0;
@@ -202,7 +206,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         // Don't skip on BEGIN message as it would flush LSN for the whole transaction
                         // too early
                         if (message.getOperation() == Operation.COMMIT) {
-                            commitMessage(offsetContext, lsn);
+                            commitMessage(partition, offsetContext, lsn);
                         }
                         return;
                     }
@@ -210,11 +214,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
                             taskContext.getSlotXmin(connection));
                     if (message.getOperation() == Operation.BEGIN) {
-                        dispatcher.dispatchTransactionStartedEvent(Long.toString(message.getTransactionId()), offsetContext);
+                        dispatcher.dispatchTransactionStartedEvent(partition, Long.toString(message.getTransactionId()), offsetContext);
                     }
                     else if (message.getOperation() == Operation.COMMIT) {
-                        commitMessage(offsetContext, lsn);
-                        dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+                        commitMessage(partition, offsetContext, lsn);
+                        dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
                     }
                     maybeWarnAboutGrowingWalBacklog(true);
                 }
@@ -232,23 +236,27 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
                             tableId,
                             new PostgresChangeRecordEmitter(
+                                    partition,
                                     offsetContext,
                                     clock,
                                     connectorConfig,
                                     schema,
                                     connection,
+                                    tableId,
                                     message));
 
                     maybeWarnAboutGrowingWalBacklog(dispatched);
                 }
             });
 
+            probeConnectionIfNeeded();
+
             if (receivedMessage) {
                 noMessageIterations = 0;
             }
             else {
                 if (offsetContext.hasCompletelyProcessedPosition()) {
-                    dispatcher.dispatchHeartbeatEvent(offsetContext);
+                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 }
                 noMessageIterations++;
                 if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
@@ -289,15 +297,24 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     pauseNoMessage.sleepWhen(true);
                 }
             }
+
+            probeConnectionIfNeeded();
         }
         LOGGER.info("WAL resume position '{}' discovered", resumeLsn.get());
     }
 
-    private void commitMessage(PostgresOffsetContext offsetContext, final Lsn lsn) throws SQLException, InterruptedException {
+    private void probeConnectionIfNeeded() throws SQLException {
+        if (connectionProbeTimer.hasElapsed()) {
+            connection.prepareQuery("SELECT 1");
+            connection.commit();
+        }
+    }
+
+    private void commitMessage(PostgresPartition partition, PostgresOffsetContext offsetContext, final Lsn lsn) throws SQLException, InterruptedException {
         lastCompletelyProcessedLsn = lsn;
-        offsetContext.updateCommitPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
+        offsetContext.updateCommitPosition(lsn, lastCompletelyProcessedLsn);
         maybeWarnAboutGrowingWalBacklog(false);
-        dispatcher.dispatchHeartbeatEvent(offsetContext);
+        dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
     }
 
     /**

@@ -6,13 +6,11 @@
 package io.debezium.connector.base;
 
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Queue;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -27,7 +25,6 @@ import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
-import io.debezium.util.Metronome;
 import io.debezium.util.ObjectSizeCalculator;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -66,11 +63,10 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final int maxBatchSize;
     private final int maxQueueSize;
     private final long maxQueueSizeInBytes;
-    private final BlockingQueue<T> queue;
-    private final Metronome metronome;
+    private final Queue<T> queue;
     private final Supplier<PreviousContext> loggingContextSupplier;
-    private final AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
-    private final Map<T, Long> objectMap = new ConcurrentHashMap<>();
+    private final Queue<Long> sizeInBytesQueue;
+    private long currentQueueSizeInBytes = 0;
 
     // Sometimes it is necessary to update the record before it is delivered depending on the content
     // of the following record. In that cases the easiest solution is to provide a single cell buffer
@@ -90,9 +86,9 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
-        this.queue = new LinkedBlockingDeque<>(maxQueueSize);
-        this.metronome = Metronome.sleeper(pollInterval, Clock.SYSTEM);
+        this.queue = new ArrayDeque<>(maxQueueSize);
         this.loggingContextSupplier = loggingContextSupplier;
+        this.sizeInBytesQueue = new ArrayDeque<>(maxQueueSize);
         this.maxQueueSizeInBytes = maxQueueSizeInBytes;
         this.buffering = buffering;
     }
@@ -199,19 +195,28 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Enqueuing source record '{}'", record);
         }
-        // Waiting for queue to add more record.
-        while (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes.get() > maxQueueSizeInBytes) {
-            Thread.sleep(pollInterval.toMillis());
-        }
-        // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
-        if (maxQueueSizeInBytes > 0) {
-            long messageSize = ObjectSizeCalculator.getObjectSize(record);
-            objectMap.put(record, messageSize);
-            currentQueueSizeInBytes.addAndGet(messageSize);
-        }
 
-        // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
-        queue.put(record);
+        synchronized (this) {
+            while (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
+                // notify poll() to drain queue
+                this.notify();
+                // queue size or queue sizeInBytes threshold reached, so wait a bit
+                this.wait(pollInterval.toMillis());
+            }
+
+            queue.add(record);
+            // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
+            if (maxQueueSizeInBytes > 0) {
+                long messageSize = ObjectSizeCalculator.getObjectSize(record);
+                sizeInBytesQueue.add(messageSize);
+                currentQueueSizeInBytes += messageSize;
+            }
+
+            if (queue.size() >= maxBatchSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
+                // notify poll() to start draining queue and do not wait
+                this.notify();
+            }
+        }
     }
 
     /**
@@ -227,29 +232,53 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
         try {
             LOGGER.debug("polling records...");
-            List<T> records = new ArrayList<>();
             final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
-            while (!timeout.expired() && queue.drainTo(records, maxBatchSize) == 0) {
-                throwProducerExceptionIfPresent();
+            synchronized (this) {
+                List<T> records = new ArrayList<>(Math.min(maxBatchSize, queue.size()));
+                while (drainRecords(records, maxBatchSize - records.size()) < maxBatchSize
+                        && (maxQueueSizeInBytes == 0 || currentQueueSizeInBytes < maxQueueSizeInBytes)
+                        && !timeout.expired()) {
+                    throwProducerExceptionIfPresent();
 
-                LOGGER.debug("no records available yet, sleeping a bit...");
-                // no records yet, so wait a bit
-                metronome.pause();
-                LOGGER.debug("checking for more records...");
-            }
-            if (maxQueueSizeInBytes > 0 && records.size() > 0) {
-                records.parallelStream().forEach((record) -> {
-                    if (objectMap.containsKey(record)) {
-                        currentQueueSizeInBytes.addAndGet(-objectMap.get(record));
-                        objectMap.remove(record);
+                    LOGGER.debug("no records available yet, sleeping a bit...");
+                    long remainingTimeoutMills = timeout.remaining().toMillis();
+                    if (remainingTimeoutMills > 0) {
+                        // notify doEnqueue() to resume processing (if anything is on wait())
+                        this.notify();
+                        // no records yet, so wait a bit
+                        this.wait(remainingTimeoutMills);
                     }
-                });
+                    LOGGER.debug("checking for more records...");
+                }
+                // notify doEnqueue() to resume processing
+                this.notify();
+                return records;
             }
-            return records;
         }
         finally {
             previousContext.restore();
         }
+    }
+
+    private long drainRecords(List<T> records, int maxElements) {
+        int queueSize = queue.size();
+        if (queueSize == 0) {
+            return records.size();
+        }
+        int recordsToDrain = Math.min(queueSize, maxElements);
+        T[] drainedRecords = (T[]) new Object[recordsToDrain];
+        for (int i = 0; i < recordsToDrain; i++) {
+            T record = queue.poll();
+            drainedRecords[i] = record;
+        }
+        if (maxQueueSizeInBytes > 0) {
+            for (int i = 0; i < recordsToDrain; i++) {
+                long objectSize = sizeInBytesQueue.poll();
+                currentQueueSizeInBytes -= objectSize;
+            }
+        }
+        records.addAll(Arrays.asList(drainedRecords));
+        return records.size();
     }
 
     public void producerException(final RuntimeException producerException) {
@@ -269,7 +298,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     @Override
     public int remainingCapacity() {
-        return queue.remainingCapacity();
+        return maxQueueSize - queue.size();
     }
 
     @Override
@@ -279,6 +308,6 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     @Override
     public long currentQueueSizeInBytes() {
-        return currentQueueSizeInBytes.get();
+        return currentQueueSizeInBytes;
     }
 }

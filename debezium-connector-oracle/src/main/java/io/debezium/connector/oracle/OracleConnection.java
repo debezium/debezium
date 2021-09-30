@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -37,6 +38,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
 
@@ -64,8 +66,10 @@ public class OracleConnection extends JdbcConnection {
      */
     private final OracleDatabaseVersion databaseVersion;
 
+    private static final String QUOTED_CHARACTER = "\"";
+
     public OracleConnection(Configuration config, Supplier<ClassLoader> classLoaderSupplier) {
-        super(config, resolveConnectionFactory(config), classLoaderSupplier);
+        super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER, QUOTED_CHARACTER);
 
         this.databaseVersion = resolveOracleDatabaseVersion();
         LOGGER.info("Database Version: {}", databaseVersion.getBanner());
@@ -342,6 +346,41 @@ public class OracleConnection extends JdbcConnection {
     }
 
     /**
+     * Get the maximum system change number in the archive logs.
+     *
+     * @param archiveLogDestinationName the archive log destination name to be queried, can be {@code null}.
+     * @return the maximum system change number in the archive logs
+     * @throws SQLException if a database exception occurred
+     * @throws DebeziumException if the maximum archive log system change number could not be found
+     */
+    public Scn getMaxArchiveLogScn(String archiveLogDestinationName) throws SQLException {
+        String query = "SELECT MAX(NEXT_CHANGE#) FROM V$ARCHIVED_LOG " +
+                "WHERE NAME IS NOT NULL " +
+                "AND ARCHIVED = 'YES' " +
+                "AND STATUS = 'A' " +
+                "AND DEST_ID IN (" +
+                "SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS " +
+                "WHERE STATUS = 'VALID' " +
+                "AND TYPE = 'LOCAL' ";
+
+        if (Strings.isNullOrEmpty(archiveLogDestinationName)) {
+            query += "AND ROWNUM = 1";
+        }
+        else {
+            query += "AND UPPER(DEST_NAME) = '" + archiveLogDestinationName + "'";
+        }
+
+        query += ")";
+
+        return queryAndMap(query, (rs) -> {
+            if (rs.next()) {
+                return Scn.valueOf(rs.getString(1)).subtract(Scn.valueOf(1));
+            }
+            throw new DebeziumException("Could not obtain maximum archive log scn.");
+        });
+    }
+
+    /**
      * Generate a given table's DDL metadata.
      *
      * @param tableId table identifier, should never be {@code null}
@@ -353,6 +392,9 @@ public class OracleConnection extends JdbcConnection {
             // The storage and segment attributes aren't necessary
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
+            // In case DDL is returned as multiple DDL statements, this allows the parser to parse each separately.
+            // This is only critical during streaming as during snapshot the table structure is built from JDBC driver queries.
+            executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', true); end;");
             return queryAndMap("SELECT dbms_metadata.get_ddl('TABLE','" + tableId.table() + "','" + tableId.schema() + "') FROM DUAL", rs -> {
                 if (!rs.next()) {
                     throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
@@ -365,6 +407,71 @@ public class OracleConnection extends JdbcConnection {
         finally {
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");
         }
+    }
+
+    /**
+     * Get the current connection's session statistic by name.
+     *
+     * @param name the name of the statistic to be fetched, must not be {@code null}
+     * @return the session statistic value, never {@code null}
+     * @throws SQLException if an exception occurred obtaining the session statistic value
+     */
+    public Long getSessionStatisticByName(String name) throws SQLException {
+        return queryAndMap("SELECT VALUE FROM v$statname n, v$mystat m WHERE n.name='" + name +
+                "' AND n.statistic#=m.statistic#", rs -> rs.next() ? rs.getLong(1) : 0L);
+    }
+
+    /**
+     * Returns whether the given table exists or not.
+     *
+     * @param tableName table name, should not be {@code null}
+     * @return true if the table exists, false if it does not
+     * @throws SQLException if a database exception occurred
+     */
+    public boolean isTableExists(String tableName) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM USER_TABLES WHERE TABLE_NAME = '" + tableName + "'",
+                rs -> rs.next() && rs.getLong(1) > 0);
+    }
+
+    /**
+     * Returns whether the given table is empty or not.
+     *
+     * @param tableName table name, should not be {@code null}
+     * @return true if the table has no records, false otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    public boolean isTableEmpty(String tableName) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> rs.next() && rs.getLong(1) == 0);
+    }
+
+    public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
+        return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
+    @Override
+    public String buildSelectWithRowLimits(TableId tableId,
+                                           int limit,
+                                           String projection,
+                                           Optional<String> condition,
+                                           String orderBy) {
+        final TableId table = new TableId(null, tableId.schema(), tableId.table());
+        final StringBuilder sql = new StringBuilder("SELECT ");
+        sql
+                .append(projection)
+                .append(" FROM ");
+        sql.append(quotedTableIdString(table));
+        if (condition.isPresent()) {
+            sql
+                    .append(" WHERE ")
+                    .append(condition.get());
+        }
+        sql
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" FETCH NEXT ")
+                .append(limit)
+                .append(" ROWS ONLY");
+        return sql.toString();
     }
 
     public static String connectionString(Configuration config) {

@@ -18,8 +18,8 @@
 
         <!-- Database drivers, should align with databases in debezium-build-parent -->
         <version.postgresql.driver>42.2.14</version.postgresql.driver>
-        <version.mysql.driver>8.0.21</version.mysql.driver>
-        <version.mysql.binlog>0.25.1</version.mysql.binlog>
+        <version.mysql.driver>8.0.26</version.mysql.driver>
+        <version.mysql.binlog>0.25.3</version.mysql.binlog>
         <version.mongo.driver>4.2.1</version.mongo.driver>
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.1.0.0</version.oracle.driver>
@@ -39,6 +39,10 @@
         <version.grpc>1.33.0</version.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
+
+        <!-- Oracle dependencies -->
+        <version.infinispan>12.1.6.Final</version.infinispan>
+        <version.infinispan.protostream>4.4.1.Final</version.infinispan.protostream>
 
         <!-- Tracing -->
         <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
@@ -84,7 +88,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>${version.jackson}</version>
+                <version>${version.jackson.databind}</version>
                 <optional>true</optional>
             </dependency>
             <dependency>
@@ -142,11 +146,6 @@
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
                 <version>${version.kafka}</version>
                 <classifier>test</classifier>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-test</artifactId>
-                <version>${version.curator}</version>
             </dependency>
             <dependency>
                 <groupId>io.confluent</groupId>
@@ -431,6 +430,19 @@
                 <groupId>javax.xml.bind</groupId>
                 <artifactId>jaxb-api</artifactId>
                 <version>${version.jaxb}</version>
+            </dependency>
+
+            <!-- Oracle dependencies -->
+            <dependency>
+                <groupId>org.infinispan</groupId>
+                <artifactId>infinispan-core</artifactId>
+                <version>${version.infinispan}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.infinispan.protostream</groupId>
+                <artifactId>protostream-processor</artifactId>
+                <version>${version.infinispan.protostream}</version>
+                <scope>provided</scope>
             </dependency>
 
             <!-- Testing utilities -->

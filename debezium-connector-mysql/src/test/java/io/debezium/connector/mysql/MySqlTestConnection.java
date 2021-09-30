@@ -117,7 +117,7 @@ public class MySqlTestConnection extends JdbcConnection {
      * @param config the configuration; may not be null
      */
     public MySqlTestConnection(Configuration config) {
-        super(config, FACTORY, null, MySqlTestConnection::addDefaults);
+        super(config, FACTORY, null, MySqlTestConnection::addDefaults, "`", "`");
     }
 
     public MySqlVersion getMySqlVersion() {

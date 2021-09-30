@@ -231,6 +231,8 @@ public class KafkaDatabaseHistoryTest {
                 "\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"DROP TABLE foo;\"}");
         final ProducerRecord<String, String> invalidSQL = new ProducerRecord<>(topicName, PARTITION_NO, null,
                 "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"xxxDROP TABLE foo;\"}");
+        final ProducerRecord<String, String> invalidSQLProcedure = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"CREATE DEFINER=`myUser`@`%` PROCEDURE `tableAFetchCount`(        in p_uniqueID int        )BEGINselect count(*) into @propCount from tableA  where uniqueID = p_uniqueID;    select count(*) into @completeCount from tableA  where uniqueID = p_uniqueID and isComplete = 1;       select  uniqueID,   @propCount as propCount, @completeCount as completeCount, @completeCount/ @propCount * 100 as completePct        where uniqueID = p_uniqueID;END\"}");
 
         final Configuration intruderConfig = Configuration.create()
                 .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
@@ -246,6 +248,7 @@ public class KafkaDatabaseHistoryTest {
             producer.send(invalidJSONRecord1).get();
             producer.send(invalidJSONRecord2).get();
             producer.send(invalidSQL).get();
+            producer.send(invalidSQLProcedure).get();
         }
 
         testHistoryTopicContent(topicName, true);

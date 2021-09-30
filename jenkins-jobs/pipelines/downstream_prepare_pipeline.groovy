@@ -43,7 +43,8 @@ pipeline {
                         --dir="${STRZ_RESOURCES}"                                   \\
                         --images="${STRZ_IMAGES}"                                   \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
-                        --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
+                        --dest-login="${QUAY_USERNAME}"                             \\
+                        --dest-pass="${QUAY_PASSWORD}"                              \\
                         --deployment-desc="${STRZ_RESOURCES_DEPLOYMENT_DESCRIPTOR}" \\
                         --img-output="${WORKSPACE}/published_images.txt"            
                     '''
@@ -69,7 +70,8 @@ pipeline {
                         --libs="${DBZ_EXTRA_LIBS}"                                  \\
                         --images="${STRZ_IMAGES}"                                   \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
-                        --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
+                        --dest-login="${QUAY_USERNAME}"                             \\
+                        --dest-pass="${QUAY_PASSWORD}"                              \\
                         --img-output="${WORKSPACE}/published_images_dbz.txt"
                     '''
                 }

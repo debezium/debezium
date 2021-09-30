@@ -7,8 +7,8 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.util.List;
 
-import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -20,12 +20,18 @@ import io.debezium.schema.DataCollectionId;
  */
 public interface IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
 
-    void closeWindow(String id, EventDispatcher<T> dispatcher, OffsetContext offsetContext) throws InterruptedException;
+    void closeWindow(Partition partition, String id, OffsetContext offsetContext) throws InterruptedException;
 
-    void processMessage(DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext);
+    void processMessage(Partition partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException;
 
     void init(OffsetContext offsetContext);
 
     void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, OffsetContext offsetContext)
             throws InterruptedException;
+
+    default void processHeartbeat(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    }
+
+    default void processFilteredEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    }
 }

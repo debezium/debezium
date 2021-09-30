@@ -40,6 +40,8 @@ CREATE TABLE char_table (c1 CHAR VARYING(10), c2 CHARACTER VARYING(10), c3 NCHAR
 CREATE TABLE generated_persistent(id int NOT NULL AUTO_INCREMENT, ip_hash char(64) AS (SHA2(CONCAT(`token`, COALESCE(`ip`, "")), 256)) PERSISTENT, persistent int, PRIMARY KEY (`id`), UNIQUE KEY `token_and_ip_hash` (`ip_hash`)) ENGINE=InnoDB;
 create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));
 CREATE TABLE `tblSRCHjob_desc` (`description_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT, `description` mediumtext NOT NULL, PRIMARY KEY (`description_id`)) ENGINE=TokuDB AUTO_INCREMENT=4095997820 DEFAULT CHARSET=utf8mb4 ROW_FORMAT=TOKUDB_QUICKLZ;
+create table invisible_column_test(id int, col1 int INVISIBLE);
+create table visible_column_test(id int, col1 int VISIBLE);
 
 CREATE TABLE table_items (id INT, purchased DATE)
     PARTITION BY RANGE( YEAR(purchased) )
@@ -66,6 +68,19 @@ CREATE TABLE table_items_with_subpartitions (id INT, purchased DATE)
             SUBPARTITION s5
         )
     );
+
+CREATE TABLE positions_rollover (
+    id bigint(20) NOT NULL AUTO_INCREMENT,
+    time datetime NOT NULL,
+    partition_index int(10) unsigned NOT NULL DEFAULT 0,
+    PRIMARY KEY (id,partition_index),
+    KEY time (time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+PARTITION BY LIST (partition_index) (
+    PARTITION positions_rollover_partition VALUES IN (0) ENGINE = InnoDB,
+    PARTITION default_positions_rollover_partition DEFAULT ENGINE = InnoDB
+);
+
 CREATE TABLE `tab_with_json_value` (
    `col0` JSON NOT NULL,
    `col1` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
@@ -80,6 +95,14 @@ CREATE TABLE `tab_with_json_value` (
    `col4` JSON NOT NULL,
    PRIMARY KEY (`col1`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin ROW_FORMAT = COMPRESSED;
+
+CREATE TABLE CustomerTable (
+    CustomerID varchar(5),
+    CompanyName varchar(40),
+    ContactName varchar(30),
+    Address varchar(60),
+    Phone varchar(24)
+ ) ENGINE = CONNECT TABLE_TYPE = ODBC;
 #end
 #begin
 -- Rename table

@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -27,13 +29,14 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
 
-    private static final int ROW_COUNT = 1_000;
-    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 2;
+    protected static final int ROW_COUNT = 1_000;
+    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 3;
 
     protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
             .toAbsolutePath();
@@ -49,6 +52,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected abstract String signalTableName();
 
     protected abstract Configuration.Builder config();
+
+    protected String tableDataCollectionId() {
+        return tableName();
+    }
 
     protected void populateTable(JdbcConnection connection) throws SQLException {
         connection.setAutoCommit(false);
@@ -113,27 +120,46 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return "pk";
     }
 
-    protected void sendAdHocSnapshotSignal() throws SQLException {
+    protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
+        final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
+                .map(x -> '"' + x + '"')
+                .collect(Collectors.joining(", "));
         try (final JdbcConnection connection = databaseConnection()) {
-            connection.execute(
-                    String.format(
-                            "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"%s\"]}')",
-                            signalTableName(), tableName()));
+            String query = String.format(
+                    "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
+                    signalTableName(), dataCollectionIdsList);
+            logger.info("Sending signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send signal", e);
         }
     }
 
+    protected void sendAdHocSnapshotSignal() throws SQLException {
+        sendAdHocSnapshotSignal(tableDataCollectionId());
+    }
+
+    protected void startConnector(DebeziumEngine.CompletionCallback callback) {
+        startConnector(Function.identity(), callback);
+    }
+
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
+        startConnector(custConfig, loggingCompletion());
+    }
+
+    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig, DebeziumEngine.CompletionCallback callback) {
         final Configuration config = custConfig.apply(config()).build();
-        start(connectorClass(), config);
+        start(connectorClass(), config, callback);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
     }
 
     protected void startConnector() {
-        startConnector(Function.identity());
+        startConnector(Function.identity(), loggingCompletion());
     }
 
     protected void waitForConnectorToStart() {
@@ -148,6 +174,22 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector();
 
         sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void invalidTablesInTheList() throws Exception {
+        Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal("invalid1", tableDataCollectionId(), "invalid2");
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
@@ -220,7 +262,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -286,7 +328,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 

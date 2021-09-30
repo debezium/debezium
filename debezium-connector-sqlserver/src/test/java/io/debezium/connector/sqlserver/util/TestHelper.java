@@ -39,7 +39,6 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.FileDatabaseHistory;
-import io.debezium.util.Clock;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -95,8 +94,7 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration adminJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .withDefault(JdbcConfiguration.DATABASE, "master")
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
@@ -105,8 +103,7 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
@@ -114,11 +111,7 @@ public class TestHelper {
                 .build();
     }
 
-    /**
-     * Returns a default configuration suitable for most test cases. Can be amended/overridden in individual tests as
-     * needed.
-     */
-    public static Configuration.Builder defaultConfig() {
+    public static Configuration.Builder defaultConnectorConfig() {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
 
@@ -129,6 +122,23 @@ public class TestHelper {
                 .with(SqlServerConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
+    }
+
+    /**
+     * Returns a default connector configuration suitable for most test cases. Can be amended/overridden
+     * in individual tests as needed.
+     */
+    public static Configuration.Builder defaultConfig() {
+        return defaultConnectorConfig()
+                .with(SqlServerConnectorConfig.DATABASE_NAME.name(), TEST_DATABASE);
+    }
+
+    /**
+     * Returns a default configuration for connectors in multi-partition mode.
+     */
+    public static Configuration.Builder defaultMultiPartitionConfig() {
+        return defaultConnectorConfig()
+                .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), TEST_DATABASE);
     }
 
     public static void createTestDatabase() {
@@ -210,13 +220,20 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(TestHelper.adminJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null));
+        return new SqlServerConnection(TestHelper.adminJdbcConfig(), SourceTimestampMode.getDefaultMode(),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                Collections.emptySet(), true);
     }
 
     public static SqlServerConnection testConnection() {
-        return new SqlServerConnection(TestHelper.defaultJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null));
+        Configuration config = defaultJdbcConfig()
+                .edit()
+                .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + TEST_DATABASE + "]")
+                .build();
+
+        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                Collections.emptySet(), true);
     }
 
     /**
@@ -386,7 +403,7 @@ public class TestHelper {
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100))
-                    .until(() -> connection.getMaxLsn().isAvailable());
+                    .until(() -> connection.getMaxLsn(TEST_DATABASE).isAvailable());
         }
         catch (ConditionTimeoutException e) {
             throw new IllegalArgumentException("A max LSN was not available", e);
@@ -417,19 +434,19 @@ public class TestHelper {
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn().isAvailable()) {
+                        if (!connection.getMaxLsn(TEST_DATABASE).isAvailable()) {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.listOfChangeTables()) {
+                        for (SqlServerChangeTable ct : connection.listOfChangeTables(TEST_DATABASE)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith("dbo_" + connection.getNameOfChangeTable(tableName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn();
+                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE);
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer);
+                                    connection.getChangesForTables(TEST_DATABASE, tables, minLsn, maxLsn, consumer);
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {
@@ -472,19 +489,19 @@ public class TestHelper {
                     .atMost(30, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn().isAvailable()) {
+                        if (!connection.getMaxLsn(TEST_DATABASE).isAvailable()) {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.listOfChangeTables()) {
+                        for (SqlServerChangeTable ct : connection.listOfChangeTables(TEST_DATABASE)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith(connection.getNameOfChangeTable(captureInstanceName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn();
+                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE);
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer);
+                                    connection.getChangesForTables(TEST_DATABASE, tables, minLsn, maxLsn, consumer);
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {

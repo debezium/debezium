@@ -5,6 +5,7 @@
 = {prodname} connector for SQL Server
 
 :context: sqlserver
+:mbean-name: sql_server
 ifdef::community[]
 
 :toc:
@@ -984,6 +985,13 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 === Transaction metadata
 
 {prodname} can generate events that represent transaction boundaries and that enrich data change event messages.
+
+[NOTE]
+.Limits on when {prodname} receives transaction metadata
+====
+{prodname} registers and receives metadata only for transactions that occur after you deploy the connector.
+Metadata for transactions that occur before you deploy the connector is not available.
+====
 
 Database transactions are represented by a statement block that is enclosed between the `BEGIN` and `END` keywords.
 {prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
@@ -1974,11 +1982,11 @@ The following configuration properties are _required_ unless a default value is 
 |Description
 
 |[[sqlserver-property-name]]<<sqlserver-property-name, `+name+`>>
-|
+|No default
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
 |[[sqlserver-property-connector-class]]<<sqlserver-property-connector-class, `+connector.class+`>>
-|
+|No default
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.sqlserver.SqlServerConnector` for the SQL Server connector.
 
 |[[sqlserver-property-tasks-max]]<<sqlserver-property-tasks-max, `+tasks.max+`>>
@@ -1986,7 +1994,7 @@ The following configuration properties are _required_ unless a default value is 
 |The maximum number of tasks that should be created for this connector. The SQL Server connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
 |[[sqlserver-property-database-hostname]]<<sqlserver-property-database-hostname, `+database.hostname+`>>
-|
+|No default
 |IP address or hostname of the SQL Server database server.
 
 |[[sqlserver-property-database-port]]<<sqlserver-property-database-port, `+database.port+`>>
@@ -1994,30 +2002,43 @@ The following configuration properties are _required_ unless a default value is 
 |Integer port number of the SQL Server database server.
 
 |[[sqlserver-property-database-user]]<<sqlserver-property-database-user, `+database.user+`>>
-|
+|No default
 |Username to use when connecting to the SQL Server database server.
 
 |[[sqlserver-property-database-password]]<<sqlserver-property-database-password, `+database.password+`>>
-|
+|No default
 |Password to use when connecting to the SQL Server database server.
 
 |[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbname+`>>
-|
+|No default
 |The name of the SQL Server database from which to stream the changes
+Must not be used with `database.names`.
+
+|[[sqlserver-property-database-names]]<<sqlserver-property-database-names, `+database.names+`>>
+|No default
+|The comma-separated list of the SQL Server database names from which to stream the changes.
+Currently, only one database name is supported. Must not be used with `database.dbname`.
+
+This option is *experimental* and must not be used in production. Using it will make the behavior of the connector
+incompatible with the default configuration with no upgrade or downgrade path:
+
+* The connector will use different keys for its committed offset messages.
+* The SQL statements used in `snapshot.select.statement.overrides` will have to use the database name
+  as part of the fully-qualified table name.
 
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
-|
+|No default
 |Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
-Only alphanumeric characters, hyphens and underscores must be used.
+Only alphanumeric characters, hyphens, dots and underscores must be used.
 
 |[[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list, `+table.include.list+`>>
-|
+|No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables that you want {prodname} to capture; any table that is not included in `table.include.list` is excluded from capture. Each identifier is of the form _schemaName_._tableName_.
 By default, the connector captures all non-system tables for the designated schemas.
 Must not be used with `table.exclude.list`.
 
 |[[sqlserver-property-table-exclude-list]]<<sqlserver-property-table-exclude-list, `+table.exclude.list+`>>
-|
+|No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for the tables that you want to exclude from being captured; {prodname} captures all tables that are not included in `table.exclude.list`.
 Each identifier is of the form _schemaName_._tableName_. Must not be used with `table.include.list`.
 
@@ -2036,21 +2057,26 @@ Note that primary key columns are always included in the event's key, also if ex
 Do not also set the `column.include.list` property.
 
 
-|[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `+column.mask.hash._hashAlgorithm_.with.salt._salt_+`>>
+|[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
-|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
-Based on the used hash function referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
-The hash is automatically shortened to the length of the column.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
-Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
+Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
+ +
+In the following example, `CzQMA0cB5K` is a randomly selected salt. +
 
-Example:
+----
+column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
+----
 
-    column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = dbo.orders.customerName, dbo.shipment.customerName
-
-where `CzQMA0cB5K` is a randomly selected salt.
-
-Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the actual data set, the resulting masked data set may not be completely anonymized.
+If necessary, the pseudonym is automatically shortened to the length of the column.
+The connector configuration can include multiple properties that specify different hash algorithms and salts. +
+ +
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
 
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
@@ -2199,7 +2225,7 @@ Disabled by default.
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
 |[[sqlserver-property-snapshot-delay-ms]]<<sqlserver-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
-|
+|No default
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
@@ -2209,7 +2235,7 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 The connector will read the table contents in multiple batches of this size. Defaults to 2000.
 
 |[[sqlserver-property-query-fetch-size]]<<sqlserver-property-query-fetch-size, `+query.fetch.size+`>>
-|
+|No default
 |Specifies the number of rows that will be fetched for each database round-trip of a given query.
 Defaults to the JDBC driver's default fetch size.
 
@@ -2219,11 +2245,34 @@ Defaults to the JDBC driver's default fetch size.
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
 |[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
-|
-|Controls which rows from tables are included in snapshot. +
-This property contains a comma-separated list of fully-qualified tables _(SCHEMA_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
-*Note*: This setting has impact on snapshots only. Events captured during log reading are not affected by it.
+|No default
+|Specifies the table rows to include in a snapshot.
+Use the property if you want a snapshot to include only a subset of the rows in a table.
+This property affects snapshots only.
+It does not apply to events that the connector reads from the log.
 
+The property contains a comma-separated list of fully-qualified table names in the form `_<schemaName>.<tableName>_`. For example, +
+ +
+`+"snapshot.select.statement.overrides": "inventory.products,customers.orders"+` +
+ +
+For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
+The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
+Use the following format to specify the name of this `SELECT` statement property: +
+ +
+`snapshot.select.statement.overrides._<schemaName>_._<tableName>_`.
+For example,
+`snapshot.select.statement.overrides.customers.orders`. +
+ +
+Example:
+
+From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
+
+----
+"snapshot.select.statement.overrides": "customer.orders",
+"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
+----
+
+In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
 ifdef::community[]
 |[[sqlserver-property-source-struct-version]]<<sqlserver-property-source-struct-version, `+source.struct.version+`>>
 |v2
@@ -2241,17 +2290,6 @@ ifdef::community[]
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 endif::community[]
 
-|[[sqlserver-property-database-server-timezone]]<<sqlserver-property-database-server-timezone, `+database.server.timezone+`>>
-|
-| Timezone of the server.
-
-This property defines the timezone of the transaction timestamp (`ts_ms`) that is retrieved from the server (which is actually not zoned).
-By default, the value is unset.
-Set a value for the property only when running on SQL Server 2014 or older, and the database server and the JVM running the {prodname} connector use different timezones.
-
-When unset, default behavior is to use the timezone of the VM running the {prodname} connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
-Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
-
 |[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
@@ -2263,13 +2301,13 @@ See {link-prefix}:{link-sqlserver-connector}#sqlserver-transaction-metadata[Tran
 |The number of milli-seconds to wait before restarting a connector after a retriable error occurs.
 
 |[[sqlserver-property-skipped-operations]]<<sqlserver-property-skipped-operations, `+skipped.operations+`>>
-|
+|No default
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 
 |[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection, `+signal.data.collection+`>>
-|
+|No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
 The name format is _database_name.schema-name.table-name_.
 
@@ -2303,8 +2341,8 @@ As a {prodname} user, you must coordinate tasks with the SQL Server database ope
 
 You can use one of the following methods to update capture tables after a schema change:
 
-* xref:offline-schema-updates[]. In offline schema updates, capture tables are updated after you stop the {prodname} connector.
-* xref:online-schema-updates[]. In online schema updates, capture tables are updated while the {prodname} connector is running.
+* {link-prefix}:{link-sqlserver-connector}#offline-schema-updates[Offline schema updates] require you to stop the {prodname} connector before you can update capture tables.
+* {link-prefix}:{link-sqlserver-connector}#online-schema-updates[Online schema updates] can update capture tables while the {prodname} connector is running.
 
 There are advantages and disadvantages to using each type of procedure.
 
@@ -2466,9 +2504,9 @@ GO
 The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 The connector provides the following metrics:
 
-* <<sqlserver-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots.
-* <<sqlserver-streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data.
-* <<sqlserver-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history.
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
 
 For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation].
 
@@ -2478,17 +2516,15 @@ For information about how to expose the preceding metrics through JMX, see the {
 [[sqlserver-snapshot-metrics]]
 === Snapshot metrics
 
-The *MBean* is `debezium.sql_server:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: debezium-sql-server-connector-streaming-metrics
 // Title: {prodname} SQL Server connector streaming metrics
 [[sqlserver-streaming-metrics]]
 === Streaming metrics
-
-The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
@@ -2497,7 +2533,5 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 // Title: {prodname} SQL Server connector schema history metrics
 [[sqlserver-schema-history-metrics]]
 === Schema history metrics
-
-The *MBean* is `debezium.sql_server:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]

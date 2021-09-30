@@ -19,8 +19,8 @@ import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<MySqlConnector> {
 
-    private static final String SERVER_NAME = "is_test";
-    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "incremental_snapshot_test").withDbHistoryPath(DB_HISTORY_PATH);
+    protected static final String SERVER_NAME = "is_test";
+    protected final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "incremental_snapshot_test").withDbHistoryPath(DB_HISTORY_PATH);
 
     @Before
     public void before() throws SQLException {

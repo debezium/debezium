@@ -22,19 +22,14 @@ and use {prodname} to monitor the database for changes.
 
 * Docker is installed and running.
 +
-This tutorial uses Docker and the {prodname} Docker images to run the required services.
+This tutorial uses Docker and the {prodname} container images to run the required services.
 You should use the latest version of Docker.
 For more information, see link:https://docs.docker.com/engine/installation/[the Docker Engine installation documentation].
-+
-[NOTE]
-====
-For this tutorial, do not run Docker in a virtual machine (using Docker Machine).
-====
 
 ifdef::community[]
 [NOTE]
 ====
-This example can also be run using Podman. For more information see link:https://podman.io/[Podman]
+This example can also be run using Podman. For more information see link:https://podman.io/[Podman].
 ====
 endif::community[]
 

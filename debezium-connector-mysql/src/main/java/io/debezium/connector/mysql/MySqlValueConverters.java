@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -75,8 +74,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
         void error(String message, Exception exception);
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
+    /**
+     * Helper to gain access to protected method
+     */
+    private final static class CharsetMappingWrapper extends CharsetMapping {
+        String getJavaEncodingForMysqlCharSet(String mySqlCharsetName) {
+            return CharsetMapping.getStaticJavaEncodingForMysqlCharset(mySqlCharsetName);
+        }
+    }
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
+    private static final CharsetMappingWrapper CHARSET_MAPPING_WRAPPER = new CharsetMappingWrapper();
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
      */
@@ -184,12 +192,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return Year.builder();
         }
         if (matches(typeName, "ENUM")) {
-            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
-            return io.debezium.data.Enum.builder(commaSeperatedOptions);
+            String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
+            return io.debezium.data.Enum.builder(commaSeparatedOptions);
         }
         if (matches(typeName, "SET")) {
-            String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
-            return io.debezium.data.EnumSet.builder(commaSeperatedOptions);
+            String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
+            return io.debezium.data.EnumSet.builder(commaSeparatedOptions);
         }
         if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")
                 || matches(typeName, "INT2 UNSIGNED") || matches(typeName, "INT2 UNSIGNED ZEROFILL")) {
@@ -328,10 +336,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
             logger.warn("Column is missing a character set: {}", column);
             return null;
         }
-        String encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName);
+        String encoding = CHARSET_MAPPING_WRAPPER.getJavaEncodingForMysqlCharSet(mySqlCharsetName);
         if (encoding == null) {
             logger.debug("Column uses MySQL character set '{}', which has no mapping to a Java character set, will try it in lowercase", mySqlCharsetName);
-            encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName.toLowerCase());
+            encoding = CHARSET_MAPPING_WRAPPER.getJavaEncodingForMysqlCharSet(mySqlCharsetName.toLowerCase());
         }
         if (encoding == null) {
             logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);
@@ -618,13 +626,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     @Override
-    protected ByteBuffer toByteBuffer(Column column, byte[] data) {
+    protected byte[] normalizeBinaryData(Column column, byte[] data) {
         // DBZ-254 right-pad fixed-length binary column values with 0x00 (zero byte)
         if (column.jdbcType() == Types.BINARY && data.length < column.length()) {
             data = Arrays.copyOf(data, column.length());
         }
 
-        return super.toByteBuffer(column, data);
+        return super.normalizeBinaryData(column, data);
     }
 
     /**

@@ -10,21 +10,40 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import io.debezium.connector.common.Partition;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 
 public class SqlServerPartition implements Partition {
     private static final String SERVER_PARTITION_KEY = "server";
+    private static final String DATABASE_PARTITION_KEY = "database";
 
     private final String serverName;
+    private final String databaseName;
+    private final Map<String, String> sourcePartition;
+    private final int hashCode;
 
-    public SqlServerPartition(String serverName) {
+    public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
         this.serverName = serverName;
+        this.databaseName = databaseName;
+
+        this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+        if (multiPartitionMode) {
+            this.sourcePartition.put(DATABASE_PARTITION_KEY, databaseName);
+        }
+
+        this.hashCode = Objects.hash(serverName, databaseName);
     }
 
     @Override
     public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+        return sourcePartition;
+    }
+
+    /**
+     * Returns the SQL Server database name corresponding to the partition.
+     */
+    String getDatabaseName() {
+        return databaseName;
     }
 
     @Override
@@ -36,12 +55,12 @@ public class SqlServerPartition implements Partition {
             return false;
         }
         final SqlServerPartition other = (SqlServerPartition) obj;
-        return Objects.equals(serverName, other.serverName);
+        return Objects.equals(serverName, other.serverName) && Objects.equals(databaseName, other.databaseName);
     }
 
     @Override
     public int hashCode() {
-        return serverName.hashCode();
+        return hashCode;
     }
 
     static class Provider implements Partition.Provider<SqlServerPartition> {
@@ -53,7 +72,10 @@ public class SqlServerPartition implements Partition {
 
         @Override
         public Set<SqlServerPartition> getPartitions() {
-            return Collections.singleton(new SqlServerPartition(connectorConfig.getLogicalName()));
+            return Collections.singleton(new SqlServerPartition(
+                    connectorConfig.getLogicalName(),
+                    connectorConfig.getDatabaseName(),
+                    connectorConfig.isMultiPartitionModeEnabled()));
         }
     }
 }

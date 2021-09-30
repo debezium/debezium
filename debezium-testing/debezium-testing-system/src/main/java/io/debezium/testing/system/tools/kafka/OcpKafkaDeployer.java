@@ -29,7 +29,7 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
     /**
      * Builder for {@link OcpKafkaDeployer}
      */
-    public static class Builder implements Deployer.Builder<OcpKafkaDeployer> {
+    public static class Builder implements Deployer.Builder<Builder, OcpKafkaDeployer> {
 
         private String project;
         private String yamlPath;

@@ -100,10 +100,15 @@ public class KinesisChangeConsumer extends BaseChangeConsumer implements Debeziu
             throws InterruptedException {
         for (ChangeEvent<Object, Object> record : records) {
             LOGGER.trace("Received event '{}'", record);
+            Object rv = record.value();
+            if (rv == null) {
+                rv = "";
+            }
+
             final PutRecordRequest putRecord = PutRecordRequest.builder()
                     .partitionKey((record.key() != null) ? getString(record.key()) : nullKey)
                     .streamName(streamNameMapper.map(record.destination()))
-                    .data(SdkBytes.fromByteArray(getBytes(record.value())))
+                    .data(SdkBytes.fromByteArray(getBytes(rv)))
                     .build();
             client.putRecord(putRecord);
             committer.markProcessed(record);

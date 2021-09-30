@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
+import io.debezium.connector.oracle.logminer.events.EventType;
+
 public interface LogMinerDmlEntry {
     /**
      * @return object array that contains the before state, values from WHERE clause.
@@ -18,9 +20,9 @@ public interface LogMinerDmlEntry {
     Object[] getNewValues();
 
     /**
-     * @return LogMiner event operation type
+     * @return LogMiner event type
      */
-    int getOperation();
+    EventType getEventType();
 
     /**
      * @return schema name

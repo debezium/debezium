@@ -2,6 +2,8 @@ name: Build Testing Workflow
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'support/checkstyle/**'
       - 'support/ide-configs/**'
@@ -19,6 +21,8 @@ on:
       - 'pom.xml'
       - '.github/workflows/testing-workflow.yml'
   pull_request:
+    branches:
+      - master
     paths:
       - 'support/checkstyle/**'
       - 'support/ide-configs/**'

@@ -1,15 +1,43 @@
 name: Commit message format check
-on: [pull_request]
+on:
+  # ATTENTION: See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+  # re security implications of using this trigger; in particular, no code from PR branches must
+  # be executed in any flows triggered by it
+  pull_request_target:
+    branches: [ master ]
 
 jobs:
   build:
     name: Commit message
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v1
       - name: Commit messages in format DBZ-xxx
+        id: check
         env:
-          BASE_REF: ${{ github.base_ref }}
+          pull_request_number: ${{ github.event.pull_request.number }}
         run: |
-          ! git log --format='format:%s' refs/remotes/origin/$BASE_REF.. | tail -n +2 | grep -Ev '^(DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\]) '
+          COMMIT_MSGS=$(curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq '.message' | cut -c 2-)
+          NON_PREFIX_COMMITS=""
+          while IFS= read -r line ;
+          do
+            line=${line%\"}
+            echo "-> checking: $line"
+            if [[ ! $line =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\]) ]]; then
+              NON_PREFIX_COMMITS="${NON_PREFIX_COMMITS} -> ${line} \n"
+            fi
+          done <<< "$COMMIT_MSGS"
+
+          if [[ $NON_PREFIX_COMMITS != "" ]]; then
+            echo "========================================================================"
+            echo "              COMMIT MESSAGES WITH MISSING \"DBZ\" PREFIX"
+            echo "========================================================================"
+            echo -e "$NON_PREFIX_COMMITS"
+            echo "::set-output name=PREFIX::false"
+          fi
+      - name: Create Comment
+        if: ${{ steps.check.outputs.PREFIX == 'false' }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please prefix the commit message(s) with the [DBZ-xxx JIRA issue key](https://github.com/debezium/debezium/blob/master/CONTRIBUTE.md#making-changes).

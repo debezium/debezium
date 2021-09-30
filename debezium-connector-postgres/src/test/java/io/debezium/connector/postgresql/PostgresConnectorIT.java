@@ -1131,7 +1131,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1962")
-    public void shouldTakeColumnWhitelistFilterIntoAccount() throws Exception {
+    public void shouldTakeColumnIncludeListFilterIntoAccount() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
                 "ALTER TABLE s1.a ADD COLUMN cc char(12);" +
@@ -1867,11 +1867,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted();
 
         // Expect duplicate records from the snapshot and while streaming is running
-        actualRecords = consumeRecordsByTopic(7);
+        actualRecords = consumeRecordsByTopic(8);
 
         s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
         s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
-        assertThat(s1recs.size()).isEqualTo(4);
+        assertThat(s1recs.size()).isEqualTo(5);
         assertThat(s2recs.size()).isEqualTo(3);
 
         // Validate the first record is from streaming
@@ -2783,7 +2783,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-2991")
+    @FixFor("DBZ-2911")
     public void shouldHaveLastCommitLsn() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         start(PostgresConnector.class, TestHelper.defaultConfig()
@@ -2828,6 +2828,15 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         // Assert the lsn of the second transaction is less than the third.
         assertTrue(second_transaction_sequence.get(1) < third_transaction_sequence.get(1));
+
+        // Assert that the sequences of different records in the same transaction differ
+        // (Fix for DBZ-3801)
+        if (DecoderDifferences.singleLsnPerTransaction()) {
+            assertEquals(getSequence(records.get(5)), getSequence(records.get(6)));
+        }
+        else {
+            assertNotEquals(getSequence(records.get(5)), getSequence(records.get(6)));
+        }
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {

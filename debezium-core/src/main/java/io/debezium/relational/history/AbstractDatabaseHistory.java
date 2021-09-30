@@ -25,6 +25,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges.TableChange;
 import io.debezium.relational.history.TableChanges.TableChangeType;
+import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 
 /**
@@ -135,7 +136,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                         ddlParser.parse(ddl, schema);
                         listener.onChangeApplied(recovered);
                     }
-                    catch (final ParsingException e) {
+                    catch (final ParsingException | MultipleParsingExceptions e) {
                         if (skipUnparseableDDL) {
                             logger.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
                         }

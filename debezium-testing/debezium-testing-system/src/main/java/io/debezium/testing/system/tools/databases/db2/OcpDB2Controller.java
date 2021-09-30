@@ -8,6 +8,7 @@ package io.debezium.testing.system.tools.databases.db2;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ_USERNAME;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -38,8 +39,8 @@ public class OcpDB2Controller extends OcpSqlDatabaseController {
     public void initialize() {
         LOGGER.info("Waiting until DB2 instance is ready");
         SqlDatabaseClient client = getDatabaseClient(DATABASE_DB2_DBZ_USERNAME, DATABASE_DB2_DBZ_PASSWORD);
-        try {
-            client.execute(READINESS_SQL_SELECT);
+        try (Connection connection = client.connect()) {
+            LOGGER.info("Database connection established successfully!");
         }
         catch (SQLException e) {
             throw new RuntimeException(e);
@@ -47,7 +48,7 @@ public class OcpDB2Controller extends OcpSqlDatabaseController {
     }
 
     @Override
-    public String getDatabaseUrl() {
-        return super.getDatabaseUrl() + ConfigProperties.DATABASE_DB2_DBZ_DBNAME;
+    public String getPublicDatabaseUrl() {
+        return super.getPublicDatabaseUrl() + ConfigProperties.DATABASE_DB2_DBZ_DBNAME;
     }
 }

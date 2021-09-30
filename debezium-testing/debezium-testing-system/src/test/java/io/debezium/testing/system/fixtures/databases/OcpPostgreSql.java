@@ -18,7 +18,7 @@ public interface OcpPostgreSql extends TestSetupFixture, SqlDatabaseFixture, Ocp
     String DB_SERVICE_PATH = "/database-resources/postgresql/service.yaml";
 
     default void setupDatabase() throws Exception {
-        Class.forName("com.mysql.cj.jdbc.Driver");
+        Class.forName("org.postgresql.Driver");
         OcpPostgreSqlDeployer deployer = new OcpPostgreSqlDeployer.Deployer()
                 .withOcpClient(getOcpClient())
                 .withProject(ConfigProperties.OCP_PROJECT_POSTGRESQL)

@@ -5,19 +5,12 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.io.IOException;
-import java.sql.SQLRecoverableException;
 import java.time.Duration;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
-
-import oracle.net.ns.NetException;
 
 /**
  * This utility class contains SQL statements to configure, manage and query Oracle LogMiner
@@ -49,47 +42,6 @@ public class SqlUtils {
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
 
-    // LogMiner statements
-    static final String BUILD_DICTIONARY = "BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;";
-    static final String SELECT_SYSTIMESTAMP = "SELECT SYSTIMESTAMP FROM DUAL";
-    static final String END_LOGMNR = "BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;";
-
-    /**
-     * Querying V$LOGMNR_LOGS
-     * After a successful call to DBMS_LOGMNR.START_LOGMNR, the STATUS column of the V$LOGMNR_LOGS view contains one of the following values:
-     * 0
-     * Indicates that the redo log file will be processed during a query of the V$LOGMNR_CONTENTS view.
-     * 1
-     * Indicates that this will be the first redo log file to be processed by LogMiner during a select operation against the V$LOGMNR_CONTENTS view.
-     * 2
-     * Indicates that the redo log file has been pruned and therefore will not be processed by LogMiner during a query of the V$LOGMNR_CONTENTS view.
-     * It has been pruned because it is not needed to satisfy your requested time or SCN range.
-     * 4
-     * Indicates that a redo log file (based on sequence number) is missing from the LogMiner redo log file list.
-     */
-    static final String FILES_FOR_MINING = "SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS";
-
-    // log writer flush statements
-    public static final String LOGMNR_FLUSH_TABLE = "LOG_MINING_FLUSH";
-    static final String FLUSH_TABLE_NOT_EMPTY = "SELECT '1' AS ONE FROM " + LOGMNR_FLUSH_TABLE;
-    static final String CREATE_FLUSH_TABLE = "CREATE TABLE " + LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))";
-    static final String INSERT_FLUSH_TABLE = "INSERT INTO " + LOGMNR_FLUSH_TABLE + " VALUES(0)";
-    static final String UPDATE_FLUSH_TABLE = "UPDATE " + LOGMNR_FLUSH_TABLE + " SET LAST_SCN =";
-
-    static final String NLS_SESSION_PARAMETERS = "ALTER SESSION SET "
-            + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
-            + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF'"
-            + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'"
-            + "  NLS_NUMERIC_CHARACTERS = '.,'";
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SqlUtils.class);
-
-    static void setRac(boolean isRac) {
-        if (isRac) {
-            // todo : enforce continious_mine=false?
-        }
-    }
-
     static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
@@ -118,10 +70,6 @@ public class SqlUtils {
 
     static String tableSupplementalLoggingCheckQuery(TableId tableId) {
         return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER = '%s' AND TABLE_NAME = '%s'", ALL_LOG_GROUPS, tableId.schema(), tableId.table());
-    }
-
-    static String currentScnQuery() {
-        return String.format("SELECT CURRENT_SCN FROM %s", DATABASE_VIEW);
     }
 
     static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
@@ -277,39 +225,6 @@ public class SqlUtils {
         return "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
     }
 
-    static String tableExistsQuery(String tableName) {
-        return "SELECT '1' AS ONE FROM USER_TABLES WHERE TABLE_NAME = '" + tableName + "'";
-    }
-
-    static String dropTableStatement(String tableName) {
-        return "DROP TABLE " + tableName.toUpperCase() + " PURGE";
-    }
-
-    // no constraints, no indexes, minimal info
-    static String logMiningHistoryDdl(String tableName) {
-        return "create  TABLE " + tableName + "(" +
-                "row_sequence NUMBER(19,0), " +
-                "captured_scn NUMBER(19,0), " +
-                "table_name VARCHAR2(30 CHAR), " +
-                "seg_owner VARCHAR2(30 CHAR), " +
-                "operation_code NUMBER(19,0), " +
-                "change_time TIMESTAMP(6), " +
-                // "row_id VARCHAR2(20 CHAR)," +
-                // "session_num NUMBER(19,0)," +
-                // "serial_num NUMBER(19,0)," +
-                "transaction_id VARCHAR2(50 CHAR), " +
-                // "rs_id VARCHAR2(34 CHAR)," +
-                // "ssn NUMBER(19,0)," +
-                "csf NUMBER(19,0), " +
-                "redo_sql VARCHAR2(4000 CHAR)" +
-                // "capture_time TIMESTAMP(6)" +
-                ") nologging";
-    }
-
-    static String truncateTableStatement(String tableName) {
-        return "TRUNCATE TABLE " + tableName;
-    }
-
     /**
      * This method return query which converts given SCN in days and deduct from the current day
      */
@@ -318,30 +233,5 @@ public class SqlUtils {
             return null;
         }
         return "select sysdate - CAST(scn_to_timestamp(" + scn.toString() + ") as date) from dual";
-    }
-
-    public static boolean connectionProblem(Throwable e) {
-        if (e instanceof IOException) {
-            return true;
-        }
-        Throwable cause = e.getCause();
-        if (cause != null) {
-            if (cause.getCause() != null && cause.getCause() instanceof NetException) {
-                return true;
-            }
-        }
-        if (e instanceof SQLRecoverableException) {
-            return true;
-        }
-        if (e.getMessage() == null) {
-            return false;
-        }
-        return e.getMessage().startsWith("ORA-03135") || // connection lost contact
-                e.getMessage().startsWith("ORA-12543") || // TNS:destination host unreachable
-                e.getMessage().startsWith("ORA-00604") || // error occurred at recursive SQL level 1
-                e.getMessage().startsWith("ORA-01089") || // Oracle immediate shutdown in progress
-                e.getMessage().startsWith("ORA-00600") || // Oracle internal error on the RAC node shutdown could happen
-                e.getMessage().toUpperCase().contains("CONNECTION IS CLOSED") ||
-                e.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET");
     }
 }

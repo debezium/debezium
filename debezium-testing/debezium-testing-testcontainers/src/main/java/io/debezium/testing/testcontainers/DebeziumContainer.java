@@ -26,6 +26,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.debezium.util.ContainerImageVersions;
+
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -57,9 +59,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer latestStable() {
-        // Temporarily requires hard-coded 1.6 as there is no stable release with Apicurio 2.0 baked
-        // return new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION);
-        return new DebeziumContainer("debezium/connect:" + "1.6-devel");
+        return new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION);
     }
 
     private void defaultConfig() {

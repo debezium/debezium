@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -52,10 +53,9 @@ public class LogMinerQueryBuilder {
      * </pre>
      *
      * @param connectorConfig connector configuration, should not be {@code null}
-     * @param userName jdbc connection username
      * @return the SQL string to be used to fetch changes from Oracle LogMiner
      */
-    public static String build(OracleConnectorConfig connectorConfig, String userName) {
+    public static String build(OracleConnectorConfig connectorConfig) {
         final StringBuilder query = new StringBuilder(1024);
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ");
         query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, ").append(getRowHash()).append(" ");
@@ -63,6 +63,13 @@ public class LogMinerQueryBuilder {
 
         // These bind parameters will be bound when the query is executed by the caller.
         query.append("WHERE SCN > ? AND SCN <= ? ");
+
+        // Restrict to configured PDB if one is supplied
+        final String pdbName = connectorConfig.getPdbName();
+        if (!Strings.isNullOrEmpty(pdbName)) {
+            query.append("AND ").append("SRC_CON_NAME = '").append(pdbName.toUpperCase()).append("' ");
+        }
+
         query.append("AND (");
 
         // Always include START, COMMIT, MISSING_SCN, and ROLLBACK operations
@@ -71,7 +78,7 @@ public class LogMinerQueryBuilder {
         if (!connectorConfig.getDatabaseHistory().storeOnlyCapturedTables()) {
             // In this mode, the connector will always be fed DDL operations for all tables even if they
             // are not part of the inclusion/exclusion lists.
-            query.append(" OR ").append(buildDdlPredicate(userName)).append(" ");
+            query.append(" OR ").append(buildDdlPredicate()).append(" ");
             // Insert, Update, Delete, SelectLob, LobWrite, LobTrim, and LobErase
             if (connectorConfig.isLobEnabled()) {
                 query.append(") OR (OPERATION_CODE IN (1,2,3,9,10,11,29) ");
@@ -89,11 +96,11 @@ public class LogMinerQueryBuilder {
                 query.append(") OR ((OPERATION_CODE IN (1,2,3) ");
             }
             // In this mode, the connector will filter DDL operations based on the table inclusion/exclusion lists
-            query.append("OR ").append(buildDdlPredicate(userName)).append(") ");
+            query.append("OR ").append(buildDdlPredicate()).append(") ");
         }
 
         // Always ignore the flush table
-        query.append("AND TABLE_NAME != '").append(SqlUtils.LOGMNR_FLUSH_TABLE).append("' ");
+        query.append("AND TABLE_NAME != '").append(LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE).append("' ");
 
         // There are some common schemas that we automatically ignore when building the runtime Filter
         // predicates and we put that same list of schemas here and apply those in the generated SQL.
@@ -150,13 +157,12 @@ public class LogMinerQueryBuilder {
     /**
      * Builds a common SQL fragment used to obtain DDL operations via LogMiner.
      *
-     * @param userName jdbc connection username, should not be {@code null}
      * @return predicate that can be used to obtain DDL operations via LogMiner
      */
-    private static String buildDdlPredicate(String userName) {
+    private static String buildDdlPredicate() {
         final StringBuilder predicate = new StringBuilder(256);
         predicate.append("(OPERATION_CODE = 5 ");
-        predicate.append("AND USERNAME NOT IN ('SYS','SYSTEM','").append(userName.toUpperCase()).append("') ");
+        predicate.append("AND USERNAME NOT IN ('SYS','SYSTEM') ");
         predicate.append("AND INFO NOT LIKE 'INTERNAL DDL%' ");
         predicate.append("AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%'))");
         return predicate.toString();

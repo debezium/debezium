@@ -99,7 +99,7 @@ The snaphot events are still denoted using operation `r` and the `snapshot` fiel
 ----
 
 The incremental snapshot events should be understood in a different way than events from an initial snapshot.
-The `read` events should be understoold like a materialization of data in a certain period of time.
+The `read` events should be understood like a materialization of data in a certain period of time.
 This means that event semantics differ between initial and incremental snapshots:
 
 * `update` and `delete` events can arrive before `read` events

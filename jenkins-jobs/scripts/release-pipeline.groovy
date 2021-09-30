@@ -26,7 +26,7 @@ echo "Dry run: ${DRY_RUN}"
 
 GIT_CREDENTIALS_ID = 'debezium-github'
 JIRA_CREDENTIALS_ID = 'debezium-jira'
-HOME_DIR = '/home/cloud-user'
+HOME_DIR = '/home/centos'
 GPG_DIR = 'gpg'
 
 DEBEZIUM_DIR = 'debezium'

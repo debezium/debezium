@@ -39,6 +39,14 @@
               <groupId>org.antlr</groupId>
               <artifactId>antlr4-runtime</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.infinispan</groupId>
+            <artifactId>infinispan-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.infinispan.protostream</groupId>
+            <artifactId>protostream-processor</artifactId>
+        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -99,6 +107,7 @@
 
     <properties>
         <adapter.name>logminer</adapter.name>
+        <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
     </properties>
 
     <build>
@@ -134,6 +143,10 @@
                             <name>database.connection.adapter</name>
                             <value>${adapter.name}</value>
                         </property>
+                        <property>
+                            <name>log.mining.buffer.type</name>
+                            <value>${log.mining.buffer.type.name}</value>
+                        </property>
                     </systemProperties>
                 </configuration>
             </plugin>
@@ -161,6 +174,7 @@
                     <argLine>-Djava.library.path=${instantclient.dir} -Ddebezium.embedded.shutdown.pause.before.interrupt.ms=20000</argLine>
                     <systemPropertyVariables>
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
+                        <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -302,6 +316,12 @@
                     <scope>provided</scope>
                 </dependency>
             </dependencies>
+        </profile>
+        <profile>
+            <id>infinispan-buffer</id>
+            <properties>
+                <log.mining.buffer.type.name>infinispan</log.mining.buffer.type.name>
+            </properties>
         </profile>
     </profiles>
 </project>

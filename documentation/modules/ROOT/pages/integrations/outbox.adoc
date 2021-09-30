@@ -48,7 +48,7 @@ It's important that for a given Quarkus application, *all* implementations of th
 
 == Example
 
-The following illustrates an implementation of the `ExportedEvent` interface representing an order that has been created:
+The following example illustrates an implementation of the `ExportedEvent` interface representing an order that has been created:
 
 .OrderCreatedEvent.java
 [source,java,indent=0]
@@ -70,7 +70,7 @@ public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
 
     @Override
     public String getAggregateId() {
-        return String.valeuOf(orderId);
+        return String.valueOf(orderId);
     }
 
     @Override
@@ -132,117 +132,117 @@ The extension works out-of-the-box with a default configuration, but this config
 |Type
 |Default
 
-|`quarkus.debezium-outbox.table-name`::
+|[[quarkus-debezium-outbox-table-name]]<<quarkus-debezium-outbox-table-name,`+quarkus.debezium-outbox.table-name+`>>::
 The table name to be used when creating the outbox table.
 |string
 |OutboxEvent
 
 
-|`quarkus.debezium-outbox.id.name`::
+|[[quarkus-debezium-outbox-id-name]]<<quarkus-debezium-outbox-id-name,`+quarkus.debezium-outbox.id.name+`>>::
 The column name for the event id column. +
-e.g. `uuid`
+for example, `uuid`
 |string
 |`id`
 
-|`quarkus.debezium-outbox.id.column-definition`::
+|[[quarkus-debezium-outbox-id-column-definition]]<<quarkus-debezium-outbox-id-column-definition,`+quarkus.debezium-outbox.id.column-definition+`>>::
 The database-specific column definition for the event id column. +
-e.g. `uuid not null`
+for example, `uuid not null`
 |string
 |`UUID NOT NULL`
 
-|`quarkus.debezium-outbox.aggregate-id.name`::
+|[[quarkus-debezium-outbox-aggregate-id-name]]<<quarkus-debezium-outbox-aggregate-id-name,`+quarkus.debezium-outbox.aggregate-id.name+`>>::
 The column name for the event key column.
 |string
 |`aggregateid`
 
-|`quarkus.debezium-outbox.aggregate-id.column-definition`::
+|[[quarkus-debezium-outbox-aggregate-id-column-definition]]<<quarkus-debezium-outbox-aggregate-id-column-definition,`+quarkus.debezium-outbox.aggregate-id.column-definition+`>>::
 The database-specific column definition for the aggregate id. +
-e.g. `varchar(50) not null`
+for example, `varchar(50) not null`
 |string
 |`VARCHAR(255) NOT NULL`
 
-|`quarkus.debezium-outbox.aggregate-id.converter`::
+|[[quarkus-debezium-outbox-aggregate-id-converter]]<<quarkus-debezium-outbox-aggregate-id-converter,`+quarkus.debezium-outbox.aggregate-id.converter+`>>::
 The JPA AttributeConverter for the event key column. +
-e.g. `com.company.TheAttributeConverter`
+for example, `com.company.TheAttributeConverter`
 |string
 |
 
-|`quarkus.debezium-outbox.aggregate-type.name`::
+|[[quarkus-debezium-outbox-aggregate-type-name]]<<quarkus-debezium-outbox-aggregate-type-name,`+quarkus.debezium-outbox.aggregate-type.name+`>>::
 The column name for the event aggregate type column.
 |string
 |`aggregatetype`
 
-|`quarkus.debezium-outbox.aggregate-type.column-definition`::
+|[[quarkus-debezium-outbox-aggregate-type-column-definition]]<<quarkus-debezium-outbox-aggregate-type-column-definition,`+quarkus.debezium-outbox.aggregate-type.column-definition+`>>::
 The database-specific column definition for the aggregate type. +
-e.g. `varchar(15) not null`
+for example, `varchar(15) not null`
 |string
 |`VARCHAR(255) NOT NULL`
 
-|`quarkus.debezium-outbox.aggregate-type.converter`::
+|[[quarkus-debezium-outbox-aggregate-type-converter]]<<quarkus-debezium-outbox-aggregate-type-converter,`+quarkus.debezium-outbox.aggregate-type.converter+`>>::
 The JPA AttributeConverter for the event aggregate type column. +
-e.g. `com.company.TheAttributeConverter`
+for example, `com.company.TheAttributeConverter`
 |string
 |
 
-|`quarkus.debezium-outbox.type.name`::
+|[[quarkus-debezium-outbox-type-name]]<<quarkus-debezium-outbox-type-name,`+quarkus.debezium-outbox.type.name+`>>::
 The column name for the event type column.
 |string
 |`type`
 
-|`quarkus.debezium-outbox.type.column-definition`::
+|[[quarkus-debezium-outbox-type-column-definition]]<<quarkus-debezium-outbox-type-column-definition,`+quarkus.debezium-outbox.type.column-definition+`>>::
 The database-specific column definition for the event type. +
-e.g. `varchar(50) not null`
+for example, `varchar(50) not null`
 |string
 |`VARCHAR(255) NOT NULL`
 
-|`quarkus.debezium-outbox.type.converter`::
+|[[quarkus-debezium-outbox-type-converter]]<<quarkus-debezium-outbox-type-converter,`+quarkus.debezium-outbox.type.converter+`>>::
 The JPA AttributeConverter for the event type column. +
-e.g. `com.company.TheAttributeConverter`
+for example, `com.company.TheAttributeConverter`
 |string
 |
 
-|`quarkus.debezium-outbox.timestamp.name`::
+|[[quarkus-debezium-outbox-timestamp-name]]<<quarkus-debezium-outbox-timestamp-name,`+quarkus.debezium-outbox.timestamp.name+`>>::
 The column name for the event timestamp column.
 |string
 |`timestamp`
 
-|`quarkus.debezium-outbox.timestamp.column-definition`::
+|[[quarkus-debezium-outbox-timestamp-column-definition]]<<quarkus-debezium-outbox-timestamp-column-definition,`+quarkus.debezium-outbox.timestamp.column-definition+`>>::
 The database-specific column definition for the event timestamp. +
-e.g. `timestamp not null`
+for example, `timestamp not null`
 |string
 |`TIMESTAMP NOT NULL`
 
-|`quarkus.debezium-outbox.timestamp.converter`::
+|[[quarkus-debezium-outbox-timestamp-converter]]<<quarkus-debezium-outbox-timestamp-converter,`+quarkus.debezium-outbox.timestamp.converter+`>>::
 The JPA AttributeConverter for the event timestamp column. +
-e.g. `com.company.TheAttributeConverter`
+for example, `com.company.TheAttributeConverter`
 |string
 |
 
-|`quarkus.debezium-outbox.payload.name`::
+|[[quarkus-debezium-outbox-payload-name]]<<quarkus-debezium-outbox-payload-name,`+quarkus.debezium-outbox.payload.name+`>>::
 The column name for the event payload column.
 |string
 |`payload`
 
-|`quarkus.debezium-outbox.payload.column-definition`::
+|[[quarkus-debezium-outbox-payload-column-definition]]<<quarkus-debezium-outbox-payload-column-definition,`+quarkus.debezium-outbox.payload.column-definition+`>>::
 The database-specific column definition for the event payload. +
-e.g. `text not null`
+for example, `text not null`
 |string
 |`VARCHAR(8000)`
 
-|`quarkus.debezium-outbox.payload.converter`::
+|[[quarkus-debezium-outbox-payload-converter]]<<quarkus-debezium-outbox-payload-converter,`+quarkus.debezium-outbox.payload.converter+`>>::
 The JPA AttributeConverter for the event payload column. +
-e.g. `com.company.TheAttributeConverter`
+for example, `com.company.TheAttributeConverter`
 |string
 |
 
-|`quarkus.debezium-outbox.tracingspancontext.name`::
+|[[quarkus-debezium-outbox-tracingspancontext-name]]<<quarkus-debezium-outbox-tracingspancontext-name,`+quarkus.debezium-outbox.tracingspancontext.name+`>>::
 The column name for the tracing span context column.
 |string
 |`tracingspancontext`
 
-|`quarkus.debezium-outbox.tracingspancontext.column-definition`::
+|[[quarkus-debezium-outbox-tracingspancontext-column-definition]]<<quarkus-debezium-outbox-tracingspancontext-column-definition,`+quarkus.debezium-outbox.tracingspancontext.column-definition+`>>::
 The database-specific column definition for the tracingspancontext. +
-e.g. `text not null`
+for example, `text not null`
 |string
 |`VARCHAR(256)`
 
@@ -262,7 +262,7 @@ When not using the default values, be sure that the SMT configuration matches.
 |Type
 |Default
 
-|`quarkus.debezium-outbox.remove-after-insert`::
+|[[quarkus-debezium-outbox-remove-after-insert]]<<quarkus-debezium-outbox-remove-after-insert,`+quarkus.debezium-outbox.remove-after-insert+`>>::
 Whether the outbox entry is removed after having been inserted. +
 +
 _The removal of the entry does not impact the {prodname} connector from being able to emit CDC events.

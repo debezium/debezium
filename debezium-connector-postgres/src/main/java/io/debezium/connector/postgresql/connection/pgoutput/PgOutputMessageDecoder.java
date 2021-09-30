@@ -326,7 +326,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
-    private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId) {
+    private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId)
+            throws SQLException {
         List<io.debezium.relational.Column> readColumns = new ArrayList<>();
         try {
             try (ResultSet columnMetadata = databaseMetadata.getColumns(null, tableId.schema(), tableId.table(), null)) {
@@ -337,8 +338,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
         }
         catch (SQLException e) {
-            LOGGER.warn("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
-            // todo: DBZ-766 Should this throw the exception or just log the warning?
+            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
+            throw e;
         }
 
         return readColumns;

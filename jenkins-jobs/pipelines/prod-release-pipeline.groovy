@@ -1,18 +1,27 @@
 if (
-    !BUILD_VERSION ||
     !PRODUCT_VERSION ||
+    !PRODUCT_VERSION_RELEASE ||
+    !PRODUCT_MILESTONE ||
+    !DEBEZIUM_VERSION ||
+    !BACON_REPO ||
+    !BACON_VERSION ||
+    !BACON_CONFIG_URL ||
     !USERNAME ||
     !PASSWORD ||
-    !CONNECTORS ||
-    !SOURCE_MAVEN_REPO ||
     !TARGET_HOST ||
     !ARTIFACT_DIR
 ) {
     error 'Input parameters not provided'
 }
 
-SOURCES_DIR='src-main'
-TARGET_DIR="${ARTIFACT_DIR}/${PRODUCT_VERSION}"
+CONFIG_DIR = '.config/pnc-bacon'
+BUILD_CONFIG_DIR = 'debezium-bacon'
+BACON_MAVEN_URL = "https://repo1.maven.org/maven2/org/jboss/pnc/bacon/cli/$BACON_VERSION/cli-$BACON_VERSION-shaded.jar"
+CERTIFICATES = ['Eng_Ops_CA.crt', 'Red_Hat_IS_CA.crt',  'RH-IT-Root-CA.crt']
+BUILD_VERSION = "${PRODUCT_VERSION}.${PRODUCT_VERSION_RELEASE}.${PRODUCT_MILESTONE}"
+RELEASE_VERSION = "AMQ-CDC-${PRODUCT_VERSION}.${PRODUCT_MILESTONE}"
+PACKAGES_DIR = "target/debezium-integration-${BUILD_VERSION}"
+TARGET_DIR = "${ARTIFACT_DIR}/${RELEASE_VERSION}"
 REMOTE_TARGET = [
     'name': 'stage',
     'host': TARGET_HOST,
@@ -23,56 +32,48 @@ REMOTE_TARGET = [
 
 node('Slave') {
     try {
-        stage('Download package artifacts from repo') {
-            withCredentials([string(credentialsId: SOURCE_MAVEN_REPO, variable: 'SOURCE_MAVEN_REPO')]) {
-                sh """
-                    rm -rf *
-                    for CONNECTOR in \${CONNECTORS}; do
-                        curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-connector-\$CONNECTOR/${BUILD_VERSION}/debezium-connector-\$CONNECTOR-${BUILD_VERSION}-plugin.zip"
-                    done
-                    curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-scripting/${BUILD_VERSION}/debezium-scripting-${BUILD_VERSION}.zip"
-                    for CONNECTOR in \${STANDALONE_CONNECTORS}; do
-                        CONNECTOR_BUILD_VERSION_VARIABLE="BUILD_VERSION_\${CONNECTOR^^}"
-                        CONNECTOR_BUILD_VERSION=\${!CONNECTOR_BUILD_VERSION_VARIABLE}
-                        curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-connector-\$CONNECTOR/\${CONNECTOR_BUILD_VERSION}/debezium-connector-\$CONNECTOR-\${CONNECTOR_BUILD_VERSION}-plugin.zip"
-                    done
-                """
+        stage ('Download and setup bacon') {
+            sh """
+                rm -rf *
+                curl -k -o bacon.jar $BACON_MAVEN_URL
+                mkdir -p $BUILD_CONFIG_DIR $HOME/$CONFIG_DIR
+                curl -k -o $BUILD_CONFIG_DIR/build-config.yaml '$BACON_CONFIG_URL;f=build-config.yaml'
+                curl -k -o $HOME/$CONFIG_DIR/config.yaml '$BACON_CONFIG_URL;f=config.yaml'
+            """
+            for (certificate in CERTIFICATES) {
+                sh (script: """
+                    curl -k -o $certificate '$BACON_CONFIG_URL;f=$certificate'
+                    keytool -importcert -cacerts -alias $certificate -file $certificate -noprompt -storepass changeit
+                """, returnStatus: true)
             }
         }
-        stage('Download and repackage sources') {
-            withCredentials([string(credentialsId: SOURCE_MAVEN_REPO, variable: 'SOURCE_MAVEN_REPO')]) {
-                sh """
-                    mkdir "${SOURCES_DIR}"
-                    for CONNECTOR in \${STANDALONE_CONNECTORS}; do
-                        CONNECTOR_BUILD_VERSION_VARIABLE="BUILD_VERSION_\${CONNECTOR^^}"
-                        CONNECTOR_BUILD_VERSION=\${!CONNECTOR_BUILD_VERSION_VARIABLE}
-                        CONNECTOR_SOURCE_DIR="${SOURCES_DIR}/debezium-connector-\${CONNECTOR}"
-                        mkdir "\${CONNECTOR_SOURCE_DIR}"
-                        curl -Lv "\${SOURCE_MAVEN_REPO}/debezium-connector-\${CONNECTOR}/\${CONNECTOR_BUILD_VERSION}/debezium-connector-\${CONNECTOR}-\${CONNECTOR_BUILD_VERSION}-project-sources.tar.gz" | tar xz --strip-components=1 -C "\${CONNECTOR_SOURCE_DIR}"
-                    done
-                    curl -Lv "\${SOURCE_MAVEN_REPO}/debezium-build-parent/${BUILD_VERSION}/debezium-build-parent-${BUILD_VERSION}-project-sources.tar.gz" | tar xz --strip-components=1 -C "${SOURCES_DIR}"
-                    (cd "${SOURCES_DIR}" && zip -r "../debezium-${BUILD_VERSION}-src.zip" *)
-                    rm -rf "${SOURCES_DIR}"
-                    ls -al
-                """
+        stage ('Build product') {
+            sh "java -jar ./bacon.jar pig run ${TEMPORARY_BUILD ? '-t' : ''} -e product-version=$PRODUCT_VERSION -e product-version-release=$PRODUCT_VERSION_RELEASE -e debezium-version=$DEBEZIUM_VERSION -e milestone=$PRODUCT_MILESTONE -v debezium-bacon"
+        }
+        stage('Extract connector packages') {
+            dir (PACKAGES_DIR) {
+                sh "unzip -j debezium-*-maven-repository.zip '*.zip'"
             }
         }
+
         stage('Upload artifacts') {
-            withCredentials([string(credentialsId: TARGET_HOST, variable: 'TARGET_HOST')]) {
-                sh """
-                    set +x
-                    docker run --rm -v \$(pwd):/upload ictu/sshpass -p ${PASSWORD} rsync -va -e \"ssh -o StrictHostKeyChecking=no\" --include='*.zip' /upload/ ${
-                    USERNAME
-                }@\${TARGET_HOST}:${TARGET_DIR}
-                    docker run --rm ictu/sshpass -p ${PASSWORD} ssh -o StrictHostKeyChecking=no ${USERNAME}@\${TARGET_HOST} ls -al ${TARGET_DIR}
-                """
-                if (STAGE_FILES) {
+            dir (PACKAGES_DIR) {
+                withCredentials([string(credentialsId: TARGET_HOST, variable: 'TARGET_HOST')]) {
                     sh """
                         set +x
-                        docker run --rm ictu/sshpass -p ${PASSWORD} ssh -o StrictHostKeyChecking=no ${
+                        docker run --rm -v \$(pwd):/upload ictu/sshpass -p ${PASSWORD} rsync -va -e \"ssh -o StrictHostKeyChecking=no\" --include='*.zip' /upload/ ${
                         USERNAME
-                    }@\${TARGET_HOST} /mnt/redhat/scripts/rel-eng/utility/bus-clients/stage-mw-release ${PRODUCT_VERSION}
+                    }@\${TARGET_HOST}:${TARGET_DIR}
+                        docker run --rm ictu/sshpass -p ${PASSWORD} ssh -o StrictHostKeyChecking=no ${USERNAME}@\${TARGET_HOST} ls -al ${TARGET_DIR}
                     """
+                    if (STAGE_FILES) {
+                        sh """
+                            set +x
+                            docker run --rm ictu/sshpass -p ${PASSWORD} ssh -o StrictHostKeyChecking=no ${
+                            USERNAME
+                        }@\${TARGET_HOST} /mnt/redhat/scripts/rel-eng/utility/bus-clients/stage-mw-release ${RELEASE_VERSION}
+                        """
+                    }
                 }
             }
         }

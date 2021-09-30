@@ -38,6 +38,7 @@ public class OracleErrorHandler extends ErrorHandler {
                 throwable.getMessage().startsWith("ORA-01284") || // Redo/Archive log cannot be opened, likely locked
                 throwable.getMessage().startsWith("ORA-26653") || // Apply DBZXOUT did not start properly and is currently in state INITIALI
                 throwable.getMessage().startsWith("ORA-01291") || // missing logfile
+                throwable.getMessage().startsWith("ORA-01327") || // failed to exclusively lock system dictionary as required BUILD
                 throwable.getCause() instanceof IOException ||
                 throwable instanceof SQLRecoverableException ||
                 throwable.getMessage().toUpperCase().contains("NO MORE DATA TO READ FROM SOCKET") ||

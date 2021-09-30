@@ -28,7 +28,7 @@ echo "Dry run: ${DRY_RUN}"
 
 GIT_CREDENTIALS_ID = 'debezium-github'
 JIRA_CREDENTIALS_ID = 'debezium-jira'
-HOME_DIR = '/home/cloud-user'
+HOME_DIR = '/home/centos'
 GPG_DIR = 'gpg'
 
 DEBEZIUM_DIR = 'debezium'
@@ -56,7 +56,8 @@ CONNECTORS_PER_VERSION = [
     '1.3' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
     '1.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
     '1.5' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
-    '1.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess']
+    '1.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
+    '1.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess']
 ]
 
 CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
@@ -72,7 +73,7 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
     echo "Additional repository $repository will be used"
 }
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'ui']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://s01.oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
@@ -381,8 +382,25 @@ node('Slave') {
             dir(DEBEZIUM_DIR) {
                 sh "git checkout -b $CANDIDATE_BRANCH"
                 sh "mvn clean install -DskipTests -DskipITs -Poracle"
+                modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
+                    it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', "<version.debezium.connector>$RELEASE_VERSION</version.debezium.connector>")
+                }
+                sh "git commit -a -m '[release] Stable $RELEASE_VERSION for testing module deps'"
             }
             STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH, '-Poracle')
+            dir(DEBEZIUM_DIR) {
+                modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
+                    it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
+                }
+                sh "git commit -a -m '[release] Development version for testing module deps'"
+                if (!DRY_RUN) {
+                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh """
+                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY} HEAD:${CANDIDATE_BRANCH}
+                        """
+                    }
+                }
+            }
             ADDITIONAL_REPOSITORIES.each { id, repo ->
                 dir(id) {
                     sh "git checkout -b $CANDIDATE_BRANCH"

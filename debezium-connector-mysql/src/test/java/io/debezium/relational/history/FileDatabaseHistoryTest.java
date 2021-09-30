@@ -8,7 +8,6 @@ package io.debezium.relational.history;
 import java.nio.file.Path;
 
 import org.junit.Before;
-import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.util.Testing;
@@ -35,11 +34,5 @@ public class FileDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
                 .build(), null, DatabaseHistoryMetrics.NOOP, true);
         history.start();
         return history;
-    }
-
-    @Override
-    @Test
-    public void shouldRecordChangesAndRecoverToVariousPoints() {
-        super.shouldRecordChangesAndRecoverToVariousPoints();
     }
 }

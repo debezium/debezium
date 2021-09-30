@@ -13,7 +13,12 @@ public interface Deployer<T> {
      */
     T deploy() throws InterruptedException;
 
-    interface Builder<D extends Deployer<?>> {
+    interface Builder<B extends Builder<B, D>, D extends Deployer<?>> {
         D build();
+
+        @SuppressWarnings("unchecked")
+        default B self() {
+            return (B) this;
+        }
     }
 }

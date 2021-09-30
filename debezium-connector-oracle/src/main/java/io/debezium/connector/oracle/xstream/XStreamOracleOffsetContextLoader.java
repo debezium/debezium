@@ -11,6 +11,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 
@@ -42,6 +43,7 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
             scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
         }
 
-        return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, TransactionContext.load(offset));
+        return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, TransactionContext.load(offset),
+                SignalBasedIncrementalSnapshotContext.load(offset));
     }
 }

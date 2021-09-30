@@ -11,19 +11,9 @@ import org.slf4j.LoggerFactory;
 public interface SqlDatabaseController extends DatabaseController<SqlDatabaseClient> {
     Logger LOGGER = LoggerFactory.getLogger(SqlDatabaseController.class);
 
-    /**
-     * @return jdbc vendor connection type
-     */
-    String getDatabaseType();
-
-    @Override
-    default String getDatabaseUrl() {
-        return "jdbc:" + getDatabaseType() + "://" + getDatabaseHostname() + ":" + getDatabasePort() + "/";
-    }
-
     @Override
     default SqlDatabaseClient getDatabaseClient(String username, String password) {
-        String databaseUrl = getDatabaseUrl();
+        String databaseUrl = getPublicDatabaseUrl();
         LOGGER.info("Creating SQL database client for '" + databaseUrl + "'");
         LOGGER.info("Using credentials '" + username + "' / '" + password + "'");
         return new SqlDatabaseClient(databaseUrl, username, password);

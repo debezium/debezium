@@ -17,12 +17,15 @@ import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
  */
 public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitter {
 
+    private final SqlServerPartition partition;
     private final SqlServerOffsetContext offsetContext;
     private final SqlServerChangeTable changeTable;
     private final Table tableSchema;
     private final SchemaChangeEventType eventType;
 
-    public SqlServerSchemaChangeEventEmitter(SqlServerOffsetContext offsetContext, SqlServerChangeTable changeTable, Table tableSchema, SchemaChangeEventType eventType) {
+    public SqlServerSchemaChangeEventEmitter(SqlServerPartition partition, SqlServerOffsetContext offsetContext, SqlServerChangeTable changeTable, Table tableSchema,
+                                             SchemaChangeEventType eventType) {
+        this.partition = partition;
         this.offsetContext = offsetContext;
         this.changeTable = changeTable;
         this.tableSchema = tableSchema;
@@ -32,7 +35,7 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
     @Override
     public void emitSchemaChangeEvent(Receiver receiver) throws InterruptedException {
         final SchemaChangeEvent event = new SchemaChangeEvent(
-                offsetContext.getPartition(),
+                partition.getSourcePartition(),
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
                 changeTable.getSourceTableId().catalog(),

@@ -52,7 +52,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
 
-    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_\\-]+$");
+    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
 
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String TABLE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.whitelist\" is already specified";
@@ -148,14 +148,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
             .withDisplayName("Hostname")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .required()
             .withDescription("Resolvable hostname or IP address of the database server.");
 
     public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
             .withDisplayName("Port")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isInteger)
@@ -164,14 +166,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
             .withDisplayName("User")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .required()
             .withDescription("Name of the database user to be used when connecting to the database.");
 
     public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Password of the database user to be used when connecting to the database.");
@@ -179,17 +183,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
             .withDisplayName("Database")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("The name of the database the connector should be monitoring");
+            .required()
+            .withDescription("The name of the database from which the connector should capture changes");
 
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
             .withDisplayName("Namespace")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired, RelationalDatabaseConnectorConfig::validateServerName)
+            .required()
+            .withValidation(RelationalDatabaseConnectorConfig::validateServerName)
             .withDescription("Unique name that identifies the database server and all "
                     + "recorded offsets, and that is used as a prefix for all schemas and topics. "
                     + "Each distinct installation should have a separate namespace and be monitored by "
@@ -204,6 +211,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field TABLE_INCLUDE_LIST = Field.create(TABLE_INCLUDE_LIST_NAME)
             .withDisplayName("Include Tables")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 2))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
@@ -230,6 +238,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field TABLE_EXCLUDE_LIST = Field.create(TABLE_EXCLUDE_LIST_NAME)
             .withDisplayName("Exclude Tables")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 3))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableExcludeList)
@@ -253,6 +262,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field TABLE_IGNORE_BUILTIN = Field.create("table.ignore.builtin")
             .withDisplayName("Ignore system databases")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 6))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
@@ -268,6 +278,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field COLUMN_EXCLUDE_LIST = Field.create("column.exclude.list")
             .withDisplayName("Exclude Columns")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 5))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateColumnExcludeList)
@@ -295,6 +306,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field COLUMN_INCLUDE_LIST = Field.create("column.include.list")
             .withDisplayName("Include Columns")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 4))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex)
@@ -316,6 +328,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 16))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(RelationalDatabaseConnectorConfig::validateMessageKeyColumnsField)
@@ -328,6 +341,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
             .withDisplayName("Decimal Handling")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 2))
             .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -339,6 +353,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
             .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 8))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the"
@@ -357,6 +372,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field SCHEMA_INCLUDE_LIST = Field.create(SCHEMA_INCLUDE_LIST_NAME)
             .withDisplayName("Include Schemas")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
@@ -384,6 +400,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field SCHEMA_EXCLUDE_LIST = Field.create(SCHEMA_EXCLUDE_LIST_NAME)
             .withDisplayName("Exclude Schemas")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateSchemaExcludeList)
@@ -410,6 +427,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field DATABASE_INCLUDE_LIST = Field.create(DATABASE_INCLUDE_LIST_NAME)
             .withDisplayName("Include Databases")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
@@ -433,6 +451,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field DATABASE_EXCLUDE_LIST = Field.create(DATABASE_EXCLUDE_LIST_NAME)
             .withDisplayName("Exclude Databases")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateDatabaseExcludeList)
@@ -451,6 +470,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
             .withDisplayName("Time Precision")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 4))
             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -462,8 +482,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
             .withDisplayName("Snapshot lock timeout (ms)")
-            .withWidth(Width.LONG)
             .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 6))
+            .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDefault(DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS)
             .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
@@ -474,6 +495,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
             .withDisplayName("Include database schema changes")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
@@ -485,6 +507,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field MASK_COLUMN_WITH_HASH = Field.create("column.mask.hash.([^.]+).with.salt.(.+)")
             .withDisplayName("Mask Columns Using Hash and Salt")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 13))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
@@ -492,12 +515,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final Field MASK_COLUMN = Field.create("column.mask.with.(d+).chars")
             .withDisplayName("Mask Columns With n Asterisks")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 12))
             .withValidation(Field::isInteger)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be masked with configured amount of asterisk ('*') characters.");
 
     public static final Field TRUNCATE_COLUMN = Field.create("column.truncate.to.(d+).chars")
             .withDisplayName("Truncate Columns To n Characters")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 11))
             .withValidation(Field::isInteger)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be truncated to the configured amount of characters.");
@@ -505,6 +531,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field PROPAGATE_COLUMN_SOURCE_TYPE = Field.create("column.propagate.source.type")
             .withDisplayName("Propagate Source Types by Columns")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 15))
             .withValidation(Field::isListOfRegex)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that "
                     + " adds the column’s original type and original length as parameters to the corresponding field schemas in the emitted change records.");
@@ -512,6 +539,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field PROPAGATE_DATATYPE_SOURCE_TYPE = Field.create("datatype.propagate.source.type")
             .withDisplayName("Propagate Source Types by Data Type")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 14))
             .withValidation(Field::isListOfRegex)
             .withDescription("A comma-separated list of regular expressions matching the database-specific data type names that "
                     + "adds the data type's original type and original length as parameters to the corresponding field schemas in the emitted change records.");
@@ -519,6 +547,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field SNAPSHOT_FULL_COLUMN_SCAN_FORCE = Field.createInternal("snapshot.scan.all.columns.force")
             .withDisplayName("Snapshot force scan all columns of all tables")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 999))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Restore pre 1.5 behaviour and scan all tables to discover columns."
@@ -798,7 +827,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         if (serverName != null) {
             if (!SERVER_NAME_PATTERN.asPredicate().test(serverName)) {
-                problems.accept(SERVER_NAME, serverName, serverName + " has invalid format (only the underscore, hyphen and alphanumeric characters are allowed)");
+                problems.accept(SERVER_NAME, serverName, serverName + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
                 return 1;
             }
         }

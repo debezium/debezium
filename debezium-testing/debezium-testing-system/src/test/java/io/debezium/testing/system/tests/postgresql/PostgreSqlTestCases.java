@@ -61,7 +61,7 @@ public interface PostgreSqlTestCases extends TestRuntimeFixture<SqlDatabaseContr
     @Test
     @Order(3)
     default void shouldContainRecordsInCustomersTopic() throws IOException {
-        getKafkaConnectController().waitForPostgreSqlSnapshot(getConnectorConfig().getDbServerName());
+        getConnectorMetrics().waitForPostgreSqlSnapshot(getConnectorConfig().getDbServerName());
 
         String topic = getConnectorConfig().getDbServerName() + ".inventory.customers";
         awaitAssert(() -> assertions().assertRecordsCount(topic, 4));

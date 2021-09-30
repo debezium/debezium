@@ -763,7 +763,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(new String(base64Encoder.encode(toByteArray((char[]) data)), StandardCharsets.UTF_8));
             }
             else if (data instanceof byte[]) {
-                r.deliver(new String(base64Encoder.encode((byte[]) data), StandardCharsets.UTF_8));
+                r.deliver(new String(base64Encoder.encode(normalizeBinaryData(column, (byte[]) data)), StandardCharsets.UTF_8));
             }
             else {
                 // An unexpected value
@@ -792,7 +792,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(HexConverter.convertToHexString(toByteArray((char[]) data)));
             }
             else if (data instanceof byte[]) {
-                r.deliver(HexConverter.convertToHexString((byte[]) data));
+                r.deliver(HexConverter.convertToHexString(normalizeBinaryData(column, (byte[]) data)));
             }
             else {
                 // An unexpected value
@@ -808,7 +808,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected ByteBuffer toByteBuffer(Column column, byte[] data) {
         // Kafka Connect would support raw byte arrays, too, but byte buffers are recommended
-        return ByteBuffer.wrap(data);
+        return ByteBuffer.wrap(normalizeBinaryData(column, data));
+    }
+
+    /**
+     * Converts the given byte array value into a normalized byte array. Specific connectors
+     * can perform value adjustments based on the column definition, e.g. right-pad with 0x00 bytes in case of
+     * fixed length BINARY in MySQL.
+     */
+    protected byte[] normalizeBinaryData(Column column, byte[] data) {
+        return data;
     }
 
     /**

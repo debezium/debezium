@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,7 +22,6 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
-import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -43,7 +43,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                              PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
                                              SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
-        super(connectorConfig, jdbcConnection, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
@@ -70,12 +70,14 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshotContext<PostgresOffsetContext> prepare(ChangeEventSourceContext context) throws Exception {
-        return new PostgresSnapshotContext(connectorConfig.databaseName());
+    protected SnapshotContext<PostgresPartition, PostgresOffsetContext> prepare(PostgresPartition partition)
+            throws Exception {
+        return new PostgresSnapshotContext(partition, connectorConfig.databaseName());
     }
 
     @Override
-    protected void connectionCreated(RelationalSnapshotContext<PostgresOffsetContext> snapshotContext) throws Exception {
+    protected void connectionCreated(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext)
+            throws Exception {
         // If using catch up streaming, the connector opens the transaction that the snapshot will eventually use
         // before the catch up streaming starts. By looking at the current wal location, the transaction can determine
         // where the catch up streaming should stop. The transaction is held open throughout the catch up
@@ -89,12 +91,14 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<PostgresOffsetContext> ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> ctx)
+            throws Exception {
         return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<PostgresOffsetContext> snapshotContext)
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
+                                               RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
         final Duration lockTimeout = connectorConfig.snapshotLockTimeout();
         final Optional<String> lockStatement = snapshotter.snapshotTableLockingStatement(lockTimeout, snapshotContext.capturedTables);
@@ -108,11 +112,13 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<PostgresOffsetContext> snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext)
+            throws SQLException {
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext<PostgresOffsetContext> ctx, PostgresOffsetContext previousOffset) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> ctx, PostgresOffsetContext previousOffset)
+            throws Exception {
         PostgresOffsetContext offset = ctx.offset;
         if (offset == null) {
             if (previousOffset != null && !snapshotter.shouldStreamEventsStartingFromSnapshot()) {
@@ -165,7 +171,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<PostgresOffsetContext> snapshotContext,
+    protected void readTableStructure(ChangeEventSourceContext sourceContext,
+                                      RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
                                       PostgresOffsetContext offsetContext)
             throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
@@ -193,9 +200,11 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<PostgresOffsetContext> snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
+                                                    Table table)
+            throws SQLException {
         return new SchemaChangeEvent(
-                snapshotContext.offset.getPartition(),
+                snapshotContext.partition.getSourcePartition(),
                 snapshotContext.offset.getOffset(),
                 snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
@@ -207,18 +216,20 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void complete(SnapshotContext<PostgresOffsetContext> snapshotContext) {
+    protected void complete(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
         snapshotter.snapshotCompleted();
     }
 
+    /**
+     * Generate a valid Postgres query string for the specified table and columns
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
+     */
     @Override
-    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresOffsetContext> snapshotContext, TableId tableId) {
-        return snapshotter.buildSnapshotQuery(tableId);
-    }
-
-    @Override
-    protected RelationalDatabaseSchema schema() {
-        return schema;
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
+                                                 TableId tableId, List<String> columns) {
+        return snapshotter.buildSnapshotQuery(tableId, columns);
     }
 
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {
@@ -231,10 +242,10 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class PostgresSnapshotContext extends RelationalSnapshotContext<PostgresOffsetContext> {
+    private static class PostgresSnapshotContext extends RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> {
 
-        public PostgresSnapshotContext(String catalogName) throws SQLException {
-            super(catalogName);
+        public PostgresSnapshotContext(PostgresPartition partition, String catalogName) throws SQLException {
+            super(partition, catalogName);
         }
     }
 }

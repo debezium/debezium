@@ -45,7 +45,7 @@ spec:
           timeoutSeconds: 1
         terminationMessagePolicy: File
         terminationMessagePath: /dev/termination-log
-        image: 'quay.io/debezium/example-mongodb:latest'
+        image: ${ocp.image.mongo}
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst

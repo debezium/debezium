@@ -27,7 +27,9 @@ public interface SnapshotProgressListener {
 
     void rowsScanned(TableId tableId, long numRows);
 
-    void currentChunk(String chunkId, Object[] from, Object[] to);
+    void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo);
+
+    void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo, Object tableTo[]);
 
     public static SnapshotProgressListener NO_OP = new SnapshotProgressListener() {
 
@@ -56,7 +58,11 @@ public interface SnapshotProgressListener {
         }
 
         @Override
-        public void currentChunk(String chunkId, Object[] from, Object[] to) {
+        public void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo) {
+        }
+
+        @Override
+        public void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo, Object tableTo[]) {
         }
     };
 }

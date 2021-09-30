@@ -15,6 +15,7 @@ import javax.annotation.PreDestroy;
 import javax.enterprise.context.Dependent;
 import javax.inject.Named;
 
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +47,7 @@ public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeC
     @ConfigProperty(name = PROP_CONTROLLER, defaultValue = "tcp://localhost:9090")
     URI controllerUri;
 
-    @ConfigProperty(name = PROP_SCOPE)
-    String scope;
+    private String scope;
 
     @ConfigProperty(name = PROP_TXN, defaultValue = "false")
     boolean txn;
@@ -58,6 +58,7 @@ public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeC
 
     @PostConstruct
     void constructor() {
+        scope = ConfigProvider.getConfig().getValue(PROP_SCOPE, String.class);
         clientConfig = ClientConfig.builder()
                 .controllerURI(controllerUri)
                 .build();

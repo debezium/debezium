@@ -46,7 +46,7 @@ spec:
           timeoutSeconds: 1
         terminationMessagePolicy: File
         terminationMessagePath: /dev/termination-log
-        image: 'quay.io/debezium/example-postgres-ocp:latest'
+        image: ${ocp.image.postgresql}
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst

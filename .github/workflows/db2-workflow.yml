@@ -2,6 +2,8 @@ name: Build Connector Db2
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
@@ -10,6 +12,8 @@ on:
       - 'pom.xml'
       - '.github/workflows/db2-workflow.yml'
   pull_request:
+    branches:
+      - master
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'

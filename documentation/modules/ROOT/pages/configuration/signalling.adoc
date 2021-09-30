@@ -21,7 +21,7 @@ As it might be necessary to synchronize such an action with the dataflow the sig
 
 Signalling is disabled by default.
 The name of the signalling data collection must be set via connector configuration parameter to enable the function.
-The signalling data collection must be *explictly* added among captured data collections.
+The signalling data collection must be *explictly* added among captured data collections, i.e., included in the `table.include.list` parameter.
 
 .Connector configuration
 [cols="3,9",options="header"]
@@ -30,7 +30,8 @@ The signalling data collection must be *explictly* added among captured data col
 
 |`signal.data.collection`
 |Fully-qualified name of data collection. +
-The name format is connector specific, e.g. "some_schema.debezium_signals" in case of the {prodname} Postgres connector.
+The name format is connector specific, e.g. `"some_schema.debezium_signals"` in case of the {prodname} Postgres connector. +
+For SQL Server it should be formatted as `"some_database.some_schema.debezium_signals"`.
 
 |===
 
@@ -72,7 +73,7 @@ Such table could be created with a DDL command similar to:
 
 [source,sql]
 ----
-CREATE TABLE debezium_signal (id VARCHAR(32) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
+CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
 ----
 
 .Example of a signal record
@@ -125,5 +126,48 @@ If a placeholder `{}` is added to the message it will be replaced with streaming
 
 |data
 |`{"message": "Signal message at offset {}"}`
+
+|===
+
+
+=== Triggering an Incremental Snapshot
+*Available for MySQL, PostgresSQL, Oracle, SQL Server and Db2 connectors*
+
+The type of the action is `execute-snapshot`.
+It will start an incremental snapshot operation. The operation first reads the first and last primary key values and use those as start and end point for each table.
+
+==== Optional Connector Configuration
+`incremental.snapshot.chunk.size`: Integer value. The number of rows collected at each fetch operation on the database.
+
+
+.Action parameters
+[cols="3,9",options="header", source, adoc]
+|===
+|Name | Description
+
+|data-collections
+a|The list of data collections to be snapshoted. +
+Formatting should be: +
+
+* MySQL: `"some_database.some_table"`
+* PostgresSQL and Db2: `"some_schema.some_table"`
+* SQL Server: `"some_database.some_schema.some_table"`
+* Oracle: `"some_schema.some_table"`
+
+|===
+
+.Example of executing an incremental snapshot
+[cols="1,9",options="header"]
+|===
+|Column | Value
+
+|id
+|`d139b9b7-7777-4547-917d-e1775ea61d41`
+
+|type
+|`execute-snapshot`
+
+|data
+|`{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}`
 
 |===

@@ -32,7 +32,6 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
 
     @Override
     default void setupKafka() throws Exception {
-        setupOcpClient();
         OpenShiftClient ocp = getOcpClient();
         KafkaController controller = deployKafkaCluster(ocp);
         KafkaConnectController connectController = deployKafkaConnectCluster(ocp);
@@ -43,11 +42,12 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
 
     @Override
     default void teardownKafka() throws Exception {
-        teardownOcpClient();
+        // no-op
+        // kafka is reused across tests
     }
 
     default KafkaController deployKafkaCluster(OpenShiftClient ocp) throws Exception {
-        updateOperator(ConfigProperties.OCP_PROJECT_DBZ, ocp);
+        updateKafkaOperator(ConfigProperties.OCP_PROJECT_DBZ, ocp);
 
         OcpKafkaDeployer kafkaDeployer = new OcpKafkaDeployer.Builder()
                 .withOcpClient(ocp)
@@ -77,7 +77,7 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
         return controller;
     }
 
-    default void updateOperator(String project, OpenShiftClient ocp) throws InterruptedException {
+    default void updateKafkaOperator(String project, OpenShiftClient ocp) {
         StrimziOperatorController operatorController = StrimziOperatorController.forProject(project, ocp);
 
         operatorController.setLogLevel("DEBUG");

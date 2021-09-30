@@ -1,0 +1,10 @@
+apiVersion: registry.apicur.io/v1
+kind: ApicurioRegistry
+metadata:
+  name: debezium-registry
+spec:
+  configuration:
+    logLevel: ${apicurio.log.level}
+    persistence: "kafkasql"
+    kafkasql:
+      bootstrapServers: "debezium-kafka-cluster-kafka-bootstrap.${ocp.project.debezium}.svc.cluster.local:9092"

@@ -1,3 +1,9 @@
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_`.
+
+Snapshot metrics are not exposed unless a snapshot operation is active, or if a snapshot has occurred since the last connector start.
+
+The following table lists the shapshot metrics that are available.
+
 [cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description
@@ -18,10 +24,12 @@
 |`long`
 | The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
+ifdef::product[]
 |[[connectors-snaps-metric-monitoredtables_{context}]]<<connectors-snaps-metric-monitoredtables_{context}, `MonitoredTables`>> +
 _Deprecated and scheduled for removal in a future release; use the `CapturedTables` metric instead._
 |`string[]`
 |The list of tables that are monitored by the connector.
+endif::product[]
 
 |[[connectors-snaps-metric-capturedtables_{context}]]<<connectors-snaps-metric-capturedtables_{context}, `CapturedTables`>>
 |`string[]`

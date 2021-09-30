@@ -65,7 +65,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
     protected abstract T getController(Deployment deployment, List<Service> services, OpenShiftClient ocp);
 
     static abstract public class DatabaseBuilder<B extends DatabaseBuilder<B, D>, D extends AbstractOcpDatabaseDeployer<?>>
-            implements Deployer.Builder<D> {
+            implements Deployer.Builder<B, D> {
 
         protected String project;
         protected Deployment deployment;
@@ -98,11 +98,5 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
             this.services = new ArrayList<>(services);
             return self();
         }
-
-        @SuppressWarnings("unchecked")
-        protected B self() {
-            return (B) this;
-        }
-
     }
 }

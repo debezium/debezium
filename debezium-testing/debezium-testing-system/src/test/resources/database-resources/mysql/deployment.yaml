@@ -54,7 +54,7 @@ spec:
             timeoutSeconds: 1
         terminationMessagePolicy: File
         terminationMessagePath: /dev/termination-log
-        image: 'debezium/example-mysql:latest'
+        image: ${ocp.image.mysql}
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst

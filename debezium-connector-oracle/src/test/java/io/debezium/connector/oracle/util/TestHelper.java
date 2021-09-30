@@ -5,13 +5,17 @@
  */
 package io.debezium.connector.oracle.util;
 
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Strings;
@@ -106,6 +110,17 @@ public class TestHelper {
 
         if (adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
+        }
+        else {
+            // Tests will always use the online catalog strategy due to speed.
+            builder.withDefault(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog");
+
+            final String bufferType = System.getProperty(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE.name());
+            if (LogMiningBufferType.parse(bufferType).equals(LogMiningBufferType.INFINISPAN)) {
+                builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, "infinispan");
+                builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_LOCATION, "./target/data");
+            }
+            builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
         }
 
         // In the event that the environment variables do not specify a database.pdb.name setting,
@@ -401,6 +416,18 @@ public class TestHelper {
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to clean database");
+        }
+    }
+
+    public static List<BigInteger> getCurrentRedoLogSequences() throws SQLException {
+        try (OracleConnection connection = adminConnection()) {
+            return connection.queryAndMap("SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT'", rs -> {
+                List<BigInteger> sequences = new ArrayList<>();
+                while (rs.next()) {
+                    sequences.add(new BigInteger(rs.getString(1)));
+                }
+                return sequences;
+            });
         }
     }
 }

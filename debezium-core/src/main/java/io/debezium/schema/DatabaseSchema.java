@@ -31,4 +31,9 @@ public interface DatabaseSchema<I extends DataCollectionId> {
 
     default void assureNonEmptySchema() {
     }
+
+    /**
+     * Whether this schema is historized (i.e. a history of all schema changes is kept which is recovered upon connector restart) or not.
+     */
+    boolean isHistorized();
 }
