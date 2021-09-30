@@ -102,6 +102,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         counters.reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
+            LOGGER.debug("Fetching results for SCN [{}, {}]", startScn, endScn);
             statement.setFetchSize(getConfig().getMaxQueueSize());
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, startScn.toString());
@@ -346,6 +347,12 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             return offsetContext.getScn();
         }
         else {
+            if (!getLastProcessedScn().isNull() && getLastProcessedScn().compareTo(endScn) < 0) {
+                // If the last processed SCN is before the endScn we need to use the last processed SCN as the
+                // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
+                endScn = getLastProcessedScn();
+            }
+
             if (transactionCache.isEmpty()) {
                 offsetContext.setScn(endScn);
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);

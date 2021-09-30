@@ -62,6 +62,8 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
 
     protected final Counters counters;
 
+    private Scn lastProcessedScn = Scn.NULL;
+
     public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
                                           OracleConnectorConfig connectorConfig,
                                           OracleDatabaseSchema schema,
@@ -127,6 +129,15 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
     }
 
     /**
+     * Return the last processed system change number handled by the processor.
+     *
+     * @return the last processed system change number, never {@code null}.
+     */
+    protected Scn getLastProcessedScn() {
+        return lastProcessedScn;
+    }
+
+    /**
      * Returns the {@code TransactionCache} implementation.
      * @return the transaction cache, never {@code null}
      */
@@ -159,6 +170,9 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * @throws InterruptedException if the dispatcher was interrupted sending an event
      */
     protected void processRow(LogMinerEventRow row) throws SQLException, InterruptedException {
+        if (!row.getEventType().equals(EventType.MISSING_SCN)) {
+            lastProcessedScn = row.getScn();
+        }
         switch (row.getEventType()) {
             case MISSING_SCN:
                 handleMissingScn(row);
