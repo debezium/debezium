@@ -950,7 +950,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private boolean isVariableScaleDecimal(final Column column) {
-        return column.length() == VARIABLE_SCALE_DECIMAL_LENGTH &&
+        // TODO: Remove VARIABLE_SCALE_DECIMAL_LENGTH when https://github.com/pgjdbc/pgjdbc/issues/2275
+        // is closed.
+        return (column.length() == 0 || column.length() == VARIABLE_SCALE_DECIMAL_LENGTH) &&
                 column.scale().orElseGet(() -> 0) == 0;
     }
 
