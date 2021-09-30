@@ -5,6 +5,7 @@ on:
   # be executed in any flows triggered by it
   pull_request_target:
     branches: [ master ]
+    types: [ opened ]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,4 +34,4 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please add missing author name(s) and alias name(s) to the [COPYRIGHT.txt](https://github.com/debezium/debezium/blob/master/COPYRIGHT.txt) and [Aliases.txt](https://github.com/debezium/debezium/blob/master/jenkins-jobs/scripts/config/Aliases.txt) respectively.
+            Welcome as a new contributor to Debezium, @${{ github.event.pull_request.user.login }}. Reviewers, please add missing author name(s) and alias name(s) to the [COPYRIGHT.txt](https://github.com/debezium/debezium/blob/master/COPYRIGHT.txt) and [Aliases.txt](https://github.com/debezium/debezium/blob/master/jenkins-jobs/scripts/config/Aliases.txt) respectively.
