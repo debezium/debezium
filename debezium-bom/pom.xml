@@ -16,16 +16,6 @@
         <version.confluent.platform>6.0.2</version.confluent.platform>
         <version.apicurio>2.0.0.Final</version.apicurio>
 
-        <!-- Database drivers, should align with databases in debezium-build-parent -->
-        <version.postgresql.driver>42.2.14</version.postgresql.driver>
-        <version.mysql.driver>8.0.26</version.mysql.driver>
-        <version.mysql.binlog>0.25.3</version.mysql.binlog>
-        <version.mongo.driver>4.2.1</version.mongo.driver>
-        <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
-        <version.oracle.driver>21.1.0.0</version.oracle.driver>
-        <version.db2.driver>11.5.0.0</version.db2.driver>
-        <version.cassandra.driver>3.11.0</version.cassandra.driver>
-
         <!-- Connectors -->
         <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
         <version.dropwizard>4.0.1</version.dropwizard>
