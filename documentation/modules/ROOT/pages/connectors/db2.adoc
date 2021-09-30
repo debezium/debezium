@@ -1444,7 +1444,7 @@ This will return one of these:
 .. asncap is already running
 .. start +-->+ <COMMAND>
 +
-In this case, run the retrived <COMMAND> in the terminal, for example:
+In this case, run the retrieved <COMMAND> in the terminal, for example:
 +
 [source,shell]
 ----
