@@ -76,6 +76,10 @@
         </pluginManagement>
         <plugins>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-bootstrap-maven-plugin</artifactId>
             </plugin>
@@ -92,6 +96,16 @@
                 </configuration>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <!-- Inject version information into the extension's YAML automatically -->
+                    <include>**/quarkus-extension.yaml</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
 
 </project>
