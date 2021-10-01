@@ -158,11 +158,13 @@ The connector is able to detect whether CDC is enabled or disabled for included 
 [[sqlserver-topic-names]]
 === Topic names
 
-The SQL Server connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations for a specific table to a single Kafka topic.
-By default, the Kafka topic name takes the form _serverName_._schemaName_._tableName_.
+By default, the SQL Server connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic.
+The connector uses the following convention to name change event topics: 
+`_<serverName>_._<schemaName>_._<tableName>_`
+
 The following list provides definitions for the components of the default name:
 
-_serverName_:: The logical name of the connector, as specified by the `database.server.name` configuration property.
+_serverName_:: The logical name of the connector, as specified by the xref:sqlserver-property-database-server-name[`database.server.name`] configuration property.
 _schemaName_:: The name of the database schema in which the change event occurred.
 _tableName_:: The name of the database table in which the change event occurred.
 
@@ -175,6 +177,8 @@ The connector would stream records to the following Kafka topics:
 * `fulfillment.dbo.customers`
 * `fulfillment.dbo.orders`
 
+The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-sqlserver-connector-schema-change-topic[schema change topics], and xref:sqlserver-transaction-metadata[transaction metadata topics].
+
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
@@ -183,12 +187,14 @@ For more information about using the logical topic routing SMT to customize topi
 // Type: concept
 // ModuleID: how-the-debezium-sql-server-connector-uses-the-schema-change-topic
 // Title: How the {prodname} SQL Server connector uses the schema change topic
+[[about-the-debezium-sqlserver-connector-schema-change-topic]]
 === Schema change topic
 
-For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of schema changes in a database history topic.
+For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of schema changes in an internal database history topic.
 This topic reflects an internal connector state and you should not use it directly.
-Application that require notifications about schema changes, should obtain the information from the public schema change topic.
-The connector writes all of these events to a Kafka topic named `<serverName>`, where `serverName` is the name of the connector that is specified in the database.server.name configuration property.
+Applications that require notifications about schema changes should obtain the information from the public schema change topic.
+
+The connector writes schema change events to a Kafka topic with the name `_<serverName>_`, where `_serverName_` is the name of the connector that is specified in the xref:sqlserver-property-database-server-name[`database.server.name`] property.
 
 [WARNING]
 ====
@@ -312,7 +318,9 @@ A message to the schema change topic contains a logical representation of the ta
 
 |2
 |`ddl`
-|Always `null` for the SQL Server connector. For other connectors, this field contains the DDL responsible for the schema change. This DDL is not available to SQL Server connectors.
+|Always `null` for the SQL Server connector.
+For other connectors, this field contains the DDL responsible for the schema change.
+This DDL is not available to SQL Server connectors.
 
 |3
 |`tableChanges`
@@ -344,8 +352,8 @@ a|Describes the kind of change. The value is one of the following:
 
 |===
 
-In messages that the connector sends to the schema change topic, the key is the name of the database that contains the schema change.
-In the following example, the `payload` field contains the key:
+In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
+In the following example, the `payload` field contains the message key:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -997,10 +1005,10 @@ Database transactions are represented by a statement block that is enclosed betw
 {prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
 Transaction boundary events contain the following fields:
 
-`status`:: `BEGIN` or `END`
-`id`:: String representation of unique transaction identifier.
-`event_count` (for `END` events):: Total number of events emitted by the transaction.
-`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection.
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier.
+`event_count` (for `END` events):: Total number of events that the connector emits for the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
 
 [WARNING]
 ====
@@ -1038,7 +1046,7 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-The transaction events are written to the topic named `<database.server.name>.transaction`.
+The transaction events are written to the xref:sqlserver-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 //Type: concept
 //ModuleID: change-data-event-enrichment
@@ -1047,9 +1055,9 @@ The transaction events are written to the topic named `<database.server.name>.tr
 When transaction metadata is enabled, the data message `Envelope` is enriched with a new `transaction` field.
 This field provides information about every event in the form of a composite of fields:
 
-`id`:: String representation of unique transaction identifier
-`total_order`:: The absolute position of the event among all events generated by the transaction
-`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
 
 The following example shows what a typical message looks like:
 

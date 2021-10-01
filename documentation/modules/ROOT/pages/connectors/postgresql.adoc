@@ -309,11 +309,16 @@ See {link-prefix}:{link-postgresql-connector}#setting-up-postgresql[Setting up P
 [[postgresql-topic-names]]
 === Topics names
 
-The PostgreSQL connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. By default, the Kafka topic name is _serverName_._schemaName_._tableName_ where:
+By default, the PostgreSQL connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic.
+The connector uses the following convention to name change event topics:
 
-* _serverName_ is the logical name of the connector as specified with the `database.server.name` connector configuration property.
-* _schemaName_ is the name of the database schema where the operation occurred.
-* _tableName_ is the name of the database table in which the operation occurred.
+_serverName.schemaName.tableName_
+
+The following list provides definitions for the components of the default name:
+
+_serverName_:: The logical name of the connector, as specified by the xref:postgresql-property-database-server-name[`database.server.name`] configuration property.
+_schemaName_:: The name of the database schema in which the change event occurred.
+_tableName_:: The name of the database table in which the change event occurred.
 
 For example, suppose that `fulfillment` is the logical server name in the configuration for a connector that is capturing changes in a PostgreSQL installation that has a `postgres` database and an `inventory` schema that contains four tables: `products`, `products_on_hand`, `customers`, and `orders`. The connector would stream records to these four Kafka topics:
 
@@ -328,6 +333,9 @@ Now suppose that the tables are not part of a specific schema but were created i
 * `fulfillment.public.products_on_hand`
 * `fulfillment.public.customers`
 * `fulfillment.public.orders`
+
+The connector applies similar naming conventions to label its xref:postgresql-transaction-metadata[transaction metadata topics].
+
 
 // Type: concept
 // ModuleID: metadata-in-debezium-postgresql-change-event-records

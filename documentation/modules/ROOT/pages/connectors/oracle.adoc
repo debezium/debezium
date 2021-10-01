@@ -120,10 +120,18 @@ include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot
 [[oracle-topic-names]]
 === Topic names
 
-The default behavior is that a {prodname} Oracle connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations in one table to one Kafka topic.
-The Kafka topic naming convention is as follows:
+By default, the Oracle connector writes change events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic.
+The connector uses the following convention to name change event topics:
 
 _serverName.schemaName.tableName_
+
+The following list provides definitions for the components of the default name:
+
+_serverName_:: The logical name of the server as specified by the xref:oracle-property-database-server-name[`database.server.name`] connector configuration property.
+
+_schemaName_:: The name of the schema in which the operation occurred.
+
+_tableName_:: The name of the table in which the operation occurred.
 
 For example, if `fulfillment` is the server name, `inventory` is the schema name, and the database contains tables with the names `orders`, `customers`, and `products`,
 the {prodname} Oracle connector emits events to the following Kafka topics, one for each table in the database:
@@ -134,16 +142,19 @@ fulfillment.inventory.customers
 fulfillment.inventory.products
 ----
 
+The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-db2-connector-schema-change-topic[schema change topics], and xref:db2-transaction-metadata[transaction metadata topics].
+
 // Type: concept
 // ModuleID: how-debezium-oracle-connectors-expose-database-schema-changes
 // Title: How {prodname} Oracle connectors expose database schema changes
 [[oracle-schema-change-topic]]
 === Schema change topic
 
-The {prodname} Oracle connector stores the history of schema changes in a database history topic.
+The {prodname} Oracle connector stores the history of schema changes in an internal database history topic.
 This topic reflects an internal connector state and you should not use it directly.
 Applications that require notifications about schema changes should obtain the information from the public schema change topic.
-The connector writes schema change events to a Kafka topic named `<serverName>`, where `serverName` is the name of the connector that is specified in the `database.server.name` configuration property.
+
+The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the name of the connector that is specified in the xref:oracle-property-database-server-name[`database.server.name`] configuration property.
 
 ifdef::community[]
 [WARNING]
@@ -314,7 +325,7 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 
 |===
 
-Messages that the connector sends to the schema change topic use a message key that is equal to the name of the database that contains the schema change.
+In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
 In the following example, the `payload` field contains the key:
 
 [source,json,indent=0,subs="+attributes"]
@@ -360,7 +371,7 @@ Transaction boundary events contain the following fields:
 `status`:: `BEGIN` or `END`
 `id`:: String representation of unique transaction identifier.
 `event_count` (for `END` events):: Total number of events emmitted by the transaction.
-`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from the given data collection.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates number of events that the connector emits for changes that originate from a data collection.
 
 The following example shows a typical transaction boundary message:
 
@@ -392,7 +403,7 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-The transaction events are written to the topic named `_<database.server.name>_.transaction`.
+The connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 //Type: concept
 //ModuleID: debezium-oracle-connector-change-data-event-enrichment
@@ -485,7 +496,7 @@ CREATE TABLE customers (
 );
 ----
 
-If the value of the `database.server.name` configuration property is set to `server1`,
+If the value of the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` configuration property is set to `server1`,
 the JSON representation for every change event that occurs in the `customers` table in the database features the following key structure:
 
 [source,json,indent=0,sub="attributes"]

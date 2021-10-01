@@ -130,14 +130,17 @@ include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot
 [id="how-debezium-db2-connectors-read-change-data-tables"]
 === Change-data tables
 
-After a complete snapshot, when a {prodname} Db2 connector starts for the first time, the connector identifies the change-data table for each source table that is in capture mode. The connector does the following for each change-data table:
+After a complete snapshot, when a {prodname} Db2 connector starts for the first time, the connector identifies the change-data table for each source table that is in capture mode.
+The connector does the following for each change-data table:
 
 . Reads change events that were created between the last stored, highest LSN and the current, highest LSN.
-. Orders the change events according to the commit LSN and the change LSN for each event. This ensures that the connector emits the change events in the order in which the table changes occurred.
+. Orders the change events according to the commit LSN and the change LSN for each event.
+  This ensures that the connector emits the change events in the order in which the table changes occurred.
 . Passes commit and change LSNs as offsets to Kafka Connect.
 . Stores the highest LSN that the connector passed to Kafka Connect.
 
-After a restart, the connector resumes emitting change events from the offset (commit and change LSNs) where it left off. While the connector is running and emitting change events, if you remove a table from capture mode or add a table to capture mode, the connector detects this and modifies its behavior accordingly.
+After a restart, the connector resumes emitting change events from the offset (commit and change LSNs) where it left off.
+While the connector is running and emitting change events, if you remove a table from capture mode or add a table to capture mode, the connector detects the change, and modifies its behavior accordingly.
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-db2-change-event-records
@@ -145,11 +148,14 @@ After a restart, the connector resumes emitting change events from the offset (c
 [[db2-topic-names]]
 === Topic names
 
-By default, the Db2 connector writes change events for all insert, update, and delete operations on a single table to a single Kafka topic. The name of the Kafka topic has the following format:
+By default, the Db2 connector writes change events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic.
+The connector uses the following convention to name change event topics:
 
 _databaseName_._schemaName_._tableName_
 
-_databaseName_:: The logical name of the connector as specified with the `database.server.name` connector configuration property.
+The following list provides definitions for the components of the default name:
+
+_databaseName_:: The logical name of the connector as specified by the xref:db2-property-database-server-name[`database.server.name`] connector configuration property.
 
 _schemaName_:: The name of the schema in which the operation occurred.
 
@@ -162,6 +168,8 @@ For example, consider a Db2 installation with the `mydatabase` database,  which 
 * `mydatabase.MYSCHEMA.CUSTOMERS`
 * `mydatabase.MYSCHEMA.ORDERS`
 
+The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-db2-connector-schema-change-topic[schema change topics], and xref:db2-transaction-metadata[transaction metadata topics].
+
 To configure a Db2 connector to emit change events to differently-named Kafka topics, see the documentation for the {link-prefix}:{link-topic-routing}#topic-routing[topic routing transformation].
 
 // Type: concept
@@ -169,7 +177,13 @@ To configure a Db2 connector to emit change events to differently-named Kafka to
 [id="about-the-debezium-db2-connector-schema-change-topic"]
 === Schema change topic
 
-For a table that is in capture mode, the {prodname} Db2 connector stores the history of schema changes to that table in a database history topic. This topic reflects an internal connector state and you should not use it. If your application needs to track schema changes, there is a public schema change topic. The name of the schema change topic is the same as the logical server name specified in the connector configuration.
+For a table that is in capture mode, the {prodname} Db2 connector stores the history of schema changes that occur in the table in an internal database history topic.
+This topic reflects an internal connector state and you should not use it directly.
+Applications that require notifications about schema changes should obtain the information from the public schema change topic.
+
+The connector writes schema change events to a Kafka schema change topic that has the name `_<serverName>_` where `_<serverName>_` is the logical server name that is specified in the xref:db2-property-database-server-name[`database.server.name`] connector configuration property.
+
+
 
 [WARNING]
 ====
@@ -293,7 +307,9 @@ A message to the schema change topic contains a logical representation of the ta
 
 |2
 |`ddl`
-|Always `null` for the Db2 connector. For other connectors, this field contains the DDL responsible for the schema change. This DDL is not available to Db2 connectors.
+|Always `null` for the Db2 connector.
+For other connectors, this field contains the DDL responsible for the schema change.
+This DDL is not available to Db2 connectors.
 
 |3
 |`tableChanges`
@@ -325,7 +341,8 @@ a|Describes the kind of change. The value is one of the following:
 
 |===
 
-In messages to the schema change topic, the key is the name of the database that contains the schema change. In the following example, the `payload` field contains the key:
+In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
+In the following example, the `payload` field contains the key:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -364,12 +381,14 @@ In messages to the schema change topic, the key is the name of the database that
 Metadata for transactions that occur before you deploy the connector is not available.
 ====
 
-For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
+{prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
+Transaction boundary events contain the following fields:
 
-* `status` - `BEGIN` or `END`
-* `id` - string representation of unique transaction identifier
-* `event_count` (for `END` events) - total number of events emitted by the transaction
-* `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from the given data collection
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier.
+`event_count` (for `END` events):: Total number of events emitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements.
+that indicates the number of events that the connector emits for changes that originate from a data collection.
 
 .Example
 
@@ -399,16 +418,16 @@ For every transaction `BEGIN` and `END`, {prodname} generates an event that cont
 }
 ----
 
-The connector emits transaction events to the `_database.server.name_.transaction` topic.
+The connector emits transaction events to the xref:db2-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 .Data change event enrichment
 
 When transaction metadata is enabled the connector enriches the change event  `Envelope` with a new `transaction` field.
 This field provides information about every event in the form of a composite of fields:
 
-* `id` - string representation of unique transaction identifier
-* `total_order` - absolute position of the event among all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
 
 Following is an example of a message:
 
