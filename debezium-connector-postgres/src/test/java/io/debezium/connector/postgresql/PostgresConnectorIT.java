@@ -2299,7 +2299,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForStreamingRunning();
 
         // Check that publication was created
-        assertTrue(TestHelper.publicationExists());
+        Awaitility.await("Wait until publication is created").atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(TestHelper::publicationExists);
 
         // Stop connector, drop publication
         stopConnector();
@@ -2311,7 +2312,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForStreamingRunning();
 
         // Check that publication was created
-        assertTrue(TestHelper.publicationExists());
+        Awaitility.await("Wait until publication is created").atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(TestHelper::publicationExists);
 
         // Stop Connector and check log messages
         stopConnector(value -> {
