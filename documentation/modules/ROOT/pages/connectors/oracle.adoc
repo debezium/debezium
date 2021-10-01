@@ -110,6 +110,12 @@ After the snapshot completes, the connector begins to stream event records for s
 |`schema_only`
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 6).
 
+|`schema_only_recovery`
+|This is a recovery setting for a connector that has already been capturing changes.
+When you restart the connector, this setting enables recovery of a corrupted or lost database history topic.
+You might set it periodically to "clean up" a database history topic that has been growing unexpectedly.
+Database history topics require infinite retention.
+
 |===
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
@@ -1909,6 +1915,11 @@ Specify this value to populate topics with a complete representation of the data
 
 `schema_only`:: The snapshot includes only the structure of captured tables.
 Specify this value if you want the connector to capture data only for changes that occur after the snapshot.
+
+`schema_only_recovery`:: This is a recovery setting for a connector that has already been capturing changes.
+When you restart the connector, this setting enables recovery of a corrupted or lost database history topic.
+You might set it periodically to "clean up" a database history topic that has been growing unexpectedly.
+Database history topics require infinite retention.
 
 After the snapshot is complete, the connector continues to read change events from the database's redo logs.
 
