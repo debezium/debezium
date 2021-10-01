@@ -2016,7 +2016,7 @@ To base a table key on multiple column names, insert commas between the column n
 
 Each fully-qualified table name is a regular expression in the following format: +
  +
-`_<schema_name>_._<table_name>_` +
+`_<schemaName>_._<tableName>_` +
  +
 The property can include entries for multiple tables.
 Use a semicolon to separate table entries in the list. +
