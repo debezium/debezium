@@ -60,6 +60,7 @@ class LogMinerQueryResultProcessor {
 
     private Scn currentOffsetScn = Scn.NULL;
     private Scn currentOffsetCommitScn = Scn.NULL;
+    private Scn lastProcessedScn = Scn.NULL;
     private long stuckScnCounter = 0;
 
     LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
@@ -125,6 +126,10 @@ class LogMinerQueryResultProcessor {
 
             String logMessage = String.format("transactionId=%s, SCN=%s, table_name=%s, segOwner=%s, operationCode=%s, offsetSCN=%s, " +
                     " commitOffsetSCN=%s", txId, scn, tableName, segOwner, operationCode, offsetContext.getScn(), offsetContext.getCommitScn());
+
+            if (operationCode != RowMapper.MISSING_SCN) {
+                lastProcessedScn = scn;
+            }
 
             switch (operationCode) {
                 case RowMapper.START: {
@@ -308,6 +313,10 @@ class LogMinerQueryResultProcessor {
 
         streamingMetrics.addProcessedRows(rows);
         historyRecorder.flush();
+    }
+
+    Scn getLastProcessedScn() {
+        return lastProcessedScn;
     }
 
     private boolean hasNext(ResultSet resultSet) throws SQLException {

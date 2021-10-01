@@ -206,6 +206,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                     startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
                                 }
                                 else {
+
+                                    final Scn lastProcessedScn = processor.getLastProcessedScn();
+                                    if (!lastProcessedScn.isNull() && lastProcessedScn.compareTo(endScn) < 0) {
+                                        // If the last processed SCN is before the endScn we need to use the last processed SCN as the
+                                        // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
+                                        endScn = lastProcessedScn;
+                                    }
+
                                     if (transactionalBuffer.isEmpty()) {
                                         LOGGER.debug("Buffer is empty, updating offset SCN to {}", endScn);
                                         offsetContext.setScn(endScn);
