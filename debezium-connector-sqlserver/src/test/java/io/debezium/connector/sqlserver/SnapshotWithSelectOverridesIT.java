@@ -104,7 +104,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
                         "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
                 .build();
-        takeSnapshotWithOverrides(config);
+        takeSnapshotWithOverrides(config, "server1.dbo.");
     }
 
     @Test
@@ -121,17 +121,17 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
                         "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table3] where soft_deleted = 0")
                 .build();
-        takeSnapshotWithOverrides(config);
+        takeSnapshotWithOverrides(config, "server1.testDB.dbo.");
     }
 
-    private void takeSnapshotWithOverrides(Configuration config) throws Exception {
+    private void takeSnapshotWithOverrides(Configuration config, String topicPrefix) throws Exception {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE + (INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE) / 2);
-        List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
-        List<SourceRecord> table2 = records.recordsForTopic("server1.dbo.table2");
-        List<SourceRecord> table3 = records.recordsForTopic("server1.dbo.table3");
+        List<SourceRecord> table1 = records.recordsForTopic(topicPrefix + "table1");
+        List<SourceRecord> table2 = records.recordsForTopic(topicPrefix + "table2");
+        List<SourceRecord> table3 = records.recordsForTopic(topicPrefix + "table3");
 
         // soft_deleted records should be excluded for table1 and table3
         assertThat(table1).hasSize(INITIAL_RECORDS_PER_TABLE / 2);
@@ -170,7 +170,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
                         "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
                 .build();
-        takeSnapshotWithOverridesWithAdditionalWhitespace(config);
+        takeSnapshotWithOverridesWithAdditionalWhitespace(config, "server1.dbo.");
     }
 
     @Test
@@ -187,17 +187,17 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
                         "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table3] where soft_deleted = 0")
                 .build();
-        takeSnapshotWithOverridesWithAdditionalWhitespace(config);
+        takeSnapshotWithOverridesWithAdditionalWhitespace(config, "server1.testDB.dbo.");
     }
 
-    private void takeSnapshotWithOverridesWithAdditionalWhitespace(Configuration config) throws Exception {
+    private void takeSnapshotWithOverridesWithAdditionalWhitespace(Configuration config, String topicPrefix) throws Exception {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE + (INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE) / 2);
-        List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
-        List<SourceRecord> table2 = records.recordsForTopic("server1.dbo.table2");
-        List<SourceRecord> table3 = records.recordsForTopic("server1.dbo.table3");
+        List<SourceRecord> table1 = records.recordsForTopic(topicPrefix + "table1");
+        List<SourceRecord> table2 = records.recordsForTopic(topicPrefix + "table2");
+        List<SourceRecord> table3 = records.recordsForTopic(topicPrefix + "table3");
 
         // soft_deleted records should be excluded for table1 and table3
         assertThat(table1).hasSize(INITIAL_RECORDS_PER_TABLE / 2);

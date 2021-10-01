@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
+import io.debezium.schema.TopicSelector.DataCollectionTopicNamer;
 
 /**
  * The topic naming strategy based on connector configuration and table name
@@ -17,7 +18,14 @@ import io.debezium.schema.TopicSelector;
 public class SqlServerTopicSelector {
 
     public static TopicSelector<TableId> defaultSelector(SqlServerConnectorConfig connectorConfig) {
-        return TopicSelector.defaultSelector(connectorConfig,
-                (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.schema(), tableId.table()));
+        DataCollectionTopicNamer<TableId> topicNamer;
+        if (connectorConfig.isMultiPartitionModeEnabled()) {
+            topicNamer = (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.catalog(), tableId.schema(), tableId.table());
+        }
+        else {
+            topicNamer = (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.schema(), tableId.table());
+        }
+
+        return TopicSelector.defaultSelector(connectorConfig, topicNamer);
     }
 }
