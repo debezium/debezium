@@ -911,7 +911,7 @@ public class EventRouterTest {
                 "UserCreated",
                 "10711fa5",
                 "User",
-                "{\"fullName\": \"John Doe\", \"rating\": 4.9, \"age\": 42, \"pets\": [\"dog\", \"cat\"]}",
+                "{\"fullName\": \"John Doe\", \"enabled\": true, \"rating\": 4.9, \"age\": 42, \"pets\": [\"dog\", \"cat\"]}",
                 new HashMap<>(),
                 new HashMap<>());
         final SourceRecord eventRouted = router.apply(eventRecord);
@@ -921,14 +921,16 @@ public class EventRouterTest {
         Schema valueSchema = eventRouted.valueSchema();
         assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
 
-        assertThat(valueSchema.fields().size()).isEqualTo(4);
+        assertThat(valueSchema.fields().size()).isEqualTo(5);
         assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
+        assertThat(valueSchema.field("enabled").schema().type().getName()).isEqualTo("boolean");
         assertThat(valueSchema.field("rating").schema().type().getName()).isEqualTo("float64");
         assertThat(valueSchema.field("age").schema().type().getName()).isEqualTo("int32");
         assertThat(valueSchema.field("pets").schema().type().getName()).isEqualTo("array");
 
         Struct valueStruct = (Struct) eventRouted.value();
         assertThat(valueStruct.get("fullName")).isEqualTo("John Doe");
+        assertThat(valueStruct.get("enabled")).isEqualTo(true);
         assertThat(valueStruct.get("rating")).isEqualTo(4.9);
         assertThat(valueStruct.get("age")).isEqualTo(42);
         assertThat(valueStruct.getArray("pets").size()).isEqualTo(2);
