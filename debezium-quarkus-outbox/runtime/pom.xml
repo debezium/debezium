@@ -33,14 +33,6 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-api</artifactId>
         </dependency>
-        <!-- Quarkus Hibernate extension removed Jandex as a runtime dependency in Quarkus 2.1, see
-             https://github.com/quarkusio/quarkus/pull/17761. For the time being, we need to add
-             the dependency here since we use the AdditionalJaxbMappingProducer interface that
-             passes the IndexView from Jandex to our runtime impl -->
-        <dependency>
-            <groupId>org.jboss</groupId>
-            <artifactId>jandex</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5-internal</artifactId>
