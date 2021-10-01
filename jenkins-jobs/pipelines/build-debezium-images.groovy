@@ -99,10 +99,11 @@ streamsToBuild = null
 stableStream = null
 
 @NonCPS
-def initVersions() {
+def initVersions(username, password) {
     TAG_REST_ENDPOINT.toURL().openConnection().with {
         doOutput = true
         setRequestProperty('Content-Type', 'application/json')
+        setRequestProperty('Authorization', 'Basic ' + Base64.encoder.encodeToString("$username:$password".getBytes(java.nio.charset.StandardCharsets.UTF_8)))
         def json = new JsonSlurper().parse(new StringReader(content.text))
         json.each {
             def current = new Version(it.name.substring(1))
@@ -148,7 +149,9 @@ node('Slave') {
                       userRemoteConfigs                : [[url: "https://$IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
             )
-            initVersions()
+            withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                initVersions(GIT_USERNAME, GIT_PASSWORD)
+            }
             withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                 sh """
                     docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
