@@ -37,7 +37,8 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames()),
+                        connectorConfig.getSanitizeFieldNames(),
+                        connectorConfig.isMultiPartitionModeEnabled()),
                 false, connectorConfig.getKeyMapper());
     }
 

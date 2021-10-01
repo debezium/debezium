@@ -57,6 +57,7 @@ public class TableSchemaBuilder {
     private final Schema sourceInfoSchema;
     private final FieldNamer<Column> fieldNamer;
     private final CustomConverterRegistry customConverterRegistry;
+    private final boolean multiPartitionMode;
 
     /**
      * Create a new instance of the builder.
@@ -65,13 +66,15 @@ public class TableSchemaBuilder {
      *            null
      * @param schemaNameAdjuster the adjuster for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster, CustomConverterRegistry customConverterRegistry,
-                              Schema sourceInfoSchema, boolean sanitizeFieldNames) {
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry, Schema sourceInfoSchema,
+                              boolean sanitizeFieldNames, boolean multiPartitionMode) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.sourceInfoSchema = sourceInfoSchema;
         this.fieldNamer = FieldNameSelector.defaultSelector(sanitizeFieldNames);
         this.customConverterRegistry = customConverterRegistry;
+        this.multiPartitionMode = multiPartitionMode;
     }
 
     /**
@@ -155,6 +158,9 @@ public class TableSchemaBuilder {
         }
         else if (Strings.isNullOrEmpty(tableId.schema())) {
             return tableId.catalog() + "." + tableId.table();
+        }
+        else if (multiPartitionMode) {
+            return tableId.catalog() + "." + tableId.schema() + "." + tableId.table();
         }
         // When both catalog and schema is present then only schema is used
         else {
