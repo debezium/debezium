@@ -506,4 +506,15 @@ public class MySqlDefaultValueTest {
         assertThat(Byte.toUnsignedInt((defVal[1]))).isEqualTo(0b11111011);
         assertThat(Byte.toUnsignedInt((defVal[2]))).isEqualTo(0b11111111);
     }
+
+    @Test
+    @FixFor("DBZ-3989")
+    public void shouldTrimNumericalDefaultValueAndShouldNotTrimNonNumericalDefaultValue() {
+        String ddl = "CREATE TABLE data(id INT DEFAULT '1 ', data VARCHAR(3) DEFAULT ' 3 ')";
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId(null, null, "data"));
+
+        assertThat((Integer) table.columnWithName("id").defaultValue()).isEqualTo((int) 1);
+        assertThat((String) table.columnWithName("data").defaultValue()).isEqualTo((String) " 3 ");
+    }
 }
