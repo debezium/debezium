@@ -23,6 +23,8 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import com.google.common.collect.ImmutableList;
+
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -46,6 +48,8 @@ public class MySqlDefaultValueConverter {
     private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
 
     private static final String EPOCH_DATE = "1970-01-01";
+
+    private static final ImmutableList<Integer> UNTRIMABLE_DATA_TYPES = ImmutableList.of(Types.VARCHAR, Types.LONGVARCHAR, Types.NCHAR, Types.LONGNVARCHAR);
 
     private static final DateTimeFormatter ISO_LOCAL_DATE_WITH_OPTIONAL_TIME = new DateTimeFormatterBuilder()
             .append(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -72,6 +76,11 @@ public class MySqlDefaultValueConverter {
     public Object convert(Column column, String value) {
         if (value == null) {
             return value;
+        }
+
+        // trim non varchar data types before converting
+        if (!UNTRIMABLE_DATA_TYPES.contains(column.jdbcType())) {
+            value = value.trim();
         }
 
         // boolean is also INT(1) or TINYINT(1)
