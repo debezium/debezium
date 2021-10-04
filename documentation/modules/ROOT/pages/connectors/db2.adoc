@@ -2021,7 +2021,7 @@ Each fully-qualified table name is a regular expression in the following format:
 The property can include entries for multiple tables.
 Use a semicolon to separate table entries in the list. +
  +
-The following example sets the message key for the tables `inventory.customers` and `purchase.orders`: +
+The following example sets the message key for the tables `inventory.customers` and `purchaseorders`: +
  +
 `inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
  +
