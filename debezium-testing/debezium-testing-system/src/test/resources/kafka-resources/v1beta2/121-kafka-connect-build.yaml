@@ -1,0 +1,79 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: debezium-kafka-connect-cluster
+spec:
+  version: ${version.kafka}
+  build:
+    output:
+      type: imagestream
+      image: testing-openshift-connect:latest
+    plugins:
+      - name: debezium-connector-mysql
+        artifacts:
+          - type: zip
+            url: ${artifact.server.url}/debezium-connector-mysql-${version.debezium.connector}-plugin.zip
+          - type: jar
+            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+          - type: zip
+            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+      - name: debezium-connector-postgres
+        artifacts:
+          - type: zip
+            url: ${artifact.server.url}/debezium-connector-postgres-${version.debezium.connector}-plugin.zip
+          - type: jar
+            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+          - type: zip
+            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+      - name: debezium-connector-mongodb
+        artifacts:
+          - type: zip
+            url: ${artifact.server.url}/debezium-connector-mongodb-${version.debezium.connector}-plugin.zip
+          - type: jar
+            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+          - type: zip
+            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+      - name: debezium-connector-db2
+        artifacts:
+          - type: zip
+            url: ${artifact.server.url}/debezium-connector-db2-${version.debezium.connector}-plugin.zip
+          - type: jar
+            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+          - type: zip
+            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+      - name: debezium-connector-sqlserver
+        artifacts:
+          - type: zip
+            url: ${artifact.server.url}/debezium-connector-sqlserver-${version.debezium.connector}-plugin.zip
+          - type: jar
+            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+          - type: zip
+            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+
+  bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
+  logging:
+    type: external
+    valueFrom:
+      configMapKeyRef:
+        name: connect-cfg
+        key: log4j.properties
+  tls:
+    trustedCertificates:
+      - certificate: ca.crt
+        secretName: debezium-kafka-cluster-cluster-ca-cert
+  replicas: 1
+  metricsConfig:
+    type: jmxPrometheusExporter
+    valueFrom:
+      configMapKeyRef:
+        name: connect-cfg
+        key: metrics
+  config:
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+  template:
+    connectContainer:
+      env:
+        - name: "JMX_PORT"
+          value: "5000"
