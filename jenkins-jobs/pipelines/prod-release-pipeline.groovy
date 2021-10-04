@@ -14,6 +14,7 @@ if (
     error 'Input parameters not provided'
 }
 
+MAIL_ID = 'jpechane@redhat.com'
 CONFIG_DIR = '.config/pnc-bacon'
 BUILD_CONFIG_DIR = 'debezium-bacon'
 BACON_MAVEN_URL = "https://repo1.maven.org/maven2/org/jboss/pnc/bacon/cli/$BACON_VERSION/cli-$BACON_VERSION-shaded.jar"
@@ -78,6 +79,6 @@ node('Slave') {
             }
         }
     } finally {
-        mail to: 'jpechane@redhat.com', subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+        mail to: ${MAIL_ID}, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
 }
