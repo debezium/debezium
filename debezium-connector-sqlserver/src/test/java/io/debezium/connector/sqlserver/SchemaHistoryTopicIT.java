@@ -291,6 +291,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablec,dbo.tabled")
                 .build();
         start(SqlServerConnector.class, config2);
+        assertConnectorIsRunning();
 
         // CDC for newly added table
         TestHelper.enableTableCdc(connection, "tabled");
