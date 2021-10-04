@@ -176,7 +176,7 @@ pipeline {
                     set -x 
                     cd ${WORKSPACE}/debezium
                     docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
-                    mvn install -pl debezium-testing/debezium-testing-system -DskipTests -DskipITs -Pimage -Dimage.push.skip=false -Dimage.name=${DBZ_CONNECT_IMAGE}   
+                    mvn install -pl debezium-testing/debezium-testing-system -DskipTests -DskipITs -Pimages -Dimage.build.skip.push=false -Dimage.kc=${DBZ_CONNECT_IMAGE}   
                     '''
                 }
             }
@@ -191,7 +191,7 @@ pipeline {
                     set -x
                     cd ${WORKSPACE}/debezium
                     mvn install -pl debezium-testing/debezium-testing-system -PsystemITs \\
-                    -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
+                    -Dimage.kc="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.docker.image.rhel.kafka=${DBZ_CONNECT_RHEL_IMAGE} \\
                     -Dtest.ocp.username="${OCP_USERNAME}" \\
                     -Dtest.ocp.password="${OCP_PASSWORD}" \\

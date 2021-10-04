@@ -4,7 +4,7 @@ metadata:
   name: debezium-kafka-connect-cluster
 spec:
   version: ${version.kafka}
-  image: ${image.fullname}
+  image: ${image.kc}
   bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
   logging:
     name: connect-logging

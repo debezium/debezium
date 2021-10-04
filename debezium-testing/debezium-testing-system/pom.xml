@@ -16,14 +16,14 @@
     <version.fabric8.client>5.5.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.21</version.commons.compress>
-    <version.strimzi>0.24.0</version.strimzi>
+    <version.strimzi>0.25.0</version.strimzi>
     <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
 
     <!--KC image configuration-->
-    <image.registry>quay.io</image.registry>
-    <image.name>debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.name>
-    <image.fullname>${image.registry}/${image.name}</image.fullname>
+    <image.build.registry>quay.io</image.build.registry>
+    <image.kc>${image.build.registry}/debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.kc>
+    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}</image.as>
 
     <!--Docker configuration-->
     <docker.image.mysql>quay.io/debezium/example-mysql:latest</docker.image.mysql>
@@ -47,9 +47,13 @@
     <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
     <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
 
+    <!-- Artifact repository for KC build -->
+    <artifact.server.url>http://debezium-artifact-server.${ocp.project.debezium}.svc.cluster.local:8080</artifact.server.url>
+
     <!--Strimzi configuration-->
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
     <strimzi.crd.version>v1beta2</strimzi.crd.version>
+    <strimzi.kc.build>true</strimzi.kc.build>
 
     <!--Apicurio configuration-->
     <apicurio.log.level>INFO</apicurio.log.level>
@@ -143,6 +147,12 @@
         <groupId>io.debezium</groupId>
         <artifactId>debezium-connector-db2</artifactId>
         <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-scripting</artifactId>
         <type>zip</type>
         <version>${version.debezium.connector}</version>
       </dependency>
@@ -331,6 +341,7 @@
       </activation>
 
       <properties>
+        <version.apicurio.converter>1.3.2.Final</version.apicurio.converter>
         <apicurio.crd.version>v1alpha1</apicurio.crd.version>
       </properties>
 
@@ -352,6 +363,7 @@
       </activation>
 
       <properties>
+        <version.apicurio.converter>2.1.0.Final</version.apicurio.converter>
         <apicurio.crd.version>v1</apicurio.crd.version>
       </properties>
 
@@ -365,15 +377,14 @@
     </profile>
 
     <profile>
-      <id>image</id>
+      <id>images</id>
 
       <properties>
-        <image.push.skip>true</image.push.skip>
-        <image.version.strimzi>latest</image.version.strimzi>
-        <image.base.name>quay.io/strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
-
-        <!--Apicurio versions-->
-        <version.apicurio.converter>1.3.2.Final</version.apicurio.converter>
+        <image.build.skip.push>true</image.build.skip.push>
+        <image.build.kc.skip>false</image.build.kc.skip>
+        <image.build.kc.base.tag>latest</image.build.kc.base.tag>
+        <image.build.kc.base>quay.io/strimzi/kafka:${image.build.kc.base.tag}-kafka-${version.kafka}</image.build.kc.base>
+        <image.build.as.skip>false</image.build.as.skip>
       </properties>
 
       <dependencies>
@@ -408,11 +419,15 @@
           <type>zip</type>
         </dependency>
         <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-scripting</artifactId>
+          <type>zip</type>
+        </dependency>
+        <dependency>
           <groupId>io.apicurio</groupId>
           <artifactId>apicurio-registry-distro-connect-converter</artifactId>
           <type>zip</type>
           <version>${version.apicurio.converter}</version>
-          <classifier>converter</classifier>
         </dependency>
       </dependencies>
 
@@ -424,13 +439,55 @@
             <artifactId>docker-maven-plugin</artifactId>
             <configuration>
               <imagePullPolicy>IfNotPresent</imagePullPolicy>
-              <pushRegistry>${image.registry}</pushRegistry>
-              <skipPush>${image.push.skip}</skipPush>
+              <pushRegistry>${image.build.registry}</pushRegistry>
+              <skipPush>${image.build.skip.push}</skipPush>
+
+              <!-- Artifact Server Image -->
               <images>
                 <image>
-                  <name>${image.fullname}</name>
+                  <name>${image.as}</name>
                   <build>
-                    <from>${image.base.name}</from>
+                    <skip>${image.build.as.skip}</skip>
+                    <contextDir>${project.basedir}/../../jenkins-jobs/docker/artifact-server</contextDir>
+                    <assembly>
+                      <name>plugins</name>
+                      <inline>
+                        <dependencySets>
+                          <dependencySet>
+                            <outputDirectory>.</outputDirectory>
+                            <includes>
+                              <include>io.debezium:debezium-connector-*:zip:plugin</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>.</outputDirectory>
+                            <includes>
+                              <include>io.debezium:debezium-scripting:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>jdbc</outputDirectory>
+                            <includes>
+                              <include>com.ibm.db2:jcc:jar</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                        </dependencySets>
+                      </inline>
+                    </assembly>
+                  </build>
+                </image>
+
+                <!-- Kafka Connect Image -->
+                <image>
+                  <name>${image.kc}</name>
+                  <build>
+                    <from>${image.build.kc.base}</from>
+                    <skip>${image.build.kc.skip}</skip>
                     <assembly>
                       <targetDir>/opt/kafka/plugins</targetDir>
                       <inline>
@@ -522,6 +579,7 @@
               <systemPropertyVariables>
                 <test.wait.scale>1</test.wait.scale>
 
+                <test.artifact.server.url>${artifact.server.url}</test.artifact.server.url>
                 <!--Docker Configuration-->
                 <test.docker.image.rhel.kafka>${docker.image.rhel.kafka}</test.docker.image.rhel.kafka>
                 <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
@@ -546,6 +604,7 @@
                 <!--Strimzi Configuration-->
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
                 <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
+                <test.strimzi.kc.build>${strimzi.kc.build}</test.strimzi.kc.build>
 
                 <!--Apicurio configuration-->
                 <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
