@@ -49,6 +49,7 @@ public final class ConfigProperties {
     // Strimzi configuration
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
     public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
+    public static final boolean STRIMZI_KC_BUILD = booleanProperty("test.strimzi.kc.build", true);
 
     // Apicurio Registry configuration
     public static final String APICURIO_CRD_VERSION = System.getProperty("test.apicurio.crd.version", "v1");

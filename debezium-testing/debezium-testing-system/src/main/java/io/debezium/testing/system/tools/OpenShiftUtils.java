@@ -131,15 +131,12 @@ public class OpenShiftUtils {
      * @return {@link} Service account object to which this secret was linked
      */
     public ServiceAccount linkPullSecret(String project, String account, String secret) {
-        ServiceAccount serviceAccount = client.serviceAccounts().inNamespace(project).withName(account).get();
-        boolean linked = serviceAccount.getImagePullSecrets().stream().anyMatch(r -> r.getName().equals(secret));
-        if (!linked) {
-            return client.serviceAccounts().inNamespace(project).withName(account).edit(sa -> new ServiceAccountBuilder(sa)
-                    .addNewImagePullSecret().withName(secret).endImagePullSecret()
-                    .addNewSecret().withName(secret).endSecret()
-                    .build());
-        }
-        return serviceAccount;
+        return client.serviceAccounts().inNamespace(project).withName(account).edit(sa -> new ServiceAccountBuilder(sa)
+                .removeFromImagePullSecrets(new LocalObjectReference(secret))
+                .addNewImagePullSecret(secret)
+                .removeMatchingFromSecrets(r -> r.getName().equals(secret))
+                .addNewSecret().withName(secret).endSecret()
+                .build());
     }
 
     /**
@@ -152,7 +149,16 @@ public class OpenShiftUtils {
     }
 
     /**
-     * Ensures container has a environment variable
+     * Ensures each container of given deployment has a environment variable
+     * @param deployment deployment
+     * @param envVar environment variable
+     */
+    public void ensureNoEnv(Deployment deployment, String envVar) {
+        deployment.getSpec().getTemplate().getSpec().getContainers().forEach(c -> this.ensureNoEnv(c, envVar));
+    }
+
+    /**
+     * Ensures container has environment variable
      * @param container container
      * @param envVar environment variable
      */
@@ -164,6 +170,19 @@ public class OpenShiftUtils {
         }
         env.removeIf(var -> Objects.equals(var.getName(), envVar.getName()));
         env.add(envVar);
+    }
+
+    /**
+     * Ensures container does not have environment variable
+     * @param container container
+     * @param envVar environment variable
+     */
+    public void ensureNoEnv(Container container, String envVar) {
+        List<EnvVar> env = container.getEnv();
+        if (env == null) {
+            return;
+        }
+        env.removeIf(var -> Objects.equals(var.getName(), envVar));
     }
 
     public void ensureHasPullSecret(Deployment deployment, String secret) {

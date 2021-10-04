@@ -9,16 +9,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
+import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.YAML;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import io.fabric8.openshift.api.model.ImageStream;
+import io.fabric8.openshift.api.model.ImageStreamBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaConnectList;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnectBuilder;
+import io.strimzi.api.kafka.model.connect.build.Build;
 
 import okhttp3.OkHttpClient;
 
@@ -146,6 +150,22 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         if (connectorResources) {
             kafkaConnect = enableConnectorResources(kafkaConnect);
         }
+
+        Build kcBuild = kafkaConnect.getSpec().getBuild();
+
+        if (kcBuild != null && "imagestream".equals(kcBuild.getOutput().getType())) {
+            String[] image = kcBuild.getOutput().getImage().split(":", 2);
+            ImageStream is = new ImageStreamBuilder()
+                    .withNewMetadata().withName(image[0]).endMetadata()
+                    .withNewSpec()
+                    .withNewLookupPolicy(true)
+                    .endSpec()
+                    .build();
+            ocp.imageStreams()
+                    .inNamespace(ConfigProperties.OCP_PROJECT_DBZ)
+                    .createOrReplace(is);
+        }
+
         kafkaConnect = kafkaConnectOperation().createOrReplace(kafkaConnect);
 
         OcpKafkaConnectController controller = new OcpKafkaConnectController(
