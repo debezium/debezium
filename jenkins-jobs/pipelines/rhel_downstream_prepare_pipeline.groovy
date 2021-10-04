@@ -1,3 +1,5 @@
+MAIL_ID = 'jcechace@redhat.com'
+
 pipeline {
     agent {
         label 'Slave'
@@ -48,7 +50,7 @@ pipeline {
 
     post {
         always {
-            mail to: 'jcechace@redhat.com', subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
+            mail to: ${MAIL_ID}, subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
 ${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }
