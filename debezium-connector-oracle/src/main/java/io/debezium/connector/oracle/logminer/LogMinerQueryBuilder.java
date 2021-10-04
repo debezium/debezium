@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.util.Strings;
 
 /**
@@ -51,10 +52,11 @@ public class LogMinerQueryBuilder {
      * </pre>
      *
      * @param connectorConfig connector configuration, should not be {@code null}
+     * @param schema database schema, should not be {@code null}
      * @param userName jdbc connection username
      * @return the SQL string to be used to fetch changes from Oracle LogMiner
      */
-    public static String build(OracleConnectorConfig connectorConfig, String userName) {
+    public static String build(OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema, String userName) {
         final StringBuilder query = new StringBuilder(1024);
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ");
         query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, ").append(getRowHash()).append(" ");
@@ -74,7 +76,7 @@ public class LogMinerQueryBuilder {
         // Always include START, COMMIT, MISSING_SCN, and ROLLBACK operations
         query.append("(OPERATION_CODE IN (6,7,34,36)");
 
-        if (!connectorConfig.getDatabaseHistory().storeOnlyCapturedTables()) {
+        if (!schema.storeOnlyCapturedTables()) {
             // In this mode, the connector will always be fed DDL operations for all tables even if they
             // are not part of the inclusion/exclusion lists.
             query.append(" OR ").append(buildDdlPredicate(userName)).append(" ");
