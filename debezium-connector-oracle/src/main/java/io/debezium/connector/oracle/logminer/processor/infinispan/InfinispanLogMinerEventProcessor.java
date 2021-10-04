@@ -370,7 +370,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
     }
 
     private PreparedStatement createQueryStatement() throws SQLException {
-        final String query = LogMinerQueryBuilder.build(getConfig());
+        final String query = LogMinerQueryBuilder.build(getConfig(), getSchema());
         return jdbcConnection.connection().prepareStatement(query,
                 ResultSet.TYPE_FORWARD_ONLY,
                 ResultSet.CONCUR_READ_ONLY,
