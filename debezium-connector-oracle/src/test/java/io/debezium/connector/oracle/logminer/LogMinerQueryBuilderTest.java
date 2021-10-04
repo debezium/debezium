@@ -18,15 +18,24 @@ import java.util.Iterator;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
+import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleTopicSelector;
+import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.TableId;
+import io.debezium.schema.TopicSelector;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Unit test for the {@link LogMinerQueryBuilder}.
@@ -91,27 +100,28 @@ public class LogMinerQueryBuilderTest {
     public void testLogMinerQueryWithNoFilters() {
         Configuration config = TestHelper.defaultConfig().build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        OracleDatabaseSchema schema = createSchema(connectorConfig);
 
-        String result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
+        String result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, null, null, null));
 
         config = TestHelper.defaultConfig().with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, null, null, null));
 
         config = TestHelper.defaultConfig().with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, null, null, null));
 
         config = TestHelper.defaultConfig().with(STORE_ONLY_CAPTURED_TABLES_DDL, true).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, null, null, null));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, null, null, null));
     }
 
     @Test
@@ -181,48 +191,50 @@ public class LogMinerQueryBuilderTest {
     private void assertQueryWithConfig(Field field, Object fieldValue, String schemaValue, String tableValue, String userValue) {
         Configuration config = TestHelper.defaultConfig().with(field, fieldValue).build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        OracleDatabaseSchema schema = createSchema(connectorConfig);
 
-        String result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
+        String result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, userValue));
 
         config = TestHelper.defaultConfig().with(field, fieldValue).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, userValue));
 
         config = TestHelper.defaultConfig().with(field, fieldValue).with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, userValue));
 
         config = TestHelper.defaultConfig().with(field, fieldValue).with(STORE_ONLY_CAPTURED_TABLES_DDL, true).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, userValue));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, userValue));
     }
 
     private void assertQueryWithConfig(Field field1, Object fieldValue1, Field field2, Object fieldValue2, String schemaValue, String tableValue) {
         Configuration config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2).build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        OracleDatabaseSchema schema = createSchema(connectorConfig);
 
-        String result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
+        String result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, null));
 
         config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2).with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, null));
 
         config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2)
                 .with(STORE_ONLY_CAPTURED_TABLES_DDL, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, null));
 
         config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2)
                 .with(STORE_ONLY_CAPTURED_TABLES_DDL, true)
@@ -230,15 +242,16 @@ public class LogMinerQueryBuilderTest {
                 .build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schemaValue, tableValue, null));
+        result = LogMinerQueryBuilder.build(connectorConfig, schema);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue, null));
     }
 
     private String resolveLogMineryContentQueryFromTemplate(OracleConnectorConfig config,
+                                                            OracleDatabaseSchema schema,
                                                             String schemaReplacement,
                                                             String tableReplacement,
                                                             String userNameReplacement) {
-        String query = config.getDatabaseHistory().storeOnlyCapturedTables()
+        String query = schema.storeOnlyCapturedTables()
                 ? LOG_MINER_CONTENT_QUERY_TEMPLATE2
                 : LOG_MINER_CONTENT_QUERY_TEMPLATE1;
 
@@ -264,5 +277,16 @@ public class LogMinerQueryBuilderTest {
         query = query.replace("${tablePredicate}", tableReplacement == null ? "" : tableReplacement);
         query = query.replace("${userNamePredicate}", userNameReplacement == null ? "" : userNameReplacement.toString());
         return query;
+    }
+
+    private OracleDatabaseSchema createSchema(OracleConnectorConfig connectorConfig) {
+        OracleConnection connection = Mockito.mock(OracleConnection.class);
+        OracleValueConverters converters = new OracleValueConverters(connectorConfig, connection);
+        TableNameCaseSensitivity tableNameSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
+
+        TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
+        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
+
+        return new OracleDatabaseSchema(connectorConfig, converters, schemaNameAdjuster, topicSelector, tableNameSensitivity);
     }
 }
