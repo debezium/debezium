@@ -93,7 +93,9 @@ public class TransactionMonitor {
 
     public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider, BlockingConsumer<SourceRecord> sender) {
         Objects.requireNonNull(eventMetadataProvider);
-        this.topicName = connectorConfig.getLogicalName() + TOPIC_SUFFIX;
+        final String TOPIC_PREFIX = connectorConfig.getTransactionTopicPrefix().isEmpty() ? connectorConfig.getLogicalName()
+                : connectorConfig.getTransactionTopicPrefix();
+        this.topicName = TOPIC_PREFIX + TOPIC_SUFFIX;
         this.eventMetadataProvider = eventMetadataProvider;
         this.sender = sender;
         this.connectorConfig = connectorConfig;

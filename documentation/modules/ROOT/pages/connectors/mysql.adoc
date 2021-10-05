@@ -2676,6 +2676,9 @@ The name format is _database-name.table-name_.
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-mysql-connector}#mysql-transaction-metadata[Transaction metadata] for details.
 
+|[[mysql-property-transaction-topic-prefix]]<<mysql-property-transaction-topic-prefix, `transaction.topic.prefix`>>
+|`database.server.name`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: _transaction.topic.prefix.transaction_. If not configured, it defaults to _database.server.name.transaction_.
 |===
 
 [id="debezium-{context}-connector-database-history-configuration-properties"]
