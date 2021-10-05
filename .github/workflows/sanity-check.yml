@@ -22,7 +22,7 @@ jobs:
           do
             line=${line%\"}
             echo "-> checking: $line"
-            if [[ ! $line =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\]) ]]; then
+            if [[ ! $line =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\])|(\[maven-release-plugin\])|(\[ci\]) ]]; then
               NON_PREFIX_COMMITS="${NON_PREFIX_COMMITS} -> ${line} \n"
             fi
           done <<< "$COMMIT_MSGS"
