@@ -59,6 +59,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
     private volatile PostgresConnection heartbeatConnection;
+    private volatile ReplicationConnection replicationConnection = null;
     private volatile PostgresSchema schema;
 
     @Override
@@ -123,7 +124,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 snapshotter.init(connectorConfig, previousOffset.asOffsetState(), slotInfo);
             }
 
-            ReplicationConnection replicationConnection = null;
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
                 final boolean doSnapshot = snapshotter.shouldSnapshot();
@@ -275,6 +275,19 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     @Override
     protected void doStop() {
+        // The replication connection is regularly closed at the end of streaming phase
+        // in case of error it can happen that the connector is terminated before the stremaing
+        // phase is started. It can lead to a leaked connection.
+        // This is guard to make sure the connection is closed.
+        try {
+            if (replicationConnection != null) {
+                replicationConnection.close();
+            }
+        }
+        catch (Exception e) {
+            LOGGER.trace("Error while closing replication connection", e);
+        }
+
         if (jdbcConnection != null) {
             jdbcConnection.close();
         }
