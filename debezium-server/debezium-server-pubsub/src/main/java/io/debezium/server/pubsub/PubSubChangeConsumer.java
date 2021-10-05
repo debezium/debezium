@@ -76,14 +76,15 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
 
     @PostConstruct
     void connect() {
+        final Config config = ConfigProvider.getConfig();
+        projectId = config.getOptionalValue(PROP_PROJECT_ID, String.class).orElse(ServiceOptions.getDefaultProjectId());
+
         if (customPublisherBuilder.isResolvable()) {
             publisherBuilder = customPublisherBuilder.get();
             LOGGER.info("Obtained custom configured PublisherBuilder '{}'", customPublisherBuilder);
             return;
         }
 
-        final Config config = ConfigProvider.getConfig();
-        projectId = config.getOptionalValue(PROP_PROJECT_ID, String.class).orElse(ServiceOptions.getDefaultProjectId());
         publisherBuilder = (t) -> {
             try {
                 return Publisher.newBuilder(t)
