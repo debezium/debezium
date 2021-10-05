@@ -1925,7 +1925,7 @@ You can set the following values:
 
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match names of *fully-qualified* table names (`_<db_name>_._<schema_name>_._<name>_`) included in `table.include.list` for which you *want* to take the snapshot.
+|An optional, comma-separated list of regular expressions that match names of fully-qualified table names (`_<schemaName>_._<tableName>_`) included in `table.include.list` for which you want to take the snapshot.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -1942,9 +1942,10 @@ For each table in the list, add a further configuration property that specifies 
 The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
 Use the following format to specify the name of this `SELECT` statement property: +
  +
-`snapshot.select.statement.overrides._<schemaName>_._<tableName>_`.
+`snapshot.select.statement.overrides._<schemaName>_._<tableName>_` +
+ +
 For example,
-`snapshot.select.statement.overrides.customers.orders`. +
+`snapshot.select.statement.overrides.customers.orders` +
  +
 Example:
 
@@ -1971,7 +1972,8 @@ In environments that use the LogMiner implementation, you must use POSIX regular
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored.
 Tables that are not included in the include list are excluded from monitoring.
-Each identifier is of the form `__<schema_name>.<table_name>__`.
+Each identifier is of the form `__<schema_name>.<table_name>__`. +
+ +
 By default, the connector monitors every non-system table in each monitored database.
 Do not use this property in combination with `table.exclude.list`.
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
@@ -1980,28 +1982,34 @@ If you use the LogMiner implementation, use only POSIX regular expressions with 
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring.
 The connector captures change events from any table that is not specified in the exclude list.
-Specify the identifier for each table using the following format: `_<schema_name>.<table_name>_`.
+Specify the identifier for each table using the following format: +
+ +
+`_<schemaName>.<tableName>_`.
+
 Do not use this property in combination with `table.include.list`.
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
-Fully-qualified names for columns are of the form `_<Schema_name>.<table_name>.<column_name>_`.
+Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_._<columnName>_`. +
+ +
 The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value.
 If you include this property in the configuration, do not also set the `column.exclude.list` property.
 
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
-Fully-qualified names for columns are of the form `_<schema_name>.<table_name>.<column_name>_`.
+Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_._<columnName>_`. +
+ +
 The primary key column is always included in an event's key, even if you use this property to explicitly exclude its value.
 If you include this property in the configuration, do not set the `column.include.list` property.
 
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._<hashAlgorithm>_.with.salt._<salt>_`>>
 |No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_._<columnName>_`. +
+ +
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -2076,28 +2084,24 @@ After a source record is deleted, a tombstone event (the default behavior) enabl
 
 By default, {prodname} uses the primary key column of a table as the message key for records that it emits.
 In place of the default, or to specify a key for tables that lack a primary key, you can configure custom message keys based on one or more columns. +
- +
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+   `_<fullyQualifiedTableName>_`:``_<keyColumn>_``,``_<keyColumn>``_ +
  +
-To base a table key on multiple column names, insert commas between the column names.
-
+To base a table key on multiple column names, insert commas between the column names. +
 Each fully-qualified table name is a regular expression in the following format: +
  +
 `_<schemaName>_._<tableName>_` +
  +
 The property can include entries for multiple tables.
 Use a semicolon to separate table entries in the list. +
- +
-The following example sets the message key for the tables `inventory.customers` and `purchase.orders`: +
+ The following example sets the message key for the tables `inventory.customers` and `purchase.orders`: +
  +
 `inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
  +
 For the table `inventory.customer`, the columns `pk1` and `pk2` are specified as the message key.
-For the `purchaseorders` tables in any pluggable database, the columns `pk3` and `pk4` server as the message key.
-
+For the `purchaseorders` tables in any pluggable database, the columns `pk3` and `pk4` server as the message key. +
 There is no limit to the number of columns that you use to create custom message keys.
 However, it's best to use the minimum number that are required to specify a unique key.
 
@@ -2109,42 +2113,45 @@ Specify the fully-qualified name for columns by using the following format: `_<s
 
 |[[oracle-property-column-mask-with-length-chars]]<<oracle-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |No default
-|An optional comma-separated list of regular expressions for masking column names in change event messages by replacing characters with asterisks (`*`).
-Specify the number of characters to replace in the name of the property, for example, `column.mask.with.8.chars`.
+|An optional comma-separated list of regular expressions for masking column names in change event messages by replacing characters with asterisks (`*`). +
+Specify the number of characters to replace in the name of the property, for example, `column.mask.with.8.chars`. +
 Specify length as a positive integer or zero.
-Then add regular expressions to the list for each character-based column name where you want to apply a mask.
-Use the following format to specify fully-qualified column names: `_schemaName_._tableName_._columnName_`.
+Then add regular expressions to the list for each character-based column name where you want to apply a mask. +
+Use the following format to specify fully-qualified column names: `_<schemaName>_._<tableName>_._<columnName>_`. +
+ +
 The connector configuration can include multiple properties that specify different lengths.
 
 |[[oracle-property-column-propagate-source-type]]<<oracle-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length`, and `pass:[_]pass:[_]debezium.source.column.scale` are used to propagate the original type name and length (for variable-width types), respectively.
-Useful to properly size corresponding columns in sink databases.
-Fully-qualified names for columns are of the form _tableName_._columnName_, or _schemaName_._tableName_._columnName_.
+Useful to properly size corresponding columns in sink databases. +
+ +
+Fully-qualified names for columns are of the form `_<tableName>_._<columnName>_`, or `_<schemaName>_._<tableName>_._<columnName>_`.
 
 |[[oracle-property-datatype-propagate-source-type]]<<oracle-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` are used to propagate the original type name and length (for variable-width types), respectively.
-Useful to properly size corresponding columns in sink databases.
-Fully-qualified data type names are of the form _tableName_._typeName_, or _schemaName_._tableName_._typeName_.
+Useful to properly size corresponding columns in sink databases. +
+ +
+Fully-qualified data type names are of the form `_<tableName>_._<typeName>_`, or `_<schemaName>_._<tableName>_._<typeName>_`. +
 See the {link-prefix}:{link-oracle-connector}#oracle-data-type-mappings[list of Oracle-specific data type names].
 
 |[[oracle-property-heartbeat-interval-ms]]<<oracle-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
 |Specifies, in milliseconds, how frequently the connector sends messages to a heartbeat topic. +
-Use this property to determine whether the connector continues to receive change events from the source database.
-It can also be useful to set the property in situations where the connector no change events occur in captured tables for an extended period.
+Use this property to determine whether the connector continues to receive change events from the source database. +
+It can also be useful to set the property in situations where the connector no change events occur in captured tables for an extended period. +
 In such a a case, although the connector continues to read the redo log, it emits no change event messages, so that the offset in the Kafka topic remains unchanged.
 Because the connector does not flush the latest system change number (SCN) that it read from the database, the database might retain the redo log files for longer than necessary.
-If the connector restarts, the extended retention period could result in the connector redundantly sending some change events.
+If the connector restarts, the extended retention period could result in the connector redundantly sending some change events. +
 The default value of `0` prevents the connector from sending any heartbeat messages.
 
 |[[oracle-property-heartbeat-topics-prefix]]<<oracle-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
 |`__debezium-heartbeat`
 |Specifies the string that prefixes the name of the topic to which the connector sends heartbeat messages. +
-The topic is named according to the pattern `_<heartbeat.topics.prefix>.<server.name>_`.
+The topic is named according to the pattern `_<heartbeat.topics.prefix>.<serverName>_`.
 
 |[[oracle-property-snapshot-delay-ms]]<<oracle-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
