@@ -16,20 +16,7 @@
     <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
     <timestamp>${maven.build.timestamp}</timestamp>
     <maven.compiler.parameters>true</maven.compiler.parameters>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
     <maven.compiler.release>11</maven.compiler.release>
-    <!-- Plug-in versions -->
-    <kafka.version>2.8.0</kafka.version>
-    <debezium.base.version>1.6.1.Final</debezium.base.version>
-    <frontend.maven.plugin.version>1.11.2</frontend.maven.plugin.version>
-    <maven.clean.plugin.version>3.1.0</maven.clean.plugin.version>
-    <maven.compiler.plugin.version>3.8.1</maven.compiler.plugin.version>
-    <maven.jar.plugin.version>3.2.0</maven.jar.plugin.version>
-    <maven.resources.plugin.version>3.1.0</maven.resources.plugin.version>
-    <maven.surefire.plugin.version>3.0.0-M5</maven.surefire.plugin.version>
-    <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
-    <version.checkstyle>8.32</version.checkstyle>
   </properties>
 
   <dependencies>
@@ -37,43 +24,14 @@
       <groupId>org.apache.kafka</groupId>
       <artifactId>connect-runtime</artifactId>
       <scope>provided</scope>
-      <version>${kafka.version}</version>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
       <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>${maven.compiler.plugin.version}</version>
-      </plugin>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven.surefire.plugin.version}</version>
-        <configuration>
-          <systemPropertyVariables>
-            <maven.home>${maven.home}</maven.home>
-          </systemPropertyVariables>
-        </configuration>
-        <executions>
-          <execution>
-            <id>default-test</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <systemProperties>
-                <maven.home>${maven.home}</maven.home>
-              </systemProperties>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <version>${maven.surefire.plugin.version}</version>
         <executions>
           <execution>
             <goals>
