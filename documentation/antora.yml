@@ -1,8 +1,7 @@
 name: reference
 title: Debezium Documentation
-version: 'dev'
-display_version: 'dev'
-prerelease: true
+version: '1.7'
+display_version: 'stable'
 nav:
   - modules/ROOT/nav.adoc
 
