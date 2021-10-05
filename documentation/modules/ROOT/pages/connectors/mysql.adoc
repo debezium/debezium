@@ -2676,6 +2676,15 @@ The name format is _database-name.table-name_.
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-mysql-connector}#mysql-transaction-metadata[Transaction metadata] for details.
 
+|[[mysql-property-heartbeat-action-query]]<<mysql-property-heartbeat-action-query, `+heartbeat.action.query+`>>
+|No default
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
+ +
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
+ +
+This can be used to periodically capture the state of GTID execution set in the source database. +
+ +
+`INSERT INTO gtid_history_table (select * from mysql.gtid_executed)`
 |===
 
 [id="debezium-{context}-connector-database-history-configuration-properties"]

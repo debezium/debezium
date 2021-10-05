@@ -38,7 +38,6 @@ import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
 import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -1149,7 +1148,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     XMIN_FETCH_INTERVAL)
             .events(
                     INCLUDE_UNKNOWN_DATATYPES,
-                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
                     TOASTED_VALUE_PLACEHOLDER)
             .connector(
                     SNAPSHOT_MODE,
