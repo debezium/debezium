@@ -1248,6 +1248,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-800")
     public void shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() throws Exception {
+        Testing.Print.enable();
         startConnector(config -> config
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
@@ -1261,6 +1262,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.b (bb) VALUES (22);";
 
+        Testing.print("Executing test statements");
         TestHelper.execute(statement);
 
         try {
@@ -1268,6 +1270,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             final AtomicBoolean receivedInsert = new AtomicBoolean();
             Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS).until(() -> {
                 final SourceRecord record = consumeRecord();
+                Testing.print("Arrived record " + record);
                 if (record != null) {
                     if (record.topic().endsWith("s1.b")) {
                         assertRecordInserted(record, "s1.b", PK_FIELD, 1);
