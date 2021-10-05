@@ -11,6 +11,7 @@ pipelineJob('release-debezium-upstream') {
     }
 
     parameters {
+        stringParam('MAIL_TO', 'jpechane@redhat.com')
         stringParam('RELEASE_VERSION', 'x.y.z.Final', 'Version of Debezium to be released - e.g. 0.5.2.Final')
         stringParam('DEVELOPMENT_VERSION', 'x.y.z-SNAPSHOT', 'Next development version - e.g. 0.5.3-SNAPSHOT')
         stringParam('DEBEZIUM_REPOSITORY', 'github.com/debezium/debezium.git', 'Repository from which Debezium is built')

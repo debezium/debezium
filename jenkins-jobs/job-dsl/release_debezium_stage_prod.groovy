@@ -11,6 +11,7 @@ pipelineJob('release-debezium-stage-prod') {
     }
 
     parameters {
+        stringParam('MAIL_TO', 'jpechane@redhat.com')
         stringParam('PRODUCT_VERSION', '', 'Product version (e.g. 1.6)')
         stringParam('PRODUCT_VERSION_RELEASE', '', 'Product micro version (e.g. 2) - usually same as Debezium micro version')
         stringParam('PRODUCT_MILESTONE', '', 'Product milestone (e.g. CR1/CR2/GA/...)')

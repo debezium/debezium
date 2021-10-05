@@ -7,6 +7,7 @@ pipelineJob('rhel-downstream-prepare-job') {
     }
 
     parameters {
+        stringParam('MAIL_TO', 'jcechace@redhat.com')
 //        QUAY CONFIG
         stringParam('QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id')
         stringParam('QUAY_ORGANISATION', '', 'Organisation where images are copied')
