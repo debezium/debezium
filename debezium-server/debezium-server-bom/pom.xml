@@ -55,13 +55,24 @@
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${version.mysql.driver}</version>
             </dependency>
-            <!--
+
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
                 <version>${version.postgresql.driver}</version>
             </dependency>
-	    -->
+
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-core</artifactId>
+                <version>${version.mongo.driver}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-sync</artifactId>
+                <version>${version.mongo.driver}</version>
+            </dependency>
 
             <!-- Debezium dependencies -->
             <dependency>
