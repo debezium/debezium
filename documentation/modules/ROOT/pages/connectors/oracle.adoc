@@ -2001,7 +2001,7 @@ If you include this property in the configuration, do not set the `column.includ
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._<hashAlgorithm>_.with.salt._<salt>_`>>
 |No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _pdbName_._schemaName_._tableName_._columnName_.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -2086,7 +2086,7 @@ To base a table key on multiple column names, insert commas between the column n
 
 Each fully-qualified table name is a regular expression in the following format: +
  +
-`_<pdbName>_._<tableName>_` +
+`_<schemaName>_._<tableName>_` +
  +
 The property can include entries for multiple tables.
 Use a semicolon to separate table entries in the list. +
@@ -2105,7 +2105,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns to be truncated in change event messages if their length exceeds the specified number of characters.
 Length is specified as a positive integer. A configuration can include multiple properties that specify different lengths.
-Specify the fully-qualified name for columns by using the following format: `_<pdbName>_._<schemaName>_._<tableName>_._<columnName>_`.
+Specify the fully-qualified name for columns by using the following format: `_<schemaName>_._<tableName>_._<columnName>_`.
 
 |[[oracle-property-column-mask-with-length-chars]]<<oracle-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |No default
@@ -2113,7 +2113,7 @@ Specify the fully-qualified name for columns by using the following format: `_<p
 Specify the number of characters to replace in the name of the property, for example, `column.mask.with.8.chars`.
 Specify length as a positive integer or zero.
 Then add regular expressions to the list for each character-based column name where you want to apply a mask.
-Use the following format to specify fully-qualified column names: `_pdbName_._schemaName_._tableName_._columnName_`.
+Use the following format to specify fully-qualified column names: `_schemaName_._tableName_._columnName_`.
 The connector configuration can include multiple properties that specify different lengths.
 
 |[[oracle-property-column-propagate-source-type]]<<oracle-property-column-propagate-source-type, `+column.propagate.source.type+`>>
