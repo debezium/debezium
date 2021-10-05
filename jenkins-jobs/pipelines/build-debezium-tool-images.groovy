@@ -4,7 +4,6 @@ import java.util.*
 IMAGES_DIR = 'images'
 GIT_CREDENTIALS_ID = 'debezium-github'
 DOCKER_CREDENTIALS_ID = 'debezium-dockerhub'
-MAIL_ID = 'jpechane@redhat.com'
 
 node('Slave') {
     try {
@@ -33,6 +32,6 @@ node('Slave') {
             }
         }
     } finally {
-        mail to: ${MAIL_ID}, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+        mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
 }

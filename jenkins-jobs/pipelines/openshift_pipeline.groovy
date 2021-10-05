@@ -1,5 +1,3 @@
-MAIL_ID = 'jcechace@redhat.com'
-
 pipeline {
     agent {
         label 'Slave'
@@ -218,7 +216,7 @@ pipeline {
             archiveArtifacts '**/target/failsafe-reports/*.xml'
             junit '**/target/failsafe-reports/*.xml'
 
-            mail to: ${MAIL_ID}, subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
+            mail to: MAIL_TO, subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
 OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }

@@ -7,6 +7,7 @@ pipelineJob('ocp-debezium-testing-system') {
     }
 
     parameters {
+        stringParam('MAIL_TO', 'jcechace@redhat.com')
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
         booleanParam('TEST_APICURIO_REGISTRY', false, 'Run tests with Apicurio Registry and Avro serialization')
 //        OCP CONFIG
