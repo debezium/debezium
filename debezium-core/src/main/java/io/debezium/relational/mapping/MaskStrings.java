@@ -172,6 +172,7 @@ public class MaskStrings implements ColumnMapper {
                 return bos.toByteArray();
             }
         },
+
         V2 {
             @Override
             byte[] toByteArray(Serializable value) {
