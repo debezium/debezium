@@ -1,18 +1,18 @@
 Copyright Debezium Authors.
 Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
-# Debezium Kafka Connect Distributed (KCD) REST Extension
+# Debezium Kafka Connect REST Extension
 
 Debezium is an open source distributed platform for change data capture (CDC).
 
-This repository contains extensions to Kafka Connect's REST API.
+This repository contains Debezium-specific extensions to Kafka Connect's REST API.
 
 ## Setup
 
 1. Install or mount the Debezium Kafka Connect REST Extension jar into a separate
    Kafka Connect plugin directory.
 
-    For example with `docker-compose`:
+    For example with Docker Compose:
 
 ```yaml
     volumes:
@@ -23,10 +23,10 @@ This repository contains extensions to Kafka Connect's REST API.
 
 ```yaml
     environment:
-     - CONNECT_REST_EXTENSION_CLASSES=io.debezium.kcdrestextension.DebeziumConnectRestExtension
+     - CONNECT_REST_EXTENSION_CLASSES=io.debezium.kcrestextension.DebeziumConnectRestExtension
 ```
 
-or set `rest.extension.classes=io.debezium.kcdrestextension.DebeziumConnectRestExtension` in your Kafka Connect properties file.
+or set `rest.extension.classes=io.debezium.kcrestextension.DebeziumConnectRestExtension` in your Kafka Connect properties file.
 
 ## Contribution
 

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.kcdrestextension;
+package io.debezium.kcrestextension;
 
 import java.lang.Runtime.Version;
 import java.lang.reflect.Field;
@@ -32,7 +32,7 @@ import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.kcdrestextension.entities.TransformsInfo;
+import io.debezium.kcrestextension.entities.TransformsInfo;
 
 /**
  * A JAX-RS Resource class defining endpoints that enable some advanced features

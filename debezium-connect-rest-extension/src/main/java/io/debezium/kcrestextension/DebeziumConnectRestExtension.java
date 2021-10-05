@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.kcdrestextension;
+package io.debezium.kcrestextension;
 
 import java.util.Map;
 
@@ -20,7 +20,7 @@ import org.apache.kafka.connect.rest.ConnectRestExtensionContext;
  * To install this extension put the jar file into a separate Kafka Connect
  * plugin dir and configure your Kafka Connect properties file with:
  *
- * `rest.extension.classes=io.debezium.kcdrestextension.DebeziumConnectRestExtension`
+ * `rest.extension.classes=io.debezium.kcrestextension.DebeziumConnectRestExtension`
  *
  */
 public class DebeziumConnectRestExtension implements ConnectRestExtension {
