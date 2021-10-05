@@ -96,7 +96,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             taskContext.refreshSchema(connection, true);
         }
         catch (SQLException e) {
-            throw new DebeziumException("Error whil executing initial schema load");
+            throw new DebeziumException("Error while executing initial schema load", e);
         }
     }
 

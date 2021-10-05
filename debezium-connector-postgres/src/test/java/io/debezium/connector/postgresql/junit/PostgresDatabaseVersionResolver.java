@@ -9,6 +9,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.junit.DatabaseVersionResolver;
 
 /**
@@ -20,8 +21,10 @@ public class PostgresDatabaseVersionResolver implements DatabaseVersionResolver 
     @Override
     public DatabaseVersion getVersion() {
         try {
-            final DatabaseMetaData metadata = TestHelper.create().connection().getMetaData();
-            return new DatabaseVersion(metadata.getDatabaseMajorVersion(), metadata.getDatabaseMinorVersion(), 0);
+            try (final PostgresConnection postgresConnection = TestHelper.create()) {
+                final DatabaseMetaData metadata = postgresConnection.connection().getMetaData();
+                return new DatabaseVersion(metadata.getDatabaseMajorVersion(), metadata.getDatabaseMinorVersion(), 0);
+            }
         }
         catch (SQLException e) {
             throw new RuntimeException(e);
