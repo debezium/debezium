@@ -139,7 +139,7 @@
         <module>debezium-scripting</module>
         <module>debezium-server</module>
         <module>debezium-testing</module>
-        <module>connect-rest-extension</module>
+        <module>debezium-connect-rest-extension</module>
     </modules>
 
     <distributionManagement>
