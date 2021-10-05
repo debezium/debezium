@@ -221,6 +221,7 @@ public final class TestHelper {
 
     public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1")
                 .withDefault(JdbcConfiguration.DATABASE, "postgres")
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 5432)

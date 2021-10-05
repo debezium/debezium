@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -29,6 +30,7 @@ public class OracleConnectorTest {
     @Test
     public void testValidateUnableToConnectNoThrow() {
         Map<String, String> config = new HashMap<>();
+        config.put(OracleConnectorConfig.SERVER_NAME.name(), "dbserver1");
         config.put(OracleConnectorConfig.HOSTNAME.name(), "narnia");
         config.put(OracleConnectorConfig.PORT.name(), "4321");
         config.put(OracleConnectorConfig.DATABASE_NAME.name(), "oracle");
@@ -36,11 +38,15 @@ public class OracleConnectorTest {
         config.put(OracleConnectorConfig.PASSWORD.name(), "raichu");
 
         Config validated = connector.validate(config);
-        for (ConfigValue value : validated.configValues()) {
-            if (value.name().equals(OracleConnectorConfig.HOSTNAME.name())) {
-                assertThat(value.errorMessages().get(0).startsWith("Unable to connect"));
-            }
-        }
+        ConfigValue hostName = getHostName(validated).orElseThrow(() -> new IllegalArgumentException("Host name config option not found"));
+        assertThat(hostName.errorMessages().get(0).startsWith("Unable to connect:"));
+    }
+
+    private Optional<ConfigValue> getHostName(Config config) {
+        return config.configValues()
+                .stream()
+                .filter(value -> value.name().equals(OracleConnectorConfig.HOSTNAME.name()))
+                .findFirst();
     }
 
     @Test

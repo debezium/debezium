@@ -447,6 +447,16 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
 
+    public static final Field TRANSACTION_TOPIC = Field.create("transaction.topic")
+            .withDisplayName("Transaction topic name")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 21))
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault("${database.server.name}.transaction")
+            .withDescription(
+                    "The name of the transaction metadata topic. The placeholder ${database.server.name} can be used for referring to the connector's logical name; defaults to ${database.server.name}.transaction.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -469,7 +479,8 @@ public abstract class CommonConnectorConfig {
                     SOURCE_STRUCT_MAKER_VERSION,
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-                    SIGNAL_DATA_COLLECTION)
+                    SIGNAL_DATA_COLLECTION,
+                    TRANSACTION_TOPIC)
             .create();
 
     private final Configuration config;
@@ -494,6 +505,7 @@ public abstract class CommonConnectorConfig {
     private final BinaryHandlingMode binaryHandlingMode;
     private final String signalingDataCollection;
     private final EnumSet<Operation> skippedOperations;
+    private final String transactionTopic;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -518,6 +530,7 @@ public abstract class CommonConnectorConfig {
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.skippedOperations = determineSkippedOperations(config);
+        this.transactionTopic = config.getString(TRANSACTION_TOPIC).replace("${database.server.name}", logicalName);
     }
 
     private static EnumSet<Envelope.Operation> determineSkippedOperations(Configuration config) {
@@ -610,6 +623,13 @@ public abstract class CommonConnectorConfig {
 
     public CustomConverterRegistry customConverterRegistry() {
         return customConverterRegistry;
+    }
+
+    /**
+     * Returns the name to be used for the connector's TX metadata topic.
+     */
+    public String getTransactionTopic() {
+        return transactionTopic;
     }
 
     /**

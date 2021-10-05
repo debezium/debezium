@@ -420,7 +420,8 @@ For every transaction `BEGIN` and `END`, {prodname} generates an event that cont
 }
 ----
 
-Transaction events are written to the topic named `_database.server.name_.transaction`.
+Unless overridden via the {link-prefix}:{link-postgresql-connector}#postgresql-property-transaction-topic[`transaction.topic`] option,
+transaction events are written to the topic named `_database.server.name_.transaction`.
 
 .Change data event enrichment
 
@@ -2967,6 +2968,10 @@ If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it i
 |[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction metadata] for details.
+
+|[[postgresql-property-transaction-topic]]<<postgresql-property-transaction-topic, `transaction.topic`>>
+|`${database.server.name}.transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
