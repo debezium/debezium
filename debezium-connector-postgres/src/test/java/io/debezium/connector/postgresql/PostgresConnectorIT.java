@@ -59,6 +59,7 @@ import org.postgresql.util.PSQLState;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
@@ -267,7 +268,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             if (TestHelper.shouldSSLConnectionFail()) {
                 // we expect the task to fail at startup when we're printing the server info
                 assertThat(success).isFalse();
-                assertThat(error).isInstanceOf(ConnectException.class);
+                assertThat(error).isInstanceOf(DebeziumException.class);
                 Throwable cause = error.getCause();
                 assertThat(cause).isInstanceOf(SQLException.class);
                 assertThat(PSQLState.CONNECTION_REJECTED.getState().equals(((SQLException) cause).getSQLState()));
@@ -666,7 +667,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void showThatSchemaColumnDefaultMayApplyRetroactively() throws Exception {
         Testing.Print.enable();
         final String slotName = "default_change" + new Random().nextInt(100);
-        TestHelper.create().dropReplicationSlot(slotName);
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.dropReplicationSlot(slotName);
+        }
         try {
             final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                     .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, Boolean.FALSE)
@@ -758,7 +761,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             });
 
             stopConnector();
-            TestHelper.create().dropReplicationSlot(slotName);
+            try (PostgresConnection conn = TestHelper.create()) {
+                conn.dropReplicationSlot(slotName);
+            }
 
             TestHelper.execute("DROP SCHEMA IF EXISTS default_change CASCADE;");
         }
@@ -1291,6 +1296,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
+        waitForStreamingRunning();
         // Generate empty logical decoding message
         TestHelper.execute(statement);
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
