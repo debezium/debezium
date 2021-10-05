@@ -37,6 +37,7 @@ import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.text.ParsingException;
@@ -82,8 +83,12 @@ public class KafkaDatabaseHistoryTest {
     @Before
     public void beforeEach() throws Exception {
         MySqlPartition source = new MySqlPartition("my-server");
+        Configuration config = Configuration.empty()
+                .edit()
+                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1").build();
+
         position = new MySqlOffsetContext(false, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(),
-                new SourceInfo(new MySqlConnectorConfig(Configuration.empty())));
+                new SourceInfo(new MySqlConnectorConfig(config)));
         offsets = Offsets.of(source, position);
 
         setLogPosition(0);

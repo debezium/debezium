@@ -6,6 +6,7 @@
 
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -23,6 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Collect;
@@ -105,6 +107,68 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         assertEndTransaction(transactionRecords.get(5), txId, 4, Collect.hashMapOf(databaseName + ".products", 1,
                 databaseName + ".customers", 2,
                 databaseName + ".orders", 1));
+    }
+
+    @Test
+    @FixFor("DBZ-4077")
+    public void shouldUseConfiguredTransactionTopicName() throws InterruptedException, SQLException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
+                .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "tx.of.${database.server.name}")
+                .build();
+
+        start(MySqlConnector.class, config);
+
+        // Testing.Debug.enable();
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.setAutoCommit(false);
+                connection.execute(CUSTOMER_INSERT_STMT_1, PRODUCT_INSERT_STMT, ORDER_INSERT_STMT, CUSTOMER_INSERT_STMT_2);
+                connection.commit();
+            }
+        }
+
+        // TX BEGIN + 4 changes + TX END
+        SourceRecords records = consumeRecordsByTopic(1 + 4 + 1);
+        List<SourceRecord> txnEvents = records.recordsForTopic("tx.of." + DATABASE.getServerName());
+        assertThat(txnEvents).hasSize(2);
+    }
+
+    @Test
+    @FixFor("DBZ-4077")
+    public void shouldUseConfiguredTransactionTopicNameWithoutServerName() throws InterruptedException, SQLException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
+                .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "mytransactions")
+                .build();
+
+        start(MySqlConnector.class, config);
+
+        // Testing.Debug.enable();
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.setAutoCommit(false);
+                connection.execute(CUSTOMER_INSERT_STMT_1, PRODUCT_INSERT_STMT, ORDER_INSERT_STMT, CUSTOMER_INSERT_STMT_2);
+                connection.commit();
+            }
+        }
+
+        // TX BEGIN + 4 changes + TX END
+        SourceRecords records = consumeRecordsByTopic(1 + 4 + 1);
+        List<SourceRecord> txnEvents = records.recordsForTopic("mytransactions");
+        assertThat(txnEvents).hasSize(2);
     }
 
     private String getTxId(List<SourceRecord> records) {

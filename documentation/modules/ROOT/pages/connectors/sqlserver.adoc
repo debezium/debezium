@@ -1060,7 +1060,8 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-The transaction events are written to the topic named `<database.server.name>.transaction`.
+Unless overridden via the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-transaction-topic[`transaction.topic`] option,
+transaction events are written to the topic named `_database.server.name_.transaction`.
 
 //Type: concept
 //ModuleID: change-data-event-enrichment
@@ -2344,6 +2345,10 @@ endif::community[]
 |[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
+
+|[[sqlserver-property-transaction-topic]]<<sqlserver-property-transaction-topic, `transaction.topic`>>
+|`${database.server.name}.transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 See {link-prefix}:{link-sqlserver-connector}#sqlserver-transaction-metadata[Transaction Metadata] for additional details.
 
