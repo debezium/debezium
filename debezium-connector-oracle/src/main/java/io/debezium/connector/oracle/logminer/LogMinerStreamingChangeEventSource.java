@@ -218,6 +218,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                         LOGGER.debug("Buffer is empty, updating offset SCN to {}", endScn);
                                         offsetContext.setScn(endScn);
                                     }
+                                    else {
+                                        final Scn minStartScn = transactionalBuffer.getMinimumScn();
+                                        if (!minStartScn.isNull()) {
+                                            offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
+                                            dispatcher.dispatchHeartbeatEvent(offsetContext);
+                                        }
+                                    }
                                     startScn = endScn;
                                 }
                             }

@@ -363,7 +363,7 @@ public final class TransactionalBuffer implements AutoCloseable {
             }
         }
         else {
-            Scn minStartScn = transactions.values().stream().map(t -> t.firstScn).min(Scn::compareTo).orElse(Scn.NULL);
+            Scn minStartScn = getMinimumScn();
             if (!minStartScn.isNull()) {
                 LOGGER.trace("Removing all commits up to SCN '{}'", minStartScn);
                 recentlyCommittedTransactionIds.removeIf(t -> t.firstScn.compareTo(minStartScn) < 0);
@@ -377,6 +377,10 @@ public final class TransactionalBuffer implements AutoCloseable {
             }
         }
         return offsetContext.getScn();
+    }
+
+    Scn getMinimumScn() {
+        return transactions.values().stream().map(t -> t.firstScn).min(Scn::compareTo).orElse(Scn.NULL);
     }
 
     /**
