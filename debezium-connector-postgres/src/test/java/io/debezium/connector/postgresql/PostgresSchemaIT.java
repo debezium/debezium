@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -523,25 +522,26 @@ public class PostgresSchemaIT {
         }
     }
 
-    protected void assertKeySchema(String fullyQualifiedTableName, String fields, Schema... types) {
+    protected void assertKeySchema(String fullyQualifiedTableName, String fields, Schema... expectedSchemas) {
         TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
         Schema keySchema = tableSchema.keySchema();
-        assertSchemaContent(fields.split(","), types, keySchema);
+        assertSchemaContent(keySchema, fields.split(","), expectedSchemas);
     }
 
-    protected void assertTableSchema(String fullyQualifiedTableName, String fields, Schema... types) {
+    protected void assertTableSchema(String fullyQualifiedTableName, String fields, Schema... expectedSchemas) {
         TableSchema tableSchema = schemaFor(fullyQualifiedTableName);
-        Schema keySchema = tableSchema.valueSchema();
-        assertSchemaContent(fields.split(","), types, keySchema);
+        Schema valueSchema = tableSchema.valueSchema();
+        assertSchemaContent(valueSchema, fields.split(","), expectedSchemas);
     }
 
-    private void assertSchemaContent(String[] fields, Schema[] types, Schema keySchema) {
-        IntStream.range(0, fields.length).forEach(i -> {
+    private void assertSchemaContent(Schema actualSchema, String[] fields, Schema[] expectedSchemas) {
+        for (int i = 0; i < fields.length; i++) {
             String fieldName = fields[i].trim();
-            Field field = keySchema.field(Strings.unquoteIdentifierPart(fieldName));
+
+            Field field = actualSchema.field(Strings.unquoteIdentifierPart(fieldName));
             assertNotNull(fieldName + " not found in schema", field);
-            VerifyRecord.assertConnectSchemasAreEqual(fieldName, types[i], field.schema());
-        });
+            VerifyRecord.assertConnectSchemasAreEqual(fieldName, field.schema(), expectedSchemas[i]);
+        }
     }
 
     protected void assertTablesIncluded(String... fullyQualifiedTableNames) {
