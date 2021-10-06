@@ -45,7 +45,7 @@ IMAGE_TAG = VERSION_MAJOR_MINOR
 PRODUCT_RELEASE = "${VERSION_MAJOR_MINOR}.GA"
 CANDIDATE_BRANCH = "candidate-$RELEASE_VERSION"
 
-POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine', '12', '12-alpine', '13', '13-alpine']
+POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine', '12', '12-alpine', '13', '13-alpine', '14', '14-alpine']
 CONNECTORS_PER_VERSION = [
     '0.8' : ['mongodb', 'mysql', 'postgres', 'oracle'],
     '0.9' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle'],
@@ -681,6 +681,6 @@ node('Slave') {
         }
 
     } finally {
-        mail to: 'jpechane@redhat.com', subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+        mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
 }

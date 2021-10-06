@@ -17,6 +17,7 @@ jobs:
         run: |
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/master/COPYRIGHT.txt >> COPYRIGHT.txt
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/master/jenkins-jobs/scripts/config/Aliases.txt >> ALIASES.txt
+          curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/master/jenkins-jobs/scripts/config/FilteredNames.txt >> FILTEREDNAMES.txt
 
           curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {author: .commit.author.name}' | jq -r '.author' | uniq >> AUTHOR_NAME.txt
 
@@ -24,7 +25,9 @@ jobs:
           do
             if ! grep -qi "$AUTHOR" COPYRIGHT.txt; then
               if ! grep -qi "$AUTHOR" ALIASES.txt; then
-                echo "::set-output name=NOT_FOUND::true"
+                if ! grep -qi "$AUTHOR" FILTEREDNAMES.txt; then
+                  echo "::set-output name=NOT_FOUND::true"
+                fi
               fi
             fi
           done < AUTHOR_NAME.txt

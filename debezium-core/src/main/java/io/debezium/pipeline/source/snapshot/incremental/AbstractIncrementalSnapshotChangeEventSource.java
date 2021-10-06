@@ -206,9 +206,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             return;
         }
         try {
+            preReadChunk(context);
             // This commit should be unnecessary and might be removed later
             jdbcConnection.commit();
-            preReadChunk(context);
             context.startNewChunk();
             emitWindowOpen();
             while (context.snapshotRunning()) {

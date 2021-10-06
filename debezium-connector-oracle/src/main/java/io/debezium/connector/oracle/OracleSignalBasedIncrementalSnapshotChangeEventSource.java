@@ -47,6 +47,8 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
 
     @Override
     protected void preReadChunk(IncrementalSnapshotContext<TableId> context) {
+        super.preReadChunk(context);
+
         if (pdbName != null) {
             connection.setSessionToPdb(pdbName);
         }
@@ -54,6 +56,8 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
 
     @Override
     protected void postReadChunk(IncrementalSnapshotContext<TableId> context) {
+        super.postReadChunk(context);
+
         if (pdbName != null) {
             connection.resetSessionToCdb();
         }
@@ -61,6 +65,8 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
 
     @Override
     protected void postIncrementalSnapshotCompleted() {
+        super.postIncrementalSnapshotCompleted();
+
         try {
             connection.close();
         }

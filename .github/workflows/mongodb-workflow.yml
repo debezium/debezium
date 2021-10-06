@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version-mongo-server: ["3.2", "4.0", "4.2"]
+        version-mongo-server: ["4.0", "4.2"]
     steps:
       - uses: actions/checkout@v2
       - name: Cache local Maven repository

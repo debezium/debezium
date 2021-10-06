@@ -24,6 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.ContainerImageVersions;
 import io.debezium.util.Testing;
 
 /**
@@ -34,7 +35,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlParserIT.class);
 
-    private static final String MYSQL_IMAGE = "debezium/example-mysql:1.7";
+    private static final String MYSQL_IMAGE = ContainerImageVersions.getStableImage("debezium/example-mysql");
 
     private static final DockerImageName MYSQL_DOCKER_IMAGE_NAME = DockerImageName.parse(MYSQL_IMAGE)
             .asCompatibleSubstituteFor("mysql");

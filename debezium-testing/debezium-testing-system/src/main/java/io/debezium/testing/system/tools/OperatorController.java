@@ -18,9 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
-import io.fabric8.kubernetes.api.model.LocalObjectReference;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -115,6 +113,11 @@ public class OperatorController {
         ocpUtils.ensureHasEnv(operator, new EnvVar(name, val, null));
     }
 
+    public void unsetEnvVar(String name) {
+        LOGGER.info("Unsetting variable " + name + "' on deployment '" + this.name + "'");
+        ocpUtils.ensureNoEnv(operator, name);
+    }
+
     /**
      * Updates Operator's {@link Deployment} resource
      * @return {@link Deployment} resource of the operator
@@ -134,10 +137,10 @@ public class OperatorController {
         LOGGER.info("Deploying Secret from " + yamlPath);
         Secret secret = ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
         String secretName = secret.getMetadata().getName();
-        ocp.serviceAccounts().inNamespace(project).withName("default").edit(sa -> new ServiceAccountBuilder(sa)
-                .removeFromImagePullSecrets(new LocalObjectReference(secretName))
-                .addNewImagePullSecret(secretName)
-                .build());
+
+        ocpUtils.linkPullSecret(project, "default", secretName);
+        ocpUtils.linkPullSecret(project, "builder", secretName);
+
         return secret;
     }
 

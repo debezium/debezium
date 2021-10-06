@@ -67,6 +67,14 @@ public class ColumnMappers {
                     }
                 });
 
+        config.forEachMatchingFieldNameWithString("column\\.mask\\.hash.v2.\\." + hashAlgorithmAndSaltExtractPattern.pattern(),
+                (fullyQualifiedColumnNames, hashAlgorithmAndSalt) -> {
+                    Matcher matcher = hashAlgorithmAndSaltExtractPattern.matcher(hashAlgorithmAndSalt);
+                    if (matcher.matches()) {
+                        builder.maskStringsByHashingV2(fullyQualifiedColumnNames, matcher.group("hashAlgorithm"), matcher.group("salt"));
+                    }
+                });
+
         return builder.build();
     }
 
@@ -208,7 +216,11 @@ public class ColumnMappers {
         }
 
         public Builder maskStringsByHashing(String fullyQualifiedColumnNames, String hashAlgorithm, String salt) {
-            return map(fullyQualifiedColumnNames, new MaskStrings(salt.getBytes(), hashAlgorithm));
+            return map(fullyQualifiedColumnNames, new MaskStrings(salt.getBytes(), hashAlgorithm, MaskStrings.HashingByteArrayStrategy.V1));
+        }
+
+        public Builder maskStringsByHashingV2(String fullyQualifiedColumnNames, String hashAlgorithm, String salt) {
+            return map(fullyQualifiedColumnNames, new MaskStrings(salt.getBytes(), hashAlgorithm, MaskStrings.HashingByteArrayStrategy.V2));
         }
 
         public Builder propagateSourceTypeToSchemaParameter(String fullyQualifiedColumnNames, String value) {

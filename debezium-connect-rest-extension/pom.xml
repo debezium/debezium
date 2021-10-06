@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <parent>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-parent</artifactId>
+    <version>1.8.0-SNAPSHOT</version>
+    <relativePath>../debezium-parent/pom.xml</relativePath>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>debezium-connect-rest-extension</artifactId>
+  <name>Debezium Kafka Connect REST Extension</name>
+
+  <properties>
+    <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+    <timestamp>${maven.build.timestamp}</timestamp>
+    <maven.compiler.parameters>true</maven.compiler.parameters>
+    <maven.compiler.release>11</maven.compiler.release>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>connect-runtime</artifactId>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <skipTests>${skipITs}</skipTests>
+              <enableAssertions>true</enableAssertions>
+              <systemPropertyVariables>
+                <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                <maven.home>${maven.home}</maven.home>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+    <resources>
+      <!-- Apply the properties set in the POM to the resource files -->
+      <resource>
+        <filtering>true</filtering>
+        <directory>src/main/resources</directory>
+        <includes>
+          <include>**/META-INF/services/*</include>
+        </includes>
+      </resource>
+    </resources>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>skip-integration-tests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+        <property>
+          <name>skipITs</name>
+        </property>
+      </activation>
+    </profile>
+  </profiles>
+
+</project>

@@ -2057,10 +2057,11 @@ Note that primary key columns are always included in the event's key, also if ex
 Do not also set the `column.include.list` property.
 
 
-|[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
+[[sqlserver-property-column-mask-hash-v2]]<<sqlserver-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -2076,7 +2077,9 @@ column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, i
 If necessary, the pseudonym is automatically shortened to the length of the column.
 The connector configuration can include multiple properties that specify different hash algorithms and salts. +
  +
-Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked. +
+ +
+Hashing strategy version 2 should be used to ensure fidelity if the value is being hashed in different places or systems.
 
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`

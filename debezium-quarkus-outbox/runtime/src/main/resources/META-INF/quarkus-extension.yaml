@@ -6,8 +6,8 @@ metadata:
   - "debezium"
   - "outbox"
   - "cdc"
-  guide: "https://debezium.io/documentation/reference/1.2/integrations/outbox.html"
+  guide: "https://debezium.io/documentation/reference/${parsedVersion.majorVersion}.${parsedVersion.minorVersion}/transformations/outbox-event-router.html"
   categories:
   - "integration"
   - "cdc"
-  status: "experimental"
+  status: "stable"

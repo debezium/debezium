@@ -100,6 +100,10 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         return databaseHistory.storeOnlyCapturedTables();
     }
 
+    public boolean skipUnparseableDdlStatements() {
+        return databaseHistory.skipUnparseableDdlStatements();
+    }
+
     @Override
     public boolean isHistorized() {
         return true;

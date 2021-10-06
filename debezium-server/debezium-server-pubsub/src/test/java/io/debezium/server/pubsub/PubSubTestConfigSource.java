@@ -28,4 +28,11 @@ public class PubSubTestConfigSource extends TestConfigSource {
 
         config = pubsubTest;
     }
+
+    @Override
+    public int getOrdinal() {
+        // Configuration property precedence is based on ordinal values and since we override the
+        // properties in TestConfigSource, we should give this a higher priority.
+        return super.getOrdinal() + 1;
+    }
 }

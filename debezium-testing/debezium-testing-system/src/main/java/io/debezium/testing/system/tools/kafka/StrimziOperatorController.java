@@ -39,6 +39,13 @@ public class StrimziOperatorController extends OperatorController {
     }
 
     /**
+     * Sets image pull secrets for operands by setting STRIMZI_IMAGE_PULL_SECRETS environment variable
+     */
+    public void unsetOperandImagePullSecrets() {
+        unsetEnvVar("STRIMZI_IMAGE_PULL_SECRETS");
+    }
+
+    /**
      * Sets operator log level
      * @param level log leel
      */

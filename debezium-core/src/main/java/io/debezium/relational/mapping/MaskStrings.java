@@ -55,11 +55,11 @@ public class MaskStrings implements ColumnMapper {
      *                      must be on of Java Cryptography Architecture Standard Algorithm {@link MessageDigest}.
      * @throws IllegalArgumentException if the {@param salt} or {@param hashAlgorithm} are null
      */
-    public MaskStrings(byte[] salt, String hashAlgorithm) {
+    public MaskStrings(byte[] salt, String hashAlgorithm, HashingByteArrayStrategy hashingByteArrayStrategy) {
         Objects.requireNonNull(salt);
         Objects.requireNonNull(hashAlgorithm);
         this.converterFromColumn = column -> {
-            final HashValueConverter hashValueConverter = new HashValueConverter(salt, hashAlgorithm);
+            final HashValueConverter hashValueConverter = new HashValueConverter(salt, hashAlgorithm, hashingByteArrayStrategy);
             if (column.length() > 0) {
                 return hashValueConverter.and(new TruncateStrings.TruncatingValueConverter(column.length()));
             }
@@ -113,9 +113,11 @@ public class MaskStrings implements ColumnMapper {
         private static final Logger LOGGER = LoggerFactory.getLogger(HashValueConverter.class);
         private final byte[] salt;
         private final MessageDigest hashAlgorithm;
+        private final HashingByteArrayStrategy hashingByteArrayStrategy;
 
-        public HashValueConverter(byte[] salt, String hashAlgorithm) {
+        public HashValueConverter(byte[] salt, String hashAlgorithm, HashingByteArrayStrategy hashingByteArrayStrategy) {
             this.salt = salt;
+            this.hashingByteArrayStrategy = hashingByteArrayStrategy;
             try {
                 this.hashAlgorithm = MessageDigest.getInstance(hashAlgorithm);
             }
@@ -142,12 +144,8 @@ public class MaskStrings implements ColumnMapper {
         private String toHash(Serializable value) throws IOException {
             hashAlgorithm.reset();
             hashAlgorithm.update(salt);
-
-            try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    ObjectOutput out = new ObjectOutputStream(bos)) {
-                out.writeObject(value);
-                return convertToHexadecimalFormat(hashAlgorithm.digest(bos.toByteArray()));
-            }
+            byte[] valueToByteArray = hashingByteArrayStrategy.toByteArray(value);
+            return convertToHexadecimalFormat(hashAlgorithm.digest(valueToByteArray));
         }
 
         private String convertToHexadecimalFormat(byte[] bytes) {
@@ -157,5 +155,31 @@ public class MaskStrings implements ColumnMapper {
             }
             return hashString.toString();
         }
+    }
+
+    /**
+     * V1 default and previous version. Because ObjectOutputStream is used, some characters are added before the actual value.
+     * V2 should be used to fidelity for the value being hashed the same way in different places. The byte array also has only the actual value.
+     *
+     */
+    public enum HashingByteArrayStrategy {
+        V1 {
+            @Override
+            byte[] toByteArray(Serializable value) throws IOException {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutput out = new ObjectOutputStream(bos);
+                out.writeObject(value);
+                return bos.toByteArray();
+            }
+        },
+
+        V2 {
+            @Override
+            byte[] toByteArray(Serializable value) {
+                return value.toString().getBytes();
+            }
+        };
+
+        abstract byte[] toByteArray(Serializable value) throws IOException;
     }
 }

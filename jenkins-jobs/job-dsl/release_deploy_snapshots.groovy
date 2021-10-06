@@ -16,6 +16,7 @@ pipelineJob('release-deploy-snapshots') {
 
     parameters {
 
+        stringParam('MAIL_TO', 'jpechane@redhat.com')
         stringParam('DEBEZIUM_REPOSITORY', 'github.com/debezium/debezium.git', 'Repository from which Debezium is built')
         stringParam('DEBEZIUM_BRANCH', 'master', 'A branch from which Debezium is built')
         stringParam(

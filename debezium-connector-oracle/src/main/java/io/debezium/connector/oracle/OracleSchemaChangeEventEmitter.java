@@ -24,7 +24,6 @@ import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
-import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.text.MultipleParsingExceptions;
@@ -43,7 +42,6 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     private final OracleOffsetContext offsetContext;
     private final TableId tableId;
     private final OracleDatabaseSchema schema;
-    private final DatabaseHistory databaseHistory;
     private final Instant changeTime;
     private final String sourceDatabaseName;
     private final String objectOwner;
@@ -62,7 +60,6 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         this.objectOwner = objectOwner;
         this.ddlText = ddlText;
         this.schema = schema;
-        this.databaseHistory = connectorConfig.getDatabaseHistory();
         this.changeTime = changeTime;
         this.streamingMetrics = streamingMetrics;
         this.filters = connectorConfig.getTableFilters().dataCollectionFilter();
@@ -84,7 +81,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
             parser.parse(ddlText, schema.getTables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {
-            if (databaseHistory.skipUnparseableDdlStatements()) {
+            if (schema.skipUnparseableDdlStatements()) {
                 LOGGER.warn("Ignoring unparsable DDL statement '{}': {}", ddlText, e);
                 streamingMetrics.incrementWarningCount();
                 streamingMetrics.incrementUnparsableDdlCount();

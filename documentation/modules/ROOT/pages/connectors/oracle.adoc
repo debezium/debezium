@@ -2005,8 +2005,9 @@ Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_.
 The primary key column is always included in an event's key, even if you use this property to explicitly exclude its value.
 If you include this property in the configuration, do not set the `column.include.list` property.
 
-|[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._<hashAlgorithm>_.with.salt._<salt>_`>>
-|No default
+|[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
+[[oracle-property-column-mask-hash-v2]]<<oracle-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
+|_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
 Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_._<columnName>_`. +
  +
@@ -2025,7 +2026,9 @@ column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, i
 If necessary, the pseudonym is automatically shortened to the length of the column.
 The connector configuration can include multiple properties that specify different hash algorithms and salts. +
  +
-Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked. +
+ +
+Hashing strategy version 2 should be used to ensure fidelity if the value is being hashed in different places or systems.
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`

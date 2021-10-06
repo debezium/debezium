@@ -15,6 +15,7 @@ pipelineJob('release-deploy-docker-images') {
     }
 
     parameters {
+        stringParam('MAIL_TO', 'jpechane@redhat.com')
         stringParam('DEBEZIUM_REPOSITORY', 'debezium/debezium', 'Repository from which Debezium is built')
         stringParam('IMAGES_REPOSITORY', 'github.com/debezium/docker-images.git', 'Repository with Debezium Dockerfiles')
         stringParam('IMAGES_BRANCH', 'master', 'Branch used for images repository')

@@ -2654,7 +2654,8 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
 
-|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
+[[postgresql-property-column-mask-hash-v2]]<<postgresql-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
 Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_.
@@ -2673,7 +2674,9 @@ column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, i
 If necessary, the pseudonym is automatically shortened to the length of the column.
 The connector configuration can include multiple properties that specify different hash algorithms and salts. +
  +
-Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked. +
+ +
+Hashing strategy version 2 should be used to ensure fidelity if the value is being hashed in different places or systems.
 
 |[[postgresql-property-column-propagate-source-type]]<<postgresql-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
