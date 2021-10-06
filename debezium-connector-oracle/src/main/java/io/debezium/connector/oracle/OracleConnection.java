@@ -441,7 +441,23 @@ public class OracleConnection extends JdbcConnection {
      * @throws SQLException if a database exception occurred
      */
     public boolean isTableEmpty(String tableName) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> rs.next() && rs.getLong(1) == 0);
+        return getRowCount(tableName) == 0L;
+    }
+
+    /**
+     * Returns the number of rows in a given table.
+     *
+     * @param tableName table name, should not be {@code null}
+     * @return the number of rows
+     * @throws SQLException if a database exception occurred
+     */
+    public long getRowCount(String tableName) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+            return 0L;
+        });
     }
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
