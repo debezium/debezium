@@ -274,7 +274,7 @@ The configuration will need to contain the list of transformations, implementati
 
 
 [id="debezium-additional-configuration-options"]
-=== Addtional configuration
+=== Additional configuration
 
 Debezium Server runs on top Quarkus framework.
 All configuration options exposed by Quarkus are available in Debezium Server too.
@@ -291,7 +291,19 @@ The most frequent used are:
 |8080
 |The port on which Debezim exposes Microprofile Health endpoint and other exposed status information.
 
+[id="debezium-quarkus-log-level"]
+|`quarkus.log.level`
+|INFO
+|The default log level for every log category.
+
+[id="debezium-quarkus-json-logging"]
+|`quarkus.log.console.json`
+|true
+|Determine whether to enable the JSON console formatting extension, which disables "normal" console formatting.
+
 |===
+
+JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _conf/application.properties_ file, as demonstrated in the _conf/application.properties.example_ file. 
 
 
 === Sink configuration

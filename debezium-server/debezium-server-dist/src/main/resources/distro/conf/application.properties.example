@@ -10,3 +10,4 @@ debezium.source.database.password=postgres
 debezium.source.database.dbname=postgres
 debezium.source.database.server.name=tutorial
 debezium.source.schema.include.list=inventory
+quarkus.log.console.json=false
