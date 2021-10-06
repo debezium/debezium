@@ -7,6 +7,9 @@ package io.debezium.connector.oracle.logminer.logwriter;
 
 import java.sql.SQLException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.Scn;
@@ -20,9 +23,12 @@ import io.debezium.jdbc.JdbcConfiguration;
  */
 public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogWriterFlushStrategy.class);
+
     private static final String CREATE_FLUSH_TABLE = "CREATE TABLE " + LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))";
     private static final String INSERT_FLUSH_TABLE = "INSERT INTO " + LOGMNR_FLUSH_TABLE + " VALUES (0)";
     private static final String UPDATE_FLUSH_TABLE = "UPDATE " + LOGMNR_FLUSH_TABLE + " SET LAST_SCN = ";
+    private static final String DELETE_FLUSH_TABLE = "DELETE FROM " + LOGMNR_FLUSH_TABLE;
 
     private final OracleConnection connection;
     private final boolean closeConnectionOnClose;
@@ -93,13 +99,33 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
             if (!connection.isTableExists(LOGMNR_FLUSH_TABLE)) {
                 connection.executeWithoutCommitting(CREATE_FLUSH_TABLE);
             }
-            if (!connection.isTableEmpty(LOGMNR_FLUSH_TABLE)) {
+
+            fixMultiRowDataBug();
+
+            if (connection.isTableEmpty(LOGMNR_FLUSH_TABLE)) {
                 connection.executeWithoutCommitting(INSERT_FLUSH_TABLE);
                 connection.commit();
             }
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to create flush table", e);
+        }
+    }
+
+    /**
+     * Cleans and resets the state of the flush table if multiple rows are detected.
+     *
+     * This bug was introduced in Debezium 1.7.0.Final by mistake and this function will self-correct
+     * the data managed by the table.
+     *
+     * @throws SQLException if a database exception occurs
+     */
+    private void fixMultiRowDataBug() throws SQLException {
+        if (connection.getRowCount(LOGMNR_FLUSH_TABLE) > 1L) {
+            LOGGER.warn("DBZ-4118: The flush table, {}, has multiple rows and has been corrected.", LOGMNR_FLUSH_TABLE);
+            connection.executeWithoutCommitting(DELETE_FLUSH_TABLE);
+            connection.executeWithoutCommitting(INSERT_FLUSH_TABLE);
+            connection.commit();
         }
     }
 }
