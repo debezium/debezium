@@ -2101,7 +2101,7 @@ Use a semicolon to separate table entries in the list. +
 `inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
  +
 For the table `inventory.customer`, the columns `pk1` and `pk2` are specified as the message key.
-For the `purchaseorders` tables in any pluggable database, the columns `pk3` and `pk4` server as the message key. +
+For the `purchaseorders` tables in any schema, the columns `pk3` and `pk4` server as the message key. +
 There is no limit to the number of columns that you use to create custom message keys.
 However, it's best to use the minimum number that are required to specify a unique key.
 
