@@ -2134,9 +2134,34 @@ See {link-prefix}:{link-sqlserver-connector}#sqlserver-data-types[SQL Server dat
 
 |[[sqlserver-property-message-key-columns]]<<sqlserver-property-message-key-columns, `+message.key.columns+`>>
 |_n/a_
-| A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
-Each item (regular expression) must match the fully-qualified `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
-Fully-qualified tables could be defined as _schemaName_._tableName_.
+|A list of expressions that specify the columns that the connector uses to form custom message keys for change event records that it publishes to the Kafka topics for specified tables.
+
+By default, {prodname} uses the primary key column of a table as the message key for records that it emits.
+In place of the default, or to specify a key for tables that lack a primary key, you can configure custom message keys based on one or more columns. +
+ +
+To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
+Each list entry takes the following format: +
+ +
+`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+ +
+To base a table key on multiple column names, insert commas between the column names.
+
+Each fully-qualified table name is a regular expression in the following format: +
+ +
+`_<schemaName>_._<tableName>_` +
+ +
+The property can include entries for multiple tables.
+Use a semicolon to separate table entries in the list. +
+ +
+The following example sets the message key for the tables `inventory.customers` and `purchase.orders`: +
+ +
+`inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
+ +
+For the table `inventory.customer`, the columns `pk1` and `pk2` are specified as the message key.
+For the `purchaseorders` tables in any schema, the columns `pk3` and `pk4` server as the message key.
+
+There is no limit to the number of columns that you use to create custom message keys.
+However, it's best to use the minimum number that are required to specify a unique key.
 
 |[[sqlserver-property-binary-handling-mode]]<<sqlserver-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
