@@ -59,7 +59,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
-    private static final String DATABASE_NAME_PLACEHOLDER = "[#db]";
+    private static final String DATABASE_NAME_PLACEHOLDER = "#db";
     private static final String GET_MAX_LSN = "SELECT [#db].sys.fn_cdc_get_max_lsn()";
     private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM [#db].cdc.lsn_time_mapping WHERE tran_id <> 0x00";
     private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM [#db].cdc.lsn_time_mapping WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
