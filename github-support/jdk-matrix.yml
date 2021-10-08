@@ -8,7 +8,7 @@ default:
   runs-on: ubuntu-latest
   strategy:
     matrix:
-      java: ['15', '16.0.0-ea.20']
+      java: ['17', '18']
 
 #@ load("@ytt:data", "data")
 #@yaml/text-templated-strings
@@ -21,7 +21,7 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: actions/setup-java@v1.3.0
+        uses: actions/setup-java@v1.4.3
         with:
           java-version: ${{ matrix.java }}
       - name: Maven Build

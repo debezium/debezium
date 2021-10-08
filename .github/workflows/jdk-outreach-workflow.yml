@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: SQL Server - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: MySQL - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: PostgreSQL Decoderbufs - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: PostgreSQL Wal2JSON - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: MongoDB 4.0 - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
@@ -140,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: Quarkus Outbox Extension - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
@@ -162,7 +162,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 15, 16 ]
+        feature: [ 18 ]
     name: Testing module - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v2
