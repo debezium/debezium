@@ -36,6 +36,11 @@ jobs:
         with:
           repository: debezium/debezium-connector-db2
           path: db2
+      - name: Setup java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
       - name: Cache Maven Packages
         uses: actions/cache@v2
         with:
