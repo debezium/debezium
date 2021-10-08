@@ -130,14 +130,17 @@ include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot
 [id="how-debezium-db2-connectors-read-change-data-tables"]
 === Change-data tables
 
-After a complete snapshot, when a {prodname} Db2 connector starts for the first time, the connector identifies the change-data table for each source table that is in capture mode. The connector does the following for each change-data table:
+After a complete snapshot, when a {prodname} Db2 connector starts for the first time, the connector identifies the change-data table for each source table that is in capture mode.
+The connector does the following for each change-data table:
 
 . Reads change events that were created between the last stored, highest LSN and the current, highest LSN.
-. Orders the change events according to the commit LSN and the change LSN for each event. This ensures that the connector emits the change events in the order in which the table changes occurred.
+. Orders the change events according to the commit LSN and the change LSN for each event.
+  This ensures that the connector emits the change events in the order in which the table changes occurred.
 . Passes commit and change LSNs as offsets to Kafka Connect.
 . Stores the highest LSN that the connector passed to Kafka Connect.
 
-After a restart, the connector resumes emitting change events from the offset (commit and change LSNs) where it left off. While the connector is running and emitting change events, if you remove a table from capture mode or add a table to capture mode, the connector detects this and modifies its behavior accordingly.
+After a restart, the connector resumes emitting change events from the offset (commit and change LSNs) where it left off.
+While the connector is running and emitting change events, if you remove a table from capture mode or add a table to capture mode, the connector detects the change, and modifies its behavior accordingly.
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-db2-change-event-records
@@ -145,11 +148,14 @@ After a restart, the connector resumes emitting change events from the offset (c
 [[db2-topic-names]]
 === Topic names
 
-By default, the Db2 connector writes change events for all insert, update, and delete operations on a single table to a single Kafka topic. The name of the Kafka topic has the following format:
+By default, the Db2 connector writes change events for all of the `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
+The connector uses the following convention to name change event topics:
 
 _databaseName_._schemaName_._tableName_
 
-_databaseName_:: The logical name of the connector as specified with the `database.server.name` connector configuration property.
+The following list provides definitions for the components of the default name:
+
+_databaseName_:: The logical name of the connector as specified by the xref:db2-property-database-server-name[`database.server.name`] connector configuration property.
 
 _schemaName_:: The name of the schema in which the operation occurred.
 
@@ -162,19 +168,18 @@ For example, consider a Db2 installation with the `mydatabase` database,  which 
 * `mydatabase.MYSCHEMA.CUSTOMERS`
 * `mydatabase.MYSCHEMA.ORDERS`
 
-To configure a Db2 connector to emit change events to differently-named Kafka topics, see the documentation for the {link-prefix}:{link-topic-routing}#topic-routing[topic routing transformation].
+The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-db2-connector-schema-change-topic[schema change topics], and xref:db2-transaction-metadata[transaction metadata topics].
+
+If the default topic name do not meet your requirements, you can configure custom topic names.
+To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
 // Type: concept
 // Title: About the {prodname} Db2 connector schema change topic
 [id="about-the-debezium-db2-connector-schema-change-topic"]
 === Schema change topic
 
-For a table that is in capture mode, the {prodname} Db2 connector stores the history of schema changes to that table in a database history topic. This topic reflects an internal connector state and you should not use it. If your application needs to track schema changes, there is a public schema change topic. The name of the schema change topic is the same as the logical server name specified in the connector configuration.
-
-[WARNING]
-====
-The format of messages that a connector emits to its schema change topic is in an incubating state and can change without notice.
-====
+You can configure a {prodname} Db2 connector to produce schema change events that describe schema changes that are applied to captured tables in the database.
 
 {prodname} emits a message to the schema change topic when:
 
@@ -182,7 +187,42 @@ The format of messages that a connector emits to its schema change topic is in a
 * A table is removed from capture mode.
 * During a {link-prefix}:{link-db2-connector}#db2-schema-evolution[database schema update], there is a change in the schema for a table that is in capture mode.
 
-A message to the schema change topic contains a logical representation of the table schema, for example:
+The connector writes schema change events to a Kafka schema change topic that has the name `_<serverName>_` where `_<serverName>_` is the logical server name that is specified in the xref:mysql-property-database-server-name[`database.server.name`] connector configuration property.
+Messages that the connector sends to the schema change topic contain a payload that includes the following elements:
+
+`databaseName`:: The name of the database to which the statements are applied.
+The value of `databaseName` serves as the message key. 
+`pos`:: The position in the binlog where the statements appear.
+`tableChanges`::  A structured representation of the entire table schema after the schema change.
+The `tableChanges` field contains an array that includes entries for each column of the table.
+Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
+
+[IMPORTANT]
+====
+For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database history topic.
+The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
+====
+
+[IMPORTANT]
+====
+Never partition the database history topic.
+For the database history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+
+To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
+
+* If you create the database history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+====
+
+[WARNING]
+====
+The format of messages that a connector emits to its schema change topic is in an incubating state and can change without notice.
+====
+
+.Example: Message emitted to the Db2 connector schema change topic
+The following example shows a message in the schema change topic.
+The message contains a logical representation of the table schema.
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -293,7 +333,9 @@ A message to the schema change topic contains a logical representation of the ta
 
 |2
 |`ddl`
-|Always `null` for the Db2 connector. For other connectors, this field contains the DDL responsible for the schema change. This DDL is not available to Db2 connectors.
+|Always `null` for the Db2 connector.
+For other connectors, this field contains the DDL responsible for the schema change.
+This DDL is not available to Db2 connectors.
 
 |3
 |`tableChanges`
@@ -325,7 +367,8 @@ a|Describes the kind of change. The value is one of the following:
 
 |===
 
-In messages to the schema change topic, the key is the name of the database that contains the schema change. In the following example, the `payload` field contains the key:
+In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
+In the following example, the `payload` field contains the key:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -364,12 +407,14 @@ In messages to the schema change topic, the key is the name of the database that
 Metadata for transactions that occur before you deploy the connector is not available.
 ====
 
-For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
+{prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
+Transaction boundary events contain the following fields:
 
-* `status` - `BEGIN` or `END`
-* `id` - string representation of unique transaction identifier
-* `event_count` (for `END` events) - total number of events emitted by the transaction
-* `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from the given data collection
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier.
+`event_count` (for `END` events):: Total number of events emitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements.
+that indicates the number of events that the connector emits for changes that originate from a data collection.
 
 .Example
 
@@ -399,16 +444,16 @@ For every transaction `BEGIN` and `END`, {prodname} generates an event that cont
 }
 ----
 
-The connector emits transaction events to the `_database.server.name_.transaction` topic.
+The connector emits transaction events to the xref:db2-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 .Data change event enrichment
 
 When transaction metadata is enabled the connector enriches the change event  `Envelope` with a new `transaction` field.
 This field provides information about every event in the form of a composite of fields:
 
-* `id` - string representation of unique transaction identifier
-* `total_order` - absolute position of the event among all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
 
 Following is an example of a message:
 
@@ -1430,7 +1475,9 @@ $ db2 -tvmf $HOME/asncdctools/src/asncdctables.sql
 $ db2 -tvmf $HOME/asncdctools/src/asncdcaddremove.sql
 ----
 +
-After you set up the Db2 server, use the UDFs to control Db2 replication (ASN) with SQL commands. Some of the UDFs expect a return value in which case you use the  SQL `VALUE` statement to invoke them. For other UDFs, use the SQL `CALL` statement.
+After you set up the Db2 server, use the UDFs to control Db2 replication (ASN) with SQL commands.
+Some of the UDFs expect a return value in which case you use the SQL `VALUE` statement to invoke them.
+For other UDFs, use the SQL `CALL` statement.
 
 . Start the ASN agent:
 +
@@ -1439,12 +1486,12 @@ After you set up the Db2 server, use the UDFs to control Db2 replication (ASN) w
 VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');
 ----
 +
-This will return one of these:
+The preceding statement returns one of the following results:
 +
-.. asncap is already running
-.. start +-->+ <COMMAND>
+* `asncap is already running`
+* `+start -->+` `_<COMMAND>_`
 +
-In this case, run the retrieved <COMMAND> in the terminal, for example:
+In this case, enter the specified `_<COMMAND>_` in the terminal window as shown in the foll example:
 +
 [source,shell]
 ----
@@ -1927,11 +1974,10 @@ The following configuration properties are _required_ unless a default value is 
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 Primary key columns are always included in the event's key, even if they are excluded from the value.
 
-|[[db2-property-column-mask-hash]]<<db2-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
-[[db2-property-column-mask-hash-v2]]<<db2-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
+|[[db2-property-column-mask-hash]]<<db2-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -1947,9 +1993,7 @@ column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, i
 If necessary, the pseudonym is automatically shortened to the length of the column.
 The connector configuration can include multiple properties that specify different hash algorithms and salts. +
  +
-Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked. +
- +
-Hashing strategy version 2 should be used to ensure fidelity if the value is being hashed in different places or systems.
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
 
 |[[db2-property-time-precision-mode]]<<db2-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
@@ -1983,9 +2027,11 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 |[[db2-property-column-propagate-source-type]]<<db2-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
  +
-For each specified column, the connector adds the column's original type and original length as parameters to the corresponding field schemas in the emitted change records. The following added schema parameters propagate the original type name and also the original length for variable-width types: +
+For each specified column, the connector adds the column's original type and original length as parameters to the corresponding field schemas in the emitted change records.
+The following added schema parameters propagate the original type name and also the original length for variable-width types: +
  +
 `pass:[_]pass:[_]debezium.source.column.type` + `pass:[_]pass:[_]debezium.source.column.length` + `pass:[_]pass:[_]debezium.source.column.scale` +
  +
@@ -2015,24 +2061,20 @@ Each list entry takes the following format: +
  +
 `_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
  +
-To base a table key on multiple column names, insert commas between the column names.
-
+To base a table key on multiple column names, insert commas between the column names. +
 Each fully-qualified table name is a regular expression in the following format: +
- +
+
 `_<schemaName>_._<tableName>_` +
- +
-The property can include entries for multiple tables.
-Use a semicolon to separate table entries in the list. +
+
+The property can list entries for multiple tables.
+Use a semicolon to separate entries for different tables in the list. +
  +
 The following example sets the message key for the tables `inventory.customers` and `purchaseorders`: +
  +
 `inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
  +
-For the table `inventory.customer`, the columns `pk1` and `pk2` are specified as the message key.
-For the `purchaseorders` tables in any schema, the columns `pk3` and `pk4` server as the message key.
-
-There is no limit to the number of columns that you use to create custom message keys.
-However, it's best to use the minimum number that are required to specify a unique key.
+In the preceding example, the columns `pk1` and `pk2` are specified as the message key for the table `inventory.customer`.
+For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as the message key.
 |===
 
 [id="db2-advanced-configuration-properties"]

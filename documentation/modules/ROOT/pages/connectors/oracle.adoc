@@ -120,10 +120,18 @@ include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot
 [[oracle-topic-names]]
 === Topic names
 
-The default behavior is that a {prodname} Oracle connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations in one table to one Kafka topic.
-The Kafka topic naming convention is as follows:
+By default, the Oracle connector writes change events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
+The connector uses the following convention to name change event topics:
 
 _serverName.schemaName.tableName_
+
+The following list provides definitions for the components of the default name:
+
+_serverName_:: The logical name of the server as specified by the xref:oracle-property-database-server-name[`database.server.name`] connector configuration property.
+
+_schemaName_:: The name of the schema in which the operation occurred.
+
+_tableName_:: The name of the table in which the operation occurred.
 
 For example, if `fulfillment` is the server name, `inventory` is the schema name, and the database contains tables with the names `orders`, `customers`, and `products`,
 the {prodname} Oracle connector emits events to the following Kafka topics, one for each table in the database:
@@ -134,16 +142,50 @@ fulfillment.inventory.customers
 fulfillment.inventory.products
 ----
 
+The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-oracle-connector-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
+
+If the default topic name do not meet your requirements, you can configure custom topic names.
+To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
+
 // Type: concept
 // ModuleID: how-debezium-oracle-connectors-expose-database-schema-changes
 // Title: How {prodname} Oracle connectors expose database schema changes
 [[oracle-schema-change-topic]]
 === Schema change topic
 
-The {prodname} Oracle connector stores the history of schema changes in a database history topic.
-This topic reflects an internal connector state and you should not use it directly.
-Applications that require notifications about schema changes should obtain the information from the public schema change topic.
-The connector writes schema change events to a Kafka topic named `<serverName>`, where `serverName` is the name of the connector that is specified in the `database.server.name` configuration property.
+You can configure a {prodname} Oracle connector to produce schema change events that describe schema changes that are applied to captured tables in the database.
+The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the logical server name that is specified in the xref:oracle-property-database-server-name[`database.server.name`] configuration property.
+
+{prodname} emits a new message to this topic whenever it streams data from a new table.
+
+Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
+The payload of a schema change event message includes the following elements:
+
+`ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
+`databaseName`:: The name of the database to which the statements are applied.
+The value of `databaseName` serves as the message key. 
+`tableChanges`::  A structured representation of the entire table schema after the schema change.
+The `tableChanges` field contains an array that includes entries for each column of the table.
+Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
+
+[IMPORTANT]
+====
+When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database history topic.
+The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
+====
+
+[IMPORTANT]
+====
+Never partition the database history topic.
+For the database history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+
+To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
+
+* If you create the database history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+====
 
 ifdef::community[]
 [WARNING]
@@ -151,11 +193,6 @@ ifdef::community[]
 The schema change topic message format is in an incubating state and might change without notice.
 ====
 endif::community[]
-
-{prodname} emits a new message to this topic whenever it streams data from a new table.
-ifdef::product[]
-.
-endif::product[]
 
 ifdef::community[]
 {prodname} emits a new message to this topic whenever it streams data from a new table, or when the structure of the table is altered.
@@ -166,10 +203,9 @@ Following a change in table structure, you must follow (the {link-prefix}:{link-
 ====
 endif::community[]
 
+.Example: Message emitted to the Oracle connector schema change topic
+The following example shows a typical schema change message in JSON format.
 The message contains a logical representation of the table schema.
-
-.Example: Message emitted to the schema change topic
-The following example shows a typical schema change message in JSON format:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -314,7 +350,7 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 
 |===
 
-Messages that the connector sends to the schema change topic use a message key that is equal to the name of the database that contains the schema change.
+In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
 In the following example, the `payload` field contains the key:
 
 [source,json,indent=0,subs="+attributes"]
@@ -360,7 +396,7 @@ Transaction boundary events contain the following fields:
 `status`:: `BEGIN` or `END`
 `id`:: String representation of unique transaction identifier.
 `event_count` (for `END` events):: Total number of events emmitted by the transaction.
-`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from the given data collection.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates number of events that the connector emits for changes that originate from a data collection.
 
 The following example shows a typical transaction boundary message:
 
@@ -392,7 +428,7 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-The transaction events are written to the topic named `_<database.server.name>_.transaction`.
+The connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 //Type: concept
 //ModuleID: debezium-oracle-connector-change-data-event-enrichment
@@ -485,7 +521,7 @@ CREATE TABLE customers (
 );
 ----
 
-If the value of the `database.server.name` configuration property is set to `server1`,
+If the value of the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` configuration property is set to `server1`,
 the JSON representation for every change event that occurs in the `customers` table in the database features the following key structure:
 
 [source,json,indent=0,sub="attributes"]
@@ -1972,7 +2008,9 @@ In environments that use the LogMiner implementation, you must use POSIX regular
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored.
 Tables that are not included in the include list are excluded from monitoring.
-Each identifier is of the form `__<schema_name>.<table_name>__`. +
+Each table identifier uses the following format: +
+ +
+`__<schema_name>.<table_name>__` +
  +
 By default, the connector monitors every non-system table in each monitored database.
 Do not use this property in combination with `table.exclude.list`.
@@ -1992,7 +2030,9 @@ If you use the LogMiner implementation, use only POSIX regular expressions with 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
-Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_._<columnName>_`. +
+Fully-qualified names for columns use the following format: `_+
+ +
+`<Schema_name>.<table_name>.<column_name>_` +
  +
 The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value.
 If you include this property in the configuration, do not also set the `column.exclude.list` property.
@@ -2000,7 +2040,9 @@ If you include this property in the configuration, do not also set the `column.e
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
-Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_._<columnName>_`. +
+Fully-qualified column names use the following format: +
+ +
+`_<schema_name>.<table_name>.<column_name>_` +
  +
 The primary key column is always included in an event's key, even if you use this property to explicitly exclude its value.
 If you include this property in the configuration, do not set the `column.include.list` property.
