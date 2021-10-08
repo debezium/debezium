@@ -129,6 +129,10 @@ public class CloudEventsConverterTest {
     }
 
     public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, boolean hasTransaction) {
+        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, "after", hasTransaction);
+    }
+
+    public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, String fieldName, boolean hasTransaction) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "avro");
@@ -205,7 +209,7 @@ public class CloudEventsConverterTest {
             avroConverter.configure(Collections.singletonMap("schema.registry.url", "http://fake-url"), false);
             SchemaAndValue data = avroConverter.toConnectData(record.topic(), Base64.getDecoder().decode(dataJson.asText()));
             assertThat(data.value()).isInstanceOf(Struct.class);
-            assertThat(((Struct) data.value()).get("after")).isNotNull();
+            assertThat(((Struct) data.value()).get(fieldName)).isNotNull();
         }
         catch (Throwable t) {
             Testing.Print.enable();
