@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import java.time.Duration;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -63,6 +64,13 @@ public interface ElapsedTimeStrategy {
                 return false;
             }
         };
+    }
+
+    /**
+     * Create a strategy whose time periods are constant.
+     */
+    static ElapsedTimeStrategy constant(Clock clock, Duration delay) {
+        return constant(clock, delay.toMillis());
     }
 
     /**
