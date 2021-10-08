@@ -14,7 +14,7 @@
     <properties>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>6.0.2</version.confluent.platform>
-        <version.apicurio>2.0.0.Final</version.apicurio>
+        <version.apicurio>2.0.2.Final</version.apicurio>
 
         <!-- Connectors -->
         <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
