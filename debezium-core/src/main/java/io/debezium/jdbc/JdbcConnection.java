@@ -705,6 +705,19 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Executes a SQL query, preparing it if encountering it for the first time.
+     *
+     * @param preparedQueryString the prepared query string
+     * @return this object for chaining methods together
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     */
+    public JdbcConnection prepareQuery(String preparedQueryString) throws SQLException {
+        final PreparedStatement statement = createPreparedStatement(preparedQueryString);
+        statement.executeQuery();
+        return this;
+    }
+
+    /**
      * Execute a SQL prepared query.
      *
      * @param preparedQueryString the prepared query string
