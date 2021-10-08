@@ -8,6 +8,7 @@ package io.debezium.pipeline.source;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -98,7 +99,10 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         }
         else {
             return allDataCollections.stream()
-                    .filter(dataCollectionId -> snapshotAllowedDataCollections.stream().anyMatch(s -> dataCollectionId.identifier().matches(s)));
+                    .filter(dataCollectionId -> snapshotAllowedDataCollections.stream().anyMatch(s -> {
+                        final Pattern p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+                        return p.matcher(dataCollectionId.identifier()).matches();
+                    }));
         }
     }
 

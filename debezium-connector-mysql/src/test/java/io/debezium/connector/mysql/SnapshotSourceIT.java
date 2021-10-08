@@ -268,7 +268,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     public void shouldCreateSnapshotSelectively() throws Exception {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier())
-                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "connector_(.*).customers")
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "connector_(.*).CUSTOMERS")
                 .build();
 
         // Start the connector ...
