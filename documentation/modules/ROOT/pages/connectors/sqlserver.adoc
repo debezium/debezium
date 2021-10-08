@@ -158,22 +158,25 @@ The connector is able to detect whether CDC is enabled or disabled for included 
 [[sqlserver-topic-names]]
 === Topic names
 
-The SQL Server connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations for a specific table to a single Kafka topic.
-By default, the Kafka topic name takes the form _serverName_._schemaName_._tableName_.
+By default, the SQL Server connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
+The connector uses the following convention to name change event topics:
+`_<serverName>_._<schemaName>_._<tableName>_`
+
 The following list provides definitions for the components of the default name:
 
-_serverName_:: The logical name of the connector, as specified by the `database.server.name` configuration property.
+_serverName_:: The logical name of the server, as specified by the xref:sqlserver-property-database-server-name[`database.server.name`] configuration property.
 _schemaName_:: The name of the database schema in which the change event occurred.
 _tableName_:: The name of the database table in which the change event occurred.
 
-For example, suppose that `fulfillment` is the logical server name in the configuration for a connector that is capturing changes in a SQL Server installation.
-The server has an `inventory` database with the schema name `dbo`, and the database contains tables with the names `products`, `products_on_hand`, `customers`, and `orders`.
-The connector would stream records to the following Kafka topics:
+For example, if `fulfillment` is the server name, and `dbo` is the schema name, and the database contains tables with the names `products`, `products_on_hand`, `customers`, and `orders`,
+the connector would stream change event records to the following Kafka topics:
 
 * `fulfillment.dbo.products`
 * `fulfillment.dbo.products_on_hand`
 * `fulfillment.dbo.customers`
 * `fulfillment.dbo.orders`
+
+The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-sqlserver-connector-schema-change-topic[schema change topics], and xref:sqlserver-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -183,12 +186,27 @@ For more information about using the logical topic routing SMT to customize topi
 // Type: concept
 // ModuleID: how-the-debezium-sql-server-connector-uses-the-schema-change-topic
 // Title: How the {prodname} SQL Server connector uses the schema change topic
+[[about-the-debezium-sqlserver-connector-schema-change-topic]]
 === Schema change topic
 
-For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of schema changes in a database history topic.
-This topic reflects an internal connector state and you should not use it directly.
-Application that require notifications about schema changes, should obtain the information from the public schema change topic.
-The connector writes all of these events to a Kafka topic named `<serverName>`, where `serverName` is the name of the connector that is specified in the database.server.name configuration property.
+For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of the schema change events that are applied to captured tables in the database.
+The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the logical server name that is specified in the xref:sqlserver-property-database-server-name[`database.server.name`] configuration property.
+
+Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
+The payload of a schema change event message includes the following elements:
+
+`databaseName`:: The name of the database to which the statements are applied.
+The value of `databaseName` serves as the message key. 
+`tableChanges`::  A structured representation of the entire table schema after the schema change.
+The `tableChanges` field contains an array that includes entries for each column of the table.
+Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
+
+[IMPORTANT]
+====
+When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database history topic.
+The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
+====
 
 [WARNING]
 ====
@@ -201,7 +219,9 @@ The format of the messages that a connector emits to its schema change topic is 
 * You disable CDC for a table.
 * You alter the structure of a table for which CDC is enabled by following the {link-prefix}:{link-sqlserver-connector}#sqlserver-schema-evolution[schema evolution procedure].
 
-A message to the schema change topic contains a logical representation of the table schema, for example:
+.Example: Message emitted to the SQL Server connector schema change topic
+The following example shows a message in the schema change topic.
+The message contains a logical representation of the table schema.
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -312,7 +332,9 @@ A message to the schema change topic contains a logical representation of the ta
 
 |2
 |`ddl`
-|Always `null` for the SQL Server connector. For other connectors, this field contains the DDL responsible for the schema change. This DDL is not available to SQL Server connectors.
+|Always `null` for the SQL Server connector.
+For other connectors, this field contains the DDL responsible for the schema change.
+This DDL is not available to SQL Server connectors.
 
 |3
 |`tableChanges`
@@ -2061,7 +2083,7 @@ Do not also set the `column.include.list` property.
 [[sqlserver-property-column-mask-hash-v2]]<<sqlserver-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_.
+Fully-qualified names for columns are of the form _`<schemaName>_._<tableName>_._<columnName>`.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
