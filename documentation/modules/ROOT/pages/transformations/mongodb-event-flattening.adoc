@@ -91,7 +91,7 @@ transforms.unwrap.array.encoding=<array|document>
 ----
 
 Value `array` (the default) will encode arrays as the array datatype.
-It is user's responsibility to ensure that all elements for a given array instance are of the same time.
+It is user's responsibility to ensure that all elements for a given array instance are of the same type.
 This option is a restricting one but offers easy processing of arrays by downstream clients.
 
 Value `document` will convert the array into a *struct* of *structs* in the similar way as done by http://bsonspec.org/[BSON serialization].
