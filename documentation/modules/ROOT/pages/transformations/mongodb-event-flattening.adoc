@@ -91,12 +91,12 @@ transforms.unwrap.array.encoding=<array|document>
 ----
 
 Value `array` (the default) will encode arrays as the array datatype.
-It is user's responsibility to ensure that all elements for a given array instance are of the same time.
+It is user's responsibility to ensure that all elements for a given array instance are of the same type.
 This option is a restricting one but offers easy processing of arrays by downstream clients.
 
 Value `document` will convert the array into a *struct* of *structs* in the similar way as done by http://bsonspec.org/[BSON serialization].
 The main *struct* contains fields named `_0`, `_1`, `_2` etc. where the name represents the index of the element in the array.
-Every element is then passed as the value for the give field.
+Every element is then passed as the value for the given field.
 
 Let's suppose an example source MongoDB document with array with heterogeneous types
 [source,json,indent=0]
