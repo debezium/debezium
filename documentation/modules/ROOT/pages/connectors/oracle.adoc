@@ -1204,6 +1204,7 @@ ifdef::product[]
 For details about setting up Oracle for use with the {prodname} connector, see the following sections:
 
 * xref:preparing-oracle-databases-for-use-with-debezium[]
+* xref:oracle-redo-log-sizing[]
 * xref:creating-an-oracle-user-for-the-debezium-oracle-connector[]
 
 endif::product[]
@@ -1246,6 +1247,18 @@ Minimal supplemental logging must be enabled at the database level and can be co
 ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
 ----
 
+// Type: concept
+[id="oracle-redo-log-sizing"]
+=== Redo log sizing
+
+Depending on the database configuration, the size and number of redo logs might not be sufficient to achieve acceptable performance.
+Before you set up the {prodname} Oracle connector, ensure that the capacity of the redo logs is sufficient to support the database.
+
+The capacity of the redo logs for a database must be sufficient to store its data dictionary.
+In general, the size of the data dictionary increases with the number of tables and columns in the database.
+If the redo log lacks sufficient capacity, both the database and the {prodname} connector might experience performance problems.
+
+Consult with your database administrator to evaluate whether the database might require increased log capacity.
 
 // Type: procedure
 // ModuleID: creating-an-oracle-user-for-the-debezium-oracle-connector
