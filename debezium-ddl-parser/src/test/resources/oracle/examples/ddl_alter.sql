@@ -21,3 +21,7 @@ ALTER TABLE "MYSCHEMA"."MY_PLANT" DROP PRIMARY KEY DROP INDEX;
 -- Alter table truncate subpartition
 alter table tdo_001 truncate subpartition inbound_full_pwork update indexes;
 alter table tcd_abc_int truncate partition (p1);
+-- Alter table add/modify/drop columns
+ALTER TABLE SCOTT.T_DBZ_TEST1 ADD T_VARCHAR2 VARCHAR2(20);
+ALTER TABLE SCOTT.T_DBZ_TEST1 MODIFY T_VARCHAR2 VARCHAR2(20);
+ALTER TABLE SCOTT.T_DBZ_TEST1 DROP COLUMN T_VARCHAR2;
