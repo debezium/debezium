@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -645,9 +646,16 @@ public abstract class CommonConnectorConfig {
         return skippedOperations;
     }
 
-    public Set<String> getDataCollectionsToBeSnapshotted() {
+    @Deprecated
+    public Set<String> legacyGetDataCollectionsToBeSnapshotted() {
         return Optional.ofNullable(config.getString(SNAPSHOT_MODE_TABLES))
                 .map(tables -> Strings.setOf(tables, Function.identity()))
+                .orElseGet(Collections::emptySet);
+    }
+
+    public Set<Pattern> getDataCollectionsToBeSnapshotted() {
+        return Optional.ofNullable(config.getString(SNAPSHOT_MODE_TABLES))
+                .map(tables -> Strings.setOfRegex(tables, Pattern.CASE_INSENSITIVE))
                 .orElseGet(Collections::emptySet);
     }
 

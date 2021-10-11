@@ -165,7 +165,7 @@ public class SnapshotReader extends AbstractReader {
         final List<TableId> tablesToSnapshotSchemaAfterUnlock = new ArrayList<>();
         Set<TableId> lockedTables = Collections.emptySet();
 
-        final Set<String> snapshotAllowedTables = context.getConnectorConfig().getDataCollectionsToBeSnapshotted();
+        final Set<String> snapshotAllowedTables = context.getConnectorConfig().legacyGetDataCollectionsToBeSnapshotted();
         final Predicate<TableId> isAllowedForSnapshot = tableId -> snapshotAllowedTables.size() == 0
                 || snapshotAllowedTables.stream().anyMatch(s -> tableId.identifier().matches(s));
         try {
