@@ -2031,9 +2031,11 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
  +
 For each specified column, the connector adds the column's original type and original length as parameters to the corresponding field schemas in the emitted change records.
-The following added schema parameters propagate the original type name and also the original length for variable-width types: +
+Add the following schema parameters to propagate the original type name and the original length for variable-width types: +
  +
-`pass:[_]pass:[_]debezium.source.column.type` + `pass:[_]pass:[_]debezium.source.column.length` + `pass:[_]pass:[_]debezium.source.column.scale` +
+`pass:[_]pass:[_]debezium.source.column.type` +
+`pass:[_]pass:[_]debezium.source.column.length` +
+`pass:[_]pass:[_]debezium.source.column.scale` +
  +
 This property is useful for properly sizing corresponding columns in sink databases.
 
