@@ -14,7 +14,6 @@ FILTERS="jenkins-jobs/scripts/config/FilteredNames.txt"
 mkdir -p $DIR
 
 CONTRIBUTORS_NAMES="$DIR/$2-DEBEZIUM_CONTRIBUTORS_LIST.txt"
-CONTRIBUTORS_LIST_JSON="$DIR/CONTRIBUTORS.json"
 CONTRIBUTORS_LIST_TXT="$DIR/DEBEZIUM_CONTRIBUTORS.txt"
 CONTRIBUTORS_ALIASES="$DIR/Aliases.txt"
 CONTRIBUTORS_FILTERS="$DIR/FilteredNames.txt"
@@ -25,10 +24,15 @@ declare -a DEBEZIUM_REPOS=("debezium" "debezium-connector-db2" "debezium-connect
 
 for REPO in "${DEBEZIUM_REPOS[@]}";
 do
- curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2" | jq '.commits[] | {name: .commit.author.name, github_url: .author.html_url}' >> "$CONTRIBUTORS_LIST_JSON"
+  page_count=$(curl --silent -I "https://api.github.com/repos/debezium/$REPO/compare/$1...$2?page=1&per_page=100" | tr "," $'\n' | grep 'rel="last"' | cut -f1 -d';' | tr "?&" $'\n' | grep -e "^page" | cut -f2 -d=)
+  if [[ -z $page_count ]]; then
+    curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2" | jq '.commits[] | {name: .commit.author.name, github_url: .author.html_url}' | jq -r '.github_url + " " + .name' >> "$CONTRIBUTORS_NAMES"
+  else
+    for (( i = 1; i < "$((page_count + 1))"; i++ )); do
+      curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2?page=$i&per_page=100" | jq '.commits[] | {name: .commit.author.name, github_url: .author.html_url}' | jq -r '.github_url + " " + .name' >> "$CONTRIBUTORS_NAMES"
+    done
+  fi
 done
-
-jq -r '.github_url + " " + .name' $CONTRIBUTORS_LIST_JSON > $CONTRIBUTORS_NAMES
 
 while IFS=" " read -r URL NAME;
 do
