@@ -2601,6 +2601,7 @@ alter_table_partitioning
     | split_table_partition
     | truncate_table_partition
     | exchange_table_partition
+    | coalesce_table_partition
     ;
 
 add_table_partition
@@ -2635,6 +2636,10 @@ exchange_table_partition
     : EXCHANGE PARTITION partition_name WITH TABLE tableview_name
             ((INCLUDING|EXCLUDING) INDEXES)?
             ((WITH | WITHOUT) VALIDATION)?
+    ;
+
+coalesce_table_partition
+    : COALESCE PARTITION parallel_clause? (allow_or_disallow CLUSTERING)?
     ;
 
 partition_extended_names
@@ -2786,7 +2791,7 @@ modify_col_substitutable
     ;
 
 add_column_clause
-    : ADD column_definition | virtual_column_definition
+    : ADD (column_definition | virtual_column_definition)
     | ADD ('(' (column_definition | virtual_column_definition) (',' (column_definition
               | virtual_column_definition)
               )*
