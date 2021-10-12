@@ -5,8 +5,8 @@ The Debezium community welcomes anyone that wants to help out in any way, whethe
 ## Table of contents
 
 - [Talk to us](#talk-to-us)
-  - [User chat](https://gitter.im/debezium/user)
-  - [Developers chat](https://gitter.im/debezium/user) - Only for internal development subjects
+  - [User chat](https://debezium.zulipchat.com/#narrow/stream/302529-users)
+  - [Developers chat](https://debezium.zulipchat.com/#narrow/stream/302533-dev) - Only for internal development subjects
   - [Google Group](https://groups.google.com/forum/#!forum/debezium)
   - [JIRA](https://issues.jboss.org/projects/DBZ/issues/) - You can [create an account for free](https://developer.jboss.org/register.jspa)
 - [Install the tools](#install-the-tools)
@@ -27,7 +27,7 @@ The Debezium community welcomes anyone that wants to help out in any way, whethe
 
 ### Talk to us
 
-You can talk to us in our [chat room for users](https://gitter.im/debezium/user) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium). If you want to contribute, consider joining the [chat room for developers](https://gitter.im/debezium/dev). We also [track our issues using JIRA](https://issues.jboss.org/projects/DBZ/issues/) and you can [create an account for free](https://developer.jboss.org/register.jspa); please don't create GitHub issues.
+You can talk to us in our [chat room for users](https://debezium.zulipchat.com/#narrow/stream/302529-users) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium). If you want to contribute, consider joining the [chat room for developers](https://debezium.zulipchat.com/#narrow/stream/302533-dev). We also [track our issues using JIRA](https://issues.jboss.org/projects/DBZ/issues/) and you can [create an account for free](https://developer.jboss.org/register.jspa); please don't create GitHub issues.
 
 ### Install the tools
 
@@ -120,7 +120,7 @@ or the following Docker commands:
 Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](https://issues.jboss.org/projects/DBZ/issues/). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description.
 If you are going to work on a specific issue and it's your first contribution,
 please add a short comment to the issue, so other people know you're working on it.
-If you are contributing repeatedly, ask in our [chat room for developers](https://gitter.im/debezium/dev) for the 'developer' JIRA role so you can assign issues to yourself.
+If you are contributing repeatedly, ask in our [chat room for developers](https://debezium.zulipchat.com/#narrow/stream/302533-dev) for the 'developer' JIRA role so you can assign issues to yourself.
 
 Before you make any changes, be sure to switch to the `master` branch and pull the latest commits on the `master` branch from the upstream repository. Also, it's probably good to run a build and verify all tests pass *before* you make any changes.
 
