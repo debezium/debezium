@@ -147,12 +147,31 @@ public class TestHelper {
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
             dropTestDatabase(connection);
-            String sql = "CREATE DATABASE testDB\n";
+            String sql = String.format("CREATE DATABASE %s\n", TEST_DATABASE);
             connection.execute(sql);
-            connection.execute("USE testDB");
-            connection.execute("ALTER DATABASE testDB SET ALLOW_SNAPSHOT_ISOLATION ON");
+            connection.execute(String.format("USE %s", TEST_DATABASE));
+            connection.execute(String.format("ALTER DATABASE %s SET ALLOW_SNAPSHOT_ISOLATION ON", TEST_DATABASE));
             // NOTE: you cannot enable CDC on master
-            enableDbCdc(connection, "testDB");
+            enableDbCdc(connection, TEST_DATABASE);
+        }
+        catch (SQLException e) {
+            LOGGER.error("Error while initiating test database", e);
+            throw new IllegalStateException("Error while initiating test database", e);
+        }
+    }
+
+    public static void createTestDatabase(String databaseName) {
+        // NOTE: you cannot enable CDC for the "master" db (the default one) so
+        // all tests must use a separate database...
+        try (SqlServerConnection connection = adminConnection()) {
+            connection.connect();
+            dropTestDatabase(connection);
+            String sql = String.format("CREATE DATABASE [%s]\n", databaseName);
+            connection.execute(sql);
+            connection.execute(String.format("USE [%s]", databaseName));
+            connection.execute(String.format("ALTER DATABASE [%s] SET ALLOW_SNAPSHOT_ISOLATION ON", databaseName));
+            // NOTE: you cannot enable CDC on master
+            enableDbCdc(connection, databaseName);
         }
         catch (SQLException e) {
             LOGGER.error("Error while initiating test database", e);
@@ -229,6 +248,17 @@ public class TestHelper {
         Configuration config = defaultJdbcConfig()
                 .edit()
                 .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + TEST_DATABASE + "]")
+                .build();
+
+        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                Collections.emptySet(), true);
+    }
+
+    public static SqlServerConnection testConnection(String databaseName) {
+        Configuration config = defaultJdbcConfig()
+                .edit()
+                .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
                 .build();
 
         return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
@@ -404,6 +434,19 @@ public class TestHelper {
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100))
                     .until(() -> connection.getMaxLsn(TEST_DATABASE).isAvailable());
+        }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalArgumentException("A max LSN was not available", e);
+        }
+    }
+
+    public static void waitForMaxLsnAvailable(SqlServerConnection connection, String databaseName) throws Exception {
+        try {
+            Awaitility.await("Max LSN not available")
+                    .atMost(60, TimeUnit.SECONDS)
+                    .pollDelay(Duration.ofSeconds(0))
+                    .pollInterval(Duration.ofMillis(100))
+                    .until(() -> connection.getMaxLsn(databaseName).isAvailable());
         }
         catch (ConditionTimeoutException e) {
             throw new IllegalArgumentException("A max LSN was not available", e);
