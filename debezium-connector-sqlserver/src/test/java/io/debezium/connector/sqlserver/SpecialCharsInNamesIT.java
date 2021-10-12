@@ -14,7 +14,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -33,15 +32,6 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
 
     private SqlServerConnection connection;
 
-    @Before
-    public void before() throws SQLException {
-        TestHelper.createTestDatabase();
-        connection = TestHelper.testConnection();
-
-        initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
-    }
-
     @After
     public void after() throws SQLException {
         if (connection != null) {
@@ -52,6 +42,12 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1546")
     public void shouldParseWhitespaceChars() throws Exception {
+        TestHelper.createTestDatabase();
+        connection = TestHelper.testConnection();
+
+        initializeConnectorTestFramework();
+        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.UAT WAG CZ\\$Fixed Asset.*, dbo\\.UAT WAG CZ\\$Fixed Prop.*")
@@ -116,6 +112,12 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1153")
     public void shouldParseSpecialChars() throws Exception {
+        TestHelper.createTestDatabase();
+        connection = TestHelper.testConnection();
+
+        initializeConnectorTestFramework();
+        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.UAT WAG CZ\\$Fixed Asset.*")
@@ -242,5 +244,33 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) record.value()).getStruct("after").getInt32("id")).isEqualTo(4);
+    }
+
+    @Test
+    @FixFor("DBZ-4125")
+    public void shouldHandleSpecialCharactersInDatabaseNames() throws Exception {
+        final String databaseName = "test-db";
+        TestHelper.createTestDatabase(databaseName);
+        connection = TestHelper.testConnection(databaseName);
+
+        initializeConnectorTestFramework();
+        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.DATABASE_NAME, databaseName)
+                .with(SqlServerConnectorConfig.SANITIZE_FIELD_NAMES, false)
+                .build();
+        connection.execute(
+                "CREATE TABLE tablea (id int primary key, cola varchar(30))",
+                "INSERT INTO tablea VALUES(1, 'a')");
+        TestHelper.enableTableCdc(connection, "tablea");
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        TestHelper.waitForMaxLsnAvailable(connection, databaseName);
     }
 }
