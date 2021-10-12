@@ -124,6 +124,7 @@ public class ObjectSizeCalculator {
     private final int superclassFieldPadding;
 
     private final LoadingCache<Class<?>, ClassSizeInfo> classSizeInfos = CacheBuilder.newBuilder().build(new CacheLoader<Class<?>, ClassSizeInfo>() {
+        @Override
         public ClassSizeInfo load(Class<?> clazz) {
             return new ClassSizeInfo(clazz);
         }
@@ -382,9 +383,8 @@ public class ObjectSizeCalculator {
                     dataModel + "' of sun.arch.data.model system property");
         }
 
-        final String strVmVersion = System.getProperty("java.vm.version");
-        final int vmVersion = Integer.parseInt(strVmVersion.substring(0,
-                strVmVersion.indexOf('.')));
+        final int vmVersion = JvmVersionUtil.getFeatureVersion();
+
         if (vmVersion >= 17) {
             long maxMemory = 0;
             for (MemoryPoolMXBean mp : ManagementFactory.getMemoryPoolMXBeans()) {
