@@ -148,13 +148,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         if (context.isNonInitialChunk()) {
             final StringBuilder sql = new StringBuilder();
             // Window boundaries
-            addKeyColumnsToCondition(table, sql, " >= ?");
-            sql.append(" AND NOT (");
-            addKeyColumnsToCondition(table, sql, " = ?");
-            sql.append(")");
+            addLowerBound(table, sql);
             // Table boundaries
-            sql.append(" AND ");
-            addKeyColumnsToCondition(table, sql, " <= ?");
+            sql.append(" AND NOT ");
+            addLowerBound(table, sql);
             condition = sql.toString();
         }
         final String orderBy = table.primaryKeyColumns().stream()
@@ -165,6 +162,41 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                 "*",
                 Optional.ofNullable(condition),
                 orderBy);
+    }
+
+    private void addLowerBound(Table table, StringBuilder sql) {
+        // To make window boundaries working for more than one column it is necessary to calculate
+        // with independently increasing values in each column independently.
+        // For one column the condition will be (? will always be the last value seen for the given column)
+        // (k1 > ?)
+        // For two columns
+        // (k1 > ?) OR (k1 = ? AND k2 > ?)
+        // For four columns
+        // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ? AND k3 > ?) OR (k1 = ? AND k2 = ? AND k3 = ? AND k4 > ?)
+        // etc.
+        final List<Column> pkColumns = table.primaryKeyColumns();
+        if (pkColumns.size() > 1) {
+            sql.append('(');
+        }
+        for (int i = 0; i < pkColumns.size(); i++) {
+            final boolean isLastIterationForI = (i == pkColumns.size() - 1);
+            sql.append('(');
+            for (int j = 0; j < i + 1; j++) {
+                final boolean isLastIterationForJ = (i == j);
+                sql.append(pkColumns.get(j).name());
+                sql.append(isLastIterationForJ ? " > ?" : " = ?");
+                if (!isLastIterationForJ) {
+                    sql.append(" AND ");
+                }
+            }
+            sql.append(")");
+            if (!isLastIterationForI) {
+                sql.append(" OR ");
+            }
+        }
+        if (pkColumns.size() > 1) {
+            sql.append(')');
+        }
     }
 
     protected String buildMaxPrimaryKeyQuery(Table table) {
@@ -346,7 +378,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             }
             context.nextChunkPosition(lastKey);
             if (lastRow != null) {
-                LOGGER.debug("\t Next window will resume from '{}'", context.chunkEndPosititon());
+                LOGGER.debug("\t Next window will resume from {}", (Object) context.chunkEndPosititon());
             }
 
             LOGGER.debug("\t Finished exporting {} records for window of table table '{}'; total duration '{}'", rows,
@@ -376,10 +408,18 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         if (context.isNonInitialChunk()) {
             final Object[] maximumKey = context.maximumKey().get();
             final Object[] chunkEndPosition = context.chunkEndPosititon();
+            // Fill boundaries placeholders
+            int pos = 0;
             for (int i = 0; i < chunkEndPosition.length; i++) {
-                statement.setObject(i + 1, chunkEndPosition[i]);
-                statement.setObject(i + 1 + chunkEndPosition.length, chunkEndPosition[i]);
-                statement.setObject(i + 1 + 2 * chunkEndPosition.length, maximumKey[i]);
+                for (int j = 0; j < i + 1; j++) {
+                    statement.setObject(++pos, chunkEndPosition[j]);
+                }
+            }
+            // Fill maximum key placeholders
+            for (int i = 0; i < chunkEndPosition.length; i++) {
+                for (int j = 0; j < i + 1; j++) {
+                    statement.setObject(++pos, maximumKey[j]);
+                }
             }
         }
         return statement;
