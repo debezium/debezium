@@ -34,7 +34,7 @@ import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
 
-    private static final int ROW_COUNT = 1_000;
+    protected static final int ROW_COUNT = 1_000;
     private static final int MAXIMUM_NO_RECORDS_CONSUMES = 2;
 
     protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
@@ -73,11 +73,21 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount,
                                                                         Predicate<Map.Entry<Integer, Integer>> dataCompleted, Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted, k -> k.getInt32(pkFieldName()), topicName(), recordConsumer);
+    }
+
+    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(
+                                                                        int recordCount,
+                                                                        Predicate<Map.Entry<Integer, Integer>> dataCompleted,
+                                                                        Function<Struct, Integer> idCalculator,
+                                                                        String topicName,
+                                                                        Consumer<List<SourceRecord>> recordConsumer)
+            throws InterruptedException {
         final Map<Integer, Integer> dbChanges = new HashMap<>();
         int noRecords = 0;
         for (;;) {
             final SourceRecords records = consumeRecordsByTopic(1);
-            final List<SourceRecord> dataRecords = records.recordsForTopic(topicName());
+            final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;
                 Assertions.assertThat(noRecords).describedAs("Too many no data record results")
@@ -89,7 +99,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 continue;
             }
             dataRecords.forEach(record -> {
-                final int id = ((Struct) record.key()).getInt32(pkFieldName());
+                final int id = idCalculator.apply((Struct) record.key());
                 final int value = ((Struct) record.value()).getStruct("after").getInt32(valueFieldName());
                 dbChanges.put(id, value);
             });
