@@ -111,10 +111,9 @@ After the snapshot completes, the connector begins to stream event records for s
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 6).
 
 |`schema_only_recovery`
-|This is a recovery setting for a connector that has already been capturing changes.
-When you restart the connector, this setting enables recovery of a corrupted or lost database history topic.
-You might set it periodically to "clean up" a database history topic that has been growing unexpectedly.
-Database history topics require infinite retention.
+|Set this option to restore a database history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune the database history topic that experience unexpected growth.
 
 |===
 
