@@ -519,6 +519,7 @@ The value portion of a change event for a change to this document is described f
 * <<mongodb-create-events,_create_ events>>
 * <<mongodb-update-events,_update_ events>>
 * <<mongodb-delete-events,_delete_ events>>
+* <<mongodb-tombstone-events,Tombstone events>>
 
 [id="mongodb-create-events"]
 === _create_ events
@@ -859,7 +860,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 MongoDB connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
 [id="mongodb-tombstone-events"]
-.Tombstone events
+=== Tombstone events
 All MongoDB connector events for a uniquely identified document have exactly the same key. When a document is deleted, the _delete_ event value still works with log compaction because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that key, the message value must be `null`. To make this possible, after {prodname}’s MongoDB connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value. A tombstone event informs Kafka that all messages with that same key can be removed.
 
 
