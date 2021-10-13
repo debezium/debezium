@@ -4,7 +4,9 @@ on:
   # re security implications of using this trigger; in particular, no code from PR branches must
   # be executed in any flows triggered by it
   pull_request_target:
-    branches: [ master ]
+    branches:
+      - master
+      - 1.*
 
 jobs:
   build:

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 1.*
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
@@ -14,6 +15,7 @@ on:
   pull_request:
     branches:
       - master
+      - 1.*
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
