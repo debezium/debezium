@@ -546,13 +546,6 @@ The following example shows the value portion of a change event that the connect
           "field": "patch"
         },
         {
-          "type": "string",
-          "optional": true,
-          "name": "io.debezium.data.Json",
-          "version": 1,
-          "field": "filter"
-        },
-        {
           "type": "struct",
           "fields": [
             {
