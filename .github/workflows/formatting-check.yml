@@ -1,7 +1,9 @@
 name: Formatting Check
 on:
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - 1.*
     paths-ignore:
       - '.github/**'
 jobs:
