@@ -6,8 +6,10 @@
 package io.debezium.schema;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
 
@@ -33,7 +35,11 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void applySchemaChange(SchemaChangeEvent schemaChange);
 
-    void recover(Partition partition, OffsetContext offset);
+    default void recover(Partition partition, OffsetContext offset) {
+        recover(new Offsets<>(Collections.singletonMap(partition, offset)));
+    }
+
+    void recover(Offsets<?, ?> offsets);
 
     void initializeStorage();
 
