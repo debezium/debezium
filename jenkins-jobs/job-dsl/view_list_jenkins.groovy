@@ -3,6 +3,7 @@ listView('Jenkins') {
     jobs {
         name('job-configurator')
         name('MonitoringTest')
+        name('node-snapshot-build')
     }
     columns {
         status()
