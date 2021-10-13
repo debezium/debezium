@@ -312,7 +312,7 @@ Following is an example of what a message looks like:
 [source,json,indent=0,subs="+attributes"]
 ----
 {
-  "before": null,
+  "patch": null,
   "after": {
     "pk": "2",
     "aa": "1"
