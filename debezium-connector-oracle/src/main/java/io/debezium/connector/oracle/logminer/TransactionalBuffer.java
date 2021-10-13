@@ -101,7 +101,9 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param scn the system change number
      */
     void registerDdlOperation(Scn scn) {
-        recentlyEmittedDdls.add(scn);
+        if (connectorConfig.isLobEnabled()) {
+            recentlyEmittedDdls.add(scn);
+        }
     }
 
     /**
