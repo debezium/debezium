@@ -125,11 +125,10 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param changeTime time the DML operation occurred
      * @param rowId unique row identifier
      * @param rsId rollback sequence identifier
-     * @param hash unique row hash
      */
     void registerDmlOperation(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry,
-                              Instant changeTime, String rowId, Object rsId, long hash) {
-        if (registerEvent(transactionId, scn, hash, changeTime, () -> new DmlEvent(operation, parseEntry, scn, tableId, rowId, rsId))) {
+                              Instant changeTime, String rowId, Object rsId) {
+        if (registerEvent(transactionId, scn, changeTime, () -> new DmlEvent(operation, parseEntry, scn, tableId, rowId, rsId))) {
             streamingMetrics.incrementRegisteredDmlCount();
         }
     }
@@ -145,11 +144,10 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param changeTime time the operation occurred
      * @param rowId unique row identifier
      * @param rsId rollback sequence identifier
-     * @param hash unique row hash
      */
     void registerSelectLobOperation(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry,
-                                    String columnName, boolean binaryData, Instant changeTime, String rowId, Object rsId, long hash) {
-        registerEvent(transactionId, scn, hash, changeTime,
+                                    String columnName, boolean binaryData, Instant changeTime, String rowId, Object rsId) {
+        registerEvent(transactionId, scn, changeTime,
                 () -> new SelectLobLocatorEvent(operation, parseEntry, columnName, binaryData, scn, tableId, rowId, rsId));
     }
 
@@ -164,13 +162,12 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param changeTime time the operation occurred
      * @param rowId unique row identifier
      * @param rsId rollback sequence identifier
-     * @param hash unique row hash
      */
     void registerLobWriteOperation(int operation, String transactionId, Scn scn, TableId tableId, String data,
-                                   Instant changeTime, String rowId, Object rsId, long hash) {
+                                   Instant changeTime, String rowId, Object rsId) {
         if (data != null) {
             final String sql = parseLobWriteSql(data);
-            registerEvent(transactionId, scn, hash, changeTime,
+            registerEvent(transactionId, scn, changeTime,
                     () -> new LobWriteEvent(operation, sql, scn, tableId, rowId, rsId));
 
         }
@@ -186,11 +183,10 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param changeTime time the operation occurred
      * @param rowId unique row identifier
      * @param rsId rollback sequence identifier
-     * @param hash unique row hash
      */
     void registerLobEraseOperation(int operation, String transactionId, Scn scn, TableId tableId, Instant changeTime,
-                                   String rowId, Object rsId, long hash) {
-        registerEvent(transactionId, scn, hash, changeTime, () -> new LobEraseEvent(operation, scn, tableId, rowId, rsId));
+                                   String rowId, Object rsId) {
+        registerEvent(transactionId, scn, changeTime, () -> new LobEraseEvent(operation, scn, tableId, rowId, rsId));
     }
 
     /**
@@ -227,6 +223,13 @@ public final class TransactionalBuffer implements AutoCloseable {
         if (transaction == null && !isRecentlyCommitted(transactionId)) {
             transactions.put(transactionId, new Transaction(transactionId, scn));
             streamingMetrics.setActiveTransactions(transactions.size());
+        }
+        else if (transaction != null && !isRecentlyCommitted(transactionId)) {
+            LOGGER.trace("Transaction {} is not yet committed and START event detected, reset eventIds.", transactionId);
+            // Since the transaction hasn't been committed and the START transaction was re-mined,
+            // reset the event id counter for the transaction so that any events pulled from the
+            // event stream are added at the right index offsets.
+            transaction.eventIds = 0;
         }
     }
 
@@ -488,12 +491,11 @@ public final class TransactionalBuffer implements AutoCloseable {
      *
      * @param transactionId transaction id that contained the given event
      * @param scn system change number for the event
-     * @param hash unique hash that identifies the row in a transaction
      * @param changeTime the time the event occurred
      * @param supplier supplier function to generate the event if validity checks pass
      * @return true if the event was registered, false otherwise
      */
-    private boolean registerEvent(String transactionId, Scn scn, long hash, Instant changeTime, Supplier<LogMinerEvent> supplier) {
+    private boolean registerEvent(String transactionId, Scn scn, Instant changeTime, Supplier<LogMinerEvent> supplier) {
         if (abandonedTransactionIds.contains(transactionId)) {
             LogMinerHelper.logWarn(streamingMetrics, "Event for abandoned transaction {}, ignored.", transactionId);
             return false;
@@ -508,18 +510,23 @@ public final class TransactionalBuffer implements AutoCloseable {
         }
 
         Transaction transaction = transactions.computeIfAbsent(transactionId, s -> new Transaction(transactionId, scn));
+        streamingMetrics.setActiveTransactions(transactions.size());
 
-        // Event will only be registered with transaction if the computed hash doesn't already exist.
-        // This is necessary to handle overlapping mining session scopes
-        if (!transaction.eventHashes.contains(hash)) {
-            transaction.eventHashes.add(hash);
+        int eventId = transaction.eventIds++;
+        if (transaction.events.size() > eventId) {
+            // Updating existing event at eventId offset
+            LOGGER.trace("Transaction {}, updating event reference at index {}", transactionId, eventId);
+            transaction.events.set(eventId, supplier.get());
+            // only return true if new event is added, otherwise false
+            return false;
+        }
+        else {
+            // Adding new event at eventId offset
+            LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
             transaction.events.add(supplier.get());
-
-            streamingMetrics.setActiveTransactions(transactions.size());
             streamingMetrics.calculateLagMetrics(changeTime);
             return true;
         }
-        return false;
     }
 
     /**
@@ -990,15 +997,15 @@ public final class TransactionalBuffer implements AutoCloseable {
         private final String transactionId;
         private final Scn firstScn;
         private Scn lastScn;
-        private final Set<Long> eventHashes;
         private final List<LogMinerEvent> events;
+        private int eventIds;
 
         private Transaction(String transactionId, Scn firstScn) {
             this.transactionId = transactionId;
             this.firstScn = firstScn;
             this.events = new ArrayList<>();
-            this.eventHashes = new HashSet<>();
             this.lastScn = firstScn;
+            this.eventIds = 0;
         }
 
         @Override
@@ -1007,6 +1014,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                     "transactionId=" + transactionId +
                     ", firstScn=" + firstScn +
                     ", lastScn=" + lastScn +
+                    ", eventIds=" + eventIds +
                     '}';
         }
     }

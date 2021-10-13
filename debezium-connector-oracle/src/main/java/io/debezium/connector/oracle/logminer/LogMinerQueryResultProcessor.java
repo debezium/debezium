@@ -116,7 +116,6 @@ class LogMinerQueryResultProcessor {
             String rowId = RowMapper.getRowId(resultSet);
             int rollbackFlag = RowMapper.getRollbackFlag(resultSet);
             Object rsId = RowMapper.getRsId(resultSet);
-            long hash = RowMapper.getHash(resultSet);
             boolean dml = isDmlOperation(operationCode);
 
             String redoSql = RowMapper.getSqlRedo(resultSet, dml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime, txId);
@@ -209,7 +208,7 @@ class LogMinerQueryResultProcessor {
                     entry.setObjectOwner(segOwner);
                     entry.setObjectName(tableName);
                     transactionalBuffer.registerSelectLobOperation(operationCode, txId, scn, tableId, entry,
-                            selectLobParser.getColumnName(), selectLobParser.isBinary(), changeTime.toInstant(), rowId, rsId, hash);
+                            selectLobParser.getColumnName(), selectLobParser.isBinary(), changeTime.toInstant(), rowId, rsId);
                     break;
                 }
                 case RowMapper.LOB_WRITE: {
@@ -223,7 +222,7 @@ class LogMinerQueryResultProcessor {
                         continue;
                     }
                     transactionalBuffer.registerLobWriteOperation(operationCode, txId, scn, tableId, redoSql,
-                            changeTime.toInstant(), rowId, rsId, hash);
+                            changeTime.toInstant(), rowId, rsId);
                     break;
                 }
                 case RowMapper.LOB_ERASE: {
@@ -236,7 +235,7 @@ class LogMinerQueryResultProcessor {
                         LogMinerHelper.logWarn(streamingMetrics, "LOB_ERASE for table '{}' is not known to the connector, skipped.", tableId);
                         continue;
                     }
-                    transactionalBuffer.registerLobEraseOperation(operationCode, txId, scn, tableId, changeTime.toInstant(), rowId, rsId, hash);
+                    transactionalBuffer.registerLobEraseOperation(operationCode, txId, scn, tableId, changeTime.toInstant(), rowId, rsId);
                     break;
                 }
                 case RowMapper.INSERT:
@@ -282,7 +281,7 @@ class LogMinerQueryResultProcessor {
                         dmlEntry.setObjectName(tableName);
 
                         transactionalBuffer.registerDmlOperation(operationCode, txId, scn, tableId, dmlEntry,
-                                changeTime.toInstant(), rowId, rsId, hash);
+                                changeTime.toInstant(), rowId, rsId);
                     }
                     else {
                         LOGGER.trace("Redo SQL was empty, DML operation skipped.");
