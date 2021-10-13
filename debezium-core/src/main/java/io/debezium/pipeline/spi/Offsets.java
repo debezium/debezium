@@ -23,6 +23,10 @@ public final class Offsets<P extends Partition, O extends OffsetContext> {
         offsets.put(partition, null);
     }
 
+    public Map<P, O> getOffsets() {
+        return offsets;
+    }
+
     /**
      * Returns the offset of the only partition that the task is configured to use.
      *
