@@ -327,7 +327,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     DATABASE_NAMES,
                     HOSTNAME,
                     PORT,
-                    USER_OPTIONAL,
+                    USER,
                     PASSWORD,
                     SERVER_TIMEZONE,
                     INSTANCE)
