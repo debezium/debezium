@@ -86,6 +86,14 @@ public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
         if (b == null) {
             return null; // Don't continue parsing timestamp field if it is null
         }
+        else if (b.length() == 0) {
+            LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
+            final ResultSetMetaData metadata = rs.getMetaData();
+            for (int i = 1; i <= metadata.getColumnCount(); ++i) {
+                LOGGER.warn("Column '{}' value is '{}'", metadata.getCatalogName(i), rs.getObject(i));
+            }
+            return null;
+        }
 
         try {
             return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8")), column, table) ? null
