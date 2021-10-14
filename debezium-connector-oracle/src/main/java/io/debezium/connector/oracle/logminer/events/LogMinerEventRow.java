@@ -32,13 +32,6 @@ public class LogMinerEventRow {
 
     private static final Calendar UTC_CALENDAR = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
 
-    /**
-     * Used by calls to {@link #fromResultSet(ResultSet, String, boolean)} to return the same instance
-     * but initialized with values from each row without creating multiple objects repeatedly
-     * during the result-set iteration.
-     */
-    private static final LogMinerEventRow row = new LogMinerEventRow();
-
     private static final int SCN = 1;
     private static final int SQL_REDO = 2;
     private static final int OPERATION_CODE = 3;
@@ -139,6 +132,7 @@ public class LogMinerEventRow {
      * @throws SQLException if there was a problem reading the result set
      */
     public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+        LogMinerEventRow row = new LogMinerEventRow();
         row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue);
         return row;
     }
@@ -152,9 +146,6 @@ public class LogMinerEventRow {
      * @throws SQLException if there was a problem reading the result set
      */
     private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
-        // First reset the internal state
-        reset();
-
         // Initialize the state from the result set
         this.scn = getScn(resultSet);
         this.tableName = resultSet.getString(TABLE_NAME);
@@ -172,25 +163,6 @@ public class LogMinerEventRow {
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }
-    }
-
-    /**
-     * Resets the internal state of the instance
-     */
-    private void reset() {
-        this.scn = null;
-        this.tableName = null;
-        this.tablespaceName = null;
-        this.eventType = null;
-        this.changeTime = null;
-        this.transactionId = null;
-        this.operation = null;
-        this.userName = null;
-        this.rowId = null;
-        this.rollbackFlag = false;
-        this.rsId = null;
-        this.redoSql = null;
-        this.tableId = null;
     }
 
     private String getTransactionId(ResultSet rs, boolean asRawValue) throws SQLException {
