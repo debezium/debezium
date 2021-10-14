@@ -327,7 +327,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     @Override
     protected void handleSchemaChange(LogMinerEventRow row) throws InterruptedException {
         super.handleSchemaChange(row);
-        if (row.getTableName() != null) {
+        if (row.getTableName() != null && getConfig().isLobEnabled()) {
             schemaChangesCache.add(row.getScn());
         }
     }
