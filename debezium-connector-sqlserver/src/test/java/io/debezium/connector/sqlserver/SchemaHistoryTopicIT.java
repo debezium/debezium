@@ -303,6 +303,13 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(1);
 
         final List<SourceRecord> schemaEvents = records.recordsForTopic("server1");
+
+        // TODO DBZ-4082: schemaEvents is null occasionally when running this test on CI;
+        // still we got the right number of records, so I'm logging all received records here
+        if (schemaEvents == null) {
+            Testing.print("Received records: " + records.allRecordsInOrder());
+        }
+
         final SourceRecord schemaEventD = schemaEvents.get(schemaEvents.size() - 1);
         Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("schema")).isEqualTo("dbo");
         Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("table")).isEqualTo("tabled");
