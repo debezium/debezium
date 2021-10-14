@@ -55,6 +55,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <!-- Can't use the (generally preferable) release option yet, as the
+             Cassandra connector still needs to be built with Java 1.8 which
+             isn't aware of this option -->
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
