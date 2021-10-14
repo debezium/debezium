@@ -143,10 +143,8 @@ public class LogMinerEventRowTest {
         assertThat(row.getTableId().toString()).isEqualTo("DEBEZIUM.SCHEMA.TABLE");
         verify(resultSet).getString(8);
 
-        row = new LogMinerEventRow();
         when(resultSet.getString(8)).thenThrow(SQLException.class);
         assertThrows(resultSet, SQLException.class);
-        assertThat(row.getTableId()).isNull();
     }
 
     @Test
@@ -161,7 +159,6 @@ public class LogMinerEventRowTest {
 
         when(resultSet.getString(8)).thenThrow(SQLException.class);
         assertThrows(resultSet, SQLException.class);
-        assertThat(row.getTableId()).isNull();
     }
 
     @Test
