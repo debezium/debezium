@@ -470,6 +470,34 @@ The following example shows a typical transaction event message:
 }
 ----
 
+[[oracle-event-buffering]]
+=== Event buffering
+
+Oracle writes all changes to the redo logs in the order they occur, including changes that are later discarded by a rollback.
+This means that concurrent changes from separate transactions are intertwined.
+This requires that the {prodname} Oracle connector read the stream of changes and add them to an internal buffer until such time that the transaction commit or rollback is detected.
+
+The buffering mechanism used by the connector can be configured by xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
+
+The default buffer type is configured using `memory`.
+This solution uses the JVM heap to allocate and manage the buffered events.
+It is important when using this buffer that the Java process' memory be set to account for long-running and large transactions for your environment.
+
+ifdef::community[]
+An additional buffer type can be configured using `infinispan`.
+This solution uses Infinispan in embedded-mode to cache buffered events, allowing for the cache to be persisted to disk.
+When using this option, an additional configuration option, xref:oracle-property-log-mining-buffer-location[`log.mining.buffer.location`] must be specified to set where the persisted cache files are to be written.
+
+[IMPORTANT]
+====
+The Infinispan buffer type is considered incubating; the cache formats may change between versions and may require a re-snapshot.
+The migration notes will indicate whether this is needed.
+
+Additionally, when removing a {prodname} Oracle connector that uses the Infinispan buffer, the persisted cache files are not removed from disk automatically.
+If the same buffer location will be used by a new connector deployment, the files should be removed manually before deploying the new connector.
+====
+endif::community[]
+
 // Type: assembly
 // ModuleID: descriptions-of-debezium-oracle-connector-data-change-events
 // Title: Descriptions of {prodname} Oracle connector data change events
@@ -2263,6 +2291,7 @@ If the captured table(s) schema changes infrequently or never, this is the ideal
 Choose this option if you don't expect the connector to process a high number of long-running or large transactions.
 When this option is active, the buffer state is not persisted across restarts.
 Following a restart, recreate the buffer from the SCN value of the current offset. +
+ifdef::community[]
  +
 `infinispan` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk.
 Choose this option if you expect the connector to process long-running or large transactions.
@@ -2276,6 +2305,7 @@ Use the `log.mining.buffer.location` property to define the location for storing
 |No default
 |Specifies the location of the directory that the connector uses to read and write the buffer cache.
 Specify a directory that every node in the Kafka cluster can access and that is unique for the connector deployment.
+endif::community[]
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
 |`false`
