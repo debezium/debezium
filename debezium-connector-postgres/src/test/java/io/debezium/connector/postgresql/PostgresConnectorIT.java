@@ -1963,6 +1963,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2094")
+    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "Unstable with WAL2JSON plugin, leads to long build time and fails after 6h")
     public void customSnapshotterSkipsTablesOnRestartWithConcurrentTx() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor();
 
