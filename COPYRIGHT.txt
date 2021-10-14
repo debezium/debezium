@@ -119,6 +119,7 @@ Guy Pascarella
 Grzegorz Kołakowski
 Jan Hendrik Dolling
 Jiabao Sun
+Juan Fiallo
 Hans-Peter Grahsl
 Harvey Yue
 Henryk Konsek

@@ -163,14 +163,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isInteger)
             .withDescription("Port of the database server.");
 
-    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
+    public static final Field USER_OPTIONAL = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
             .withDisplayName("User")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
-            .required()
             .withDescription("Name of the database user to be used when connecting to the database.");
+
+    public static final Field USER = USER_OPTIONAL.required();
 
     public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
             .withDisplayName("Password")
