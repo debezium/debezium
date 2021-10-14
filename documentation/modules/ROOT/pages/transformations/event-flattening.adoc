@@ -183,7 +183,7 @@ ifdef::community[]
 For more information on what is available see xref:{link-connectors}[the documentation for each connector].
 endif::community[]
 
-To add metadata to the simplified Kafka record's header, specify the `add.header` option.
+To add metadata to the simplified Kafka record's header, specify the `add.headers` option.
 To add metadata to the simplified Kafka record's value, specify the `add.fields` option.
 Each of these options takes a comma separated list of change event field names. Do not specify spaces. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field. For example:
 
