@@ -755,6 +755,11 @@ public final class Field {
                         .withValidation(Field::isRequired);
     }
 
+    public Field optional() {
+        return new Field(name(), displayName(), type(), width(), description(), importance, dependents,
+                defaultValueGenerator, validator, recommender, false, group, allowedValues);
+    }
+
     public Field withGroup(GroupEntry group) {
         return new Field(name(), displayName(), type(), width(), description(), importance, dependents,
                 defaultValueGenerator, validator, recommender, isRequired, group, allowedValues);
