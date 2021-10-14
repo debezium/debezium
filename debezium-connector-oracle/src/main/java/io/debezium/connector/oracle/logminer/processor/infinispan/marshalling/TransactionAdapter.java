@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer.processor.infinispan.marshalling;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 
 import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
@@ -36,12 +35,13 @@ public class TransactionAdapter {
      * @param scn the starting system change number of the transaction
      * @param changeTime the starting time of the transaction
      * @param events list of events that are part of the transaction
-     * @param hashes list of hashes that represent each event in the transaction
+     * @param userName the user name
+     * @param numberOfEvents the number of events in the transaction
      * @return the constructed Transaction instance
      */
     @ProtoFactory
-    public Transaction factory(String transactionId, String scn, String changeTime, List<LogMinerEvent> events, Set<Long> hashes, String userName) {
-        return new Transaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), events, hashes, userName);
+    public Transaction factory(String transactionId, String scn, String changeTime, List<LogMinerEvent> events, String userName, int numberOfEvents) {
+        return new Transaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), events, userName, numberOfEvents);
     }
 
     /**
@@ -91,19 +91,19 @@ public class TransactionAdapter {
         return transaction.getEvents();
     }
 
-    /**
-     * A ProtoStream handler to extract the {@code hashes} field from the {@link Transaction}.
-     *
-     * @param transaction the transaction instance, must not be {@code null}
-     * @return list of event hashes witin the transaction
-     */
     @ProtoField(number = 5)
-    public Set<Long> getHashes(Transaction transaction) {
-        return transaction.getHashes();
-    }
-
-    @ProtoField(number = 6)
     public String getUserName(Transaction transaction) {
         return transaction.getUserName();
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code eventIds} field from the {@link Transaction}.
+     *
+     * @param transaction the transaction instance, must not be {@code null}
+     * @return the number of events in the transaction
+     */
+    @ProtoField(number = 6, defaultValue = "0")
+    public int getNumberOfEvents(Transaction transaction) {
+        return transaction.getNumberOfEvents();
     }
 }

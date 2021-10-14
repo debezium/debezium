@@ -227,6 +227,10 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             getTransactionCache().put(transactionId, newTransaction);
             metrics.setActiveTransactions(getTransactionCache().size());
         }
+        else if (transaction != null && !isRecentlyCommitted(transactionId)) {
+            LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
+            transaction.started();
+        }
     }
 
     /**
@@ -480,18 +484,20 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
                 getTransactionCache().put(transactionId, transaction);
             }
 
-            // The event will only be registered with the transaction if the computed hash value
-            // does not already exist and is not 0. This is necessary to handle overlapping
-            // mining sessions when LOB support is enabled.
-            if (row.getHash() == 0L || !transaction.getHashes().contains(row.getHash())) {
-                if (row.getHash() != 0L) {
-                    transaction.getHashes().add(row.getHash());
-                }
-                LOGGER.trace("Adding {} to transaction {} for table '{}'.", row.getOperation(), transactionId, row.getTableId());
+            int eventId = transaction.getNextEventId();
+            if (transaction.getEvents().size() > eventId) {
+                // Updating an existing event at eventId offset
+                LOGGER.trace("Transaction {}, updating event reference at index {}", transactionId, eventId);
+                transaction.getEvents().set(eventId, eventSupplier.get());
+            }
+            else {
+                // Add new event at eventId offset
+                LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
                 transaction.getEvents().add(eventSupplier.get());
-                metrics.setActiveTransactions(getTransactionCache().size());
                 metrics.calculateLagMetrics(row.getChangeTime());
             }
+
+            metrics.setActiveTransactions(getTransactionCache().size());
         }
     }
 
