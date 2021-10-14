@@ -2032,6 +2032,8 @@ table_compression
         ( BASIC
         | FOR ( OLTP
               | (QUERY | ARCHIVE) (LOW | HIGH)?
+              | ALL OPERATIONS
+              | DIRECT_LOAD OPERATIONS
               )
         )?
     | ROW STORE COMPRESS (BASIC | ADVANCED)?
