@@ -34,6 +34,7 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Stream;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -147,7 +148,9 @@ public class IoUtil {
      * @throws IOException if an I/O error occurs
      */
     public static void readLines(Path path, Consumer<String> lineProcessor) throws IOException {
-        Files.lines(path).forEach(lineProcessor);
+        try (Stream<String> stream = Files.lines(path)) {
+            stream.forEach(lineProcessor);
+        }
     }
 
     /**
