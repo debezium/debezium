@@ -2429,6 +2429,90 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4161")
+    public void shouldWarnAboutTableNameLengthExceeded() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz4161_with_a_name_that_is_greater_than_30");
+
+            connection.execute("CREATE TABLE dbz4161_with_a_name_that_is_greater_than_30 (id numeric(9,0), data varchar2(30))");
+            TestHelper.streamTable(connection, "dbz4161_with_a_name_that_is_greater_than_30");
+
+            connection.execute("INSERT INTO dbz4161_with_a_name_that_is_greater_than_30 values (1, 'snapshot')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4161_WITH_A_NAME_THAT_IS_GREATER_THAN_30")
+                    .build();
+
+            LogInterceptor logInterceptor = new LogInterceptor();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ4161_WITH_A_NAME_THAT_IS_GREATER_THAN_30")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ4161_WITH_A_NAME_THAT_IS_GREATER_THAN_30").get(0);
+            Struct after = ((Struct) record.value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("snapshot");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz4161_with_a_name_that_is_greater_than_30 values (2, 'streaming')");
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            assertNoRecordsToConsume();
+            assertThat(logInterceptor.containsWarnMessage("Table 'DBZ4161_WITH_A_NAME_THAT_IS_GREATER_THAN_30' won't be captured by Oracle LogMiner")).isTrue();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4161_with_a_name_that_is_greater_than_30");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4161")
+    public void shouldWarnAboutColumnNameLengthExceeded() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz4161");
+
+            connection.execute("CREATE TABLE dbz4161 (id numeric(9,0), a_very_long_column_name_that_is_greater_than_30 varchar2(30))");
+            TestHelper.streamTable(connection, "dbz4161");
+
+            connection.execute("INSERT INTO dbz4161 values (1, 'snapshot')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4161")
+                    .build();
+
+            LogInterceptor logInterceptor = new LogInterceptor();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ4161")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ4161").get(0);
+            Struct after = ((Struct) record.value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("A_VERY_LONG_COLUMN_NAME_THAT_IS_GREATER_THAN_30")).isEqualTo("snapshot");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz4161 values (2, 'streaming')");
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            assertNoRecordsToConsume();
+            assertThat(logInterceptor.containsWarnMessage("Table 'DBZ4161' won't be captured by Oracle LogMiner")).isTrue();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4161");
+        }
+    }
+
     @FixFor("DBZ-3986")
     private void consumeRecords(Configuration config) throws SQLException, InterruptedException {
         // Poll for records ...
@@ -2446,5 +2530,21 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
         assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
         stopConnector();
+    }
+
+    private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
+        try (OracleConnection admin = TestHelper.adminConnection()) {
+            admin.resetSessionToCdb();
+            final Scn scn = admin.getCurrentScn();
+            Awaitility.await()
+                    .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
+                    .until(() -> {
+                        final String scnValue = getStreamingMetric("CurrentScn");
+                        if (scnValue == null) {
+                            return false;
+                        }
+                        return Scn.valueOf(scnValue).compareTo(scn) > 0;
+                    });
+        }
     }
 }
