@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +19,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.BSONTimestamp;
+
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
@@ -66,6 +69,8 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 public final class SourceInfo extends BaseSourceInfo {
 
+    private static final String RESUME_TOKEN = "resume_token";
+
     public static final int SCHEMA_VERSION = 1;
 
     public static final String SERVER_ID_KEY = "server_id";
@@ -79,8 +84,10 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String INITIAL_SYNC = "initsync";
     public static final String COLLECTION = "collection";
 
+    // Change Stream fields
+
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
-    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0, null);
+    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0, null, null);
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -101,17 +108,27 @@ public final class SourceInfo extends BaseSourceInfo {
         private final BsonTimestamp ts;
         private final long txOrder;
         private final String sessionTxnId;
+        private final String resumeToken;
 
-        public Position(int ts, int order, Long opId, long txOrder, String sessionTxnId) {
-            this(new BsonTimestamp(ts, order), opId, txOrder, sessionTxnId);
+        public Position(int ts, int order, Long opId, long txOrder, String sessionTxnId, String resumeToken) {
+            this(new BsonTimestamp(ts, order), opId, txOrder, sessionTxnId, resumeToken);
         }
 
-        public Position(BsonTimestamp ts, Long opId, long txOrder, String sessionTxnId) {
+        private Position(BsonTimestamp ts, Long opId, long txOrder, String sessionTxnId, String resumeToken) {
             this.ts = ts;
             this.opId = opId;
             this.txOrder = txOrder;
             this.sessionTxnId = sessionTxnId;
+            this.resumeToken = resumeToken;
             assert this.ts != null;
+        }
+
+        public static Position oplogPosition(BsonTimestamp ts, Long opId, long txOrder, String sessionTxnId) {
+            return new Position(ts, opId, txOrder, sessionTxnId, null);
+        }
+
+        public static Position changeStreamPosition(BsonTimestamp ts, String resumeToken, String sessionTxnId) {
+            return new Position(ts, null, 0, sessionTxnId, resumeToken);
         }
 
         public BsonTimestamp getTimestamp() {
@@ -136,6 +153,10 @@ public final class SourceInfo extends BaseSourceInfo {
 
         public OptionalLong getTxOrder() {
             return txOrder == 0 ? OptionalLong.empty() : OptionalLong.of(txOrder);
+        }
+
+        public Optional<String> getResumeToken() {
+            return Optional.ofNullable(resumeToken);
         }
     }
 
@@ -207,6 +228,11 @@ public final class SourceInfo extends BaseSourceInfo {
         return existing != null ? existing.getTxOrder() : OptionalLong.empty();
     }
 
+    public String lastResumeToken(String replicaSetName) {
+        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        return existing != null ? existing.resumeToken : null;
+    }
+
     /**
      * Get the Kafka Connect detail about the source "offset" for the named database, which describes the given position in the
      * database where we have last read. If the database has not yet been seen, this records the starting position
@@ -233,6 +259,7 @@ public final class SourceInfo extends BaseSourceInfo {
                 SESSION_TXN_ID, existing.getSessionTxnId());
 
         existing.getTxOrder().ifPresent(txOrder -> offset.put(TX_ORD, txOrder));
+        existing.getResumeToken().ifPresent(resumeToken -> offset.put(RESUME_TOKEN, resumeToken));
 
         return offset;
     }
@@ -268,8 +295,23 @@ public final class SourceInfo extends BaseSourceInfo {
             BsonTimestamp ts = extractEventTimestamp(masterEvent);
             Long opId = masterEvent.getLong("h");
             String sessionTxnId = extractSessionTxnId(masterEvent);
-            position = new Position(ts, opId, orderInTx, sessionTxnId);
+            position = Position.oplogPosition(ts, opId, orderInTx, sessionTxnId);
             namespace = oplogEvent.getString("ns");
+        }
+        positionsByReplicaSetName.put(replicaSetName, position);
+
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position);
+    }
+
+    public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<Document> changeStreamEvent, long orderInTx) {
+        Position position = INITIAL_POSITION;
+        String namespace = "";
+        if (changeStreamEvent != null) {
+            BsonTimestamp ts = changeStreamEvent.getClusterTime();
+            String sessionTxnId = null;
+            position = Position.changeStreamPosition(ts, changeStreamEvent.getResumeToken().getString("_data").getValue(),
+                    MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
+            namespace = changeStreamEvent.getNamespace().getFullName();
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
@@ -363,7 +405,8 @@ public final class SourceInfo extends BaseSourceInfo {
         long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
         long txOrder = longOffsetValue(sourceOffset, TX_ORD);
         String sessionTxnId = stringOffsetValue(sourceOffset, SESSION_TXN_ID);
-        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder, sessionTxnId));
+        String resumeToken = stringOffsetValue(sourceOffset, RESUME_TOKEN);
+        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder, sessionTxnId, resumeToken));
         return true;
     }
 

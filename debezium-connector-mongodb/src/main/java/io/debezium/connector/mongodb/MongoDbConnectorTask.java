@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -23,6 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -47,6 +49,8 @@ import io.debezium.util.SchemaNameAdjuster;
  */
 @ThreadSafe
 public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition, MongoDbOffsetContext> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorTask.class);
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
@@ -78,6 +82,40 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         final ReplicaSets replicaSets = getReplicaSets(config);
         final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets);
         final Clock clock = Clock.system();
+
+        if (previousOffset != null) {
+            final List<ReplicaSetOffsetContext> oplogBasedOffsets = new ArrayList<>();
+            final List<ReplicaSetOffsetContext> changeStreamBasedOffsets = new ArrayList<>();
+            replicaSets.all().forEach(rs -> {
+                final ReplicaSetOffsetContext offset = previousOffset.getReplicaSetOffsetContext(rs);
+                if (rs == null) {
+                    return;
+                }
+                if (offset.isFromChangeStream()) {
+                    changeStreamBasedOffsets.add(offset);
+                }
+                if (offset.isFromOplog()) {
+                    oplogBasedOffsets.add(offset);
+                }
+            });
+            // TODO Add test
+            if (!oplogBasedOffsets.isEmpty() && !changeStreamBasedOffsets.isEmpty()) {
+                LOGGER.error(
+                        "Replica set offests are partially from oplog and partially from change streams. This is not supported situation and can lead to unpredicable behaviour.");
+            }
+            else if (!oplogBasedOffsets.isEmpty() && connectorConfig.getCaptureMode().isChangeStreams()) {
+                LOGGER.warn("Stored offsets were created using oplog capturing. Connector configuration expects change streams capturing.");
+                LOGGER.warn("Switching configuration to '{}'", CaptureMode.OPLOG);
+                LOGGER.warn("Either reconfigure the connector or remove the old offsets");
+                connectorConfig.setCaptureMode(CaptureMode.OPLOG);
+            }
+            else if (!changeStreamBasedOffsets.isEmpty() && !connectorConfig.getCaptureMode().isChangeStreams()) {
+                LOGGER.warn("Stored offsets were created using change streams capturing. Connector configuration expects oplog capturing.");
+                LOGGER.warn("Switching configuration to '{}'", CaptureMode.CHANGE_STREAMS_UPDATE_FULL);
+                LOGGER.warn("Either reconfigure the connector or remove the old offsets");
+                connectorConfig.setCaptureMode(CaptureMode.CHANGE_STREAMS_UPDATE_FULL);
+            }
+        }
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
 

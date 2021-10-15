@@ -45,6 +45,22 @@ public final class FieldSelector {
          * @return modified document
          */
         Document apply(Document doc);
+
+        // /**
+        // * Applies this filter to the given document to exclude or rename fields.
+        // *
+        // * @param doc document to exclude or rename fields
+        // * @return modified document
+        // */
+        // BsonDocument apply(BsonDocument doc);
+        //
+        // /**
+        // * Remove excluded fields for the list of fields.
+        // *
+        // * @param fields list of fields to be sanitized
+        // * @return santizied field list
+        // */
+        // List<String> apply(List<String> fields);
     }
 
     /**

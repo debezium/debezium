@@ -110,6 +110,12 @@ public class TransactionMonitor {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Event '{}' has no transaction id", eventMetadataProvider.toSummaryString(source, offset, key, value));
             }
+            // Introduced for MongoDB, transactions are optional so non-transactional event should
+            // commit transaction
+            if (transactionContext.isTransactionInProgress()) {
+                LOGGER.trace("Transaction was in progress, executing implicit transaction commit");
+                endTransaction(partition, offset);
+            }
             return;
         }
 

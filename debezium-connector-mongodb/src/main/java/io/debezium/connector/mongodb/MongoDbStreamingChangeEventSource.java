@@ -6,6 +6,8 @@
 package io.debezium.connector.mongodb;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -27,11 +31,15 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.CursorType;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
+import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import com.mongodb.client.model.changestream.FullDocument;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
@@ -111,7 +119,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             if (primaryClient != null) {
                 final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
                 primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
-                    readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext);
+                    if (connectorConfig.getCaptureMode().isChangeStreams()) {
+                        readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext);
+                    }
+                    else {
+                        readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext);
+                    }
                 });
             }
         }
@@ -205,7 +218,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             oplogContext.setIncompleteTxOrder(txOrder.getAsLong());
         }
 
-        Bson operationFilter = getSkippedOperationsFilter();
+        Bson operationFilter = getOplogSkippedOperationsFilter();
         if (operationFilter != null) {
             filter = Filters.and(filter, operationFilter);
         }
@@ -256,6 +269,111 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
+    private List<String> getChangeStreamSkippedOperationsFilter() {
+        final Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOperations();
+        final List<String> includedOperations = new ArrayList<>();
+
+        if (!skippedOperations.contains(Operation.CREATE)) {
+            includedOperations.add("insert");
+        }
+
+        if (!skippedOperations.contains(Operation.UPDATE)) {
+            // TODO Check that replace is tested
+            includedOperations.add("update");
+            includedOperations.add("replace");
+        }
+        if (!skippedOperations.contains(Operation.DELETE)) {
+            includedOperations.add("delete");
+        }
+        return includedOperations;
+    }
+
+    private void readChangeStream(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
+                                  MongoDbOffsetContext offsetContext) {
+        final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
+        final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
+
+        final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
+        final OptionalLong txOrder = rsOffsetContext.lastOffsetTxOrder();
+
+        ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
+
+        final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
+        LOGGER.info("Reading change stream for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
+
+        Bson filters = Filters.in("operationType", getChangeStreamSkippedOperationsFilter());
+        if (rsOffsetContext.lastResumeToken() == null) {
+            // After snapshot the oplogStart points to the last change snapshotted
+            // It must be filtered-out
+            filters = Filters.and(filters, Filters.ne("clusterTime", oplogStart));
+        }
+        final ChangeStreamIterable<Document> rsChangeStream = primary.watch(
+                Arrays.asList(Aggregates.match(filters)));
+        if (connectorConfig.getCaptureMode().isFullUpdate()) {
+            rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
+        }
+        if (rsOffsetContext.lastResumeToken() != null) {
+            LOGGER.info("Resuming streaming from token '{}'", rsOffsetContext.lastResumeToken());
+
+            final BsonDocument doc = new BsonDocument();
+            doc.put("_data", new BsonString(rsOffsetContext.lastResumeToken()));
+            rsChangeStream.resumeAfter(doc);
+        }
+        else {
+            LOGGER.info("Resume token not available, starting streaming from time '{}'", oplogStart);
+            rsChangeStream.startAtOperationTime(oplogStart);
+        }
+
+        if (connectorConfig.getCursorMaxAwaitTime() > 0) {
+            rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
+        }
+
+        try (MongoCursor<ChangeStreamDocument<Document>> cursor = rsChangeStream.iterator()) {
+            // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
+            // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
+            // can respond to the stop request much faster and without much overhead.
+            Metronome pause = Metronome.sleeper(Duration.ofMillis(500), clock);
+            while (context.isRunning()) {
+                // Use tryNext which will return null if no document is yet available from the cursor.
+                // In this situation if not document is available, we'll pause.
+                final ChangeStreamDocument<Document> event = cursor.tryNext();
+                if (event != null) {
+                    LOGGER.trace("Arrived Change Stream event: {}", event);
+
+                    oplogContext.getOffset().changeStreamEvent(event, txOrder);
+                    oplogContext.getOffset().getOffset();
+                    CollectionId collectionId = new CollectionId(
+                            replicaSet.replicaSetName(),
+                            event.getNamespace().getDatabaseName(),
+                            event.getNamespace().getCollectionName());
+                    if (taskContext.filters().collectionFilter().test(collectionId)) {
+                        try {
+                            dispatcher.dispatchDataChangeEvent(
+                                    collectionId,
+                                    new MongoDbChangeStreamChangeRecordEmitter(
+                                            oplogContext.getPartition(),
+                                            oplogContext.getOffset(),
+                                            clock,
+                                            event));
+                        }
+                        catch (Exception e) {
+                            errorHandler.setProducerThrowable(e);
+                            return;
+                        }
+                    }
+                }
+                else {
+                    try {
+                        pause.pause();
+                    }
+                    catch (InterruptedException e) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     private boolean isStartPositionInOplog(BsonTimestamp startTime, MongoCollection<Document> oplog) {
         final MongoCursor<Document> iterator = oplog.find().iterator();
         if (!iterator.hasNext()) {
@@ -270,7 +388,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return timestamp.compareTo(startTime) <= 0;
     }
 
-    private Bson getSkippedOperationsFilter() {
+    private Bson getOplogSkippedOperationsFilter() {
         Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOperations();
 
         if (skippedOperations.isEmpty()) {
@@ -375,7 +493,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
 
         final String operation = event.getString(OPERATION_FIELD);
-        if (!MongoDbChangeRecordEmitter.isValidOperation(operation)) {
+        if (!MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
             LOGGER.debug("Skipping event with \"op={}\"", operation);
             return true;
         }
@@ -407,7 +525,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 try {
                     return dispatcher.dispatchDataChangeEvent(
                             collectionId,
-                            new MongoDbChangeRecordEmitter(
+                            new MongoDbChangeSnapshotOplogRecordEmitter(
                                     oplogContext.getPartition(),
                                     oplogContext.getOffset(),
                                     clock,

@@ -14,6 +14,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -115,11 +117,27 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         sourceInfo.opLogEvent(replicaSetName, oplogEvent, masterEvent, txOrder);
     }
 
+    public void changeStreamEvent(ChangeStreamDocument<Document> changeStreamEvent, OptionalLong txOrder) {
+        sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent, txOrder.orElse(0));
+    }
+
     public BsonTimestamp lastOffsetTimestamp() {
         return sourceInfo.lastOffsetTimestamp(replicaSetName);
     }
 
     public OptionalLong lastOffsetTxOrder() {
         return sourceInfo.lastOffsetTxOrder(replicaSetName);
+    }
+
+    public String lastResumeToken() {
+        return sourceInfo.lastResumeToken(replicaSetName);
+    }
+
+    public boolean isFromOplog() {
+        return sourceInfo != null && sourceInfo.position() != null && sourceInfo.position().getOperationId() != null;
+    }
+
+    public boolean isFromChangeStream() {
+        return sourceInfo != null && sourceInfo.lastResumeToken(replicaSetName) != null;
     }
 }

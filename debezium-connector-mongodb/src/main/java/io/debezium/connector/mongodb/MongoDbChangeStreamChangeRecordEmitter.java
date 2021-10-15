@@ -12,6 +12,9 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
 
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import com.mongodb.client.model.changestream.OperationType;
+
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
@@ -21,57 +24,39 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 
 /**
- * Emits change data based on a collection document.
+ * Emits change data based on a change stream change.
  *
- * @author Chris Cranford
+ * @author Jiri Pechanec
  */
-public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<MongoDbCollectionSchema> {
+public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecordEmitter<MongoDbCollectionSchema> {
 
-    private final Document oplogEvent;
-
-    /**
-     * Whether this event originates from a snapshot.
-     */
-    private final boolean isSnapshot;
+    private final ChangeStreamDocument<Document> changeStreamEvent;
 
     @ThreadSafe
-    private static final Map<String, Operation> OPERATION_LITERALS;
+    private static final Map<OperationType, Operation> OPERATION_LITERALS;
 
     static {
-        Map<String, Operation> literals = new HashMap<>();
+        Map<OperationType, Operation> literals = new HashMap<>();
 
-        literals.put("i", Operation.CREATE);
-        literals.put("u", Operation.UPDATE);
-        literals.put("d", Operation.DELETE);
+        literals.put(OperationType.INSERT, Operation.CREATE);
+        literals.put(OperationType.UPDATE, Operation.UPDATE);
+        literals.put(OperationType.DELETE, Operation.DELETE);
 
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot) {
+    public MongoDbChangeStreamChangeRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock, ChangeStreamDocument<Document> changeStreamEvent) {
         super(partition, offsetContext, clock);
-        this.oplogEvent = oplogEvent;
-        this.isSnapshot = isSnapshot;
+        this.changeStreamEvent = changeStreamEvent;
     }
 
     @Override
     protected Operation getOperation() {
-        if (isSnapshot || oplogEvent.getString("op") == null) {
-            return Operation.READ;
-        }
-        return OPERATION_LITERALS.get(oplogEvent.getString("op"));
+        return OPERATION_LITERALS.get(changeStreamEvent.getOperationType());
     }
 
     @Override
     protected void emitReadRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
-        final Object newKey = schema.keyFromDocument(oplogEvent);
-        assert newKey != null;
-
-        final Struct value = schema.valueFromDocument(oplogEvent, null, getOperation());
-        value.put(FieldName.SOURCE, getOffset().getSourceInfo());
-        value.put(FieldName.OPERATION, getOperation().code());
-        value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
-
-        receiver.changeRecord(getPartition(), schema, getOperation(), newKey, value, getOffset(), null);
     }
 
     @Override
@@ -90,16 +75,10 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
     }
 
     private void createAndEmitChangeRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
-        Document patchObject = oplogEvent.get("o", Document.class);
-        // Updates have an 'o2' field, since the updated object in 'o' might not have the ObjectID
-        Document queryObject = oplogEvent.get("o2", Document.class);
-
-        final Document filter = queryObject != null ? queryObject : patchObject;
-
-        final Object newKey = schema.keyFromDocument(filter);
+        final Object newKey = schema.keyFromDocument(changeStreamEvent.getDocumentKey());
         assert newKey != null;
 
-        final Struct value = schema.valueFromDocument(patchObject, filter, getOperation());
+        final Struct value = schema.valueFromDocumentChangeStream(changeStreamEvent, getOperation());
         value.put(FieldName.SOURCE, getOffset().getSourceInfo());
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());

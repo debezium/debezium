@@ -15,6 +15,7 @@ import org.junit.Test;
 
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.util.Collect;
+import io.debezium.util.Testing;
 
 /**
  * Transaction metadata integration test for Debezium MongoDB connector.
@@ -25,6 +26,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
 
     @Test
     public void transactionMetadata() throws Exception {
+        Testing.Print.enable();
         config = TestHelper.getConfiguration()
                 .edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
@@ -52,12 +54,12 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
         List<Document> documentsToInsert2 = loadTestDocuments("restaurants6.json");
         insertDocuments("dbA", "c1", documentsToInsert2.toArray(new Document[0]));
 
-        // BEGIN, data, END, BEGIN data
-        final SourceRecords records = consumeRecordsByTopic(1 + 6 + 1 + 1 + 1);
+        // BEGIN, data, END, BEGIN data for oplog, BEGIN, data, END, data for change stream
+        final SourceRecords records = consumeRecordsByTopic(1 + 6 + 1 + (TestHelper.isOplogCaptureMode() ? 1 : 0) + 1);
         final List<SourceRecord> c1s = records.recordsForTopic("mongo1.dbA.c1");
         final List<SourceRecord> txs = records.recordsForTopic("mongo1.transaction");
         assertThat(c1s).hasSize(7);
-        assertThat(txs).hasSize(3);
+        assertThat(txs).hasSize((TestHelper.isOplogCaptureMode() ? 3 : 2));
 
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId1 = assertBeginTransaction(all.get(0));
@@ -70,8 +72,10 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
 
         assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("rs0.dbA.c1", 6));
 
-        final String txId2 = assertBeginTransaction(all.get(8));
-        assertRecordTransactionMetadata(all.get(9), txId2, 1, 1);
+        if (TestHelper.isOplogCaptureMode()) {
+            final String txId2 = assertBeginTransaction(all.get(8));
+            assertRecordTransactionMetadata(all.get(9), txId2, 1, 1);
+        }
 
         stopConnector();
     }

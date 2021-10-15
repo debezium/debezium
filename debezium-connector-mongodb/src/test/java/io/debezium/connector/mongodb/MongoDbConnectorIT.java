@@ -273,12 +273,13 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
-
+        Testing.Print.enable();
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                // .with(MongoDbConnectorConfig.CAPTURE_MODE, CaptureMode.OPLOG)
                 .build();
 
         // Set up the replication context for connections ...

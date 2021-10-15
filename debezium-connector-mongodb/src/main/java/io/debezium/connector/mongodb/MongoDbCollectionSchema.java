@@ -5,12 +5,18 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDocument;
 import org.bson.Document;
+
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import com.mongodb.client.model.changestream.TruncatedArray;
 
 import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.data.Envelope;
@@ -32,17 +38,20 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     private final Schema keySchema;
     private final Envelope enveopeSchema;
     private final Schema valueSchema;
-    private final Function<Document, Object> keyGenerator;
+    private final Function<Document, Object> keyGeneratorOplog;
+    private final Function<BsonDocument, Object> keyGeneratorChangeStream;
     private final Function<Document, String> valueGenerator;
 
     public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema, Function<Document, Object> keyGenerator,
-                                   Envelope envelopeSchema, Schema valueSchema, Function<Document, String> valueGenerator) {
+                                   Function<BsonDocument, Object> keyGeneratorChangeStream, Envelope envelopeSchema, Schema valueSchema,
+                                   Function<Document, String> valueGenerator) {
         this.id = id;
         this.fieldFilter = fieldFilter;
         this.keySchema = keySchema;
         this.enveopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
-        this.keyGenerator = keyGenerator != null ? keyGenerator : (Document) -> null;
+        this.keyGeneratorOplog = keyGenerator != null ? keyGenerator : (Document) -> null;
+        this.keyGeneratorChangeStream = keyGeneratorChangeStream != null ? keyGeneratorChangeStream : (BsonDocument) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (Document) -> null;
     }
 
@@ -66,10 +75,14 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     }
 
     public Struct keyFromDocument(Document document) {
-        return document == null ? null : new Struct(keySchema).put("id", keyGenerator.apply(document));
+        return document == null ? null : new Struct(keySchema).put("id", keyGeneratorOplog.apply(document));
     }
 
-    public Struct valueFromDocument(Document document, Document filter, Envelope.Operation operation) {
+    public Struct keyFromDocument(BsonDocument document) {
+        return document == null ? null : new Struct(keySchema).put("id", keyGeneratorChangeStream.apply(document));
+    }
+
+    public Struct valueFromDocumentOplog(Document document, Document filter, Envelope.Operation operation) {
         Struct value = new Struct(valueSchema);
         switch (operation) {
             case READ:
@@ -86,6 +99,50 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
             case DELETE:
                 final String deleteFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
                 value.put(MongoDbFieldName.FILTER, deleteFilterStr);
+                break;
+        }
+        return value;
+    }
+
+    public Struct valueFromDocumentChangeStream(ChangeStreamDocument<Document> document, Envelope.Operation operation) {
+        Struct value = new Struct(valueSchema);
+        switch (operation) {
+            case CREATE:
+                final String jsonStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
+                value.put(FieldName.AFTER, jsonStr);
+                break;
+            case UPDATE:
+                // Not null when full documents are enabled for updates
+                if (document.getFullDocument() != null) {
+                    final String fullDocStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
+                    value.put(FieldName.AFTER, fullDocStr);
+                }
+                final Struct updateDescription = new Struct(MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA);
+
+                final List<String> removedFields = document.getUpdateDescription().getRemovedFields();
+                if (removedFields != null && !removedFields.isEmpty()) {
+                    updateDescription.put(MongoDbFieldName.REMOVED_FIELDS, removedFields);
+                }
+
+                final BsonDocument updatedFields = document.getUpdateDescription().getUpdatedFields();
+                if (updatedFields != null) {
+                    // TODO Add field filtering
+                    updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, updatedFields.toJson());
+                }
+
+                final List<TruncatedArray> truncatedArrays = document.getUpdateDescription().getTruncatedArrays();
+                if (truncatedArrays != null && !truncatedArrays.isEmpty()) {
+                    updateDescription.put(MongoDbFieldName.TRUNCATED_ARRAYS, truncatedArrays.stream().map(x -> {
+                        final Struct element = new Struct(MongoDbSchema.TRUNCATED_ARRAY_SCHEMA);
+                        element.put(MongoDbFieldName.ARRAY_FIELD_NAME, x.getField());
+                        element.put(MongoDbFieldName.ARRAY_NEW_SIZE, x.getNewSize());
+                        return element;
+                    }).collect(Collectors.toList()));
+                }
+
+                value.put(MongoDbFieldName.UPDATE_DESCRIPTION, updateDescription);
+                break;
+            case DELETE:
                 break;
         }
         return value;
