@@ -50,7 +50,9 @@ public class MySqlDefaultValueConverter {
     private static final String EPOCH_DATE = "1970-01-01";
 
     @Immutable
-    private static final Set<Integer> UNTRIMMABLE_DATA_TYPES = Collect.unmodifiableSet(Types.VARCHAR, Types.LONGVARCHAR, Types.NCHAR, Types.LONGNVARCHAR);
+    private static final Set<Integer> TRIM_DATA_TYPES = Collect.unmodifiableSet(Types.TINYINT, Types.INTEGER,
+            Types.DATE, Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE, Types.TIME, Types.BOOLEAN, Types.BIT,
+            Types.NUMERIC, Types.DECIMAL, Types.FLOAT, Types.DOUBLE, Types.REAL);
 
     private static final DateTimeFormatter ISO_LOCAL_DATE_WITH_OPTIONAL_TIME = new DateTimeFormatterBuilder()
             .append(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -80,7 +82,7 @@ public class MySqlDefaultValueConverter {
         }
 
         // trim non varchar data types before converting
-        if (!UNTRIMMABLE_DATA_TYPES.contains(column.jdbcType())) {
+        if (TRIM_DATA_TYPES.contains(column.jdbcType())) {
             value = value.trim();
         }
 
