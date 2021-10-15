@@ -514,9 +514,6 @@ public final class TransactionalBuffer implements AutoCloseable {
 
         int eventId = transaction.eventIds++;
         if (transaction.events.size() > eventId) {
-            // Updating existing event at eventId offset
-            LOGGER.trace("Transaction {}, updating event reference at index {}", transactionId, eventId);
-            transaction.events.set(eventId, supplier.get());
             // only return true if new event is added, otherwise false
             return false;
         }
