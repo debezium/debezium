@@ -8,8 +8,10 @@ package io.debezium.connector.postgresql.connection;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,6 +42,10 @@ class PostgresDefaultValueConverter {
 
     private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'(.*?)'");
     private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_]+\\((?:.+(?:, ?.+)*)?\\)");
+    private static final List<String> TRIM_DATA_TYPES = Collections
+            .unmodifiableList(Arrays.asList("bit", "varbit", "bool", "numeric", "float4", "float8", "int2",
+                    "int4", "serial", "int8", "bigserial", "smallserial", "uuid", "date", "time", "timestamp",
+                    "timestamptz", "interval"));
 
     /**
      * Converts JDBC string representation of a default column value to an object.
@@ -74,6 +80,10 @@ class PostgresDefaultValueConverter {
             return Optional.empty();
         }
 
+        if (TRIM_DATA_TYPES.contains(dataType)) {
+            defaultValue = defaultValue.trim();
+        }
+
         try {
             Object rawDefaultValue = mapper.parse(defaultValue);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
@@ -104,6 +114,7 @@ class PostgresDefaultValueConverter {
             // So we can set any number here;
             final Field field = new Field(column.name(), -1, schema);
             final ValueConverter valueConverter = valueConverters.converter(column, field);
+
             Object result = valueConverter.convert(defaultValue);
             if ((result instanceof BigDecimal) && column.scale().isPresent() && column.scale().get() > ((BigDecimal) result).scale()) {
                 // Note that as the scale is increased only, the rounding is more cosmetic.
