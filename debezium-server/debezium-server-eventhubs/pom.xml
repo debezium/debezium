@@ -13,6 +13,7 @@
 
     <properties>
         <skipITs>true</skipITs>
+        <version.netty.tcnative>2.0.44.Final</version.netty.tcnative>
     </properties>
 
     <dependencies>
@@ -74,6 +75,14 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-postgres</artifactId>
             <scope>test</scope>
+        </dependency>
+        <!-- This is needed to fix a bug in Quarkus 2.3.0.Final and 2.4.0.CR1 because the artifacts
+             pulled in via Netty don't build otherwise.
+         -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>${version.netty.tcnative}</version>
         </dependency>
     </dependencies>
     <build>

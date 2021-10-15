@@ -10,6 +10,8 @@
   <name>Debezium Server Pravega Sink Adapter</name>
   <properties>
     <netty.version>4.1.52.Final</netty.version>
+    <!-- keep netty tcnative in sync with netty version above -->
+    <version.netty.tcnative>2.0.34.Final</version.netty.tcnative>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -68,6 +70,14 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport-native-epoll</artifactId>
+    </dependency>
+    <!-- This is needed to fix a bug in Quarkus 2.3.0.Final and 2.4.0.CR1 because the artifacts
+         pulled in via Netty don't build otherwise.
+     -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-tcnative-boringssl-static</artifactId>
+      <version>${version.netty.tcnative}</version>
     </dependency>
 
     <!-- Testing -->
