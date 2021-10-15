@@ -56,6 +56,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
     private final OracleOffsetContext offsetContext;
     private final EventDispatcher<TableId> dispatcher;
     private final ChangeEventSourceContext context;
+    private final EmbeddedCacheManager cacheManager;
 
     /**
      * A cache that stores the complete {@link Transaction} object keyed by the unique transaction id.
@@ -111,14 +112,14 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
         this.dispatcher = dispatcher;
         this.context = context;
 
-        final EmbeddedCacheManager manager = new DefaultCacheManager();
-        this.transactionCache = new InfinispanTransactionCache(createCache(manager, connectorConfig, "transactions"));
-        this.recentlyCommittedTransactionsCache = createCache(manager, connectorConfig, "committed-transactions");
-        this.rollbackTransactionsCache = createCache(manager, connectorConfig, "rollback-transactions");
-        this.schemaChangesCache = createCache(manager, connectorConfig, "schema-changes");
+        this.cacheManager = new DefaultCacheManager();
+        this.transactionCache = new InfinispanTransactionCache(createCache(connectorConfig, "transactions"));
+        this.recentlyCommittedTransactionsCache = createCache(connectorConfig, "committed-transactions");
+        this.rollbackTransactionsCache = createCache(connectorConfig, "rollback-transactions");
+        this.schemaChangesCache = createCache(connectorConfig, "schema-changes");
     }
 
-    private <K, V> Cache<K, V> createCache(EmbeddedCacheManager manager, OracleConnectorConfig connectorConfig, String name) {
+    private <K, V> Cache<K, V> createCache(OracleConnectorConfig connectorConfig, String name) {
         // todo: cache store configured similar to the database history configuration options
         final Configuration config = new ConfigurationBuilder()
                 .persistence()
@@ -132,8 +133,8 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
                 .location(connectorConfig.getLogMiningBufferLocation())
                 .build();
 
-        manager.defineConfiguration(name, config);
-        return manager.getCache(name);
+        cacheManager.defineConfiguration(name, config);
+        return cacheManager.getCache(name);
     }
 
     @Override
@@ -155,6 +156,8 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
         rollbackTransactionsCache.stop();
         schemaChangesCache.stop();
         transactionCache.close();
+
+        cacheManager.stop();
     }
 
     @Override
