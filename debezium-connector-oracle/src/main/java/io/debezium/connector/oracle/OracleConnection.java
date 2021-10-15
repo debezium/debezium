@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,6 +39,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
@@ -372,12 +375,34 @@ public class OracleConnection extends JdbcConnection {
 
         query += ")";
 
-        return queryAndMap(query, (rs) -> {
-            if (rs.next()) {
-                return Scn.valueOf(rs.getString(1)).subtract(Scn.valueOf(1));
+        try {
+            Metronome sleeper = Metronome.sleeper(Duration.ofSeconds(1), Clock.SYSTEM);
+            int retries = 5;
+            while (retries-- > 0) {
+                Scn maxArchiveLogScn = queryAndMap(query, (rs) -> {
+                    if (rs.next()) {
+                        final String value = rs.getString(1);
+                        if (value != null) {
+                            return Scn.valueOf(value).subtract(Scn.valueOf(1));
+                        }
+                    }
+                    // if we failed to get a result or the value was null, returning Scn.NULL implies
+                    // that we should try again until we exhaust the retry attempts.
+                    return Scn.NULL;
+                });
+                if (!maxArchiveLogScn.isNull()) {
+                    // value was received, return it.
+                    return maxArchiveLogScn;
+                }
+                LOGGER.info("Query to get max archive log SCN returned no value, checking again in 1 second.");
+                sleeper.pause();
             }
+            // retry attempts exhausted, throw exception
             throw new DebeziumException("Could not obtain maximum archive log scn.");
-        });
+        }
+        catch (InterruptedException e) {
+            throw new DebeziumException("Failed to obtain maximum archive log scn.", e);
+        }
     }
 
     /**
