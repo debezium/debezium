@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.function.Function;
 
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.codecs.Encoder;
 import org.bson.json.JsonMode;
@@ -56,13 +57,27 @@ class JsonSerialization {
         transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS, encoder);
     }
 
-    public String getDocumentId(Document document) {
+    public String getDocumentIdOplog(Document document) {
         if (document == null) {
             return null;
         }
         // The serialized value is in format {"_": xxx} so we need to remove the starting dummy field name and closing brace
         final String keyValue = new BasicDBObject("_", document.get(ID_FIELD_NAME)).toJson(SIMPLE_JSON_SETTINGS);
         final int start = 6;
+        final int end = keyValue.length() - 1;
+        if (!(end > start)) {
+            throw new IllegalStateException("Serialized JSON object '" + keyValue + "' is not in expected format");
+        }
+        return keyValue.substring(start, end);
+    }
+
+    public String getDocumentIdChangeStream(BsonDocument document) {
+        if (document == null) {
+            return null;
+        }
+        // The serialized value is in format {"_": xxx} so we need to remove the starting dummy field name and closing brace
+        final String keyValue = document.toJson(SIMPLE_JSON_SETTINGS);
+        final int start = 8;
         final int end = keyValue.length() - 1;
         if (!(end > start)) {
             throw new IllegalStateException("Serialized JSON object '" + keyValue + "' is not in expected format");

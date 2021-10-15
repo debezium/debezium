@@ -15,6 +15,7 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.types.Binary;
 
@@ -25,6 +26,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ServerDescription;
 
@@ -242,6 +244,22 @@ public class MongoUtil {
         final String lsid = (id instanceof Binary) ? UUID.nameUUIDFromBytes(((Binary) id).getData()).toString() : ((UUID) id).toString();
         final Long txnNumber = oplogEvent.getLong("txnNumber");
         return lsid + ":" + txnNumber;
+    }
+
+    /**
+     * Helper function to extract the session transaction-id from an Change Stream event.
+     *
+     * @param event the Change Stream event
+     * @return the session transaction id from the event
+     */
+    public static String getChangeStreamSessionTransactionId(ChangeStreamDocument<Document> event) {
+        if (event.getLsid() == null || event.getTxnNumber() == null) {
+            return null;
+        }
+        BsonDocument txDoc = new BsonDocument();
+        txDoc.append("lsid", event.getLsid());
+        txDoc.append("txnNumber", event.getTxnNumber());
+        return txDoc.toJson();
     }
 
     /**

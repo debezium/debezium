@@ -16,6 +16,15 @@ import io.debezium.data.Envelope.FieldName;
  */
 public class MongoDbFieldName {
 
+    // Oplog fields
     public static final String PATCH = "patch";
     public static final String FILTER = "filter";
+
+    // Change Streams fields
+    public static final String UPDATE_DESCRIPTION = "updateDescription";
+    public static final String REMOVED_FIELDS = "removedFields";
+    public static final String UPDATED_FIELDS = "updatedFields";
+    public static final String TRUNCATED_ARRAYS = "truncatedArrays";
+    public static final String ARRAY_FIELD_NAME = "field";
+    public static final String ARRAY_NEW_SIZE = "size";
 }

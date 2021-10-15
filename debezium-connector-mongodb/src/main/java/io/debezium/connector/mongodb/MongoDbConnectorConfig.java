@@ -114,6 +114,89 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set off different ways how connector can capture changes.
+     */
+    public static enum CaptureMode implements EnumeratedValue {
+
+        /**
+         * The classic oplog based capturing.
+         */
+        OPLOG("oplog", false, false),
+
+        /**
+         * Change capture based on MongoDB Change Streams support.
+         */
+        CHANGE_STREAMS("change_streams", true, false),
+
+        /**
+         * Change capture based on MongoDB change Streams support.
+         * The update message will contain the full document.
+         */
+        CHANGE_STREAMS_UPDATE_FULL("change_streams_update_full", true, true);
+
+        private final String value;
+        private final boolean changeStreams;
+        private final boolean fullUpdate;
+
+        private CaptureMode(String value, boolean changeStreams, boolean fullUpdate) {
+            this.value = value;
+            this.changeStreams = changeStreams;
+            this.fullUpdate = fullUpdate;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static CaptureMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (CaptureMode option : CaptureMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static CaptureMode parse(String value, String defaultValue) {
+            CaptureMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+
+        public boolean isChangeStreams() {
+            return changeStreams;
+        }
+
+        public boolean isFullUpdate() {
+            return fullUpdate;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     /**
@@ -430,6 +513,18 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
                     + "'never' to specify the connector should never perform an initial sync ");
 
+    public static final Field CAPTURE_MODE = Field.create("capture.mode")
+            .withDisplayName("Capture mode")
+            .withEnum(CaptureMode.class, CaptureMode.CHANGE_STREAMS_UPDATE_FULL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The method used to capture changes from MongoDB server. "
+                    + "Options include: "
+                    + "'oplog' to capture changes from oplog, this is the original method; "
+                    + "'change_streams' to capture  via MongoDB Change Streams mechanism, update message do not contain full message; "
+                    + "'change_streams_update_full' (the default) to capture  via MongoDB Change Streams mechanism, update message do not contain full message ");
+
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
             .withType(Type.INT)
@@ -514,7 +609,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
             .connector(
                     MAX_COPY_THREADS,
-                    SNAPSHOT_MODE)
+                    SNAPSHOT_MODE,
+                    CAPTURE_MODE)
             .create();
 
     /**
@@ -529,6 +625,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     private final SnapshotMode snapshotMode;
+    private CaptureMode captureMode;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
 
@@ -537,6 +634,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
+
+        String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
+        this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -630,6 +730,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return snapshotMode;
     }
 
+    public CaptureMode getCaptureMode() {
+        return captureMode;
+    }
+
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
     }
@@ -699,5 +803,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             }
             return config.getInteger(MAX_COPY_THREADS);
         }
+    }
+
+    public void setCaptureMode(CaptureMode captureMode) {
+        this.captureMode = captureMode;
     }
 }

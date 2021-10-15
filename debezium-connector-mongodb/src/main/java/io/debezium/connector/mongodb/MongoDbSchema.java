@@ -32,6 +32,26 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSchema.class);
 
+    // Change Streams schemas
+    private static final String SCHEMA_NAME_UPDATED_DESCRIPTION = "io.debezium.connector.mongodb.changestream.updatedescription";
+    private static final String SCHEMA_NAME_TRUNCATED_ARRAY = "io.debezium.connector.mongodb.changestream.truncatedarray";
+
+    public static final Schema TRUNCATED_ARRAY_SCHEMA = SchemaBuilder.struct()
+            .name(SCHEMA_NAME_TRUNCATED_ARRAY)
+            .field(MongoDbFieldName.ARRAY_FIELD_NAME, Schema.STRING_SCHEMA)
+            .field(MongoDbFieldName.ARRAY_NEW_SIZE, Schema.INT32_SCHEMA)
+            .build();
+    public static final Schema UPDATED_DESCRIPTION_SCHEMA = SchemaBuilder.struct()
+            .optional()
+            .name(SCHEMA_NAME_UPDATED_DESCRIPTION)
+            .field(MongoDbFieldName.REMOVED_FIELDS,
+                    SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+            .field(MongoDbFieldName.UPDATED_FIELDS,
+                    Json.builder().optional().build())
+            .field(MongoDbFieldName.TRUNCATED_ARRAYS,
+                    SchemaBuilder.array(TRUNCATED_ARRAY_SCHEMA).optional().build())
+            .build();
+
     private final Filters filters;
     private final TopicSelector<CollectionId> topicSelector;
     private final Schema sourceSchema;
@@ -63,8 +83,11 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
             final Schema valueSchema = SchemaBuilder.struct()
                     .name(adjuster.adjust(Envelope.schemaName(topicName)))
                     .field(FieldName.AFTER, Json.builder().optional().build())
+                    // Oplog fields
                     .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
                     .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
+                    // Change Streams field
+                    .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
                     .field(FieldName.SOURCE, sourceSchema)
                     .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                     .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
@@ -77,7 +100,8 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     id,
                     fieldFilter,
                     keySchema,
-                    serialization::getDocumentId,
+                    serialization::getDocumentIdOplog,
+                    serialization::getDocumentIdChangeStream,
                     envelope,
                     valueSchema,
                     serialization::getDocumentValue);
