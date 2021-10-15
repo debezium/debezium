@@ -51,7 +51,7 @@ public class TestHelper {
     private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
-    public static final String TEST_DATABASE = "testdb";
+    public static final String TEST_DATABASE = "testDB";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
@@ -147,10 +147,10 @@ public class TestHelper {
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
             dropTestDatabase(connection);
-            String sql = String.format("CREATE DATABASE %s\n", TEST_DATABASE);
+            String sql = String.format("CREATE DATABASE [%s]\n", TEST_DATABASE);
             connection.execute(sql);
-            connection.execute(String.format("USE %s", TEST_DATABASE));
-            connection.execute(String.format("ALTER DATABASE %s SET ALLOW_SNAPSHOT_ISOLATION ON", TEST_DATABASE));
+            connection.execute(String.format("USE [%s]", TEST_DATABASE));
+            connection.execute(String.format("ALTER DATABASE [%s] SET ALLOW_SNAPSHOT_ISOLATION ON", TEST_DATABASE));
             // NOTE: you cannot enable CDC on master
             enableDbCdc(connection, TEST_DATABASE);
         }
@@ -193,14 +193,14 @@ public class TestHelper {
         try {
             Awaitility.await("Disabling CDC").atMost(60, TimeUnit.SECONDS).until(() -> {
                 try {
-                    connection.execute("USE testDB");
+                    connection.execute(String.format("USE [%s]", TEST_DATABASE));
                 }
                 catch (SQLException e) {
                     // if the database doesn't yet exist, there is no need to disable CDC
                     return true;
                 }
                 try {
-                    disableDbCdc(connection, "testDB");
+                    disableDbCdc(connection, TEST_DATABASE);
                     return true;
                 }
                 catch (SQLException e) {
@@ -209,22 +209,22 @@ public class TestHelper {
             });
         }
         catch (ConditionTimeoutException e) {
-            throw new IllegalArgumentException("Failed to disable CDC on testDB", e);
+            throw new IllegalArgumentException(String.format("Failed to disable CDC on %s", TEST_DATABASE), e);
         }
 
         connection.execute("USE master");
 
         try {
-            Awaitility.await("Dropping database testDB").atMost(60, TimeUnit.SECONDS).until(() -> {
+            Awaitility.await(String.format("Dropping database %s", TEST_DATABASE)).atMost(60, TimeUnit.SECONDS).until(() -> {
                 try {
-                    String sql = "IF EXISTS(select 1 from sys.databases where name = 'testDB') DROP DATABASE testDB";
+                    String sql = String.format("IF EXISTS(select 1 from sys.databases where name = '%s') DROP DATABASE [%s]", TEST_DATABASE, TEST_DATABASE);
                     connection.execute(sql);
                     return true;
                 }
                 catch (SQLException e) {
-                    LOGGER.warn("DROP DATABASE testDB failed (will be retried): {}", e.getMessage());
+                    LOGGER.warn(String.format("DROP DATABASE %s failed (will be retried): {}", TEST_DATABASE), e.getMessage());
                     try {
-                        connection.execute("ALTER DATABASE testDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;");
+                        connection.execute(String.format("ALTER DATABASE [%s] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;", TEST_DATABASE));
                     }
                     catch (SQLException e2) {
                         LOGGER.error("Failed to rollback immediately", e2);
