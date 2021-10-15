@@ -485,12 +485,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             }
 
             int eventId = transaction.getNextEventId();
-            if (transaction.getEvents().size() > eventId) {
-                // Updating an existing event at eventId offset
-                LOGGER.trace("Transaction {}, updating event reference at index {}", transactionId, eventId);
-                transaction.getEvents().set(eventId, eventSupplier.get());
-            }
-            else {
+            if (transaction.getEvents().size() <= eventId) {
                 // Add new event at eventId offset
                 LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
                 transaction.getEvents().add(eventSupplier.get());
