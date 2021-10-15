@@ -2026,6 +2026,7 @@ The following configuration properties are _required_ unless a default value is 
 |[[sqlserver-property-database-user]]<<sqlserver-property-database-user, `+database.user+`>>
 |No default
 |Username to use when connecting to the SQL Server database server.
+Can be omitted when using Kerberos authentication, which can be configured using xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[pass-through properties].
 
 |[[sqlserver-property-database-password]]<<sqlserver-property-database-password, `+database.password+`>>
 |No default
