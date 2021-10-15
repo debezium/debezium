@@ -30,6 +30,7 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -121,14 +122,14 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param transactionId unique transaction identifier
      * @param scn system change number
      * @param tableId table identifier
-     * @param parseEntry parser entry
+     * @param entrySupplier parser entry provider
      * @param changeTime time the DML operation occurred
      * @param rowId unique row identifier
      * @param rsId rollback sequence identifier
      */
-    void registerDmlOperation(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry,
+    void registerDmlOperation(int operation, String transactionId, Scn scn, TableId tableId, Supplier<LogMinerDmlEntry> entrySupplier,
                               Instant changeTime, String rowId, Object rsId) {
-        if (registerEvent(transactionId, scn, changeTime, () -> new DmlEvent(operation, parseEntry, scn, tableId, rowId, rsId))) {
+        if (registerEvent(transactionId, scn, changeTime, () -> new DmlEvent(operation, entrySupplier.get(), scn, tableId, rowId, rsId))) {
             streamingMetrics.incrementRegisteredDmlCount();
         }
     }
@@ -140,15 +141,26 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param transactionId unique transaction identifier
      * @param scn system change number
      * @param tableId table identifier
-     * @param parseEntry parser entry
      * @param changeTime time the operation occurred
      * @param rowId unique row identifier
      * @param rsId rollback sequence identifier
+     * @param segOwner table owner
+     * @param tableName table name
+     * @param redoSql the redo sql statement
+     * @param table the relational table
+     * @param selectLobParser the select LOB parser
      */
-    void registerSelectLobOperation(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry,
-                                    String columnName, boolean binaryData, Instant changeTime, String rowId, Object rsId) {
+    void registerSelectLobOperation(int operation, String transactionId, Scn scn, TableId tableId, Instant changeTime,
+                                    String rowId, Object rsId, String segOwner, String tableName, String redoSql, Table table,
+                                    SelectLobParser selectLobParser) {
         registerEvent(transactionId, scn, changeTime,
-                () -> new SelectLobLocatorEvent(operation, parseEntry, columnName, binaryData, scn, tableId, rowId, rsId));
+                () -> {
+                    final LogMinerDmlEntry entry = selectLobParser.parse(redoSql, table);
+                    entry.setObjectOwner(segOwner);
+                    entry.setObjectName(tableName);
+                    return new SelectLobLocatorEvent(operation, entry, selectLobParser.getColumnName(), selectLobParser.isBinary(),
+                            scn, tableId, rowId, rsId);
+                });
     }
 
     /**
@@ -166,10 +178,8 @@ public final class TransactionalBuffer implements AutoCloseable {
     void registerLobWriteOperation(int operation, String transactionId, Scn scn, TableId tableId, String data,
                                    Instant changeTime, String rowId, Object rsId) {
         if (data != null) {
-            final String sql = parseLobWriteSql(data);
             registerEvent(transactionId, scn, changeTime,
-                    () -> new LobWriteEvent(operation, sql, scn, tableId, rowId, rsId));
-
+                    () -> new LobWriteEvent(operation, parseLobWriteSql(data), scn, tableId, rowId, rsId));
         }
     }
 

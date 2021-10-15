@@ -226,6 +226,6 @@ public class TransactionalBufferTest {
     }
 
     private void registerDmlOperation(String txId, Scn scn, String rowId) {
-        transactionalBuffer.registerDmlOperation(RowMapper.INSERT, txId, scn, TABLE_ID, DML_ENTRY, Instant.now(), rowId, null);
+        transactionalBuffer.registerDmlOperation(RowMapper.INSERT, txId, scn, TABLE_ID, () -> DML_ENTRY, Instant.now(), rowId, null);
     }
 }

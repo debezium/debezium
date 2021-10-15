@@ -204,11 +204,8 @@ class LogMinerQueryResultProcessor {
                         LogMinerHelper.logWarn(streamingMetrics, "SEL_LOB_LOCATOR for table '{}' is not known to the connector, skipped.", tableId);
                         continue;
                     }
-                    final LogMinerDmlEntry entry = selectLobParser.parse(redoSql, schema.tableFor(tableId));
-                    entry.setObjectOwner(segOwner);
-                    entry.setObjectName(tableName);
-                    transactionalBuffer.registerSelectLobOperation(operationCode, txId, scn, tableId, entry,
-                            selectLobParser.getColumnName(), selectLobParser.isBinary(), changeTime.toInstant(), rowId, rsId);
+                    transactionalBuffer.registerSelectLobOperation(operationCode, txId, scn, tableId, changeTime.toInstant(),
+                            rowId, rsId, segOwner, tableName, redoSql, schema.tableFor(tableId), selectLobParser);
                     break;
                 }
                 case RowMapper.LOB_WRITE: {
@@ -257,16 +254,7 @@ class LogMinerQueryResultProcessor {
                                 break;
                         }
 
-                        Table table = schema.tableFor(tableId);
-                        if (table == null) {
-                            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                                table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId);
-                            }
-                            else {
-                                LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
-                                continue;
-                            }
-                        }
+                        final Table table = getTableForDmlEvent(tableId);
 
                         if (rollbackFlag == 1) {
                             // DML operation is to undo partial or all operations as a result of a rollback.
@@ -276,11 +264,12 @@ class LogMinerQueryResultProcessor {
                             continue;
                         }
 
-                        final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
-                        dmlEntry.setObjectOwner(segOwner);
-                        dmlEntry.setObjectName(tableName);
-
-                        transactionalBuffer.registerDmlOperation(operationCode, txId, scn, tableId, dmlEntry,
+                        transactionalBuffer.registerDmlOperation(operationCode, txId, scn, tableId, () -> {
+                            final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
+                            dmlEntry.setObjectOwner(segOwner);
+                            dmlEntry.setObjectName(tableName);
+                            return dmlEntry;
+                        },
                                 changeTime.toInstant(), rowId, rsId);
                     }
                     else {
@@ -325,6 +314,19 @@ class LogMinerQueryResultProcessor {
             return true;
         }
         return false;
+    }
+
+    private Table getTableForDmlEvent(TableId tableId) throws SQLException {
+        Table table = schema.tableFor(tableId);
+        if (table == null) {
+            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId);
+            }
+            else {
+                LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
+            }
+        }
+        return table;
     }
 
     private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId) throws SQLException {
