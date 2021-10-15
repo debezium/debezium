@@ -6,7 +6,7 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
@@ -74,7 +74,8 @@ public class Timestamp {
             dateTime = dateTime.with(adjuster);
         }
 
-        return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        // return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        return dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(); // bugfix:snapshot produce error results or different results from binlog
     }
 
     private Timestamp() {
