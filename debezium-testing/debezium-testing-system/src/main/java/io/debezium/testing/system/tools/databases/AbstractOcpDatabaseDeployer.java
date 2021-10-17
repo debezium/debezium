@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.system.tools.databases;
 
+import static java.util.Collections.emptyList;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.YAML;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -30,6 +33,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
     private final OpenShiftClient ocp;
     private final OpenShiftUtils ocpUtils;
     private final String project;
+    private final List<Secret> pullSecrets;
     private Deployment deployment;
     private List<Service> services;
 
@@ -37,16 +41,31 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
                                        String project,
                                        Deployment deployment,
                                        List<Service> services,
+                                       List<Secret> pullSecrets,
                                        OpenShiftClient ocp) {
         this.ocp = ocp;
         this.ocpUtils = new OpenShiftUtils(ocp);
         this.project = project;
         this.deployment = deployment;
         this.services = services;
+        this.pullSecrets = pullSecrets;
+    }
+
+    public AbstractOcpDatabaseDeployer(
+                                       String project,
+                                       Deployment deployment,
+                                       List<Service> services,
+                                       OpenShiftClient ocp) {
+        this(project, deployment, services, emptyList(), ocp);
     }
 
     @Override
     public T deploy() {
+        LOGGER.info("Deploying pull secrets");
+        pullSecrets.stream()
+                .map(s -> ocp.secrets().inNamespace(project).createOrReplace(s))
+                .forEach(s -> ocpUtils.linkPullSecret(project, "default", s));
+
         LOGGER.info("Deploying database");
         deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
 
@@ -71,6 +90,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
         protected Deployment deployment;
         protected List<Service> services;
         protected OpenShiftClient ocpClient;
+        protected List<Secret> pullSecrets;
 
         public B withProject(String project) {
             this.project = project;
@@ -96,6 +116,13 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
         public B withServices(Collection<Service> services) {
             this.services = new ArrayList<>(services);
+            return self();
+        }
+
+        public B withPullSecrets(String... paths) {
+            this.pullSecrets = Arrays.stream(paths)
+                    .map(yamlPath -> YAML.from(yamlPath, Secret.class))
+                    .collect(Collectors.toList());
             return self();
         }
     }
