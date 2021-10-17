@@ -33,7 +33,8 @@ public class PostgresTestResourceLifecycleManager implements QuarkusTestResource
             .withEnv("POSTGRES_DB", POSTGRES_DBNAME)
             .withEnv("POSTGRES_INITDB_ARGS", "-E UTF8")
             .withEnv("LANG", "en_US.utf8")
-            .withStartupTimeout(Duration.ofSeconds(30));
+            .withStartupTimeout(Duration.ofSeconds(30))
+            .withExposedPorts(POSTGRES_PORT);
 
     @Override
     public Map<String, String> start() {
