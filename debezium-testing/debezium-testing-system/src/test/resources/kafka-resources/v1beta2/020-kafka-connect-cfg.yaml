@@ -13,6 +13,9 @@ data:
     # Disable excessive reflection warnings - KAFKA-5229
     log4j.logger.org.reflections=ERROR
 
+    # Debezium logging
+    log4j.logger.io.debezium=${strimzi.kc.log.level.dbz}
+
     log4j.appender.stdout=org.apache.log4j.ConsoleAppender
     log4j.appender.stdout.threshold=DEBUG
     log4j.appender.stdout.layout=org.apache.log4j.PatternLayout

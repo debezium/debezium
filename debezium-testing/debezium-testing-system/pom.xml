@@ -56,6 +56,7 @@
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
     <strimzi.crd.version>v1beta2</strimzi.crd.version>
     <strimzi.kc.build>true</strimzi.kc.build>
+    <strimzi.kc.log.level.dbz>DEBUG</strimzi.kc.log.level.dbz>
 
     <!--Apicurio configuration-->
     <apicurio.log.level>INFO</apicurio.log.level>
@@ -664,6 +665,7 @@
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
                 <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
                 <test.strimzi.kc.build>${strimzi.kc.build}</test.strimzi.kc.build>
+                <test.strimzi.kc.log.level.dbz>${strimzi.kc.log.level.dbz}</test.strimzi.kc.log.level.dbz>
 
                 <!--Apicurio configuration-->
                 <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
