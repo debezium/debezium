@@ -35,7 +35,7 @@ public class OcpDB2Deployer extends AbstractOcpDatabaseDeployer<OcpDB2Controller
         return new OcpDB2Controller(deployment, services, ocp);
     }
 
-    public static class Deployer extends DatabaseBuilder<OcpDB2Deployer.Deployer, OcpDB2Deployer> {
+    public static class Builder extends DatabaseBuilder<Builder, OcpDB2Deployer> {
         @Override
         public OcpDB2Deployer build() {
             return new OcpDB2Deployer(
