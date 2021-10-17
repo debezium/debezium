@@ -84,4 +84,9 @@ public class RestPrometheusMetricReader implements ConnectorMetricsReader {
         waitForSnapshot(connectorName, "debezium_db2_server_connector_metrics_snapshotcompleted");
     }
 
+    @Override
+    public void waitForOracleSnapshot(String connectorName) {
+        waitForSnapshot(connectorName, "debezium_oracle_connector_metrics_snapshotcompleted");
+    }
+
 }

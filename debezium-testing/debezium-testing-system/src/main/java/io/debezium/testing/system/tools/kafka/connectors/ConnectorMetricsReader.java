@@ -41,4 +41,11 @@ public interface ConnectorMetricsReader {
      * @param connectorName connector name
      */
     void waitForDB2Snapshot(String connectorName);
+
+    /**
+     * Waits until snapshot phase of given Oracle connector completes
+     *
+     * @param connectorName connector name
+     */
+    void waitForOracleSnapshot(String connectorName);
 }
