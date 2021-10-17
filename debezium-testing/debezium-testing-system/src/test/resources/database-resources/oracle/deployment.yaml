@@ -1,0 +1,43 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: oracle
+  labels:
+    app: oracle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oracle
+      deployment: oracle
+  template:
+    metadata:
+      labels:
+        app: oracle
+        deployment: oracle
+    spec:
+      containers:
+        - resources: {}
+          name: oracle
+          ports:
+            - containerPort: 1521
+              protocol: TCP
+          imagePullPolicy: Always
+          livenessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 1521
+            timeoutSeconds: 300
+          readinessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 1521
+            timeoutSeconds: 300
+          terminationMessagePolicy: File
+          terminationMessagePath: /dev/termination-log
+          image: ${ocp.image.oracle}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate
