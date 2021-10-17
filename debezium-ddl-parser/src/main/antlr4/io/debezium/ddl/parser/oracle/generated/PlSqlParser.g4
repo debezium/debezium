@@ -2115,6 +2115,7 @@ segment_attributes_clause
       // Added to support an unusual, undocumented syntax with Oracle 19
       | table_compression
       | logging_clause
+      | inmemory_table_clause
       )+
     ;
 
