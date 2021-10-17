@@ -19,7 +19,7 @@ public interface OcpDB2 extends TestSetupFixture, SqlDatabaseFixture, OcpClient 
 
     default void setupDatabase() throws Exception {
         Class.forName("com.ibm.db2.jcc.DB2Driver");
-        OcpDB2Deployer deployer = new OcpDB2Deployer.Deployer()
+        OcpDB2Deployer deployer = new OcpDB2Deployer.Builder()
                 .withOcpClient(getOcpClient())
                 .withProject(ConfigProperties.OCP_PROJECT_DB2)
                 .withDeployment(DB_DEPLOYMENT_PATH)
