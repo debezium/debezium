@@ -34,9 +34,9 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.stream.Stream;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
