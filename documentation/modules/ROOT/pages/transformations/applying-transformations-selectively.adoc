@@ -122,7 +122,7 @@ For example:
 +
 [source,options="nowrap" subs="+quotes"]
 ----
-predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
+predicates.IsOutboxTable.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
 ----
 .. For the TopicNameMatch or `HasHeaderKey` predicates, specify a regular expression for the topic or header name that you want to match.
 +
@@ -157,7 +157,7 @@ transforms=outbox
 transforms.outbox.predicate=IsOutboxTable
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 predicates=IsOutboxTable
-predicates.IsOutboxTable.type=org.apache.kafka.connect.predicates.TopicNameMatch
+predicates.IsOutboxTable.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
 predicates.IsOutboxTable.pattern=outbox.event.*
 
 ----
