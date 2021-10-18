@@ -8,7 +8,6 @@ package io.debezium.connector.mysql;
 import java.io.UnsupportedEncodingException;
 import java.sql.Blob;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Calendar;
 
@@ -40,10 +39,6 @@ public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
         }
         else if (b.length() == 0) {
             LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
-            final ResultSetMetaData metadata = rs.getMetaData();
-            for (int i = 1; i <= metadata.getColumnCount(); ++i) {
-                LOGGER.warn("Column '{}' value is '{}'", metadata.getColumnName(i), rs.getObject(i));
-            }
             return null;
         }
 
@@ -88,10 +83,6 @@ public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
         }
         else if (b.length() == 0) {
             LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
-            final ResultSetMetaData metadata = rs.getMetaData();
-            for (int i = 1; i <= metadata.getColumnCount(); ++i) {
-                LOGGER.warn("Column '{}' value is '{}'", metadata.getCatalogName(i), rs.getObject(i));
-            }
             return null;
         }
 
