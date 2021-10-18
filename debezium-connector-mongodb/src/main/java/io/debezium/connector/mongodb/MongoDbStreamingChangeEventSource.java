@@ -346,6 +346,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             replicaSet.replicaSetName(),
                             event.getNamespace().getDatabaseName(),
                             event.getNamespace().getCollectionName());
+
                     if (taskContext.filters().collectionFilter().test(collectionId)) {
                         try {
                             dispatcher.dispatchDataChangeEvent(
@@ -360,6 +361,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             errorHandler.setProducerThrowable(e);
                             return;
                         }
+                    }
+
+                    try {
+                        dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
+                    }
+                    catch (InterruptedException e) {
+                        LOGGER.info("Replicator thread is interrupted");
+                        Thread.currentThread().interrupt();
+                        return;
                     }
                 }
                 else {
