@@ -398,10 +398,10 @@ public class OracleConnection extends JdbcConnection {
                 sleeper.pause();
             }
             // retry attempts exhausted, throw exception
-            throw new DebeziumException("Could not obtain maximum archive log scn.");
+            throw new DebeziumException("Could not obtain maximum archive log SCN.");
         }
         catch (InterruptedException e) {
-            throw new DebeziumException("Failed to obtain maximum archive log scn.", e);
+            throw new DebeziumException("Failed to obtain maximum archive log SCN.", e);
         }
     }
 
