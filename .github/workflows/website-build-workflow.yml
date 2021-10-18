@@ -17,3 +17,4 @@ jobs:
           token: ${{ secrets.PUBLISH_GH_TOKEN}}
           repository: debezium/debezium.github.io
           event-type: documentation-update-event
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
