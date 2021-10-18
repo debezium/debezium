@@ -113,10 +113,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
 
-                checkTableColumnNameLengths(schema);
-
                 setNlsSessionParameters(jdbcConnection);
-                checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName(), schema);
+                checkDatabaseAndTableState(jdbcConnection, connectorConfig.getPdbName(), schema);
 
                 try (LogMinerEventProcessor processor = createProcessor(context, partition, offsetContext)) {
 
@@ -493,14 +491,17 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     /**
-     * Validates the supplemental logging configuration for the source database and its captured tables.
+     * Checks and validates the database's supplemental logging configuration as well as the lengths of the
+     * table and column names that are part of the database schema.
      *
      * @param connection database connection, should not be {@code null}
      * @param pdbName pluggable database name, can be {@code null} when not using pluggable databases
      * @param schema connector's database schema, should not be {@code null}
      * @throws SQLException if a database exception occurred
      */
-    private void checkSupplementalLogging(OracleConnection connection, String pdbName, OracleDatabaseSchema schema) throws SQLException {
+    private void checkDatabaseAndTableState(OracleConnection connection, String pdbName, OracleDatabaseSchema schema) throws SQLException {
+        final Instant start = Instant.now();
+        LOGGER.trace("Checking database and table state, this may take time depending on the size of your schema.");
         try {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
@@ -521,6 +522,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 + "Use: ALTER TABLE " + tableId.schema() + "." + tableId.table()
                                 + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
                     }
+                    checkTableColumnNameLengths(schema.tableFor(tableId));
+                }
+            }
+            else {
+                // ALL supplemental logging is enabled, now check table/column lengths
+                for (TableId tableId : schema.getTables().tableIds()) {
+                    checkTableColumnNameLengths(schema.tableFor(tableId));
                 }
             }
         }
@@ -529,26 +537,23 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 connection.resetSessionToCdb();
             }
         }
+        LOGGER.trace("Database and table state check finished after {} ms", Duration.between(start, Instant.now()).toMillis());
     }
 
     /**
-     * Examines the table and column names for all tables that are to be captured by the connector
-     * and logs a warning if any name exceeds {@link #MAXIMUM_NAME_LENGTH}.
+     * Examines the table and column names and logs a warning if any name exceeds {@link #MAXIMUM_NAME_LENGTH}.
      *
-     * @param schema the database schema, should not be {@code null}
+     * @param table the table, should not be {@code null}
      */
-    private void checkTableColumnNameLengths(OracleDatabaseSchema schema) {
-        for (TableId tableId : schema.tableIds()) {
-            final Table table = schema.tableFor(tableId);
-            if (table.id().table().length() > MAXIMUM_NAME_LENGTH) {
-                LOGGER.warn("Table '{}' won't be captured by Oracle LogMiner because its name exceeds {} characters.",
-                        table.id().table(), MAXIMUM_NAME_LENGTH);
-            }
-            for (Column column : table.columns()) {
-                if (column.name().length() > MAXIMUM_NAME_LENGTH) {
-                    LOGGER.warn("Table '{}' won't be captured by Oracle LogMiner because column '{}' exceeds {} characters.",
-                            table.id().table(), column.name(), MAXIMUM_NAME_LENGTH);
-                }
+    private void checkTableColumnNameLengths(Table table) {
+        if (table.id().table().length() > MAXIMUM_NAME_LENGTH) {
+            LOGGER.warn("Table '{}' won't be captured by Oracle LogMiner because its name exceeds {} characters.",
+                    table.id().table(), MAXIMUM_NAME_LENGTH);
+        }
+        for (Column column : table.columns()) {
+            if (column.name().length() > MAXIMUM_NAME_LENGTH) {
+                LOGGER.warn("Table '{}' won't be captured by Oracle LogMiner because column '{}' exceeds {} characters.",
+                        table.id().table(), column.name(), MAXIMUM_NAME_LENGTH);
             }
         }
     }
