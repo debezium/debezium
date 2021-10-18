@@ -69,12 +69,19 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         }
 
         CloudEventsConverterTest.shouldConvertToCloudEventsInJson(deleteRecord, false);
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(deleteRecord, "filter", false);
+        if (TestHelper.isOplogCaptureMode()) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(deleteRecord, "filter", false);
+        }
         CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(deleteRecord, "mongodb", "mongo1", false);
 
         CloudEventsConverterTest.shouldConvertToCloudEventsInJson(updateRecord, false);
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(updateRecord, "filter", false);
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(updateRecord, "patch", false);
+        if (TestHelper.isOplogCaptureMode()) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(updateRecord, "filter", false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(updateRecord, "patch", false);
+        }
+        else {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(updateRecord, "after", false);
+        }
         CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(updateRecord, "mongodb", "mongo1", false);
 
         stopConnector();
