@@ -264,6 +264,21 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
+     * Start the connector using the supplied connector configuration, where upon completion the status of the connector is
+     * logged. Records arriving after connector stop must not be ignored.
+     *
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the configuration for the connector; may not be null
+     * @param isStopRecord the function that will be called to determine if the connector should be stopped before processing
+     *            this record; may be null if not needed
+     */
+    protected void startAndConsumeTillEnd(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
+                         Predicate<SourceRecord> isStopRecord) {
+        start(connectorClass, connectorConfig, loggingCompletion(), isStopRecord, x -> {
+        }, false);
+    }
+
+    /**
      * Start the connector using the supplied connector configuration.
      *
      * @param connectorClass the connector class; may not be null

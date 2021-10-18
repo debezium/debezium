@@ -10,9 +10,12 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
+import org.bson.types.ObjectId;
+import org.fest.assertions.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,5 +107,12 @@ public class TestHelper {
 
     public static final boolean isOplogCaptureMode() {
         return "oplog".equals(captureMode());
+    }
+
+    public static void assertChangeStreamUpdate(ObjectId oid, Struct value, String after, List<String> removedFields,
+            String updatedFields) {
+        Assertions.assertThat(value.getString("after")).isEqualTo(after.replace("<OID>", oid.toHexString()));
+        Assertions.assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
+        Assertions.assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
     }
 }
