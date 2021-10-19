@@ -34,7 +34,7 @@ public class Transaction {
     private int numberOfEvents;
 
     @VisibleForMarshalling
-    public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, String userName, Integer numberOfEvents) {
+    public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, String userName, int numberOfEvents) {
         this.transactionId = transactionId;
         this.startScn = startScn;
         this.changeTime = changeTime;
