@@ -146,7 +146,7 @@ public class TestHelper {
         // all tests must use a separate database...
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
-            dropTestDatabase(connection);
+            dropTestDatabase(connection, TEST_DATABASE);
             String sql = String.format("CREATE DATABASE [%s]\n", TEST_DATABASE);
             connection.execute(sql);
             connection.execute(String.format("USE [%s]", TEST_DATABASE));
@@ -165,7 +165,7 @@ public class TestHelper {
         // all tests must use a separate database...
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
-            dropTestDatabase(connection);
+            dropTestDatabase(connection, databaseName);
             String sql = String.format("CREATE DATABASE [%s]\n", databaseName);
             connection.execute(sql);
             connection.execute(String.format("USE [%s]", databaseName));
@@ -182,25 +182,25 @@ public class TestHelper {
     public static void dropTestDatabase() {
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
-            dropTestDatabase(connection);
+            dropTestDatabase(connection, TEST_DATABASE);
         }
         catch (SQLException e) {
             throw new IllegalStateException("Error while dropping test database", e);
         }
     }
 
-    private static void dropTestDatabase(SqlServerConnection connection) throws SQLException {
+    private static void dropTestDatabase(SqlServerConnection connection, String databaseName) throws SQLException {
         try {
             Awaitility.await("Disabling CDC").atMost(60, TimeUnit.SECONDS).until(() -> {
                 try {
-                    connection.execute(String.format("USE [%s]", TEST_DATABASE));
+                    connection.execute(String.format("USE [%s]", databaseName));
                 }
                 catch (SQLException e) {
                     // if the database doesn't yet exist, there is no need to disable CDC
                     return true;
                 }
                 try {
-                    disableDbCdc(connection, TEST_DATABASE);
+                    disableDbCdc(connection, databaseName);
                     return true;
                 }
                 catch (SQLException e) {
@@ -209,22 +209,22 @@ public class TestHelper {
             });
         }
         catch (ConditionTimeoutException e) {
-            throw new IllegalArgumentException(String.format("Failed to disable CDC on %s", TEST_DATABASE), e);
+            throw new IllegalArgumentException(String.format("Failed to disable CDC on %s", databaseName), e);
         }
 
         connection.execute("USE master");
 
         try {
-            Awaitility.await(String.format("Dropping database %s", TEST_DATABASE)).atMost(60, TimeUnit.SECONDS).until(() -> {
+            Awaitility.await(String.format("Dropping database %s", databaseName)).atMost(60, TimeUnit.SECONDS).until(() -> {
                 try {
-                    String sql = String.format("IF EXISTS(select 1 from sys.databases where name = '%s') DROP DATABASE [%s]", TEST_DATABASE, TEST_DATABASE);
+                    String sql = String.format("IF EXISTS(select 1 from sys.databases where name = '%s') DROP DATABASE [%s]", databaseName, databaseName);
                     connection.execute(sql);
                     return true;
                 }
                 catch (SQLException e) {
-                    LOGGER.warn(String.format("DROP DATABASE %s failed (will be retried): {}", TEST_DATABASE), e.getMessage());
+                    LOGGER.warn(String.format("DROP DATABASE %s failed (will be retried): {}", databaseName), e.getMessage());
                     try {
-                        connection.execute(String.format("ALTER DATABASE [%s] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;", TEST_DATABASE));
+                        connection.execute(String.format("ALTER DATABASE [%s] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;", databaseName));
                     }
                     catch (SQLException e2) {
                         LOGGER.error("Failed to rollback immediately", e2);
