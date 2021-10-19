@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.sql.Blob;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Calendar;
 
@@ -41,10 +40,6 @@ public class MysqlBinaryProtocolFieldReader extends AbstractMysqlFieldReader {
         }
         else if (b.length() == 0) {
             LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
-            final ResultSetMetaData metadata = rs.getMetaData();
-            for (int i = 1; i <= metadata.getColumnCount(); ++i) {
-                LOGGER.warn("Column '{}' value is '{}'", metadata.getColumnName(i), rs.getObject(i));
-            }
             return null;
         }
 
@@ -95,6 +90,11 @@ public class MysqlBinaryProtocolFieldReader extends AbstractMysqlFieldReader {
         if (b == null) {
             return null; // Don't continue parsing timestamp field if it is null
         }
+        else if (b.length() == 0) {
+            LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
+            return null;
+        }
+
         // if hour, minutes, seconds and micro_seconds are all 0, length is 4; if micro_seconds is 0, length is 7; otherwise length is 11
         if (b.length() != NativeConstants.BIN_LEN_DATE && b.length() != NativeConstants.BIN_LEN_TIMESTAMP_NO_FRAC
                 && b.length() != NativeConstants.BIN_LEN_TIMESTAMP_WITH_MICROS) {
