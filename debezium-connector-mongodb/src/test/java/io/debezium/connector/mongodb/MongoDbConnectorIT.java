@@ -1522,8 +1522,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                     value,
                     "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Sally\"}",
                     null,
-                    "{\"name\": \"Sally\"}"
-            );
+                    "{\"name\": \"Sally\"}");
         }
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
@@ -2028,8 +2027,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                     value,
                     "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Sally\"}",
                     null,
-                    "{\"name\": \"Sally\"}"
-            );
+                    "{\"name\": \"Sally\"}");
         }
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());

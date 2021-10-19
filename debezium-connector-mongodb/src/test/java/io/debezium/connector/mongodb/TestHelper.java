@@ -110,8 +110,18 @@ public class TestHelper {
     }
 
     public static void assertChangeStreamUpdate(ObjectId oid, Struct value, String after, List<String> removedFields,
-            String updatedFields) {
+                                                String updatedFields) {
         Assertions.assertThat(value.getString("after")).isEqualTo(after.replace("<OID>", oid.toHexString()));
+        Assertions.assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
+        Assertions.assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
+    }
+
+    public static void assertChangeStreamUpdateAsDocs(ObjectId oid, Struct value, String after,
+                                                      List<String> removedFields, String updatedFields) {
+        Document expectedAfter = TestHelper.getDocumentWithoutLanguageVersion(after.replace("<OID>", oid.toHexString()));
+        Document actualAfter = TestHelper
+                .getDocumentWithoutLanguageVersion(value.getString("after"));
+        Assertions.assertThat(actualAfter).isEqualTo(expectedAfter);
         Assertions.assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
         Assertions.assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
     }

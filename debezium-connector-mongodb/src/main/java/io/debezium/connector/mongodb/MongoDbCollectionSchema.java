@@ -132,7 +132,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
 
                 final BsonDocument updatedFields = document.getUpdateDescription().getUpdatedFields();
                 if (updatedFields != null) {
-                    updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, fieldFilter.apply(updatedFields).toJson());
+                    updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, fieldFilter.applyChange(updatedFields).toJson());
                 }
 
                 // TODO Test filters for truncated arrays
