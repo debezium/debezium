@@ -779,7 +779,7 @@ Other data type mappings are described in the following sections.
 If present, a column's default value will be propagated to the corresponding field's Kafka Connect schema.
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
-Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.advoc[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.adoc[using Avro] as serialization format together with the Confluent schema registry.
 
 [[temporal-values]]
 ==== Temporal values
