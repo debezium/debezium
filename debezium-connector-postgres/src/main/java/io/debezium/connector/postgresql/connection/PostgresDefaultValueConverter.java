@@ -8,12 +8,11 @@ package io.debezium.connector.postgresql.connection;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +30,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.util.Collect;
 
 /**
  * Parses and converts column default values.
@@ -42,10 +42,9 @@ class PostgresDefaultValueConverter {
 
     private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'(.*?)'");
     private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_]+\\((?:.+(?:, ?.+)*)?\\)");
-    private static final List<String> TRIM_DATA_TYPES = Collections
-            .unmodifiableList(Arrays.asList("bit", "varbit", "bool", "numeric", "float4", "float8", "int2",
-                    "int4", "serial", "int8", "bigserial", "smallserial", "uuid", "date", "time", "timestamp",
-                    "timestamptz", "interval"));
+    private static final Set<String> TRIM_DATA_TYPES = Collect.unmodifiableSet("bit", "varbit", "bool", "numeric",
+            "float4", "float8", "int2", "int4", "serial", "int8", "bigserial", "smallserial", "uuid", "date", "time",
+            "timestamp", "timestamptz", "interval");
 
     /**
      * Converts JDBC string representation of a default column value to an object.
