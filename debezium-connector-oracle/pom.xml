@@ -317,11 +317,26 @@
                 </dependency>
             </dependencies>
         </profile>
+        <!-- This profile should be used for testing connector with Infinispan only -->
         <profile>
             <id>infinispan-buffer</id>
             <properties>
                 <log.mining.buffer.type.name>infinispan</log.mining.buffer.type.name>
             </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <excludes>
+                                <!-- When compiling with this profile, xstream is not added by default -->
+                                <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>
