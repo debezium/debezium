@@ -227,6 +227,10 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             getTransactionCache().put(transactionId, newTransaction);
             metrics.setActiveTransactions(getTransactionCache().size());
         }
+        else if (transaction != null && !isRecentlyCommitted(transactionId)) {
+            LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
+            transaction.started();
+        }
     }
 
     /**
@@ -297,16 +301,18 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             return;
         }
 
-        final LogMinerDmlEntry dmlEntry = selectLobParser.parse(row.getRedoSql(), table);
-        dmlEntry.setObjectName(row.getTableName());
-        dmlEntry.setObjectOwner(row.getTablespaceName());
-
         addToTransaction(row.getTransactionId(),
                 row,
-                () -> new SelectLobLocatorEvent(row,
-                        dmlEntry,
-                        selectLobParser.getColumnName(),
-                        selectLobParser.isBinary()));
+                () -> {
+                    final LogMinerDmlEntry dmlEntry = selectLobParser.parse(row.getRedoSql(), table);
+                    dmlEntry.setObjectName(row.getTableName());
+                    dmlEntry.setObjectOwner(row.getTablespaceName());
+
+                    return new SelectLobLocatorEvent(row,
+                            dmlEntry,
+                            selectLobParser.getColumnName(),
+                            selectLobParser.isBinary());
+                });
 
         metrics.incrementRegisteredDmlCount();
     }
@@ -331,8 +337,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         }
 
         if (row.getRedoSql() != null) {
-            final String lobWriteSql = parseLobWriteSql(row.getRedoSql());
-            addToTransaction(row.getTransactionId(), row, () -> new LobWriteEvent(row, lobWriteSql));
+            addToTransaction(row.getTransactionId(), row, () -> new LobWriteEvent(row, parseLobWriteSql(row.getRedoSql())));
         }
     }
 
@@ -386,13 +391,9 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
                 break;
         }
 
-        final TableId tableId = row.getTableId();
-        Table table = getSchema().tableFor(tableId);
+        final Table table = getTableForDataEvent(row);
         if (table == null) {
-            if (!getConfig().getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                return;
-            }
-            table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId, offsetContext, dispatcher);
+            return;
         }
 
         if (row.isRollbackFlag()) {
@@ -411,11 +412,12 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             return;
         }
 
-        final LogMinerDmlEntry dmlEntry = parseDmlStatement(row.getRedoSql(), table, row.getTransactionId());
-        dmlEntry.setObjectName(row.getTableName());
-        dmlEntry.setObjectOwner(row.getTablespaceName());
-
-        addToTransaction(row.getTransactionId(), row, () -> new DmlEvent(row, dmlEntry));
+        addToTransaction(row.getTransactionId(), row, () -> {
+            final LogMinerDmlEntry dmlEntry = parseDmlStatement(row.getRedoSql(), table, row.getTransactionId());
+            dmlEntry.setObjectName(row.getTableName());
+            dmlEntry.setObjectOwner(row.getTablespaceName());
+            return new DmlEvent(row, dmlEntry);
+        });
 
         metrics.incrementRegisteredDmlCount();
     }
@@ -445,6 +447,18 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
                 counters.stuckCount = 0;
             }
         }
+    }
+
+    private Table getTableForDataEvent(LogMinerEventRow row) throws SQLException, InterruptedException {
+        final TableId tableId = row.getTableId();
+        Table table = getSchema().tableFor(tableId);
+        if (table == null) {
+            if (!getConfig().getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                return null;
+            }
+            table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId, offsetContext, dispatcher);
+        }
+        return table;
     }
 
     /**
@@ -480,18 +494,15 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
                 getTransactionCache().put(transactionId, transaction);
             }
 
-            // The event will only be registered with the transaction if the computed hash value
-            // does not already exist and is not 0. This is necessary to handle overlapping
-            // mining sessions when LOB support is enabled.
-            if (row.getHash() == 0L || !transaction.getHashes().contains(row.getHash())) {
-                if (row.getHash() != 0L) {
-                    transaction.getHashes().add(row.getHash());
-                }
-                LOGGER.trace("Adding {} to transaction {} for table '{}'.", row.getOperation(), transactionId, row.getTableId());
+            int eventId = transaction.getNextEventId();
+            if (transaction.getEvents().size() <= eventId) {
+                // Add new event at eventId offset
+                LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
                 transaction.getEvents().add(eventSupplier.get());
-                metrics.setActiveTransactions(getTransactionCache().size());
                 metrics.calculateLagMetrics(row.getChangeTime());
             }
+
+            metrics.setActiveTransactions(getTransactionCache().size());
         }
     }
 

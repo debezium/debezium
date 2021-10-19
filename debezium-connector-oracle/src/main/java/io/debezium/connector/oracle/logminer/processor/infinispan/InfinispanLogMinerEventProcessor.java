@@ -366,17 +366,16 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
                 LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
                 transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime(), row.getUserName());
             }
-            if (row.getHash() == 0L || !transaction.getHashes().contains(row.getHash())) {
-                LOGGER.trace("Adding {} to transaction {} for table '{}'", row.getOperation(), transactionId, row.getTableId());
-                if (row.getHash() != 0L) {
-                    transaction.getHashes().add(row.getHash());
-                }
+            int eventId = transaction.getNextEventId();
+            if (transaction.getEvents().size() <= eventId) {
+                // Add new event at eventId offset
+                LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
                 transaction.getEvents().add(eventSupplier.get());
+                metrics.calculateLagMetrics(row.getChangeTime());
             }
             // When using Infinispan, this extra put is required so that the state is properly synchronized
             getTransactionCache().put(transactionId, transaction);
             metrics.setActiveTransactions(getTransactionCache().size());
-            metrics.calculateLagMetrics(row.getChangeTime());
         }
     }
 
