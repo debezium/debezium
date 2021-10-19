@@ -343,7 +343,6 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         Mockito.when(row.getEventType()).thenReturn(EventType.INSERT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(scn);
-        Mockito.when(row.getHash()).thenReturn(1L);
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         Mockito.when(row.getRowId()).thenReturn("1234567890");
         Mockito.when(row.getOperation()).thenReturn("INSERT");

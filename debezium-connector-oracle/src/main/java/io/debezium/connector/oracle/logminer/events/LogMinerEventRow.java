@@ -45,7 +45,6 @@ public class LogMinerEventRow {
     private static final int ROW_ID = 11;
     private static final int ROLLBACK_FLAG = 12;
     private static final int RS_ID = 13;
-    private static final int HASH = 14;
 
     private Scn scn;
     private TableId tableId;
@@ -59,7 +58,6 @@ public class LogMinerEventRow {
     private String rowId;
     private boolean rollbackFlag;
     private String rsId;
-    private long hash;
     private String redoSql;
 
     public Scn getScn() {
@@ -110,10 +108,6 @@ public class LogMinerEventRow {
         return rsId;
     }
 
-    public long getHash() {
-        return hash;
-    }
-
     public String getRedoSql() {
         return redoSql;
     }
@@ -158,7 +152,6 @@ public class LogMinerEventRow {
         this.rowId = resultSet.getString(ROW_ID);
         this.rollbackFlag = resultSet.getInt(ROLLBACK_FLAG) == 1;
         this.rsId = resultSet.getString(RS_ID);
-        this.hash = resultSet.getLong(HASH);
         this.redoSql = getSqlRedo(resultSet);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
@@ -227,7 +220,6 @@ public class LogMinerEventRow {
                 ", rowId='" + rowId + '\'' +
                 ", rollbackFlag=" + rollbackFlag +
                 ", rsId=" + rsId +
-                ", hash=" + hash +
                 ", redoSql='" + redoSql + '\'' +
                 '}';
     }
