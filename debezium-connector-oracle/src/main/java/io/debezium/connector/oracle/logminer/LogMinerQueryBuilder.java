@@ -20,11 +20,6 @@ import io.debezium.util.Strings;
  */
 public class LogMinerQueryBuilder {
 
-    /**
-     * This represents a hash function generated for each row in the query that is meant to provide a
-     * unique hash value for each row within the scope of a transaction.
-     */
-    private static final String ROW_HASH = "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256)))";
     private static final String LOGMNR_CONTENTS_VIEW = "V$LOGMNR_CONTENTS";
 
     /**
@@ -59,7 +54,7 @@ public class LogMinerQueryBuilder {
     public static String build(OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema, String userName) {
         final StringBuilder query = new StringBuilder(1024);
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ");
-        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, ").append(getRowHash()).append(" ");
+        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
 
         // These bind parameters will be bound when the query is executed by the caller.
@@ -130,16 +125,6 @@ public class LogMinerQueryBuilder {
         query.append("))");
 
         return query.toString();
-    }
-
-    /**
-     * Produces a hash of several columns in {@code V$LOGMNR_CONTENTS} to generate a unique identifier
-     * that can be used to recognize individual rows within the scope of a transaction.
-     *
-     * @return the row hashing function
-     */
-    private static String getRowHash() {
-        return ROW_HASH;
     }
 
     /**
