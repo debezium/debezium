@@ -142,22 +142,7 @@ public class TestHelper {
     }
 
     public static void createTestDatabase() {
-        // NOTE: you cannot enable CDC for the "master" db (the default one) so
-        // all tests must use a separate database...
-        try (SqlServerConnection connection = adminConnection()) {
-            connection.connect();
-            dropTestDatabase(connection, TEST_DATABASE);
-            String sql = String.format("CREATE DATABASE [%s]\n", TEST_DATABASE);
-            connection.execute(sql);
-            connection.execute(String.format("USE [%s]", TEST_DATABASE));
-            connection.execute(String.format("ALTER DATABASE [%s] SET ALLOW_SNAPSHOT_ISOLATION ON", TEST_DATABASE));
-            // NOTE: you cannot enable CDC on master
-            enableDbCdc(connection, TEST_DATABASE);
-        }
-        catch (SQLException e) {
-            LOGGER.error("Error while initiating test database", e);
-            throw new IllegalStateException("Error while initiating test database", e);
-        }
+        createTestDatabase(TEST_DATABASE);
     }
 
     public static void createTestDatabase(String databaseName) {
@@ -245,14 +230,7 @@ public class TestHelper {
     }
 
     public static SqlServerConnection testConnection() {
-        Configuration config = defaultJdbcConfig()
-                .edit()
-                .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + TEST_DATABASE + "]")
-                .build();
-
-        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
-                Collections.emptySet(), true);
+        return testConnection(TEST_DATABASE);
     }
 
     public static SqlServerConnection testConnection(String databaseName) {
@@ -428,16 +406,7 @@ public class TestHelper {
     }
 
     public static void waitForMaxLsnAvailable(SqlServerConnection connection) throws Exception {
-        try {
-            Awaitility.await("Max LSN not available")
-                    .atMost(60, TimeUnit.SECONDS)
-                    .pollDelay(Duration.ofSeconds(0))
-                    .pollInterval(Duration.ofMillis(100))
-                    .until(() -> connection.getMaxLsn(TEST_DATABASE).isAvailable());
-        }
-        catch (ConditionTimeoutException e) {
-            throw new IllegalArgumentException("A max LSN was not available", e);
-        }
+        waitForMaxLsnAvailable(connection, TEST_DATABASE);
     }
 
     public static void waitForMaxLsnAvailable(SqlServerConnection connection, String databaseName) throws Exception {
