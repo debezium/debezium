@@ -56,8 +56,7 @@ public class LogMinerQueryBuilderTest {
      * {@code database.history.store.only.captured.tables.ddl} is {@code false}.
      */
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE1 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
-            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, " +
-            "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
+            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
             "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
             "AND ((" +
@@ -78,8 +77,7 @@ public class LogMinerQueryBuilderTest {
      * {@code database.history.store.only.captured.tables.ddl} is {@code true}.
      */
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE2 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
-            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, " +
-            "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
+            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
             "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
             "AND ((" +

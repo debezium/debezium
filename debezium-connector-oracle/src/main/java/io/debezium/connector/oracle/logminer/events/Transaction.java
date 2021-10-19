@@ -7,10 +7,8 @@ package io.debezium.connector.oracle.logminer.events;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,23 +25,23 @@ public class Transaction {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Transaction.class);
 
-    private String transactionId;
-    private Scn startScn;
-    private Instant changeTime;
-    private List<LogMinerEvent> events;
-    private Set<Long> hashes;
+    private final String transactionId;
+    private final Scn startScn;
+    private final Instant changeTime;
+    private final List<LogMinerEvent> events;
+    private int numberOfEvents;
 
     @VisibleForMarshalling
-    public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, Set<Long> hashes) {
+    public Transaction(String transactionId, Scn startScn, Instant changeTime, List<LogMinerEvent> events, int numberOfEvents) {
         this.transactionId = transactionId;
         this.startScn = startScn;
         this.changeTime = changeTime;
         this.events = events;
-        this.hashes = hashes;
+        this.numberOfEvents = numberOfEvents;
     }
 
     public Transaction(String transactionId, Scn startScn, Instant changeTime) {
-        this(transactionId, startScn, changeTime, new ArrayList<>(), new HashSet<>());
+        this(transactionId, startScn, changeTime, new ArrayList<>(), 0);
     }
 
     public String getTransactionId() {
@@ -62,8 +60,19 @@ public class Transaction {
         return events;
     }
 
-    public Set<Long> getHashes() {
-        return hashes;
+    public int getNumberOfEvents() {
+        return numberOfEvents;
+    }
+
+    public int getNextEventId() {
+        return numberOfEvents++;
+    }
+
+    /**
+     * Should be called when a transaction start is detected.
+     */
+    public void started() {
+        numberOfEvents = 0;
     }
 
     /**
@@ -103,6 +112,7 @@ public class Transaction {
         return "Transaction{" +
                 "transactionId='" + transactionId + '\'' +
                 ", startScn=" + startScn +
-                '}';
+                ", numberOfEvents=" + numberOfEvents +
+                "'}";
     }
 }
