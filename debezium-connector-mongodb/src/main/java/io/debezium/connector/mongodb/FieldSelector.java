@@ -55,6 +55,14 @@ public final class FieldSelector {
         BsonDocument apply(BsonDocument doc);
 
         /**
+        * Applies this filter to the given change document to exclude or rename fields.
+        *
+        * @param doc document to exclude or rename fields
+        * @return modified document
+        */
+        BsonDocument applyChange(BsonDocument doc);
+
+        /**
         * Applies this filter to the full name of field to exclude or rename field.
         *
         * @param field the original name of field
@@ -136,7 +144,7 @@ public final class FieldSelector {
             }
         }
 
-        private String[] parseIntoParts(String name, String value, Predicate<Integer> lengthPredicate, Pattern delimiterPattern) {
+        static String[] parseIntoParts(String name, String value, Predicate<Integer> lengthPredicate, Pattern delimiterPattern) {
             String[] nodes = delimiterPattern.split(value.trim());
             if (lengthPredicate.test(nodes.length) || Arrays.stream(nodes).anyMatch(Strings::isNullOrEmpty)) {
                 throw new ConfigException("Invalid format: " + name);
@@ -194,7 +202,7 @@ public final class FieldSelector {
 
                     @Override
                     public String apply(String field) {
-                        return path.toString().equals(field) ? path.generateNewFieldName(field) : field;
+                        return path.matchesPath(field) ? path.generateNewFieldName(field) : field;
                     }
 
                     @Override
@@ -210,6 +218,12 @@ public final class FieldSelector {
                         pathsApplyingToCollection.get(0).modify(doc, setDoc, unsetDoc);
                         return doc;
                     }
+
+                    @Override
+                    public BsonDocument applyChange(BsonDocument doc) {
+                        path.modify(null, (Map) doc, null);
+                        return doc;
+                    }
                 };
             }
             else if (pathsApplyingToCollection.size() > 1) {
@@ -217,8 +231,12 @@ public final class FieldSelector {
 
                     @Override
                     public String apply(String field) {
-                        final Path p = pathsByAddress.get(field);
-                        return (p == null) ? field : p.generateNewFieldName(field);
+                        for (Path p : pathsApplyingToCollection) {
+                            if (p.matchesPath(field)) {
+                                return p.generateNewFieldName(field);
+                            }
+                        }
+                        return field;
                     }
 
                     @Override
@@ -232,6 +250,12 @@ public final class FieldSelector {
                         Document setDoc = doc.get("$set", Document.class);
                         Document unsetDoc = doc.get("$unset", Document.class);
                         pathsApplyingToCollection.forEach(path -> path.modify(doc, setDoc, unsetDoc));
+                        return doc;
+                    }
+
+                    @Override
+                    public BsonDocument applyChange(BsonDocument doc) {
+                        pathsApplyingToCollection.forEach(path -> path.modify(null, (Map) doc, null));
                         return doc;
                     }
                 };
@@ -251,6 +275,11 @@ public final class FieldSelector {
 
             @Override
             public Document apply(Document doc) {
+                return doc;
+            }
+
+            @Override
+            public BsonDocument applyChange(BsonDocument doc) {
                 return doc;
             }
         };
@@ -381,8 +410,8 @@ public final class FieldSelector {
                     // key is a prefix of field, e.g. field is 'a.b' and key is 'a'
                     if (startsWith(keyNodes, fieldNodes)) {
                         Object value = entry.getValue();
-                        if (value instanceof Document) {
-                            modifyFields((Document) value, fieldNodes, keyNodes.length);
+                        if (value instanceof Map<?, ?>) {
+                            modifyFields((Map<String, Object>) value, fieldNodes, keyNodes.length);
                         }
                         else {
                             modifyFields(value, fieldNodes, keyNodes.length);
@@ -407,8 +436,8 @@ public final class FieldSelector {
         private void modifyFields(Object value, String[] fieldNodes, int length) {
             if (value instanceof List) {
                 for (Object item : (List<?>) value) {
-                    if (item instanceof Document) {
-                        modifyFields((Document) item, fieldNodes, length);
+                    if (item instanceof Map<?, ?>) {
+                        modifyFields((Map<String, Object>) item, fieldNodes, length);
                     }
                 }
             }
@@ -520,6 +549,24 @@ public final class FieldSelector {
          * @return a new field name
          */
         abstract String generateNewFieldName(String fieldName);
+
+        /**
+         * Verifies whether a parameter representing path is the same or belongs under this path.
+         * 
+         * @param other - the string representing the other path
+         * @return - true if this path is the same or parent of the path passed
+         */
+        public boolean matchesPath(String other) {
+            final String[] otherParts = excludeNumericItems(FieldSelectorBuilder.parseIntoParts(other, other, length -> length < 1, DOT));
+            if (fieldNodes.length <= other.length()) {
+                for (int i = 0; i < fieldNodes.length; i++) {
+                    if (!fieldNodes[i].equals(otherParts[i])) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
 
         @Override
         public String toString() {

@@ -273,7 +273,7 @@ public abstract class AbstractConnectorTest implements Testing {
      *            this record; may be null if not needed
      */
     protected void startAndConsumeTillEnd(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
-                         Predicate<SourceRecord> isStopRecord) {
+                                          Predicate<SourceRecord> isStopRecord) {
         start(connectorClass, connectorConfig, loggingCompletion(), isStopRecord, x -> {
         }, false);
     }
