@@ -102,7 +102,7 @@ public class KafkaServer {
     }
 
     /**
-     * Set a configuration property. Several key properties that deal with Zookeeper, the host name, and the broker ID,
+     * Set a configuration property. Several key properties that deal with Zookeeper, and the broker ID,
      * may not be set via this method and are ignored since they are controlled elsewhere in this instance.
      *
      * @param name the property name; may not be null
@@ -115,8 +115,7 @@ public class KafkaServer {
             throw new IllegalStateException("Unable to change the properties when already running");
         }
         if (!KafkaConfig.ZkConnectProp().equalsIgnoreCase(name)
-                && !KafkaConfig.BrokerIdProp().equalsIgnoreCase(name)
-                && !KafkaConfig.HostNameProp().equalsIgnoreCase(name)) {
+                && !KafkaConfig.BrokerIdProp().equalsIgnoreCase(name)) {
             this.config.setProperty(name, value);
         }
         return this;
@@ -162,7 +161,6 @@ public class KafkaServer {
         runningConfig.putAll(config);
         runningConfig.setProperty(KafkaConfig.ZkConnectProp(), zookeeperConnection());
         runningConfig.setProperty(KafkaConfig.BrokerIdProp(), Integer.toString(brokerId));
-        runningConfig.setProperty(KafkaConfig.HostNameProp(), "localhost");
         runningConfig.setProperty(KafkaConfig.AutoCreateTopicsEnableProp(), String.valueOf(config.getOrDefault(KafkaConfig.AutoCreateTopicsEnableProp(), Boolean.TRUE)));
         // 1 partition for the __consumer_offsets_ topic should be enough
         runningConfig.setProperty(KafkaConfig.OffsetsTopicPartitionsProp(), Integer.toString(1));
@@ -209,7 +207,7 @@ public class KafkaServer {
 
         // Determine the port and adjust the configuration ...
         port = desiredPort > 0 ? desiredPort : IoUtil.getAvailablePort();
-        config.setProperty(KafkaConfig.PortProp(), Integer.toString(port));
+        config.setProperty(KafkaConfig.ListenersProp(), "PLAINTEXT://localhost:" + port);
         // config.setProperty("metadata.broker.list", getConnection());
 
         // Start the server ...
