@@ -2475,7 +2475,7 @@ endif::community[]
 
 |[[mysql-property-include-schema-comments]]<<mysql-property-include-schema-comments, `+include.schema.comments+`>>
 |`false`
-|Boolean value that specifies whether the connector should parse and publish table and column comments on metadata objects. Enabling this option will bring the implications on memory usage. The number and size of `ColumnImpl` objects is what largely impacts how much memory is consumed by the Debezium connectors, and adding a String to each of them can potentially be quite expensive.
+|Boolean value that specifies whether the connector should parse and publish table and column comments on metadata objects. Enabling this option will bring the implications on memory usage. The number and size of logical schema objects is what largely impacts how much memory is consumed by the Debezium connectors, and adding potentially large string data to each of them can potentially be quite expensive.
 
 |[[mysql-property-include-query]]<<mysql-property-include-query, `+include.query+`>>
 |`false`
