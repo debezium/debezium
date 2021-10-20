@@ -490,8 +490,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
             if (prevEndScn != null) {
                 if (prevEndScn.getTime() != null) {
-                    long seconds = ChronoUnit.SECONDS.between(prevEndScn.getTime(), currentScn.getTime());
-                    if (currentScn.subtract(prevEndScn).longValue() > 10000000 && seconds < 20) {
+                    long seconds = ChronoUnit.MILLIS.between(prevEndScn.getTime(), currentScn.getTime());
+                    if (currentScn.subtract(prevEndScn).longValue() > connectorConfig.getLogMiningScnGapDetectionGapSizeMin()
+                            && seconds < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
                         LOGGER.warn("Detected possible SCN gap, using current SCN, startSCN {}, prevEndScn {} current SCN {}.", startScn.getFullString(),
                                 prevEndScn.getFullString(),
                                 currentScn.getFullString());
