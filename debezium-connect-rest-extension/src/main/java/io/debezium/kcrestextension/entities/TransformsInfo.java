@@ -35,7 +35,7 @@ public class TransformsInfo {
     }
 
     @JsonCreator
-    public TransformsInfo(String className, Class<? extends Transformation> transformationClass) {
+    public TransformsInfo(String className, Class<? extends Transformation<?>> transformationClass) {
         this.className = className;
         try {
             LOGGER.info("Loading config for TRANSFORM: " + className + "...");
@@ -60,7 +60,7 @@ public class TransformsInfo {
         return configProperties;
     }
 
-    public TransformsInfo(PluginDesc<Transformation> transform) {
+    public TransformsInfo(PluginDesc<Transformation<?>> transform) {
         this(transform.className(), transform.pluginClass());
     }
 
