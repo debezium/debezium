@@ -2376,6 +2376,10 @@ endif::community[]
 |`true`
 |Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded by using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database history.
 
+|[[mysql-property-include-schema-comments]]<<mysql-property-include-schema-comments, `+include.schema.comments+`>>
+|`false`
+|Boolean value that specifies whether the connector should parse and publish table and column comments on metadata objects. Enabling this option will bring the implications on memory usage. The number and size of `ColumnImpl` objects is what largely impacts how much memory is consumed by the Debezium connectors, and adding a String to each of them can potentially be quite expensive.
+
 |[[mysql-property-include-query]]<<mysql-property-include-query, `+include.query+`>>
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
