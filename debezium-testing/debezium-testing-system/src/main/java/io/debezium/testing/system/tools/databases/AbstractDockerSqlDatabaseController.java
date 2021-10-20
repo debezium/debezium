@@ -11,7 +11,7 @@ public abstract class AbstractDockerSqlDatabaseController<C extends JdbcDatabase
         extends AbstractDockerDatabaseController<C, SqlDatabaseClient>
         implements SqlDatabaseController {
 
-    private final C container;
+    protected final C container;
 
     public AbstractDockerSqlDatabaseController(C container) {
         super(container);
