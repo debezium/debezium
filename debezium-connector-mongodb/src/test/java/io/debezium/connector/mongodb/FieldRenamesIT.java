@@ -137,8 +137,13 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.address.missing:new_missing", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        final Document fullObj = ((Document) updateObj.get("$set")).append(ID, objId);
-        assertThat(getDocumentFromUpdateRecord(value)).isEqualTo(TestHelper.isOplogCaptureMode() ? updateObj : fullObj);
+        if (TestHelper.isOplogCaptureMode()) {
+            assertThat(getDocumentFromUpdateRecord(value)).isEqualTo(updateObj);
+        }
+        else {
+            final Document fullObj = ((Document) updateObj.get("$set")).append(ID, objId);
+            assertThat(getDocumentFromUpdateRecord(value)).isEqualTo(fullObj);
+        }
     }
 
     @Test
@@ -1595,7 +1600,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses:new_addresses", obj, updateObj);
 
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated,
-                Arrays.asList("new_addresses.0.city", "addresses.0.second.0.new_number", "addresses.0.second.0.street", "name")));
+                Arrays.asList("new_addresses.0.city", "new_addresses.0.number", "new_addresses.0.street", "name")));
     }
 
     @Test

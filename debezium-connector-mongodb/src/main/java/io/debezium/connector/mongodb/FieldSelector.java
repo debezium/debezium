@@ -644,8 +644,7 @@ public final class FieldSelector {
 
         @Override
         String generateNewFieldName(String fieldName) {
-            return replaceLastNameNode(
-                    FieldSelectorBuilder.parseIntoParts(fieldName, fieldName, length -> length < 1, DOT), newFieldNode);
+            return rename(FieldSelectorBuilder.parseIntoParts(fieldName, fieldName, length -> length < 1, DOT));
         }
 
         /**
