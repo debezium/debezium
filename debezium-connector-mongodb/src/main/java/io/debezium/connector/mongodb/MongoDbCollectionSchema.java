@@ -117,42 +117,44 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
                     final String fullDocStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
                     value.put(FieldName.AFTER, fullDocStr);
                 }
-                final Struct updateDescription = new Struct(MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA);
 
-                List<String> removedFields = document.getUpdateDescription().getRemovedFields();
-                if (removedFields != null && !removedFields.isEmpty()) {
-                    removedFields = removedFields.stream()
-                            .map(x -> fieldFilter.apply(x))
-                            .filter(x -> x != null)
-                            .collect(Collectors.toList());
-                    if (!removedFields.isEmpty()) {
-                        updateDescription.put(MongoDbFieldName.REMOVED_FIELDS, removedFields);
+                if (document.getUpdateDescription() != null) {
+                    final Struct updateDescription = new Struct(MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA);
+                    List<String> removedFields = document.getUpdateDescription().getRemovedFields();
+                    if (removedFields != null && !removedFields.isEmpty()) {
+                        removedFields = removedFields.stream()
+                                .map(x -> fieldFilter.apply(x))
+                                .filter(x -> x != null)
+                                .collect(Collectors.toList());
+                        if (!removedFields.isEmpty()) {
+                            updateDescription.put(MongoDbFieldName.REMOVED_FIELDS, removedFields);
+                        }
                     }
-                }
 
-                final BsonDocument updatedFields = document.getUpdateDescription().getUpdatedFields();
-                if (updatedFields != null) {
-                    updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, fieldFilter.applyChange(updatedFields).toJson());
-                }
-
-                // TODO Test filters for truncated arrays
-                List<TruncatedArray> truncatedArrays = document.getUpdateDescription().getTruncatedArrays();
-                if (truncatedArrays != null && !truncatedArrays.isEmpty()) {
-                    truncatedArrays = truncatedArrays.stream()
-                            .map(x -> new TruncatedArray(fieldFilter.apply(x.getField()), x.getNewSize()))
-                            .filter(x -> x.getField() != null)
-                            .collect(Collectors.toList());
-                    if (!truncatedArrays.isEmpty()) {
-                        updateDescription.put(MongoDbFieldName.TRUNCATED_ARRAYS, truncatedArrays.stream().map(x -> {
-                            final Struct element = new Struct(MongoDbSchema.TRUNCATED_ARRAY_SCHEMA);
-                            element.put(MongoDbFieldName.ARRAY_FIELD_NAME, x.getField());
-                            element.put(MongoDbFieldName.ARRAY_NEW_SIZE, x.getNewSize());
-                            return element;
-                        }).collect(Collectors.toList()));
+                    final BsonDocument updatedFields = document.getUpdateDescription().getUpdatedFields();
+                    if (updatedFields != null) {
+                        updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, fieldFilter.applyChange(updatedFields).toJson());
                     }
-                }
 
-                value.put(MongoDbFieldName.UPDATE_DESCRIPTION, updateDescription);
+                    // TODO Test filters for truncated arrays
+                    List<TruncatedArray> truncatedArrays = document.getUpdateDescription().getTruncatedArrays();
+                    if (truncatedArrays != null && !truncatedArrays.isEmpty()) {
+                        truncatedArrays = truncatedArrays.stream()
+                                .map(x -> new TruncatedArray(fieldFilter.apply(x.getField()), x.getNewSize()))
+                                .filter(x -> x.getField() != null)
+                                .collect(Collectors.toList());
+                        if (!truncatedArrays.isEmpty()) {
+                            updateDescription.put(MongoDbFieldName.TRUNCATED_ARRAYS, truncatedArrays.stream().map(x -> {
+                                final Struct element = new Struct(MongoDbSchema.TRUNCATED_ARRAY_SCHEMA);
+                                element.put(MongoDbFieldName.ARRAY_FIELD_NAME, x.getField());
+                                element.put(MongoDbFieldName.ARRAY_NEW_SIZE, x.getNewSize());
+                                return element;
+                            }).collect(Collectors.toList()));
+                        }
+                    }
+
+                    value.put(MongoDbFieldName.UPDATE_DESCRIPTION, updateDescription);
+                }
                 break;
             case DELETE:
                 break;
