@@ -16,11 +16,11 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -490,12 +490,20 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
 
             if (prevEndScn != null) {
-                if ((currentScn.subtract(prevEndScn)).longValue() > connectorConfig.getLogMiningScnGapDetectionGapSizeMin()) {
-                    List<OffsetDateTime> timeStamps = connection.getScnToTimestamp(Arrays.asList(currentScn, prevEndScn));
-                    if (ChronoUnit.MILLIS.between(timeStamps.get(1), timeStamps.get(0)) < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
-                        LOGGER.warn("Detected possible SCN gap, using current SCN, startSCN {}, prevEndScn {} timestamp {}, current SCN {} timestamp {}.", startScn,
-                                prevEndScn, timeStamps.get(1), currentScn, timeStamps.get(0));
-                        return currentScn;
+                final Scn deltaScn = currentScn.subtract(prevEndScn);
+                if (deltaScn.compareTo(Scn.valueOf(connectorConfig.getLogMiningScnGapDetectionGapSizeMin())) > 0) {
+                    Optional<OffsetDateTime> prevEndScnTimestamp = connection.getScnToTimestamp(prevEndScn);
+                    if (prevEndScnTimestamp.isPresent()) {
+                        Optional<OffsetDateTime> currentScnTimestamp = connection.getScnToTimestamp(currentScn);
+                        if (currentScnTimestamp.isPresent()) {
+                            long timeDeltaMs = ChronoUnit.MILLIS.between(prevEndScnTimestamp.get(), currentScnTimestamp.get());
+                            if (timeDeltaMs < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
+                                LOGGER.warn("Detected possible SCN gap, using current SCN, startSCN {}, prevEndScn {} timestamp {}, current SCN {} timestamp {}.",
+                                        startScn,
+                                        prevEndScn, prevEndScnTimestamp.get(), currentScn, currentScnTimestamp.get());
+                                return currentScn;
+                            }
+                        }
                     }
                 }
             }
