@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle;
 
 import java.math.BigInteger;
-import java.time.OffsetDateTime;
 import java.util.Objects;
 
 /**
@@ -28,18 +27,8 @@ public class Scn implements Comparable<Scn> {
 
     private final BigInteger scn;
 
-    private OffsetDateTime time;
-
     public Scn(BigInteger scn) {
         this.scn = scn;
-    }
-
-    public OffsetDateTime getTime() {
-        return time;
-    }
-
-    public void setTime(OffsetDateTime time) {
-        this.time = time;
     }
 
     /**
@@ -164,9 +153,5 @@ public class Scn implements Comparable<Scn> {
     @Override
     public String toString() {
         return isNull() ? "null" : scn.toString();
-    }
-
-    public String getFullString() {
-        return (isNull() ? "null" : scn.toString()) + ", time=" + (time == null ? "null" : time.toString());
     }
 }
