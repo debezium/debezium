@@ -49,6 +49,8 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
                 .append("$set", new Document()
                         .append("name", "Closed"));
         updateDocument("dbA", "c1", Document.parse("{\"restaurant_id\": \"30075445\"}"), updateObj);
+        // Pause is necessary to make sure that fullDocument fro change streams is caputred before delete
+        Thread.sleep(1000);
         deleteDocuments("dbA", "c1", Document.parse("{\"restaurant_id\": \"30075445\"}"));
 
         // 6 INSERTs + 1 UPDATE + 1 DELETE

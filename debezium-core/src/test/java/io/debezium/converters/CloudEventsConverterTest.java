@@ -209,7 +209,8 @@ public class CloudEventsConverterTest {
             avroConverter.configure(Collections.singletonMap("schema.registry.url", "http://fake-url"), false);
             SchemaAndValue data = avroConverter.toConnectData(record.topic(), Base64.getDecoder().decode(dataJson.asText()));
             assertThat(data.value()).isInstanceOf(Struct.class);
-            assertThat(((Struct) data.value()).get(fieldName)).isNotNull();
+            assertThat(((Struct) data.value()).get(fieldName)).describedAs("Field must be set: " + fieldName)
+                    .isNotNull();
         }
         catch (Throwable t) {
             Testing.Print.enable();
