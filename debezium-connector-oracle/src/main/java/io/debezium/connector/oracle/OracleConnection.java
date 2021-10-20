@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -542,27 +541,34 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
-    public List<OffsetDateTime> getScnToTimestamp(List<Scn> scns) throws SQLException {
-        StringBuilder sb = new StringBuilder("SELECT ");
-
-        for (Iterator<Scn> i = scns.iterator(); i.hasNext();) {
-            Scn scn = i.next();
-            sb.append("scn_to_timestamp(\"").append(scn.toString()).append("\")");
-            if (i.hasNext()) {
-                sb.append(",");
-            }
+    /**
+     * Resolve a system change number to a timestamp, return value is in database timezone.
+     *
+     * The SCN to TIMESTAMP mapping is only retained for the duration of the flashback query area.
+     * This means that eventually the mapping between these values are no longer kept by Oracle
+     * and making a call with a SCN value that has aged out will result in an ORA-08181 error.
+     * This function explicitly checks for this use case and if a ORA-08181 error is thrown, it is
+     * therefore treated as if a value does not exist returning an empty optional value.
+     *
+     * @param scn the system change number, must not be {@code null}
+     * @return an optional timestamp when the system change number occurred
+     * @throws SQLException if a database exception occurred
+     */
+    public Optional<OffsetDateTime> getScnToTimestamp(Scn scn) throws SQLException {
+        try {
+            return queryAndMap("SELECT scn_to_timestamp('" + scn + "') FROM DUAL", rs -> rs.next()
+                    ? Optional.of(rs.getObject(1, OffsetDateTime.class))
+                    : Optional.empty());
         }
-        sb.append(" FROM DUAL");
-
-        return queryAndMap(sb.toString(), rs -> {
-            if (rs.next()) {
-                List<OffsetDateTime> ret = new ArrayList<>();
-                for (int i = 1; i < scns.size() + 1; i++) {
-                    ret.add(rs.getObject(i, OffsetDateTime.class));
-                }
-                return ret;
+        catch (SQLException e) {
+            if (e.getMessage().startsWith("ORA-08181")) {
+                // ORA-08181 specified number is not a valid system change number
+                // This happens when the SCN provided is outside the flashback area range
+                // This should be treated as a value is not available rather than an error
+                return Optional.empty();
             }
-            throw new DebeziumException("Failed to get SCN as a timestamp");
-        });
+            // Any other SQLException should be thrown
+            throw e;
+        }
     }
 }
