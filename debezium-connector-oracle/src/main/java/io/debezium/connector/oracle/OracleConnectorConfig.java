@@ -52,7 +52,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static int MIN_BATCH_SIZE = 1_000;
     protected final static int MAX_BATCH_SIZE = 100_000;
 
-    protected final static int DEFAULT_SCN_GAP_SIZE = 10_000_000;
+    protected final static int DEFAULT_SCN_GAP_SIZE = 1_000_000;
     protected final static int DEFAULT_SCN_GAP_TIME_INTERVAL = 20_000;
 
     protected final static Duration MAX_SLEEP_TIME = Duration.ofMillis(3_000);
