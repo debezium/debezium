@@ -39,7 +39,7 @@ If you need assistance with this feature, you can engage with the https://debezi
 
 Information and procedures for using a {prodname} Oracle connector are organized as follows:
 
-  * xref:how-debezium-mysql-connectors-work[]
+  * xref:how-debezium-oracle-connectors-work[]
   * xref:descriptions-of-debezium-oracle-connector-data-change-events[]
   * xref:how-debezium-oracle-connectors-map-data-types[]
   * xref:setting-up-oracle-to-work-with-debezium[]
@@ -2054,6 +2054,10 @@ In the resulting snapshot, the connector includes only the records for which `de
 |No default
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+
+|[[oracle-property-include-schema-comments]]<<oracle-property-include-schema-comments, `+include.schema.comments+`>>
+|`false`
+|Boolean value that specifies whether the connector should parse and publish table and column comments on metadata objects. Enabling this option will bring the implications on memory usage. The number and size of logical schema objects is what largely impacts how much memory is consumed by the Debezium connectors, and adding potentially large string data to each of them can potentially be quite expensive.
 
 |[[oracle-property-schema-exclude-list]]<<oracle-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
