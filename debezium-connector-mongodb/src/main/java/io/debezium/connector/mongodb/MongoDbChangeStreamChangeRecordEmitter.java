@@ -40,6 +40,7 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
 
         literals.put(OperationType.INSERT, Operation.CREATE);
         literals.put(OperationType.UPDATE, Operation.UPDATE);
+        literals.put(OperationType.REPLACE, Operation.UPDATE);
         literals.put(OperationType.DELETE, Operation.DELETE);
 
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);

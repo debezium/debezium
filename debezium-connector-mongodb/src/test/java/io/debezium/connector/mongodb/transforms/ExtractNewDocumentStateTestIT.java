@@ -205,9 +205,13 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final Struct transformedUnsetUpdateValue = (Struct) transformedUnsetUpdate.value();
 
         assertThat(transformedUnsetUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
-        assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
         assertThat(transformedUnsetUpdateValue.get("id")).isEqualTo(1);
-        assertThat(transformedUnsetUpdateValue.get("newStr")).isEqualTo(null);
+        if (TestHelper.isOplogCaptureMode()) {
+            assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        }
+        else {
+            assertThat(transformedUnsetUpdateValue.schema().field("newStr")).isNull();
+        }
 
         // Test FullUpdate
         primary().execute("update", client -> {
@@ -638,10 +642,15 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.get("phone")).isEqualTo(null);
-
-        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-        assertThat(value.schema().fields()).hasSize(4);
+        if (TestHelper.isOplogCaptureMode()) {
+            assertThat(value.get("phone")).isNull();
+            assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+            assertThat(value.schema().fields()).hasSize(4);
+        }
+        else {
+            assertThat(value.schema().field("phone")).isNull();
+            assertThat(value.schema().fields()).hasSize(2);
+        }
     }
 
     @Test
@@ -689,10 +698,15 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        assertThat(value.get("phone")).isEqualTo(null);
-
-        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-        assertThat(value.schema().fields()).hasSize(3);
+        if (TestHelper.isOplogCaptureMode()) {
+            assertThat(value.get("phone")).isNull();
+            assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+            assertThat(value.schema().fields()).hasSize(3);
+        }
+        else {
+            assertThat(value.schema().field("phone")).isNull();
+            assertThat(value.schema().fields()).hasSize(2);
+        }
     }
 
     @Test
@@ -1242,7 +1256,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().field("address-city").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-city2-part").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
-        assertThat(value.schema().fields()).hasSize(4);
+        assertThat(value.schema().fields()).hasSize(TestHelper.isOplogCaptureMode() ? 4 : 7);
     }
 
     @Test
@@ -1506,13 +1520,22 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("id")).isEqualTo(objId.toString());
         assertThat(value.get("a")).isEqualTo(22);
-        String valueJson = TestHelper.getDocumentWithoutLanguageVersion(value.getString("__patch")).toJson();
-        assertThat(valueJson).isEqualTo("{\"$set\": {\"a\": 22}}");
 
         assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("a").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
-        assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
-        assertThat(value.schema().fields()).hasSize(3);
+
+        if (TestHelper.isOplogCaptureMode()) {
+            String valueJson = TestHelper.getDocumentWithoutLanguageVersion(value.getString("__patch")).toJson();
+            assertThat(valueJson).isEqualTo("{\"$set\": {\"a\": 22}}");
+            assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
+            assertThat(value.schema().fields()).hasSize(3);
+        }
+        else {
+            System.err.println(value.schema().fields());
+            // 4 data fields + 1 __patch
+            assertThat(value.schema().fields()).hasSize(4 + 1);
+        }
+
     }
 
     @Test(expected = DataException.class)
