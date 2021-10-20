@@ -42,7 +42,7 @@ public class FieldBlacklistIT extends AbstractConnectorTest {
     private Configuration config;
     private MongoDbTaskContext context;
 
-    private static class ExpectedUpdate {
+    public static class ExpectedUpdate {
 
         public final String patch;
         public final String full;

@@ -29,6 +29,7 @@ import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
@@ -249,16 +250,19 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +          "\"phone\": {\"$numberLong\": \"123\"},"
                 +          "\"scores\": [1.2,3.4,5.6]"
                 +     "}"
                 + "}";
+        String full = "{\"_id\": {\"$oid\": \"<OID>\"}, \"phone\": {\"$numberLong\": \"123\"}, \"scores\": [1.2, 3.4, 5.6]}";
+        final String updated = "{\"phone\": 123, \"scores\": [1.2, 3.4, 5.6]}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.active", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.active", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -276,16 +280,28 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +          "\"phone\": {\"$numberLong\": \"123\"},"
                 +          "\"scores\": [1.2,3.4,5.6]"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"name\": \"Sally\", "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"active\": true, "
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                +             "\"phone\": 123, "
+                +             "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.missing", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.missing", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -314,7 +330,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +          "\"address\": {"
@@ -325,9 +341,27 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +          "\"scores\": [1.2,3.4,5.6]"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +          "\"address\": {"
+                +              "\"street\": \"Claude Debussylaan\", "
+                +              "\"city\": \"Amsterdam\""
+                +          "},"
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                +             "\"address\": {"
+                +                 "\"street\": \"Claude Debussylaan\", "
+                +                 "\"city\": \"Amsterdam\""
+                +             "}, "
+                +             "\"phone\": 123, "
+                +             "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.active,*.c1.address.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.active,*.c1.address.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -356,7 +390,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +          "\"active\": true,"
@@ -369,9 +403,32 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +          "\"scores\": [1.2,3.4,5.6]"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"name\": \"Sally\", "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"address\": {"
+                +          "\"number\": {\"$numberLong\": \"34\"}, "
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "},"
+                +    "\"active\": true, "
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                +             "\"active\": true, "
+                +             "\"address\": {"
+                +                 "\"number\": 34, "
+                +                 "\"street\": \"Claude Debussylaan\", "
+                +                 "\"city\": \"Amsterdam\""
+                +             "}, "
+                +             "\"phone\": 123, "
+                +             "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.address.missing", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.address.missing", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -410,7 +467,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +          "\"active\": true,"
@@ -428,9 +485,37 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +          "\"scores\": [1.2,3.4,5.6]"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"addresses\": [{"
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "},"
+                +    "{"
+                +          "\"street\": \"Fragkokklisias\","
+                +          "\"city\": \"Athens\""
+                +    "}], "
+                +    "\"active\": true, "
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                +             "\"active\": true, "
+                +             "\"addresses\": [{"
+                +                  "\"street\": \"Claude Debussylaan\", "
+                +                  "\"city\": \"Amsterdam\""
+                +             "}, "
+                +             "{"
+                +                  "\"street\": \"Fragkokklisias\", "
+                +                  "\"city\": \"Athens\""
+                +             "}], "
+                +             "\"phone\": 123, "
+                +             "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -469,7 +554,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +          "\"active\": true,"
@@ -493,9 +578,41 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +          "\"scores\": [1.2,3.4,5.6]"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"addresses\": [[{"
+                +          "\"number\": {\"$numberLong\": \"34\"},"
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "}],"
+                +    "[{"
+                +          "\"number\": {\"$numberLong\": \"7\"},"
+                +          "\"street\": \"Fragkokklisias\","
+                +          "\"city\": \"Athens\""
+                +    "}]], "
+                +    "\"active\": true, "
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                +             "\"active\": true, "
+                +             "\"addresses\": [[{"
+                +                  "\"number\": 34, "
+                +                  "\"street\": \"Claude Debussylaan\", "
+                +                  "\"city\": \"Amsterdam\""
+                +             "}], "
+                +             "[{"
+                +                  "\"number\": 7, "
+                +                  "\"street\": \"Fragkokklisias\", "
+                +                  "\"city\": \"Athens\""
+                +             "}]], "
+                +             "\"phone\": 123, "
+                +             "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -511,15 +628,23 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("phone", 123L);
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"phone\": {\"$numberLong\": \"123\"}"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}"
+                + "}";
+        final String updated = "{"
+                +             "\"phone\": 123"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -537,15 +662,24 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("phone", "");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$unset\": {"
                 +          "\"phone\": true"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"active\": true, "
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name", objId, obj, updateObj, false, PATCH, expected);
+        assertUpdateRecord("*.c1.name", objId, obj, updateObj, false, updateField(),
+                new ExpectedUpdate(patch, full, updated,
+                        Arrays.asList("phone")));
     }
 
     @Test
@@ -569,7 +703,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                         .append("city", "Amsterdam"));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"address\": {"
@@ -579,9 +713,25 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"phone\": {\"$numberLong\": \"123\"}"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +          "\"address\": {"
+                +              "\"street\": \"Claude Debussylaan\", "
+                +              "\"city\": \"Amsterdam\""
+                +          "}"
+                + "}";
+        final String updated = "{"
+                +             "\"address\": {"
+                +                 "\"street\": \"Claude Debussylaan\", "
+                +                 "\"city\": \"Amsterdam\""
+                +             "}, "
+                +             "\"phone\": 123"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.address.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.address.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -615,7 +765,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                                 .append("city", "Athens")));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"addresses\": ["
@@ -631,9 +781,33 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"phone\": {\"$numberLong\": \"123\"}"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"addresses\": [{"
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "},"
+                +    "{"
+                +          "\"street\": \"Fragkokklisias\","
+                +          "\"city\": \"Athens\""
+                +    "}]"
+                + "}";
+        final String updated = "{"
+                +             "\"addresses\": [{"
+                +                  "\"street\": \"Claude Debussylaan\", "
+                +                  "\"city\": \"Amsterdam\""
+                +             "}, "
+                +             "{"
+                +                  "\"street\": \"Fragkokklisias\", "
+                +                  "\"city\": \"Athens\""
+                +             "}], "
+                +             "\"phone\": 123"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -667,7 +841,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                                 .append("city", "Athens"))));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"addresses\": ["
@@ -689,9 +863,37 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"phone\": {\"$numberLong\": \"123\"}"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"addresses\": [[{"
+                +          "\"number\": {\"$numberLong\": \"34\"},"
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "}],"
+                +    "[{"
+                +          "\"number\": {\"$numberLong\": \"7\"},"
+                +          "\"street\": \"Fragkokklisias\","
+                +          "\"city\": \"Athens\""
+                +    "}]]"
+                + "}";
+        final String updated = "{"
+                +             "\"addresses\": [[{"
+                +                  "\"number\": 34, "
+                +                  "\"street\": \"Claude Debussylaan\", "
+                +                  "\"city\": \"Amsterdam\""
+                +             "}], "
+                +             "[{"
+                +                  "\"number\": 7, "
+                +                  "\"street\": \"Fragkokklisias\", "
+                +                  "\"city\": \"Athens\""
+                +             "}]], "
+                +             "\"phone\": 123"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.addresses.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -713,16 +915,29 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("address.city", "Amsterdam");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"address.city\": \"Amsterdam\","
                 +         "\"address.street\": \"Claude Debussylaan\""
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"456\"}, "
+                +          "\"address\": {"
+                +              "\"street\": \"Claude Debussylaan\", "
+                +              "\"city\": \"Amsterdam\""
+                +          "}"
+                + "}";
+        final String updated = "{"
+                +             "\"address.city\": \"Amsterdam\", "
+                +             "\"address.street\": \"Claude Debussylaan\""
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.address.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.address.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -744,7 +959,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.city", "Amsterdam");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"addresses.0.city\": \"Amsterdam\","
@@ -752,9 +967,23 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"name\": \"Sally\""
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"name\": \"Sally\", "
+                +    "\"addresses\": [{"
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "}]"
+                + "}";
+        final String updated = "{"
+                +             "\"addresses.0.city\": \"Amsterdam\", "
+                +             "\"addresses.0.street\": \"Claude Debussylaan\", "
+                +             "\"name\": \"Sally\""
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -780,7 +1009,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.0.city", "Amsterdam");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"addresses.0.0.city\": \"Amsterdam\","
@@ -789,9 +1018,30 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"name\": \"Sally\""
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"name\": \"Sally\", "
+                +    "\"addresses\": [[{"
+                +          "\"number\": {\"$numberLong\": \"34\"},"
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "}],"
+                +    "[{"
+                +          "\"number\": {\"$numberLong\": \"8\"},"
+                +          "\"street\": \"Fragkokklisiass\","
+                +          "\"city\": \"Athense\""
+                +    "}]]"
+                + "}";
+        final String updated = "{"
+                +             "\"addresses.0.0.city\": \"Amsterdam\", "
+                +             "\"addresses.0.0.number\": 34, "
+                +             "\"addresses.0.0.street\": \"Claude Debussylaan\", "
+                +             "\"name\": \"Sally\""
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -813,7 +1063,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.second.0.city", "Amsterdam");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"addresses.0.second.0.city\": \"Amsterdam\","
@@ -821,9 +1071,23 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"name\": \"Sally\""
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"name\": \"Sally\", "
+                +    "\"addresses\": [{\"second\": [{"
+                +          "\"street\": \"Claude Debussylaan\", "
+                +          "\"city\": \"Amsterdam\""
+                +    "}]}]"
+                + "}";
+        final String updated = "{"
+                +             "\"addresses.0.second.0.city\": \"Amsterdam\", "
+                +             "\"addresses.0.second.0.street\": \"Claude Debussylaan\", "
+                +             "\"name\": \"Sally\""
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses.second.number", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses.second.number", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -845,15 +1109,23 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.0.city", "Amsterdam");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"name\": \"Sally\""
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"name\": \"Sally\""
+                + "}";
+        final String updated = "{"
+                +             "\"name\": \"Sally\""
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -876,15 +1148,23 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                         .append("city", "Amsterdam"));
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$set\": {"
                 +         "\"name\": \"Sally\""
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"name\": \"Sally\""
+                + "}";
+        final String updated = "{"
+                +             "\"name\": \"Sally\""
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses", objId, obj, updateObj, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses", objId, obj, updateObj, updateField(),
+                new ExpectedUpdate(patch, full, updated, null));
     }
 
     @Test
@@ -908,16 +1188,27 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("address.city", "");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$unset\": {"
                 +         "\"address.city\": true,"
                 +         "\"address.street\": true"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"456\"}, "
+                +    "\"address\": {"
+                +    "}, "
+                +    "\"active\": false, "
+                +    "\"scores\": [1.2, 3.4, 5.6, 7.8]"
+                + "}";
+        final String updated = "{"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.name,*.c1.address.number", objId, obj, updateObj, false, PATCH, expected);
+        assertUpdateRecord("*.c1.name,*.c1.address.number", objId, obj, updateObj, false, updateField(),
+                new ExpectedUpdate(patch, full, updated, Arrays.asList("address.city", "address.street")));
     }
 
     @Test
@@ -946,7 +1237,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.city", "");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$unset\": {"
                 +         "\"addresses.0.city\": true,"
@@ -954,9 +1245,24 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"name\": true"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"addresses\": [{"
+                +    "},"
+                +    "{"
+                +          "\"street\": \"Fragkokklisias\","
+                +          "\"city\": \"Athens\""
+                +    "}], "
+                +    "\"active\": true, "
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, false, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, false, updateField(), new ExpectedUpdate(
+                patch, full, updated, Arrays.asList("addresses.0.city", "addresses.0.street", "name")));
     }
 
     @Test
@@ -982,7 +1288,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.0.city", "");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$unset\": {"
                 +         "\"addresses.0.0.city\": true,"
@@ -991,9 +1297,21 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"name\": true"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"addresses\": [[{"
+                +    "}]], "
+                +    "\"active\": true, "
+                +    "\"scores\": [1.2, 3.4, 5.6]"
+                + "}";
+        final String updated = "{"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, false, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses.number", objId, obj, updateObj, false, updateField(),
+                new ExpectedUpdate(patch, full, updated,
+                        Arrays.asList("addresses.0.0.city", "addresses.0.0.number", "addresses.0.0.street", "name")));
     }
 
     @Test
@@ -1016,7 +1334,7 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.second.0.city", "");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$unset\": {"
                 +         "\"addresses.0.second.0.city\": true,"
@@ -1024,13 +1342,23 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 +         "\"name\": true"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"addresses\": [{\"second\": [{"
+                +    "}]}]"
+                + "}";
+        final String updated = "{"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses.second.number", objId, obj, updateObj, false, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses.second.number", objId, obj, updateObj, false, updateField(),
+                new ExpectedUpdate(patch, full, updated,
+                        Arrays.asList("addresses.0.second.0.city", "addresses.0.second.0.street", "name")));
     }
 
     @Test
     public void shouldExcludeFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // TODO Fix for oplog
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("_id", objId)
@@ -1048,15 +1376,22 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
                 .append("addresses.0.city", "");
 
         // @formatter:off
-        String expected = "{"
+        String patch = "{"
                 +     "\"$v\": 1,"
                 +     "\"$unset\": {"
                 +         "\"name\": true"
                 +     "}"
                 + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}"
+                + "}";
+        final String updated = "{"
+                + "}";
         // @formatter:on
 
-        assertUpdateRecord("*.c1.addresses", objId, obj, updateObj, false, PATCH, expected);
+        assertUpdateRecord("*.c1.addresses", objId, obj, updateObj, false, updateField(),
+                new ExpectedUpdate(patch, full, updated,
+                        Arrays.asList("name")));
     }
 
     @Test
@@ -1233,13 +1568,13 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
     }
 
     private void assertUpdateRecord(String blackList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
-                                    String field, String expected)
+                                    String field, ExpectedUpdate expected)
             throws InterruptedException {
         assertUpdateRecord(blackList, objectId, snapshotRecord, updateRecord, true, field, expected);
     }
 
     private void assertUpdateRecord(String blackList, ObjectId objectId, Document snapshotRecord, Document updateRecord,
-                                    boolean doSet, String field, String expected)
+                                    boolean doSet, String field, ExpectedUpdate expected)
             throws InterruptedException {
         config = getConfiguration(blackList);
         context = new MongoDbTaskContext(config);
@@ -1267,8 +1602,18 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
         SourceRecord record = updateRecords.allRecordsInOrder().get(0);
         Struct value = getValue(record);
 
-        Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
-        Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(field));
-        assertThat(actualDoc).isEqualTo(expectedDoc);
+        if (TestHelper.isOplogCaptureMode()) {
+            Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected.patch);
+            Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(field));
+            assertThat(actualDoc).isEqualTo(expectedDoc);
+        }
+        else {
+            TestHelper.assertChangeStreamUpdateAsDocs(objectId, value, expected.full, expected.removedFields,
+                    expected.updatedFields);
+        }
+    }
+
+    private String updateField() {
+        return TestHelper.isOplogCaptureMode() ? PATCH : AFTER;
     }
 }
