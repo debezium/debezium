@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -338,11 +339,9 @@ public class OracleConnection extends JdbcConnection {
      * @throws IllegalStateException if the query does not return at least one row
      */
     public Scn getCurrentScn() throws SQLException {
-        return queryAndMap("SELECT CURRENT_SCN,scn_to_timestamp(CURRENT_SCN) FROM V$DATABASE", (rs) -> {
+        return queryAndMap("SELECT CURRENT_SCN FROM V$DATABASE", (rs) -> {
             if (rs.next()) {
-                Scn scn = Scn.valueOf(rs.getString(1));
-                scn.setTime(rs.getObject(2, OffsetDateTime.class));
-                return scn;
+                return Scn.valueOf(rs.getString(1));
             }
             throw new IllegalStateException("Could not get SCN");
         });
@@ -500,5 +499,29 @@ public class OracleConnection extends JdbcConnection {
 
     private static ConnectionFactory resolveConnectionFactory(Configuration config) {
         return JdbcConnection.patternBasedFactory(connectionString(config));
+    }
+
+    public List<OffsetDateTime> getScnToTimestamp(List<Scn> scns) throws SQLException {
+        StringBuilder sb = new StringBuilder("SELECT ");
+
+        for (Iterator<Scn> i = scns.iterator(); i.hasNext();) {
+            Scn scn = i.next();
+            sb.append("scn_to_timestamp(\"").append(scn.toString()).append("\")");
+            if (i.hasNext()) {
+                sb.append(",");
+            }
+        }
+        sb.append(" FROM DUAL");
+
+        return queryAndMap(sb.toString(), rs -> {
+            if (rs.next()) {
+                List<OffsetDateTime> ret = new ArrayList<>();
+                for (int i = 1; i < scns.size() + 1; i++) {
+                    ret.add(rs.getObject(i, OffsetDateTime.class));
+                }
+                return ret;
+            }
+            throw new DebeziumException("Failed to get SCN as a timestamp");
+        });
     }
 }
