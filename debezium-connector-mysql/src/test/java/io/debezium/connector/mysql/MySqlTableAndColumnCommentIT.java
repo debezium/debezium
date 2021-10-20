@@ -27,7 +27,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
-public class MysqlTableAndColumnCommentIT extends AbstractConnectorTest {
+public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
 
     private static final String COLUMN_COMMENT_PARAMETER_KEY = "__debezium.source.column.comment";
 
