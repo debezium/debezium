@@ -119,7 +119,7 @@ public class DebeziumResource {
 
     private synchronized List<TransformsInfo> getTransforms() {
         if (this.transforms.isEmpty()) {
-            for (PluginDesc<Transformation> plugin : herder.plugins().transformations()) {
+            for (PluginDesc<Transformation<?>> plugin : herder.plugins().transformations()) {
                 if ("org.apache.kafka.connect.runtime.PredicatedTransformation".equals(plugin.className())) {
                     this.transforms.add(new TransformsInfo(HasHeaderKey.class.getName(), (new HasHeaderKey<>().config())));
                     this.transforms.add(new TransformsInfo(RecordIsTombstone.class.getName(), (new RecordIsTombstone<>().config())));
