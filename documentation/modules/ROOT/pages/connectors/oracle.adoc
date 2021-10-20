@@ -502,6 +502,37 @@ If the same buffer location will be used by a new connector deployment, the file
 endif::community[]
 
 // Type: assembly
+// ModuleID: debezium-oracle-connector-scn-gap-detection
+// Title: Why Oracle SCN values may have gaps
+[[scn-jumps]]
+== SCN gap detection
+
+The {prodname} Oracle connector relies on using a start/end range based on system change numbers to collect change events from Oracle when using LogMiner.
+This range is managed by the connector automatically using an adaptive window to grow and shrink the range based on whether the connector is streaming changes in near real-time or if the connector has fallen behind due to large/bulk transactions.
+
+There are situations where the Oracle database will advance the system change number by an unusually large value rather than it increasing by a constant rate.
+This can happen due to certain integrations interacting with the database or during common events like hot backups.
+
+The {prodname} Oracle connector relies on two configuration properties to address detecting the SCN gap and adjusting the mining range.
+
+* `log.mining.scn.gap.detection.gap.size.min`, referred to as minimum gap size
+* `log.mining.scn.gap.detection.time.interval.max.ms`, referred to as maximum time interval
+
+The connector first compares the difference in number of changes between the current SCN and the current mining range's end SCN.
+If this difference is greater than the minimum gap size, then the connector has potentially detected a SCN gap.
+To confirm the gap exists, the connector then compares the difference between the current SCN's timestamp and the prior mining range's end SCN timestamp.
+If this difference is smaller than the maximum time interval as well, then a SCN gap has occurred.
+
+When an SCN gap occurs, the {prodname} connector will automatically use the current SCN as the end point for the current mining session's range.
+This allows the connector to quickly catch up to the real-time events without mining smaller ranges in between that return no changes because the SCN value was increased by an unexpectedly large number.
+Additionally, the connector will ignore the mining maximum batch size for this iteration only when this occurs.
+
+[WARNING]
+====
+The SCN gap detection feature is only available if the large increment occurs while the connector is running and processing near real-time events.
+====
+
+// Type: assembly
 // ModuleID: descriptions-of-debezium-oracle-connector-data-change-events
 // Title: Descriptions of {prodname} Oracle connector data change events
 [[oracle-events]]
@@ -2400,6 +2431,16 @@ However, you can use a specific destination can be used by providing the destina
 |No default
 |List of database users to exclude from the LogMiner query.
 It can be useful to set this property if you want the capturing process to always exclude the changes that specific users make.
+
+|[[oracle-property-log-mining-scn-gap-detection-gap-size-min]]<<oracle-property-log-mining-scn-gap-detection-gap-size-min, `+log.mining.scn.gap.detection.gap.size.min+`>>
+|`1000000`
+|Controls whether a SCN gap is detected by comparing the current and previous SCN difference with this value.
+If the difference is greater than this setting and the time difference is smaller than xref:oracle-property-log-mining-scn-gap-detection-time-interval-max-ms[`log.mining.scn.gap.detection.time.interval.max.ms`] then an SCN gap is detected and a mining window larger than the configured maximum batch will be used.
+
+|[[oracle-property-log-mining-scn-gap-detection-time-interval-max-ms]]<<oracle-property-log-mining-scn-gap-detection-time-interval-max-ms, `+log.mining.scn.gap.detection.time.interval.max.ms+`>>
+|`20000`
+|Controls whether a SCN gap is detected by comparing the current and previous SCN timestamp difference in milliseconds with this value.
+If the difference is smaller than this setting and the SCN delta is greater than xref:oracle-property-log-mining-scn-gap-detection-gap-size-min[`log.mining.scn.gap.detection.gap.size.min`], then an SCN gap is detected and a mining window larger than the configured maximum batch will be used.
 
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
