@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -474,35 +475,32 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (!topMiningScnInFarFuture) {
                 streamingMetrics.changeSleepingTime(true);
             }
-            LOGGER.debug("Using current SCN {} as end SCN.", currentScn.getFullString());
+            LOGGER.debug("Using current SCN {} as end SCN.", currentScn);
             return currentScn;
         }
         else {
             if (prevEndScn != null && topScnToMine.compareTo(prevEndScn) <= 0) {
-                LOGGER.debug("Max batch size too small, using current SCN {} as end SCN.", currentScn.getFullString());
+                LOGGER.debug("Max batch size too small, using current SCN {} as end SCN.", currentScn);
                 return currentScn;
             }
             streamingMetrics.changeSleepingTime(false);
             if (topScnToMine.compareTo(startScn) < 0) {
-                LOGGER.debug("Top SCN calculation resulted in end before start SCN, using current SCN {} as end SCN.", currentScn.getFullString());
+                LOGGER.debug("Top SCN calculation resulted in end before start SCN, using current SCN {} as end SCN.", currentScn);
                 return currentScn;
             }
 
             if (prevEndScn != null) {
-                if (prevEndScn.getTime() != null) {
-                    long seconds = ChronoUnit.MILLIS.between(prevEndScn.getTime(), currentScn.getTime());
-                    if (currentScn.subtract(prevEndScn).longValue() > connectorConfig.getLogMiningScnGapDetectionGapSizeMin()
-                            && seconds < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
-                        LOGGER.warn("Detected possible SCN gap, using current SCN, startSCN {}, prevEndScn {} current SCN {}.", startScn.getFullString(),
-                                prevEndScn.getFullString(),
-                                currentScn.getFullString());
+                if ((currentScn.subtract(prevEndScn)).longValue() > connectorConfig.getLogMiningScnGapDetectionGapSizeMin()) {
+                    List<OffsetDateTime> timeStamps = connection.getScnToTimestamp(Arrays.asList(currentScn, prevEndScn));
+                    if (ChronoUnit.MILLIS.between(timeStamps.get(1), timeStamps.get(0)) < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
+                        LOGGER.warn("Detected possible SCN gap, using current SCN, startSCN {}, prevEndScn {} timestamp {}, current SCN {} timestamp {}.", startScn,
+                                prevEndScn, timeStamps.get(1), currentScn, timeStamps.get(0));
                         return currentScn;
                     }
                 }
             }
 
-            LOGGER.debug("Using Top SCN calculation {} as end SCN. currentScn {}, startScn {}", topScnToMine.getFullString(), currentScn.getFullString(),
-                    startScn.getFullString());
+            LOGGER.debug("Using Top SCN calculation {} as end SCN. currentScn {}, startScn {}", topScnToMine, currentScn, startScn);
             return topScnToMine;
         }
     }
