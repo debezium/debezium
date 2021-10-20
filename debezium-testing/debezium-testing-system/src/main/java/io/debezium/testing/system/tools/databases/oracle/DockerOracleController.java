@@ -5,12 +5,9 @@
  */
 package io.debezium.testing.system.tools.databases.oracle;
 
-import io.debezium.testing.system.tools.databases.AbstractDockerSqlDatabaseController;
-import io.debezium.testing.system.tools.databases.db2.OcpDB2Controller;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.OracleContainer;
-import org.testcontainers.images.builder.Transferable;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_PASSWORD;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_PDBNAME;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_USERNAME;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -18,9 +15,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_PASSWORD;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_PDBNAME;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_USERNAME;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.OracleContainer;
+import org.testcontainers.images.builder.Transferable;
+
+import io.debezium.testing.system.tools.databases.AbstractDockerSqlDatabaseController;
 
 public class DockerOracleController extends AbstractDockerSqlDatabaseController<OracleContainer> {
 
@@ -34,7 +34,8 @@ public class DockerOracleController extends AbstractDockerSqlDatabaseController<
         super(container);
         try {
             initScript = Paths.get(getClass().getResource(DB_INIT_SCRIPT_PATH).toURI());
-        } catch (URISyntaxException e) {
+        }
+        catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
     }
@@ -51,9 +52,9 @@ public class DockerOracleController extends AbstractDockerSqlDatabaseController<
             container.execInContainer(
                     "sqlplus", "-S",
                     DATABASE_ORACLE_USERNAME + "/" + DATABASE_ORACLE_PASSWORD + "@//localhost:1521/" + DATABASE_ORACLE_PDBNAME,
-                    "@" + DB_INIT_SCRIPT_PATH_CONTAINER
-            );
-        } catch (IOException e) {
+                    "@" + DB_INIT_SCRIPT_PATH_CONTAINER);
+        }
+        catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

@@ -59,7 +59,7 @@ public class OcpOracleController extends OcpSqlDatabaseController {
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
                 .writingError(System.err)
                 .usingListener(new DatabaseInitListener("oracle", latch))
-                .exec("" + "sqlplus", "-S",
+                .exec("sqlplus", "-S",
                         DATABASE_ORACLE_USERNAME + "/" + DATABASE_ORACLE_PASSWORD + "@//localhost:1521/ORCLPDB1", "@" + DB_INIT_SCRIPT_PATH_CONTAINER)) {
             LOGGER.info("Waiting until database is initialized");
             latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
