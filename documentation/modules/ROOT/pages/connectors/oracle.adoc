@@ -467,20 +467,23 @@ The following example shows a typical transaction event message:
 [[oracle-event-buffering]]
 === Event buffering
 
-Oracle writes all changes to the redo logs in the order they occur, including changes that are later discarded by a rollback.
-This means that concurrent changes from separate transactions are intertwined.
-This requires that the {prodname} Oracle connector read the stream of changes and add them to an internal buffer until such time that the transaction commit or rollback is detected.
+Oracle writes all changes to the redo logs in the order in which they occur, including changes that are later discarded by a rollback.
+As a result, concurrent changes from separate transactions are intertwined.
+When the connector first reads the stream of changes, because it cannot immediately determine which changes are committed or rolled back, it temporarily stores the change events in an internal buffer.
+After a change is committed, the connector writes the change event from the buffer to Kafka.
+The connector drops change events that are discarded by a rollback.
 
-The buffering mechanism used by the connector can be configured by xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
+You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
 The default buffer type is configured using `memory`.
-This solution uses the JVM heap to allocate and manage the buffered events.
-It is important when using this buffer that the Java process' memory be set to account for long-running and large transactions for your environment.
+Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records. 
+If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment. 
 
 ifdef::community[]
 An additional buffer type can be configured using `infinispan`.
-This solution uses Infinispan in embedded-mode to cache buffered events, allowing for the cache to be persisted to disk.
-When using this option, an additional configuration option, xref:oracle-property-log-mining-buffer-location[`log.mining.buffer.location`] must be specified to set where the persisted cache files are to be written.
+You can also set the buffer type to  `infinispan` to have the connector use Infinispan in embedded-mode to cache buffered events.
+Using Infinispan as the buffer type permits the cache to be persisted to disk.
+If you use the `infinispan` option, you must also set the xref:oracle-property-log-mining-buffer-location[`log.mining.buffer.location`] property to specify the location to which the connector writes persisted cache files.
 
 [IMPORTANT]
 ====
