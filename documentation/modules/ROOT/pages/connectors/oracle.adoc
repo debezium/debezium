@@ -520,8 +520,8 @@ The {prodname} Oracle connector relies on the following configuration properties
 
 The connector first compares the difference in the number of changes between the current SCN and the highest SCN in the current mining range.
 If this difference is greater than the minimum gap size, then the connector has potentially detected a SCN gap.
-To confirm the gap exists, the connector then compares the difference between the current SCN's timestamp and the prior mining range's end SCN timestamp.
-If this difference is smaller than the maximum time interval as well, then a SCN gap has occurred.
+To confirm whether a gap exists, the connector next compares the timestamps of the current SCN and the SCN at the end of the previous mining range.
+If the difference between the timestamps is less than the maximum time interval, then the existence of an SCN gap is confirmed.
 
 When an SCN gap occurs, the {prodname} connector automatically uses the current SCN as the end point for the range of the current mining session.
 This allows the connector to quickly catch up to the real-time events without mining smaller ranges in between that return no changes because the SCN value was increased by an unexpectedly large number.
