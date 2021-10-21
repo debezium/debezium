@@ -484,8 +484,8 @@ Such a jump in the SCN value can occur because of the way that a particular inte
 
 The {prodname} Oracle connector relies on the following configuration properties to detect the SCN gap and adjust the mining range.
 
-* `log.mining.scn.gap.detection.gap.size.min`:: Specifies the minimum gap size.
-* `log.mining.scn.gap.detection.time.interval.max.ms`:: Specifies the maximum time interval.
+`log.mining.scn.gap.detection.gap.size.min`:: Specifies the minimum gap size.
+`log.mining.scn.gap.detection.time.interval.max.ms`:: Specifies the maximum time interval.
 
 The connector first compares the difference in the number of changes between the current SCN and the highest SCN in the current mining range.
 If this difference is greater than the minimum gap size, then the connector has potentially detected a SCN gap.
