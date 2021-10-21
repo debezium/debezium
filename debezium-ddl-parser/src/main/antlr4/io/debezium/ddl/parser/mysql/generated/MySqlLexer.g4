@@ -1173,7 +1173,6 @@ STAR:                                '*';
 DIVIDE:                              '/';
 MODULE:                              '%';
 PLUS:                                '+';
-MINUSMINUS:                          '--';
 MINUS:                               '-';
 DIV:                                 'DIV';
 MOD:                                 'MOD';
