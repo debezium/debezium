@@ -17,12 +17,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -1074,25 +1074,18 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             connection.execute("CREATE OR REPLACE PROCEDURE mytest() BEGIN select * from dual; END;");
             connection.execute("DROP PROCEDURE mytest");
             connection.execute("CREATE OR REPLACE PACKAGE pkgtest as function hire return number; END;");
-            connection.execute("CREATE OR REPLACE PACKAGE BODY pkgtest as function hire return number; begin return 0; end; END;");
+            connection.execute("CREATE OR REPLACE PACKAGE BODY pkgtest as function hire return number; begin return 0; end;");
             connection.execute("DROP PACKAGE pkgtest");
 
-            try {
-                Awaitility.await()
-                        .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
-                        .until(() -> {
-                            if (logInterceptor.countOccurrences("DDL: ") == expected) {
-                                return true;
-                            }
-                            return false;
-                        });
+            // Resolve what text to look for depending on connector implementation
+            final String logText = ConnectorAdapter.LOG_MINER.equals(TestHelper.adapter()) ? "DDL: " : "Processing DDL event ";
 
-                stopConnector();
-                waitForConnectorShutdown(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-            }
-            catch (ConditionTimeoutException e) {
-                assertThat(logInterceptor.countOccurrences("Processing DDL event ")).as("Did not get all expected DDL events").isEqualTo(expected);
-            }
+            Awaitility.await()
+                    .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
+                    .until(() -> logInterceptor.countOccurrences(logText) == expected);
+
+            stopConnector();
+            waitForConnectorShutdown(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Make sure there are no events to process and that no DDL exceptions were logged
             assertThat(logInterceptor.containsMessage("Producer failure")).as("Connector failure").isFalse();
