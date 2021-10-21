@@ -62,6 +62,7 @@ Chris Riccomini
 Christian Posta
 Christopher Sang
 Chuck Ha
+Claus Guttesen
 Cliff Wheadon
 Collin Van Dyck
 Cory Harper
@@ -81,7 +82,9 @@ Denis Mikhaylov
 Dennis Campagna
 Dennis Persson
 Derek Moore
+Dhrubajyoti G
 Duncan Sands
+Dushyant M
 Echo Xu
 Ed Laur
 Eduardo Hayashi
@@ -287,6 +290,7 @@ Stathis Souris
 Stefan Miklosovic
 Stephen Powis
 Steven Siahetiong
+Sungho Hwang
 Syed Muhammad Sufyian
 Tapani Moilanen
 Tautvydas Januskevicius
@@ -328,6 +332,7 @@ yangsanity
 Yilong Chang
 Yiming Liu
 Yoann Rodière
+Yuiham Chan
 Zheng Wang
 Zoran Regvart
 志飞 张
