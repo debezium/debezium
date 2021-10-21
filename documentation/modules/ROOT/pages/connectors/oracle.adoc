@@ -476,8 +476,8 @@ The connector drops change events that are discarded by a rollback.
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
 The default buffer type is configured using `memory`.
-Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records. 
-If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment. 
+Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records.
+If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment.
 
 ifdef::community[]
 An additional buffer type can be configured using `infinispan`.
@@ -495,35 +495,35 @@ If the same buffer location will be used by a new connector deployment, the file
 ====
 endif::community[]
 
-// Type: assembly
+// Type: concept
 // ModuleID: debezium-oracle-connector-scn-gap-detection
-// Title: Why Oracle SCN values may have gaps
+// Title: Gaps between Oracle SCN values
 [[scn-jumps]]
-== SCN gap detection
+=== SCN gap detection
 
-The {prodname} Oracle connector relies on using a start/end range based on system change numbers to collect change events from Oracle when using LogMiner.
-This range is managed by the connector automatically using an adaptive window to grow and shrink the range based on whether the connector is streaming changes in near real-time or if the connector has fallen behind due to large/bulk transactions.
+When the {prodname} Oracle connector is configured to use LogMiner, it collects change events from Oracle by using a start and end range that is based on system change numbers (SCNs).
+The connector manages this range automatically, increasing or decreasing the range depending on whether the connector is able to stream changes in near real-time, or must process a backlog because of large or bulk transactions in the database.
 
-There are situations where the Oracle database will advance the system change number by an unusually large value rather than it increasing by a constant rate.
-This can happen due to certain integrations interacting with the database or during common events like hot backups.
+Under certain circumstances, the Oracle database advances the system change number by an unusually high amount, rather than increasing it at a constant rate.
+Such a jump in the SCN value can occur because of the way that a particular integration interacts with the database, or as a result of events such as hot backups.
 
-The {prodname} Oracle connector relies on two configuration properties to address detecting the SCN gap and adjusting the mining range.
+The {prodname} Oracle connector relies on the following configuration properties to detect the SCN gap and adjust the mining range.
 
-* `log.mining.scn.gap.detection.gap.size.min`, referred to as minimum gap size
-* `log.mining.scn.gap.detection.time.interval.max.ms`, referred to as maximum time interval
+* `log.mining.scn.gap.detection.gap.size.min`:: Specifies the minimum gap size.
+* `log.mining.scn.gap.detection.time.interval.max.ms`:: Specifies the maximum time interval.
 
-The connector first compares the difference in number of changes between the current SCN and the current mining range's end SCN.
+The connector first compares the difference in the number of changes between the current SCN and the highest SCN in the current mining range.
 If this difference is greater than the minimum gap size, then the connector has potentially detected a SCN gap.
 To confirm the gap exists, the connector then compares the difference between the current SCN's timestamp and the prior mining range's end SCN timestamp.
 If this difference is smaller than the maximum time interval as well, then a SCN gap has occurred.
 
-When an SCN gap occurs, the {prodname} connector will automatically use the current SCN as the end point for the current mining session's range.
+When an SCN gap occurs, the {prodname} connector automatically uses the current SCN as the end point for the range of the current mining session.
 This allows the connector to quickly catch up to the real-time events without mining smaller ranges in between that return no changes because the SCN value was increased by an unexpectedly large number.
 Additionally, the connector will ignore the mining maximum batch size for this iteration only when this occurs.
 
 [WARNING]
 ====
-The SCN gap detection feature is only available if the large increment occurs while the connector is running and processing near real-time events.
+SCN gap detection is available only if the large SCN increment occurs while the connector is running and processing near real-time events.
 ====
 
 // Type: assembly
@@ -2415,13 +2415,13 @@ It can be useful to set this property if you want the capturing process to alway
 
 |[[oracle-property-log-mining-scn-gap-detection-gap-size-min]]<<oracle-property-log-mining-scn-gap-detection-gap-size-min, `+log.mining.scn.gap.detection.gap.size.min+`>>
 |`1000000`
-|Controls whether a SCN gap is detected by comparing the current and previous SCN difference with this value.
-If the difference is greater than this setting and the time difference is smaller than xref:oracle-property-log-mining-scn-gap-detection-time-interval-max-ms[`log.mining.scn.gap.detection.time.interval.max.ms`] then an SCN gap is detected and a mining window larger than the configured maximum batch will be used.
+|Specifies a value that the connector compares to the difference between the current and previous SCN values to determine whether an SCN gap exists.
+If the difference between the SCN values  is greater than the specified value, and the time difference is smaller than xref:oracle-property-log-mining-scn-gap-detection-time-interval-max-ms[`log.mining.scn.gap.detection.time.interval.max.ms`] then an SCN gap is detected, and the connector uses a mining window larger than the configured maximum batch.
 
 |[[oracle-property-log-mining-scn-gap-detection-time-interval-max-ms]]<<oracle-property-log-mining-scn-gap-detection-time-interval-max-ms, `+log.mining.scn.gap.detection.time.interval.max.ms+`>>
 |`20000`
-|Controls whether a SCN gap is detected by comparing the current and previous SCN timestamp difference in milliseconds with this value.
-If the difference is smaller than this setting and the SCN delta is greater than xref:oracle-property-log-mining-scn-gap-detection-gap-size-min[`log.mining.scn.gap.detection.gap.size.min`], then an SCN gap is detected and a mining window larger than the configured maximum batch will be used.
+|Specifies a value,  in milliseconds, that the connector compares to the difference between the current and previous SCN timestamps  to determine whether an SCN gap exists.
+If the difference between the timestamps is less than the specified value, and the SCN delta is greater than xref:oracle-property-log-mining-scn-gap-detection-gap-size-min[`log.mining.scn.gap.detection.gap.size.min`], then an SCN gap is detected and the connector uses a mining window larger than the configured maximum batch.
 
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
