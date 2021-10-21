@@ -2,6 +2,57 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.6.3.Final
+October 21st 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12373670)
+
+### New features since 1.6.2.Final
+
+* Oracle - Provide a more user-friendly way to update SCN [DBZ-3876](https://issues.jboss.org/browse/DBZ-3876)
+
+
+### Breaking changes since 1.6.2.Final
+
+None
+
+
+### Fixes since 1.6.2.Final
+
+* Status stays in RUNNING for Postgres Connector after Postgres is stopped [DBZ-3655](https://issues.jboss.org/browse/DBZ-3655)
+* Oracle connector unable to start in archive only mode [DBZ-3712](https://issues.jboss.org/browse/DBZ-3712)
+* Row hashing in LogMiner Query not able to differentiate between rows of a statement. [DBZ-3834](https://issues.jboss.org/browse/DBZ-3834)
+* The chunk select statement is incorrect for combined primary key in incremental snapshot [DBZ-3860](https://issues.jboss.org/browse/DBZ-3860)
+* DML statement couldn't be parsed [DBZ-3892](https://issues.jboss.org/browse/DBZ-3892)
+* Oracle Connector replicating data from all PDBs. Missing PDB filter during replication.  [DBZ-3954](https://issues.jboss.org/browse/DBZ-3954)
+* Oracle connector Parsing Exception: DDL statement couldn't be parsed [DBZ-3962](https://issues.jboss.org/browse/DBZ-3962)
+* Oracle-Connector fails parsing a DDL statement [DBZ-3977](https://issues.jboss.org/browse/DBZ-3977)
+* Oracle connector fails after error ORA-01327 [DBZ-4010](https://issues.jboss.org/browse/DBZ-4010)
+* Incorrect incremental snapshot DDL triggers snapshot that generates unending* inserts against signalling table [DBZ-4013](https://issues.jboss.org/browse/DBZ-4013)
+* Oracle-Connector fails parsing a DDL statement (truncate partition) [DBZ-4017](https://issues.jboss.org/browse/DBZ-4017)
+* DDL statement couldn't be parsed [DBZ-4026](https://issues.jboss.org/browse/DBZ-4026)
+* Question about handling Raw column types [DBZ-4037](https://issues.jboss.org/browse/DBZ-4037)
+* Incremental snapshotting of a table can be prematurely terminated after restart [DBZ-4057](https://issues.jboss.org/browse/DBZ-4057)
+* Events are missed with Oracle connector due to LGWR buffer not being flushed to redo logs [DBZ-4067](https://issues.jboss.org/browse/DBZ-4067)
+* Database history is constantly being reconfigured [DBZ-4106](https://issues.jboss.org/browse/DBZ-4106)
+* Debezium deals with Oracle DDL appeared IndexOutOfBoundsException: Index: 0, Size: 0 [DBZ-4135](https://issues.jboss.org/browse/DBZ-4135)
+* Possible OutOfMemoryError with tracking schema changes [DBZ-4151](https://issues.jboss.org/browse/DBZ-4151)
+* DDL ParsingException - not all table compression modes are supported [DBZ-4158](https://issues.jboss.org/browse/DBZ-4158)
+
+
+### Other changes since 1.6.2.Final
+
+* Hyper-link references between options in the Outbox SMT options table  [DBZ-3920](https://issues.jboss.org/browse/DBZ-3920)
+* Incorrect documentation for message.key.columns [DBZ-3437](https://issues.jboss.org/browse/DBZ-3437)
+* Promote Outbox SMT to GA [DBZ-3584](https://issues.jboss.org/browse/DBZ-3584)
+* Upgrade to binlog-client 0.25.3 [DBZ-3787](https://issues.jboss.org/browse/DBZ-3787)
+* Document awareness of Oracle database tuning [DBZ-3880](https://issues.jboss.org/browse/DBZ-3880)
+* Update antora.yml file with new values for SMT attributes [DBZ-3922](https://issues.jboss.org/browse/DBZ-3922)
+* Add top-level Transformation menu node for downstream docs [DBZ-3931](https://issues.jboss.org/browse/DBZ-3931)
+* Update docs to specify that connectors track metadata only for transactions that occur after deployment  [DBZ-3961](https://issues.jboss.org/browse/DBZ-3961)
+* Remove `GRANT ALTER ANY TABLE` from Oracle documentation [DBZ-4007](https://issues.jboss.org/browse/DBZ-4007)
+* Misc. MongoDB connector docs fixes [DBZ-4149](https://issues.jboss.org/browse/DBZ-4149)
+
+
+
 ## 1.6.2.Final
 September 2nd 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12359557)
 
