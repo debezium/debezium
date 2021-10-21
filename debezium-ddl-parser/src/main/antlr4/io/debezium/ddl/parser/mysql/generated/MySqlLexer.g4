@@ -155,6 +155,7 @@ OPTIONAL:                            'OPTIONAL';
 OPTIONALLY:                          'OPTIONALLY';
 OR:                                  'OR';
 ORDER:                               'ORDER';
+OVER:                                 'OVER';
 OUT:                                 'OUT';
 OUTER:                               'OUTER';
 OUTFILE:                             'OUTFILE';
@@ -337,6 +338,10 @@ SUM:                                 'SUM';
 VAR_POP:                             'VAR_POP';
 VAR_SAMP:                            'VAR_SAMP';
 VARIANCE:                            'VARIANCE';
+LAG:                                 'LAG';
+LEAD:                                'LEAD';
+FIRST_VALUE:                         'FIRST_VALUE';
+LAST_VALUE:                          'LAST_VALUE';
 
 // Common function Keywords
 

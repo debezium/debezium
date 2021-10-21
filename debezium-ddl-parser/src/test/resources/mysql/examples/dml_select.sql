@@ -169,3 +169,6 @@ SELECT * FROM test LIMIT LIMIT1,LIMIT2;
 -- Functions
 SELECT mod(3,2);
 SELECT SCHEMA();
+-- Non Aggregate Functions
+SELECT pk, LEAD(pk) OVER (ORDER BY pk) AS l;
+SELECT COALESCE(LAG(last_eq.end_variation) OVER (PARTITION BY eq.account_id, eq.execution_name_id, eq.currency ORDER BY eq.start_date), 0) AS start_variation FROM t1;
