@@ -48,7 +48,7 @@ node('Slave') {
             }
         }
         stage ('Build product') {
-            sh "java -jar ./bacon.jar pig run ${TEMPORARY_BUILD ? '-t' : ''} -e product-version=$PRODUCT_VERSION -e product-version-release=$PRODUCT_VERSION_RELEASE -e debezium-version=$DEBEZIUM_VERSION -e milestone=$PRODUCT_MILESTONE -v debezium-bacon"
+            sh "java -jar ./bacon.jar pig run ${TEMPORARY_BUILD == 'true' ? '-t' : ''} -e product-version=$PRODUCT_VERSION -e product-version-release=$PRODUCT_VERSION_RELEASE -e debezium-version=$DEBEZIUM_VERSION -e milestone=$PRODUCT_MILESTONE -v debezium-bacon"
         }
         stage('Extract connector packages') {
             dir (PACKAGES_DIR) {
