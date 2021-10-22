@@ -1033,16 +1033,16 @@ public class EventRouterTest {
                 .withSource(SchemaBuilder.struct().build())
                 .build();
 
-        final Struct before = new Struct(recordSchema);
-        before.put("id", eventId);
-        before.put("aggregatetype", payloadType);
-        before.put("aggregateid", payloadId);
-        before.put("type", eventType);
-        before.put("payload", payload);
+        final Struct after = new Struct(recordSchema);
+        after.put("id", eventId);
+        after.put("aggregatetype", payloadType);
+        after.put("aggregateid", payloadId);
+        after.put("type", eventType);
+        after.put("payload", payload);
 
-        extraValues.forEach(before::put);
+        extraValues.forEach(after::put);
 
-        final Struct body = envelope.create(before, null, Instant.now());
+        final Struct body = envelope.create(after, null, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), body);
     }
 }
