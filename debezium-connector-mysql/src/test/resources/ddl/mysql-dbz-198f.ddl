@@ -249,9 +249,9 @@ ELSE
         SELECT GROUP_CONCAT( marks
         ORDER BY marks  ) 
         FROM nodes_1)
-        ) AS rank
+        ) AS `rank`
         FROM nodes_1 group by exam_id) as p on(s.parent_exam_id=p.exam_id)
-        set s.rank=p.rank WHERE exam_id =GIVEN_EXAM_ID;	
+        set s.`rank`=p.`rank` WHERE exam_id =GIVEN_EXAM_ID;
 	
       SELECT t1.* FROM nodes_1 AS t1
       WHERE  EXISTS

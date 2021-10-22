@@ -111,6 +111,36 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4193")
+    public void shouldAllowAggregateWindowedFunction() {
+        String selectSql = "SELECT e.id,\n"
+                + "SUM(e.bin_volume) AS bin_volume,\n"
+                + "SUM(e.bin_volume) OVER(PARTITION BY id, e.bin_volume ORDER BY id) AS bin_volume_o,\n"
+                + "COALESCE(bin_volume, 0) AS bin_volume2,\n"
+                + "COALESCE(LAG(e.bin_volume) OVER(PARTITION BY id ORDER BY e.id), 0) AS bin_volume3,\n"
+                + "FIRST_VALUE(id) OVER() AS fv,\n"
+                + "DENSE_RANK() OVER(PARTITION BY bin_name ORDER BY id) AS drk,\n"
+                + "RANK() OVER(PARTITION BY bin_name) AS rk,\n"
+                + "ROW_NUMBER ( ) OVER(PARTITION BY bin_name) AS rn,\n"
+                + "NTILE(2) OVER() AS nt\n"
+                + "FROM table1 e";
+        parser.parse(selectSql, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        selectSql = "SELECT id,\n"
+                + "SUM(bin_volume) OVER w AS bin_volume_o,\n"
+                + "LAG(bin_volume) OVER w AS bin_volume_l,\n"
+                + "LAG(bin_volume, 2) OVER w AS bin_volume_l2,\n"
+                + "FIRST_VALUE(id) OVER w2 AS fv,\n"
+                + "GROUP_CONCAT(bin_volume order by id) AS `rank`\n"
+                + "FROM table1\n"
+                + "WINDOW w AS (PARTITION BY id, bin_volume ORDER BY id ROWS UNBOUNDED PRECEDING),\n"
+                + "w2 AS (PARTITION BY id, bin_volume ORDER BY id DESC ROWS 10 PRECEDING)";
+        parser.parse(selectSql, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-3020")
     public void shouldProcessExpressionWithDefault() {
         String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
