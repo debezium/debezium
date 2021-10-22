@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Objects;
 import java.util.StringJoiner;
 
 import io.debezium.annotation.ThreadSafe;
@@ -29,7 +30,16 @@ public class MongoDbTopicSelector {
      */
     public static TopicSelector<CollectionId> defaultSelector(String prefix, String heartbeatPrefix) {
         return TopicSelector.defaultSelector(prefix, heartbeatPrefix, ".",
-                (id, pref, delimiter) -> getTopicName(id, pref, delimiter));
+            MongoDbTopicSelector::getTopicName);
+    }
+
+    public static TopicSelector<CollectionId> selector(String prefix, String heartbeatPrefix, String delimiter) {
+        if (Objects.nonNull(delimiter)) {
+            return TopicSelector.defaultSelector(prefix, heartbeatPrefix, delimiter,
+                MongoDbTopicSelector::getTopicName);
+        } else {
+            return defaultSelector(prefix, heartbeatPrefix);
+        }
     }
 
     /**

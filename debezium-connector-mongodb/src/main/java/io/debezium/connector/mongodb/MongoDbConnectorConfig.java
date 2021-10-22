@@ -47,6 +47,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static final Pattern FIELD_RENAMES_PATTERN = Pattern.compile("^[*|\\w|\\s*]+(?:\\.[\\w]+\\.[\\w]+)+(\\.[\\w]+)*:(?:[\\w]+)+\\s*$");
     protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
 
+    protected static final String TOPIC_DELIMITER = "topic.delimiter";
+    protected static final String DEFAULT_TOPIC_DELIMITER = ".";
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -531,6 +534,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final SnapshotMode snapshotMode;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
+    private final String topicDelimiter;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -540,6 +544,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
+        this.topicDelimiter = config.getString(TOPIC_DELIMITER, DEFAULT_TOPIC_DELIMITER);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -632,6 +637,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
+    }
+
+    public String getTopicDelimiter() {
+        return topicDelimiter;
     }
 
     @Override

@@ -33,7 +33,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         this.filters = new Filters(config);
         this.connectorConfig = new MongoDbConnectorConfig(config);
         this.source = new SourceInfo(connectorConfig);
-        this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, connectorConfig.getHeartbeatTopicsPrefix());
+        this.topicSelector = MongoDbTopicSelector.selector(serverName, connectorConfig.getHeartbeatTopicsPrefix(), connectorConfig.getTopicDelimiter());
         this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.connectionContext = new ConnectionContext(config);
     }

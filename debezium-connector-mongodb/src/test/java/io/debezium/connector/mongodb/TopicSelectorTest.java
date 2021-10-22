@@ -20,26 +20,39 @@ import io.debezium.schema.TopicSelector;
  */
 public class TopicSelectorTest {
 
+    private TopicSelector<CollectionId> defaultNoPrefix;
+    private TopicSelector<CollectionId> defaultWithPrefix;
+
     private TopicSelector<CollectionId> noPrefix;
     private TopicSelector<CollectionId> withPrefix;
 
     @Before
     public void beforeEach() {
-        noPrefix = MongoDbTopicSelector.defaultSelector(null, "__debezium-heartbeat");
-        withPrefix = MongoDbTopicSelector.defaultSelector("prefix", "__debezium-heartbeat");
+        // default topic delimiter
+        defaultNoPrefix = MongoDbTopicSelector.defaultSelector(null, "__debezium-heartbeat");
+        defaultWithPrefix = MongoDbTopicSelector.defaultSelector("prefix", "__debezium-heartbeat");
+
+        // topic delimiter = _
+        noPrefix = MongoDbTopicSelector.selector(null, "__debezium-heartbeat", "_");
+        withPrefix = MongoDbTopicSelector.selector("prefix", "__debezium-heartbeat", "_");
     }
 
     @Test
     public void shouldHandleCollectionIdWithDatabaseAndCollection() {
-        assertTopic(noPrefix, dbAndCollection("db", "coll")).isEqualTo("db.coll");
-        assertTopic(withPrefix, dbAndCollection("db", "coll")).isEqualTo("prefix.db.coll");
+        // default topic delimiter
+        assertTopic(defaultNoPrefix, dbAndCollection("db", "coll")).isEqualTo("db.coll");
+        assertTopic(defaultWithPrefix, dbAndCollection("db", "coll")).isEqualTo("prefix.db.coll");
+
+        // topic delimiter = _
+        assertTopic(noPrefix, dbAndCollection("db", "coll")).isEqualTo("db_coll");
+        assertTopic(withPrefix, dbAndCollection("db", "coll")).isEqualTo("prefix_db_coll");
     }
 
     @Test
     @FixFor("DBZ-878")
     public void shouldHandleCollectionIdWithInvalidTopicNameChar() {
-        assertTopic(noPrefix, dbAndCollection("db", "my@collection")).isEqualTo("db.my_collection");
-        assertTopic(withPrefix, dbAndCollection("db", "my@collection")).isEqualTo("prefix.db.my_collection");
+        assertTopic(defaultNoPrefix, dbAndCollection("db", "my@collection")).isEqualTo("db.my_collection");
+        assertTopic(defaultWithPrefix, dbAndCollection("db", "my@collection")).isEqualTo("prefix.db.my_collection");
     }
 
     protected StringAssert assertTopic(TopicSelector<CollectionId> selector, CollectionId collectionId) {
