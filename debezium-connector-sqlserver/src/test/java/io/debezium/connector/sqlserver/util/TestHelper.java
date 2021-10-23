@@ -358,7 +358,7 @@ public class TestHelper {
      *            the source table columns that are to be included in the change table, may not be {@code null}
      * @throws SQLException if anything unexpected fails
      */
-    public static void enableTableCdc(SqlServerConnection connection, String tableName, String captureName, List<String> captureColumnList) throws SQLException {
+    public static void enableTableCdc(JdbcConnection connection, String tableName, String captureName, List<String> captureColumnList) throws SQLException {
         Objects.requireNonNull(tableName);
         Objects.requireNonNull(captureName);
         Objects.requireNonNull(captureColumnList);
@@ -374,7 +374,7 @@ public class TestHelper {
      *            the name of the table, may not be {@code null}
      * @throws SQLException if anything unexpected fails
      */
-    public static void disableTableCdc(SqlServerConnection connection, String name) throws SQLException {
+    public static void disableTableCdc(JdbcConnection connection, String name) throws SQLException {
         Objects.requireNonNull(name);
         String disableCdcForTableStmt = DISABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         connection.execute(disableCdcForTableStmt);

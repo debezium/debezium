@@ -347,7 +347,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SOURCE_TIMESTAMP_MODE,
                     MAX_TRANSACTIONS_PER_ITERATION,
                     BINARY_HANDLING_MODE,
-                    INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE)
+                    INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
@@ -459,6 +461,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     @Override
     public boolean supportsOperationFiltering() {
+        return true;
+    }
+
+    @Override
+    protected boolean supportsSchemaChangesDuringIncrementalSnapshot() {
         return true;
     }
 

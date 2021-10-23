@@ -165,7 +165,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (obj instanceof Column) {
             Column that = (Column) obj;
             return this.name().equalsIgnoreCase(that.name()) &&
-                    this.typeExpression().equalsIgnoreCase(that.typeExpression()) &&
+                    Strings.equalsIgnoreCase(this.typeExpression(), that.typeExpression()) &&
                     this.typeName().equalsIgnoreCase(that.typeName()) &&
                     this.jdbcType() == that.jdbcType() &&
                     Strings.equalsIgnoreCase(this.charsetName(), that.charsetName()) &&

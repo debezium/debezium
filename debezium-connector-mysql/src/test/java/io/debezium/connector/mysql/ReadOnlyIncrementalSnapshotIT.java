@@ -15,6 +15,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
@@ -174,6 +175,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 expectedRecordCount,
                 x -> true,
                 k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
                 DATABASE.topicForTable("a4"),
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
@@ -195,6 +197,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 expectedRecordCount,
                 x -> true,
                 k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
                 DATABASE.topicForTable("a42"),
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {

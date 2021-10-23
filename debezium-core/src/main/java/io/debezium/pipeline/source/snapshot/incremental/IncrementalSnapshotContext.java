@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.relational.Table;
+
 public interface IncrementalSnapshotContext<T> {
 
     T currentDataCollectionId();
@@ -46,4 +48,12 @@ public interface IncrementalSnapshotContext<T> {
     Map<String, Object> store(Map<String, Object> offset);
 
     void revertChunk();
+
+    void setSchema(Table schema);
+
+    Table getSchema();
+
+    boolean isSchemaVerificationPassed();
+
+    void setSchemaVerificationPassed(boolean schemaVerificationPassed);
 }

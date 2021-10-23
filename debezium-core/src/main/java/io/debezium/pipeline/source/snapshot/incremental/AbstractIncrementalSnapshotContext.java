@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
 
@@ -72,6 +73,10 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      * The largest PK in the table at the start of snapshot.
      */
     private Object[] maximumKey;
+
+    private Table schema;
+
+    private boolean schemaVerificationPassed;
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -211,6 +216,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         lastEventKeySent = null;
         chunkEndPosition = null;
         maximumKey = null;
+        schema = null;
+        schemaVerificationPassed = false;
     }
 
     public void revertChunk() {
@@ -242,6 +249,27 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public Optional<Object[]> maximumKey() {
         return Optional.ofNullable(maximumKey);
+    }
+
+    @Override
+    public Table getSchema() {
+        return schema;
+    }
+
+    @Override
+    public void setSchema(Table schema) {
+        this.schema = schema;
+    }
+
+    @Override
+    public boolean isSchemaVerificationPassed() {
+        return schemaVerificationPassed;
+    }
+
+    @Override
+    public void setSchemaVerificationPassed(boolean schemaVerificationPassed) {
+        this.schemaVerificationPassed = schemaVerificationPassed;
+        LOGGER.info("Incremental snapshot's schema verification passed = {}, schema = {}", schemaVerificationPassed, schema);
     }
 
     @Override

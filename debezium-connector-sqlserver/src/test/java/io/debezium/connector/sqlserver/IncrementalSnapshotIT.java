@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.util.Arrays;
 
 import org.junit.After;
 import org.junit.Before;
@@ -16,10 +17,10 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
-import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.util.Testing;
 
-public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<SqlServerConnector> {
+public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<SqlServerConnector> {
 
     private SqlServerConnection connection;
 
@@ -73,14 +74,63 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<SqlSe
     }
 
     @Override
+    protected String tableName(String table) {
+        return "testDB.dbo." + table;
+    }
+
+    @Override
     protected String signalTableName() {
         return "dbo.debezium_signal";
+    }
+
+    @Override
+    protected String alterColumnStatement(String table, String column, String type) {
+        return String.format("ALTER TABLE %s ALTER COLUMN %s %s", table, column, type);
+    }
+
+    @Override
+    protected String alterColumnSetNotNullStatement(String table, String column, String type) {
+        return String.format("ALTER TABLE %s ALTER COLUMN %s %s NOT NULL", table, column, type);
+    }
+
+    @Override
+    protected String alterColumnDropNotNullStatement(String table, String column, String type) {
+        return String.format("ALTER TABLE %s ALTER COLUMN %s %s NULL", table, column, type);
+    }
+
+    @Override
+    protected String alterColumnSetDefaultStatement(String table, String column, String type, String defaultValue) {
+        return String.format("ALTER TABLE %s ADD CONSTRAINT df_%s DEFAULT %s FOR %s", table, column, defaultValue, column);
+    }
+
+    @Override
+    protected String alterColumnDropDefaultStatement(String table, String column, String type) {
+        return String.format("ALTER TABLE %s DROP CONSTRAINT df_%s", table, column);
+    }
+
+    @Override
+    protected void executeRenameTable(JdbcConnection connection, String newTable) throws SQLException {
+        TestHelper.disableTableCdc(connection, "a");
+        connection.setAutoCommit(false);
+        logger.info(String.format("exec sp_rename '%s', '%s'", tableName(), "old_table"));
+        connection.executeWithoutCommitting(String.format("exec sp_rename '%s', '%s'", tableName(), "old_table"));
+        logger.info(String.format("exec sp_rename '%s', '%s'", tableName(newTable), "a"));
+        connection.executeWithoutCommitting(String.format("exec sp_rename '%s', '%s'", tableName(newTable), "a"));
+        TestHelper.enableTableCdc(connection, "a", "a", Arrays.asList("pk", "aa", "c"));
+        connection.commit();
+    }
+
+    @Override
+    protected String createTableStatement(String newTable, String copyTable) {
+        return String.format("CREATE TABLE %s (pk int primary key, aa int)", newTable);
     }
 
     @Override
     protected Builder config() {
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB.dbo.debezium_signal");
+                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB.dbo.debezium_signal")
+                .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
+                .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true);
     }
 }
