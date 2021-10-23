@@ -34,4 +34,10 @@ public interface IncrementalSnapshotChangeEventSource<T extends DataCollectionId
 
     default void processFilteredEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
     }
+
+    default void processTransactionStartedEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    }
+
+    default void processTransactionCommittedEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    }
 }
