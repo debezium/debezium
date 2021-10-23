@@ -149,6 +149,31 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         getContext().enqueueDataCollectionsToSnapshot(dataCollectionIds, signalOffset);
     }
 
+    @Override
+    public void processTransactionStartedEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+        if (getContext() == null) {
+            LOGGER.warn("Context is null, skipping message processing");
+            return;
+        }
+        boolean windowClosed = getContext().updateWindowState(offsetContext);
+        if (windowClosed) {
+            sendWindowEvents(partition, offsetContext);
+            readChunk();
+        }
+    }
+
+    @Override
+    public void processTransactionCommittedEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+        if (getContext() == null) {
+            LOGGER.warn("Context is null, skipping message processing");
+            return;
+        }
+        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(offsetContext)) {
+            sendWindowEvents(partition, offsetContext);
+            readChunk();
+        }
+    }
+
     protected void updateLowWatermark() {
         try {
             getExecutedGtidSet(getContext()::setLowWatermark);
