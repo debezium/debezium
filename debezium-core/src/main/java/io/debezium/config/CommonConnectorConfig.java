@@ -341,6 +341,18 @@ public abstract class CommonConnectorConfig {
             .withDefault(1024)
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES = Field.create("incremental.snapshot.allow.schema.changes")
+            .withDisplayName("Allow schema changes during incremental snapshot if supported.")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Detect schema change during an incremental snapshot and re-select a current chunk to avoid locking DDLs. " +
+                    "Note that changes to a primary key are not supported and can cause incorrect results if performed during an incremental snapshot. " +
+                    "Another limitation is that if a schema change affects only columns' default values, " +
+                    "then the change won't be detected until the DDL is processed from the binlog stream. " +
+                    "This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.")
+            .withDefault(Boolean.FALSE);
+
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
@@ -496,6 +508,7 @@ public abstract class CommonConnectorConfig {
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
+    private final boolean incrementalSnapshotAllowSchemaChanges;
     private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
@@ -524,6 +537,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
+        this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
@@ -643,6 +657,14 @@ public abstract class CommonConnectorConfig {
      */
     public boolean supportsOperationFiltering() {
         return false;
+    }
+
+    protected boolean supportsSchemaChangesDuringIncrementalSnapshot() {
+        return false;
+    }
+
+    public boolean isIncrementalSnapshotSchemaChangesEnabled() {
+        return supportsSchemaChangesDuringIncrementalSnapshot() && incrementalSnapshotAllowSchemaChanges;
     }
 
     @SuppressWarnings("unchecked")

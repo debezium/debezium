@@ -73,7 +73,7 @@ import io.debezium.util.Clock;
  * <p>A window can be opened and closed right away by the same event. This can happen when a high watermark is an empty set, which means there were no binlog events during the chunk select. Chunk will get inserted right after the low watermark, no events will be deduplicated from the chunk</p>
  * <br/>
  * <b>No updates for included tables</b>
- * <p>It’s important to receive binlog events for the Backfill to make progress.All binlog events are checked against the low and high watermarks, including the events from the tables that aren’t included in the connector. This guarantees that the window processing mode gets updated even when none of the tables included in the connector are getting binlog events.</p>
+ * <p>It’s important to receive binlog events for the incremental snapshot to make progress. All binlog events are checked against the low and high watermarks, including the events from the tables that aren’t included in the connector. This guarantees that the window processing mode gets updated even when none of the tables included in the connector are getting binlog events.</p>
  */
 public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCollectionId> extends AbstractIncrementalSnapshotChangeEventSource<T> {
 

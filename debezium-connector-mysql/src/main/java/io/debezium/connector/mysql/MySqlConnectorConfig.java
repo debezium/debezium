@@ -988,7 +988,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     ENABLE_TIME_ADJUSTER,
                     BINARY_HANDLING_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,
@@ -1017,6 +1018,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     @Override
     public boolean supportsOperationFiltering() {
+        return true;
+    }
+
+    @Override
+    protected boolean supportsSchemaChangesDuringIncrementalSnapshot() {
         return true;
     }
 

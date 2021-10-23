@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.After;
@@ -123,6 +124,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 expectedRecordCount,
                 x -> true,
                 k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
                 "test_server.s1.a4",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
@@ -144,6 +146,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 expectedRecordCount,
                 x -> true,
                 k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
                 "test_server.s1.a42",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
