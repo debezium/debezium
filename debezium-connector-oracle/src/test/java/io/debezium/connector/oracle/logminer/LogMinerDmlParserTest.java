@@ -163,7 +163,7 @@ public class LogMinerDmlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-3235")
+    @FixFor({ "DBZ-3235", "DBZ-4194" })
     public void testParsingUpdateWithNoWhereClauseIsAcceptable() throws Exception {
         final Table table = Table.editor()
                 .tableId(TableId.parse("DEBEZIUM.TEST"))
@@ -187,6 +187,12 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues()[1]).isNull();
         assertThat(entry.getNewValues()[2]).isEqualTo("Hello");
         assertThat(entry.getNewValues()[3]).isNull();
+
+        String sql2 = "update \"DEBEZIUM\".\"TEST\" a set a.\"COL1\" = '1', a.\"COL2\" = NULL, a.\"COL3\" = 'Hello2';";
+
+        LogMinerDmlEntry entry2 = fastDmlParser.parse(sql2, table, null);
+        assertThat(entry2.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry2.getNewValues()[2]).isEqualTo("Hello2");
     }
 
     @Test
