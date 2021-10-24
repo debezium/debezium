@@ -331,8 +331,13 @@ public class LogMinerDmlParser implements DmlParser {
         int nested = 0;
 
         // verify entering set-clause
-        if (sql.indexOf(SET, start) != start) {
+        int set = sql.indexOf(SET, start);
+        if (set == -1) {
             throw new DebeziumException("Failed to parse DML: " + sql);
+        }
+        else if (set != start) {
+            // find table alias
+            start = set;
         }
         start += SET_LENGTH;
 
