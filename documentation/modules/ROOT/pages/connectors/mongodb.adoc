@@ -313,10 +313,7 @@ Following is an example of what a message looks like:
 ----
 {
   "patch": null,
-  "after": {
-    "pk": "2",
-    "aa": "1"
-  },
+  "after": "{\"_id\" : {\"$numberLong\" : \"1004\"},\"first_name\" : \"Anne\",\"last_name\" : \"Kretchmar\",\"email\" : \"annek@noanswer.org\"}",
   "source": {
 ...
   },
