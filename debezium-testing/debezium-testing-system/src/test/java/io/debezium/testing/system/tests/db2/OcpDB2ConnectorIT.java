@@ -21,7 +21,7 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
-@Tag("db2 ")
+@Tag("db2")
 @Tag("openshift")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class OcpDB2ConnectorIT
