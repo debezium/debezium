@@ -166,7 +166,7 @@ The payload of a schema change event message includes the following elements:
 
 `ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
 `databaseName`:: The name of the database to which the DDL statements are applied.
-The value of `databaseName` serves as the message key. 
+The value of `databaseName` serves as the message key.
 `pos`:: The position in the binlog where the statements appear.
 `tableChanges`::  A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
@@ -576,7 +576,7 @@ _schemaName_:: The name of the schema in which the operation occurred.
 
 _tableName_:: The name of the table in which the operation occurred.
 
-The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-mysql-connector-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database history topics, xref:mysql-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
