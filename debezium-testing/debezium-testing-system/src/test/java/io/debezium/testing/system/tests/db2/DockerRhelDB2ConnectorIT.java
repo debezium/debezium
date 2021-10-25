@@ -21,7 +21,7 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
-@Tag("db2 ")
+@Tag("db2")
 @Tag("docker")
 @Tag("rhel")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
