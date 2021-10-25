@@ -12,7 +12,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
 
-import io.debezium.annotation.ThreadSafe;
+import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
@@ -34,7 +34,7 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
      */
     private final boolean isSnapshot;
 
-    @ThreadSafe
+    @Immutable
     private static final Map<String, Operation> OPERATION_LITERALS;
 
     static {

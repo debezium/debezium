@@ -213,7 +213,7 @@
                         <connector.mongodb.members.auto.discover>false</connector.mongodb.members.auto.discover>
                         <connector.mongodb.name>mongo1</connector.mongodb.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-			<debezium.test.capture.mode>${capture.mode}</debezium.test.capture.mode>
+                        <debezium.test.capture.mode>${capture.mode}</debezium.test.capture.mode>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
