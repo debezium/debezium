@@ -15,7 +15,7 @@ import org.bson.Document;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.OperationType;
 
-import io.debezium.annotation.ThreadSafe;
+import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
@@ -32,7 +32,7 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
 
     private final ChangeStreamDocument<Document> changeStreamEvent;
 
-    @ThreadSafe
+    @Immutable
     private static final Map<OperationType, Operation> OPERATION_LITERALS;
 
     static {
@@ -58,6 +58,8 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
 
     @Override
     protected void emitReadRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
+        // TODO Handled in MongoDbChangeSnapshotOplogRecordEmitter
+        // It might be worthy haveing three classes - one for Snapshot, one for oplog and one for change streams
     }
 
     @Override
