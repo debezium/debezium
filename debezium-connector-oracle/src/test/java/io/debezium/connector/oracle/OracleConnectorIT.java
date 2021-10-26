@@ -2263,6 +2263,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3978")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Specific to only LogMiner")
     public void shouldFilterUser() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz3978");
