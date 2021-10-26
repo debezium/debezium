@@ -2269,6 +2269,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4161")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies to LogMiner only")
     public void shouldWarnAboutTableNameLengthExceeded() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz4161_with_a_name_that_is_greater_than_30");
@@ -2311,6 +2312,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4161")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies to LogMiner only")
     public void shouldWarnAboutColumnNameLengthExceeded() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz4161");
