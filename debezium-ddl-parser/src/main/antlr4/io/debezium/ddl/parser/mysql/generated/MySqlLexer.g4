@@ -50,6 +50,7 @@ ALTER:                               'ALTER';
 ALWAYS:                              'ALWAYS';
 ANALYZE:                             'ANALYZE';
 AND:                                 'AND';
+ARRAY:                               'ARRAY';
 AS:                                  'AS';
 ASC:                                 'ASC';
 BEFORE:                              'BEFORE';

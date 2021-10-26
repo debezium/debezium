@@ -1977,7 +1977,7 @@ fullColumnName
     ;
 
 indexColumnName
-    : (uid | STRING_LITERAL) ('(' decimalLiteral ')')? sortType=(ASC | DESC)?
+    : ((uid | STRING_LITERAL) ('(' decimalLiteral ')')? | expression) sortType=(ASC | DESC)?
     ;
 
 userName
@@ -2160,6 +2160,7 @@ convertedDataType
     | typeName=(DATE | DATETIME | TIME | JSON | INT | INTEGER)
     | typeName=DECIMAL lengthTwoOptionalDimension?
     | (SIGNED | UNSIGNED) INTEGER?
+    | UNSIGNED ARRAY
     ;
 
 lengthOneDimension
