@@ -2,6 +2,108 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.8.0.Alpha1
+October 27th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12355606)
+
+### New features since 1.7.0.Final
+
+* Provide MongoDB CDC implementation based on 4.0 change streams [DBZ-435](https://issues.redhat.com/browse/DBZ-435)
+* No option fullDocument for the connection to MongoDB oplog.rs [DBZ-1847](https://issues.redhat.com/browse/DBZ-1847)
+* Make antora playbook_author.yml use current branch [DBZ-2546](https://issues.redhat.com/browse/DBZ-2546)
+* Support Kerberos for Debezium MS SQL plugin [DBZ-3517](https://issues.redhat.com/browse/DBZ-3517)
+* Make "snapshot.include.collection.list" case insensitive like "table.include.list" [DBZ-3895](https://issues.redhat.com/browse/DBZ-3895)
+* Exclude usernames at transaction level [DBZ-3978](https://issues.redhat.com/browse/DBZ-3978)
+* [oracle] Add the SCHEMA_ONLY_RECOVERY snapshot mode [DBZ-3986](https://issues.redhat.com/browse/DBZ-3986)
+* Support parse table and columns comment [DBZ-4000](https://issues.redhat.com/browse/DBZ-4000)
+* Upgrade postgres JDBC driver to version 42.2.24 [DBZ-4046](https://issues.redhat.com/browse/DBZ-4046)
+* Support JSON logging formatting [DBZ-4114](https://issues.redhat.com/browse/DBZ-4114)
+* Upgrade mysql-binlog-connector-java to v0.25.4 [DBZ-4152](https://issues.redhat.com/browse/DBZ-4152)
+* Wrong class name in SMT predicates documentation  [DBZ-4153](https://issues.redhat.com/browse/DBZ-4153)
+* Log warning when table/column name exceeds maximum allowed by LogMiner [DBZ-4161](https://issues.redhat.com/browse/DBZ-4161)
+* Add Redis to debezium-server-architecture.png [DBZ-4190](https://issues.redhat.com/browse/DBZ-4190)
+* wrong variable naming in an unit test for Outbox Event Router SMT [DBZ-4191](https://issues.redhat.com/browse/DBZ-4191)
+* MongoDB connector support user defined topic delimiter [DBZ-4192](https://issues.redhat.com/browse/DBZ-4192)
+* Parse the "window" keyword for agg and nonagg function in mysql8 [DBZ-4193](https://issues.redhat.com/browse/DBZ-4193)
+* wrong field on change event message example in MongoDB Connector documentation [DBZ-4201](https://issues.redhat.com/browse/DBZ-4201)
+
+
+### Breaking changes since 1.7.0.Final
+
+None
+
+
+### Fixes since 1.7.0.Final
+
+* Debezium build is unstable for Oracle connector [DBZ-3807](https://issues.redhat.com/browse/DBZ-3807)
+* Row hashing in LogMiner Query not able to differentiate between rows of a statement. [DBZ-3834](https://issues.redhat.com/browse/DBZ-3834)
+* The chunk select statement is incorrect for combined primary key in incremental snapshot [DBZ-3860](https://issues.redhat.com/browse/DBZ-3860)
+* Crash processing MariaDB DATETIME fields returns empty blob instead of null (Snapshotting with useCursorFetch option) [DBZ-4032](https://issues.redhat.com/browse/DBZ-4032)
+* column.the mask.hash.hashAlgorithm.with.... data corruption occurs when using this feature [DBZ-4033](https://issues.redhat.com/browse/DBZ-4033)
+* Compilation of MySQL grammar displays warnings [DBZ-4034](https://issues.redhat.com/browse/DBZ-4034)
+* Infinispan SPI throws NPE with more than one connector configured to the same Oracle database [DBZ-4064](https://issues.redhat.com/browse/DBZ-4064)
+* Extra double quotes on Kafka message produced by Quarkus Outbox Extension [DBZ-4068](https://issues.redhat.com/browse/DBZ-4068)
+* Debezium Server might contain driver versions pulled from Quarkus [DBZ-4070](https://issues.redhat.com/browse/DBZ-4070)
+* Connection failure while reading chunk during incremental snapshot [DBZ-4078](https://issues.redhat.com/browse/DBZ-4078)
+* Postgres 12/13 images are not buildable [DBZ-4080](https://issues.redhat.com/browse/DBZ-4080)
+* Postgres testsuite hangs on PostgresConnectorIT#exportedSnapshotShouldNotSkipRecordOfParallelTx [DBZ-4081](https://issues.redhat.com/browse/DBZ-4081)
+* CloudEventsConverter omits payload data of deleted documents [DBZ-4083](https://issues.redhat.com/browse/DBZ-4083)
+* Database history is constantly being reconfigured [DBZ-4106](https://issues.redhat.com/browse/DBZ-4106)
+* projectId not being set when injecting a custom PublisherBuilder [DBZ-4111](https://issues.redhat.com/browse/DBZ-4111)
+* Oracle flush table should not contain multiple rows [DBZ-4118](https://issues.redhat.com/browse/DBZ-4118)
+* Can't parse DDL for View [DBZ-4121](https://issues.redhat.com/browse/DBZ-4121)
+* SQL Server Connector fails to wrap in flat brackets [DBZ-4125](https://issues.redhat.com/browse/DBZ-4125)
+* Oracle Connector DDL Parsing Exception [DBZ-4126](https://issues.redhat.com/browse/DBZ-4126)
+* Debezium deals with Oracle DDL appeared IndexOutOfBoundsException: Index: 0, Size: 0 [DBZ-4135](https://issues.redhat.com/browse/DBZ-4135)
+* Oracle connector throws NPE during streaming in archive only mode [DBZ-4140](https://issues.redhat.com/browse/DBZ-4140)
+* debezium-api and debezium-core jars missing in NIGHTLY Kafka Connect container image libs dir [DBZ-4147](https://issues.redhat.com/browse/DBZ-4147)
+* Trim numerical defaultValue before converting [DBZ-4150](https://issues.redhat.com/browse/DBZ-4150)
+* Possible OutOfMemoryError with tracking schema changes [DBZ-4151](https://issues.redhat.com/browse/DBZ-4151)
+* DDL ParsingException - not all table compression modes are supported [DBZ-4158](https://issues.redhat.com/browse/DBZ-4158)
+* Producer failure NullPointerException [DBZ-4166](https://issues.redhat.com/browse/DBZ-4166)
+* DDL Statement couldn't be parsed [DBZ-4170](https://issues.redhat.com/browse/DBZ-4170)
+* In multiple connect clusters monitoring, no matter which cluster is selected from the dropdown list, the detailed information is always for the first cluster. [DBZ-4181](https://issues.redhat.com/browse/DBZ-4181)
+* Remove MINUSMINUS operator [DBZ-4184](https://issues.redhat.com/browse/DBZ-4184)
+* OracleSchemaMigrationIT#shouldNotEmitDdlEventsForNonTableObjects fails for Xstream [DBZ-4186](https://issues.redhat.com/browse/DBZ-4186)
+* Certain LogMiner-specific tests are not being skipped while using Xstreams [DBZ-4188](https://issues.redhat.com/browse/DBZ-4188)
+* Missing debezium/postgres:14-alpine in Docker Hub [DBZ-4195](https://issues.redhat.com/browse/DBZ-4195)
+
+
+### Other changes since 1.7.0.Final
+
+* Test with new deployment mechanism in AMQ Streams [DBZ-1777](https://issues.redhat.com/browse/DBZ-1777)
+* Incorrect documentation for message.key.columns [DBZ-3437](https://issues.redhat.com/browse/DBZ-3437)
+* Re-enable building PostgreSQL alpine images [DBZ-3691](https://issues.redhat.com/browse/DBZ-3691)
+* Upgrade to Quarkus 2.2.3.Final [DBZ-3785](https://issues.redhat.com/browse/DBZ-3785)
+* Document awareness of Oracle database tuning [DBZ-3880](https://issues.redhat.com/browse/DBZ-3880)
+* Publish website-builder and tooling images once per week [DBZ-3907](https://issues.redhat.com/browse/DBZ-3907)
+* Intermittent test failure on CI - RecordsStreamProducerIT#shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() [DBZ-3919](https://issues.redhat.com/browse/DBZ-3919)
+* Please fix vulnerabilites [DBZ-3926](https://issues.redhat.com/browse/DBZ-3926)
+* Error processing binlog event [DBZ-3989](https://issues.redhat.com/browse/DBZ-3989)
+* Upgrade Java version for GH actions [DBZ-3993](https://issues.redhat.com/browse/DBZ-3993)
+* Replace hard-coded version of MySQL example image with getStableVersion()  [DBZ-4005](https://issues.redhat.com/browse/DBZ-4005)
+* Handle SCN gap  [DBZ-4036](https://issues.redhat.com/browse/DBZ-4036)
+* Upgrade to Apache Kafka 3.0 [DBZ-4045](https://issues.redhat.com/browse/DBZ-4045)
+* Recreate webhook for linking PRs to JIRA issues [DBZ-4065](https://issues.redhat.com/browse/DBZ-4065)
+* Recipient email address should be a variable in all Jenkins jobs [DBZ-4071](https://issues.redhat.com/browse/DBZ-4071)
+* Allow [ci] tag as commit message prefix  [DBZ-4073](https://issues.redhat.com/browse/DBZ-4073)
+* Debezium Docker build job fails on rate limiter [DBZ-4074](https://issues.redhat.com/browse/DBZ-4074)
+* Add Postgresql 14 container image (Alpine) [DBZ-4075](https://issues.redhat.com/browse/DBZ-4075)
+* Add Postgresql 14 container image [DBZ-4079](https://issues.redhat.com/browse/DBZ-4079)
+* Fail Docker build scripts on error [DBZ-4084](https://issues.redhat.com/browse/DBZ-4084)
+* Display commit SHA in page footer [DBZ-4110](https://issues.redhat.com/browse/DBZ-4110)
+* Handle large comparisons results from GH API to address missing authors in release workflow [DBZ-4112](https://issues.redhat.com/browse/DBZ-4112)
+* Add debezium-connect-rest-extension module to GH workflows  [DBZ-4113](https://issues.redhat.com/browse/DBZ-4113)
+* Display commit SHA in documentation footer [DBZ-4123](https://issues.redhat.com/browse/DBZ-4123)
+* Add Debezium Kafka Connect REST Extension to Debezium Kafka Connect NIGHTLY container image [DBZ-4128](https://issues.redhat.com/browse/DBZ-4128)
+* Migrate from Gitter to Zulip [DBZ-4142](https://issues.redhat.com/browse/DBZ-4142)
+* Postgres module build times out after 6h on CI [DBZ-4145](https://issues.redhat.com/browse/DBZ-4145)
+* Misc. MongoDB connector docs fixes [DBZ-4149](https://issues.redhat.com/browse/DBZ-4149)
+* Document Oracle buffering solutions [DBZ-4157](https://issues.redhat.com/browse/DBZ-4157)
+* Close open file handle [DBZ-4164](https://issues.redhat.com/browse/DBZ-4164)
+* Outreach jobs should test all connectors [DBZ-4165](https://issues.redhat.com/browse/DBZ-4165)
+* Broken link in MySQL docs [DBZ-4199](https://issues.redhat.com/browse/DBZ-4199)
+
+
 
 ## 1.7.0.Final
 September 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12374879)
