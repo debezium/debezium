@@ -141,6 +141,69 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4166")
+    public void shouldAllowIndexExpressionForTable() {
+        String ddlSql = "CREATE TABLE `cached_sales` (\n"
+                + "`id` bigint unsigned NOT NULL AUTO_INCREMENT,\n"
+                + "`sale_id` bigint unsigned NOT NULL,\n"
+                + "`sale_item_id` bigint unsigned NOT NULL,\n"
+                + "`retailer_id` bigint unsigned DEFAULT NULL,\n"
+                + "`retailer_branch_id` bigint unsigned DEFAULT NULL,\n"
+                + "`retailer_branch_location_id` bigint unsigned NOT NULL,\n"
+                + "`sales_area_id` bigint unsigned DEFAULT NULL,\n"
+                + "`product_id` bigint unsigned DEFAULT NULL,\n"
+                + "`product_variation_id` bigint unsigned NOT NULL,\n"
+                + "`season_ids` json DEFAULT NULL,\n"
+                + "`category_ids` json DEFAULT NULL,\n"
+                + "`color_ids` json DEFAULT NULL,\n"
+                + "`size_ids` json DEFAULT NULL,\n"
+                + "`gender_ids` json DEFAULT NULL,\n"
+                + "`city` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n"
+                + "`country_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n"
+                + "`location_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n"
+                + "`edi_enabled` tinyint(1) DEFAULT NULL,\n"
+                + "`quantity` int DEFAULT NULL,\n"
+                + "`brand_normalized_purchase_price_net` int DEFAULT NULL,\n"
+                + "`brand_normalized_selling_price_gross` int DEFAULT NULL,\n"
+                + "`item_updated_at` datetime DEFAULT NULL,\n"
+                + "`sold_at` datetime DEFAULT NULL,\n"
+                + "`created_at` timestamp NULL DEFAULT NULL,\n"
+                + "`updated_at` timestamp NULL DEFAULT NULL,\n"
+                + "`tenant_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n"
+                + "PRIMARY KEY (`id`),\n"
+                + "UNIQUE KEY `cached_sales_sale_item_id_unique` (`sale_item_id`),\n"
+                + "KEY `cached_sales_sale_id_foreign` (`sale_id`),\n"
+                + "KEY `cached_sales_retailer_id_foreign` (`retailer_id`),\n"
+                + "KEY `cached_sales_retailer_branch_id_foreign` (`retailer_branch_id`),\n"
+                + "KEY `cached_sales_retailer_branch_location_id_foreign` (`retailer_branch_location_id`),\n"
+                + "KEY `cached_sales_sales_area_id_foreign` (`sales_area_id`),\n"
+                + "KEY `cached_sales_product_id_foreign` (`product_id`),\n"
+                + "KEY `cached_sales_product_variation_id_foreign` (`product_variation_id`),\n"
+                + "KEY `cached_sales_city_index` (`city`),\n"
+                + "KEY `cached_sales_country_code_index` (`country_code`),\n"
+                + "KEY `cached_sales_location_type_index` (`location_type`),\n"
+                + "KEY `cached_sales_sold_at_index` (`sold_at`),\n"
+                + "KEY `cached_sales_season_ids_index` ((cast(json_extract(`season_ids`,_utf8mb4'$') as unsigned array))),\n"
+                + "KEY `cached_sales_category_ids_index` ((cast(json_extract(`category_ids`,_utf8mb4'$') as unsigned array))),\n"
+                + "KEY `cached_sales_color_ids_index` ((cast(json_extract(`color_ids`,_utf8mb4'$') as unsigned array))),\n"
+                + "KEY `cached_sales_size_ids_index` ((cast(json_extract(`size_ids`,_utf8mb4'$') as unsigned array))),\n"
+                + "KEY `cached_sales_gender_ids_index` (((cast(json_extract(`gender_ids`,_utf8mb4'$') as unsigned array))))\n"
+                + ") ENGINE=InnoDB AUTO_INCREMENT=13594436 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        parser.parse(ddlSql, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        ddlSql = "CREATE TABLE tbl (\n"
+                + "col1 LONGTEXT,\n"
+                + "data JSON,\n"
+                + "INDEX idx1 ((SUBSTRING(col1, 1, 10))),\n"
+                + "INDEX idx2 ((CAST(JSON_EXTRACT(data, _utf8mb4'$') AS UNSIGNED ARRAY))),\n"
+                + "INDEX ((CAST(data->>'$.name' AS CHAR(30))))\n"
+                + ")";
+        parser.parse(ddlSql, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-3020")
     public void shouldProcessExpressionWithDefault() {
         String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
