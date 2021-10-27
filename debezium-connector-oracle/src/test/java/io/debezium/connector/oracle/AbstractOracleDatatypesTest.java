@@ -131,6 +131,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  primary key (id)" +
             ")";
 
+    private static final String DDL_GEOMETRY = "create table debezium.type_geometry (" +
+            "  id numeric(9,0) not null, " +
+            "  location sdo_geometry, " +
+            "  primary key (id)" +
+            ")";
+
     private static final List<SchemaAndValueField> EXPECTED_STRING = Arrays.asList(
             new SchemaAndValueField("VAL_VARCHAR", Schema.OPTIONAL_STRING_SCHEMA, "v\u010d2"),
             new SchemaAndValueField("VAL_VARCHAR2", Schema.OPTIONAL_STRING_SCHEMA, "v\u010d2"),
@@ -251,12 +257,15 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_CLOB_LONG", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 1, 5000)),
             new SchemaAndValueField("VAL_NCLOB_LONG", Schema.OPTIONAL_STRING_SCHEMA, part(NCLOB_JSON, 1, 5000)));
 
+    private static final List<SchemaAndValueField> EXPECTED_GEOMETRY = Arrays.asList();
+
     private static final String[] ALL_TABLES = {
             "debezium.type_string",
             "debezium.type_fp",
             "debezium.type_int",
             "debezium.type_time",
-            "debezium.type_clob"
+            "debezium.type_clob",
+            "debezium.type_geometry"
     };
 
     private static final String[] ALL_DDLS = {
@@ -264,7 +273,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             DDL_FP,
             DDL_INT,
             DDL_TIME,
-            DDL_CLOB
+            DDL_CLOB,
+            DDL_GEOMETRY
     };
 
     @Rule
@@ -638,6 +648,40 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         }
     }
 
+    @Test
+    @FixFor("DBZ-4206")
+    public void geometryTypes() throws Exception {
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertGeometryTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_GEOMETRY");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        // Verify that the SDO_GEOMETRY field is not being emitted as its current unsupported
+        assertThat(after.schema().field("LOCATION")).isNull();
+        assertRecord(after, EXPECTED_GEOMETRY);
+    }
+
     protected static void insertStringTypes() throws SQLException {
         connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
         connection.execute("COMMIT");
@@ -717,6 +761,13 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                     ps.setNClob(6, nclob2);
                 }, null);
         connection.commit();
+    }
+
+    protected static void insertGeometryTypes() throws SQLException {
+        connection.execute("INSERT INTO debezium.type_geometry VALUES ("
+                + "1"
+                + ", SDO_GEOMETRY(2003, NULL, NULL, SDO_ELEM_INFO_ARRAY(1, 1003, 3), SDO_ORDINATE_ARRAY(1, 1, 5, 7))"
+                + ")");
     }
 
     private static String part(String text, int start, int length) {

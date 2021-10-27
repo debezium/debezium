@@ -39,6 +39,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         insertIntTypes();
         insertTimeTypes();
         insertClobTypes();
+        insertGeometryTypes();
     }
 
     @Before
@@ -85,6 +86,8 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
                 return "debezium.type_time";
             case "clobTypes":
                 return "debezium.type_clob";
+            case "geometryTypes":
+                return "debezium.type_geometry";
             default:
                 throw new IllegalArgumentException("Unexpected test method: " + name.getMethodName());
         }

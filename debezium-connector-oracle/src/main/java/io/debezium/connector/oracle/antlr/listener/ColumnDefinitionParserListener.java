@@ -267,6 +267,14 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
 
                 setPrecision(precisionPart, columnEditor);
             }
+            else if (ctx.native_datatype_element().SDO_GEOMETRY() != null) {
+                // Allows the registration of new SDO_GEOMETRY columns via an CREATE/ALTER TABLE
+                // This is the same registration of the column that is resolved during JDBC metadata inspection.
+                columnEditor
+                        .jdbcType(OracleTypes.OTHER)
+                        .type("SDO_GEOMETRY")
+                        .length(1);
+            }
             else {
                 throw new IllegalArgumentException("Unsupported column type: " + ctx.native_datatype_element().getText());
             }
