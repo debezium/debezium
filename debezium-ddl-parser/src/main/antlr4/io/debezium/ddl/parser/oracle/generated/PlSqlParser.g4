@@ -2817,7 +2817,7 @@ varray_col_properties
 varray_storage_clause
     : STORE AS (SECUREFILE|BASICFILE)? LOB ( lob_segname? '(' lob_storage_parameters ')'
                                            | lob_segname
-                                           )
+                                           )?
     ;
 
 lob_segname
@@ -2904,6 +2904,7 @@ column_properties
     | nested_table_col_properties
     | (varray_col_properties | lob_storage_clause) //TODO '(' ( ','? lob_partition_storage)+ ')'
     | xmltype_column_properties
+    | column_properties column_properties+
     ;
 
 period_definition
@@ -4553,6 +4554,7 @@ native_datatype_element
     | HOUR
     | MINUTE
     | SECOND
+    | SDO_GEOMETRY
     | TIMEZONE_HOUR
     | TIMEZONE_MINUTE
     | TIMEZONE_REGION
