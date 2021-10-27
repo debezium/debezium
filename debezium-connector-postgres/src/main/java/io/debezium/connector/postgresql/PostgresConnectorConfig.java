@@ -369,6 +369,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean supportsTruncate() {
                 return true;
             }
+
+            @Override
+            public boolean supportsLogicalDecodingMessage() {
+                return true;
+            }
         },
         DECODERBUFS("decoderbufs") {
             @Override
@@ -383,6 +388,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
             @Override
             public boolean supportsTruncate() {
+                return false;
+            }
+
+            @Override
+            public boolean supportsLogicalDecodingMessage() {
                 return false;
             }
         },
@@ -409,6 +419,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
             @Override
             public boolean sendsNullToastedValuesInOld() {
+                return false;
+            }
+
+            @Override
+            public boolean supportsLogicalDecodingMessage() {
                 return false;
             }
         },
@@ -442,6 +457,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean sendsNullToastedValuesInOld() {
                 return false;
             }
+
+            @Override
+            public boolean supportsLogicalDecodingMessage() {
+                return false;
+            }
         },
         WAL2JSON("wal2json") {
             @Override
@@ -467,6 +487,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             @Override
             public boolean sendsNullToastedValuesInOld() {
                 return false;
+            }
+
+            @Override
+            public boolean supportsLogicalDecodingMessage() {
+                return true;
             }
         },
         WAL2JSON_RDS("wal2json_rds") {
@@ -497,6 +522,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
             @Override
             public boolean sendsNullToastedValuesInOld() {
+                return false;
+            }
+
+            @Override
+            public boolean supportsLogicalDecodingMessage() {
                 return false;
             }
         };
@@ -533,6 +563,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         public abstract String getPostgresPluginName();
 
         public abstract boolean supportsTruncate();
+
+        public abstract boolean supportsLogicalDecodingMessage();
     }
 
     /**
@@ -569,6 +601,46 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             for (TruncateHandlingMode truncateHandlingMode : TruncateHandlingMode.values()) {
                 if (truncateHandlingMode.getValue().equalsIgnoreCase(value)) {
                     return truncateHandlingMode;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * The set of predefined LogicalDecodingMessageHandlingMode options or aliases
+     */
+    public enum LogicalDecodingMessageHandlingMode implements EnumeratedValue {
+
+        /**
+         * Skip MESSAGE messages
+         */
+        SKIP("skip"),
+
+        /**
+         * Handle & Include MESSAGE messages
+         */
+        INCLUDE("include");
+
+        private final String value;
+
+        LogicalDecodingMessageHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static LogicalDecodingMessageHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LogicalDecodingMessageHandlingMode option : LogicalDecodingMessageHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
                 }
             }
             return null;
@@ -893,6 +965,17 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
                             + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
 
+    public static final Field LOGICAL_DECODING_MESSAGE_HANDLING_MODE = Field.create("logical_decoding_message.handling.mode")
+            .withDisplayName("Logical Decoding Message handling mode")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 24))
+            .withEnum(LogicalDecodingMessageHandlingMode.class, LogicalDecodingMessageHandlingMode.SKIP)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(PostgresConnectorConfig::logicalDecodingMessageHandlingMode)
+            .withDescription("Specify how MESSAGE operations are handled (supported only on pg14+ pgoutput plugin), including: " +
+                    "'skip' to skip / ignore MESSAGE events (default), " +
+                    "'include' to handle and include MESSAGE events");
+
     public static final Field TRUNCATE_HANDLING_MODE = Field.create("truncate.handling.mode")
             .withDisplayName("Truncate handling mode")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 23))
@@ -1013,6 +1096,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
 
     private final TruncateHandlingMode truncateHandlingMode;
+    private final LogicalDecodingMessageHandlingMode logicalDecodingMessageHandlingMode;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -1028,6 +1112,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 ColumnFilterMode.SCHEMA);
 
         this.truncateHandlingMode = TruncateHandlingMode.parse(config.getString(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE));
+        this.logicalDecodingMessageHandlingMode = LogicalDecodingMessageHandlingMode
+                .parse(config.getString(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE));
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         this.hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
@@ -1089,6 +1175,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public TruncateHandlingMode truncateHandlingMode() {
         return truncateHandlingMode;
+    }
+
+    public LogicalDecodingMessageHandlingMode logicalDecodingMessageHandlingMode() {
+        return logicalDecodingMessageHandlingMode;
     }
 
     protected HStoreHandlingMode hStoreHandlingMode() {
@@ -1183,7 +1273,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SCHEMA_REFRESH_MODE,
                     TRUNCATE_HANDLING_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    UNAVAILABLE_VALUE_PLACEHOLDER)
+                    UNAVAILABLE_VALUE_PLACEHOLDER,
+                    LOGICAL_DECODING_MESSAGE_HANDLING_MODE)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
@@ -1243,6 +1334,33 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     UNAVAILABLE_VALUE_PLACEHOLDER.name());
         }
         return 0;
+    }
+
+    private static int logicalDecodingMessageHandlingMode(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String value = config.getString(field);
+        int errors = 0;
+        if (value != null) {
+            LogicalDecodingMessageHandlingMode mode = LogicalDecodingMessageHandlingMode.parse(value);
+            if (mode == null) {
+                List<String> validModes = Arrays.stream(LogicalDecodingMessageHandlingMode.values()).map(LogicalDecodingMessageHandlingMode::getValue)
+                        .collect(Collectors.toList());
+                String message = String.format("Valid values for %s are %s, but got '%s'", field.name(), validModes, value);
+                problems.accept(field, value, message);
+                errors++;
+                return errors;
+            }
+            if (mode == LogicalDecodingMessageHandlingMode.INCLUDE) {
+                final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
+                if (!logicalDecoder.supportsLogicalDecodingMessage()) {
+                    String message = String.format(
+                            "%s '%s' is not supported with configuration %s '%s'",
+                            field.name(), mode.getValue(), PLUGIN_NAME.name(), logicalDecoder.getValue());
+                    problems.accept(field, value, message);
+                    errors++;
+                }
+            }
+        }
+        return errors;
     }
 
     @Override

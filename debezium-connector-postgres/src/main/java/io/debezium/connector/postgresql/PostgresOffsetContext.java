@@ -135,6 +135,14 @@ public class PostgresOffsetContext implements OffsetContext {
         sourceInfo.update(lsn, commitTime, txId, tableId, xmin);
     }
 
+    /**
+     * update wal position for lsn events that do not have an associated table or schema
+     */
+    public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, Long xmin) {
+        this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
+        sourceInfo.update(lsn, commitTime, txId, xmin);
+    }
+
     public void updateCommitPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lsn;

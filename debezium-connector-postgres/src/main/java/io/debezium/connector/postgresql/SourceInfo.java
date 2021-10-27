@@ -147,6 +147,19 @@ public final class SourceInfo extends BaseSourceInfo {
         return this;
     }
 
+    /**
+     * Updates the source with information about a particular received or read event that does not have an associated table or schema
+     */
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, Long xmin) {
+        this.lsn = lsn;
+        this.timestamp = commitTime;
+        this.txId = txId;
+        this.xmin = xmin;
+        this.tableName = "";
+        this.schemaName = "";
+        return this;
+    }
+
     public Lsn lsn() {
         return this.lsn;
     }
