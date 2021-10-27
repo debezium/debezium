@@ -2468,7 +2468,7 @@ If your application does not tolerate such a transition period, it is best to us
 
 .Example: Running an online schema update after a database schema change
 ifdef::community[]
-Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/tree/master/tutorial#using-sql-server[{prodname} tutorial] to demonstrate the online schema update.
+Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/tree/main/tutorial#using-sql-server[{prodname} tutorial] to demonstrate the online schema update.
 
 In the following example, a column `phone_number` is added to the `customers` table.
 

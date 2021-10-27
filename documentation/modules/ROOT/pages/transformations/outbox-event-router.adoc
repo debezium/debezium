@@ -30,7 +30,7 @@ A connector can capture changes in more than one outbox table only if each outbo
 See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works.
 
 ifdef::community[]
-For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/master/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the outbox event router SMT.
+For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/main/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the outbox event router SMT.
 endif::community[]
 
 [NOTE]

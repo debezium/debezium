@@ -18,7 +18,7 @@ pipelineJob('release-deploy-snapshots') {
 
         stringParam('MAIL_TO', 'jpechane@redhat.com')
         stringParam('DEBEZIUM_REPOSITORY', 'github.com/debezium/debezium.git', 'Repository from which Debezium is built')
-        stringParam('DEBEZIUM_BRANCH', 'master', 'A branch from which Debezium is built')
+        stringParam('DEBEZIUM_BRANCH', 'main', 'A branch from which Debezium is built')
         stringParam(
                 'DEBEZIUM_ADDITIONAL_REPOSITORIES',
                 'db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main',

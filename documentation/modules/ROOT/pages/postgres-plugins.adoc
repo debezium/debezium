@@ -42,14 +42,14 @@ https://www.postgresql.org/docs/9.6/static/logicaldecoding-output-plugin.html[Po
 
 {prodname}’s PostgreSQL connector works with one of {prodname}’s supported logical decoding plug-ins,
 
-* https://github.com/debezium/postgres-decoderbufs/blob/master/README.md[protobuf] or
+* https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[protobuf] or
 * https://github.com/eulerto/wal2json/blob/master/README.md[wal2json]
 
 to encode the changes in either https://github.com/google/protobuf[Protobuf] format or http://www.json.org/[JSON] format.
 
 [TIP]
 ====
-For simplicity, {prodname} also provides a container image based on a vanilla https://github.com/debezium/docker-images/tree/master/postgres/9.6[PostgreSQL server image]
+For simplicity, {prodname} also provides a container image based on a vanilla https://github.com/debezium/docker-images/tree/main/postgres/9.6[PostgreSQL server image]
 on top of which it compiles and installs the plug-ins.
 ====
 
@@ -68,7 +68,7 @@ The plug-ins' behaviour is not completely same for all cases. So far these diffe
 * wal2json plug-in does not support special values (`NaN` or `infinity`) for floating point types
 
 All up-to-date differences are tracked in a test suite
-https://github.com/debezium/debezium/blob/master/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
+https://github.com/debezium/debezium/blob/main/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
 
 More information about the logical decoding and output plug-ins can be found at:
 
@@ -82,7 +82,7 @@ More information about the logical decoding and output plug-ins can be found at:
 At the current installation example, the https://github.com/eulerto/wal2json[wal2json] output plug-in for logical decoding is used.
 The wal2json output plug-in produces a JSON object per transaction. All of the new/old tuples are available in the JSON object.
 The plug-in *compilation and installation* is performed by executing the related commands extracted from the
-https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile[{prodname} Dockerfile].
+https://github.com/debezium/docker-images/blob/main/postgres/9.6/Dockerfile[{prodname} Dockerfile].
 
 Before executing the commands, make sure that the user has the privileges to write the `wal2json` library at the PostgreSQL `_lib_`
 directory (at the test environment, the directory is: `/usr/pgsql-9.6/lib/`).
@@ -154,7 +154,7 @@ Once the *wal2json* plug-in has been installed, the database server should be co
 Add the following lines at the end of the `postgresql.conf` PostgreSQL configuration file in order to include the plug-in
 at the shared libraries and to adjust some https://www.postgresql.org/docs/9.6/static/runtime-config-wal.html[WAL]
 and https://www.postgresql.org/docs/9.6/static/runtime-config-replication.html[streaming replication] settings.
-The configuration is extracted from https://github.com/debezium/docker-images/blob/master/postgres/9.6/postgresql.conf.sample[postgresql.conf.sample].
+The configuration is extracted from https://github.com/debezium/docker-images/blob/main/postgres/9.6/postgresql.conf.sample[postgresql.conf.sample].
 You may need to modify it, if for example you have additionally installed `shared_preload_libraries`.
 
 .*_postgresql.conf_* _, configuration file parameters settings_

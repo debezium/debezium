@@ -22,7 +22,7 @@ clone_repositories()
     local STRIMZI_REPO="https://github.com/strimzi/strimzi-kafka-operator.git" ;
     local PRODUCT_BUILD=false ;
     local STRIMZI_DOWNSTREAM_URL="" ;
-    local DBZ_BRANCH="master" ;
+    local DBZ_BRANCH="main" ;
     local STRIMZI_BRANCH="main" ;
 
     OPTS=`getopt -o --long dbz-repository:,dbz-branch:,strimzi-repository:,strimzi-branch:,product-build,strimzi-downstream:,product-build:  -n 'clone-repositories' -- "$@"`

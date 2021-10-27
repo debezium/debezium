@@ -18,7 +18,7 @@ services:
       - OCP_PROJECT_MONGO=debezium-test-mongo
       - OCP_PROJECT_DB2=debezium-test-db2
       - DBZ_GIT_REPOSITORY=https://github.com/debezium/debezium.git
-      - DBZ_GIT_BRANCH=master
+      - DBZ_GIT_BRANCH=main
       - PRODUCT_BUILD=false
       - STRZ_GIT_REPOSITORY=https://github.com/strimzi/strimzi-kafka-operator.git
       - STRZ_GIT_BRANCH=main

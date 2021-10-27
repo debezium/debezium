@@ -33,9 +33,9 @@ freeStyleJob('release-debezium-nightly-image') {
 
     parameters {
         stringParam('DEBEZIUM_REPOSITORY', 'debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('DEBEZIUM_BRANCH', 'master', 'Branch used to build Debezium')
+        stringParam('DEBEZIUM_BRANCH', 'main', 'Branch used to build Debezium')
         stringParam('IMAGES_REPOSITORY', 'https://github.com/debezium/docker-images.git', 'Repository with Debezium Dockerfiles')
-        stringParam('IMAGES_BRANCH', 'master', 'Branch used for images repository')
+        stringParam('IMAGES_BRANCH', 'main', 'Branch used for images repository')
     }
 
    scm {

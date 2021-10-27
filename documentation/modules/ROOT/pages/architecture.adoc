@@ -58,5 +58,5 @@ In this case, {prodname} will not be run via Kafka Connect, but as a library emb
 This can be useful for either consuming change events within your application itself,
 without the needed for deploying complete Kafka and Kafka Connect clusters,
 or for streaming changes to alternative messaging brokers such as Amazon Kinesis.
-You can find https://github.com/debezium/debezium-examples/tree/master/kinesis[an example] for the latter in the examples repository.
+You can find https://github.com/debezium/debezium-examples/tree/main/kinesis[an example] for the latter in the examples repository.
 endif::community[]

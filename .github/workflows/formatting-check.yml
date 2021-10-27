@@ -2,7 +2,7 @@ name: Formatting Check
 on:
   pull_request:
     branches:
-      - master
+      - main
       - 1.*
     paths-ignore:
       - '.github/**'

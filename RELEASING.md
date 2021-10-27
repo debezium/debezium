@@ -2,7 +2,7 @@
 
 The Debezium project uses Maven for its build system, relying up on the _release_ plugin to most of the work.
 
-The release process is automated by means of a parameterized [Jenkins job](https://github.com/debezium/debezium/blob/master/jenkins-jobs/release.yaml),
+The release process is automated by means of a parameterized [Jenkins job](https://github.com/debezium/debezium/blob/main/jenkins-jobs/release.yaml),
 that takes the required information as an input (release version etc.)
 and performs most of the required tasks.
 Refer to [Automated Release](#automated-release) below for the details.
@@ -41,7 +41,7 @@ main repository and the [`debezium.github.io` repository](https://github.com/deb
 The change log should be updated with all relevant info on new features, bug fixes and breaking changes and
 can be generated with the `Release Notes` tool in JIRA on the version's detail page.
 
-* https://github.com/debezium/debezium/blob/master/CHANGELOG.md
+* https://github.com/debezium/debezium/blob/main/CHANGELOG.md
 * https://github.com/debezium/debezium.github.io/blob/develop/_data/releases/1.7/1.7.0.Beta1.yml
 * https://github.com/debezium/debezium.github.io/blob/develop/releases/1.7/release-notes.asciidoc
 * https://github.com/debezium/debezium.github.io/blob/develop/_data/releases/1.7/series.yml
@@ -52,13 +52,13 @@ implications and required steps for upgrading in the changelog on the website.
 
 ## Update antora.yml and series.yml
 
-The `antora.yml` file in the `master` branch always used the version _master_.
+The `antora.yml` file in the `main` branch always used the version _main_.
 During the release process, this file's `version` attribute should be changed to reference the correct major/minor version number.
 There are other Asciidoc variables defined here that should be reviewed and modified as needed.
 
 As an example, when releasing version `2.1`, the `antora.yml` file should change from:
 ```
-version: 'master'
+version: 'main'
 ```
 to
 ```
@@ -76,10 +76,10 @@ using the Jenkins CI/CD Release pipeline for the rest of the release process.
 
 ## Start with the correct branch
 
-Make sure that you are on the correct branch that is to be released, and that your local Git repository has all of the most recent commits. For example, to release from the `master` branch on the remote repository named `upstream`:
+Make sure that you are on the correct branch that is to be released, and that your local Git repository has all of the most recent commits. For example, to release from the `main` branch on the remote repository named `upstream`:
 
-    $ git checkout master
-    $ git pull upstream master
+    $ git checkout main
+    $ git pull upstream main
 
 Then make sure that you have no local uncommitted changes:
 
@@ -240,7 +240,7 @@ First create a tag in the [postgres-decoderbufs](https://github.com/debezium/pos
 
     $ git tag v<%version%> && git push upstream v<%version%>
 
-Then update the Debezium version referenced in the [Postgres Docker file](https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile#L22)
+Then update the Debezium version referenced in the [Postgres Docker file](https://github.com/debezium/docker-images/blob/main/postgres/9.6/Dockerfile#L22)
 and push that commit which will cause the image to be re-published on Docker Hub automatically.
 
 ## Reconfigure Docker Hub builds

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DEBEZIUM_REPOSITORY=debezium/debezium
-DEBEZIUM_BRANCH=master
+DEBEZIUM_BRANCH=main
 
 SNAPSHOT_VERSION=$(curl -s https://raw.githubusercontent.com/$DEBEZIUM_REPOSITORY/$DEBEZIUM_BRANCH/pom.xml | grep -o '<version>.*-SNAPSHOT</version>' | awk -F '[<>]' '{print $3}')
 
