@@ -441,7 +441,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
         }
 
-        List<String> columns = getPreparedColumnNames(schema.tableFor(tableId));
+        List<String> columns = getPreparedColumnNames(snapshotContext.partition, schema.tableFor(tableId));
 
         return getSnapshotSelect(snapshotContext, tableId, columns);
     }
@@ -453,10 +453,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      *
      * @return list of snapshot select columns
      */
-    protected List<String> getPreparedColumnNames(Table table) {
+    protected List<String> getPreparedColumnNames(P partition, Table table) {
         List<String> columnNames = table.retrieveColumnNames()
                 .stream()
-                .filter(columnName -> additionalColumnFilter(table.id(), columnName))
+                .filter(columnName -> additionalColumnFilter(partition, table.id(), columnName))
                 .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
                 .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
                 .collect(Collectors.toList());
@@ -476,7 +476,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Additional filter handling for preparing column names for snapshot select
      */
-    protected boolean additionalColumnFilter(TableId tableId, String columnName) {
+    protected boolean additionalColumnFilter(P partition, TableId tableId, String columnName) {
         return true;
     }
 
