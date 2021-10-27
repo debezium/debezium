@@ -3,7 +3,7 @@ name: Build MySQL Connector and test legacy implementation
 on:
   push:
     branches:
-      - master
+      - main
       - 1.*
     paths:
       - 'support/checkstyle/**'
@@ -24,7 +24,7 @@ on:
       - '.github/workflows/mysql-legacy-workflow.yml'
   pull_request:
     branches:
-      - master
+      - main
       - 1.*
     paths:
       - 'support/checkstyle/**'

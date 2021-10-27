@@ -24,13 +24,13 @@ For streaming change events to Apache Kafka, it is recommended to deploy the {pr
 
 To install the server download and unpack the server distribution archive:
 
-ifeval::['{page-version}' == 'master']
+ifeval::['{page-version}' == 'main']
 * {link-server-snapshot}[{prodname} Server distribution]
 
-NOTE: The above links refers to the nightly snapshot build of the {prodname} master branch.
+NOTE: The above links refers to the nightly snapshot build of the {prodname} main branch.
 If you are looking for a non-snapshot version, please select the appropriate version of this documentation in the menu to the right.
 endif::[]
-ifeval::['{page-version}' != 'master']
+ifeval::['{page-version}' != 'main']
 * https://repo1.maven.org/maven2/io/debezium/debezium-server-dist/{debezium-version}/debezium-server-dist-{debezium-version}.tar.gz[{prodname} Server distribution]
 endif::[]
 
@@ -724,7 +724,7 @@ The name of the bean is used as the `debezium.sink.type` option.
 The sink needs to read the configuration using Microprofile Config API.
 The execution path must pass the messages into the target system and regularly commit the passed/processed messages.
 
-See the https://github.com/debezium/debezium/blob/master/debezium-server/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
+See the https://github.com/debezium/debezium/blob/main/debezium-server/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
 
 
 === Customization of an existing sink
@@ -732,4 +732,4 @@ See the https://github.com/debezium/debezium/blob/master/debezium-server/debeziu
 Some of the sinks exposes dependency injections points that enable users to provide its own bean that would modify the behaviour of the sink.
 Typical examples are fine tuning of the target client setup, the destination naming etc.
 
-See an example of a custom https://github.com/debezium/debezium-examples/tree/master/debezium-server-name-mapper[topic naming policy] implementation for further details.
+See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.

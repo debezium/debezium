@@ -3,7 +3,7 @@ name: Build Connector Vitess
 on:
   push:
     branches:
-      - master
+      - main
       - 1.*
     paths:
       - 'debezium-core/**'
@@ -14,7 +14,7 @@ on:
       - '.github/workflows/vitess-workflow.yml'
   pull_request:
     branches:
-      - master
+      - main
       - 1.*
     paths:
       - 'debezium-core/**'

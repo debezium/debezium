@@ -5,7 +5,7 @@ on:
   # be executed in any flows triggered by it
   pull_request_target:
     branches:
-      - master
+      - main
       - 1.*
 jobs:
   build:

@@ -117,7 +117,7 @@ public class OrderService {
 When the application code fires the event by calling `Event#fire()`, the Outbox extension will be notified that the event occurred and persists the contents of the event into an outbox event table within the scope of the current transaction.
 The {prodname} CDC connector in conjunction with the Outbox Event Router will be monitoring this table and will be responsible for relaying that data using CDC events.
 
-To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/master/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
+To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/main/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
 
 == Configuration
 

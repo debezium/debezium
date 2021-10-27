@@ -71,7 +71,7 @@ Currently, the UI connects to un-authenticated Kafka Connect instances.  Also, t
 
 === Self-contained example
 
-A self-contained example https://github.com/debezium/debezium-examples/tree/master/ui-demo[ui-demo] is available, which is included under https://github.com/debezium/debezium-examples[debezium-examples] on Github.  The ui-demo includes a docker-compose file which brings up several sources with data as well as the UI. Please refer to the https://github.com/debezium/debezium-examples/tree/master/ui-demo[README file] for more details on running the Debezium ui-demo.
+A self-contained example https://github.com/debezium/debezium-examples/tree/main/ui-demo[ui-demo] is available, which is included under https://github.com/debezium/debezium-examples[debezium-examples] on Github.  The ui-demo includes a docker-compose file which brings up several sources with data as well as the UI. Please refer to the https://github.com/debezium/debezium-examples/tree/main/ui-demo[README file] for more details on running the Debezium ui-demo.
 
 == UI Operation
 
