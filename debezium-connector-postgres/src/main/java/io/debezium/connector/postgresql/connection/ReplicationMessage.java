@@ -44,6 +44,7 @@ public interface ReplicationMessage {
         UPDATE,
         DELETE,
         TRUNCATE,
+        LOGICAL_DECODING_MESSAGE,
         BEGIN,
         COMMIT,
         NOOP

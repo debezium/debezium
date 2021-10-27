@@ -50,7 +50,11 @@ public final class Envelope {
         /**
          * An operation that resulted in an existing table being truncated in the source.
          */
-        TRUNCATE("t");
+        TRUNCATE("t"),
+        /**
+         * An operation that resulted in a generic message posted directly to the replication slot
+         */
+        LOGICAL_DECODING_MESSAGE("m");
 
         private final String code;
 

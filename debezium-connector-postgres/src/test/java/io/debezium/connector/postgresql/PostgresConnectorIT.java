@@ -13,6 +13,8 @@ import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -245,6 +247,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateConfigField(validatedConfig, PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.PRECISE);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_SOCKET_FACTORY, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.TCP_KEEPALIVE, true);
+        validateConfigField(validatedConfig, PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE,
+                PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.SKIP);
     }
 
     @Test
@@ -2881,6 +2885,84 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertInsert(recordsForTopic.get(1), PK_FIELD, 201);
         assertInsert(recordsForTopic.get(2), PK_FIELD, 202);
         assertInsert(recordsForTopic.get(3), PK_FIELD, 203);
+
+    @Test
+    @FixFor("DBZ-2363")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Database Version less than 14")
+    public void shouldNotConsumeLogicalDecodingMessagesWhenConfigIsSetToSkip() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE, "skip");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // emit logical decoding message
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'prefix', 'content');");
+
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor("DBZ-2363")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Database Version less than 14")
+    public void shouldConsumeLogicalDecodingMessagesWhenConfigIsSetToInclude() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE, "include");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        assertRecordsFromSnapshot(2, 1, 1);
+
+        // emit non transactional logical decoding message
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', 'bar');");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("logical_decoding_message"));
+        recordsForTopic.forEach(record -> {
+            Struct value = (Struct) record.value();
+            String op = value.getString(Envelope.FieldName.OPERATION);
+            Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+
+            assertNull(source.getInt64(SourceInfo.TXID_KEY));
+            assertNull(source.getString(SourceInfo.TABLE_NAME_KEY));
+            assertNull(source.getString(SourceInfo.SCHEMA_NAME_KEY));
+            assertNull(source.getInt64(SourceInfo.XMIN_KEY));
+            assertNotNull(source.getInt64(SourceInfo.TIMESTAMP_KEY));
+            assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
+
+            assertEquals(Envelope.Operation.LOGICAL_DECODING_MESSAGE.code(), op);
+            assertEquals("foo", message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
+            assertFalse(message.getBoolean(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY));
+        });
+
+        // emit transactional logical decoding message
+        TestHelper.execute("SELECT pg_logical_emit_message(true, 'txn_foo', 'E\"\\\\001');");
+
+        SourceRecords txnRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("logical_decoding_message"));
+
+        txnRecordsForTopic.forEach(record -> {
+            Struct value = (Struct) record.value();
+            String op = value.getString(Envelope.FieldName.OPERATION);
+            Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+
+            assertNull(source.getString(SourceInfo.TABLE_NAME_KEY));
+            assertNull(source.getString(SourceInfo.SCHEMA_NAME_KEY));
+            assertNull(source.getInt64(SourceInfo.XMIN_KEY));
+            assertNotNull(source.getInt64(SourceInfo.TXID_KEY));
+            assertNotNull(source.getInt64(SourceInfo.TIMESTAMP_KEY));
+            assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
+
+            assertEquals(Envelope.Operation.LOGICAL_DECODING_MESSAGE.code(), op);
+            assertEquals("txn_foo", message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
+            assertTrue(message.getBoolean(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY));
+        });
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {

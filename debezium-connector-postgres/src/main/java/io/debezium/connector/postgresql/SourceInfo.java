@@ -147,6 +147,16 @@ public final class SourceInfo extends BaseSourceInfo {
         return this;
     }
 
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, Long xmin) {
+        this.lsn = lsn;
+        this.timestamp = commitTime;
+        this.txId = txId;
+        this.xmin = xmin;
+        this.tableName = null;
+        this.schemaName = null;
+        return this;
+    }
+
     public Lsn lsn() {
         return this.lsn;
     }

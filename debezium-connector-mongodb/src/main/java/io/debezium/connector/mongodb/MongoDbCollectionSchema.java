@@ -36,7 +36,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     private final CollectionId id;
     private final FieldFilter fieldFilter;
     private final Schema keySchema;
-    private final Envelope enveopeSchema;
+    private final Envelope envelopeSchema;
     private final Schema valueSchema;
     private final Function<Document, Object> keyGeneratorOplog;
     private final Function<BsonDocument, Object> keyGeneratorChangeStream;
@@ -48,7 +48,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         this.id = id;
         this.fieldFilter = fieldFilter;
         this.keySchema = keySchema;
-        this.enveopeSchema = envelopeSchema;
+        this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
         this.keyGeneratorOplog = keyGenerator != null ? keyGenerator : (Document) -> null;
         this.keyGeneratorChangeStream = keyGeneratorChangeStream != null ? keyGeneratorChangeStream : (BsonDocument) -> null;
@@ -71,7 +71,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
 
     @Override
     public Envelope getEnvelopeSchema() {
-        return enveopeSchema;
+        return envelopeSchema;
     }
 
     public Struct keyFromDocument(Document document) {
