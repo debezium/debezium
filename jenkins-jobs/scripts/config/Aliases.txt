@@ -98,4 +98,6 @@ unalsurmeli,Ünal Sürmeli
 juanfiallo,Juan Fiallo
 cburch824,Christopher Burch
 gkorland,Guy Korland
-famartinrh,Fabián Martínez González
+famartinrh,Fabian Martinez
+PlugaruT,Plugaru Tudor
+lujiefsi,陆杰

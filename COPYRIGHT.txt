@@ -98,6 +98,7 @@ Eric S. Kreiseir
 Erik Malm
 Ewen Cheslack-Postava
 Fabian Aussems
+Fabian Martinez
 Fabio Cantarini
 Fahim Farook
 Faizan
@@ -185,6 +186,7 @@ Kevin Pullin
 Kewei Shang
 Krizhan Mariampillai
 Kyley Jex
+Laurent Broudoux
 Leo Mei
 Lev Zemlyanov
 Linh Nguyen Hoang
@@ -247,6 +249,7 @@ Peter Junos
 Peter Larsson
 Peter Urbanetz
 Philip Sanetra
+Plugaru Tudor
 Pradeep Mamillapalli
 Prannoy Mittal
 Preethi Sadagopan
@@ -328,6 +331,7 @@ Wei Wu
 WenZe Hu
 William Pursell
 Willie Cheong
+Willie Zhu
 Wout Scheepers
 Xiao Fu
 Xiaopu Zhu
@@ -344,5 +348,6 @@ Zongwen Li
 Zoran Regvart
 志飞 张
 민규 김
+李宗文
+陆杰
 Ünal Sürmeli
-Fabián Martínez González
