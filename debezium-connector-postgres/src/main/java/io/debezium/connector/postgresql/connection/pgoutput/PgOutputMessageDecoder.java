@@ -36,6 +36,7 @@ import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.UnchangedToastedReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
+import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.MessageDecoderContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -80,7 +81,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         DELETE,
         TYPE,
         ORIGIN,
-        TRUNCATE;
+        TRUNCATE,
+        LOGICAL_DECODING_MESSAGE;
 
         public static MessageType forType(char type) {
             switch (type) {
@@ -102,6 +104,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     return ORIGIN;
                 case 'T':
                     return TRUNCATE;
+                case 'M':
+                    return LOGICAL_DECODING_MESSAGE;
                 default:
                     throw new IllegalArgumentException("Unsupported message type: " + type);
             }
@@ -138,7 +142,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     LOGGER.trace("{} messages are always reprocessed", type);
                     return false;
                 default:
-                    // INSERT/UPDATE/DELETE/TRUNCATE/TYPE/ORIGIN
+                    // INSERT/UPDATE/DELETE/TRUNCATE/TYPE/ORIGIN/LOGICAL_DECODING_MESSAGE
                     // These should be excluded based on the normal behavior, delegating to default method
                     return candidateForSkipping;
             }
@@ -175,6 +179,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             case RELATION:
                 handleRelationMessage(buffer, typeRegistry);
                 break;
+            case LOGICAL_DECODING_MESSAGE:
+                if (decoderContext.getConfig().logicalDecodingMessageHandlingMode() == PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE) {
+                    handleLogicalDecodingMessage(buffer, processor);
+                }
+                else {
+                    LOGGER.debug("Message Type {} skipped, not processed.", messageType);
+                }
+                break;
             case INSERT:
                 decodeInsert(buffer, typeRegistry, processor);
                 break;
@@ -201,7 +213,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     @Override
     public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
         return builder.withSlotOption("proto_version", 1)
-                .withSlotOption("publication_names", decoderContext.getConfig().publicationName());
+                .withSlotOption("publication_names", decoderContext.getConfig().publicationName())
+                .withSlotOption("messages",
+                        decoderContext.getConfig().logicalDecodingMessageHandlingMode() == PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE);
     }
 
     @Override
@@ -551,6 +565,46 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             default:
                 return null;
         }
+    }
+
+    /**
+     * Callback handler for the 'M' logical decoding message
+     *
+     * @param buffer       The replication stream buffer
+     * @param processor    The replication message processor
+     */
+    private void handleLogicalDecodingMessage(ByteBuffer buffer, ReplicationMessageProcessor processor)
+            throws SQLException, InterruptedException {
+        // As of PG14, the MESSAGE message format is as described:
+        // Byte1 Always 'M'
+        // Int32 Xid of the transaction (only present for streamed transactions). This field is available since protocol version 2.
+        // Int8 flags; Either 0 for no flags or 1 if the logical decoding message is transactional.
+        // Int64 The LSN of the logical decoding message
+        // String The prefix of the logical decoding message.
+        // Int32 Length of the content.
+        // Byten The content of the logical decoding message.
+
+        boolean isTransactional = buffer.get() == 1;
+        final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
+        String prefix = readString(buffer);
+        int contentLength = buffer.getInt();
+        byte[] content = new byte[contentLength];
+        buffer.get(content);
+
+        LOGGER.trace("Event: {}", MessageType.LOGICAL_DECODING_MESSAGE);
+        LOGGER.trace("Commit LSN: {}", lsn);
+        LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
+        LOGGER.trace("XID of transaction: {}", transactionId);
+        LOGGER.trace("Transactional: {}", isTransactional);
+        LOGGER.trace("Prefix: {}", prefix);
+
+        processor.process(new LogicalDecodingMessage(
+                Operation.MESSAGE,
+                commitTimestamp,
+                transactionId,
+                isTransactional,
+                prefix,
+                content));
     }
 
     /**

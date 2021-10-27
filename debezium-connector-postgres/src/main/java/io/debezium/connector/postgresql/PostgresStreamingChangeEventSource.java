@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
@@ -25,7 +26,6 @@ import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
@@ -54,7 +54,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private static final int THROTTLE_NO_MESSAGE_BEFORE_PAUSE = 5;
 
     private final PostgresConnection connection;
-    private final EventDispatcher<TableId> dispatcher;
+    private final PostgresEventDispatcher<TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final PostgresSchema schema;
@@ -74,7 +74,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private Lsn lastCompletelyProcessedLsn;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
-                                              PostgresConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                              PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                               PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
         this.connectorConfig = connectorConfig;
         this.connection = connection;
@@ -230,6 +230,34 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         commitMessage(partition, offsetContext, lsn);
                         dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
                     }
+                    maybeWarnAboutGrowingWalBacklog(true);
+                }
+                else if (message.getOperation() == Operation.MESSAGE) {
+                    if (connectorConfig.logicalDecodingMessageHandlingMode() != PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE) {
+                        LOGGER.debug("Received logical decoding message {}", message);
+                        if (message.isLastEventForLsn()) {
+                            commitMessage(partition, offsetContext, lsn);
+                        }
+                        return;
+                    }
+
+                    // non-transactional messages will not have a commitTime or txId
+                    if (message.isLastEventForLsn()) {
+                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null,
+                                taskContext.getSlotXmin(connection));
+                        commitMessage(partition, offsetContext, lsn);
+                    }
+                    else {
+                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(),
+                                taskContext.getSlotXmin(connection));
+                    }
+
+                    dispatcher.dispatchLogicalDecodingMessage(
+                            partition,
+                            offsetContext,
+                            clock.currentTimeAsInstant().toEpochMilli(),
+                            (LogicalDecodingMessage) message);
+
                     maybeWarnAboutGrowingWalBacklog(true);
                 }
                 // DML event

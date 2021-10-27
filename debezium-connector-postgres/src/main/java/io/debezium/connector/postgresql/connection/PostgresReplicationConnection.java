@@ -182,6 +182,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             // This is what ties the publication definition to the replication stream
             streamParams.put("proto_version", 1);
             streamParams.put("publication_names", publicationName);
+            streamParams.put("messages", originalConfig.logicalDecodingMessageHandlingMode() == PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE);
         }
     }
 
@@ -648,6 +649,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode;
+        private PostgresConnectorConfig.LogicalDecodingMessageHandlingMode logicalDecodingMessageHandlingMode;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
         private boolean doSnapshot;
@@ -699,6 +701,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         public Builder withTruncateHandlingMode(PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode) {
             assert truncateHandlingMode != null;
             this.truncateHandlingMode = truncateHandlingMode;
+            return this;
+        }
+
+        @Override
+        public Builder withLogicalDecodingMessageHandlingMode(PostgresConnectorConfig.LogicalDecodingMessageHandlingMode logicalDecodingMessageHandlingMode) {
+            assert logicalDecodingMessageHandlingMode != null;
+            this.logicalDecodingMessageHandlingMode = logicalDecodingMessageHandlingMode;
             return this;
         }
 
