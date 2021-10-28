@@ -16,6 +16,8 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -24,11 +26,15 @@ import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchema;
+import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * @author laomei
@@ -38,6 +44,7 @@ public class MySqlDefaultValueTest {
     protected AbstractDdlParser parser;
     protected Tables tables;
     private MySqlValueConverters converters;
+    private TableSchemaBuilder tableSchemaBuilder;
 
     @Before
     public void beforeEach() {
@@ -47,6 +54,10 @@ public class MySqlDefaultValueTest {
                 BinaryHandlingMode.BYTES);
         parser = new MySqlAntlrDdlParser(converters);
         tables = new Tables();
+        tableSchemaBuilder = new TableSchemaBuilder(
+                converters,
+                SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+
     }
 
     @Test
@@ -288,12 +299,13 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "NUMBER_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo((short) 10);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo((short) 5);
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(0);
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(20L);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(null);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0d);
+
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo((short) 10);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo((short) 5);
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo(20L);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0d);
     }
 
     @Test
@@ -487,9 +499,9 @@ public class MySqlDefaultValueTest {
 
         assertThat((Boolean) table.columnWithName("bval").defaultValue()).isTrue();
         assertThat((Integer) table.columnWithName("ival1").defaultValue()).isZero();
-        assertThat((Integer) table.columnWithName("ival2").defaultValue()).isEqualTo((int) 3);
-        assertThat((Integer) table.columnWithName("ival3").defaultValue()).isEqualTo((int) 1);
-        assertThat((Integer) table.columnWithName("ival4").defaultValue()).isEqualTo((int) 18);
+        assertThat((Integer) table.columnWithName("ival2").defaultValue()).isEqualTo(3);
+        assertThat((Integer) table.columnWithName("ival3").defaultValue()).isEqualTo(1);
+        assertThat((Integer) table.columnWithName("ival4").defaultValue()).isEqualTo(18);
     }
 
     @Test
@@ -514,7 +526,12 @@ public class MySqlDefaultValueTest {
         parser.parse(ddl, tables);
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Integer) table.columnWithName("id").defaultValue()).isEqualTo((int) 1);
-        assertThat((String) table.columnWithName("data").defaultValue()).isEqualTo((String) " 3 ");
+        assertThat((Integer) table.columnWithName("id").defaultValue()).isEqualTo(1);
+        assertThat((String) table.columnWithName("data").defaultValue()).isEqualTo(" 3 ");
+    }
+
+    private Schema getColumnSchema(Table table, String column) {
+        TableSchema schema = tableSchemaBuilder.create("test", "dummy", table, null, null, null);
+        return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
     }
 }
