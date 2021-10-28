@@ -300,7 +300,7 @@ Here are the details of the _value_ of the last event (formatted for readability
       "db": "inventory",
       "table": "customers"
     },
-    "op": "c",
+    "op": "r",
     "ts_ms": 1486500577691
   }
 }
@@ -312,7 +312,7 @@ The `schema` contains a Kafka Connect schema named `dbserver1.inventory.customer
 
 `op`::
 A required field that contains a string value describing the type of operation.
-Values for the MySQL connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a non-initial snapshot).
+Values for the MySQL connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a snapshot).
 `before`::
 An optional field that, if present, contains the state of the row _before_ the event occurred.
 The structure will be described by the `dbserver1.inventory.customers.Value` Kafka Connect schema,
