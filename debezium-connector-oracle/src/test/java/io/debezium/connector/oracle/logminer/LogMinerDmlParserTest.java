@@ -217,7 +217,7 @@ public class LogMinerDmlParserTest {
         String sql = "update \"DEBEZIUM\".\"TEST\" a set a.\"COL1\" = '1', a.\"COL2\" = NULL, a.\"COL3\" = 'Hello2';";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
         assertThat(entry.getNewValues()[0]).isEqualTo("1");
         assertThat(entry.getNewValues()[1]).isNull();
         assertThat(entry.getNewValues()[2]).isEqualTo("Hello2");
@@ -225,7 +225,7 @@ public class LogMinerDmlParserTest {
         sql = "delete from \"DEBEZIUM\".\"TEST\" a where a.\"COL1\" = '1' and a.\"COL2\" = '2' and a.\"COL3\" = Unsupported Type;";
 
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
         assertThat(entry.getOldValues()).hasSize(4);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[1]).isEqualTo("2");
