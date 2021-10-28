@@ -141,7 +141,13 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                         if (ex.getMessage().contains("already exists")) {
                             message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
                         }
-                        throw new DebeziumException(message, ex);
+                        if (connectorConfig.autoReconnectOnFailure()) {
+                            throw new RetriableException(message, ex);
+                        }
+                        else {
+                            throw new DebeziumException(message, ex);
+                        }
+
                     }
                 }
                 else {
@@ -178,7 +184,13 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                         switch (sqlErrorId) {
                             case "57P01":
                                 // Postgres error admin_shutdown, see https://www.postgresql.org/docs/12/errcodes-appendix.html
-                                throw new DebeziumException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", exception);
+                                if (connectorConfig.autoReconnectOnFailure()) {
+                                    throw new RetriableException("Could not execute heartbeat action due to admin_shutdown, try to restart (Error: " + sqlErrorId + ")",
+                                            exception);
+                                }
+                                else {
+                                    throw new DebeziumException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", exception);
+                                }
                             case "57P03":
                                 // Postgres error cannot_connect_now, see https://www.postgresql.org/docs/12/errcodes-appendix.html
                                 throw new RetriableException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", exception);

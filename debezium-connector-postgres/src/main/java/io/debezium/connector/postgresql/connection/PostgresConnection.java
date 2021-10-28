@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.jdbc.PgConnection;
 import org.postgresql.jdbc.TimestampUtils;
@@ -461,11 +462,18 @@ public class PostgresConnection extends JdbcConnection {
         return serverInfo;
     }
 
+    private boolean autoReconnectOnFailure() {
+        return this.config().getBoolean(JdbcConfiguration.AUTO_RECONNECT_ON_FAILURE);
+    }
+
     public Charset getDatabaseCharset() {
         try {
             return Charset.forName(((BaseConnection) connection()).getEncoding().name());
         }
         catch (SQLException e) {
+            if (autoReconnectOnFailure()) {
+                throw new RetriableException("Couldn't obtain encoding for database " + database() + ", try to restart!", e);
+            }
             throw new DebeziumException("Couldn't obtain encoding for database " + database(), e);
         }
     }
@@ -475,6 +483,9 @@ public class PostgresConnection extends JdbcConnection {
             return ((PgConnection) this.connection()).getTimestampUtils();
         }
         catch (SQLException e) {
+            if (autoReconnectOnFailure()) {
+                throw new RetriableException("Couldn't get timestamp utils from underlying connection, try to restart!", e);
+            }
             throw new DebeziumException("Couldn't get timestamp utils from underlying connection", e);
         }
     }

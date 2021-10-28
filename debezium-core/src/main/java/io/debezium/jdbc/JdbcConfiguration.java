@@ -74,12 +74,18 @@ public interface JdbcConfiguration extends Configuration {
             .withDefault(600000)
             .withValidation(Field::isOptional);
 
+    public static final Field AUTO_RECONNECT_ON_FAILURE = Field.create("auto.reconnect.on.failure")
+            .withDisplayName("Auto reconnect on connection failed.")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withValidation(Field::isOptional);
+
     /**
      * The set of names of the pre-defined JDBC configuration fields, including {@link #DATABASE}, {@link #USER},
      * {@link #PASSWORD}, {@link #HOSTNAME}, and {@link #PORT}.
      */
     public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS,
-            CONNECTION_FACTORY_CLASS, CONNECTION_TIMEOUT_MS);
+            CONNECTION_FACTORY_CLASS, CONNECTION_TIMEOUT_MS, AUTO_RECONNECT_ON_FAILURE);
 
     /**
      * Obtain a {@link JdbcConfiguration} adapter for the given {@link Configuration}.
