@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.postgresql.core.BaseConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,6 +168,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             processMessages(context, partition, offsetContext, stream);
         }
         catch (Throwable e) {
+            LOGGER.error(e.getMessage(), e);
+            if (connectorConfig.autoReconnectOnFailure()) {
+                e = new RetriableException(e.getMessage(), e);
+            }
             errorHandler.setProducerThrowable(e);
         }
         finally {

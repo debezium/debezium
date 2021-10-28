@@ -672,6 +672,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+    public static final Field AUTO_RECONNECT_ON_FAILURE = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.AUTO_RECONNECT_ON_FAILURE)
+            .withDisplayName("Auto reconnect on connection failed")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("Whether or not to try to reconnect PostgreSQL when the connection failed");
+
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
@@ -1047,6 +1055,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
 
+    public boolean autoReconnectOnFailure() {
+        if (getConfig().hasKey(AUTO_RECONNECT_ON_FAILURE.name())) {
+            return getConfig().getBoolean(AUTO_RECONNECT_ON_FAILURE);
+        }
+        // Return default value
+        return getConfig().getBoolean(AUTO_RECONNECT_ON_FAILURE);
+    }
+
+
     public String publicationName() {
         return getConfig().getString(PUBLICATION_NAME);
     }
@@ -1134,6 +1151,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     PUBLICATION_NAME,
                     PUBLICATION_AUTOCREATE_MODE,
                     DROP_SLOT_ON_STOP,
+                    AUTO_RECONNECT_ON_FAILURE,
                     STREAM_PARAMS,
                     ON_CONNECT_STATEMENTS,
                     SSL_MODE,
