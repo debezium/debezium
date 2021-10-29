@@ -51,6 +51,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
@@ -2576,6 +2577,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                            String ddl, TableChanges changes)
                 throws DatabaseHistoryException {
             delegate.record(source, position, databaseName, schemaName, ddl, changes);
+        }
+
+        @Override
+        public void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser) {
+            delegate.recover(offsets, schema, ddlParser);
         }
 
         @Override

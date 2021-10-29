@@ -5,8 +5,6 @@
  */
 package io.debezium.relational;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import io.debezium.DebeziumException;
@@ -60,12 +58,8 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
             String msg = "The db history topic or its content is fully or partially missing. Please check database history topic configuration and re-execute the snapshot.";
             throw new DebeziumException(msg);
         }
-        Map<Map<String, ?>, Map<String, ?>> sourceOffsets = new HashMap<>();
-        offsets.getOffsets().forEach((partition, offsetContext) -> {
-            Map<String, ?> offset = offsetContext != null ? offsetContext.getOffset() : null;
-            sourceOffsets.put(partition.getSourcePartition(), offset);
-        });
-        databaseHistory.recover(sourceOffsets, tables(), getDdlParser());
+
+        databaseHistory.recover(offsets, tables(), getDdlParser());
         recoveredTables = !tableIds().isEmpty();
         for (TableId tableId : tableIds()) {
             buildAndRegisterSchema(tableFor(tableId));

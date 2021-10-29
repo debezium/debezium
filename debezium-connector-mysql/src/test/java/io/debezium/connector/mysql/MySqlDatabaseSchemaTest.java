@@ -22,6 +22,7 @@ import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -262,7 +263,7 @@ public class MySqlDatabaseSchemaTest {
 
         final Configuration configFull = DATABASE.defaultConfigWithoutDatabaseFilter().build();
         mysql = getSchema(configFull);
-        mysql.recover(partition, offset);
+        mysql.recover(Offsets.of(partition, offset));
 
         assertTableIncluded("captured.ct");
         assertTableIncluded("captured.nct");
@@ -294,7 +295,7 @@ public class MySqlDatabaseSchemaTest {
 
         final Configuration configFull = DATABASE.defaultConfigWithoutDatabaseFilter().build();
         mysql = getSchema(configFull);
-        mysql.recover(partition, offset);
+        mysql.recover(Offsets.of(partition, offset));
 
         assertTableIncluded("captured.ct");
         assertTableIncluded("captured.nct");
@@ -325,7 +326,7 @@ public class MySqlDatabaseSchemaTest {
 
         final Configuration configFull = DATABASE.defaultConfigWithoutDatabaseFilter().build();
         mysql = getSchema(configFull);
-        mysql.recover(partition, offset);
+        mysql.recover(Offsets.of(partition, offset));
 
         assertTableIncluded("captured.ct");
         assertTableIncluded("captured.nct");
@@ -357,7 +358,7 @@ public class MySqlDatabaseSchemaTest {
 
         final Configuration configFull = DATABASE.defaultConfigWithoutDatabaseFilter().build();
         mysql = getSchema(configFull);
-        mysql.recover(partition, offset);
+        mysql.recover(Offsets.of(partition, offset));
 
         assertTableIncluded("captured.ct");
         assertTableExcluded("captured.nct");
@@ -387,7 +388,7 @@ public class MySqlDatabaseSchemaTest {
 
     protected void assertHistoryRecorded(Configuration config, MySqlPartition partition, OffsetContext offset) {
         MySqlDatabaseSchema duplicate = getSchema(config);
-        duplicate.recover(partition, offset);
+        duplicate.recover(Offsets.of(partition, offset));
 
         // Make sure table is defined in each ...
         assertThat(duplicate.tableIds()).isEqualTo(mysql.tableIds());

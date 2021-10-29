@@ -321,6 +321,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             LOGGER.info("No previous offsets found");
         }
 
-        return new Offsets<>(offsets);
+        return Offsets.of(offsets);
     }
 }
