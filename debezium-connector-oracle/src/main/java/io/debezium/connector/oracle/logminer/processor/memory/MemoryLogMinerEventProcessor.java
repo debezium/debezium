@@ -16,6 +16,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,10 +34,11 @@ import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
-import io.debezium.connector.oracle.logminer.events.Transaction;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.TransactionCache;
+import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
@@ -48,7 +50,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor {
+public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor<MemoryTransaction> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryLogMinerEventProcessor.class);
 
@@ -88,8 +90,24 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected TransactionCache<?> getTransactionCache() {
+    protected TransactionCache<MemoryTransaction, ?> getTransactionCache() {
         return transactionCache;
+    }
+
+    @Override
+    protected MemoryTransaction createTransaction(LogMinerEventRow row) {
+        return new MemoryTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime());
+    }
+
+    @Override
+    protected void removeEventWithRowId(LogMinerEventRow row) {
+        final MemoryTransaction transaction = getTransactionCache().get(row.getTransactionId());
+        if (transaction == null) {
+            LOGGER.warn("Cannot undo change '{}' since transaction was not found.", row);
+        }
+        else {
+            transaction.removeEventWithRowId(row.getRowId());
+        }
     }
 
     @Override
@@ -153,9 +171,9 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                         thresholdScn = smallestScn;
                     }
 
-                    Iterator<Map.Entry<String, Transaction>> iterator = transactionCache.iterator();
+                    Iterator<Map.Entry<String, MemoryTransaction>> iterator = transactionCache.iterator();
                     while (iterator.hasNext()) {
-                        Map.Entry<String, Transaction> entry = iterator.next();
+                        Map.Entry<String, MemoryTransaction> entry = iterator.next();
                         if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
                             LOGGER.warn("Transaction {} is being abandoned.", entry.getKey());
                             abandonedTransactionsCache.add(entry.getKey());
@@ -210,7 +228,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             return;
         }
 
-        final Transaction transaction = transactionCache.remove(transactionId);
+        final MemoryTransaction transaction = transactionCache.remove(transactionId);
         if (transaction == null) {
             LOGGER.trace("Transaction {} not found.", transactionId);
             return;
@@ -232,43 +250,55 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
         counters.commitCount++;
         Instant start = Instant.now();
-        getReconciliation().reconcile(transaction);
 
         int numEvents = transaction.getEvents().size();
 
         LOGGER.trace("Commit: (smallest SCN {}) {}", smallestScn, row);
         LOGGER.trace("Transaction {} has {} events", transactionId, numEvents);
 
-        for (LogMinerEvent event : transaction.getEvents()) {
-            if (!context.isRunning()) {
-                return;
-            }
+        BlockingConsumer<LogMinerEvent> delegate = new BlockingConsumer<LogMinerEvent>() {
+            private int numEvents = getTransactionEventCount(transaction);
 
-            // Update SCN in offset context only if processed SCN less than SCN of other transactions
-            if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
-                offsetContext.setScn(event.getScn());
-                metrics.setOldestScn(event.getScn());
-            }
+            @Override
+            public void accept(LogMinerEvent event) throws InterruptedException {
+                // Update SCN in offset context only if processed SCN less than SCN of other transactions
+                if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
+                    offsetContext.setScn(event.getScn());
+                    metrics.setOldestScn(event.getScn());
+                }
 
-            offsetContext.setTransactionId(transactionId);
-            offsetContext.setSourceTime(event.getChangeTime());
-            offsetContext.setTableId(event.getTableId());
-            if (--numEvents == 0) {
-                // reached the last event update the commit scn in the offsets
-                offsetContext.setCommitScn(commitScn);
-            }
+                offsetContext.setTransactionId(transactionId);
+                offsetContext.setSourceTime(event.getChangeTime());
+                offsetContext.setTableId(event.getTableId());
+                if (--numEvents == 0) {
+                    // reached the last event update the commit scn in the offsets
+                    offsetContext.setCommitScn(commitScn);
+                }
 
-            // after reconciliation all events should be DML
-            final DmlEvent dmlEvent = (DmlEvent) event;
-            dispatcher.dispatchDataChangeEvent(event.getTableId(),
-                    new LogMinerChangeRecordEmitter(
-                            partition,
-                            offsetContext,
-                            dmlEvent.getEventType(),
-                            dmlEvent.getDmlEntry().getOldValues(),
-                            dmlEvent.getDmlEntry().getNewValues(),
-                            getSchema().tableFor(event.getTableId()),
-                            Clock.system()));
+                final DmlEvent dmlEvent = (DmlEvent) event;
+                dispatcher.dispatchDataChangeEvent(event.getTableId(),
+                        new LogMinerChangeRecordEmitter(
+                                partition,
+                                offsetContext,
+                                dmlEvent.getEventType(),
+                                dmlEvent.getDmlEntry().getOldValues(),
+                                dmlEvent.getDmlEntry().getNewValues(),
+                                getSchema().tableFor(event.getTableId()),
+                                Clock.system()));
+            }
+        };
+
+        int eventCount = 0;
+        try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, getConfig(), getSchema())) {
+            for (LogMinerEvent event : transaction.getEvents()) {
+                if (!context.isRunning()) {
+                    return;
+                }
+
+                eventCount++;
+                LOGGER.trace("Dispatching event {} {}", eventCount, event.getEventType());
+                commitConsumer.accept(event);
+            }
         }
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
@@ -291,7 +321,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
         metrics.incrementCommittedTransactions();
         metrics.setActiveTransactions(transactionCache.size());
-        metrics.incrementCommittedDmlCount(transaction.getEvents().size());
+        metrics.incrementCommittedDmlCount(eventCount);
         metrics.setCommittedScn(commitScn);
         metrics.setOffsetScn(offsetContext.getScn());
         metrics.setLastCommitDuration(Duration.between(start, Instant.now()));
@@ -299,7 +329,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected void handleRollback(LogMinerEventRow row) {
-        final Transaction transaction = transactionCache.get(row.getTransactionId());
+        final MemoryTransaction transaction = transactionCache.get(row.getTransactionId());
         if (transaction != null) {
             transactionCache.remove(row.getTransactionId());
             abandonedTransactionsCache.remove(row.getTransactionId());
@@ -319,6 +349,33 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         if (row.getTableName() != null && getConfig().isLobEnabled()) {
             schemaChangesCache.add(row.getScn());
         }
+    }
+
+    @Override
+    protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
+        if (isTransactionIdAllowed(transactionId)) {
+            MemoryTransaction transaction = getTransactionCache().get(transactionId);
+            if (transaction == null) {
+                LOGGER.trace("Transaction {} not in cache for DML, creating.", transactionId);
+                transaction = createTransaction(row);
+                getTransactionCache().put(transactionId, transaction);
+            }
+
+            int eventId = transaction.getNextEventId();
+            if (transaction.getEvents().size() <= eventId) {
+                // Add new event at eventId offset
+                LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
+                transaction.getEvents().add(eventSupplier.get());
+                metrics.calculateLagMetrics(row.getChangeTime());
+            }
+
+            metrics.setActiveTransactions(getTransactionCache().size());
+        }
+    }
+
+    @Override
+    protected int getTransactionEventCount(MemoryTransaction transaction) {
+        return transaction.getEvents().size();
     }
 
     private PreparedStatement createQueryStatement() throws SQLException {
@@ -391,4 +448,5 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             return Optional.of(offsetScn);
         }
     }
+
 }

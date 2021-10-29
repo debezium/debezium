@@ -8,19 +8,18 @@ package io.debezium.connector.oracle.logminer.processor;
 import java.util.Iterator;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.Transaction;
 
 /**
  * Generalized contract that all transaction cache implementations should implement.
  *
  * @author Chris Cranford
  */
-public interface TransactionCache<I> extends AutoCloseable {
-    Transaction get(String transactionId);
+public interface TransactionCache<T extends AbstractTransaction, I> extends AutoCloseable {
+    T get(String transactionId);
 
-    void put(String transactionId, Transaction transaction);
+    void put(String transactionId, T transaction);
 
-    Transaction remove(String transactionId);
+    T remove(String transactionId);
 
     int size();
 
