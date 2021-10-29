@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -55,11 +56,11 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      *
      * @param config the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry,
+    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, PostgresDefaultValueConverter defaultValueConverter,
                              TopicSelector<TableId> topicSelector, PostgresValueConverter valueConverter) {
         super(config, topicSelector, new Filters(config).tableFilter(),
-                config.getColumnFilter(), getTableSchemaBuilder(config, valueConverter), false,
-                config.getKeyMapper());
+                config.getColumnFilter(), getTableSchemaBuilder(config, valueConverter, defaultValueConverter),
+                false, config.getKeyMapper());
 
         this.typeRegistry = typeRegistry;
         this.tableIdToToastableColumns = new HashMap<>();
@@ -67,8 +68,10 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         this.readToastableColumns = config.skipRefreshSchemaOnMissingToastableData();
     }
 
-    private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, PostgresValueConverter valueConverter) {
-        return new TableSchemaBuilder(valueConverter, SchemaNameAdjuster.create(), config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
+    private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, PostgresValueConverter valueConverter,
+                                                            PostgresDefaultValueConverter defaultValueConverter) {
+        return new TableSchemaBuilder(valueConverter, defaultValueConverter, SchemaNameAdjuster.create(),
+                config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
                 config.getSanitizeFieldNames(), false);
     }
 

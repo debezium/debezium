@@ -34,6 +34,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
+import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -201,6 +202,20 @@ public final class TestHelper {
         }
     }
 
+    public static PostgresDefaultValueConverter getDefaultValueConverter() {
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config))) {
+            return connection.getDefaultValueConverter();
+        }
+    }
+
+    public static Charset getDatabaseCharset() {
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config))) {
+            return connection.getDatabaseCharset();
+        }
+    }
+
     public static PostgresSchema getSchema(PostgresConnectorConfig config) {
         return getSchema(config, TestHelper.getTypeRegistry());
     }
@@ -209,6 +224,7 @@ public final class TestHelper {
         return new PostgresSchema(
                 config,
                 typeRegistry,
+                TestHelper.getDefaultValueConverter(),
                 PostgresTopicSelector.create(config),
                 getPostgresValueConverter(typeRegistry, config));
     }

@@ -8,8 +8,6 @@ package io.debezium.connector.mysql.antlr.listener;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.debezium.connector.mysql.MySqlDefaultValueConverter;
-import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CurrentTimestampContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.DefaultValueContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -25,23 +23,11 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     private final ColumnEditor columnEditor;
     private final AtomicReference<Boolean> optionalColumn;
 
-    private final MySqlDefaultValueConverter defaultValueConverter;
-
-    /**
-     * Whether to convert the column's default value into the corresponding schema type or not. This is done for column
-     * definitions of ALTER TABLE statements but not for CREATE TABLE. In case of the latter, the default value
-     * conversion is handled by the CREATE TABLE statement listener itself, as a default character set given at the
-     * table level might have to be applied.
-     */
-    private final boolean convertDefault;
     private boolean converted;
 
-    public DefaultValueParserListener(ColumnEditor columnEditor, MySqlValueConverters converters,
-                                      AtomicReference<Boolean> optionalColumn, boolean convertDefault) {
+    public DefaultValueParserListener(ColumnEditor columnEditor, AtomicReference<Boolean> optionalColumn) {
         this.columnEditor = columnEditor;
-        this.defaultValueConverter = new MySqlDefaultValueConverter(converters);
         this.optionalColumn = optionalColumn;
-        this.convertDefault = convertDefault;
         this.converted = false;
     }
 
@@ -82,26 +68,18 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
                 }
             }
         }
-        convertDefaultValue(true);
+        exitDefaultValue(true);
         super.enterDefaultValue(ctx);
     }
 
-    public void convertDefaultValue(boolean skipIfUnknownOptional) {
-        // For CREATE TABLE are all column default values converted only after charset is known.
-        if (convertDefault) {
-            if (!converted && (optionalColumn.get() != null || !skipIfUnknownOptional)) {
-                convertDefaultValueToSchemaType(columnEditor);
-                converted = true;
+    public void exitDefaultValue(boolean skipIfUnknownOptional) {
+        boolean isOptionalColumn = optionalColumn.get() != null;
+        if (!converted && (isOptionalColumn || !skipIfUnknownOptional)) {
+            if (isOptionalColumn) {
+                columnEditor.optional(optionalColumn.get().booleanValue());
             }
+            converted = true;
         }
-    }
-
-    private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
-        if (optionalColumn.get() != null) {
-            columnEditor.optional(optionalColumn.get().booleanValue());
-        }
-
-        defaultValueConverter.setColumnDefaultValue(columnEditor);
     }
 
     private String unquote(String stringLiteral) {

@@ -86,7 +86,6 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
             if (ctx.DEFAULT() != null) {
                 String defaultValue = ctx.expression().getText();
                 columnEditor.defaultValueExpression(defaultValue);
-                columnEditor.defaultValue(defaultValue);
             }
         }
 

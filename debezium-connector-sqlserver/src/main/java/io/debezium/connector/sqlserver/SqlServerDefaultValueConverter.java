@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
+import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.HexConverter;
 
@@ -33,7 +34,7 @@ import microsoft.sql.DateTimeOffset;
  * Parses and converts column default values.
  */
 @ThreadSafe
-class SqlServerDefaultValueConverter {
+class SqlServerDefaultValueConverter implements DefaultValueConverter {
 
     private static Logger LOGGER = LoggerFactory.getLogger(SqlServerDefaultValueConverter.class);
 
@@ -71,7 +72,12 @@ class SqlServerDefaultValueConverter {
         this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers());
     }
 
-    Optional<Object> parseDefaultValue(Column column, String defaultValue) {
+    @Override
+    public Optional<Object> parseDefaultValue(Column column, String defaultValueExpression) {
+        if (defaultValueExpression == null) {
+            return Optional.empty();
+        }
+
         final String dataType = column.typeName();
         final DefaultValueMapper mapper = defaultValueMappers.get(dataType);
         if (mapper == null) {
@@ -80,12 +86,12 @@ class SqlServerDefaultValueConverter {
         }
 
         try {
-            Object rawDefaultValue = mapper.parse(defaultValue);
+            Object rawDefaultValue = mapper.parse(defaultValueExpression);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
             return Optional.ofNullable(convertedDefaultValue);
         }
         catch (Exception e) {
-            LOGGER.warn("Cannot parse column default value '{}' to type '{}'. Expression evaluation is not supported.", defaultValue, dataType);
+            LOGGER.warn("Cannot parse column default value '{}' to type '{}'. Expression evaluation is not supported.", defaultValueExpression, dataType);
             LOGGER.debug("Parsing failed due to error", e);
             return Optional.empty();
         }

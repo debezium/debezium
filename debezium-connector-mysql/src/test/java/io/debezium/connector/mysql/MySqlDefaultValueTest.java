@@ -56,6 +56,7 @@ public class MySqlDefaultValueTest {
         tables = new Tables();
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
+                new MySqlDefaultValueConverter(converters),
                 SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
 
     }
@@ -73,17 +74,17 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_TINYINT_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo((short) 0);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo((short) 10);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo((short) 0);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo((short) 10);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
         assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
-        assertThat(table.columnWithName("C").defaultValue()).isNull();
+        assertThat(getColumnSchema(table, "C").defaultValue()).isNull();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo((short) 0);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo((short) 0);
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo((short) 255);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo((short) 0);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo((short) 0);
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo((short) 255);
     }
 
     @Test
@@ -99,16 +100,16 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_SMALLINT_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(0);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(10);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
         assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
-        assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "D").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
-        assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(0);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0);
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(65535);
+        assertThat(getColumnSchema(table, "E").isOptional()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(65535);
     }
 
     @Test
@@ -124,16 +125,16 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_MEDIUMINT_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(0);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(10);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
         assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(0);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0);
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(16777215);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(16777215);
     }
 
     @Test
@@ -149,16 +150,16 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_INT_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(0L);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(10L);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10L);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
         assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(0L);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0L);
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(4294967295L);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(4294967295L);
     }
 
     @Test
@@ -173,15 +174,15 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_BIGINT_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(0L);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(10L);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10L);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
         assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
-        assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "D").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
-        assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(0L);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(table, "E").isOptional()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0L);
     }
 
     @Test
@@ -191,6 +192,11 @@ public class MySqlDefaultValueTest {
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
                 BinaryHandlingMode.BYTES);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
+        final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
+                converters,
+                new MySqlDefaultValueConverter(converters),
+                SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+
         String sql = "CREATE TABLE UNSIGNED_BIGINT_TABLE (\n" +
                 "  A BIGINT UNSIGNED NULL DEFAULT 0,\n" +
                 "  B BIGINT UNSIGNED NULL DEFAULT '10',\n" +
@@ -202,16 +208,16 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_BIGINT_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(BigDecimal.ZERO);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(new BigDecimal(10));
+        assertThat(getColumnSchema(table, "A", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.ZERO);
+        assertThat(getColumnSchema(table, "B", tableSchemaBuilder).defaultValue()).isEqualTo(new BigDecimal(10));
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
         assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(BigDecimal.ZERO);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(BigDecimal.ZERO);
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(new BigDecimal("18446744073709551615"));
+        assertThat(getColumnSchema(table, "E", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.ZERO);
+        assertThat(getColumnSchema(table, "F", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.ZERO);
+        assertThat(getColumnSchema(table, "G", tableSchemaBuilder).defaultValue()).isEqualTo(new BigDecimal("18446744073709551615"));
     }
 
     @Test
@@ -228,16 +234,16 @@ public class MySqlDefaultValueTest {
                 ") CHARACTER SET 'latin2';";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_STRING_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo("A");
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo("A");
         assertThat(table.columnWithName("A").charsetName()).isEqualTo("latin2");
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo("b");
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo("b");
         assertThat(table.columnWithName("B").charsetName()).isEqualTo("utf8");
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo("CC");
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo("10");
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo("0");
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(null);
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(null);
-        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo("CC");
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo("10");
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo("0");
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "H").defaultValue()).isEqualTo(null);
     }
 
     @Test
@@ -256,16 +262,16 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "BIT_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(null);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(false);
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(true);
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(false);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(true);
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(true);
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(false);
-        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(new byte[]{ 66, 1 });
-        assertThat(table.columnWithName("I").defaultValue()).isEqualTo(null);
-        assertThat(table.columnWithName("J").defaultValue()).isEqualTo(new byte[]{ 15, 97, 1, 0 });
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "H").defaultValue()).isEqualTo(new byte[]{ 66, 1 });
+        assertThat(getColumnSchema(table, "I").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "J").defaultValue()).isEqualTo(new byte[]{ 15, 97, 1, 0 });
     }
 
     @Test
@@ -279,11 +285,11 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "BOOLEAN_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(false);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(true);
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(true);
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(true);
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(null);
     }
 
     @Test
@@ -316,8 +322,8 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "REAL_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(1f);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(null);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(1f);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(null);
     }
 
     @Test
@@ -330,10 +336,10 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "NUMERIC_DECIMAL_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(1.0d);
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(2.321d);
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(13d);
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(12.68d);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(1.0d);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(2.321d);
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo(13d);
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo(12.68d);
     }
 
     @Test
@@ -343,6 +349,10 @@ public class MySqlDefaultValueTest {
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
+        final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
+                converters,
+                new MySqlDefaultValueConverter(converters),
+                SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
                 "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
@@ -350,9 +360,9 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "NUMERIC_DECIMAL_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(BigDecimal.valueOf(1));
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo(BigDecimal.valueOf(2.321));
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(BigDecimal.valueOf(13));
+        assertThat(getColumnSchema(table, "A", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.valueOf(1));
+        assertThat(getColumnSchema(table, "B", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.valueOf(2.321));
+        assertThat(getColumnSchema(table, "C", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.valueOf(13));
     }
 
     @Test
@@ -376,24 +386,24 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "TIME_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
-        assertThat(table.columnWithName("D").defaultValue())
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(getColumnSchema(table, "D").defaultValue())
                 .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
-        assertThat(table.columnWithName("E").defaultValue())
+        assertThat(getColumnSchema(table, "E").defaultValue())
                 .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
-        assertThat(table.columnWithName("F").defaultValue())
+        assertThat(getColumnSchema(table, "F").defaultValue())
                 .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000).atZone(ZoneId.systemDefault()), null));
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(Date.from(Instant.ofEpochMilli(0)));
-        assertThat(table.columnWithName("H").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("J").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 0, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("K").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 0, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("L").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("M").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("N").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("O").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(Date.from(Instant.ofEpochMilli(0)));
+        assertThat(getColumnSchema(table, "H").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "J").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(getColumnSchema(table, "K").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(getColumnSchema(table, "L").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000, ZoneOffset.UTC).toInstant()));
+        assertThat(getColumnSchema(table, "M").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "N").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "O").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
     }
 
     @Test
@@ -411,15 +421,15 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "DATE_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(9999, 9, 9, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(1111, 11, 11, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 8, 31, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2050, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(9999, 9, 9, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(1111, 11, 11, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 8, 31, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(getColumnSchema(table, "H").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2050, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(getColumnSchema(table, "I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
     }
 
     @Test
@@ -432,8 +442,8 @@ public class MySqlDefaultValueTest {
         parser.parse(sql, tables);
         parser.parse(alterSql, tables);
         Table table = tables.forTable(new TableId(null, null, "TIME_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
-        assertThat(table.columnWithName("B").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
     }
 
     @Test
@@ -447,13 +457,13 @@ public class MySqlDefaultValueTest {
         assertThat(table.columnWithName("nullable_date").hasDefaultValue()).isTrue();
 
         // zero date should be mapped to null for nullable column
-        assertThat(table.columnWithName("nullable_date").defaultValue()).isNull();
+        assertThat(getColumnSchema(table, "nullable_date").defaultValue()).isNull();
 
         assertThat(table.columnWithName("not_nullable_date").hasDefaultValue()).isTrue();
 
         // zero date should be mapped to epoch for non-nullable column (expecting Date, as this test is using "connect"
         // mode)
-        assertThat(table.columnWithName("not_nullable_date").defaultValue()).isEqualTo(getEpochDate());
+        assertThat(getColumnSchema(table, "not_nullable_date").defaultValue()).isEqualTo(getEpochDate());
     }
 
     private Date getEpochDate() {
@@ -475,11 +485,11 @@ public class MySqlDefaultValueTest {
 
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Boolean) table.columnWithName("bval").defaultValue()).isTrue();
-        assertThat((Short) table.columnWithName("tival1").defaultValue()).isZero();
-        assertThat((Short) table.columnWithName("tival2").defaultValue()).isEqualTo((short) 3);
-        assertThat((Short) table.columnWithName("tival3").defaultValue()).isEqualTo((short) 1);
-        assertThat((Short) table.columnWithName("tival4").defaultValue()).isEqualTo((short) 18);
+        assertThat((Boolean) getColumnSchema(table, "bval").defaultValue()).isTrue();
+        assertThat((Short) getColumnSchema(table, "tival1").defaultValue()).isZero();
+        assertThat((Short) getColumnSchema(table, "tival2").defaultValue()).isEqualTo((short) 3);
+        assertThat((Short) getColumnSchema(table, "tival3").defaultValue()).isEqualTo((short) 1);
+        assertThat((Short) getColumnSchema(table, "tival4").defaultValue()).isEqualTo((short) 18);
     }
 
     @Test
@@ -497,11 +507,11 @@ public class MySqlDefaultValueTest {
 
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Boolean) table.columnWithName("bval").defaultValue()).isTrue();
-        assertThat((Integer) table.columnWithName("ival1").defaultValue()).isZero();
-        assertThat((Integer) table.columnWithName("ival2").defaultValue()).isEqualTo(3);
-        assertThat((Integer) table.columnWithName("ival3").defaultValue()).isEqualTo(1);
-        assertThat((Integer) table.columnWithName("ival4").defaultValue()).isEqualTo(18);
+        assertThat((Boolean) getColumnSchema(table, "bval").defaultValue()).isTrue();
+        assertThat((Integer) getColumnSchema(table, "ival1").defaultValue()).isZero();
+        assertThat((Integer) getColumnSchema(table, "ival2").defaultValue()).isEqualTo(3);
+        assertThat((Integer) getColumnSchema(table, "ival3").defaultValue()).isEqualTo(1);
+        assertThat((Integer) getColumnSchema(table, "ival4").defaultValue()).isEqualTo(18);
     }
 
     @Test
@@ -513,7 +523,7 @@ public class MySqlDefaultValueTest {
 
         Table table = tables.forTable(new TableId(null, null, "user_subscribe"));
 
-        final byte[] defVal = (byte[]) table.columnWithName("content").defaultValue();
+        final byte[] defVal = (byte[]) getColumnSchema(table, "content").defaultValue();
         assertThat(Byte.toUnsignedInt((defVal[0]))).isEqualTo(0b00001110);
         assertThat(Byte.toUnsignedInt((defVal[1]))).isEqualTo(0b11111011);
         assertThat(Byte.toUnsignedInt((defVal[2]))).isEqualTo(0b11111111);
@@ -526,11 +536,15 @@ public class MySqlDefaultValueTest {
         parser.parse(ddl, tables);
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Integer) table.columnWithName("id").defaultValue()).isEqualTo(1);
-        assertThat((String) table.columnWithName("data").defaultValue()).isEqualTo(" 3 ");
+        assertThat((Integer) getColumnSchema(table, "id").defaultValue()).isEqualTo(1);
+        assertThat((String) getColumnSchema(table, "data").defaultValue()).isEqualTo(" 3 ");
     }
 
     private Schema getColumnSchema(Table table, String column) {
+        return getColumnSchema(table, column, tableSchemaBuilder);
+    }
+
+    private Schema getColumnSchema(Table table, String column, TableSchemaBuilder tableSchemaBuilder) {
         TableSchema schema = tableSchemaBuilder.create("test", "dummy", table, null, null, null);
         return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
     }

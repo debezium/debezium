@@ -166,7 +166,6 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                 // I'm going to leave this as is for now, to be prepared for the ability of updating column definitions in 8.0
                 ColumnEditor columnEditor = existingColumn.edit();
                 columnEditor.unsetDefaultValueExpression();
-                columnEditor.unsetDefaultValue();
 
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 listeners.add(columnDefinitionListener);
@@ -207,7 +206,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             Column existingColumn = tableEditor.columnWithName(columnName);
             if (existingColumn != null) {
                 ColumnEditor columnEditor = existingColumn.edit();
-                columnEditor.unsetDefaultValue();
+                columnEditor.unsetDefaultValueExpression();
 
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 listeners.add(columnDefinitionListener);
@@ -267,13 +266,12 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             if (column != null) {
                 defaultValueColumnEditor = column.edit();
                 if (ctx.SET() != null) {
-                    defaultValueListener = new DefaultValueParserListener(defaultValueColumnEditor, parser.getConverters(),
-                            new AtomicReference<Boolean>(column.isOptional()), true);
+                    defaultValueListener = new DefaultValueParserListener(defaultValueColumnEditor,
+                            new AtomicReference<Boolean>(column.isOptional()));
                     listeners.add(defaultValueListener);
                 }
                 else if (ctx.DROP() != null) {
                     defaultValueColumnEditor.unsetDefaultValueExpression();
-                    defaultValueColumnEditor.unsetDefaultValue();
                 }
             }
         }, tableEditor);

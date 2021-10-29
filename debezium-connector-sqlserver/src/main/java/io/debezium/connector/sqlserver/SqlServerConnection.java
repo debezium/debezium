@@ -434,12 +434,6 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
-    protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
-        return defaultValueConverter
-                .parseDefaultValue(column, defaultValue);
-    }
-
-    @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
         // SQL Server provides indices also without index name
         // so we need to ignore them
@@ -489,5 +483,9 @@ public class SqlServerConnection extends JdbcConnection {
 
     private String replaceDatabaseNamePlaceholder(String sql, String databaseName) {
         return sql.replace(DATABASE_NAME_PLACEHOLDER, databaseName);
+    }
+
+    public SqlServerDefaultValueConverter getDefaultValueConverter() {
+        return defaultValueConverter;
     }
 }

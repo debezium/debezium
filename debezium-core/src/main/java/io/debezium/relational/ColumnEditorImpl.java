@@ -24,7 +24,6 @@ final class ColumnEditorImpl implements ColumnEditor {
     private boolean optional = true;
     private boolean autoIncremented = false;
     private boolean generated = false;
-    private Object defaultValue = null;
     private String defaultValueExpression = null;
     private boolean hasDefaultValue = false;
     private List<String> enumValues;
@@ -104,11 +103,6 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public Object defaultValue() {
-        return defaultValue;
-    }
-
-    @Override
     public boolean hasDefaultValue() {
         return hasDefaultValue;
     }
@@ -185,7 +179,7 @@ final class ColumnEditorImpl implements ColumnEditor {
         this.optional = optional;
         if (optional && !hasDefaultValue()) {
             // Optional columns have implicit NULL default value
-            defaultValue(null);
+            defaultValueExpression(null);
         }
         return this;
     }
@@ -209,27 +203,15 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditor defaultValue(final Object defaultValue) {
-        this.hasDefaultValue = true;
-        this.defaultValue = defaultValue;
-        return this;
-    }
-
-    @Override
     public ColumnEditor defaultValueExpression(String defaultValueExpression) {
+        this.hasDefaultValue = true;
         this.defaultValueExpression = defaultValueExpression;
         return this;
     }
 
     @Override
-    public ColumnEditor unsetDefaultValue() {
-        this.hasDefaultValue = false;
-        this.defaultValue = null;
-        return this;
-    }
-
-    @Override
     public ColumnEditor unsetDefaultValueExpression() {
+        this.hasDefaultValue = false;
         this.defaultValueExpression = null;
         return this;
     }
@@ -249,7 +231,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     @Override
     public Column create() {
         return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
-                length, scale, enumValues, optional, autoIncremented, generated, defaultValue, defaultValueExpression, hasDefaultValue, comment);
+                length, scale, enumValues, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, comment);
     }
 
     @Override

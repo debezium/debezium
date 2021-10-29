@@ -27,7 +27,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.Collect;
@@ -75,12 +74,29 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
      * recognized by value converters for a subset of types.
      *
      * @param column       the column definition describing the {@code data} value; never null
-     * @param defaultValue the default value; may be null
+     * @param defaultValueExpression the default value literal; may be null
      * @return value converted to a Java type; optional
      */
     @Override
-    public Optional<Object> parseDefaultValue(Column column, String defaultValue) {
-        return Optional.ofNullable(convert(column, defaultValue));
+    public Optional<Object> parseDefaultValue(Column column, String defaultValueExpression) {
+        Object logicalDefaultValue = convert(column, defaultValueExpression);
+        if (logicalDefaultValue == null) {
+            return Optional.empty();
+        }
+
+        final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
+        if (schemaBuilder == null) {
+            return Optional.of(logicalDefaultValue);
+        }
+        final Schema schema = schemaBuilder.build();
+
+        // In order to get the valueConverter for this column, we have to create a field;
+        // The index value -1 in the field will never used when converting default value;
+        // So we can set any number here;
+        final Field field = new Field(column.name(), -1, schema);
+        final ValueConverter valueConverter = converters.converter(column, field);
+
+        return Optional.ofNullable(valueConverter.convert(logicalDefaultValue));
     }
 
     /**
@@ -417,31 +433,6 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         String rest = s.substring(startIndex);
         sb.append(rest.replaceFirst("[^\\d]+", Character.toString(c)));
         return sb.toString();
-    }
-
-    @Override
-    public ColumnEditor setColumnDefaultValue(ColumnEditor columnEditor) {
-        final Column column = columnEditor.create();
-
-        // if converters is not null and the default value is not null, we need to convert default value
-        if (converters != null && columnEditor.defaultValueExpression() != null) {
-            String defaultValueExpression = columnEditor.defaultValueExpression();
-            final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
-            if (schemaBuilder == null) {
-                return columnEditor;
-            }
-            final Schema schema = schemaBuilder.build();
-            // In order to get the valueConverter for this column, we have to create a field;
-            // The index value -1 in the field will never used when converting default value;
-            // So we can set any number here;
-            final Field field = new Field(columnEditor.name(), -1, schema);
-            final ValueConverter valueConverter = converters.converter(columnEditor.create(), field);
-
-            Object defaultValue = convert(column, defaultValueExpression);
-            defaultValue = valueConverter.convert(defaultValue);
-            columnEditor.defaultValue(defaultValue);
-        }
-        return columnEditor;
     }
 
 }

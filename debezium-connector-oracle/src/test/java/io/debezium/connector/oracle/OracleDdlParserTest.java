@@ -369,8 +369,8 @@ public class OracleDdlParserTest {
             assertThat(oScale.get()).isEqualTo(scale);
         }
         assertThat(column.hasDefaultValue()).isEqualTo(hasDefault);
-        if (column.hasDefaultValue() && column.defaultValue() != null) {
-            assertThat(defaultValue.equals(column.defaultValue()));
+        if (column.hasDefaultValue() && column.defaultValueExpression().isPresent()) {
+            assertThat(defaultValue.equals(column.defaultValueExpression().get()));
         }
     }
 }

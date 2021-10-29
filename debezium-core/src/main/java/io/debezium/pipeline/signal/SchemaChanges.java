@@ -12,8 +12,6 @@ import io.debezium.DebeziumException;
 import io.debezium.document.Array;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
-import io.debezium.relational.DefaultValueConverter;
-import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.JsonTableChangeSerializer;
@@ -58,13 +56,7 @@ public class SchemaChanges implements Signal.Action {
             LOGGER.warn("Table changes signal '{}' has arrived but the requested field '{}' is missing from data", signalPayload, FIELD_DATABASE);
             return false;
         }
-
-        DefaultValueConverter defaultValueConverter = null;
-        if (dispatcher.getHistorizedSchema() instanceof HistorizedRelationalDatabaseSchema) {
-            defaultValueConverter = ((HistorizedRelationalDatabaseSchema) dispatcher.getHistorizedSchema()).getDefaultValueConverter();
-        }
-
-        for (TableChanges.TableChange tableChange : serializer.deserialize(changes, useCatalogBeforeSchema, defaultValueConverter)) {
+        for (TableChanges.TableChange tableChange : serializer.deserialize(changes, useCatalogBeforeSchema)) {
             if (dispatcher.getHistorizedSchema() != null) {
                 LOGGER.info("Executing schema change for table '{}' requested by signal '{}'", tableChange.getId(), signalPayload.id);
                 dispatcher.dispatchSchemaChangeEvent(tableChange.getId(), emitter -> {

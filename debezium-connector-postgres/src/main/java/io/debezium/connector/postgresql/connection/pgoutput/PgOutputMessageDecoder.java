@@ -262,7 +262,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Schema: '{}', Table: '{}'", schemaName, tableName);
 
         // Perform several out-of-bands database metadata queries
-        Map<String, Optional<Object>> columnDefaults;
+        Map<String, Optional<String>> columnDefaults;
         Map<String, Boolean> columnOptionality;
         List<String> primaryKeyColumns;
 
@@ -272,7 +272,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         final List<io.debezium.relational.Column> readColumns = getTableColumnsFromDatabase(connection, databaseMetadata, tableId);
         columnDefaults = readColumns.stream()
                 .filter(io.debezium.relational.Column::hasDefaultValue)
-                .collect(toMap(io.debezium.relational.Column::name, column -> Optional.ofNullable(column.defaultValue())));
+                .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
 
         columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
         primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
@@ -299,9 +299,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
 
             final boolean hasDefault = columnDefaults.containsKey(columnName);
-            final Object defaultValue = columnDefaults.getOrDefault(columnName, Optional.empty()).orElse(null);
+            final String defaultValueExpression = columnDefaults.getOrDefault(columnName, Optional.empty()).orElse(null);
 
-            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValue, attypmod));
+            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValueExpression, attypmod));
             columnNames.add(columnName);
         }
 
@@ -583,7 +583,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     .scale(columnMetadata.getScale());
 
             if (columnMetadata.hasDefaultValue()) {
-                editor.defaultValue(columnMetadata.getDefaultValue());
+                editor.defaultValueExpression(columnMetadata.getDefaultValueExpression());
             }
 
             columns.add(editor.create());

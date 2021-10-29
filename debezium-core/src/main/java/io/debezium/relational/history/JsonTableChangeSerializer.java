@@ -16,7 +16,6 @@ import io.debezium.document.Document;
 import io.debezium.document.Value;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -93,8 +92,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         document.setBoolean("generated", column.isGenerated());
         document.setString("comment", column.comment());
 
-        document.setBoolean("hasDefaultValue", column.hasDefaultValue());
-        document.setString("defaultValueExpression", column.defaultValueExpression());
+        column.defaultValueExpression().ifPresent(d -> document.setString("defaultValueExpression", d));
 
         Optional.ofNullable(column.enumValues())
                 .map(List::toArray)
@@ -104,11 +102,11 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
     }
 
     @Override
-    public TableChanges deserialize(Array array, boolean useCatalogBeforeSchema, DefaultValueConverter defaultValueConverter) {
+    public TableChanges deserialize(Array array, boolean useCatalogBeforeSchema) {
         TableChanges tableChanges = new TableChanges();
 
         for (Entry entry : array) {
-            TableChange change = fromDocument(entry.getValue().asDocument(), useCatalogBeforeSchema, defaultValueConverter);
+            TableChange change = fromDocument(entry.getValue().asDocument(), useCatalogBeforeSchema);
 
             if (change.getType() == TableChangeType.CREATE) {
                 tableChanges.create(change.getTable());
@@ -124,7 +122,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         return tableChanges;
     }
 
-    private static Table fromDocument(TableId id, Document document, DefaultValueConverter defaultValueConverter) {
+    private static Table fromDocument(TableId id, Document document) {
         TableEditor editor = Table.editor()
                 .tableId(id)
                 .setDefaultCharsetName(document.getString("defaultCharsetName"));
@@ -164,16 +162,8 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                     }
 
                     String defaultValueExpression = v.getString("defaultValueExpression");
-                    columnEditor.defaultValueExpression(defaultValueExpression);
-
-                    Boolean hasDefaultValue = v.getBoolean("hasDefaultValue");
-                    if (hasDefaultValue != null && hasDefaultValue) {
-                        if (defaultValueExpression != null && defaultValueConverter != null) {
-                            columnEditor = defaultValueConverter.setColumnDefaultValue(columnEditor);
-                        }
-                        else {
-                            columnEditor = columnEditor.defaultValue(null);
-                        }
+                    if (defaultValueExpression != null) {
+                        columnEditor.defaultValueExpression(defaultValueExpression);
                     }
 
                     Array enumValues = v.getArray("enumValues");
@@ -201,13 +191,13 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         return editor.create();
     }
 
-    public static TableChange fromDocument(Document document, boolean useCatalogBeforeSchema, DefaultValueConverter defaultValueConverter) {
+    public static TableChange fromDocument(Document document, boolean useCatalogBeforeSchema) {
         TableChangeType type = TableChangeType.valueOf(document.getString("type"));
         TableId id = TableId.parse(document.getString("id"), useCatalogBeforeSchema);
         Table table = null;
 
         if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {
-            table = fromDocument(id, document.getDocument("table"), defaultValueConverter);
+            table = fromDocument(id, document.getDocument("table"));
         }
         else {
             table = Table.editor().tableId(id).create();
