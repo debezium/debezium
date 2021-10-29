@@ -43,27 +43,13 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
     private final List<ParseTreeListener> listeners;
 
-    /**
-     * Whether to convert the column's default value into the corresponding schema type or not. This is done for column
-     * definitions of ALTER TABLE statements but not for CREATE TABLE. In case of the latter, the default value
-     * conversion is handled by the CREATE TABLE statement listener itself, as a default character set given at the
-     * table level might have to be applied.
-     */
-    private final boolean convertDefault;
-
     public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, MySqlAntlrDdlParser parser,
-                                          List<ParseTreeListener> listeners, boolean convertDefault) {
+                                          List<ParseTreeListener> listeners) {
         this.tableEditor = tableEditor;
         this.columnEditor = columnEditor;
         this.parser = parser;
         this.dataTypeResolver = parser.dataTypeResolver();
         this.listeners = listeners;
-        this.convertDefault = convertDefault;
-    }
-
-    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, MySqlAntlrDdlParser parser,
-                                          List<ParseTreeListener> listeners) {
-        this(tableEditor, columnEditor, parser, listeners, true);
     }
 
     public void setColumnEditor(ColumnEditor columnEditor) {
@@ -84,7 +70,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         optionalColumn = new AtomicReference<>();
         resolveColumnDataType(ctx.dataType());
         parser.runIfNotNull(() -> {
-            defaultValueListener = new DefaultValueParserListener(columnEditor, parser.getConverters(), optionalColumn, convertDefault);
+            defaultValueListener = new DefaultValueParserListener(columnEditor, optionalColumn);
             listeners.add(defaultValueListener);
         }, tableEditor);
         super.enterColumnDefinition(ctx);
@@ -100,7 +86,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             tableEditor.addColumn(columnEditor.create());
             tableEditor.setPrimaryKeyNames(columnEditor.name());
         }
-        defaultValueListener.convertDefaultValue(false);
+        defaultValueListener.exitDefaultValue(false);
         parser.runIfNotNull(() -> {
             listeners.remove(defaultValueListener);
         }, tableEditor);

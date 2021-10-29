@@ -30,7 +30,6 @@ import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
@@ -76,7 +75,6 @@ public class MySqlSchema extends RelationalDatabaseSchema {
 
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final DdlParser ddlParser;
-    private final DefaultValueConverter defaultValueConverter;
     private final Filters filters;
     private final DatabaseHistory dbHistory;
     private final DdlChanges ddlChanges;
@@ -105,7 +103,9 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 TableFilter.fromPredicate(tableFilters.tableFilter()),
                 tableFilters.columnFilter(),
                 new TableSchemaBuilder(
-                        getValueConverters(configuration), SchemaNameAdjuster.create(),
+                        getValueConverters(configuration),
+                        new MySqlDefaultValueConverter(getValueConverters(configuration)),
+                        SchemaNameAdjuster.create(),
                         configuration.customConverterRegistry(),
                         configuration.getSourceInfoStructMaker().schema(),
                         configuration.getSanitizeFieldNames(),
@@ -129,8 +129,6 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         this.storeOnlyCapturedTablesDdl = Boolean.valueOf(
                 dbHistoryConfig.getFallbackStringPropertyWithWarning(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL));
 
-        MySqlValueConverters valueConverters = getValueConverters(configuration);
-        this.defaultValueConverter = new MySqlDefaultValueConverter(valueConverters);
         this.ddlParser = new MySqlAntlrDdlParser(
                 true,
                 false,
@@ -280,7 +278,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      */
     public void loadHistory(SourceInfo startingPoint) {
         tables().clear();
-        dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables(), ddlParser, defaultValueConverter);
+        dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables(), ddlParser);
         recoveredTables = !tableIds().isEmpty();
         refreshSchemas();
     }

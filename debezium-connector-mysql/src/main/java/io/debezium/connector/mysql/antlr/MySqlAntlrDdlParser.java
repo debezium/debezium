@@ -308,8 +308,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     Column column = tableEditor.columnWithName(columnName);
                     if (column != null && column.isOptional()) {
                         final ColumnEditor ce = column.edit().optional(false);
-                        if (ce.hasDefaultValue() && ce.defaultValue() == null) {
-                            ce.unsetDefaultValue();
+                        if (ce.hasDefaultValue() && ce.defaultValueExpression() == null) {
+                            ce.unsetDefaultValueExpression();
                         }
                         tableEditor.addColumn(ce.create());
                     }

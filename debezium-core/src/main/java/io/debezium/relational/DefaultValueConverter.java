@@ -18,25 +18,22 @@ import java.util.Optional;
 public interface DefaultValueConverter {
 
     /**
-     * This interface is used to convert the string default value to a Java type
+     * This interface is used to convert the default value literal to a Java type
      * recognized by value converters for a subset of types.
      *
      * @param column the column definition describing the {@code data} value; never null
-     * @param defaultValue the default value; may be null
+     * @param defaultValueExpression the default value literal; may be null
      * @return value converted to a Java type; optional
      */
-    Optional<Object> parseDefaultValue(Column column, String defaultValue);
+    Optional<Object> parseDefaultValue(Column column, String defaultValueExpression);
 
     /**
-     * Parse default value expression and set column's default value.
-     * @param columnEditor
-     * @return
+     * Obtain a DefaultValueConverter that passes through values.
+     *
+     * @return the pass-through DefaultValueConverter; never null
      */
-    default ColumnEditor setColumnDefaultValue(ColumnEditor columnEditor) {
-        Column column = columnEditor.create();
-        return parseDefaultValue(column, column.defaultValueExpression())
-                .map(defaultValue -> column.edit().defaultValue(defaultValue))
-                .orElse(column.edit());
+    static DefaultValueConverter passthrough() {
+        return (column, defaultValueExpression) -> Optional.ofNullable(defaultValueExpression);
     }
 
 }

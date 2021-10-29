@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.relational.Column;
-import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.Table;
 import io.debezium.relational.history.TableChanges.TableChange;
 import io.debezium.util.SchemaNameAdjuster;
@@ -145,7 +144,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     }
 
     @Override
-    public TableChanges deserialize(List<Struct> data, boolean useCatalogBeforeSchema, DefaultValueConverter defaultValueConverter) {
+    public TableChanges deserialize(List<Struct> data, boolean useCatalogBeforeSchema) {
         throw new UnsupportedOperationException("Deserialization from Connect Struct is not supported");
     }
 }

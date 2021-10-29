@@ -70,7 +70,6 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
                                 }
                                 return columnEditor;
                             })
-                    .map(this::convertDefaultValueToSchemaType)
                     .map(ColumnEditor::create)
                     .collect(Collectors.toList()));
             parser.databaseTables().overwriteTable(tableEditor.create());
@@ -97,7 +96,7 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
             String columnName = parser.parseName(ctx.uid());
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
-                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners, false);
+                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 listeners.add(columnDefinitionListener);
             }
             else {
@@ -155,7 +154,4 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         super.enterTableOptionComment(ctx);
     }
 
-    private ColumnEditor convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
-        return defaultValueConverter.setColumnDefaultValue(columnEditor);
-    }
 }

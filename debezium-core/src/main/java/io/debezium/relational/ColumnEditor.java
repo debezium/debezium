@@ -122,13 +122,6 @@ public interface ColumnEditor {
     String defaultValueExpression();
 
     /**
-     * Get the default value of the column.
-     *
-     * @return the default value
-     */
-    Object defaultValue();
-
-    /**
      * Determine whether this column's has a default value set
      *
      * @return {@code true} if the default value was provided, or {@code false} otherwise
@@ -256,14 +249,6 @@ public interface ColumnEditor {
     ColumnEditor position(int position);
 
     /**
-     * Set the default value of the column;
-     *
-     * @param defaultValue the default value
-     * @return this editor so callers can chain methods together
-     */
-    ColumnEditor defaultValue(Object defaultValue);
-
-    /**
      * Set the default value expression of the column;
      *
      * @param defaultValueExpression the default value expression
@@ -287,15 +272,7 @@ public interface ColumnEditor {
     ColumnEditor comment(String comment);
 
     /**
-     * Unsets the default value of the column, reverting the editor to the state where {@link #defaultValue(Object))}
-     * has never been called
-     *
-     * @return this editor so callers can chain methods together
-     */
-    ColumnEditor unsetDefaultValue();
-
-    /**
-     * Unsets the default value expression of the column, reverting the editor to the state where {@link #defaultValueExpression(Object))}
+     * Unsets the default value expression of the column, reverting the editor to the state where {@link #defaultValueExpression(String))}
      * has never been called
      *
      * @return this editor so callers can chain methods together

@@ -29,6 +29,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
 public class PostgresDefaultValueConverterIT {
 
     private PostgresConnection postgresConnection;
+    private PostgresValueConverter postgresValueConverter;
     private PostgresDefaultValueConverter postgresDefaultValueConverter;
 
     @Before
@@ -38,7 +39,7 @@ public class PostgresDefaultValueConverterIT {
         postgresConnection = TestHelper.create();
 
         PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(defaultJdbcConfig());
-        PostgresValueConverter postgresValueConverter = PostgresValueConverter.of(
+        postgresValueConverter = PostgresValueConverter.of(
                 postgresConnectorConfig,
                 Charset.defaultCharset(),
                 new TypeRegistry(postgresConnection));
@@ -58,10 +59,10 @@ public class PostgresDefaultValueConverterIT {
     @FixFor("DBZ-4137")
     public void shouldReturnNullForNumericDefaultValue() {
         final Column NumericalColumn = Column.editor().type("numeric", "numeric(19, 4)")
-                .jdbcType(Types.NUMERIC).defaultValue("NULL::numeric").optional(true).create();
+                .jdbcType(Types.NUMERIC).defaultValueExpression("NULL::numeric").optional(true).create();
         final Optional<Object> numericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
                 NumericalColumn,
-                (String) NumericalColumn.defaultValue());
+                NumericalColumn.defaultValueExpression().orElse(null));
 
         Assert.assertEquals(numericalConvertedValue, Optional.empty());
     }
@@ -84,10 +85,10 @@ public class PostgresDefaultValueConverterIT {
                 postgresValueConverter, postgresConnection.getTimestampUtils());
 
         final Column NumericalColumn = Column.editor().type("numeric", "numeric(19, 4)")
-                .jdbcType(Types.NUMERIC).defaultValue("NULL::numeric").optional(true).create();
+                .jdbcType(Types.NUMERIC).defaultValueExpression("NULL::numeric").optional(true).create();
         final Optional<Object> numericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
                 NumericalColumn,
-                (String) NumericalColumn.defaultValue());
+                NumericalColumn.defaultValueExpression().orElse(null));
 
         Assert.assertEquals(numericalConvertedValue, Optional.empty());
     }
@@ -95,17 +96,17 @@ public class PostgresDefaultValueConverterIT {
     @Test
     @FixFor("DBZ-3989")
     public void shouldTrimNumericalDefaultValueAndShouldNotTrimNonNumericalDefaultValue() {
-        final Column NumericalColumn = Column.editor().type("int8").jdbcType(Types.INTEGER).defaultValue(" 1 ").create();
+        final Column NumericalColumn = Column.editor().type("int8").jdbcType(Types.INTEGER).defaultValueExpression(" 1 ").create();
         final Optional<Object> numericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
                 NumericalColumn,
-                (String) NumericalColumn.defaultValue());
+                NumericalColumn.defaultValueExpression().orElse(null));
 
         Assert.assertEquals(numericalConvertedValue, Optional.of(1));
 
-        final Column nonNumericalColumn = Column.editor().type("text").jdbcType(Types.VARCHAR).defaultValue(" 1 ").create();
+        final Column nonNumericalColumn = Column.editor().type("text").jdbcType(Types.VARCHAR).defaultValueExpression(" 1 ").create();
         final Optional<Object> nonNumericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
                 nonNumericalColumn,
-                (String) nonNumericalColumn.defaultValue());
+                NumericalColumn.defaultValueExpression().orElse(null));
 
         Assert.assertEquals(nonNumericalConvertedValue, Optional.of(" 1 "));
     }

@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
-import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.SystemVariables;
@@ -77,7 +76,6 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final DdlParser ddlParser;
-    private final DefaultValueConverter defaultValueConverter;
     private final RelationalTableFilters filters;
     private final DdlChanges ddlChanges;
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
@@ -94,6 +92,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverter,
+                        new MySqlDefaultValueConverter(valueConverter),
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
@@ -101,7 +100,6 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         false),
                 tableIdCaseInsensitive, connectorConfig.getKeyMapper());
 
-        this.defaultValueConverter = new MySqlDefaultValueConverter(valueConverter);
         this.ddlParser = new MySqlAntlrDdlParser(
                 true,
                 false,
@@ -330,11 +328,6 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     @Override
     protected DdlParser getDdlParser() {
         return ddlParser;
-    }
-
-    @Override
-    public DefaultValueConverter getDefaultValueConverter() {
-        return defaultValueConverter;
     }
 
     /**

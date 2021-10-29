@@ -133,14 +133,7 @@ public interface Column extends Comparable<Column> {
      *
      * @return the complete type expression
      */
-    String defaultValueExpression();
-
-    /**
-     * Get the default value of the column
-     *
-     * @return the default value
-     */
-    Object defaultValue();
+    Optional<String> defaultValueExpression();
 
     /**
      * Determine whether this column's has a default value

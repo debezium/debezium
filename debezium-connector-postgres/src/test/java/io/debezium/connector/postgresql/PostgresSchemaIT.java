@@ -34,6 +34,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
@@ -445,79 +446,91 @@ public class PostgresSchemaIT {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
 
+        final PostgresConnection.PostgresValueConverterBuilder valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
+                config,
+                TestHelper.getDatabaseCharset(),
+                typeRegistry);
+
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+
+            PostgresDefaultValueConverter defaultValueConverter = connection.getDefaultValueConverter();
+
             connection.execute(ddl);
             schema.refresh(connection, false);
 
             List<Column> columns = tableFor("public.default_column_test").columns();
-            assertColumnDefault("pk", 0, columns);
-            assertColumnDefault("ss", (short) 0, columns);
-            assertColumnDefault("bs", 0L, columns);
-            assertColumnDefault("bigint", 9223372036854775807L, columns);
-            assertColumnDefault("bit_as_boolean", true, columns);
-            assertColumnDefault("bit", new byte[]{ 3 }, columns);
-            assertColumnDefault("varbit", new byte[]{ 6 }, columns);
-            assertColumnDefault("boolean", true, columns);
-            assertColumnDefault("char", "abcd", columns);
-            assertColumnDefault("varchar", "abcde", columns);
+            assertColumnDefault("pk", 0, columns, defaultValueConverter);
+            assertColumnDefault("ss", (short) 0, columns, defaultValueConverter);
+            assertColumnDefault("bs", 0L, columns, defaultValueConverter);
+            assertColumnDefault("bigint", 9223372036854775807L, columns, defaultValueConverter);
+            assertColumnDefault("bit_as_boolean", true, columns, defaultValueConverter);
+            assertColumnDefault("bit", new byte[]{ 3 }, columns, defaultValueConverter);
+            assertColumnDefault("varbit", new byte[]{ 6 }, columns, defaultValueConverter);
+            assertColumnDefault("boolean", true, columns, defaultValueConverter);
+            assertColumnDefault("char", "abcd", columns, defaultValueConverter);
+            assertColumnDefault("varchar", "abcde", columns, defaultValueConverter);
 
-            assertColumnDefault("date", (int) LocalDate.of(2021, 3, 19).toEpochDay(), columns);
-            assertColumnDefault("date_func", 0, columns);
+            assertColumnDefault("date", (int) LocalDate.of(2021, 3, 19).toEpochDay(), columns, defaultValueConverter);
+            assertColumnDefault("date_func", 0, columns, defaultValueConverter);
 
-            assertColumnDefault("double", 123456789.1234567890123, columns);
-            assertColumnDefault("integer", 2147483647, columns);
-            assertColumnDefault("integer_func1", 0, columns);
-            assertColumnDefault("integer_func2", 0, columns);
-            assertColumnDefault("integer_opt", null, columns);
+            assertColumnDefault("double", 123456789.1234567890123, columns, defaultValueConverter);
+            assertColumnDefault("integer", 2147483647, columns, defaultValueConverter);
+            assertColumnDefault("integer_func1", 0, columns, defaultValueConverter);
+            assertColumnDefault("integer_func2", 0, columns, defaultValueConverter);
+            assertColumnDefault("integer_opt", null, columns, defaultValueConverter);
 
-            assertColumnDefault("interval", TimeUnit.HOURS.toMicros(1), columns);
-            assertColumnDefault("interval_func1", 0L, columns);
+            assertColumnDefault("interval", TimeUnit.HOURS.toMicros(1), columns, defaultValueConverter);
+            assertColumnDefault("interval_func1", 0L, columns, defaultValueConverter);
 
-            assertColumnDefault("json", "{}", columns);
-            assertColumnDefault("json_opt", null, columns);
-            assertColumnDefault("jsonb", "{}", columns);
+            assertColumnDefault("json", "{}", columns, defaultValueConverter);
+            assertColumnDefault("json_opt", null, columns, defaultValueConverter);
+            assertColumnDefault("jsonb", "{}", columns, defaultValueConverter);
 
-            assertColumnDefault("numeric", new BigDecimal("12345.67891"), columns);
+            assertColumnDefault("numeric", new BigDecimal("12345.67891"), columns, defaultValueConverter);
             // KAFKA-12694: default value for Struct currently exported as null
-            assertColumnDefault("numeric_var", null, columns);
-            assertColumnDefault("real", 1234567890.5f, columns);
-            assertColumnDefault("smallint", (short) 32767, columns);
+            assertColumnDefault("numeric_var", null, columns, defaultValueConverter);
+            assertColumnDefault("real", 1234567890.5f, columns, defaultValueConverter);
+            assertColumnDefault("smallint", (short) 32767, columns, defaultValueConverter);
 
-            assertColumnDefault("text", "asdf", columns);
-            assertColumnDefault("text_parens", "text(parens)", columns);
-            assertColumnDefault("text_func3", "", columns);
+            assertColumnDefault("text", "asdf", columns, defaultValueConverter);
+            assertColumnDefault("text_parens", "text(parens)", columns, defaultValueConverter);
+            assertColumnDefault("text_func3", "", columns, defaultValueConverter);
 
-            assertColumnDefault("time_hm", TimeUnit.SECONDS.toMicros(LocalTime.of(12, 34).toSecondOfDay()), columns);
-            assertColumnDefault("time_hms", TimeUnit.SECONDS.toMicros(LocalTime.of(12, 34, 56).toSecondOfDay()), columns);
-            assertColumnDefault("time_func", 0L, columns);
-            assertColumnDefault("timestamp", TimeUnit.SECONDS.toMicros(1616247868), columns);
-            assertColumnDefault("timestamp_func", 0L, columns);
-            assertColumnDefault("timestamp_opt", null, columns);
-            assertColumnDefault("timestamptz", Instant.ofEpochSecond(1616247868).toString(), columns);
-            assertColumnDefault("timestamptz_func", Instant.ofEpochSecond(0).toString(), columns);
-            assertColumnDefault("timestamptz_opt", null, columns);
+            assertColumnDefault("time_hm", TimeUnit.SECONDS.toMicros(LocalTime.of(12, 34).toSecondOfDay()), columns, defaultValueConverter);
+            assertColumnDefault("time_hms", TimeUnit.SECONDS.toMicros(LocalTime.of(12, 34, 56).toSecondOfDay()), columns, defaultValueConverter);
+            assertColumnDefault("time_func", 0L, columns, defaultValueConverter);
+            assertColumnDefault("timestamp", TimeUnit.SECONDS.toMicros(1616247868), columns, defaultValueConverter);
+            assertColumnDefault("timestamp_func", 0L, columns, defaultValueConverter);
+            assertColumnDefault("timestamp_opt", null, columns, defaultValueConverter);
+            assertColumnDefault("timestamptz", Instant.ofEpochSecond(1616247868).toString(), columns, defaultValueConverter);
+            assertColumnDefault("timestamptz_func", Instant.ofEpochSecond(0).toString(), columns, defaultValueConverter);
+            assertColumnDefault("timestamptz_opt", null, columns, defaultValueConverter);
 
-            assertColumnDefault("uuid", "76019d1a-ad2e-4b22-96e9-1a6d6543c818", columns);
-            assertColumnDefault("uuid_func", "00000000-0000-0000-0000-000000000000", columns);
-            assertColumnDefault("uuid_opt", null, columns);
-            assertColumnDefault("xml", "<foo>bar</foo>", columns);
+            assertColumnDefault("uuid", "76019d1a-ad2e-4b22-96e9-1a6d6543c818", columns, defaultValueConverter);
+            assertColumnDefault("uuid_func", "00000000-0000-0000-0000-000000000000", columns, defaultValueConverter);
+            assertColumnDefault("uuid_opt", null, columns, defaultValueConverter);
+            assertColumnDefault("xml", "<foo>bar</foo>", columns, defaultValueConverter);
         }
     }
 
-    private void assertColumnDefault(String columnName, Object expectedDefault, List<Column> columns) {
+    private void assertColumnDefault(String columnName, Object expectedDefault, List<Column> columns, PostgresDefaultValueConverter defaultValueConverter) {
         Column column = columns.stream().filter(c -> c.name().equals(columnName)).findFirst().get();
+
+        Object defaultValue = defaultValueConverter
+                .parseDefaultValue(column, column.defaultValueExpression().orElse(null))
+                .orElse(null);
 
         if (expectedDefault instanceof byte[]) {
             byte[] expectedBytes = (byte[]) expectedDefault;
-            byte[] defaultBytes = (byte[]) column.defaultValue();
+            byte[] defaultBytes = (byte[]) defaultValue;
             assertArrayEquals(expectedBytes, defaultBytes);
         }
         else {
-            if (Objects.isNull(column.defaultValue())) {
+            if (Objects.isNull(defaultValue)) {
                 assertTrue(Objects.isNull(expectedDefault));
             }
             else {
-                assertTrue(column.defaultValue().equals(expectedDefault));
+                assertTrue(defaultValue.equals(expectedDefault));
             }
         }
     }
