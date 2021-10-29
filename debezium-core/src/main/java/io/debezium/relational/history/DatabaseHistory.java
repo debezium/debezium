@@ -6,7 +6,9 @@
 package io.debezium.relational.history;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -14,6 +16,9 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 
@@ -125,17 +130,9 @@ public interface DatabaseHistory {
     void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes) throws DatabaseHistoryException;
 
     /**
-     * Recover the {@link Tables database schema} to a known point in its history. Note that it is possible to recover the
-     * database schema to a point in history that is earlier than what has been {@link #record(Map, Map, String, Tables, String)
-     * recorded}. Likewise, when recovering to a point in history <em>later</em> than what was recorded, the database schema will
-     * reflect the latest state known to the history.
-     *
-     * @param source the information about the source database; may not be null
-     * @param position the point in history at which the {@link Tables database schema} should be recovered; may not be null
-     * @param schema the table definitions that should be changed to reflect the database schema at the desired point in history;
-     *            may not be null
-     * @param ddlParser the DDL parser that can be used to apply DDL statements to the given {@code schema}; may not be null
+     * @deprecated Use {@link #recover(Offsets, Tables, DdlParser)} instead.
      */
+    @Deprecated
     default void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
         recover(Collections.singletonMap(source, position), schema, ddlParser);
     }
@@ -152,6 +149,19 @@ public interface DatabaseHistory {
      *            may not be null
      * @param ddlParser the DDL parser that can be used to apply DDL statements to the given {@code schema}; may not be null
      */
+    default void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser) {
+        Map<Map<String, ?>, Map<String, ?>> offsetMap = new HashMap<>();
+        for (Entry<? extends Partition, ? extends OffsetContext> entry : offsets) {
+            offsetMap.put(entry.getKey().getSourcePartition(), entry.getValue().getOffset());
+        }
+
+        recover(offsetMap, schema, ddlParser);
+    }
+
+    /**
+     * @deprecated Use {@link #recover(Offsets, Tables, DdlParser)} instead.
+     */
+    @Deprecated
     void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser);
 
     /**

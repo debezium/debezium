@@ -177,6 +177,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             schema.initializeStorage();
             return;
         }
-        schema.recover(partition, offset);
+        schema.recover(Offsets.of(partition, offset));
     }
 }

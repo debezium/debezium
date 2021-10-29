@@ -144,7 +144,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     schemaNameAdjuster);
 
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                    new Offsets<>(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
+                    // TODO pass offsets from all the partitions
+                    Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
