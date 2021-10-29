@@ -1043,6 +1043,7 @@ RADIANS:                             'RADIANS';
 RAND:                                'RAND';
 RANDOM_BYTES:                        'RANDOM_BYTES';
 RELEASE_LOCK:                        'RELEASE_LOCK';
+RETAIN:                              'RETAIN';
 REVERSE:                             'REVERSE';
 ROUND:                               'ROUND';
 ROW_COUNT:                           'ROW_COUNT';
