@@ -1567,7 +1567,7 @@ userSpecification
 userAuthOption
     : userName IDENTIFIED BY PASSWORD hashed=STRING_LITERAL         #hashAuthOption
     | userName
-      IDENTIFIED BY STRING_LITERAL                                  #stringAuthOption
+      IDENTIFIED BY STRING_LITERAL (RETAIN CURRENT PASSWORD)?       #stringAuthOption
     | userName
       IDENTIFIED (WITH | VIA)                                       // VIA and OR are MariaDB only
       authenticationRule (OR authenticationRule)*                   #moduleAuthOption
