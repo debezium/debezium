@@ -770,7 +770,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-1150")
+    @FixFor({ "DBZ-1150", "DBZ-4174" })
     public void shouldParseCheckTableKeywords() {
         String ddl = "CREATE TABLE my_table (\n" +
                 "  user_id varchar(64) NOT NULL,\n" +
@@ -780,6 +780,11 @@ public class MySqlAntlrDdlParserTest {
                 "  medium varchar(256),\n" +
                 "  extended varchar(256),\n" +
                 "  changed varchar(256),\n" +
+                "  eur VARCHAR(100),\n" +
+                "  iso VARCHAR(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,\n" +
+                "  usa VARCHAR(100),\n" +
+                "  jis VARCHAR(100),\n" +
+                "  internal INT,\n" +
                 "  UNIQUE KEY call_states_userid (user_id)\n" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8";
         parser.parse(ddl, tables);
