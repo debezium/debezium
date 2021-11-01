@@ -41,7 +41,6 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigResource;
-import org.apache.kafka.common.errors.UnsupportedVersionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -520,11 +519,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 return Short.parseShort(defaultReplicationFactorValue);
             }
         }
-        catch (ExecutionException ex) {
-            // ignore UnsupportedVersionException, e.g. due to older broker version
-            if (!(ex.getCause() instanceof UnsupportedVersionException)) {
-                throw ex;
-            }
+        catch (Exception ex) {
         }
 
         // Otherwise warn that no property was obtained and default it to 1 - users can increase this later if desired
