@@ -31,6 +31,7 @@ import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.connector.mysql.signal.KafkaSignalThread;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.kafka.KafkaCluster;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -75,7 +76,8 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 .with(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, DATABASE.getDatabaseName() + "." + EXCLUDED_TABLE)
                 .with(MySqlConnectorConfig.READ_ONLY_CONNECTION, true)
                 .with(KafkaSignalThread.SIGNAL_TOPIC, getSignalsTopic())
-                .with(KafkaSignalThread.BOOTSTRAP_SERVERS, kafka.brokerList());
+                .with(KafkaSignalThread.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
     }
 
     private String getSignalsTopic() {
@@ -83,9 +85,13 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     }
 
     protected void sendExecuteSnapshotKafkaSignal() throws ExecutionException, InterruptedException {
+        sendExecuteSnapshotKafkaSignal(tableDataCollectionId());
+    }
+
+    protected void sendExecuteSnapshotKafkaSignal(String fullTableNames) throws ExecutionException, InterruptedException {
         String signalValue = String.format(
                 "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
-                tableDataCollectionId());
+                fullTableNames);
         final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(getSignalsTopic(), PARTITION_NO, SERVER_NAME, signalValue);
 
         final Configuration signalProducerConfig = Configuration.create()
@@ -154,6 +160,48 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         }
     }
 
+    @Test
+    public void inserts4Pks() throws Exception {
+        Testing.Print.enable();
+
+        populate4PkTable();
+        startConnector();
+
+        sendExecuteSnapshotKafkaSignal(DATABASE.qualifiedTableName("a4"));
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                DATABASE.topicForTable("a4"),
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void insertsWithoutPks() throws Exception {
+        Testing.Print.enable();
+
+        populate4WithoutPkTable();
+        startConnector();
+
+        sendExecuteSnapshotKafkaSignal(DATABASE.qualifiedTableName("a42"));
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                DATABASE.topicForTable("a42"),
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
     @Test(expected = ConnectException.class)
     @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Read only connection requires GTID_MODE to be ON")
     public void shouldFailIfGtidModeIsOff() throws Exception {
@@ -166,6 +214,18 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         final Throwable e = exception.get();
         if (e != null) {
             throw (RuntimeException) e;
+        }
+    }
+
+    protected void populate4PkTable() throws SQLException {
+        try (final JdbcConnection connection = databaseConnection()) {
+            populate4PkTable(connection, "a4");
+        }
+    }
+
+    protected void populate4WithoutPkTable() throws SQLException {
+        try (final JdbcConnection connection = databaseConnection()) {
+            populate4PkTable(connection, "a42");
         }
     }
 }

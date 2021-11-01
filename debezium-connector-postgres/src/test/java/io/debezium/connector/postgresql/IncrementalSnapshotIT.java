@@ -19,6 +19,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
@@ -28,6 +29,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     private static final String SETUP_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" + "CREATE SCHEMA s1; "
             + "CREATE SCHEMA s2; " + "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));"
             + "CREATE TABLE s1.a4 (pk1 integer, pk2 integer, pk3 integer, pk4 integer, aa integer, PRIMARY KEY(pk1, pk2, pk3, pk4));"
+            + "CREATE TABLE s1.a42 (pk1 integer, pk2 integer, pk3 integer, pk4 integer, aa integer);"
             + "CREATE TABLE s1.debezium_signal (id varchar(64), type varchar(32), data varchar(2048));";
 
     @Before
@@ -52,7 +54,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4");
     }
 
     @Override
@@ -127,28 +130,36 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         }
     }
 
-    protected void populate4PkTable(JdbcConnection connection) throws SQLException {
-        connection.setAutoCommit(false);
-        for (int i = 0; i < ROW_COUNT; i++) {
-            final int id = i + 1;
-            final int pk1 = id / 1000;
-            final int pk2 = (id / 100) % 10;
-            final int pk3 = (id / 10) % 10;
-            final int pk4 = id % 10;
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, %s, %s, %s)",
-                    "s1.a4",
-                    pk1,
-                    pk2,
-                    pk3,
-                    pk4,
-                    i));
+    @Test
+    public void insertsWithoutPks() throws Exception {
+        Testing.Print.enable();
+
+        populate4WithoutPkTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal("s1.a42");
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                "test_server.s1.a42",
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
-        connection.commit();
     }
 
     protected void populate4PkTable() throws SQLException {
         try (final JdbcConnection connection = databaseConnection()) {
-            populate4PkTable(connection);
+            populate4PkTable(connection, "s1.a4");
+        }
+    }
+
+    protected void populate4WithoutPkTable() throws SQLException {
+        try (final JdbcConnection connection = databaseConnection()) {
+            populate4PkTable(connection, "s1.a42");
         }
     }
 }
