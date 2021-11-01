@@ -16,7 +16,7 @@
     <version.fabric8.client>5.5.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.21</version.commons.compress>
-    <version.strimzi>0.25.0</version.strimzi>
+    <version.strimzi>0.26.0</version.strimzi>
     <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
 
