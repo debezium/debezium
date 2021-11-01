@@ -77,6 +77,9 @@ class PostgresDefaultValueConverter {
         try {
             Object rawDefaultValue = mapper.parse(defaultValue);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
+            if (convertedDefaultValue == null) {
+                return Optional.empty();
+            }
             if (convertedDefaultValue instanceof Struct) {
                 // Workaround for KAFKA-12694
                 LOGGER.warn("Struct can't be used as default value for column '{}', will use null instead.", column.name());
@@ -114,6 +117,17 @@ class PostgresDefaultValueConverter {
         return defaultValue;
     }
 
+    private static DefaultValueMapper parseNullDefault(DefaultValueMapper mapper) {
+        return x -> {
+            if (x.startsWith("NULL::")) {
+                return null;
+            }
+            else {
+                return mapper.parse(x);
+            }
+        };
+    }
+
     private static Map<String, DefaultValueMapper> createDefaultValueMappers(TimestampUtils timestampUtils) {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
@@ -127,21 +141,21 @@ class PostgresDefaultValueConverter {
         }); // Sample values: `B'1'::"bit"`, `B'11'::"bit"`
         result.put("varbit", v -> extractDefault(v, "0")); // Sample value: B'110'::"bit"
 
-        result.put("bool", v -> Boolean.parseBoolean(extractDefault(v, "false"))); // Sample value: true
+        result.put("bool", parseNullDefault(v -> Boolean.parseBoolean(extractDefault(v, "false")))); // Sample value: true
 
         result.put("bpchar", v -> extractDefault(v, "")); // Sample value: 'abcd'::bpchar
         result.put("varchar", v -> extractDefault(v, "")); // Sample value: `abcde'::character varying
         result.put("text", v -> extractDefault(v, "")); // Sample value: 'asdf'::text
 
-        result.put("numeric", v -> new BigDecimal(extractDefault(v, "0.0"))); // Sample value: 12345.67891
-        result.put("float4", v -> Float.parseFloat(extractDefault(v, "0.0"))); // Sample value: 1.234
-        result.put("float8", v -> Double.parseDouble(extractDefault(v, "0.0"))); // Sample values: `1.234`, `'12345678901234567890'::numeric`
-        result.put("int2", v -> Short.parseShort(extractDefault(v, "0"))); // Sample value: 32767
-        result.put("int4", v -> Integer.parseInt(extractDefault(v, "0"))); // Sample value: 123
-        result.put("serial", v -> Integer.parseInt(extractDefault(v, "0")));
-        result.put("int8", v -> Long.parseLong(extractDefault(v, "0"))); // Sample values: `123`, `'9223372036854775807'::bigint`
-        result.put("bigserial", v -> Long.parseLong(extractDefault(v, "0")));
-        result.put("smallserial", v -> Short.parseShort(extractDefault(v, "0")));
+        result.put("numeric", parseNullDefault(v -> new BigDecimal(extractDefault(v, "0.0")))); // Sample value: 12345.67891
+        result.put("float4", parseNullDefault(v -> Float.parseFloat(extractDefault(v, "0.0")))); // Sample value: 1.234
+        result.put("float8", parseNullDefault(v -> Double.parseDouble(extractDefault(v, "0.0")))); // Sample values: `1.234`, `'12345678901234567890'::numeric`
+        result.put("int2", parseNullDefault(v -> Short.parseShort(extractDefault(v, "0")))); // Sample value: 32767
+        result.put("int4", parseNullDefault(v -> Integer.parseInt(extractDefault(v, "0")))); // Sample value: 123
+        result.put("serial", parseNullDefault(v -> Integer.parseInt(extractDefault(v, "0"))));
+        result.put("int8", parseNullDefault(v -> Long.parseLong(extractDefault(v, "0")))); // Sample values: `123`, `'9223372036854775807'::bigint`
+        result.put("bigserial", parseNullDefault(v -> Long.parseLong(extractDefault(v, "0"))));
+        result.put("smallserial", parseNullDefault(v -> Short.parseShort(extractDefault(v, "0"))));
 
         result.put("json", v -> extractDefault(v, "{}")); // Sample value: '{}'::json
         result.put("jsonb", v -> extractDefault(v, "{}")); // Sample value: '{}'::jsonb
