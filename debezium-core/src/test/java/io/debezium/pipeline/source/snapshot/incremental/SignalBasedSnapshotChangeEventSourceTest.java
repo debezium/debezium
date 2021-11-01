@@ -8,22 +8,23 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import org.fest.assertions.Assertions;
 import org.junit.Test;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnFilterMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 
 public class SignalBasedSnapshotChangeEventSourceTest {
 
-    protected CommonConnectorConfig config() {
-        return new CommonConnectorConfig(
-                Configuration.create().with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal").build(),
-                "core", 0) {
+    protected RelationalDatabaseConnectorConfig config() {
+        return new RelationalDatabaseConnectorConfig(
+                Configuration.create().with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal").build(),
+                "core", null, null, 0, ColumnFilterMode.CATALOG) {
             @Override
             protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
                 return null;

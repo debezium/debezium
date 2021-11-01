@@ -57,18 +57,41 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return tableName();
     }
 
-    protected void populateTable(JdbcConnection connection) throws SQLException {
+    protected void populateTable(JdbcConnection connection, String tableName) throws SQLException {
         connection.setAutoCommit(false);
         for (int i = 0; i < ROW_COUNT; i++) {
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName(), i + 1, i));
+            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName, i + 1, i));
         }
         connection.commit();
+    }
+
+    protected void populateTable(JdbcConnection connection) throws SQLException {
+        populateTable(connection, tableName());
     }
 
     protected void populateTable() throws SQLException {
         try (final JdbcConnection connection = databaseConnection()) {
             populateTable(connection);
         }
+    }
+
+    protected void populate4PkTable(JdbcConnection connection, String tableName) throws SQLException {
+        connection.setAutoCommit(false);
+        for (int i = 0; i < ROW_COUNT; i++) {
+            final int id = i + 1;
+            final int pk1 = id / 1000;
+            final int pk2 = (id / 100) % 10;
+            final int pk3 = (id / 10) % 10;
+            final int pk4 = id % 10;
+            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, %s, %s, %s)",
+                    tableName,
+                    pk1,
+                    pk2,
+                    pk3,
+                    pk4,
+                    i));
+        }
+        connection.commit();
     }
 
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
@@ -163,7 +186,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         start(connectorClass(), config, callback);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
     }

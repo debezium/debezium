@@ -11,13 +11,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
@@ -28,8 +28,10 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
     private final String signalWindowStatement;
 
-    public SignalBasedIncrementalSnapshotChangeEventSource(CommonConnectorConfig config, JdbcConnection jdbcConnection,
-                                                           EventDispatcher<T> dispatcher, DatabaseSchema<?> databaseSchema, Clock clock,
+    public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
+                                                           JdbcConnection jdbcConnection,
+                                                           EventDispatcher<T> dispatcher, DatabaseSchema<?> databaseSchema,
+                                                           Clock clock,
                                                            SnapshotProgressListener progressListener,
                                                            DataChangeEventListener dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
