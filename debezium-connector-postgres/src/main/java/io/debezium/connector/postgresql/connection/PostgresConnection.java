@@ -103,15 +103,15 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      * @param typeRegistry an existing/already-primed {@link TypeRegistry} instance
      */
-    public PostgresConnection(Configuration config, TypeRegistry typeRegistry) {
-        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings, "\"", "\"");
+    public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
+        super(config.getJdbcConfig(), FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings, "\"", "\"");
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
         }
         else {
             this.typeRegistry = typeRegistry;
-            final PostgresValueConverter valueConverter = PostgresValueConverter.of(new PostgresConnectorConfig(config), this.getDatabaseCharset(), typeRegistry);
+            final PostgresValueConverter valueConverter = PostgresValueConverter.of(config, this.getDatabaseCharset(), typeRegistry);
             this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
         }
     }
@@ -123,7 +123,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
-        this(config, (TypeRegistry) null);
+        this(config, null);
     }
 
     /**
