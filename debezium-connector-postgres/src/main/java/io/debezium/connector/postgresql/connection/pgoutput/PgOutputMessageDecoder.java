@@ -110,7 +110,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     public PgOutputMessageDecoder(MessageDecoderContext decoderContext) {
         this.decoderContext = decoderContext;
-        this.connection = new PostgresConnection(decoderContext.getConfig().getJdbcConfig(), decoderContext.getSchema().getTypeRegistry());
+        this.connection = new PostgresConnection(decoderContext.getConfig(), decoderContext.getSchema().getTypeRegistry());
     }
 
     @Override
