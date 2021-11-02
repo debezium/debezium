@@ -159,8 +159,9 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
 
         SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(originalRecord.valueSchema().name());
         for (Field field : originalRecord.valueSchema().fields()) {
-            if (field.name().equals("after"))
+            if (field.name().equals("after")) {
                 continue;
+            }
             valueSchemaBuilder.field(field.name(), field.schema());
         }
         valueSchemaBuilder.field("after", afterSchema);
@@ -168,8 +169,9 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         Struct valueStruct = new Struct(valueSchema);
 
         for (Field field : originalRecord.valueSchema().fields()) {
-            if (field.name().equals("after"))
+            if (field.name().equals("after")) {
                 continue;
+            }
             valueStruct.put(field.name(), ((Struct) originalRecord.value()).get(field));
         }
 

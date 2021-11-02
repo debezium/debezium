@@ -26,7 +26,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.*;
+import io.debezium.connector.mongodb.AbstractMongoConnectorIT;
+import io.debezium.connector.mongodb.MongoDbConnector;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig;
+import io.debezium.connector.mongodb.MongoDbTaskContext;
+import io.debezium.connector.mongodb.TestHelper;
 
 /**
  * Integration tests for {@link MongoEventRouter}
