@@ -5,14 +5,9 @@
  */
 package io.debezium.connector.mongodb.transforms.outbox;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
-import io.debezium.connector.mongodb.transforms.MongoDataConverter;
-import io.debezium.data.Envelope;
-import io.debezium.time.Timestamp;
-import io.debezium.transforms.outbox.EventRouter;
-import io.debezium.transforms.outbox.EventRouterConfigDefinition;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Field;
@@ -28,8 +23,15 @@ import org.bson.json.JsonWriterSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
+import io.debezium.connector.mongodb.transforms.MongoDataConverter;
+import io.debezium.data.Envelope;
+import io.debezium.time.Timestamp;
+import io.debezium.transforms.outbox.EventRouter;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 
 /**
  * Debezium MongoDB Outbox Event Router SMT

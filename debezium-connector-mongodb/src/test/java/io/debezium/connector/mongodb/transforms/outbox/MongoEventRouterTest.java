@@ -5,13 +5,17 @@
  */
 package io.debezium.connector.mongodb.transforms.outbox;
 
-import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.connector.mongodb.MongoDbFieldName;
-import io.debezium.data.Envelope;
-import io.debezium.data.Json;
-import io.debezium.data.VerifyRecord;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
-import io.debezium.transforms.outbox.EventRouterConfigDefinition;
+import static io.debezium.connector.mongodb.MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -29,16 +33,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import static io.debezium.connector.mongodb.MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.data.Envelope;
+import io.debezium.data.Json;
+import io.debezium.data.VerifyRecord;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 
 /**
  * Unit tests for {@link MongoEventRouter}
@@ -433,7 +434,7 @@ public class MongoEventRouterTest {
                 .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
-                //                .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
+                // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
@@ -491,7 +492,7 @@ public class MongoEventRouterTest {
                 .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
-                //.field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
+                // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
@@ -925,11 +926,11 @@ public class MongoEventRouterTest {
     }
 
     private SourceRecord createEventRecord(
-            String eventId,
-            String eventType,
-            String payloadId,
-            String payloadType,
-            Object payload) {
+                                           String eventId,
+                                           String eventType,
+                                           String payloadId,
+                                           String payloadType,
+                                           Object payload) {
         return createEventRecord(
                 eventId,
                 eventType,
@@ -940,12 +941,12 @@ public class MongoEventRouterTest {
     }
 
     private SourceRecord createEventRecord(
-            String eventId,
-            Object eventType,
-            Object payloadId,
-            Object payloadType,
-            Object payload,
-            Map<String, Object> extraValues) {
+                                           String eventId,
+                                           Object eventType,
+                                           Object payloadId,
+                                           Object payloadType,
+                                           Object payload,
+                                           Map<String, Object> extraValues) {
         Document outboxEvent = new Document()
                 .append("_id", new ObjectId(eventId))
                 .append("aggregatetype", payloadType)
@@ -965,7 +966,7 @@ public class MongoEventRouterTest {
                 .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
-                //                .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
+                // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)

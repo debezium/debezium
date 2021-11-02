@@ -5,10 +5,10 @@
  */
 package io.debezium.transforms.outbox;
 
+import java.util.List;
+
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-
-import java.util.List;
 
 /**
  * Validator for additional fields in outbox event router
