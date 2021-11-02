@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.mongodb.transforms.outbox;
 
+import org.apache.kafka.common.config.ConfigDef;
+
 import io.debezium.config.Field;
 import io.debezium.transforms.outbox.AdditionalFieldsValidator;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
-import org.apache.kafka.common.config.ConfigDef;
 
 /**
  * Debezium MongoDB Outbox Event Router SMT configuration definition

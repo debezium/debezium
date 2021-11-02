@@ -5,8 +5,14 @@
  */
 package io.debezium.connector.mongodb.transforms.outbox;
 
-import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.*;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -19,13 +25,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.*;
 
 /**
  * Integration tests for {@link MongoEventRouter}
@@ -104,8 +105,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                                     .append("enabled", true)
                                     .append("asset", 100000L)
                                     .append("age", 42)
-                                    .append("pets", Arrays.asList("dog", "cat")))
-                    );
+                                    .append("pets", Arrays.asList("dog", "cat"))));
         });
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
@@ -141,8 +141,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                             .append("payload", new Document()
                                     .append("_id", new ObjectId("000000000000000000000000"))
                                     .append("fullName", "John Doe")
-                                    .append("asset", 100000L))
-                    );
+                                    .append("asset", 100000L)));
         });
 
         final Map<String, String> config = new HashMap<>();
@@ -183,8 +182,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                                     .append("_id", new ObjectId("000000000000000000000000"))
                                     .append("fullName", "John Doe")
                                     .append("asset", 100000L)
-                                    .append("age", 42))
-                    );
+                                    .append("age", 42)));
         });
 
         final Map<String, String> config = new HashMap<>();
@@ -227,8 +225,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                                     .append("_id", new ObjectId("000000000000000000000000"))
                                     .append("fullName", "John Doe")
                                     .append("asset", 100000L)
-                                    .append("age", 42))
-                    );
+                                    .append("age", 42)));
         });
 
         final Map<String, String> config = new HashMap<>();
@@ -283,8 +280,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                             .append("aggregateid", 123L)
                             .append("aggregatetype", "Order")
                             .append("type", "OrderCreated")
-                            .append("payload", null)
-                    );
+                            .append("payload", null));
         });
 
         final Map<String, String> config = new HashMap<>();
@@ -327,8 +323,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                             .append("aggregateid", 123L)
                             .append("aggregatetype", "Order")
                             .append("type", "OrderCreated")
-                            .append("payload", null)
-                    );
+                            .append("payload", null));
         });
 
         final Map<String, String> config = new HashMap<>();
