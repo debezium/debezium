@@ -54,8 +54,7 @@ public class MongoEventRouterTest {
     JsonWriterSettings COMPACT_JSON_SETTINGS = JsonWriterSettings.builder()
             .outputMode(JsonMode.EXTENDED)
             .indent(true)
-            .indentCharacters("")
-            .newLineCharacters("")
+            .newLineCharacters("\n")
             .build();
 
     MongoEventRouter<SourceRecord> router;
