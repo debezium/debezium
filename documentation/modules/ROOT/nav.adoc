@@ -24,6 +24,7 @@
 ** xref:transformations/event-flattening.adoc[New Record State Extraction]
 ** xref:transformations/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
 ** xref:transformations/outbox-event-router.adoc[Outbox Event Router]
+** xref:transformations/mongodb-outbox-event-router.adoc[MongoDB Outbox Event Router]
 ** xref:transformations/filtering.adoc[Message Filtering]
 ** xref:transformations/content-based-routing.adoc[Content-Based Routing]
 ** xref:transformations/applying-transformations-selectively.adoc[Using SMT Predicates to Selectively Apply Transformations]
