@@ -213,7 +213,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     public static final Field USER = RelationalDatabaseConnectorConfig.USER
-            .optional();
+            .optional()
+            .withNoValidation();
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
