@@ -117,7 +117,7 @@ public class EventRouterConfigDefinition {
         }
     }
 
-    static final Field FIELD_EVENT_ID = Field.create("table.field.event.id")
+    public static final Field FIELD_EVENT_ID = Field.create("table.field.event.id")
             .withDisplayName("Event ID Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
@@ -125,14 +125,14 @@ public class EventRouterConfigDefinition {
             .withDefault("id")
             .withDescription("The column which contains the event ID within the outbox table");
 
-    static final Field FIELD_EVENT_KEY = Field.create("table.field.event.key")
+    public static final Field FIELD_EVENT_KEY = Field.create("table.field.event.key")
             .withDisplayName("Event Key Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The column which contains the event key within the outbox table");
 
-    static final Field FIELD_EVENT_TYPE = Field.create("table.field.event.type")
+    public static final Field FIELD_EVENT_TYPE = Field.create("table.field.event.type")
             .withDisplayName("Event Type Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
@@ -140,7 +140,7 @@ public class EventRouterConfigDefinition {
             .withDefault("type")
             .withDescription("The column which contains the event type within the outbox table");
 
-    static final Field FIELD_EVENT_TIMESTAMP = Field.create("table.field.event.timestamp")
+    public static final Field FIELD_EVENT_TIMESTAMP = Field.create("table.field.event.timestamp")
             .withDisplayName("Event Timestamp Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
@@ -148,7 +148,7 @@ public class EventRouterConfigDefinition {
             .withDescription("Optionally you can override the Kafka message timestamp with a value from a chosen" +
                     " column, otherwise it'll be the Debezium event processed timestamp.");
 
-    static final Field FIELD_PAYLOAD = Field.create("table.field.event.payload")
+    public static final Field FIELD_PAYLOAD = Field.create("table.field.event.payload")
             .withDisplayName("Event Payload Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
@@ -156,7 +156,7 @@ public class EventRouterConfigDefinition {
             .withDefault("payload")
             .withDescription("The column which contains the event payload within the outbox table");
 
-    static final Field FIELD_PAYLOAD_ID = Field.create("table.field.event.payload.id")
+    public static final Field FIELD_PAYLOAD_ID = Field.create("table.field.event.payload.id")
             .withDisplayName("Event Payload ID Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
@@ -164,24 +164,24 @@ public class EventRouterConfigDefinition {
             .withDefault("aggregateid")
             .withDescription("The column which contains the payload ID within the outbox table");
 
-    static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("table.fields.additional.placement")
+    public static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("table.fields.additional.placement")
             .withDisplayName("Settings for each additional column in the outbox table")
             .withType(ConfigDef.Type.LIST)
-            .withValidation(EventRouterConfigDefinition::isListOfStringPairs)
+            .withValidation(AdditionalFieldsValidator::isListOfStringPairs)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Extra fields can be added as part of the event envelope or a message header, format" +
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
                     " e.g. <code>id:header,field_name:envelope:alias</code> ");
 
-    static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.event.schema.version")
+    public static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.event.schema.version")
             .withDisplayName("Event Schema Version Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The column which contains the event schema version within the outbox table");
 
-    static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
+    public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Field to route events by")
             .withType(ConfigDef.Type.STRING)
             .withDefault("aggregatetype")
@@ -190,7 +190,7 @@ public class EventRouterConfigDefinition {
             .withDescription("The column which determines how the events will be routed, the value will become part of" +
                     " the topic name");
 
-    static final Field ROUTE_TOPIC_REGEX = Field.create("route.topic.regex")
+    public static final Field ROUTE_TOPIC_REGEX = Field.create("route.topic.regex")
             .withDisplayName("The name of the routed topic")
             .withType(ConfigDef.Type.STRING)
             .withValidation(Field::isRegex)
@@ -200,7 +200,7 @@ public class EventRouterConfigDefinition {
             .withDescription("The default regex to use within the RegexRouter, the default capture will allow" +
                     " to replace the routed field into a new topic name defined in 'route.topic.replacement'");
 
-    static final Field ROUTE_TOPIC_REPLACEMENT = Field.create("route.topic.replacement")
+    public static final Field ROUTE_TOPIC_REPLACEMENT = Field.create("route.topic.replacement")
             .withDisplayName("The name of the routed topic")
             .withType(ConfigDef.Type.STRING)
             .withDefault("outbox.event.${routedByValue}")
@@ -210,7 +210,7 @@ public class EventRouterConfigDefinition {
                     " '${routedByValue}' is available which is the value of The column configured" +
                     " via 'route.by.field'");
 
-    static final Field ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD = Field.create("route.tombstone.on.empty.payload")
+    public static final Field ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD = Field.create("route.tombstone.on.empty.payload")
             .withDisplayName("Empty payloads cause a tombstone message")
             .withType(ConfigDef.Type.BOOLEAN)
             .withDefault(false)
@@ -218,7 +218,7 @@ public class EventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Whether or not an empty payload should cause a tombstone event.");
 
-    static final Field OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
+    public static final Field OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
             .withDisplayName("Behavior when the route fails to apply")
             .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
             .withWidth(ConfigDef.Width.MEDIUM)
@@ -227,7 +227,7 @@ public class EventRouterConfigDefinition {
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process");
 
-    static final Field EXPAND_JSON_PAYLOAD = Field.create("debezium.expand.json.payload")
+    public static final Field EXPAND_JSON_PAYLOAD = Field.create("debezium.expand.json.payload")
             .withDisplayName("Expand Payload escaped string as real JSON")
             .withType(ConfigDef.Type.BOOLEAN)
             .withDefault(false)
@@ -299,24 +299,5 @@ public class EventRouterConfigDefinition {
         }
 
         return additionalFields;
-    }
-
-    private static int isListOfStringPairs(Configuration config, Field field, Field.ValidationOutput problems) {
-        List<String> value = config.getStrings(field, ",");
-        int errors = 0;
-
-        if (value == null) {
-            return errors;
-        }
-
-        for (String mapping : value) {
-            final String[] parts = mapping.split(":");
-            if (parts.length != 2 && parts.length != 3) {
-                problems.accept(field, value, "A comma-separated list of valid String pairs or trios " +
-                        "is expected but got: " + value);
-                ++errors;
-            }
-        }
-        return errors;
     }
 }
