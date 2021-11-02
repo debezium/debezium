@@ -898,7 +898,7 @@ public class EventRouterTest {
     }
 
     @Test
-    public void canExpandJSONPayloadIfConfigured() {
+    public void canExpandJsonPayloadIfConfigured() {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put(
