@@ -119,7 +119,7 @@ public interface ColumnEditor {
      *
      * @return the complete type expression
      */
-    String defaultValueExpression();
+    Optional<String> defaultValueExpression();
 
     /**
      * Determine whether this column's has a default value set
