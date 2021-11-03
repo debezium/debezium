@@ -62,33 +62,33 @@ public class OracleDdlParserTest {
         // ID, primary key
         assertThat(table.columnWithName("ID").position()).isEqualTo(1);
         assertThat(table.isPrimaryKeyColumn("ID"));
-        testColumn(table, "ID", false, Types.NUMERIC, "NUMBER", 19, 0, false, null);
+        testColumn(table, "ID", false, Types.NUMERIC, "NUMBER", 19, 0, null);
         // number(4,2)
-        testColumn(table, "COL1", true, Types.NUMERIC, "NUMBER", 4, 2, true, null);
+        testColumn(table, "COL1", true, Types.NUMERIC, "NUMBER", 4, 2, null);
         // varchar2(255) default 'debezium'
-        testColumn(table, "COL2", false, Types.VARCHAR, "VARCHAR2", 255, null, true, "debezium");
+        testColumn(table, "COL2", false, Types.VARCHAR, "VARCHAR2", 255, null, "debezium");
         // nvarchar2(255)
-        testColumn(table, "COL3", false, Types.NVARCHAR, "NVARCHAR2", 255, null, false, null);
+        testColumn(table, "COL3", false, Types.NVARCHAR, "NVARCHAR2", 255, null, null);
         // char(4)
-        testColumn(table, "COL4", true, Types.CHAR, "CHAR", 4, null, true, null);
+        testColumn(table, "COL4", true, Types.CHAR, "CHAR", 4, null, null);
         // nchar(4)
-        testColumn(table, "COL5", true, Types.NCHAR, "NCHAR", 4, 0, true, null);
+        testColumn(table, "COL5", true, Types.NCHAR, "NCHAR", 4, 0, null);
         // float(126)
-        testColumn(table, "COL6", true, Types.FLOAT, "FLOAT", 126, 0, true, null);
+        testColumn(table, "COL6", true, Types.FLOAT, "FLOAT", 126, 0, null);
         // date
-        testColumn(table, "COL7", true, Types.TIMESTAMP, "DATE", -1, null, true, null);
+        testColumn(table, "COL7", true, Types.TIMESTAMP, "DATE", -1, null, null);
         // timestamp
-        testColumn(table, "COL8", true, Types.TIMESTAMP, "TIMESTAMP", 6, null, true, null);
+        testColumn(table, "COL8", true, Types.TIMESTAMP, "TIMESTAMP", 6, null, null);
         // blob
-        testColumn(table, "COL9", true, Types.BLOB, "BLOB", -1, null, true, null);
+        testColumn(table, "COL9", true, Types.BLOB, "BLOB", -1, null, null);
         // clob
-        testColumn(table, "COL10", true, Types.CLOB, "CLOB", -1, null, true, null);
+        testColumn(table, "COL10", true, Types.CLOB, "CLOB", -1, null, null);
         // sdo_geometry
-        testColumn(table, "col11", true, Types.STRUCT, "MDSYS.SDO_GEOMETRY", -1, null, true, null);
+        testColumn(table, "col11", true, Types.STRUCT, "MDSYS.SDO_GEOMETRY", -1, null, null);
         // number(1,0)
-        testColumn(table, "col12", true, Types.NUMERIC, "NUMBER", 1, 0, true, null);
+        testColumn(table, "col12", true, Types.NUMERIC, "NUMBER", 1, 0, null);
         // date
-        testColumn(table, "col13", false, Types.TIMESTAMP, "DATE", -1, null, false, null);
+        testColumn(table, "col13", false, Types.TIMESTAMP, "DATE", -1, null, null);
 
         String ddl = "alter table " + TABLE_NAME + " add (col21 varchar2(20), col22 number(19));";
         parser.parse(ddl, tables);
@@ -98,8 +98,8 @@ public class OracleDdlParserTest {
                 "COL21",
                 "COL22");
         // varchar2(255)
-        testColumn(alteredTable, "COL21", true, Types.VARCHAR, "VARCHAR2", 20, null, true, null);
-        testColumn(alteredTable, "COL22", true, Types.NUMERIC, "NUMBER", 19, 0, true, null);
+        testColumn(alteredTable, "COL21", true, Types.VARCHAR, "VARCHAR2", 20, null, null);
+        testColumn(alteredTable, "COL22", true, Types.NUMERIC, "NUMBER", 19, 0, null);
 
         ddl = "alter table " + TABLE_NAME + " add col23 varchar2(20);";
         try {
@@ -116,7 +116,7 @@ public class OracleDdlParserTest {
                 "COL12", "COL13",
                 "COL21",
                 "COL22", "COL23");
-        testColumn(alteredTable, "COL23", false, Types.VARCHAR, "VARCHAR2", 20, null, false, null);
+        testColumn(alteredTable, "COL23", false, Types.VARCHAR, "VARCHAR2", 20, null, null);
 
         ddl = "alter table " + TABLE_NAME + " drop (col22, col23);";
         parser.parse(ddl, tables);
@@ -358,7 +358,7 @@ public class OracleDdlParserTest {
 
     private void testColumn(@NotNull Table table, @NotNull String name, boolean isOptional,
                             Integer jdbcType, String typeName, Integer length, Integer scale,
-                            Boolean hasDefault, Object defaultValue) {
+                            String defaultValueExpression) {
         Column column = table.columnWithName(name);
         assertThat(column.isOptional()).isEqualTo(isOptional);
         assertThat(column.jdbcType()).isEqualTo(jdbcType);
@@ -368,9 +368,8 @@ public class OracleDdlParserTest {
         if (oScale.isPresent()) {
             assertThat(oScale.get()).isEqualTo(scale);
         }
-        assertThat(column.hasDefaultValue()).isEqualTo(hasDefault);
-        if (column.hasDefaultValue() && column.defaultValueExpression().isPresent()) {
-            assertThat(defaultValue.equals(column.defaultValueExpression().get()));
+        if (column.defaultValueExpression().isPresent()) {
+            assertThat(defaultValueExpression.equals(column.defaultValueExpression().get()));
         }
     }
 }

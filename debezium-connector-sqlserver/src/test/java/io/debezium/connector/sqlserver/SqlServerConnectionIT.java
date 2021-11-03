@@ -212,7 +212,7 @@ public class SqlServerConnectionIT {
                     SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
-            assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
+            assertColumnHasNotDefaultValue(table, "int_no_default");
 
             assertColumnHasDefaultValue(table, "bigint_column", 3147483648L, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "int_column", 2147483647, tableSchemaBuilder);
@@ -382,32 +382,32 @@ public class SqlServerConnectionIT {
                     SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
-            assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
+            assertColumnHasNotDefaultValue(table, "int_no_default");
             assertColumnHasDefaultValue(table, "int_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "int_column", 2147483647, tableSchemaBuilder);
 
             assertColumnHasNotDefaultValue(table, "bigint_no_default_not_null");
-            assertColumnHasDefaultValue(table, "bigint_no_default", null, tableSchemaBuilder);
+            assertColumnHasNotDefaultValue(table, "bigint_no_default");
             assertColumnHasDefaultValue(table, "bigint_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "bigint_column", 3147483648L, tableSchemaBuilder);
 
             assertColumnHasNotDefaultValue(table, "smallint_no_default_not_null");
-            assertColumnHasDefaultValue(table, "smallint_no_default", null, tableSchemaBuilder);
+            assertColumnHasNotDefaultValue(table, "smallint_no_default");
             assertColumnHasDefaultValue(table, "smallint_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "smallint_column", (short) 32767, tableSchemaBuilder);
 
             assertColumnHasNotDefaultValue(table, "tinyint_no_default_not_null");
-            assertColumnHasDefaultValue(table, "tinyint_no_default", null, tableSchemaBuilder);
+            assertColumnHasNotDefaultValue(table, "tinyint_no_default");
             assertColumnHasDefaultValue(table, "tinyint_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "tinyint_column", (short) 255, tableSchemaBuilder);
 
             assertColumnHasNotDefaultValue(table, "float_no_default_not_null");
-            assertColumnHasDefaultValue(table, "float_no_default", null, tableSchemaBuilder);
+            assertColumnHasNotDefaultValue(table, "float_no_default");
             assertColumnHasDefaultValue(table, "float_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "float_column", 123.45, tableSchemaBuilder);
 
             assertColumnHasNotDefaultValue(table, "real_no_default_not_null");
-            assertColumnHasDefaultValue(table, "real_no_default", null, tableSchemaBuilder);
+            assertColumnHasNotDefaultValue(table, "real_no_default");
             assertColumnHasDefaultValue(table, "real_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "real_column", 1234.5f, tableSchemaBuilder);
         }
@@ -434,7 +434,7 @@ public class SqlServerConnectionIT {
 
     private void assertColumnHasNotDefaultValue(Table table, String columnName) {
         Column column = table.columnWithName(columnName);
-        Assertions.assertThat(column.hasDefaultValue()).isFalse();
+        Assertions.assertThat(column.defaultValueExpression().isPresent()).isFalse();
     }
 
     private void assertColumnHasDefaultValue(Table table, String columnName, Object expectedValue, TableSchemaBuilder tableSchemaBuilder) {
@@ -442,7 +442,7 @@ public class SqlServerConnectionIT {
         Schema columnSchema = schema.getEnvelopeSchema().schema().field("after").schema().field(columnName).schema();
 
         Column column = table.columnWithName(columnName);
-        Assertions.assertThat(column.hasDefaultValue()).isTrue();
+        Assertions.assertThat(column.defaultValueExpression().isPresent()).isTrue();
         Assertions.assertThat(columnSchema.defaultValue()).isEqualTo(expectedValue);
         if (expectedValue instanceof BigDecimal) {
             // safe cast as we know the expectedValue and column.defaultValue are equal

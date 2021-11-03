@@ -25,7 +25,6 @@ final class ColumnEditorImpl implements ColumnEditor {
     private boolean autoIncremented = false;
     private boolean generated = false;
     private String defaultValueExpression = null;
-    private boolean hasDefaultValue = false;
     private List<String> enumValues;
     private String comment;
 
@@ -103,11 +102,6 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public boolean hasDefaultValue() {
-        return hasDefaultValue;
-    }
-
-    @Override
     public String comment() {
         return comment;
     }
@@ -177,10 +171,6 @@ final class ColumnEditorImpl implements ColumnEditor {
     @Override
     public ColumnEditorImpl optional(boolean optional) {
         this.optional = optional;
-        if (optional && !hasDefaultValue()) {
-            // Optional columns have implicit NULL default value
-            defaultValueExpression(null);
-        }
         return this;
     }
 
@@ -204,14 +194,12 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public ColumnEditor defaultValueExpression(String defaultValueExpression) {
-        this.hasDefaultValue = true;
         this.defaultValueExpression = defaultValueExpression;
         return this;
     }
 
     @Override
     public ColumnEditor unsetDefaultValueExpression() {
-        this.hasDefaultValue = false;
         this.defaultValueExpression = null;
         return this;
     }
@@ -231,7 +219,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     @Override
     public Column create() {
         return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
-                length, scale, enumValues, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, comment);
+                length, scale, enumValues, optional, autoIncremented, generated, defaultValueExpression, comment);
     }
 
     @Override

@@ -77,10 +77,10 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo((short) 0);
         assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo((short) 10);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
-        assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("C").defaultValueExpression().isPresent()).isFalse();
         assertThat(getColumnSchema(table, "C").defaultValue()).isNull();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
+        assertThat(table.columnWithName("D").defaultValueExpression().isPresent()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo((short) 0);
         assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo((short) 0);
@@ -103,9 +103,9 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0);
         assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
-        assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("C").defaultValueExpression().isPresent()).isFalse();
         assertThat(getColumnSchema(table, "D").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
+        assertThat(table.columnWithName("D").defaultValueExpression().isPresent()).isFalse();
         assertThat(getColumnSchema(table, "E").isOptional()).isEqualTo(false);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0);
         assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0);
@@ -128,9 +128,9 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0);
         assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
-        assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("C").defaultValueExpression().isPresent()).isFalse();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
+        assertThat(table.columnWithName("D").defaultValueExpression().isPresent()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0);
         assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0);
@@ -153,9 +153,9 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0L);
         assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10L);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
-        assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("C").defaultValueExpression().isPresent()).isFalse();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
+        assertThat(table.columnWithName("D").defaultValueExpression().isPresent()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0L);
         assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0L);
@@ -177,9 +177,9 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(0L);
         assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(10L);
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
-        assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("C").defaultValueExpression().isPresent()).isFalse();
         assertThat(getColumnSchema(table, "D").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
+        assertThat(table.columnWithName("D").defaultValueExpression().isPresent()).isFalse();
         assertThat(getColumnSchema(table, "E").isOptional()).isEqualTo(false);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(0L);
         assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0L);
@@ -211,9 +211,9 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "A", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.ZERO);
         assertThat(getColumnSchema(table, "B", tableSchemaBuilder).defaultValue()).isEqualTo(new BigDecimal(10));
         assertThat(table.columnWithName("C").isOptional()).isEqualTo(true);
-        assertThat(table.columnWithName("C").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("C").defaultValueExpression().isPresent()).isFalse();
         assertThat(table.columnWithName("D").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("D").hasDefaultValue()).isFalse();
+        assertThat(table.columnWithName("D").defaultValueExpression().isPresent()).isFalse();
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(getColumnSchema(table, "E", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.ZERO);
         assertThat(getColumnSchema(table, "F", tableSchemaBuilder).defaultValue()).isEqualTo(BigDecimal.ZERO);
@@ -454,12 +454,12 @@ public class MySqlDefaultValueTest {
 
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat(table.columnWithName("nullable_date").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("nullable_date").defaultValueExpression().isPresent()).isTrue();
 
         // zero date should be mapped to null for nullable column
         assertThat(getColumnSchema(table, "nullable_date").defaultValue()).isNull();
 
-        assertThat(table.columnWithName("not_nullable_date").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("not_nullable_date").defaultValueExpression().isPresent()).isTrue();
 
         // zero date should be mapped to epoch for non-nullable column (expecting Date, as this test is using "connect"
         // mode)

@@ -136,13 +136,6 @@ public interface Column extends Comparable<Column> {
     Optional<String> defaultValueExpression();
 
     /**
-     * Determine whether this column's has a default value
-     *
-     * @return {@code true} if the default value was provided, or {@code false} otherwise
-     */
-    boolean hasDefaultValue();
-
-    /**
      * Get the list of values associated with the enum
      *
      * @return the list of enum values

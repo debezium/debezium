@@ -122,13 +122,6 @@ public interface ColumnEditor {
     Optional<String> defaultValueExpression();
 
     /**
-     * Determine whether this column's has a default value set
-     *
-     * @return {@code true} if the default value was provided, or {@code false} otherwise
-     */
-    boolean hasDefaultValue();
-
-    /**
      * get the enumeration values for the column.
      *
      * @return the list of enumeration values
