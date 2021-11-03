@@ -7,7 +7,7 @@ pipelineJob('rhel-downstream-prepare-job') {
     }
 
     parameters {
-        stringParam('MAIL_TO', 'jcechace@redhat.com')
+        stringParam('MAIL_TO', 'debezium-qe@redhat.com')
 //        QUAY CONFIG
         stringParam('QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id')
         stringParam('QUAY_ORGANISATION', '', 'Organisation where images are copied')
@@ -19,7 +19,8 @@ pipelineJob('rhel-downstream-prepare-job') {
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
         stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
 //        IMAGE NAME
-        stringParam('IMAGE_TAG', '', 'Tag of built image')
+        booleanParam('AUTO_TAG', true, 'Use automatically generated tag')
+        textParam('EXTRA_IMAGE_TAGS', 'latest', 'List of extra texts tags for multiple images')
 //        DEBEZIUM CONNECT IMAGE CONFIG
         textParam('DBZ_CONNECTOR_ARCHIVE_URLS', '', 'List of URLs to productised Debezium connectors')
 //        EXTRA CONFIG
