@@ -1076,7 +1076,7 @@ selectLinesInto
     ;
 
 fromClause
-    : FROM tableSources
+    : (FROM tableSources)?
       (WHERE whereExpr=expression)?
       (
         GROUP BY
