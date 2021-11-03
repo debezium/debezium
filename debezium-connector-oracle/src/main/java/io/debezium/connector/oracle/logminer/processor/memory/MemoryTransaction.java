@@ -31,7 +31,7 @@ public class MemoryTransaction extends AbstractTransaction {
     public MemoryTransaction(String transactionId, Scn startScn, Instant changeTime, String userName) {
         super(transactionId, startScn, changeTime, userName);
         this.events = new ArrayList<>();
-        started();
+        start();
     }
 
     @Override
@@ -45,7 +45,7 @@ public class MemoryTransaction extends AbstractTransaction {
     }
 
     @Override
-    public void started() {
+    public void start() {
         numberOfEvents = 0;
     }
 
