@@ -22,7 +22,7 @@ public class InfinispanTransaction extends AbstractTransaction {
 
     public InfinispanTransaction(String transactionId, Scn startScn, Instant changeTime, String userName) {
         super(transactionId, startScn, changeTime, userName);
-        started();
+        start();
     }
 
     @VisibleForMarshalling
@@ -42,7 +42,7 @@ public class InfinispanTransaction extends AbstractTransaction {
     }
 
     @Override
-    public void started() {
+    public void start() {
         numberOfEvents = 0;
     }
 
