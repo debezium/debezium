@@ -200,12 +200,20 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .jdbcType(Types.CHAR)
                         .type("CHAR")
                         .length(1);
+
+                if (precisionPart != null) {
+                    setPrecision(precisionPart, columnEditor);
+                }
             }
             else if (ctx.native_datatype_element().NCHAR() != null) {
                 columnEditor
                         .jdbcType(Types.NCHAR)
                         .type("NCHAR")
                         .length(1);
+
+                if (precisionPart != null) {
+                    setPrecision(precisionPart, columnEditor);
+                }
             }
             else if (ctx.native_datatype_element().BINARY_FLOAT() != null) {
                 columnEditor

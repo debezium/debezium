@@ -70,9 +70,9 @@ public class OracleDdlParserTest {
         // nvarchar2(255)
         testColumn(table, "COL3", false, Types.NVARCHAR, "NVARCHAR2", 255, null, false, null);
         // char(4)
-        testColumn(table, "COL4", true, Types.CHAR, "CHAR", 1, null, true, null);
+        testColumn(table, "COL4", true, Types.CHAR, "CHAR", 4, null, true, null);
         // nchar(4)
-        testColumn(table, "COL5", true, Types.NCHAR, "NCHAR", 1, 0, true, null);
+        testColumn(table, "COL5", true, Types.NCHAR, "NCHAR", 4, 0, true, null);
         // float(126)
         testColumn(table, "COL6", true, Types.FLOAT, "FLOAT", 126, 0, true, null);
         // date
