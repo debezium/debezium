@@ -136,10 +136,27 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected abstract TransactionCache<T, ?> getTransactionCache();
 
+    /**
+     * Creates a new transaction based on the supplied {@code START} event.
+     *
+     * @param row the event row, must not be {@code null}
+     * @return the implementation-specific {@link Transaction} instance
+     */
     protected abstract T createTransaction(LogMinerEventRow row);
 
+    /**
+     * Removes a specific transaction event by database row identifier.
+     *
+     * @param row the event row that contains the row identifier, must not be {@code null}
+     */
     protected abstract void removeEventWithRowId(LogMinerEventRow row);
 
+    /**
+     * Returns the number of events associated with the specified transaction.
+     *
+     * @param transaction the transaction, must not be {@code null}
+     * @return the number of events in the transaction
+     */
     protected abstract int getTransactionEventCount(T transaction);
 
     // todo: can this be removed in favor of a single implementation?
@@ -227,7 +244,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
         else if (transaction != null && !isRecentlyCommitted(transactionId)) {
             LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
-            transaction.started();
+            transaction.start();
         }
     }
 

@@ -30,6 +30,32 @@ import io.debezium.relational.Table;
  * merging events that should be merged when LOB support is enabled, and then delegating the final
  * stream of events to a delegate consumer.
  *
+ * When a table has a LOB field, Oracle LogMiner often supplies us with synthetic events that deal
+ * with sub-tasks that occur in the database as a result of writing LOB data to the database.  We
+ * would prefer to emit these synthetic events as a part of the overall logical event, whether that
+ * is an insert or update.
+ *
+ * An example of a scenario would be the following logical user action:
+ *      INSERT INTO my_table (id,lob_field) values (1, 'some clob data');
+ *
+ * Oracle LogMiner provides the connector with the following events:
+ *      INSERT INTO my_table (id,lob_field) values (1, EMPTY_CLOB());
+ *      UPDATE my_table SET lob_field = 'some clob data' where id = 1;
+ *
+ * When LOB support is enabled, this consumer implementation will detect that the update is an
+ * event that should be merged with the previous insert event so that the emitted change events
+ * consists a single logical change, an insert that have an after section like:
+ *
+ * <pre>
+ *     "after": {
+ *         "id": 1,
+ *         "lob_field": "some clob data"
+ *     }
+ * </pre>
+ *
+ * When LOB support isn't enabled, events are simply passed through to the delegate and no event
+ * inspection, merging, or buffering occurs.
+ *
  * @author Chris Cranford
  */
 public class TransactionCommitConsumer implements AutoCloseable, BlockingConsumer<LogMinerEvent> {
@@ -41,6 +67,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private final OracleDatabaseSchema schema;
     private final List<String> lobWriteData;
 
+    /**
+     * Describes the current LOB event buffering state, whether we're working on a series of
+     * {@code LOB_WRITE} events, {@code LOB_ERASE} events, or any other type of event that
+     * does not require special handling.
+     */
     enum LobState {
         WRITE,
         ERASE,
