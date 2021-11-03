@@ -20,7 +20,7 @@ while true; do
     -r | --registry )           REGISTRY=$2;                        shift; shift ;;
     -o | --organisation )       ORGANISATION=$2;                    shift; shift ;;
     -t | --tags )               TAGS=$2;                            shift; shift ;;
-    -a | --auto-tag )           AUTO_TAG=$2;                         shift; shift ;;
+    -a | --auto-tag )           AUTO_TAG=$2;                        shift; shift ;;
     --dest-login )              DEST_LOGIN=$2;                      shift; shift ;;
     --dest-pass )               DEST_PASS=$2;                       shift; shift ;;
     --img-output )              IMAGE_OUTPUT_FILE=$2;               shift; shift ;;
