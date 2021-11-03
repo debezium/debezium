@@ -98,8 +98,8 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public String defaultValueExpression() {
-        return defaultValueExpression;
+    public Optional<String> defaultValueExpression() {
+        return Optional.ofNullable(defaultValueExpression);
     }
 
     @Override
