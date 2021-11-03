@@ -153,6 +153,22 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4229")
+    public void shouldProcessQueryWithoutFromStatement() {
+        String sp = "CREATE DEFINER=`system_user`@`%` PROCEDURE `update_order`(IN orderID bigint(11))\n" +
+                "BEGIN  insert into order_config(order_id, attribute, value, performer)\n" +
+                "    SELECT orderID, 'first_attr', 'true', 'AppConfig'\n" +
+                "    WHERE NOT EXISTS (select 1 from inventory.order_config t1 where t1.order_id = orderID and t1.attribute = 'first_attr') OR\n" +
+                "        EXISTS (select 1 from inventory.order_config p2 where p2.order_id = orderID and p2.attribute = 'first_attr' and p2.performer = 'AppConfig')\n" +
+                "    ON DUPLICATE KEY UPDATE value = 'true',\n" +
+                "                            performer = 'AppConfig'; -- Enable second_attr for order\n" +
+                "END";
+        parser.parse(sp, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-3020")
     public void shouldProcessExpressionWithDefault() {
         String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
