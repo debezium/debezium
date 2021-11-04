@@ -24,6 +24,7 @@ Andrew Garrett
 Andrew Tongen
 Andrey Ignatenko
 Andrey Pustovetov
+Andrey Yegorov
 Andy Teijelo
 Anisha Mohanty
 Anton Kondratev
@@ -64,6 +65,7 @@ Christian Posta
 Christopher Burch
 Christopher Sang
 Chuck Ha
+Claus Guttesen
 Cliff Wheadon
 Collin Van Dyck
 Cory Harper
@@ -85,6 +87,7 @@ Dennis Persson
 Derek Moore
 Dhrubajyoti G
 Duncan Sands
+Dushyant M
 Echo Xu
 Ed Laur
 Eduardo Hayashi
@@ -183,6 +186,7 @@ Kevin Pullin
 Kewei Shang
 Krizhan Mariampillai
 Kyley Jex
+Laurent Broudoux
 Leo Mei
 Lev Zemlyanov
 Linh Nguyen Hoang
@@ -262,6 +266,7 @@ Robert Hana
 Roman Kuchar
 Sagar Rao
 Sahan Dilshan
+Sungho Hwang
 René Kerner
 Rich O'Connell
 Robert Coup
@@ -325,6 +330,7 @@ Wei Wu
 WenZe Hu
 William Pursell
 Willie Cheong
+Willie Zhu
 Wout Scheepers
 Xiao Fu
 Xuan Shen
@@ -335,6 +341,7 @@ Yiming Liu
 Yoann Rodière
 Yossi Shirizli
 Yuan Zhang
+Yuiham Chan
 Zheng Wang
 Zoran Regvart
 志飞 张
