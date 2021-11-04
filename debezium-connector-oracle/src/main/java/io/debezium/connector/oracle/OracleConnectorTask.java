@@ -57,8 +57,10 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         validateRedoLogConfiguration();
 
         OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
+        OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
-        this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector, tableNameCaseSensitivity);
+        this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
+                topicSelector, tableNameCaseSensitivity);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());

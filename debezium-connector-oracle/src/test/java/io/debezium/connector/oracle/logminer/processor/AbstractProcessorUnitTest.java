@@ -29,6 +29,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleDefaultValueConverter;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
@@ -255,10 +256,12 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         final TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
         final OracleValueConverters converters = new OracleValueConverters(connectorConfig, connection);
+        final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         final TableNameCaseSensitivity sensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
 
         final OracleDatabaseSchema schema = new OracleDatabaseSchema(connectorConfig,
                 converters,
+                defaultValueConverter,
                 schemaNameAdjuster,
                 topicSelector,
                 sensitivity);
