@@ -8,8 +8,6 @@ package io.debezium.testing.system.fixtures.registry;
 import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_CRD_VERSION;
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_CRD_VERSION;
 
-import java.util.Arrays;
-
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.TestSetupFixture;
 import io.debezium.testing.system.fixtures.kafka.KafkaRuntimeFixture;
@@ -19,8 +17,6 @@ import io.debezium.testing.system.tools.registry.OcpApicurioV1Controller;
 import io.debezium.testing.system.tools.registry.OcpApicurioV1Deployer;
 import io.debezium.testing.system.tools.registry.OcpApicurioV2Controller;
 import io.debezium.testing.system.tools.registry.OcpApicurioV2Deployer;
-import io.fabric8.kubernetes.api.model.ObjectMeta;
-import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import okhttp3.OkHttpClient;
@@ -52,13 +48,7 @@ public interface OcpApicurio
     default void updateApicurioOperator(String project, OpenShiftClient ocp) {
         ApicurioOperatorController operatorController = ApicurioOperatorController.forProject(project, ocp);
 
-        ConfigProperties.OCP_PULL_SECRET_PATHS.ifPresent(paths -> {
-            Arrays.stream(paths.split(","))
-                    .map(operatorController::deployPullSecret)
-                    .map(Secret::getMetadata)
-                    .map(ObjectMeta::getName)
-                    .forEach(operatorController::setImagePullSecret);
-        });
+        ConfigProperties.OCP_PULL_SECRET_PATH.ifPresent(operatorController::deployPullSecret);
 
         operatorController.updateOperator();
     }

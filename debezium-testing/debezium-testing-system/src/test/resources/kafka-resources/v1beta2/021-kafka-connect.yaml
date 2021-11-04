@@ -3,7 +3,7 @@ kind: KafkaConnect
 metadata:
   name: debezium-kafka-connect-cluster
 spec:
-  version: ${version.kafka}
+  version: ${version.strimzi.kafka}
   image: ${image.kc}
   bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
   logging:

@@ -7,9 +7,6 @@ package io.debezium.testing.system.fixtures.kafka;
 
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_CRD_VERSION;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.artifacts.OcpArtifactServerController;
@@ -20,8 +17,6 @@ import io.debezium.testing.system.tools.kafka.OcpKafkaConnectController;
 import io.debezium.testing.system.tools.kafka.OcpKafkaConnectDeployer;
 import io.debezium.testing.system.tools.kafka.OcpKafkaDeployer;
 import io.debezium.testing.system.tools.kafka.StrimziOperatorController;
-import io.fabric8.kubernetes.api.model.ObjectMeta;
-import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import okhttp3.OkHttpClient;
@@ -39,8 +34,9 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
     @Override
     default void setupKafka() throws Exception {
         OpenShiftClient ocp = getOcpClient();
-        KafkaController controller = deployKafkaCluster(ocp);
-        KafkaConnectController connectController = deployKafkaConnectCluster(ocp);
+        StrimziOperatorController operatorController = updateKafkaOperator(ConfigProperties.OCP_PROJECT_DBZ, ocp);
+        KafkaController controller = deployKafkaCluster(ocp, operatorController);
+        KafkaConnectController connectController = deployKafkaConnectCluster(ocp, operatorController);
 
         setKafkaController(controller);
         setKafkaConnectController(connectController);
@@ -52,20 +48,23 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
         // kafka is reused across tests
     }
 
-    default KafkaController deployKafkaCluster(OpenShiftClient ocp) throws Exception {
-        updateKafkaOperator(ConfigProperties.OCP_PROJECT_DBZ, ocp);
-
+    default KafkaController deployKafkaCluster(OpenShiftClient ocp,
+                                               StrimziOperatorController operatorController)
+            throws Exception {
         OcpKafkaDeployer kafkaDeployer = new OcpKafkaDeployer.Builder()
                 .withOcpClient(ocp)
                 .withHttpClient(new OkHttpClient())
                 .withProject(ConfigProperties.OCP_PROJECT_DBZ)
                 .withYamlPath(KAFKA)
+                .withOperatorController(operatorController)
                 .build();
 
         return kafkaDeployer.deploy();
     }
 
-    default KafkaConnectController deployKafkaConnectCluster(OpenShiftClient ocp) throws InterruptedException {
+    default KafkaConnectController deployKafkaConnectCluster(OpenShiftClient ocp,
+                                                             StrimziOperatorController operatorController)
+            throws InterruptedException {
         String yamlDescriptor = KAFKA_CONNECT;
 
         if (ConfigProperties.STRIMZI_KC_BUILD) {
@@ -80,6 +79,7 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
                 .withYamlPath(yamlDescriptor)
                 .withCfgYamlPath(KAFKA_CONNECT_LOGGING)
                 .withConnectorResources(ConfigProperties.STRIMZI_OPERATOR_CONNECTORS)
+                .withOperatorController(operatorController)
                 .build();
 
         OcpKafkaConnectController controller = connectDeployer.deploy();
@@ -102,7 +102,7 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
         OcpArtifactServerController controller = deployer.deploy();
     }
 
-    default void updateKafkaOperator(String project, OpenShiftClient ocp) {
+    default StrimziOperatorController updateKafkaOperator(String project, OpenShiftClient ocp) {
         StrimziOperatorController operatorController = StrimziOperatorController.forProject(project, ocp);
 
         operatorController.setLogLevel("DEBUG");
@@ -110,22 +110,10 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
         operatorController.setOperandAlwaysPullPolicy();
         operatorController.setSingleReplica();
 
-        ConfigProperties.OCP_PULL_SECRET_PATHS.ifPresent(paths -> {
-            String secrets = Arrays.stream(paths.split(","))
-                    .map(operatorController::deployPullSecret)
-                    .map(Secret::getMetadata)
-                    .map(ObjectMeta::getName)
-                    .peek(operatorController::setImagePullSecret)
-                    .collect(Collectors.joining(","));
-
-            if (ConfigProperties.STRIMZI_KC_BUILD) {
-                operatorController.unsetOperandImagePullSecrets();
-            }
-            else {
-                operatorController.setOperandImagePullSecrets(secrets);
-            }
-        });
+        ConfigProperties.OCP_PULL_SECRET_PATH.ifPresent(operatorController::deployPullSecret);
 
         operatorController.updateOperator();
+
+        return operatorController;
     }
 }

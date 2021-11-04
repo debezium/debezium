@@ -28,7 +28,7 @@ spec:
     replicas: 1
     storage:
       type: ephemeral
-    version: ${version.kafka}
+    version: ${version.strimzi.kafka}
   zookeeper:
     replicas: 1
     storage:

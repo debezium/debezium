@@ -198,6 +198,8 @@ public class OpenShiftUtils {
     }
 
     public void ensureHasPullSecret(Deployment deployment, String secret) {
+        LOGGER.info("Using " + secret + " as image pull secret for deployment '" + deployment.getMetadata().getName() + "'");
+
         List<LocalObjectReference> secrets = deployment.getSpec().getTemplate().getSpec().getImagePullSecrets();
         if (secrets == null) {
             secrets = new ArrayList<>();
