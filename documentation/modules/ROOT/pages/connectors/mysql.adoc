@@ -2724,9 +2724,7 @@ For example, if the database server name is `fulfillment`, the default topic nam
 |No default
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
  +
-`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
- +
-This can be used to periodically capture the state of GTID execution set in the source database. +
+For example, this can be used to periodically capture the state of the executed GTID set in the source database. +
  +
 `INSERT INTO gtid_history_table (select * from mysql.gtid_executed)`
 

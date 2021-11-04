@@ -19,7 +19,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -315,7 +314,7 @@ public class BinlogReader extends AbstractReader {
 
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client, context, name, changeEventQueueMetrics);
-        heartbeat = Heartbeat.create(configuration.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS),
+        heartbeat = Heartbeat.create(context.getConnectorConfig().getHeartbeatInterval(),
                 context.topicSelector().getHeartbeatTopic(), context.getConnectorConfig().getLogicalName());
     }
 

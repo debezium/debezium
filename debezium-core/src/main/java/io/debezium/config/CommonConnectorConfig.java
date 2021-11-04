@@ -491,7 +491,8 @@ public abstract class CommonConnectorConfig {
     private final Duration pollInterval;
     private final String logicalName;
     private final String heartbeatTopicsPrefix;
-    private final Duration snapshotDelayMs;
+    private final Duration heartbeatInterval;
+    private final Duration snapshotDelay;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
@@ -516,7 +517,8 @@ public abstract class CommonConnectorConfig {
         this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
-        this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
+        this.heartbeatInterval = config.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
+        this.snapshotDelay = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
@@ -589,12 +591,16 @@ public abstract class CommonConnectorConfig {
         return heartbeatTopicsPrefix;
     }
 
+    public Duration getHeartbeatInterval() {
+        return heartbeatInterval;
+    }
+
     public Duration getRetriableRestartWait() {
         return retriableRestartWait;
     }
 
     public Duration getSnapshotDelay() {
-        return snapshotDelayMs;
+        return snapshotDelay;
     }
 
     public int getSnapshotFetchSize() {

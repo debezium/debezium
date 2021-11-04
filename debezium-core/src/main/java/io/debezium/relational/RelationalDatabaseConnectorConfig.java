@@ -609,6 +609,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
     private final Configuration jdbcConfig;
+    private final String heartbeatActionQuery;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
@@ -675,8 +676,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public Configuration getJdbcConfig() {
         return jdbcConfig;
     }
-
-    public String heartbeatActionQuery;
 
     public String getHeartbeatActionQuery() {
         return heartbeatActionQuery;
