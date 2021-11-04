@@ -10,7 +10,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -737,7 +736,7 @@ public class SnapshotReader extends AbstractReader {
                     source.completeSnapshot();
                     Heartbeat
                             .create(
-                                    configuration.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS),
+                                    context.getConnectorConfig().getHeartbeatInterval(),
                                     context.topicSelector().getHeartbeatTopic(),
                                     context.getConnectorConfig().getLogicalName())
                             .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
