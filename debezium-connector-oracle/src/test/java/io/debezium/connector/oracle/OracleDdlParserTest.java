@@ -356,6 +356,48 @@ public class OracleDdlParserTest {
         assertThat(columnNames).contains("ID");
     }
 
+    @Test
+    @FixFor("DBZ-4240")
+    public void shouldParseNumberAsteriskWithDefaultPrecision() throws Exception {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("SCOTT");
+
+        String SQL = "CREATE TABLE \"SCOTT\".\"ASTERISK_TEST\" (ID NUMBER(*,0) NOT NULL)";
+        parser.parse(SQL, tables);
+
+        DdlChanges changes = parser.getDdlChanges();
+        List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "ASTERISK_TEST"));
+        assertThat(table.columnWithName("ID").length()).isEqualTo(38);
+        assertThat(table.columnWithName("ID").scale().get()).isEqualTo(0);
+        assertThat(table.columnWithName("ID").isOptional()).isFalse();
+
+        // Reset changes
+        changes.reset();
+
+        SQL = "ALTER TABLE \"SCOTT\".\"ASTERISK_TEST\" MODIFY (ID NUMBER(*,0) NULL);";
+        parser.parse(SQL, tables);
+
+        changes = parser.getDdlChanges();
+        eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
+
+        table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "ASTERISK_TEST"));
+        assertThat(table.columnWithName("ID").length()).isEqualTo(38);
+        assertThat(table.columnWithName("ID").scale().get()).isEqualTo(0);
+        assertThat(table.columnWithName("ID").isOptional()).isTrue();
+    }
+
+    private List<DdlParserListener.EventType> getEventTypesFromChanges(DdlChanges changes) {
+        List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
+        changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
+            events.forEach(event -> eventTypes.add(event.type()));
+        });
+        return eventTypes;
+    }
+
     private void testColumn(@NotNull Table table, @NotNull String name, boolean isOptional,
                             Integer jdbcType, String typeName, Integer length, Integer scale,
                             Boolean hasDefault, Object defaultValue) {
