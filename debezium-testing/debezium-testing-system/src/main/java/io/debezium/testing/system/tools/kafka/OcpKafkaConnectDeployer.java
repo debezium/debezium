@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
-import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.YAML;
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -23,6 +22,8 @@ import io.strimzi.api.kafka.KafkaConnectList;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnectBuilder;
 import io.strimzi.api.kafka.model.connect.build.Build;
+import io.strimzi.api.kafka.model.template.KafkaConnectTemplate;
+import io.strimzi.api.kafka.model.template.KafkaConnectTemplateBuilder;
 
 import okhttp3.OkHttpClient;
 
@@ -113,6 +114,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
     private final String cfgYamlPath;
     private final boolean connectorResources;
     private final StrimziOperatorController operatorController;
+    private final String pullSecretName;
     private final boolean exposedApi;
     private final boolean exposedMetrics;
 
@@ -130,7 +132,8 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         this.yamlPath = yamlPath;
         this.cfgYamlPath = cfgYamlPath;
         this.connectorResources = connectorResources;
-        this.operatorController = (operatorController != null) ? operatorController : StrimziOperatorController.forProject(project, ocp);
+        this.operatorController = operatorController;
+        this.pullSecretName = operatorController.getPullSecretName();
         this.exposedApi = exposedApi;
         this.exposedMetrics = exposedMetrics;
     }
@@ -143,29 +146,27 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
     public OcpKafkaConnectController deploy() throws InterruptedException {
         LOGGER.info("Deploying KafkaConnect from " + yamlPath);
 
-        ocp.configMaps().inNamespace(project)
-                .createOrReplace(YAML.fromResource(cfgYamlPath, ConfigMap.class));
-
         KafkaConnect kafkaConnect = YAML.fromResource(yamlPath, KafkaConnect.class);
-        if (connectorResources) {
-            kafkaConnect = enableConnectorResources(kafkaConnect);
+        Build kcBuild = kafkaConnect.getSpec().getBuild();
+        KafkaConnectBuilder kcBuilder = new KafkaConnectBuilder(kafkaConnect);
+
+        if (cfgYamlPath != null) {
+            deployConfigMap();
         }
 
-        Build kcBuild = kafkaConnect.getSpec().getBuild();
+        if (connectorResources) {
+            configureConnectorResources(kcBuilder);
+        }
+
+        if (pullSecretName != null) {
+            configurePullSecret(kcBuilder, kcBuild);
+        }
 
         if (kcBuild != null && "imagestream".equals(kcBuild.getOutput().getType())) {
-            String[] image = kcBuild.getOutput().getImage().split(":", 2);
-            ImageStream is = new ImageStreamBuilder()
-                    .withNewMetadata().withName(image[0]).endMetadata()
-                    .withNewSpec()
-                    .withNewLookupPolicy(true)
-                    .endSpec()
-                    .build();
-            ocp.imageStreams()
-                    .inNamespace(ConfigProperties.OCP_PROJECT_DBZ)
-                    .createOrReplace(is);
+            deployImageStream(kcBuild);
         }
 
+        kafkaConnect = kcBuilder.build();
         kafkaConnect = kafkaConnectOperation().createOrReplace(kafkaConnect);
 
         OcpKafkaConnectController controller = new OcpKafkaConnectController(
@@ -180,12 +181,45 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
 
     }
 
-    private KafkaConnect enableConnectorResources(KafkaConnect baseResource) {
-        return new KafkaConnectBuilder(baseResource)
+    private void deployConfigMap() {
+        ocp.configMaps().inNamespace(project)
+                .createOrReplace(YAML.fromResource(cfgYamlPath, ConfigMap.class));
+    }
+
+    private void deployImageStream(Build kcBuild) {
+        String[] image = kcBuild.getOutput().getImage().split(":", 2);
+        ImageStream is = new ImageStreamBuilder()
+                .withNewMetadata().withName(image[0]).endMetadata()
+                .withNewSpec()
+                .withNewLookupPolicy(true)
+                .endSpec()
+                .build();
+        ocp.imageStreams()
+                .inNamespace(project)
+                .createOrReplace(is);
+    }
+
+    private void configurePullSecret(KafkaConnectBuilder kcBuilder, Build kcBuild) {
+        KafkaConnectTemplate template = kcBuilder.buildSpec().getTemplate();
+        KafkaConnectTemplateBuilder templateBuilder = new KafkaConnectTemplateBuilder(template);
+
+        if (kcBuild == null) {
+            templateBuilder.withNewPod().addNewImagePullSecret(pullSecretName);
+        }
+        else {
+            templateBuilder.withNewBuildConfig().withPullSecret(pullSecretName).endBuildConfig();
+        }
+        kcBuilder
+                .editSpec()
+                .withTemplate(templateBuilder.build())
+                .endSpec();
+    }
+
+    private void configureConnectorResources(KafkaConnectBuilder kcBuilder) {
+        kcBuilder
                 .editMetadata()
                 .addToAnnotations("strimzi.io/use-connector-resources", "true")
-                .endMetadata()
-                .build();
+                .endMetadata();
     }
 
     private NonNamespaceOperation<KafkaConnect, KafkaConnectList, Resource<KafkaConnect>> kafkaConnectOperation() {

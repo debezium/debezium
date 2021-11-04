@@ -12,6 +12,7 @@ import static org.awaitility.Awaitility.await;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ public class OperatorController {
     protected String project;
     protected Deployment operator;
     protected String name;
+    private Secret pullSecret;
 
     public OperatorController(Deployment operator, Map<String, String> podLabels, OpenShiftClient ocp) {
         this.operator = operator;
@@ -90,7 +92,6 @@ public class OperatorController {
      * @param secret name of the secret
      */
     public void setImagePullSecret(String secret) {
-        LOGGER.info("Using " + secret + " as image pull secret for deployment '" + name + "'");
         ocpUtils.ensureHasPullSecret(operator, secret);
     }
 
@@ -129,19 +130,36 @@ public class OperatorController {
     }
 
     /**
-     * Deploys pull secret and links it to "default" service account in the project
+     * Deploys pull secret
      * @param yamlPath path to Secret descriptor
      * @return deployed pull secret
      */
     public Secret deployPullSecret(String yamlPath) {
         LOGGER.info("Deploying Secret from " + yamlPath);
-        Secret secret = ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
-        String secretName = secret.getMetadata().getName();
+        this.pullSecret = ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
 
+        String secretName = getPullSecretName();
         ocpUtils.linkPullSecret(project, "default", secretName);
         ocpUtils.linkPullSecret(project, "builder", secretName);
+        setImagePullSecret(secretName);
 
-        return secret;
+        return pullSecret;
+    }
+
+    /**
+     * Gets pull secret
+     * @return pull secret associated with this operator
+     */
+    public Optional<Secret> getPullSecret() {
+        return Optional.ofNullable(pullSecret);
+    }
+
+    /**
+     * Gets pull secret name
+     * @return name of the pull secret associated with this operator
+     */
+    public String getPullSecretName() {
+        return getPullSecret().map(ps -> ps.getMetadata().getName()).orElse(null);
     }
 
     private Deployment waitForAvailable() {

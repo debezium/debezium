@@ -23,7 +23,7 @@ public interface OcpOracle extends TestSetupFixture, SqlDatabaseFixture, OcpClie
                 .withProject(ConfigProperties.OCP_PROJECT_ORACLE)
                 .withDeployment(DB_DEPLOYMENT_PATH)
                 .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
-                .withPullSecrets(ConfigProperties.OCP_PULL_SECRET_PATHS.orElse("").split(","))
+                .withPullSecrets(ConfigProperties.OCP_PULL_SECRET_PATH.get())
                 .build();
         SqlDatabaseController controller = deployer.deploy();
         controller.initialize();

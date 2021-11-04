@@ -17,6 +17,9 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaList;
 import io.strimzi.api.kafka.model.Kafka;
+import io.strimzi.api.kafka.model.KafkaBuilder;
+import io.strimzi.api.kafka.model.template.PodTemplate;
+import io.strimzi.api.kafka.model.template.PodTemplateBuilder;
 
 import okhttp3.OkHttpClient;
 
@@ -71,13 +74,15 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaDeployer.class);
 
     private final String yamlPath;
+    private final String pullSecretName;
     private final StrimziOperatorController operatorController;
 
-    private OcpKafkaDeployer(String project, String yamlPath, StrimziOperatorController operatorController, OpenShiftClient ocp,
-                             OkHttpClient http) {
+    private OcpKafkaDeployer(String project, String yamlPath, StrimziOperatorController operatorController,
+                             OpenShiftClient ocp, OkHttpClient http) {
         super(project, ocp, http);
         this.yamlPath = yamlPath;
-        this.operatorController = (operatorController != null) ? operatorController : StrimziOperatorController.forProject(project, ocp);
+        this.operatorController = operatorController;
+        this.pullSecretName = this.operatorController.getPullSecretName();
     }
 
     /**
@@ -88,12 +93,30 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
     @Override
     public OcpKafkaController deploy() throws InterruptedException {
         LOGGER.info("Deploying Kafka from " + yamlPath);
-        Kafka kafka = kafkaOperation().createOrReplace(YAML.fromResource(yamlPath, Kafka.class));
+        Kafka kafka = YAML.fromResource(yamlPath, Kafka.class);
+        KafkaBuilder builder = new KafkaBuilder(kafka);
+
+        if (pullSecretName != null) {
+            configurePullSecret(builder);
+        }
+
+        kafka = kafkaOperation().createOrReplace(builder.build());
 
         OcpKafkaController controller = new OcpKafkaController(kafka, operatorController, ocp);
         controller.waitForCluster();
 
         return controller;
+    }
+
+    public void configurePullSecret(KafkaBuilder builder) {
+        PodTemplate podTemplate = new PodTemplateBuilder().addNewImagePullSecret(pullSecretName).build();
+
+        builder
+                .editSpec()
+                .editKafka()
+                .withNewTemplate().withPod(podTemplate).endTemplate()
+                .endKafka()
+                .endSpec();
     }
 
     private NonNamespaceOperation<Kafka, KafkaList, Resource<Kafka>> kafkaOperation() {
