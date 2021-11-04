@@ -254,7 +254,13 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     columnEditor.length(38);
                 }
                 else {
-                    setPrecision(precisionPart, columnEditor);
+                    if (precisionPart.ASTERISK() != null) {
+                        // when asterisk is used, explicitly set precision to 38
+                        columnEditor.length(38);
+                    }
+                    else {
+                        setPrecision(precisionPart, columnEditor);
+                    }
                     setScale(precisionPart, columnEditor);
                 }
             }
