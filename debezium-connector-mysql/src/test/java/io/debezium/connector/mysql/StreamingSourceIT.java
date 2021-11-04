@@ -58,8 +58,6 @@ import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
-import junit.framework.TestCase;
-
 /**
  * @author Randall Hauch, Jiri Pechanec
  *
@@ -554,24 +552,24 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
 
         waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
-        SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> heartbeatChanges = records.recordsForTopic(String.join(".",
-                Arrays.asList(HEARTBEAT_TOPIC_PREFIX_VALUE, DATABASE.getServerName())));
-        // Assertions.assertThat(heartbeatChanges.size() == 1);
 
-        // Confirm that the heartbeat.action.query was executed with the heartbeat. It is difficult to determine the
-        // exact amount of times the heartbeat will fire because the run time of the test will vary, but if there is
-        // anything in test_heartbeat_table then this test is confirmed.
-        int numOfHeartbeatActions;
+        // Confirm that the heartbeat.action.query was executed with the heartbeat
         final String slotQuery = String.format("SELECT COUNT(*) FROM %s.test_heartbeat_table;", DATABASE.getDatabaseName());
         final JdbcConnection.ResultSetMapper<Integer> slotQueryMapper = rs -> {
             rs.next();
             return rs.getInt(1);
         };
-        try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
-            numOfHeartbeatActions = connection.queryAndMap(slotQuery, slotQueryMapper);
-        }
-        TestCase.assertTrue(numOfHeartbeatActions > 0);
+
+        Awaitility.await()
+                .alias("Awaiting heartbeat action query insert")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .until(() -> {
+                    try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                        int numOfHeartbeatActions = connection.queryAndMap(slotQuery, slotQueryMapper);
+                        return numOfHeartbeatActions > 0;
+                    }
+                });
     }
 
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {

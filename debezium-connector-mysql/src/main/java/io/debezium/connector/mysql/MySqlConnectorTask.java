@@ -6,7 +6,6 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,7 +21,6 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -145,20 +143,19 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                     connectorConfig.useCursorFetch() ? new MysqlBinaryProtocolFieldReader()
                             : new MysqlTextProtocolFieldReader());
 
-            Configuration configuration = connectorConfig.getConfig();
             heartbeat = Heartbeat.create(
-                    configuration.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS),
-                    configuration.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY),
+                    connectorConfig.getHeartbeatInterval(),
+                    connectorConfig.getHeartbeatActionQuery(),
                     topicSelector.getHeartbeatTopic(),
                     connectorConfig.getLogicalName(), heartbeatConnection, exception -> {
                         String sqlErrorId = exception.getSQLState();
                         switch (sqlErrorId) {
                             case "42000":
                                 // error_er_dbaccess_denied_error, see https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_dbaccess_denied_error
-                                throw new DebeziumException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", exception);
+                                throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                             case "3D000":
                                 // error_er_no_db_error, see https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_no_db_error
-                                throw new DebeziumException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", exception);
+                                throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                             default:
                                 break;
                         }
@@ -232,6 +229,15 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         }
         catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC connection", e);
+        }
+
+        try {
+            if (heartbeatConnection != null) {
+                heartbeatConnection.close();
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.error("Exception while closing heartbeatConnection connection", e);
         }
 
         if (schema != null) {

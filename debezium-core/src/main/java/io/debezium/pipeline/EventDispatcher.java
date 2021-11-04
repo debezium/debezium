@@ -5,7 +5,6 @@
  */
 package io.debezium.pipeline;
 
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
@@ -23,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope;
@@ -131,9 +129,8 @@ public class EventDispatcher<T extends DataCollectionId> {
             heartbeat = customHeartbeat;
         }
         else {
-            Configuration configuration = connectorConfig.getConfig();
             heartbeat = Heartbeat.create(
-                    configuration.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS),
+                    connectorConfig.getHeartbeatInterval(),
                     topicSelector.getHeartbeatTopic(),
                     connectorConfig.getLogicalName());
         }
