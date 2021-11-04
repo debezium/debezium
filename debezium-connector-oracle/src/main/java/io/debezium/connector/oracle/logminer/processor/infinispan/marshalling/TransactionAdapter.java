@@ -32,12 +32,12 @@ public class TransactionAdapter {
      * @param transactionId the transaction identifier
      * @param scn the starting system change number of the transaction
      * @param changeTime the starting time of the transaction
-     * @param userName the user name
      * @param numberOfEvents the number of events in the transaction
+     * @param userName the user name
      * @return the constructed Transaction instance
      */
     @ProtoFactory
-    public InfinispanTransaction factory(String transactionId, String scn, String changeTime, String userName, int numberOfEvents) {
+    public InfinispanTransaction factory(String transactionId, String scn, String changeTime, int numberOfEvents, String userName) {
         return new InfinispanTransaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), userName, numberOfEvents);
     }
 
@@ -77,19 +77,25 @@ public class TransactionAdapter {
         return transaction.getChangeTime().toString();
     }
 
-    @ProtoField(number = 4)
-    public String getUserName(InfinispanTransaction transaction) {
-        return transaction.getUserName();
-    }
-
     /**
      * A ProtoStream handler to extract the {@code eventIds} field from the {@link InfinispanTransaction}.
      *
      * @param transaction the transaction instance, must not be {@code null}
      * @return the number of events in the transaction
      */
-    @ProtoField(number = 5, defaultValue = "0")
+    @ProtoField(number = 4, defaultValue = "0")
     public int getNumberOfEvents(InfinispanTransaction transaction) {
         return transaction.getNumberOfEvents();
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code userName} field from the {@link InfinispanTransaction}.
+     *
+     * @param transaction the transaction instance, must not be {@code null}
+     * @return the username associated with the transaction
+     */
+    @ProtoField(number = 5)
+    public String getUserName(InfinispanTransaction transaction) {
+        return transaction.getUserName();
     }
 }
