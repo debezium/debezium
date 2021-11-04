@@ -10,11 +10,14 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.file.Path;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -50,7 +53,7 @@ public class MySqlTimestampColumnIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1243")
-    public void shouldAlterEnumColumnCharacterSet() throws Exception {
+    public void shouldConvertDateTimeWithZeroPrecision() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("t_user_black_list"))
@@ -61,7 +64,21 @@ public class MySqlTimestampColumnIT extends AbstractConnectorTest {
         // There should be 5 records that imply create database, create table, alter table, insert row, update row.
         // If the ddl parser fails, there will only be 3; the insert/update won't occur.
         SourceRecords records = consumeRecordsByTopic(5);
-        assertThat(records.allRecordsInOrder().size()).isEqualTo(5);
+        assertThat(records.allRecordsInOrder()).hasSize(5);
+
+        // INSERT record
+        SourceRecord record = records.allRecordsInOrder().get(3);
+        Struct value = ((Struct) record.value());
+        Struct after = value.getStruct(Envelope.FieldName.AFTER);
+        assertThat(value.get("op")).isEqualTo(Envelope.Operation.CREATE.code());
+        assertThat(after.get("update_time")).isNotNull();
+
+        // UPDATE record
+        record = records.allRecordsInOrder().get(4);
+        value = ((Struct) record.value());
+        after = value.getStruct(Envelope.FieldName.AFTER);
+        assertThat(value.get("op")).isEqualTo(Envelope.Operation.UPDATE.code());
+        assertThat(after.get("update_time")).isNotNull();
 
         stopConnector();
     }
