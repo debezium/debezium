@@ -2720,6 +2720,16 @@ _heartbeat.topics.prefix_._server.name_ +
  +
 For example, if the database server name is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
+|[[mysql-property-heartbeat-action-query]]<<mysql-property-heartbeat-action-query, `+heartbeat.action.query+`>>
+|No default
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
+ +
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
+ +
+This can be used to periodically capture the state of GTID execution set in the source database. +
+ +
+`INSERT INTO gtid_history_table (select * from mysql.gtid_executed)`
+
 |[[mysql-property-database-initial-statements]]<<mysql-property-database-initial-statements, `+database.initial.statements+`>>
 |No default
 |A semicolon separated list of SQL statements to be executed when a JDBC connection, not the connection that is reading the transaction log, to the database is established.

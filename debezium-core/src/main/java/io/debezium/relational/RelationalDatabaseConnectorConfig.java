@@ -24,6 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -598,7 +599,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     INCLUDE_SCHEMA_COMMENTS,
                     PROPAGATE_COLUMN_SOURCE_TYPE,
                     PROPAGATE_DATATYPE_SOURCE_TYPE,
-                    SNAPSHOT_FULL_COLUMN_SCAN_FORCE)
+                    SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
+                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
     private final RelationalTableFilters tableFilters;
@@ -635,6 +637,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         else {
             this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
         }
+
+        this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
     }
 
     public RelationalTableFilters getTableFilters() {
@@ -670,6 +674,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      */
     public Configuration getJdbcConfig() {
         return jdbcConfig;
+    }
+
+    public String heartbeatActionQuery;
+
+    public String getHeartbeatActionQuery() {
+        return heartbeatActionQuery;
     }
 
     public Duration snapshotLockTimeout() {
