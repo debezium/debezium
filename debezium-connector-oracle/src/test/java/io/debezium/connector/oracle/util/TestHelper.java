@@ -324,6 +324,17 @@ public class TestHelper {
         }
     }
 
+    public static void dropSequence(OracleConnection connection, String sequence) {
+        try {
+            connection.execute("DROP SEQUENCE " + sequence);
+        }
+        catch (SQLException e) {
+            if (!e.getMessage().contains("ORA-02289") || 2289 != e.getErrorCode()) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     /**
      * Enables a given table to be streamed by Oracle.
      *

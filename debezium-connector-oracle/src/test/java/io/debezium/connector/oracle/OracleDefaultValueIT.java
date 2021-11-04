@@ -26,6 +26,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.MicroDuration;
 import io.debezium.util.Testing;
 
@@ -46,12 +47,16 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
         TestHelper.dropTable(connection, "default_value_test");
+        TestHelper.dropSequence(connection, "debezium_seq");
+
+        connection.execute("CREATE SEQUENCE debezium_seq MINVALUE 1 MAXVALUE 999999999 INCREMENT BY 1 START WITH 1");
     }
 
     @After
     public void after() throws Exception {
         if (connection != null && connection.isConnected()) {
             TestHelper.dropTable(connection, "default_value_test");
+            TestHelper.dropSequence(connection, "debezium_seq");
             connection.close();
         }
     }
@@ -267,6 +272,22 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
                         AssertionType.FIELD_DEFAULT_EQUAL));
 
         shouldHandleDefaultValuesCommon(columnDefinitions);
+    }
+
+    @Test
+    @FixFor("DBZ-4208")
+    public void shouldHandleDefaultValueFromSequencesAsNoDefault() throws Exception {
+        // Used to track the number of default value parser exceptions
+        LogInterceptor logInterceptor = new LogInterceptor();
+
+        List<ColumnDefinition> columnDefinitions = Arrays.asList(
+                new ColumnDefinition("val_id", "number(18,0)",
+                        "debezium_seq.nextval", "debezium_seq.nextval",
+                        BigDecimal.valueOf(1L), BigDecimal.valueOf(2L),
+                        AssertionType.FIELD_NO_DEFAULT));
+
+        shouldHandleDefaultValuesCommon(columnDefinitions);
+        assertThat(logInterceptor.countOccurrences("Cannot parse column default value")).isEqualTo(4);
     }
 
     private long getOracleIntervalYearMonth(int years, int month) {
