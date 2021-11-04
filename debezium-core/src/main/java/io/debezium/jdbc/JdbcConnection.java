@@ -1261,7 +1261,7 @@ public class JdbcConnection implements AutoCloseable {
 
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
-            final ColumnEditor column = Column.editor().name(columnName);
+            ColumnEditor column = Column.editor().name(columnName);
             column.type(columnMetadata.getString(6));
             column.length(columnMetadata.getInt(7));
             if (columnMetadata.getObject(9) != null) {
@@ -1281,6 +1281,10 @@ public class JdbcConnection implements AutoCloseable {
 
             column.nativeType(resolveNativeType(column.typeName()));
             column.jdbcType(resolveJdbcType(columnMetadata.getInt(5), column.nativeType()));
+
+            // Allow implementation to make column changes if required before being added to table
+            column = overrideColumn(column);
+
             if (defaultValue != null) {
                 column.defaultValueExpression(defaultValue);
             }
@@ -1288,6 +1292,11 @@ public class JdbcConnection implements AutoCloseable {
         }
 
         return Optional.empty();
+    }
+
+    protected ColumnEditor overrideColumn(ColumnEditor column) {
+        // allows the implementation to override column-specifics; the default does no overrides
+        return column;
     }
 
     public List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {

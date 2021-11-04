@@ -28,7 +28,6 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     private final DataTypeResolver dataTypeResolver;
     private final TableEditor tableEditor;
     private final List<ParseTreeListener> listeners;
-
     private ColumnEditor columnEditor;
 
     ColumnDefinitionParserListener(final TableEditor tableEditor, final ColumnEditor columnEditor, OracleDdlParser parser,
@@ -51,6 +50,9 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     @Override
     public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         resolveColumnDataType(ctx);
+        if (ctx.DEFAULT() != null) {
+            columnEditor.defaultValueExpression(ctx.column_default_value().getText());
+        }
         super.enterColumn_definition(ctx);
     }
 
@@ -67,12 +69,18 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     @Override
     public void enterModify_col_properties(PlSqlParser.Modify_col_propertiesContext ctx) {
         resolveColumnDataType(ctx);
+        if (ctx.DEFAULT() != null) {
+            columnEditor.defaultValueExpression(ctx.column_default_value().getText());
+        }
         super.enterModify_col_properties(ctx);
     }
 
     // todo use dataTypeResolver instead
     private void resolveColumnDataType(PlSqlParser.Column_definitionContext ctx) {
         columnEditor.name(getColumnName(ctx.column_name()));
+
+        boolean hasNotNullConstraint = ctx.inline_constraint().stream().anyMatch(c -> c.NOT() != null);
+        columnEditor.optional(!hasNotNullConstraint);
 
         if (ctx.datatype() == null) {
             if (ctx.type_name() != null && "\"MDSYS\".\"SDO_GEOMETRY\"".equalsIgnoreCase(ctx.type_name().getText())) {
@@ -81,17 +89,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
         }
         else {
             resolveColumnDataType(ctx.datatype());
-
-            // todo move to enterExpression and apply type conversion
-            if (ctx.DEFAULT() != null) {
-                String defaultValue = ctx.expression().getText();
-                columnEditor.defaultValueExpression(defaultValue);
-            }
         }
-
-        boolean hasNotNullConstraint = ctx.inline_constraint().stream().anyMatch(c -> c.NOT() != null);
-        // todo move to nonNull
-        columnEditor.optional(!hasNotNullConstraint);
     }
 
     private void resolveColumnDataType(PlSqlParser.Modify_col_propertiesContext ctx) {

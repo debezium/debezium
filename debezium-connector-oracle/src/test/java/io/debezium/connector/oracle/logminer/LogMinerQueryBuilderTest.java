@@ -25,6 +25,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleDefaultValueConverter;
 import io.debezium.connector.oracle.OracleTopicSelector;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
@@ -269,11 +270,12 @@ public class LogMinerQueryBuilderTest {
     private OracleDatabaseSchema createSchema(OracleConnectorConfig connectorConfig) {
         OracleConnection connection = Mockito.mock(OracleConnection.class);
         OracleValueConverters converters = new OracleValueConverters(connectorConfig, connection);
+        OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         TableNameCaseSensitivity tableNameSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
 
         TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
-        return new OracleDatabaseSchema(connectorConfig, converters, schemaNameAdjuster, topicSelector, tableNameSensitivity);
+        return new OracleDatabaseSchema(connectorConfig, converters, defaultValueConverter, schemaNameAdjuster, topicSelector, tableNameSensitivity);
     }
 }

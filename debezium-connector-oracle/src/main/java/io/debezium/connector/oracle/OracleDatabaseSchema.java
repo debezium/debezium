@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -29,16 +30,16 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleDatabaseSchema.class);
 
     private final OracleDdlParser ddlParser;
-    private final OracleValueConverters valueConverters;
     private boolean storageInitializationExecuted = false;
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
-                                SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
-                                TableNameCaseSensitivity tableNameCaseSensitivity) {
+                                DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
+                                TopicSelector<TableId> topicSelector, TableNameCaseSensitivity tableNameCaseSensitivity) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverters,
+                        defaultValueConverter,
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
@@ -53,15 +54,10 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 valueConverters,
                 connectorConfig.getTableFilters().dataCollectionFilter());
-        this.valueConverters = valueConverters;
     }
 
     public Tables getTables() {
         return tables();
-    }
-
-    public OracleValueConverters getValueConverters() {
-        return valueConverters;
     }
 
     @Override

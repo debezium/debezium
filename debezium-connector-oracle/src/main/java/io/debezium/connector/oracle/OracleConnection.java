@@ -11,7 +11,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -35,6 +34,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -261,11 +261,6 @@ public class OracleConnection extends JdbcConnection {
             tableIdsBefore.removeAll(columnsByTable.keySet());
             tableIdsBefore.forEach(tables::removeTable);
         }
-
-        for (TableId tableId : capturedTables) {
-            overrideOracleSpecificColumnTypes(tables, tableId, tableId);
-        }
-
     }
 
     @Override
@@ -283,7 +278,9 @@ public class OracleConnection extends JdbcConnection {
             TableId tableIdWithCatalog = new TableId(databaseCatalog, tableId.schema(), tableId.table());
 
             if (tableFilter.isIncluded(tableIdWithCatalog)) {
-                overrideOracleSpecificColumnTypes(tables, tableId, tableIdWithCatalog);
+                TableEditor editor = tables.editTable(tableId);
+                editor.tableId(tableIdWithCatalog);
+                tables.overwriteTable(editor.create());
             }
 
             tables.removeTable(tableId);
@@ -301,36 +298,6 @@ public class OracleConnection extends JdbcConnection {
             return !SYS_NC_PATTERN.matcher(columnName).matches();
         }
         return false;
-    }
-
-    private void overrideOracleSpecificColumnTypes(Tables tables, TableId tableId, TableId tableIdWithCatalog) {
-        TableEditor editor = tables.editTable(tableId);
-        editor.tableId(tableIdWithCatalog);
-
-        List<String> columnNames = new ArrayList<>(editor.columnNames());
-        for (String columnName : columnNames) {
-            Column column = editor.columnWithName(columnName);
-            if (column.jdbcType() == Types.TIMESTAMP) {
-                editor.addColumn(
-                        column.edit()
-                                .length(column.scale().orElse(Column.UNSET_INT_VALUE))
-                                .scale(null)
-                                .create());
-            }
-            // NUMBER columns without scale value have it set to -127 instead of null;
-            // let's rectify that
-            else if (column.jdbcType() == OracleTypes.NUMBER) {
-                column.scale()
-                        .filter(s -> s == ORACLE_UNSET_SCALE)
-                        .ifPresent(s -> {
-                            editor.addColumn(
-                                    column.edit()
-                                            .scale(null)
-                                            .create());
-                        });
-            }
-        }
-        tables.overwriteTable(editor.create());
     }
 
     /**
@@ -570,5 +537,18 @@ public class OracleConnection extends JdbcConnection {
             // Any other SQLException should be thrown
             throw e;
         }
+    }
+
+    @Override
+    protected ColumnEditor overrideColumn(ColumnEditor column) {
+        // This allows the column state to be overridden before default-value resolution so that the
+        // output of the default value is within the same precision as that of the column values.
+        if (OracleTypes.TIMESTAMP == column.jdbcType()) {
+            column.length(column.scale().orElse(Column.UNSET_INT_VALUE)).scale(null);
+        }
+        else if (OracleTypes.NUMBER == column.jdbcType()) {
+            column.scale().filter(s -> s == ORACLE_UNSET_SCALE).ifPresent(s -> column.scale(null));
+        }
+        return column;
     }
 }
