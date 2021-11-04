@@ -3,6 +3,60 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 1.7.1.Final
+November 5th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12374936)
+
+### New features since 1.7.0.Final
+
+* Store buffered events in separate Infinispan cache [DBZ-4159](https://issues.jboss.org/browse/DBZ-4159)
+* Log warning when table/column name exceeds maximum allowed by LogMiner [DBZ-4161](https://issues.jboss.org/browse/DBZ-4161)
+* Process transaction started/committed in MySQL read-only incremental snapshot [DBZ-4197](https://issues.jboss.org/browse/DBZ-4197)
+
+
+### Breaking changes since 1.7.0.Final
+
+None
+
+
+### Fixes since 1.7.0.Final
+
+* Row hashing in LogMiner Query not able to differentiate between rows of a statement. [DBZ-3834](https://issues.jboss.org/browse/DBZ-3834)
+* The chunk select statement is incorrect for combined primary key in incremental snapshot [DBZ-3860](https://issues.jboss.org/browse/DBZ-3860)
+* Cassandra UUID handling [DBZ-3885](https://issues.jboss.org/browse/DBZ-3885)
+* Infinispan SPI throws NPE with more than one connector configured to the same Oracle database [DBZ-4064](https://issues.jboss.org/browse/DBZ-4064)
+* Debezium Server might contain driver versions pulled from Quarkus [DBZ-4070](https://issues.jboss.org/browse/DBZ-4070)
+* Database history is constantly being reconfigured [DBZ-4106](https://issues.jboss.org/browse/DBZ-4106)
+* Oracle flush table should not contain multiple rows [DBZ-4118](https://issues.jboss.org/browse/DBZ-4118)
+* SQL Server Connector fails to wrap in flat brackets [DBZ-4125](https://issues.jboss.org/browse/DBZ-4125)
+* Oracle Connector DDL Parsing Exception [DBZ-4126](https://issues.jboss.org/browse/DBZ-4126)
+* Debezium deals with Oracle DDL appeared IndexOutOfBoundsException: Index: 0, Size: 0 [DBZ-4135](https://issues.jboss.org/browse/DBZ-4135)
+* Error: PostgresDefaultValueConverter - Cannot parse column default value 'NULL::numeric' to type 'numeric'. Expression evaluation is not supported. [DBZ-4137](https://issues.jboss.org/browse/DBZ-4137)
+* Possible OutOfMemoryError with tracking schema changes [DBZ-4151](https://issues.jboss.org/browse/DBZ-4151)
+* DDL ParsingException - not all table compression modes are supported [DBZ-4158](https://issues.jboss.org/browse/DBZ-4158)
+* Producer failure NullPointerException [DBZ-4166](https://issues.jboss.org/browse/DBZ-4166)
+* DDL statement couldn't be parsed - Modify Column [DBZ-4174](https://issues.jboss.org/browse/DBZ-4174)
+* OracleSchemaMigrationIT#shouldNotEmitDdlEventsForNonTableObjects fails for Xstream [DBZ-4186](https://issues.jboss.org/browse/DBZ-4186)
+* Certain LogMiner-specific tests are not being skipped while using Xstreams [DBZ-4188](https://issues.jboss.org/browse/DBZ-4188)
+* DML statement couldn't be parsed [DBZ-4194](https://issues.jboss.org/browse/DBZ-4194)
+* io.debezium.text.ParsingException: DDL statement couldn't be parsed. Please open a Jira issue with the statement 'DROP TABLE IF EXISTS condition' [DBZ-4210](https://issues.jboss.org/browse/DBZ-4210)
+* Support MySQL Dual Passwords in DDL Parser [DBZ-4215](https://issues.jboss.org/browse/DBZ-4215)
+* CREATE PROCEDURE DDL throws ParsingException [DBZ-4229](https://issues.jboss.org/browse/DBZ-4229)
+* CHAR / NCHAR precision is not correctly derived from DDL statements [DBZ-4233](https://issues.jboss.org/browse/DBZ-4233)
+
+
+### Other changes since 1.7.0.Final
+
+* Incorrect documentation for message.key.columns [DBZ-3437](https://issues.jboss.org/browse/DBZ-3437)
+* Document awareness of Oracle database tuning [DBZ-3880](https://issues.jboss.org/browse/DBZ-3880)
+* Please fix vulnerabilites [DBZ-3926](https://issues.jboss.org/browse/DBZ-3926)
+* Handle SCN gap  [DBZ-4036](https://issues.jboss.org/browse/DBZ-4036)
+* Upgrade to Apache Kafka 2.8.1 [DBZ-4108](https://issues.jboss.org/browse/DBZ-4108)
+* Missing documentation for max.iteration.transactions option [DBZ-4129](https://issues.jboss.org/browse/DBZ-4129)
+* Misc. MongoDB connector docs fixes [DBZ-4149](https://issues.jboss.org/browse/DBZ-4149)
+* Document Oracle buffering solutions [DBZ-4157](https://issues.jboss.org/browse/DBZ-4157)
+
+
+
 ## 1.7.0.Final
 September 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12374879)
 
