@@ -39,6 +39,7 @@ public class OracleErrorHandler extends ErrorHandler {
                 throwable.getMessage().startsWith("ORA-26653") || // Apply DBZXOUT did not start properly and is currently in state INITIALI
                 throwable.getMessage().startsWith("ORA-01291") || // missing logfile
                 throwable.getMessage().startsWith("ORA-01327") || // failed to exclusively lock system dictionary as required BUILD
+                throwable.getMessage().startsWith("ORA-04030") || // out of process memory
                 throwable.getCause() instanceof IOException ||
                 throwable instanceof SQLRecoverableException ||
                 throwable.getMessage().toUpperCase().contains("NO MORE DATA TO READ FROM SOCKET") ||
