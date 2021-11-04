@@ -24,11 +24,8 @@ public class DockerSqlServerController extends AbstractDockerSqlDatabaseControll
     private static final String DB_INIT_SCRIPT_PATH_CONTAINER = "/opt/inventory.sql";
     private final Path initScript;
 
-    private final MSSQLServerContainer<?> container;
-
     public DockerSqlServerController(MSSQLServerContainer<?> container) {
         super(container);
-        this.container = container;
         try {
             initScript = Paths.get(getClass().getResource(DB_INIT_SCRIPT_PATH).toURI());
         }

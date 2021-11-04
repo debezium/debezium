@@ -434,7 +434,8 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-The connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
+Unless overridden via the xref:oracle-property-transaction-topic[`transaction.topic`] option,
+the connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 //Type: concept
 //ModuleID: debezium-oracle-connector-change-data-event-enrichment
@@ -2309,6 +2310,10 @@ For more information, see {link-prefix}:{link-avro-serialization}#avro-naming[Av
 |Set the property to `true` if you want {prodname} to generate events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
+
+|[[oracle-property-transaction-topic]]<<oracle-property-transaction-topic, `transaction.topic`>>
+|`${database.server.name}.transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`redo_log_catalog`

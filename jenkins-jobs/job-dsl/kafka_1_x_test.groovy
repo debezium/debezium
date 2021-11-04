@@ -12,7 +12,7 @@ freeStyleJob('debezium-kafka-1.x-test') {
 
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('BRANCH', '*/master', 'A branch/tag from which Debezium is built')
+        stringParam('BRANCH', '*/main', 'A branch/tag from which Debezium is built')
     }
 
     scm {

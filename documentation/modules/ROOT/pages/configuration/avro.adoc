@@ -446,6 +446,6 @@ describes the concepts of serializers, converters, and other components, and dis
 Some Kafka Connect converter details have slightly changed since that post was written.
 
 For a complete example of using Avro as the message format for {prodname} change data events,
-see https://github.com/debezium/debezium-examples/tree/master/tutorial#using-mysql-and-the-avro-message-format[MySQL and the Avro message format].
+see https://github.com/debezium/debezium-examples/tree/main/tutorial#using-mysql-and-the-avro-message-format[MySQL and the Avro message format].
 
 endif::community[]

@@ -28,7 +28,7 @@ Neither the specification JAR files nor the Jaeger client are part of the Debezi
 The user either needs to extend the image with them or can use the https://strimzi.io/[Strimzi] Kafka image.
 In that case, the tracing of Kafka producer and consumer is also available.
 
-See compose file of https://github.com/debezium/debezium-examples/tree/master/outbox[Outbox example].
+See compose file of https://github.com/debezium/debezium-examples/tree/main/outbox[Outbox example].
 ====
 
 == ActivateTracingSpan SMT

@@ -11,13 +11,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -73,13 +71,15 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public void reload() throws InterruptedException {
-        LOGGER.info("Recreating all pods of '" + name + "' deployment in namespace '" + project + "'");
-        ocp.pods().inNamespace(project).withLabel("deployment", name).delete();
-        deployment = ocp.apps().deployments()
-                .inNamespace(project)
-                .withName(name)
-                .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), TimeUnit.MINUTES);
-        LOGGER.info("Deployment '" + name + "' is available");
+        LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
+        ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
+        await()
+                .atMost(scaled(30), SECONDS)
+                .pollDelay(5, SECONDS)
+                .pollInterval(3, SECONDS)
+                .until(() -> ocp.pods().inNamespace(project).list().getItems().isEmpty());
+        LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
+        ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
     }
 
     @Override

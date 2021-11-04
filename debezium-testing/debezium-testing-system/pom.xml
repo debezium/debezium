@@ -16,7 +16,7 @@
     <version.fabric8.client>5.5.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.21</version.commons.compress>
-    <version.strimzi>0.25.0</version.strimzi>
+    <version.strimzi>0.26.0</version.strimzi>
     <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
 
@@ -31,6 +31,7 @@
     <docker.image.mongo>quay.io/debezium/example-mongodb:latest</docker.image.mongo>
     <docker.image.sqlserver>mcr.microsoft.com/mssql/server:2019-latest</docker.image.sqlserver>
     <docker.image.db2>quay.io/debezium/db2-cdc:latest</docker.image.db2>
+    <docker.image.oracle>quay.io/rh_integration/dbz-oracle:19.3.0</docker.image.oracle>
 
     <!--OCP configuration-->
     <ocp.project.debezium>debezium</ocp.project.debezium>
@@ -40,12 +41,14 @@
     <ocp.project.mongo>debezium-mongo</ocp.project.mongo>
     <ocp.project.sqlserver>debezium-sqlserver</ocp.project.sqlserver>
     <ocp.project.db2>debezium-db2</ocp.project.db2>
+    <ocp.project.oracle>debezium-oracle</ocp.project.oracle>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
     <ocp.image.postgresql>quay.io/debezium/example-postgres-ocp:latest</ocp.image.postgresql>
     <ocp.image.mongo>${docker.image.mongo}</ocp.image.mongo>
     <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
     <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
+    <ocp.image.oracle>${docker.image.oracle}</ocp.image.oracle>
 
     <!-- Artifact repository for KC build -->
     <artifact.server.url>http://debezium-artifact-server.${ocp.project.debezium}.svc.cluster.local:8080</artifact.server.url>
@@ -54,6 +57,7 @@
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
     <strimzi.crd.version>v1beta2</strimzi.crd.version>
     <strimzi.kc.build>true</strimzi.kc.build>
+    <strimzi.kc.log.level.dbz>DEBUG</strimzi.kc.log.level.dbz>
 
     <!--Apicurio configuration-->
     <apicurio.log.level>INFO</apicurio.log.level>
@@ -99,6 +103,14 @@
     <database.db2.dbz.password>${database.db2.password}</database.db2.dbz.password>
     <database.db2.dbname>TESTDB</database.db2.dbname>
     <database.db2.cdc.schema>ASNCDC</database.db2.cdc.schema>
+
+    <!-- Oracle configuration-->
+    <database.oracle.username>debezium</database.oracle.username>
+    <database.oracle.password>dbz</database.oracle.password>
+    <database.oracle.dbz.username>c##dbzuser</database.oracle.dbz.username>
+    <database.oracle.dbz.password>dbz</database.oracle.dbz.password>
+    <database.oracle.dbname>ORCLCDB</database.oracle.dbname>
+    <database.oracle.pdbname>ORCLPDB1</database.oracle.pdbname>
 
     <!--Debezium connector versions-->
     <version.debezium.connector>${project.version}</version.debezium.connector>
@@ -146,6 +158,13 @@
       <dependency>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-connector-db2</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-oracle</artifactId>
         <classifier>plugin</classifier>
         <type>zip</type>
         <version>${version.debezium.connector}</version>
@@ -329,9 +348,44 @@
       <groupId>org.testcontainers</groupId>
       <artifactId>db2</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>oracle-xe</artifactId>
+    </dependency>
   </dependencies>
 
   <profiles>
+    <profile>
+      <!-- Required to run Oracle tests -->
+      <id>oracleITs</id>
+
+      <properties>
+        <database.oracle>true</database.oracle>
+      </properties>
+
+      <dependencies>
+        <dependency>
+          <groupId>com.oracle.database.jdbc</groupId>
+          <artifactId>ojdbc8</artifactId>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <profile>
+      <!-- Required to run build images with Oracle connector -->
+      <id>oracle-image</id>
+
+      <dependencies>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-oracle</artifactId>
+          <classifier>plugin</classifier>
+          <type>zip</type>
+        </dependency>
+      </dependencies>
+    </profile>
+
     <profile>
       <id>apicurioV1</id>
       <activation>
@@ -472,6 +526,12 @@
                             </includes>
                           </dependencySet>
                           <dependencySet>
+                            <outputDirectory>jdbc</outputDirectory>
+                            <includes>
+                              <include>com.oracle.database.jdbc:ojdbc8:jar</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
                             <includes>
                               <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
                             </includes>
@@ -503,6 +563,12 @@
                             <outputDirectory>debezium-connector-db2</outputDirectory>
                             <includes>
                               <include>com.ibm.db2:jcc:jar</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-oracle</outputDirectory>
+                            <includes>
+                              <include>com.oracle.database.jdbc:ojdbc8:jar</include>
                             </includes>
                           </dependencySet>
                           <dependencySet>
@@ -587,6 +653,7 @@
                 <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
                 <test.docker.image.sqlserver>${docker.image.sqlserver}</test.docker.image.sqlserver>
                 <test.docker.image.db2>${docker.image.db2}</test.docker.image.db2>
+                <test.docker.image.oracle>${docker.image.oracle}</test.docker.image.oracle>
 
                 <!--OCP Configuration-->
                 <test.ocp.url>${ocp.url}</test.ocp.url>
@@ -605,6 +672,7 @@
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
                 <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
                 <test.strimzi.kc.build>${strimzi.kc.build}</test.strimzi.kc.build>
+                <test.strimzi.kc.log.level.dbz>${strimzi.kc.log.level.dbz}</test.strimzi.kc.log.level.dbz>
 
                 <!--Apicurio configuration-->
                 <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
@@ -646,6 +714,15 @@
                 <test.database.db2.dbz.password>${database.db2.dbz.password}</test.database.db2.dbz.password>
                 <test.database.db2.dbname>${database.db2.dbname}</test.database.db2.dbname>
                 <test.database.db2.cdc.schema>${database.db2.cdc.schema}</test.database.db2.cdc.schema>
+
+                <!-- Oracle configuration-->
+                <test.database.oracle>${database.oracle}</test.database.oracle>
+                <test.database.oracle.username>${database.oracle.username}</test.database.oracle.username>
+                <test.database.oracle.password>${database.oracle.password}</test.database.oracle.password>
+                <test.database.oracle.dbz.username>${database.oracle.dbz.username}</test.database.oracle.dbz.username>
+                <test.database.oracle.dbz.password>${database.oracle.dbz.password}</test.database.oracle.dbz.password>
+                <test.database.oracle.dbname>${database.oracle.dbname}</test.database.oracle.dbname>
+                <test.database.oracle.pdbname>${database.oracle.pdbname}</test.database.oracle.pdbname>
               </systemPropertyVariables>
             </configuration>
 

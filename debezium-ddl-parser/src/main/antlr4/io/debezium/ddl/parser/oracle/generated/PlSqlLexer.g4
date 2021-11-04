@@ -1513,6 +1513,7 @@ SCRUB:                        'SCRUB';
 SD_ALL:                       'SD_ALL';
 SD_INHIBIT:                   'SD_INHIBIT';
 SDO_GEOM_MBR:                 'SDO_GEOM_MBR';
+SDO_GEOMETRY:                 'SDO_GEOMETRY';
 SD_SHOW:                      'SD_SHOW';
 SEARCH:                       'SEARCH';
 SECOND:                       'SECOND';

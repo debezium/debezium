@@ -5,9 +5,10 @@
  */
 package io.debezium.relational;
 
+import java.util.Objects;
+
 import io.debezium.DebeziumException;
-import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
@@ -42,12 +43,23 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     }
 
     @Override
-    public void recover(Partition partition, OffsetContext offset) {
+    public void recover(Offsets<?, ?> offsets) {
+        final boolean hasNonNullOffsets = offsets.getOffsets()
+                .values()
+                .stream()
+                .anyMatch(Objects::nonNull);
+
+        if (!hasNonNullOffsets) {
+            // there is nothing to recover
+            return;
+        }
+
         if (!databaseHistory.exists()) {
             String msg = "The db history topic or its content is fully or partially missing. Please check database history topic configuration and re-execute the snapshot.";
             throw new DebeziumException(msg);
         }
-        databaseHistory.recover(partition.getSourcePartition(), offset.getOffset(), tables(), getDdlParser());
+
+        databaseHistory.recover(offsets, tables(), getDdlParser());
         recoveredTables = !tableIds().isEmpty();
         for (TableId tableId : tableIds()) {
             buildAndRegisterSchema(tableFor(tableId));

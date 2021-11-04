@@ -183,6 +183,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
+        builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME);
         return builder;
     }
 
@@ -196,6 +197,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
+        builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME);
         return builder;
     }
 

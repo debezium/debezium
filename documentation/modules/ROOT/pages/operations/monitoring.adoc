@@ -304,7 +304,7 @@ $ docker run -it --rm --name connect \
 == Using Prometheus and Grafana
 
 The metrics exposed by {prodname} and Kafka can be exported and displayed with https://prometheus.io/[Prometheus] and https://grafana.com/[Grafana].
-You can find an example for the required configuration and example dashboards for different connectors in the https://github.com/debezium/debezium-examples/tree/master/monitoring[Debezium examples repository].
+You can find an example for the required configuration and example dashboards for different connectors in the https://github.com/debezium/debezium-examples/tree/main/monitoring[Debezium examples repository].
 
 [NOTE]
 ====

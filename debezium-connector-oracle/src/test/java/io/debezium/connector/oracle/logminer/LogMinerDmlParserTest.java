@@ -163,7 +163,7 @@ public class LogMinerDmlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-3235")
+    @FixFor({ "DBZ-3235", "DBZ-4194" })
     public void testParsingUpdateWithNoWhereClauseIsAcceptable() throws Exception {
         final Table table = Table.editor()
                 .tableId(TableId.parse("DEBEZIUM.TEST"))
@@ -207,6 +207,37 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()).hasSize(4);
         assertThat(entry.getOldValues()[0]).isNull();
         assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getOldValues()[2]).isNull();
+        assertThat(entry.getOldValues()[3]).isNull();
+        assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-4194")
+    public void testParsingWithTableAliases() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.TEST"))
+                .addColumn(Column.editor().name("COL1").create())
+                .addColumn(Column.editor().name("COL2").create())
+                .addColumn(Column.editor().name("COL3").create())
+                .addColumn(Column.editor().name("UNUSED").create())
+                .create();
+
+        String sql = "update \"DEBEZIUM\".\"TEST\" a set a.\"COL1\" = '1', a.\"COL2\" = NULL, a.\"COL3\" = 'Hello2';";
+
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isNull();
+        assertThat(entry.getNewValues()[2]).isEqualTo("Hello2");
+
+        sql = "delete from \"DEBEZIUM\".\"TEST\" a where a.\"COL1\" = '1' and a.\"COL2\" = '2' and a.\"COL3\" = Unsupported Type;";
+
+        entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(4);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isEqualTo("2");
         assertThat(entry.getOldValues()[2]).isNull();
         assertThat(entry.getOldValues()[3]).isNull();
         assertThat(entry.getNewValues()).isEmpty();

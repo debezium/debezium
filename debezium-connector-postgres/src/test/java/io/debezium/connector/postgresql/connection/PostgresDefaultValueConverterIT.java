@@ -12,44 +12,89 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Optional;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.doc.FixFor;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 
 public class PostgresDefaultValueConverterIT {
-    @Rule
-    public final SkipTestRule skipTest = new SkipTestRule();
+
+    private PostgresConnection postgresConnection;
+    private PostgresDefaultValueConverter postgresDefaultValueConverter;
 
     @Before
     public void before() throws SQLException {
         TestHelper.dropAllSchemas();
+
+        postgresConnection = TestHelper.create();
+
+        PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(defaultJdbcConfig());
+        PostgresValueConverter postgresValueConverter = PostgresValueConverter.of(
+                postgresConnectorConfig,
+                Charset.defaultCharset(),
+                new TypeRegistry(postgresConnection));
+
+        postgresDefaultValueConverter = new PostgresDefaultValueConverter(
+                postgresValueConverter, postgresConnection.getTimestampUtils());
     }
 
-    private static final String TEST_SERVER = "test_server";
-    private static final String DATABASE_CONFIG_PREFIX = "database.";
+    @After
+    public void closeConnection() {
+        if (postgresConnection != null) {
+            postgresConnection.close();
+        }
+    }
 
-    final PostgresConnection postgresConnection = TestHelper.create();
-    final PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(defaultJdbcConfig());
-    final PostgresValueConverter postgresValueConverter = PostgresValueConverter.of(
-            postgresConnectorConfig,
-            Charset.defaultCharset(),
-            new TypeRegistry(postgresConnection));
+    @Test
+    @FixFor("DBZ-4137")
+    public void shouldReturnNullForNumericDefaultValue() {
+        final Column NumericalColumn = Column.editor().type("numeric", "numeric(19, 4)")
+                .jdbcType(Types.NUMERIC).defaultValue("NULL::numeric").optional(true).create();
+        final Optional<Object> numericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                NumericalColumn,
+                (String) NumericalColumn.defaultValue());
+
+        Assert.assertEquals(numericalConvertedValue, Optional.empty());
+    }
+
+    @Test
+    @FixFor("DBZ-4137")
+    public void shouldReturnNullForNumericDefaultValueUsingDecimalHandlingModePrecise() {
+        Configuration config = defaultJdbcConfig()
+                .edit()
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE)
+                .build();
+
+        PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(config);
+        PostgresValueConverter postgresValueConverter = PostgresValueConverter.of(
+                postgresConnectorConfig,
+                Charset.defaultCharset(),
+                new TypeRegistry(postgresConnection));
+
+        PostgresDefaultValueConverter postgresDefaultValueConverter = new PostgresDefaultValueConverter(
+                postgresValueConverter, postgresConnection.getTimestampUtils());
+
+        final Column NumericalColumn = Column.editor().type("numeric", "numeric(19, 4)")
+                .jdbcType(Types.NUMERIC).defaultValue("NULL::numeric").optional(true).create();
+        final Optional<Object> numericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                NumericalColumn,
+                (String) NumericalColumn.defaultValue());
+
+        Assert.assertEquals(numericalConvertedValue, Optional.empty());
+    }
 
     @Test
     @FixFor("DBZ-3989")
     public void shouldTrimNumericalDefaultValueAndShouldNotTrimNonNumericalDefaultValue() {
-        final PostgresDefaultValueConverter postgresDefaultValueConverter = new PostgresDefaultValueConverter(
-                postgresValueConverter, postgresConnection.getTimestampUtils());
-
         final Column NumericalColumn = Column.editor().type("int8").jdbcType(Types.INTEGER).defaultValue(" 1 ").create();
         final Optional<Object> numericalConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
                 NumericalColumn,

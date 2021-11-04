@@ -26,9 +26,18 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.MySqlOffsetContext;
+import io.debezium.connector.mysql.MySqlPartition;
+import io.debezium.connector.mysql.MySqlReadOnlyIncrementalSnapshotContext;
+import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.spi.Offsets;
+import io.debezium.pipeline.spi.Partition;
+import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.text.ParsingException;
@@ -43,8 +52,8 @@ public class KafkaDatabaseHistoryTest {
     private static KafkaCluster kafka;
 
     private KafkaDatabaseHistory history;
-    private Map<String, String> source;
-    private Map<String, Object> position;
+    private Offsets<Partition, MySqlOffsetContext> offsets;
+    private MySqlOffsetContext position;
 
     private static final int PARTITION_NO = 0;
 
@@ -73,7 +82,15 @@ public class KafkaDatabaseHistoryTest {
 
     @Before
     public void beforeEach() throws Exception {
-        source = Collect.hashMapOf("server", "my-server");
+        MySqlPartition source = new MySqlPartition("my-server");
+        Configuration config = Configuration.empty()
+                .edit()
+                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1").build();
+
+        position = new MySqlOffsetContext(false, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(),
+                new SourceInfo(new MySqlConnectorConfig(config)));
+        offsets = Offsets.of(source, position);
+
         setLogPosition(0);
         history = new KafkaDatabaseHistory();
     }
@@ -139,7 +156,7 @@ public class KafkaDatabaseHistoryTest {
 
         // Recover from the very beginning ...
         setLogPosition(0);
-        history.recover(source, position, tables1, recoveryParser);
+        history.recover(offsets, tables1, recoveryParser);
 
         // There should have been nothing to recover ...
         assertThat(tables1.size()).isEqualTo(0);
@@ -149,7 +166,7 @@ public class KafkaDatabaseHistoryTest {
         String ddl = "CREATE TABLE foo ( name VARCHAR(255) NOT NULL PRIMARY KEY); \n" +
                 "CREATE TABLE customers ( id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL ); \n" +
                 "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, description VARCHAR(255) NOT NULL); \n";
-        history.record(source, position, "db1", ddl);
+        history.record(offsets.getTheOnlyPartition().getSourcePartition(), offsets.getTheOnlyOffset().getOffset(), "db1", ddl);
 
         // Parse the DDL statement 3x and each time update a different Tables object ...
         ddlParser.parse(ddl, tables1);
@@ -162,7 +179,7 @@ public class KafkaDatabaseHistoryTest {
         // Record a drop statement and parse it for 2 of our 3 Tables...
         setLogPosition(39);
         ddl = "DROP TABLE foo;";
-        history.record(source, position, "db1", ddl);
+        history.record(offsets.getTheOnlyPartition().getSourcePartition(), offsets.getTheOnlyOffset().getOffset(), "db1", ddl);
         ddlParser.parse(ddl, tables2);
         assertThat(tables2.size()).isEqualTo(2);
         ddlParser.parse(ddl, tables3);
@@ -171,7 +188,7 @@ public class KafkaDatabaseHistoryTest {
         // Record another DDL statement and parse it for 1 of our 3 Tables...
         setLogPosition(10003);
         ddl = "CREATE TABLE suppliers ( supplierId INTEGER NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL);";
-        history.record(source, position, "db1", ddl);
+        history.record(offsets.getTheOnlyPartition().getSourcePartition(), offsets.getTheOnlyOffset().getOffset(), "db1", ddl);
         ddlParser.parse(ddl, tables3);
         assertThat(tables3.size()).isEqualTo(3);
 
@@ -184,31 +201,30 @@ public class KafkaDatabaseHistoryTest {
         // Recover from the very beginning to just past the first change ...
         Tables recoveredTables = new Tables();
         setLogPosition(15);
-        history.recover(source, position, recoveredTables, recoveryParser);
+        history.recover(offsets, recoveredTables, recoveryParser);
         assertThat(recoveredTables).isEqualTo(tables1);
 
         // Recover from the very beginning to just past the second change ...
         recoveredTables = new Tables();
         setLogPosition(50);
-        history.recover(source, position, recoveredTables, recoveryParser);
+        history.recover(offsets, recoveredTables, recoveryParser);
         assertThat(recoveredTables).isEqualTo(tables2);
 
         // Recover from the very beginning to just past the third change ...
         recoveredTables = new Tables();
         setLogPosition(10010);
-        history.recover(source, position, recoveredTables, recoveryParser);
+        history.recover(offsets, recoveredTables, recoveryParser);
         assertThat(recoveredTables).isEqualTo(tables3);
 
         // Recover from the very beginning to way past the third change ...
         recoveredTables = new Tables();
         setLogPosition(100000010);
-        history.recover(source, position, recoveredTables, recoveryParser);
+        history.recover(offsets, recoveredTables, recoveryParser);
         assertThat(recoveredTables).isEqualTo(tables3);
     }
 
     protected void setLogPosition(int index) {
-        this.position = Collect.hashMapOf("filename", "my-txn-file.log",
-                "position", index);
+        position.setBinlogStartPoint("my-txn-file.log", index);
     }
 
     @Test
@@ -343,7 +359,7 @@ public class KafkaDatabaseHistoryTest {
         String ddl = "CREATE TABLE foo ( name VARCHAR(255) NOT NULL PRIMARY KEY); \n" +
                 "CREATE TABLE customers ( id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL ); \n" +
                 "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, desc VARCHAR(255) NOT NULL); \n";
-        history.record(source, position, "db1", ddl);
+        history.record(offsets.getTheOnlyPartition().getSourcePartition(), offsets.getTheOnlyOffset().getOffset(), "db1", ddl);
         assertTrue(history.exists());
         assertTrue(history.storageExists());
     }

@@ -19,7 +19,7 @@ This module contains both unit tests and integration tests.
 
 A *unit test* is a JUnit test class named `*Test.java` or `Test*.java` that never requires or uses external services, though it can use the file system and can run any components within the same JVM process. They should run very quickly, be independent of each other, and clean up after itself.
 
-An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a PostgreSQL database server running in a custom Docker container based upon the [debezium/postgres:9.6](https://github.com/debezium/docker-images/tree/master/postgres/9.6) Docker image maintained by the Debezium team.
+An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a PostgreSQL database server running in a custom Docker container based upon the [debezium/postgres:9.6](https://github.com/debezium/docker-images/tree/main/postgres/9.6) Docker image maintained by the Debezium team.
 This docker image uses a default PostgreSQL 9.6 image on top of which it installs the [Debezium Logical Decoding plugin](https://github.com/debezium/postgres-decoderbufs) which is required in order to be able to receive database events.
 The build will automatically start the PostgreSQL container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they succeed or fail).
 

@@ -11,7 +11,6 @@ import org.infinispan.Cache;
 import org.infinispan.commons.util.CloseableIterator;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.Transaction;
 import io.debezium.connector.oracle.logminer.processor.TransactionCache;
 
 /**
@@ -19,26 +18,26 @@ import io.debezium.connector.oracle.logminer.processor.TransactionCache;
  *
  * @author Chris Cranford
  */
-public class InfinispanTransactionCache implements TransactionCache<Cache.Entry<String, Transaction>> {
+public class InfinispanTransactionCache implements TransactionCache<InfinispanTransaction, Cache.Entry<String, InfinispanTransaction>> {
 
-    private final Cache<String, Transaction> cache;
+    private final Cache<String, InfinispanTransaction> cache;
 
-    public InfinispanTransactionCache(Cache<String, Transaction> cache) {
+    public InfinispanTransactionCache(Cache<String, InfinispanTransaction> cache) {
         this.cache = cache;
     }
 
     @Override
-    public Transaction get(String transactionId) {
+    public InfinispanTransaction get(String transactionId) {
         return cache.get(transactionId);
     }
 
     @Override
-    public void put(String transactionId, Transaction transaction) {
+    public void put(String transactionId, InfinispanTransaction transaction) {
         cache.put(transactionId, transaction);
     }
 
     @Override
-    public Transaction remove(String transactionId) {
+    public InfinispanTransaction remove(String transactionId) {
         return cache.remove(transactionId);
     }
 
@@ -58,14 +57,14 @@ public class InfinispanTransactionCache implements TransactionCache<Cache.Entry<
     }
 
     @Override
-    public Iterator<Cache.Entry<String, Transaction>> iterator() {
+    public Iterator<Cache.Entry<String, InfinispanTransaction>> iterator() {
         return cache.entrySet().iterator();
     }
 
     @Override
     public Scn getMinimumScn() {
         Scn minimumScn = Scn.NULL;
-        try (CloseableIterator<Transaction> iterator = cache.values().iterator()) {
+        try (CloseableIterator<InfinispanTransaction> iterator = cache.values().iterator()) {
             while (iterator.hasNext()) {
                 final Scn transactionScn = iterator.next().getStartScn();
                 if (minimumScn.isNull()) {

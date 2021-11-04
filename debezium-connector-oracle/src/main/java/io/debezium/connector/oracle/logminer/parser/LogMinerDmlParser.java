@@ -329,8 +329,13 @@ public class LogMinerDmlParser implements DmlParser {
         int nested = 0;
 
         // verify entering set-clause
-        if (sql.indexOf(SET, start) != start) {
+        int set = sql.indexOf(SET, start);
+        if (set == -1) {
             throw new DebeziumException("Failed to parse DML: " + sql);
+        }
+        else if (set != start) {
+            // find table alias
+            start = set;
         }
         start += SET_LENGTH;
 
@@ -476,8 +481,13 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         // verify entering where-clause
-        if (sql.indexOf(WHERE, start) != start) {
+        int where = sql.indexOf(WHERE, start);
+        if (where == -1) {
             throw new DebeziumException("Failed to parse DML: " + sql);
+        }
+        else if (where != start) {
+            // find table alias
+            start = where;
         }
         start += WHERE_LENGTH;
 

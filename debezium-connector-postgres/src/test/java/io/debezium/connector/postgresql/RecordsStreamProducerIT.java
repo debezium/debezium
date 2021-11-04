@@ -1034,6 +1034,82 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-4137")
+    public void shouldReceiveNumericTypeAsDoubleWithNullDefaults() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS numeric_table_with_n_defaults;",
+                "CREATE TABLE numeric_table_with_n_defaults (\n" +
+                        "    r int4 NOT NULL,\n" +
+                        "    r_numeric numeric(19, 4) NULL DEFAULT NULL,\n" +
+                        "    r_int int4 NULL DEFAULT NULL);",
+                "ALTER TABLE numeric_table_with_n_defaults REPLICA IDENTITY FULL");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE),
+                false);
+        consumer = testConsumer(1);
+
+        // INSERT
+        String statement = "INSERT INTO numeric_table_with_n_defaults (r) VALUES (1);";
+        assertInsert(
+                statement,
+                Arrays.asList(
+                        new SchemaAndValueField("r", Schema.INT32_SCHEMA, 1),
+                        new SchemaAndValueField("r_numeric",
+                                new SchemaBuilder(Schema.Type.FLOAT64)
+                                        .name(Schema.FLOAT64_SCHEMA.name())
+                                        .version(Schema.FLOAT64_SCHEMA.version())
+                                        .optional()
+                                        .defaultValue(null)
+                                        .build(),
+                                null),
+                        new SchemaAndValueField("r_int",
+                                new SchemaBuilder(Schema.Type.INT32)
+                                        .name(Schema.INT32_SCHEMA.name())
+                                        .version(Schema.INT32_SCHEMA.version())
+                                        .optional()
+                                        .defaultValue(null)
+                                        .build(),
+                                null)));
+    }
+
+    @Test
+    @FixFor("DBZ-4137")
+    public void shouldReceiveNumericTypeAsDoubleWithDefaults() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS numeric_table_with_defaults;",
+                "CREATE TABLE numeric_table_with_defaults (\n" +
+                        "    r int4 NOT NULL,\n" +
+                        "    r_numeric numeric(19, 4) NOT NULL DEFAULT 1,\n" +
+                        "    r_int int4 NOT NULL DEFAULT 2);",
+                "ALTER TABLE numeric_table_with_defaults REPLICA IDENTITY FULL");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE),
+                false);
+        consumer = testConsumer(1);
+
+        // INSERT
+        String statement = "INSERT INTO numeric_table_with_defaults (r) VALUES (1);";
+        assertInsert(
+                statement,
+                Arrays.asList(
+                        new SchemaAndValueField("r", Schema.INT32_SCHEMA, 1),
+                        new SchemaAndValueField("r_numeric",
+                                new SchemaBuilder(Schema.Type.FLOAT64)
+                                        .name(Schema.FLOAT64_SCHEMA.name())
+                                        .version(Schema.FLOAT64_SCHEMA.version())
+                                        .defaultValue(1.0d)
+                                        .build(),
+                                1.0d),
+                        new SchemaAndValueField("r_int",
+                                new SchemaBuilder(Schema.Type.INT32)
+                                        .name(Schema.INT32_SCHEMA.name())
+                                        .version(Schema.INT32_SCHEMA.version())
+                                        .defaultValue(2)
+                                        .build(),
+                                2)));
+    }
+
+    @Test
     public void shouldReceiveNumericTypeAsDouble() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 

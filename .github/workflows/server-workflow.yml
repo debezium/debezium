@@ -3,7 +3,7 @@ name: Build Server Workflow
 on:
   push:
     branches:
-      - master
+      - main
       - 1.*
     paths:
       - 'support/checkstyle/**'
@@ -23,7 +23,7 @@ on:
       - '.github/workflows/server-workflow.yml'
   pull_request:
     branches:
-      - master
+      - main
       - 1.*
     paths:
       - 'support/checkstyle/**'

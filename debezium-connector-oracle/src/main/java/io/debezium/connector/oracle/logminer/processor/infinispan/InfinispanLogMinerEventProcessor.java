@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.Configuration;
@@ -32,9 +33,11 @@ import io.debezium.connector.oracle.logminer.LogMinerQueryBuilder;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
-import io.debezium.connector.oracle.logminer.events.Transaction;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.Transaction;
 import io.debezium.connector.oracle.logminer.processor.TransactionCache;
+import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
@@ -46,7 +49,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProcessor {
+public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProcessor<InfinispanTransaction> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinispanLogMinerEventProcessor.class);
 
@@ -61,6 +64,13 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
      * A cache that stores the complete {@link Transaction} object keyed by the unique transaction id.
      */
     private final InfinispanTransactionCache transactionCache;
+
+    /**
+     * A cache storing each of the raw events read from the LogMiner contents view.
+     * This cache is keyed using the format of "<transaction-id>-<sequence>" where the sequence
+     * is obtained from the {@link InfinispanTransaction#getEventId(int)} method.
+     */
+    private final Cache<String, LogMinerEvent> eventCache;
 
     /**
      * A cache storing recently committed transactions key by the unique transaction id and
@@ -113,9 +123,26 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
 
         final EmbeddedCacheManager manager = new DefaultCacheManager();
         this.transactionCache = new InfinispanTransactionCache(createCache(manager, connectorConfig, "transactions"));
+        this.eventCache = createCache(manager, connectorConfig, "events");
         this.recentlyCommittedTransactionsCache = createCache(manager, connectorConfig, "committed-transactions");
         this.rollbackTransactionsCache = createCache(manager, connectorConfig, "rollback-transactions");
         this.schemaChangesCache = createCache(manager, connectorConfig, "schema-changes");
+
+        displayCacheStatistics();
+    }
+
+    private void displayCacheStatistics() {
+        LOGGER.info("Cache Statistics:");
+        LOGGER.info("\tTransactions   : {}", transactionCache.size());
+        LOGGER.info("\tCommitted Trxs : {}", recentlyCommittedTransactionsCache.size());
+        LOGGER.info("\tRollback Trxs  : {}", rollbackTransactionsCache.size());
+        LOGGER.info("\tSchema Changes : {}", schemaChangesCache.size());
+        LOGGER.info("\tEvents         : {}", eventCache.size());
+        if (!eventCache.isEmpty()) {
+            for (String eventKey : eventCache.keySet()) {
+                LOGGER.debug("\t\tFound Key: {}", eventKey);
+            }
+        }
     }
 
     private <K, V> Cache<K, V> createCache(EmbeddedCacheManager manager, OracleConnectorConfig connectorConfig, String name) {
@@ -137,14 +164,31 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
     }
 
     @Override
-    protected TransactionCache<?> getTransactionCache() {
+    protected TransactionCache<InfinispanTransaction, ?> getTransactionCache() {
         return transactionCache;
+    }
+
+    @Override
+    protected InfinispanTransaction createTransaction(LogMinerEventRow row) {
+        return new InfinispanTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime(), row.getUserName());
+    }
+
+    @Override
+    protected void removeEventWithRowId(LogMinerEventRow row) {
+        for (String eventKey : eventCache.keySet().stream().filter(k -> k.startsWith(row.getTransactionId() + "-")).collect(Collectors.toList())) {
+            final LogMinerEvent event = eventCache.get(eventKey);
+            if (event != null && event.getRowId().equals(row.getRowId())) {
+                LOGGER.trace("Undo applied for event {}.", event);
+                eventCache.remove(eventKey);
+            }
+        }
     }
 
     @Override
     public void close() throws Exception {
         if (getConfig().isLogMiningBufferDropOnStop()) {
             // Since the buffers are to be dropped on stop, clear them before stopping provider.
+            eventCache.clear();
             transactionCache.clear();
             recentlyCommittedTransactionsCache.clear();
             rollbackTransactionsCache.clear();
@@ -154,6 +198,7 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
         recentlyCommittedTransactionsCache.stop();
         rollbackTransactionsCache.stop();
         schemaChangesCache.stop();
+        eventCache.stop();
         transactionCache.close();
     }
 
@@ -240,19 +285,23 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             return;
         }
 
-        final Transaction transaction = transactionCache.remove(transactionId);
+        final InfinispanTransaction transaction = transactionCache.remove(transactionId);
         if (transaction == null) {
             LOGGER.trace("Transaction {} not found.", transactionId);
             return;
         }
 
-        boolean skipExcludedUserName = false;
-        if (transaction.getUserName() == null && !transaction.getEvents().isEmpty()) {
+        final boolean skipExcludedUserName;
+        if (transaction.getUserName() == null && transaction.getNumberOfEvents() > 0) {
             LOGGER.debug("Got transaction with null username {}", transaction);
+            skipExcludedUserName = false;
         }
         else if (getConfig().getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
             LOGGER.trace("Skipping transaction with excluded username {}", transaction);
             skipExcludedUserName = true;
+        }
+        else {
+            skipExcludedUserName = false;
         }
 
         final Scn smallestScn = transactionCache.getMinimumScn();
@@ -263,56 +312,77 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
         if ((offsetCommitScn != null && offsetCommitScn.compareTo(commitScn) > 0) || lastCommittedScn.compareTo(commitScn) > 0) {
             LOGGER.debug("Transaction {} has already been processed. Commit SCN in offset is {} while commit SCN of transaction is {} and last seen committed SCN is {}.",
                     transactionId, offsetCommitScn, commitScn, lastCommittedScn);
+            transactionCache.remove(transactionId);
             metrics.setActiveTransactions(transactionCache.size());
+            removeEventsWithTransaction(transaction);
             return;
         }
 
         counters.commitCount++;
         Instant start = Instant.now();
-        getReconciliation().reconcile(transaction);
 
-        int numEvents = transaction.getEvents().size();
+        int numEvents = getTransactionEventCount(transaction);
 
         LOGGER.trace("Commit: (smallest SCN {}) {}", smallestScn, row);
         LOGGER.trace("Transaction {} has {} events", transactionId, numEvents);
 
-        for (LogMinerEvent event : transaction.getEvents()) {
-            if (!context.isRunning()) {
-                return;
-            }
+        BlockingConsumer<LogMinerEvent> delegate = new BlockingConsumer<LogMinerEvent>() {
+            private int numEvents = getTransactionEventCount(transaction);
 
-            // Update SCN in offset context only if processed SCN less than SCN of other transactions
-            if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
-                offsetContext.setScn(event.getScn());
-                metrics.setOldestScn(event.getScn());
-            }
+            @Override
+            public void accept(LogMinerEvent event) throws InterruptedException {
+                // Update SCN in offset context only if processed SCN less than SCN of other transactions
+                if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
+                    offsetContext.setScn(event.getScn());
+                    metrics.setOldestScn(event.getScn());
+                }
 
-            offsetContext.setTransactionId(transactionId);
-            offsetContext.setSourceTime(event.getChangeTime());
-            offsetContext.setTableId(event.getTableId());
-            if (--numEvents == 0) {
-                // reached the last event update the commit scn in the offsets
-                offsetContext.setCommitScn(commitScn);
-            }
+                offsetContext.setTransactionId(transactionId);
+                offsetContext.setSourceTime(event.getChangeTime());
+                offsetContext.setTableId(event.getTableId());
+                if (--numEvents == 0) {
+                    // reached the last event update the commit scn in the offsets
+                    offsetContext.setCommitScn(commitScn);
+                }
 
-            // after reconciliation all events should be DML
-            // todo: do we want to move dml entry up and just let it be null to avoid cast?
-            final DmlEvent dmlEvent = (DmlEvent) event;
-            if (!skipExcludedUserName) {
-                dispatcher.dispatchDataChangeEvent(event.getTableId(),
-                        new LogMinerChangeRecordEmitter(
-                                partition,
-                                offsetContext,
-                                dmlEvent.getEventType(),
-                                dmlEvent.getDmlEntry().getOldValues(),
-                                dmlEvent.getDmlEntry().getNewValues(),
-                                getSchema().tableFor(event.getTableId()),
-                                Clock.system()));
+                final DmlEvent dmlEvent = (DmlEvent) event;
+                if (!skipExcludedUserName) {
+                    dispatcher.dispatchDataChangeEvent(event.getTableId(),
+                            new LogMinerChangeRecordEmitter(
+                                    partition,
+                                    offsetContext,
+                                    dmlEvent.getEventType(),
+                                    dmlEvent.getDmlEntry().getOldValues(),
+                                    dmlEvent.getDmlEntry().getNewValues(),
+                                    getSchema().tableFor(event.getTableId()),
+                                    Clock.system()));
+                }
+            }
+        };
+
+        int eventCount = 0;
+        try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, getConfig(), getSchema())) {
+            for (int i = 0; i < transaction.getNumberOfEvents(); ++i) {
+                if (!context.isRunning()) {
+                    return;
+                }
+
+                final LogMinerEvent event = eventCache.get(transaction.getEventId(i));
+                if (event == null) {
+                    // If an event is undone, it gets removed from the cache at undo time.
+                    // This means that the call to get could return a null event and we
+                    // should silently ignore it.
+                    continue;
+                }
+
+                eventCount++;
+                LOGGER.trace("Dispatching event {} {}", transaction.getEventId(i), event.getEventType());
+                commitConsumer.accept(event);
             }
         }
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
-        if (!transaction.getEvents().isEmpty() && !skipExcludedUserName) {
+        if (transaction.getNumberOfEvents() > 0 && !skipExcludedUserName) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
         }
         else {
@@ -327,9 +397,12 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
         // cache recently committed transactions by transaction id
         recentlyCommittedTransactionsCache.put(transactionId, commitScn.toString());
 
+        // Clear the event queue for the transaction
+        removeEventsWithTransaction(transaction);
+
         metrics.incrementCommittedTransactions();
         metrics.setActiveTransactions(transactionCache.size());
-        metrics.incrementCommittedDmlCount(transaction.getEvents().size());
+        metrics.incrementCommittedDmlCount(eventCount);
         metrics.setCommittedScn(commitScn);
         metrics.setOffsetScn(offsetContext.getScn());
         metrics.setLastCommitDuration(Duration.between(start, Instant.now()));
@@ -337,8 +410,9 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
 
     @Override
     protected void handleRollback(LogMinerEventRow row) {
-        final Transaction transaction = transactionCache.get(row.getTransactionId());
+        final InfinispanTransaction transaction = transactionCache.get(row.getTransactionId());
         if (transaction != null) {
+            removeEventsWithTransaction(transaction);
             transactionCache.remove(row.getTransactionId());
             rollbackTransactionsCache.put(row.getTransactionId(), row.getScn().toString());
 
@@ -361,22 +435,31 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
     @Override
     protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
         if (isTransactionIdAllowed(transactionId)) {
-            Transaction transaction = getTransactionCache().get(transactionId);
+            InfinispanTransaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
                 LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
-                transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime(), row.getUserName());
+                transaction = createTransaction(row);
             }
-            int eventId = transaction.getNextEventId();
-            if (transaction.getEvents().size() <= eventId) {
+            String eventKey = transaction.getEventId(transaction.getNextEventId());
+            if (!eventCache.containsKey(eventKey)) {
                 // Add new event at eventId offset
-                LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
-                transaction.getEvents().add(eventSupplier.get());
+                LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, eventKey);
+                eventCache.put(eventKey, eventSupplier.get());
                 metrics.calculateLagMetrics(row.getChangeTime());
             }
             // When using Infinispan, this extra put is required so that the state is properly synchronized
             getTransactionCache().put(transactionId, transaction);
             metrics.setActiveTransactions(getTransactionCache().size());
         }
+    }
+
+    @Override
+    protected int getTransactionEventCount(InfinispanTransaction transaction) {
+        // todo: implement indexed keys when ISPN supports them
+        return (int) eventCache.keySet()
+                .parallelStream()
+                .filter(k -> k.startsWith(transaction.getTransactionId() + "-"))
+                .count();
     }
 
     private PreparedStatement createQueryStatement() throws SQLException {
@@ -432,6 +515,13 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
             dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
             return endScn;
+        }
+    }
+
+    private void removeEventsWithTransaction(InfinispanTransaction transaction) {
+        // Clear the event queue for the transaction
+        for (int i = 0; i < transaction.getNumberOfEvents(); ++i) {
+            eventCache.remove(transaction.getEventId(i));
         }
     }
 }

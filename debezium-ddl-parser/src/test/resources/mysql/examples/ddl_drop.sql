@@ -6,6 +6,7 @@ drop temporary table `some_temp_table`;
 drop table antlr_all_tokens, antlr_function_tokens, antlr_keyword_tokens, antlr_tokens, childtable, guns, log_table, new_t, parenttable, ship_class, ships, ships_guns, t1, t2, t3, t4, tab1;
 drop table if exists order;
 drop table if exists group;
+drop table if exists condition;
 #end
 #begin
 -- Drop database

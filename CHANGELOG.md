@@ -25,6 +25,7 @@ October 27th 2021 [Detailed release notes](https://issues.redhat.com/secure/Rele
 * MongoDB connector support user defined topic delimiter [DBZ-4192](https://issues.redhat.com/browse/DBZ-4192)
 * Parse the "window" keyword for agg and nonagg function in mysql8 [DBZ-4193](https://issues.redhat.com/browse/DBZ-4193)
 * wrong field on change event message example in MongoDB Connector documentation [DBZ-4201](https://issues.redhat.com/browse/DBZ-4201)
+* Add a backend service for UI to fetch the SMT and topic auto-creation configuration properties  [DBZ-3874](https://issues.redhat.com/browse/DBZ-3874)
 
 
 ### Breaking changes since 1.7.0.Final
@@ -66,6 +67,7 @@ None
 * OracleSchemaMigrationIT#shouldNotEmitDdlEventsForNonTableObjects fails for Xstream [DBZ-4186](https://issues.redhat.com/browse/DBZ-4186)
 * Certain LogMiner-specific tests are not being skipped while using Xstreams [DBZ-4188](https://issues.redhat.com/browse/DBZ-4188)
 * Missing debezium/postgres:14-alpine in Docker Hub [DBZ-4195](https://issues.redhat.com/browse/DBZ-4195)
+* nulls for some MySQL properties in the connector-types backend response [DBZ-3108](https://issues.redhat.com/browse/DBZ-3108)
 
 
 ### Other changes since 1.7.0.Final
@@ -102,6 +104,7 @@ None
 * Close open file handle [DBZ-4164](https://issues.redhat.com/browse/DBZ-4164)
 * Outreach jobs should test all connectors [DBZ-4165](https://issues.redhat.com/browse/DBZ-4165)
 * Broken link in MySQL docs [DBZ-4199](https://issues.redhat.com/browse/DBZ-4199)
+* Expose outbox event structure at level of Kafka Connect messages [DBZ-1297](https://issues.redhat.com/browse/DBZ-1297)
 
 
 
@@ -111,6 +114,7 @@ September 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/Re
 ### New features since 1.7.0.CR2
 
 * DBZ-UI - Provide list of configurations [DBZ-3960](https://issues.jboss.org/browse/DBZ-3960)
+* add ProtobufConverter for Cassandra CDC [DBZ-3906](https://issues.redhat.com/browse/DBZ-3906)
 
 
 ### Breaking changes since 1.7.0.CR2
@@ -130,6 +134,8 @@ September 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/Re
 * Debezium Server uses MySQL driver version as defined in Quarkus not in Debezium [DBZ-4049](https://issues.jboss.org/browse/DBZ-4049)
 * Events are missed with Oracle connector due to LGWR buffer not being flushed to redo logs [DBZ-4067](https://issues.jboss.org/browse/DBZ-4067)
 * Postgres JDBC Driver version causes connection issues on some cloud Postgres instances [DBZ-4060](https://issues.jboss.org/browse/DBZ-4060)
+* Postgres JDBC Driver version causes connection issues on some cloud Postgres instances [DBZ-4060](https://issues.redhat.com/browse/DBZ-4060)
+* UI final connector configuration includes some default values [DBZ-3967](https://issues.redhat.com/browse/DBZ-3967)
 
 
 ### Other changes since 1.7.0.CR2

@@ -17,7 +17,7 @@ pipelineJob('rhel-downstream-prepare-job') {
         stringParam('KAFKA_URL', '', 'AMQ streams kafka')
 //        DEBEZIUM CONFIG
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
-        stringParam('DBZ_GIT_BRANCH', 'master', 'A branch/tag of Debezium sources')
+        stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
 //        IMAGE NAME
         stringParam('IMAGE_TAG', '', 'Tag of built image')
 //        DEBEZIUM CONNECT IMAGE CONFIG

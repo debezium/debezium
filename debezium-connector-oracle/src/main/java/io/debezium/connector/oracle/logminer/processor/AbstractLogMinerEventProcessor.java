@@ -30,7 +30,6 @@ import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
-import io.debezium.connector.oracle.logminer.events.Transaction;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
@@ -45,7 +44,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractLogMinerEventProcessor implements LogMinerEventProcessor {
+public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransaction> implements LogMinerEventProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class);
 
@@ -56,7 +55,6 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
     private final OracleOffsetContext offsetContext;
     private final EventDispatcher<TableId> dispatcher;
     private final OracleStreamingChangeEventSourceMetrics metrics;
-    private final TransactionReconciliation reconciliation;
     private final LogMinerDmlParser dmlParser;
     private final SelectLobParser selectLobParser;
 
@@ -78,7 +76,6 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
         this.offsetContext = offsetContext;
         this.dispatcher = dispatcher;
         this.metrics = metrics;
-        this.reconciliation = new TransactionReconciliation(connectorConfig, schema);
         this.counters = new Counters();
         this.dmlParser = new LogMinerDmlParser();
         this.selectLobParser = new SelectLobParser();
@@ -90,10 +87,6 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
 
     protected OracleDatabaseSchema getSchema() {
         return schema;
-    }
-
-    protected TransactionReconciliation getReconciliation() {
-        return reconciliation;
     }
 
     /**
@@ -141,7 +134,30 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * Returns the {@code TransactionCache} implementation.
      * @return the transaction cache, never {@code null}
      */
-    protected abstract TransactionCache<?> getTransactionCache();
+    protected abstract TransactionCache<T, ?> getTransactionCache();
+
+    /**
+     * Creates a new transaction based on the supplied {@code START} event.
+     *
+     * @param row the event row, must not be {@code null}
+     * @return the implementation-specific {@link Transaction} instance
+     */
+    protected abstract T createTransaction(LogMinerEventRow row);
+
+    /**
+     * Removes a specific transaction event by database row identifier.
+     *
+     * @param row the event row that contains the row identifier, must not be {@code null}
+     */
+    protected abstract void removeEventWithRowId(LogMinerEventRow row);
+
+    /**
+     * Returns the number of events associated with the specified transaction.
+     *
+     * @param transaction the transaction, must not be {@code null}
+     * @return the number of events in the transaction
+     */
+    protected abstract int getTransactionEventCount(T transaction);
 
     // todo: can this be removed in favor of a single implementation?
     protected boolean isTrxIdRawValue() {
@@ -221,15 +237,14 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      */
     protected void handleStart(LogMinerEventRow row) {
         final String transactionId = row.getTransactionId();
-        final Transaction transaction = getTransactionCache().get(transactionId);
+        final AbstractTransaction transaction = getTransactionCache().get(transactionId);
         if (transaction == null && !isRecentlyCommitted(transactionId)) {
-            Transaction newTransaction = new Transaction(transactionId, row.getScn(), row.getChangeTime(), row.getUserName());
-            getTransactionCache().put(transactionId, newTransaction);
+            getTransactionCache().put(transactionId, createTransaction(row));
             metrics.setActiveTransactions(getTransactionCache().size());
         }
         else if (transaction != null && !isRecentlyCommitted(transactionId)) {
             LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
-            transaction.started();
+            transaction.start();
         }
     }
 
@@ -402,13 +417,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
             // with a rollback flag to indicate that the prior event should be omitted. In this
             // use case, the transaction can still be committed, so we need to manually rollback
             // the previous DML event when this use case occurs.
-            final Transaction transaction = getTransactionCache().get(row.getTransactionId());
-            if (transaction == null) {
-                LOGGER.warn("Cannot undo change '{}' since transaction was not found.", row);
-            }
-            else {
-                transaction.removeEventWithRowId(row.getRowId());
-            }
+            removeEventWithRowId(row);
             return;
         }
 
@@ -485,26 +494,7 @@ public abstract class AbstractLogMinerEventProcessor implements LogMinerEventPro
      * @param row the LogMiner event row
      * @param eventSupplier the supplier of the event to create if the event is allowed to be added
      */
-    protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
-        if (isTransactionIdAllowed(transactionId)) {
-            Transaction transaction = getTransactionCache().get(transactionId);
-            if (transaction == null) {
-                LOGGER.trace("Transaction {} not in cache for DML, creating.", transactionId);
-                transaction = new Transaction(transactionId, row.getScn(), row.getChangeTime(), row.getUserName());
-                getTransactionCache().put(transactionId, transaction);
-            }
-
-            int eventId = transaction.getNextEventId();
-            if (transaction.getEvents().size() <= eventId) {
-                // Add new event at eventId offset
-                LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
-                transaction.getEvents().add(eventSupplier.get());
-                metrics.calculateLagMetrics(row.getChangeTime());
-            }
-
-            metrics.setActiveTransactions(getTransactionCache().size());
-        }
-    }
+    protected abstract void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier);
 
     /**
      * Dispatch a schema change event for a new table and get the newly created relational table model.

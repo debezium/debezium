@@ -1,6 +1,6 @@
 # Debezium Documentation
 
-The Debezium documentation in [documentation](https://github.com/debezium/debezium/tree/master/documentation) is built using the [Antora Framework](https://www.antora.org).
+The Debezium documentation in [documentation](https://github.com/debezium/debezium/tree/main/documentation) is built using the [Antora Framework](https://www.antora.org).
 
 - [Antora Quickstart](#antora-quickstart)
     - [Component descriptors](#component-descriptors)
@@ -67,7 +67,7 @@ As an example, if you want to link to a file called `example.adoc` within the sa
 
 ### Navigation Pane
 
-The Antora documentation layout uses a navigational pane on the left-side of the UI.  This navigation pane is driven by content found in the `nav.adoc` located inside the component descriptor's top-level directory.  This file must be **manually** maintained when a new topic is to be present in the left navigation layout.  You can see our current navigation pane layout [here](https://wwww.github.com/debezium/tree/master/documentation/modules/ROOT/nav.adoc).
+The Antora documentation layout uses a navigational pane on the left-side of the UI.  This navigation pane is driven by content found in the `nav.adoc` located inside the component descriptor's top-level directory.  This file must be **manually** maintained when a new topic is to be present in the left navigation layout.  You can see our current navigation pane layout [here](https://wwww.github.com/debezium/tree/main/documentation/modules/ROOT/nav.adoc).
 
 ### Antora Configuration
 

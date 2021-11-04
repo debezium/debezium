@@ -5,22 +5,45 @@
  */
 package io.debezium.pipeline.spi;
 
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import io.debezium.DebeziumException;
 
 /**
  * Keeps track the source partitions to be processed by the connector task and their respective offsets.
  */
-public final class Offsets<P extends Partition, O extends OffsetContext> {
+public final class Offsets<P extends Partition, O extends OffsetContext> implements Iterable<Entry<P, O>> {
+
     private final Map<P, O> offsets;
 
-    public Offsets(Map<P, O> offsets) {
+    private Offsets(Map<P, O> offsets) {
         this.offsets = offsets;
+    }
+
+    public static <P extends Partition, O extends OffsetContext> Offsets<P, O> of(P partition, O position) {
+        Map<P, O> offsets = new HashMap<P, O>();
+        offsets.put(partition, position);
+        return new Offsets<>(offsets);
+    }
+
+    public static <P extends Partition, O extends OffsetContext> Offsets<P, O> of(Map<P, O> offsets) {
+        return new Offsets<>(offsets);
     }
 
     public void resetOffset(P partition) {
         offsets.put(partition, null);
+    }
+
+    public Map<P, O> getOffsets() {
+        return offsets;
+    }
+
+    @Override
+    public Iterator<Entry<P, O>> iterator() {
+        return offsets.entrySet().iterator();
     }
 
     /**

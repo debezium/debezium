@@ -25,6 +25,7 @@ import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceAccount;
 import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
@@ -137,6 +138,17 @@ public class OpenShiftUtils {
                 .removeMatchingFromSecrets(r -> r.getName().equals(secret))
                 .addNewSecret().withName(secret).endSecret()
                 .build());
+    }
+
+    /**
+     * Links pull secret to service account
+     * @param project project where this operation happens
+     * @param account service account name
+     * @param secret secret object
+     * @return {@link} Service account object to which this secret was linked
+     */
+    public ServiceAccount linkPullSecret(String project, String account, Secret secret) {
+        return linkPullSecret(project, account, secret.getMetadata().getName());
     }
 
     /**

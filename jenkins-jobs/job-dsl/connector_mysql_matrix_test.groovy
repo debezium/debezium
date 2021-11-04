@@ -18,7 +18,7 @@ matrixJob('connector-debezium-mysql-matrix-test') {
 
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('BRANCH', 'master', 'A branch/tag from which Debezium is built')
+        stringParam('BRANCH', 'main', 'A branch/tag from which Debezium is built')
         stringParam('SOURCE_URL', "", "URL to productised sources")
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
     }

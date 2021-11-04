@@ -420,7 +420,8 @@ For every transaction `BEGIN` and `END`, {prodname} generates an event that cont
 }
 ----
 
-Transaction events are written to the topic named `_database.server.name_.transaction`.
+Unless overridden via the {link-prefix}:{link-postgresql-connector}#postgresql-property-transaction-topic[`transaction.topic`] option,
+transaction events are written to the topic named `_database.server.name_.transaction`.
 
 .Change data event enrichment
 
@@ -1922,10 +1923,10 @@ As of PostgreSQL 9.4, the only way to read changes to the write-ahead-log is to 
 The PostgreSQL connector works with one of {prodname}'s supported logical decoding plug-ins to encode the changes in either link:https://github.com/google/protobuf[Protobuf format] or link:http://www.json.org/[JSON] format.
 See the documentation for your chosen plug-in to learn more about the plug-in's requirements, limitations, and how to compile it.
 
-* link:https://github.com/debezium/postgres-decoderbufs/blob/master/README.md[`protobuf`]
+* link:https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[`protobuf`]
 * link:https://github.com/eulerto/wal2json/blob/master/README.md[`wal2json`]
 
-For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/docker-images/tree/master/postgres/13[use this image] as an example of the detailed steps required for the installation.
+For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/docker-images/tree/main/postgres/13[use this image] as an example of the detailed steps required for the installation.
 
 [WARNING]
 ====
@@ -1948,7 +1949,7 @@ See the documentation of `columns_diff_exclude_unchanged_toast` further below fo
 * The `pgoutput` plug-in does not emit all events for tables without primary keys. It emits only events for `INSERT` operations.
 * While all plug-ins will refresh schema metadata from the database upon detection of a schema change during streaming, the `pgoutput` plug-in is somewhat more 'eager' about triggering such refreshes. For example, a change to the default value for a column will trigger a refresh with `pgoutput`, while other plug-ins will not be aware of this change until another change triggers a refresh (eg. addition of a new column.) This is due to the behaviour of `pgoutput`, rather than {prodname} itself.
 
-All up-to-date differences are tracked in a test suite link:https://github.com/debezium/debezium/blob/master/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
+All up-to-date differences are tracked in a test suite link:https://github.com/debezium/debezium/blob/main/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
 
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL server
@@ -2967,6 +2968,10 @@ If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it i
 |[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction metadata] for details.
+
+|[[postgresql-property-transaction-topic]]<<postgresql-property-transaction-topic, `transaction.topic`>>
+|`${database.server.name}.transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)

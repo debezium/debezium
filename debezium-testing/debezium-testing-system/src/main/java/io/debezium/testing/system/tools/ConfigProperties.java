@@ -31,6 +31,7 @@ public final class ConfigProperties {
     public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", "quay.io/debezium/example-mongodb:latest");
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", "mcr.microsoft.com/mssql/server:2019-latest");
     public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", "quay.io/debezium/db2-cdc:latest");
+    public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle");
 
     // OpenShift configuration
     public static final String OCP_URL = System.getProperty("test.ocp.url");
@@ -43,6 +44,7 @@ public final class ConfigProperties {
     public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserver", "debezium-sqlserver");
     public static final String OCP_PROJECT_MONGO = System.getProperty("test.ocp.project.mongo", "debezium-mongo");
     public static final String OCP_PROJECT_DB2 = System.getProperty("test.ocp.project.db2", "debezium-db2");
+    public static final String OCP_PROJECT_ORACLE = System.getProperty("test.ocp.project.oracle", "debezium-oracle");
 
     public static final Optional<String> OCP_PULL_SECRET_PATHS = stringOptionalProperty("test.ocp.pull.secret.paths");
 
@@ -99,6 +101,15 @@ public final class ConfigProperties {
     public static final String DATABASE_DB2_CDC_SCHEMA = System.getProperty("test.database.db2.cdc.schema", "ASNCDC");
     public static final Optional<String> DATABASE_DB2_HOST = stringOptionalProperty("test.database.sqlserver.host");
     public static final int DATABASE_DB2_PORT = Integer.parseInt(System.getProperty("test.database.db2.port", "50000"));
+
+    // Oracle Configuration
+    public static final boolean DATABASE_ORACLE = booleanProperty("test.database.oracle", true);
+    public static final String DATABASE_ORACLE_USERNAME = System.getProperty("test.database.oracle..username", "debezium");
+    public static final String DATABASE_ORACLE_PASSWORD = System.getProperty("test.database.oracle.password", "dbz");
+    public static final String DATABASE_ORACLE_DBZ_USERNAME = System.getProperty("test.database.oracle.dbz.username", "c##dbzuser");
+    public static final String DATABASE_ORACLE_DBZ_PASSWORD = System.getProperty("test.database.oracle.dbz.password", "dbz");
+    public static final String DATABASE_ORACLE_DBNAME = System.getProperty("test.database.oracle.dbname", "ORCLCDB");
+    public static final String DATABASE_ORACLE_PDBNAME = System.getProperty("test.database.oracle.pdbname", "ORCLPDB1");
 
     private static boolean booleanProperty(String key) {
         return booleanProperty(key, false);

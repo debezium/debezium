@@ -16,5 +16,5 @@ Keep in mind that you cannot remove a row that is referenced by a foreign key.
 
 * Try running the tutorial with {prodname} connectors for Postgres, MongoDB, SQL Server, and Oracle.
 +
-You can use the https://docs.docker.com/compose/[Docker Compose] version of this tutorial located in the https://github.com/debezium/debezium-examples/tree/master/tutorial[Debezium examples repository].
+You can use the https://docs.docker.com/compose/[Docker Compose] version of this tutorial located in the https://github.com/debezium/debezium-examples/tree/main/tutorial[Debezium examples repository].
 Docker Compose files are provided for running the tutorial with MySQL, Postgres, MongoDB, SQL Server, and Oracle.

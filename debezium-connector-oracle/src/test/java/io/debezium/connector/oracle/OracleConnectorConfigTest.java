@@ -127,6 +127,7 @@ public class OracleConnectorConfigTest {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
+                        .with(OracleConnectorConfig.SERVER_NAME, "myserver")
                         .build());
 
         assertEquals(connectorConfig.getLogMiningBatchSizeDefault(), OracleConnectorConfig.DEFAULT_BATCH_SIZE);
@@ -139,6 +140,7 @@ public class OracleConnectorConfigTest {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
+                        .with(OracleConnectorConfig.SERVER_NAME, "myserver")
                         .build());
 
         assertEquals(connectorConfig.getLogMiningSleepTimeDefault(), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
@@ -152,6 +154,7 @@ public class OracleConnectorConfigTest {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
+                        .with(OracleConnectorConfig.SERVER_NAME, "myserver")
                         .build());
 
         assertEquals(connectorConfig.getLogMiningViewFetchSize(), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
@@ -160,7 +163,9 @@ public class OracleConnectorConfigTest {
     @Test
     @FixFor("DBZ-2754")
     public void validTransactionRetentionDefaults() throws Exception {
-        final Configuration config = Configuration.create().build();
+        final Configuration config = Configuration.create()
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ZERO);
     }
@@ -170,7 +175,11 @@ public class OracleConnectorConfigTest {
     public void testTransactionRetention() throws Exception {
         final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION;
 
-        Configuration config = Configuration.create().with(transactionRetentionField, 3).build();
+        Configuration config = Configuration.create()
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .with(transactionRetentionField, 3)
+                .build();
+
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
@@ -188,13 +197,19 @@ public class OracleConnectorConfigTest {
     public void testSnapshotLockMode() throws Exception {
         final Field snapshotLockMode = OracleConnectorConfig.SNAPSHOT_LOCKING_MODE;
 
-        Configuration config = Configuration.create().with(snapshotLockMode, "shared").build();
+        Configuration config = Configuration.create().with(snapshotLockMode, "shared")
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .build();
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
 
-        config = Configuration.create().with(snapshotLockMode, "none").build();
+        config = Configuration.create()
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .with(snapshotLockMode, "none")
+                .build();
+
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
         connectorConfig = new OracleConnectorConfig(config);
@@ -208,7 +223,12 @@ public class OracleConnectorConfigTest {
         final Field port = OracleConnectorConfig.PORT;
 
         // Test backward compatibility of rac.nodes using no port with database.port
-        Configuration config = Configuration.create().with(port, "1521").with(racNodes, "1.2.3.4,1.2.3.5").build();
+        Configuration config = Configuration.create()
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .with(port, "1521")
+                .with(racNodes, "1.2.3.4,1.2.3.5")
+                .build();
+
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
@@ -216,7 +236,11 @@ public class OracleConnectorConfigTest {
         assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1521", "1.2.3.5:1521");
 
         // Test rac.nodes using combination of with/without port with database.port
-        config = Configuration.create().with(port, "1521").with(racNodes, "1.2.3.4,1.2.3.5:1522").build();
+        config = Configuration.create()
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .with(port, "1521")
+                .with(racNodes, "1.2.3.4,1.2.3.5:1522")
+                .build();
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
 
         connectorConfig = new OracleConnectorConfig(config);
@@ -224,7 +248,11 @@ public class OracleConnectorConfigTest {
         assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1521", "1.2.3.5:1522");
 
         // Test rac.nodes using different ports with no database.port
-        config = Configuration.create().with(racNodes, "1.2.3.4:1523,1.2.3.5:1522").build();
+        config = Configuration.create()
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .with(racNodes, "1.2.3.4:1523,1.2.3.5:1522")
+                .build();
+
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
 
         connectorConfig = new OracleConnectorConfig(config);
@@ -232,7 +260,12 @@ public class OracleConnectorConfigTest {
         assertThat(connectorConfig.getRacNodes()).contains("1.2.3.4:1523", "1.2.3.5:1522");
 
         // Test rac.nodes using different ports that differ from database.port
-        config = Configuration.create().with(port, "1521").with(racNodes, "1.2.3.4:1523,1.2.3.5:1522").build();
+        config = Configuration.create()
+                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                .with(port, "1521")
+                .with(racNodes, "1.2.3.4:1523,1.2.3.5:1522")
+                .build();
+
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isTrue();
 
         connectorConfig = new OracleConnectorConfig(config);

@@ -109,4 +109,26 @@ public class ConnectorFactories {
                 .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
                 .put("database.history.kafka.topic", "schema-changes.inventory");
     }
+
+    public ConnectorConfigBuilder oracle(SqlDatabaseController controller, String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+
+        return cb
+                .put("database.server.name", cb.getDbServerName())
+                .put("connector.class", "io.debezium.connector.oracle.OracleConnector")
+                .put("task.max", 1)
+                .put("database.hostname", dbHost)
+                .put("database.port", dbPort)
+                .put("database.user", ConfigProperties.DATABASE_ORACLE_DBZ_USERNAME)
+                .put("database.password", ConfigProperties.DATABASE_ORACLE_DBZ_PASSWORD)
+                .put("database.dbname", ConfigProperties.DATABASE_ORACLE_DBNAME)
+                .put("database.pdb.name", ConfigProperties.DATABASE_ORACLE_PDBNAME)
+                .put("schema.include.list", "DEBEZIUM")
+                .put("table.include.list", "DEBEZIUM.CUSTOMERS")
+                .put("database.pdb.name", ConfigProperties.DATABASE_ORACLE_PDBNAME)
+                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
+                .put("database.history.kafka.topic", "schema-changes.oracle");
+    }
 }

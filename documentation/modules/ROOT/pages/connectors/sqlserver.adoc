@@ -1060,7 +1060,8 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-The transaction events are written to the topic named `<database.server.name>.transaction`.
+Unless overridden via the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-transaction-topic[`transaction.topic`] option,
+transaction events are written to the topic named `_database.server.name_.transaction`.
 
 //Type: concept
 //ModuleID: change-data-event-enrichment
@@ -2345,6 +2346,10 @@ endif::community[]
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
+|[[sqlserver-property-transaction-topic]]<<sqlserver-property-transaction-topic, `transaction.topic`>>
+|`${database.server.name}.transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
+
 See {link-prefix}:{link-sqlserver-connector}#sqlserver-transaction-metadata[Transaction Metadata] for additional details.
 
 |[[sqlserver-property-retriable-restart-connector-wait-ms]]<<sqlserver-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
@@ -2362,6 +2367,11 @@ By default, no operations are skipped.
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
 The name format is _database_name.schema-name.table-name_.
 
+|[[sqlserver-property-max-iteration-transactions]]<<sqlserver-property-max-iteration-transactions, `+max.iteration.transactions+`>>
+|0
+|Specifies the maximum number of transactions per iteration to be used to reduce the memory footprint when streaming changes from multiple tables in a database.
+When set to `0` (the default), the connector uses the current maximum LSN as the range to fetch changes from.
+When set to a value greater than zero, the connector uses the n-th LSN specified by this setting as the range to fetch changes from.
 |===
 
 [id="debezium-{context}-connector-database-history-configuration-properties"]
@@ -2468,7 +2478,7 @@ If your application does not tolerate such a transition period, it is best to us
 
 .Example: Running an online schema update after a database schema change
 ifdef::community[]
-Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/tree/master/tutorial#using-sql-server[{prodname} tutorial] to demonstrate the online schema update.
+Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/tree/main/tutorial#using-sql-server[{prodname} tutorial] to demonstrate the online schema update.
 
 In the following example, a column `phone_number` is added to the `customers` table.
 

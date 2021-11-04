@@ -10,7 +10,6 @@ import java.util.Iterator;
 import java.util.Map;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.Transaction;
 import io.debezium.connector.oracle.logminer.processor.TransactionCache;
 
 /**
@@ -18,22 +17,22 @@ import io.debezium.connector.oracle.logminer.processor.TransactionCache;
  *
  * @author Chris Cranford
  */
-public class MemoryTransactionCache implements TransactionCache<Map.Entry<String, Transaction>> {
+public class MemoryTransactionCache implements TransactionCache<MemoryTransaction, Map.Entry<String, MemoryTransaction>> {
 
-    public final Map<String, Transaction> cache = new HashMap<>();
+    public final Map<String, MemoryTransaction> cache = new HashMap<>();
 
     @Override
-    public Transaction get(String transactionId) {
+    public MemoryTransaction get(String transactionId) {
         return cache.get(transactionId);
     }
 
     @Override
-    public void put(String transactionId, Transaction transaction) {
+    public void put(String transactionId, MemoryTransaction transaction) {
         cache.put(transactionId, transaction);
     }
 
     @Override
-    public Transaction remove(String transactionId) {
+    public MemoryTransaction remove(String transactionId) {
         return cache.remove(transactionId);
     }
 
@@ -53,14 +52,14 @@ public class MemoryTransactionCache implements TransactionCache<Map.Entry<String
     }
 
     @Override
-    public Iterator<Map.Entry<String, Transaction>> iterator() {
+    public Iterator<Map.Entry<String, MemoryTransaction>> iterator() {
         return cache.entrySet().iterator();
     }
 
     @Override
     public Scn getMinimumScn() {
         return cache.values().stream()
-                .map(Transaction::getStartScn)
+                .map(MemoryTransaction::getStartScn)
                 .min(Scn::compareTo)
                 .orElse(Scn.NULL);
     }
