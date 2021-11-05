@@ -61,6 +61,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected final Counters counters;
 
     private Scn lastProcessedScn = Scn.NULL;
+    private boolean sequenceUnavailable = false;
 
     public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
                                           OracleConnectorConfig connectorConfig,
@@ -480,11 +481,55 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     private boolean hasNextWithMetricsUpdate(ResultSet resultSet) throws SQLException {
         Instant start = Instant.now();
-        if (resultSet.next()) {
-            metrics.addCurrentResultSetNext(Duration.between(start, Instant.now()));
-            return true;
+        boolean result = false;
+        try {
+            if (resultSet.next()) {
+                metrics.addCurrentResultSetNext(Duration.between(start, Instant.now()));
+                result = true;
+            }
+
+            // Reset sequence unavailability on successful read from the result set
+            if (sequenceUnavailable) {
+                LOGGER.debug("The previous batch's unavailable log problem has been cleared.");
+                sequenceUnavailable = false;
+            }
         }
-        return false;
+        catch (SQLException e) {
+            // Oracle's online redo logs can be defined with dynamic names using the instance
+            // configuration property LOG_ARCHIVE_FORMAT.
+            //
+            // Dynamically named online redo logs can lead to ORA-00310 errors if a log switch
+            // happens while the processor is iterating the LogMiner session's result set and
+            // LogMiner can no longer read the next batch of records from the log.
+            //
+            // LogMiner only validates that there are no gaps and that the logs are available
+            // when the session is first started and any change in the logs later will raise
+            // these types of errors.
+            //
+            // Catching the ORA-00310 and treating it as the end of the result set will allow
+            // the connector's outer loop to re-evaluate the log state and start a new LogMiner
+            // session with the new logs. The connector will then begin streaming from where
+            // it left off. If any other exception is caught here, it'll be thrown.
+            if (!e.getMessage().startsWith("ORA-00310")) {
+                // throw any non ORA-00310 error, old behavior
+                throw e;
+            }
+            else if (sequenceUnavailable) {
+                // If an ORA-00310 error was raised on the previous iteration and wasn't cleared
+                // after re-evaluation of the log availability and the mining session, we will
+                // explicitly stop the connector to avoid an infinite loop.
+                LOGGER.error("The log availability error '{}' wasn't cleared, stop requested.", e.getMessage());
+                throw e;
+            }
+
+            LOGGER.debug("A mined log is no longer available: {}", e.getMessage());
+            LOGGER.warn("Restarting mining session after a log became unavailable.");
+
+            // Track that we gracefully stopped due to a ORA-00310.
+            // Will be used to detect an infinite loop of this error across sequential iterations
+            sequenceUnavailable = true;
+        }
+        return result;
     }
 
     /**
