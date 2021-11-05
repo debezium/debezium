@@ -15,12 +15,13 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.relational.TableId;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<MySqlConnector> {
 
     protected static final String SERVER_NAME = "is_test";
-    protected final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "incremental_snapshot_test").withDbHistoryPath(DB_HISTORY_PATH);
+    protected final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(DB_HISTORY_PATH);
 
     @Before
     public void before() throws SQLException {
@@ -68,11 +69,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<MySql
 
     @Override
     protected String tableName() {
-        return DATABASE.qualifiedTableName("a");
+        return TableId.parse(DATABASE.qualifiedTableName("a")).toQuotedString('`');
     }
 
     @Override
     protected String signalTableName() {
-        return DATABASE.qualifiedTableName("debezium_signal");
+        return TableId.parse(DATABASE.qualifiedTableName("debezium_signal")).toQuotedString('`');
     }
 }

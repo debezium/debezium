@@ -24,6 +24,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
 
@@ -97,6 +98,11 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                         dataChangeEventListener));
             }
             throw new UnsupportedOperationException("Read only connection requires GTID_MODE to be ON");
+        }
+        // If no data collection id is provided, don't return an instance as the implementation requires
+        // that a signal data collection id be provided to work.
+        if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
+            return Optional.empty();
         }
         return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
