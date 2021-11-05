@@ -1145,7 +1145,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                     while (rs.next()) {
                         final String dbName = rs.getString(1);
                         if (!Filters.isBuiltInDatabase(dbName) && !dbName.equals(DATABASE.getDatabaseName())) {
-                            connection.execute("DROP DATABASE IF EXISTS " + dbName);
+                            connection.execute("DROP DATABASE IF EXISTS `" + dbName + "`");
                         }
                     }
                 });

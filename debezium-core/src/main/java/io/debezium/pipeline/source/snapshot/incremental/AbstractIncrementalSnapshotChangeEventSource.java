@@ -96,7 +96,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     }
 
     protected String getSignalTableName(String dataCollectionId) {
-        return dataCollectionId;
+        if (Strings.isNullOrEmpty(dataCollectionId)) {
+            return dataCollectionId;
+        }
+        return jdbcConnection.quotedTableIdString(TableId.parse(dataCollectionId));
     }
 
     protected void sendWindowEvents(Partition partition, OffsetContext offsetContext) throws InterruptedException {
