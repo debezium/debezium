@@ -297,13 +297,15 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-2604")
+    @FixFor({ "DBZ-2604", "DBZ-4246" })
     public void shouldUseDatabaseCharacterSet() {
         String ddl = "CREATE DATABASE `mydb` character set UTF8mb4 collate utf8mb4_unicode_ci;"
-                + "CREATE TABLE mydb.mytable (id INT PRIMARY KEY, val1 CHAR(16) CHARSET latin2, val2 CHAR(5));";
+                + "create database `ymsun_test1` charset gb18030 collate gb18030_bi;"
+                + "CREATE TABLE mydb.mytable (id INT PRIMARY KEY, val1 CHAR(16) CHARSET latin2, val2 CHAR(5));"
+                + "CREATE TABLE ymsun_test1.mytable (id INT PRIMARY KEY, val1 CHAR(16) CHARSET latin2, val2 CHAR(5));";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
-        assertThat(tables.size()).isEqualTo(1);
+        assertThat(tables.size()).isEqualTo(2);
 
         Table table = tables.forTable(null, null, "mydb.mytable");
         assertThat(table.columns()).hasSize(3);
@@ -312,6 +314,9 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("val2")).isNotNull();
         assertThat(table.columnWithName("val1").charsetName()).isEqualTo("latin2");
         assertThat(table.columnWithName("val2").charsetName()).isEqualTo("UTF8mb4");
+
+        table = tables.forTable(null, null, "ymsun_test1.mytable");
+        assertThat(table.columnWithName("val2").charsetName()).isEqualTo("gb18030");
     }
 
     @Test

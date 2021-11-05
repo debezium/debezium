@@ -796,6 +796,7 @@ CP932:                               'CP932';
 DEC8:                                'DEC8';
 EUCJPMS:                             'EUCJPMS';
 EUCKR:                               'EUCKR';
+GB18030:                             'GB18030';
 GB2312:                              'GB2312';
 GBK:                                 'GBK';
 GEOSTD8:                             'GEOSTD8';
