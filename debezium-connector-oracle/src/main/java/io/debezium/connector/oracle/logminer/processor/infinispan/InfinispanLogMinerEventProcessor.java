@@ -222,7 +222,6 @@ public class InfinispanLogMinerEventProcessor extends AbstractLogMinerEventProce
 
                 Duration totalTime = Duration.between(startProcessTime, Instant.now());
                 metrics.setLastCapturedDmlCount(counters.dmlCount);
-                metrics.setLastDurationOfBatchCapturing(totalTime);
 
                 if (counters.dmlCount > 0 || counters.commitCount > 0 || counters.rollbackCount > 0) {
                     warnPotentiallyStuckScn(currentOffsetScn, currentOffsetCommitScn);
