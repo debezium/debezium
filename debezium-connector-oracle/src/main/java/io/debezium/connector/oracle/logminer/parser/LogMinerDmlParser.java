@@ -63,7 +63,7 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int WHERE_LENGTH = WHERE.length();
 
     @Override
-    public LogMinerDmlEntry parse(String sql, Table table, String txId) {
+    public LogMinerDmlEntry parse(String sql, Table table) {
         if (table == null) {
             throw new DmlParserException("DML parser requires a non-null table");
         }
@@ -603,20 +603,5 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         return index;
-    }
-
-    /**
-     * Returns whether the given array has no elements or all elements are {@code null}, thus empty.
-     *
-     * @param array the array to inspect
-     * @return true if the array is considered empty, false otherwise
-     */
-    private boolean isEmptyArray(Object[] array) {
-        for (int i = 0; i < array.length; ++i) {
-            if (array[i] != null) {
-                return false;
-            }
-        }
-        return true;
     }
 }

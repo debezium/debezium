@@ -855,43 +855,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
     }
 
-    public enum LogMiningDmlParser implements EnumeratedValue {
-        LEGACY("legacy"),
-        FAST("fast");
-
-        private final String value;
-
-        LogMiningDmlParser(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public static LogMiningDmlParser parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (LogMiningDmlParser parser : LogMiningDmlParser.values()) {
-                if (parser.getValue().equalsIgnoreCase(value)) {
-                    return parser;
-                }
-            }
-            return null;
-        }
-
-        public static LogMiningDmlParser parse(String value, String defaultValue) {
-            LogMiningDmlParser mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
     /**
      * A {@link TableFilter} that excludes all Oracle system tables.
      *
