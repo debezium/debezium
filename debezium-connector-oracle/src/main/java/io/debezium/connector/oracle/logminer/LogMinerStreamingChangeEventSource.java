@@ -247,6 +247,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
             }
         }
+
+        updateRedoLogMetrics();
     }
 
     /**
@@ -281,31 +283,36 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
             currentRedoLogSequences = newSequences;
 
-            final Map<String, String> logStatuses = jdbcConnection.queryAndMap(SqlUtils.redoLogStatusQuery(), rs -> {
-                Map<String, String> results = new LinkedHashMap<>();
-                while (rs.next()) {
-                    results.put(rs.getString(1), rs.getString(2));
-                }
-                return results;
-            });
-
             final int logSwitchCount = jdbcConnection.queryAndMap(SqlUtils.switchHistoryQuery(archiveDestinationName), rs -> {
                 if (rs.next()) {
                     return rs.getInt(2);
                 }
                 return 0;
             });
-
-            final Set<String> fileNames = getCurrentRedoLogFiles(jdbcConnection);
-
-            streamingMetrics.setRedoLogStatus(logStatuses);
             streamingMetrics.setSwitchCount(logSwitchCount);
-            streamingMetrics.setCurrentLogFileName(fileNames);
-
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Updates the redo log names and statues in the streaming metrics.
+     *
+     * @throws SQLException if a database exception occurred
+     */
+    private void updateRedoLogMetrics() throws SQLException {
+        final Map<String, String> logStatuses = jdbcConnection.queryAndMap(SqlUtils.redoLogStatusQuery(), rs -> {
+            Map<String, String> results = new LinkedHashMap<>();
+            while (rs.next()) {
+                results.put(rs.getString(1), rs.getString(2));
+            }
+            return results;
+        });
+
+        final Set<String> fileNames = getCurrentRedoLogFiles(jdbcConnection);
+        streamingMetrics.setCurrentLogFileName(fileNames);
+        streamingMetrics.setRedoLogStatus(logStatuses);
     }
 
     /**

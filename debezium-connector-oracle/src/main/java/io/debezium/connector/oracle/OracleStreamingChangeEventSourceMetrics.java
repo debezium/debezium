@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -136,10 +137,10 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         offsetScn.set(Scn.NULL);
         committedScn.set(Scn.NULL);
 
-        currentLogFileName = new AtomicReference<>();
+        currentLogFileName = new AtomicReference<>(new String[0]);
         minimumLogsMined.set(0L);
         maximumLogsMined.set(0L);
-        redoLogStatus = new AtomicReference<>();
+        redoLogStatus = new AtomicReference<>(new String[0]);
         switchCounter.set(0);
 
         batchSizeDefault = connectorConfig.getLogMiningBatchSizeDefault();
@@ -738,10 +739,10 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
                 ", lastBatchProcessingDuration=" + lastBatchProcessingDuration +
                 ", maxBatchProcessingDuration=" + maxBatchProcessingDuration +
                 ", maxBatchProcessingThroughput=" + maxBatchProcessingThroughput +
-                ", currentLogFileName=" + currentLogFileName +
+                ", currentLogFileName=" + Arrays.asList(currentLogFileName.get()) +
                 ", minLogFilesMined=" + minimumLogsMined +
                 ", maxLogFilesMined=" + maximumLogsMined +
-                ", redoLogStatus=" + redoLogStatus +
+                ", redoLogStatus=" + Arrays.asList(redoLogStatus.get()) +
                 ", switchCounter=" + switchCounter +
                 ", batchSize=" + batchSize +
                 ", millisecondToSleepBetweenMiningQuery=" + millisecondToSleepBetweenMiningQuery +
