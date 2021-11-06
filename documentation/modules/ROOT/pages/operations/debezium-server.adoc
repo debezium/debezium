@@ -386,7 +386,7 @@ Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 |
 |Must be set to `pubsub`.
 
-|[[pubsub-project-id]]<<pubsub-project.id, `debezium.sink.pubsub.project.id`>>
+|[[pubsub-project-id]]<<pubsub-project-id, `debezium.sink.pubsub.project.id`>>
 |_system-wide default project id_
 |A project name in which the target topics are created.
 

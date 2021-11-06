@@ -168,7 +168,7 @@ Because the structure of these other messages differs from the structure of the 
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
 * {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
-* Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
+* Use the xref:transformations/filtering.adoc#filter-topic-regex[topic.regex] configuration option for the SMT.
 
 // Type: reference
 // ModuleID: configuration-of-content-based-routing-conditions-for-other-scripting-languages

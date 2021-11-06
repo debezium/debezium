@@ -63,7 +63,7 @@ The remainder of this document describes embedding the MySQL connector in your a
 
 Your application needs to set up an embedded engine for each connector instance you want to run. The `io.debezium.embedded.EmbeddedEngine` class serves as an easy-to-use wrapper around any standard Kafka Connect connector and completely manages the connector's lifecycle. Basically, you create the `EmbeddedEngine` with a configuration (perhaps loaded from a properties file) that defines the environment for both the engine and the connector. You also provide the engine with a function that it will call for every data change event produced by the connector.
 
-Here's an example of code that configures and runs an embedded xref:connectors/mysql[MySQL connector]:
+Here's an example of code that configures and runs an embedded xref:connectors/mysql.adoc[MySQL connector]:
 
 [source,java,indent=0]
 ----

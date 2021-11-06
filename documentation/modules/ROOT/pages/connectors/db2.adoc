@@ -187,7 +187,7 @@ You can configure a {prodname} Db2 connector to produce schema change events tha
 * A table is removed from capture mode.
 * During a {link-prefix}:{link-db2-connector}#db2-schema-evolution[database schema update], there is a change in the schema for a table that is in capture mode.
 
-The connector writes schema change events to a Kafka schema change topic that has the name `_<serverName>_` where `_<serverName>_` is the logical server name that is specified in the xref:mysql-property-database-server-name[`database.server.name`] connector configuration property.
+The connector writes schema change events to a Kafka schema change topic that has the name `_<serverName>_` where `_<serverName>_` is the logical server name that is specified in the xref:db2-property-database-server-name[`database.server.name`] connector configuration property.
 Messages that the connector sends to the schema change topic contain a payload that includes the following elements:
 
 `databaseName`:: The name of the database to which the statements are applied.
