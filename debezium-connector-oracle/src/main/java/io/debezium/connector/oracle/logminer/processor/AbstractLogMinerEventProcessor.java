@@ -560,7 +560,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         LogMinerDmlEntry dmlEntry;
         try {
             Instant parseStart = Instant.now();
-            dmlEntry = dmlParser.parse(redoSql, table, transactionId);
+            dmlEntry = dmlParser.parse(redoSql, table);
             metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
         }
         catch (DmlParserException e) {

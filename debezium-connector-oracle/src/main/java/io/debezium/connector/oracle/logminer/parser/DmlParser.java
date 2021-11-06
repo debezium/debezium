@@ -18,9 +18,8 @@ public interface DmlParser {
      *
      * @param sql the sql statement
      * @param table the table the sql statement is for
-     * @param txId the current transaction id the sql is part of.
      * @return the parsed sql as a DML entry or {@code null} if the SQL couldn't be parsed.
      * @throws DmlParserException thrown if a parse exception is detected.
      */
-    LogMinerDmlEntry parse(String sql, Table table, String txId);
+    LogMinerDmlEntry parse(String sql, Table table);
 }
