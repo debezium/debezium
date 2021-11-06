@@ -148,7 +148,7 @@ fulfillment.inventory.customers
 fulfillment.inventory.products
 ----
 
-The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-oracle-connector-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database history topics, xref:oracle-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -2855,7 +2855,7 @@ Instead, it contains the complete new schema structure.
 
 |===
 
-After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<oracle-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>> option as `true`.
+After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<{context}-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>> option as `true`.
 After the connector's commit SCN advances beyond the DDL change, to prevent unparseable DDL statements from being skipped unexpectedly, return the connector configuration to its previous state.
 
 .Example of a logging record
@@ -3176,12 +3176,13 @@ This error means that the connector has attempted to execute an operation that m
 To resolve this, the IOT name used in the SQL operation should be replaced with the parent index-organized table name.
 To determine the parent index-organized table name, use the following SQL:
 
-```
+[source,sql]
+----
 SELECT IOT_NAME
   FROM DBA_TABLES
  WHERE OWNER='<tablespace-owner>'
    AND TABLE_NAME='<iot-table-name-that-failed>'
-```
+----
 
 The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
 
