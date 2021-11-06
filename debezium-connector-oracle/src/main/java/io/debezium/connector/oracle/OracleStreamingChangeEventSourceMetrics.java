@@ -48,7 +48,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     private final AtomicReference<Duration> maxDurationOfFetchingQuery = new AtomicReference<>();
     private final AtomicReference<Duration> totalBatchProcessingDuration = new AtomicReference<>();
     private final AtomicReference<Duration> lastBatchProcessingDuration = new AtomicReference<>();
-    private final AtomicReference<Duration> maxBatchProcessingDuration = new AtomicReference<>();
     private final AtomicReference<Duration> totalParseTime = new AtomicReference<>();
     private final AtomicReference<Duration> totalStartLogMiningSessionDuration = new AtomicReference<>();
     private final AtomicReference<Duration> lastStartLogMiningSessionDuration = new AtomicReference<>();
@@ -166,7 +165,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         maxDurationOfFetchingQuery.set(Duration.ZERO);
         lastDurationOfFetchingQuery.set(Duration.ZERO);
         logMinerQueryCount.set(0);
-        maxBatchProcessingDuration.set(Duration.ZERO);
         totalDurationOfFetchingQuery.set(Duration.ZERO);
         lastCapturedDmlCount.set(0);
         maxCapturedDmlCount.set(0);
@@ -214,6 +212,9 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         if (names.size() < minimumLogsMined.get()) {
             minimumLogsMined.set(names.size());
         }
+        else if (minimumLogsMined.get() == 0) {
+            minimumLogsMined.set(names.size());
+        }
         if (names.size() > maximumLogsMined.get()) {
             maximumLogsMined.set(names.size());
         }
@@ -258,8 +259,14 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     public void setLastDurationOfBatchProcessing(Duration lastDuration) {
         lastBatchProcessingDuration.set(lastDuration);
         totalBatchProcessingDuration.accumulateAndGet(lastDuration, Duration::plus);
-        if (maxBatchProcessingDuration.get().toMillis() < lastDuration.toMillis()) {
-            maxBatchProcessingDuration.set(lastDuration);
+        if (maxBatchProcessingTime.get().toMillis() < lastDuration.toMillis()) {
+            maxBatchProcessingTime.set(lastDuration);
+        }
+        if (minBatchProcessingTime.get().toMillis() > lastDuration.toMillis()) {
+            minBatchProcessingTime.set(lastDuration);
+        }
+        else if (minBatchProcessingTime.get().toMillis() == 0L) {
+            minBatchProcessingTime.set(lastDuration);
         }
         if (getLastBatchProcessingThroughput() > maxBatchProcessingThroughput.get()) {
             maxBatchProcessingThroughput.set(getLastBatchProcessingThroughput());
@@ -699,6 +706,9 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
             if (minLagFromTheSourceDuration.get().toMillis() > lag.toMillis()) {
                 minLagFromTheSourceDuration.set(lag);
             }
+            else if (minLagFromTheSourceDuration.get().toMillis() == 0) {
+                minLagFromTheSourceDuration.set(lag);
+            }
         }
     }
 
@@ -737,7 +747,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
                 ", maxDurationOfFetchingQuery=" + maxDurationOfFetchingQuery +
                 ", totalBatchProcessingDuration=" + totalBatchProcessingDuration +
                 ", lastBatchProcessingDuration=" + lastBatchProcessingDuration +
-                ", maxBatchProcessingDuration=" + maxBatchProcessingDuration +
                 ", maxBatchProcessingThroughput=" + maxBatchProcessingThroughput +
                 ", currentLogFileName=" + Arrays.asList(currentLogFileName.get()) +
                 ", minLogFilesMined=" + minimumLogsMined +
