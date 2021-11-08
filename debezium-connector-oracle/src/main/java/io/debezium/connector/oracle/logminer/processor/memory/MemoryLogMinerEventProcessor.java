@@ -36,7 +36,6 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.TransactionCache;
 import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
@@ -60,7 +59,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final OracleStreamingChangeEventSourceMetrics metrics;
-    private final MemoryTransactionCache transactionCache;
+    private final Map<String, MemoryTransaction> transactionCache = new HashMap<>();
     private final Map<String, Scn> recentlyCommittedTransactionsCache = new HashMap<>();
     private final Set<Scn> schemaChangesCache = new HashSet<>();
     private final Set<String> abandonedTransactionsCache = new HashSet<>();
@@ -86,11 +85,10 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.metrics = metrics;
-        this.transactionCache = new MemoryTransactionCache();
     }
 
     @Override
-    protected TransactionCache<MemoryTransaction, ?> getTransactionCache() {
+    protected Map<String, MemoryTransaction> getTransactionCache() {
         return transactionCache;
     }
 
@@ -164,13 +162,13 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, offsetScn, retention);
             lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
                 LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
-                Scn smallestScn = transactionCache.getMinimumScn();
+                Scn smallestScn = getTransactionCacheMinimumScn();
                 if (!smallestScn.isNull()) {
                     if (thresholdScn.compareTo(smallestScn) < 0) {
                         thresholdScn = smallestScn;
                     }
 
-                    Iterator<Map.Entry<String, MemoryTransaction>> iterator = transactionCache.iterator();
+                    Iterator<Map.Entry<String, MemoryTransaction>> iterator = transactionCache.entrySet().iterator();
                     while (iterator.hasNext()) {
                         Map.Entry<String, MemoryTransaction> entry = iterator.next();
                         if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
@@ -184,7 +182,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                     }
 
                     // Update the oldest scn metric are transaction abandonment
-                    smallestScn = transactionCache.getMinimumScn();
+                    smallestScn = getTransactionCacheMinimumScn();
                     metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
                 }
 
@@ -246,7 +244,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             skipExcludedUserName = false;
         }
 
-        final Scn smallestScn = transactionCache.getMinimumScn();
+        final Scn smallestScn = getTransactionCacheMinimumScn();
         metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
         abandonedTransactionsCache.remove(transactionId);
 
@@ -407,7 +405,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
-                final Scn minStartScn = transactionCache.getMinimumScn();
+                final Scn minStartScn = getTransactionCacheMinimumScn();
                 if (!minStartScn.isNull()) {
                     recentlyCommittedTransactionsCache.entrySet().removeIf(entry -> entry.getValue().compareTo(minStartScn) < 0);
                     schemaChangesCache.removeIf(scn -> scn.compareTo(minStartScn) < 0);
@@ -429,7 +427,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
-                final Scn minStartScn = transactionCache.getMinimumScn();
+                final Scn minStartScn = getTransactionCacheMinimumScn();
                 if (!minStartScn.isNull()) {
                     offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
@@ -463,4 +461,11 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         }
     }
 
+    @Override
+    protected Scn getTransactionCacheMinimumScn() {
+        return transactionCache.values().stream()
+                .map(MemoryTransaction::getStartScn)
+                .min(Scn::compareTo)
+                .orElse(Scn.NULL);
+    }
 }

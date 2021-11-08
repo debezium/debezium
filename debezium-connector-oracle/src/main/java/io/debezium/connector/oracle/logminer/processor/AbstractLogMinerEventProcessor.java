@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -135,7 +136,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * Returns the {@code TransactionCache} implementation.
      * @return the transaction cache, never {@code null}
      */
-    protected abstract TransactionCache<T, ?> getTransactionCache();
+    protected abstract Map<String, T> getTransactionCache();
 
     /**
      * Creates a new transaction based on the supplied {@code START} event.
@@ -652,6 +653,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         throw new DebeziumException("Unable to parse unsupported LOB_WRITE SQL: " + sql);
     }
+
+    /**
+     * Gets the minimum system change number stored in the transaction cache.
+     * @return the minimum system change number, never {@code null} but could be {@link Scn#NULL}.
+     */
+    protected abstract Scn getTransactionCacheMinimumScn();
 
     /**
      * Wrapper for all counter variables

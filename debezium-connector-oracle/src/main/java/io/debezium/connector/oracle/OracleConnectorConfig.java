@@ -16,6 +16,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -298,21 +300,30 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field LOG_MINING_BUFFER_TYPE = Field.create("log.mining.buffer.type")
             .withDisplayName("Controls which buffer type implementation to be used")
             .withEnum(LogMiningBufferType.class, LogMiningBufferType.MEMORY)
+            .withValidation(OracleConnectorConfig::validateLogMiningBufferType)
             .withImportance(Importance.LOW)
             .withDescription("The buffer type controls how the connector manages buffering transaction data." + System.lineSeparator() +
                     System.lineSeparator() +
                     "memory - Uses the JVM process' heap to buffer all transaction data." + System.lineSeparator() +
                     System.lineSeparator() +
-                    "infinispan - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk." +
-                    " Use the log.mining.buffer.location property to define the location for storing cache files.");
+                    "infinispan_embedded - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk." + System.lineSeparator() +
+                    System.lineSeparator() +
+                    "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.");
 
-    public static final Field LOG_MINING_BUFFER_LOCATION = Field.create("log.mining.buffer.location")
-            .withDisplayName("Location where Infinispan stores buffer caches")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateBufferLocation)
-            .withDescription("Path to location where Infinispan will store buffer caches");
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.transactions")
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.committed_transactions")
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.rollback_transactions")
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS = Field.create("log.mining.buffer.infinispan.cache.events")
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES = Field.create("log.mining.buffer.infinispan.cache.schema_changes")
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
 
     public static final Field LOG_MINING_BUFFER_DROP_ON_STOP = Field.create("log.mining.buffer.drop.on.stop")
             .withDisplayName("Controls whether the buffer cache is dropped when connector is stopped")
@@ -384,8 +395,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_USERNAME_EXCLUDE_LIST,
                     LOG_MINING_ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
-                    LOG_MINING_BUFFER_LOCATION,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
                     LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
                     LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS)
@@ -403,6 +418,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final List<String> EXCLUDED_SCHEMAS = Collections.unmodifiableList(Arrays.asList("appqossys", "audsys",
             "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "gsmadmin_internal", "lbacsys", "mdsys", "ojvmsys", "olapsys",
             "orddata", "ordsys", "outln", "sys", "system", "wmsys", "xdb"));
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorConfig.class);
 
     private final String databaseName;
     private final String pdbName;
@@ -435,7 +452,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningUsernameExcludes;
     private final String logMiningArchiveDestinationName;
     private final LogMiningBufferType logMiningBufferType;
-    private final String logMiningBufferLocation;
     private final boolean logMiningBufferDropOnStop;
     private final int logMiningScnGapDetectionGapSizeMin;
     private final int logMiningScnGapDetectionTimeIntervalMaxMs;
@@ -477,7 +493,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
-        this.logMiningBufferLocation = config.getString(LOG_MINING_BUFFER_LOCATION);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
@@ -821,7 +836,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public enum LogMiningBufferType implements EnumeratedValue {
         MEMORY("memory"),
-        INFINISPAN("infinispan");
+
+        /**
+         * @deprecated use either {@link #INFINISPAN_EMBEDDED} or {@link #INFINISPAN_REMOTE}.
+         */
+        @Deprecated
+        INFINISPAN("infinispan"),
+
+        INFINISPAN_EMBEDDED("infinispan_embedded"),
+        INFINISPAN_REMOTE("infinispan_remote");
 
         private final String value;
 
@@ -832,6 +855,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         @Override
         public String getValue() {
             return value;
+        }
+
+        public boolean isInfinispan() {
+            return !MEMORY.equals(this);
+        }
+
+        public boolean isInfinispanEmbedded() {
+            return isInfinispan() && (INFINISPAN.equals(this) || INFINISPAN_EMBEDDED.equals(this));
         }
 
         public static LogMiningBufferType parse(String value) {
@@ -1063,13 +1094,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return the log mining buffer storage location, may be {@code null}
-     */
-    public String getLogMiningBufferLocation() {
-        return logMiningBufferLocation;
-    }
-
-    /**
      * @return whether buffer cache should be dropped on connector stop.
      */
     public boolean isLogMiningBufferDropOnStop() {
@@ -1130,15 +1154,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
-    public static int validateBufferLocation(Configuration config, Field field, ValidationOutput problems) {
-        // Require field only if using Infinispan buffer type.
-        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
-        if (LogMiningBufferType.INFINISPAN.equals(bufferType)) {
-            return Field.isRequired(config, field, problems);
-        }
-        return 0;
-    }
-
     public static int validateRacNodes(Configuration config, Field field, ValidationOutput problems) {
         int errors = 0;
         if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
@@ -1155,6 +1170,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     }
                 }
             }
+        }
+        return errors;
+    }
+
+    private static int validateLogMiningBufferType(Configuration config, Field field, ValidationOutput problems) {
+        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        if (LogMiningBufferType.INFINISPAN.equals(bufferType)) {
+            LOGGER.warn("Value '{}' of configuration option '{}' is deprecated and should be replaced with '{}'",
+                    LogMiningBufferType.INFINISPAN.getValue(),
+                    LOG_MINING_BUFFER_TYPE.name(),
+                    LogMiningBufferType.INFINISPAN_EMBEDDED.getValue());
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningInfinispanCacheConfiguration(Configuration config, Field field, ValidationOutput problems) {
+        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        int errors = 0;
+        if (bufferType.isInfinispan()) {
+            errors = Field.isRequired(config, field, problems);
         }
         return errors;
     }
