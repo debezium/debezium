@@ -7,15 +7,10 @@ on:
       - 1.*
     paths:
       - 'support/checkstyle/**'
-      - 'support/ide-configs/**'
-      - 'support/revapi/**'
       - 'debezium-api/**'
       - 'debezium-assembly-descriptors/**'
       - 'debezium-core/**'
       - 'debezium-embedded/**'
-      - 'debezium-microbenchmark/**'
-      - 'debezium-e2e-benchmark/**'
-      - 'debezium-scripting/**'
       - 'debezium-server/**'
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
@@ -27,15 +22,10 @@ on:
       - 1.*
     paths:
       - 'support/checkstyle/**'
-      - 'support/ide-configs/**'
-      - 'support/revapi/**'
       - 'debezium-api/**'
       - 'debezium-assembly-descriptors/**'
       - 'debezium-core/**'
       - 'debezium-embedded/**'
-      - 'debezium-microbenchmark/**'
-      - 'debezium-e2e-benchmark/**'
-      - 'debezium-scripting/**'
       - 'debezium-server/**'
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'

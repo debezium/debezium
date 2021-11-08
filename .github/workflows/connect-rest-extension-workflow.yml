@@ -7,7 +7,6 @@ on:
       - 1.*
     paths:
       - 'support/checkstyle/**'
-      - 'support/ide-configs/**'
       - 'debezium-connect-rest-extension/**'
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
@@ -19,7 +18,6 @@ on:
       - 1.*
     paths:
       - 'support/checkstyle/**'
-      - 'support/ide-configs/**'
       - 'debezium-connect-rest-extension/**'
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
