@@ -19,6 +19,7 @@ import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.configuration.Configuration;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+import org.infinispan.client.hotrod.impl.ConfigurationProperties;
 import org.infinispan.commons.configuration.XMLStringConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +81,10 @@ public class RemoteCacheProvider implements CacheProvider {
         final Properties properties = new Properties();
         for (Map.Entry<String, String> entry : clientSettings.entrySet()) {
             properties.put("infinispan.client." + entry.getKey(), entry.getValue());
+            if (entry.getKey().toLowerCase().endsWith(ConfigurationProperties.AUTH_USERNAME.toLowerCase())) {
+                // If an authentication username is supplied, enforce authentication required
+                properties.put(ConfigurationProperties.USE_AUTH, "true");
+            }
         }
         return properties;
     }
