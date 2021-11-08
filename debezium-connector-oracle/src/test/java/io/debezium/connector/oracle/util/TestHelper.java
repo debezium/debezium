@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.infinispan.client.hotrod.impl.ConfigurationProperties;
+
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
@@ -42,6 +44,12 @@ public class TestHelper {
     public static final String DATABASE = "ORCLPDB1";
     public static final String DATABASE_CDB = "ORCLCDB";
     public static final int PORT = 1521;
+
+    public static final int INFINISPAN_HOTROD_PORT = ConfigurationProperties.DEFAULT_HOTROD_PORT;
+    public static final String INFINISPAN_USER = "admin";
+    public static final String INFINISPAN_PASS = "admin";
+    public static final String INFINISPAN_HOST = "0.0.0.0";
+    public static final String INFINISPAN_SERVER_LIST = INFINISPAN_HOST + ":" + INFINISPAN_HOTROD_PORT;
 
     /**
      * Key for schema parameter used to store a source column's type name.
@@ -134,10 +142,9 @@ public class TestHelper {
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferType);
                 withDefaultInfinispanCacheConfigurations(bufferType, builder);
                 if (!bufferType.isInfinispanEmbedded()) {
-                    builder.with("log.mining.buffer.infinispan.client.hotrod.server_list", "0.0.0.0:11222");
-                    builder.with("log.mining.buffer.infinispan.client.hotrod.use_auth", "true");
-                    builder.with("log.mining.buffer.infinispan.client.hotrod.auth_username", "admin");
-                    builder.with("log.mining.buffer.infinispan.client.hotrod.auth_password", "admin");
+                    builder.with("log.mining.buffer." + ConfigurationProperties.SERVER_LIST, INFINISPAN_SERVER_LIST);
+                    builder.with("log.mining.buffer." + ConfigurationProperties.AUTH_USERNAME, INFINISPAN_USER);
+                    builder.with("log.mining.buffer." + ConfigurationProperties.AUTH_PASSWORD, INFINISPAN_PASS);
                 }
             }
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
