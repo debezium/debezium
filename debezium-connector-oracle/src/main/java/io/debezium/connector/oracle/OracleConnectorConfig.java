@@ -311,19 +311,44 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.");
 
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.transactions")
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+            .withDisplayName("Infinispan 'transactions' cache configuration")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
+            .withDescription("Specifies the XML configuration for the Infinispan 'transactions' cache");
 
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.committed_transactions")
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+            .withDisplayName("Infinispan 'committed-transactions' cache configuration")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
+            .withDescription("Specifies the XML configuration for the Infinispan 'committed-transactions' cache");
 
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.rollback_transactions")
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+            .withDisplayName("Infinispan 'rollback-transactions' cache configuration")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
+            .withDescription("Specifies the XML configuration for the Infinispan 'rollback-transactions' cache");
 
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS = Field.create("log.mining.buffer.infinispan.cache.events")
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+            .withDisplayName("Infinispan 'events' cache configurations")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
+            .withDescription("Specifies the XML configuration for the Infinispan 'events' cache");
 
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES = Field.create("log.mining.buffer.infinispan.cache.schema_changes")
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration);
+            .withDisplayName("Infinispan 'schema-changes' cache configuration")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
+            .withDescription("Specifies the XML configuration for the Infinispan 'schema-changes' cache");
 
     public static final Field LOG_MINING_BUFFER_DROP_ON_STOP = Field.create("log.mining.buffer.drop.on.stop")
             .withDisplayName("Controls whether the buffer cache is dropped when connector is stopped")

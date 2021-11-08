@@ -12,9 +12,4 @@ public class OracleConnectorConfigDefTest extends ConfigDefinitionMetadataTest {
     public OracleConnectorConfigDefTest() {
         super(new OracleConnector());
     }
-
-    @Override
-    public void allFieldsShouldHaveDescription() {
-        // todo: need to figure out how to allow this to work with infinispan buffer setups
-    }
 }
