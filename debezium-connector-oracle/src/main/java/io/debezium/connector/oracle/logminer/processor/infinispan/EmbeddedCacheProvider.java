@@ -20,6 +20,7 @@ import org.infinispan.manager.EmbeddedCacheManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 
@@ -43,20 +44,11 @@ public class EmbeddedCacheProvider implements CacheProvider {
         this.cacheManager = new DefaultCacheManager();
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
 
-        final String transactionConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
-        this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, transactionConfig);
-
-        final String committedTransactionsConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS);
-        this.recentlyCommittedTransactionsCache = createCache(COMMIT_TRANSACTIONS_CACHE_NAME, committedTransactionsConfig);
-
-        final String rollbackTransactionsConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS);
-        this.rollbackTransactionsCache = createCache(ROLLBACK_TRANSACTIONS_CACHE_NAME, rollbackTransactionsConfig);
-
-        final String schemaChangesConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
-        this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, schemaChangesConfig);
-
-        final String eventsConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
-        this.eventCache = createCache(EVENTS_CACHE_NAME, eventsConfig);
+        this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
+        this.recentlyCommittedTransactionsCache = createCache(COMMIT_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS);
+        this.rollbackTransactionsCache = createCache(ROLLBACK_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS);
+        this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
+        this.eventCache = createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
     }
 
     @Override
@@ -120,8 +112,10 @@ public class EmbeddedCacheProvider implements CacheProvider {
         }
     }
 
-    private <K, V> Cache<K, V> createCache(String cacheName, String cacheConfiguration) {
+    private <K, V> Cache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
+
+        final String cacheConfiguration = connectorConfig.getConfig().getString(field);
         Objects.requireNonNull(cacheConfiguration);
 
         // define the cache, parsing the supplied XML configuration
