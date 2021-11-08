@@ -43,7 +43,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractLogMinerEventProcessor<InfinispanTransaction> {
+public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractLogMinerEventProcessor<InfinispanTransaction> implements CacheProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractInfinispanLogMinerEventProcessor.class);
 
@@ -76,7 +76,20 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         this.context = context;
     }
 
-    protected abstract CacheProvider getCacheProvider();
+    @Override
+    public void displayCacheStatistics() {
+        LOGGER.info("Overall Cache Statistics:");
+        LOGGER.info("\tTransactions   : {}", getTransactionCache().size());
+        LOGGER.info("\tCommitted Trxs : {}", getCommittedTransactionsCache().size());
+        LOGGER.info("\tRollback Trxs  : {}", getRollbackTransactionsCache().size());
+        LOGGER.info("\tSchema Changes : {}", getSchemaChangesCache().size());
+        LOGGER.info("\tEvents         : {}", getEventCache().size());
+        if (!getEventCache().isEmpty()) {
+            for (String eventKey : getEventCache().keySet()) {
+                LOGGER.debug("\t\tFound Key: {}", eventKey);
+            }
+        }
+    }
 
     @Override
     protected InfinispanTransaction createTransaction(LogMinerEventRow row) {
@@ -85,16 +98,16 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected void removeEventWithRowId(LogMinerEventRow row) {
-        List<String> eventKeys = getCacheProvider().getEventCache().keySet()
+        List<String> eventKeys = getEventCache().keySet()
                 .stream()
                 .filter(k -> k.startsWith(row.getTransactionId() + "-"))
                 .collect(Collectors.toList());
 
         for (String eventKey : eventKeys) {
-            final LogMinerEvent event = getCacheProvider().getEventCache().get(eventKey);
+            final LogMinerEvent event = getEventCache().get(eventKey);
             if (event != null && event.getRowId().equals(row.getRowId())) {
                 LOGGER.trace("Undo applied for event {}.", event);
-                getCacheProvider().getEventCache().remove(eventKey);
+                getEventCache().remove(eventKey);
             }
         }
     }
@@ -144,7 +157,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     @Override
     protected void processRow(LogMinerEventRow row) throws SQLException, InterruptedException {
         final String transactionId = row.getTransactionId();
-        if (getCacheProvider().getCommittedTransactionsCache().containsKey(transactionId)) {
+        if (getCommittedTransactionsCache().containsKey(transactionId)) {
             LOGGER.trace("Transaction {} has been seen by connector, skipped.", transactionId);
             return;
         }
@@ -158,11 +171,11 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected boolean isTransactionIdAllowed(String transactionId) {
-        if (getCacheProvider().getRollbackedTransactionsCache().containsKey(transactionId)) {
+        if (getRollbackTransactionsCache().containsKey(transactionId)) {
             LOGGER.warn("Event for transaction {} skipped as transaction is marked for rollback.", transactionId);
             return false;
         }
-        if (getCacheProvider().getCommittedTransactionsCache().containsKey(transactionId)) {
+        if (getCommittedTransactionsCache().containsKey(transactionId)) {
             LOGGER.warn("Event for transaction {} skipped as transaction was recently committed.", transactionId);
             return false;
         }
@@ -171,18 +184,18 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected boolean hasSchemaChangeBeenSeen(LogMinerEventRow row) {
-        return getCacheProvider().getSchemaChangesCache().containsKey(row.getScn().toString());
+        return getSchemaChangesCache().containsKey(row.getScn().toString());
     }
 
     @Override
     protected void handleCommit(LogMinerEventRow row) throws InterruptedException {
         final String transactionId = row.getTransactionId();
-        if (getCacheProvider().getCommittedTransactionsCache().containsKey(transactionId)) {
+        if (getCommittedTransactionsCache().containsKey(transactionId)) {
             LOGGER.debug("\tTransaction is already committed, skipped.");
             return;
         }
 
-        final InfinispanTransaction transaction = getCacheProvider().getTransactionCache().get(transactionId);
+        final InfinispanTransaction transaction = getTransactionCache().get(transactionId);
         if (transaction == null) {
             LOGGER.trace("Transaction {} not found.", transactionId);
             return;
@@ -194,7 +207,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             // existing entry and remove it from the cache; however it always returned null.
             //
             // For now, we're going to use get to obtain the value and then remove it after-the-fact.
-            getCacheProvider().getTransactionCache().remove(transactionId);
+            getTransactionCache().remove(transactionId);
         }
 
         final boolean skipExcludedUserName;
@@ -218,8 +231,8 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         if ((offsetCommitScn != null && offsetCommitScn.compareTo(commitScn) > 0) || lastCommittedScn.compareTo(commitScn) > 0) {
             LOGGER.debug("Transaction {} has already been processed. Commit SCN in offset is {} while commit SCN of transaction is {} and last seen committed SCN is {}.",
                     transactionId, offsetCommitScn, commitScn, lastCommittedScn);
-            getCacheProvider().getTransactionCache().remove(transactionId);
-            metrics.setActiveTransactions(getCacheProvider().getTransactionCache().size());
+            getTransactionCache().remove(transactionId);
+            metrics.setActiveTransactions(getTransactionCache().size());
             removeEventsWithTransaction(transaction);
             return;
         }
@@ -273,7 +286,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                     return;
                 }
 
-                final LogMinerEvent event = getCacheProvider().getEventCache().get(transaction.getEventId(i));
+                final LogMinerEvent event = getEventCache().get(transaction.getEventId(i));
                 if (event == null) {
                     // If an event is undone, it gets removed from the cache at undo time.
                     // This means that the call to get could return a null event and we
@@ -301,13 +314,13 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         }
 
         // cache recently committed transactions by transaction id
-        getCacheProvider().getCommittedTransactionsCache().put(transactionId, commitScn.toString());
+        getCommittedTransactionsCache().put(transactionId, commitScn.toString());
 
         // Clear the event queue for the transaction
         removeEventsWithTransaction(transaction);
 
         metrics.incrementCommittedTransactions();
-        metrics.setActiveTransactions(getCacheProvider().getTransactionCache().size());
+        metrics.setActiveTransactions(getTransactionCache().size());
         metrics.incrementCommittedDmlCount(eventCount);
         metrics.setCommittedScn(commitScn);
         metrics.setOffsetScn(offsetContext.getScn());
@@ -316,13 +329,13 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected void handleRollback(LogMinerEventRow row) {
-        final InfinispanTransaction transaction = getCacheProvider().getTransactionCache().get(row.getTransactionId());
+        final InfinispanTransaction transaction = getTransactionCache().get(row.getTransactionId());
         if (transaction != null) {
             removeEventsWithTransaction(transaction);
-            getCacheProvider().getTransactionCache().remove(row.getTransactionId());
-            getCacheProvider().getRollbackedTransactionsCache().put(row.getTransactionId(), row.getScn().toString());
+            getTransactionCache().remove(row.getTransactionId());
+            getRollbackTransactionsCache().put(row.getTransactionId(), row.getScn().toString());
 
-            metrics.setActiveTransactions(getCacheProvider().getTransactionCache().size());
+            metrics.setActiveTransactions(getTransactionCache().size());
             metrics.incrementRolledBackTransactions();
             metrics.addRolledBackTransactionId(row.getTransactionId());
 
@@ -334,7 +347,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     protected void handleSchemaChange(LogMinerEventRow row) throws InterruptedException {
         super.handleSchemaChange(row);
         if (row.getTableName() != null) {
-            getCacheProvider().getSchemaChangesCache().put(row.getScn().toString(), row.getTableId().identifier());
+            getSchemaChangesCache().put(row.getScn().toString(), row.getTableId().identifier());
         }
     }
 
@@ -347,10 +360,10 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                 transaction = createTransaction(row);
             }
             String eventKey = transaction.getEventId(transaction.getNextEventId());
-            if (!getCacheProvider().getEventCache().containsKey(eventKey)) {
+            if (!getEventCache().containsKey(eventKey)) {
                 // Add new event at eventId offset
                 LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, eventKey);
-                getCacheProvider().getEventCache().put(eventKey, eventSupplier.get());
+                getEventCache().put(eventKey, eventSupplier.get());
                 metrics.calculateLagMetrics(row.getChangeTime());
             }
             // When using Infinispan, this extra put is required so that the state is properly synchronized
@@ -362,7 +375,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     @Override
     protected int getTransactionEventCount(InfinispanTransaction transaction) {
         // todo: implement indexed keys when ISPN supports them
-        return (int) getCacheProvider().getEventCache()
+        return (int) getEventCache()
                 .keySet()
                 .parallelStream()
                 .filter(k -> k.startsWith(transaction.getTransactionId() + "-"))
@@ -382,18 +395,18 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         // Cleanup caches based on current state of the transaction cache
         final Scn minCacheScn = getTransactionCacheMinimumScn();
         if (!minCacheScn.isNull()) {
-            getCacheProvider().getCommittedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-            getCacheProvider().getRollbackedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-            getCacheProvider().getSchemaChangesCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
+            getCommittedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+            getRollbackTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+            getSchemaChangesCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
         }
         else {
-            getCacheProvider().getCommittedTransactionsCache().clear();
-            getCacheProvider().getRollbackedTransactionsCache().clear();
-            getCacheProvider().getSchemaChangesCache().clear();
+            getCommittedTransactionsCache().clear();
+            getRollbackTransactionsCache().clear();
+            getSchemaChangesCache().clear();
         }
 
         if (getConfig().isLobEnabled()) {
-            if (getCacheProvider().getTransactionCache().isEmpty() && !maxCommittedScn.isNull()) {
+            if (getTransactionCache().isEmpty() && !maxCommittedScn.isNull()) {
                 offsetContext.setScn(maxCommittedScn);
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
@@ -428,7 +441,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     private void removeEventsWithTransaction(InfinispanTransaction transaction) {
         // Clear the event queue for the transaction
         for (int i = 0; i < transaction.getNumberOfEvents(); ++i) {
-            getCacheProvider().getEventCache().remove(transaction.getEventId(i));
+            getEventCache().remove(transaction.getEventId(i));
         }
     }
 }
