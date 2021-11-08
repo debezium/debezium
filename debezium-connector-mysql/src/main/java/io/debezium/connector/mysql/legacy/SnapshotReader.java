@@ -605,6 +605,9 @@ public class SnapshotReader extends AbstractReader {
                                         logger.info("Step {}: Stopping the snapshot due to thread interruption", stepNum);
                                         interrupted.set(true);
                                     }
+                                    catch (Exception e) {
+                                        logger.error("Aborting invoke " +  sql.get(), e);
+                                    }
                                 });
                             }
                             finally {
