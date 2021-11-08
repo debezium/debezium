@@ -44,6 +44,10 @@
             <artifactId>infinispan-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.infinispan</groupId>
+            <artifactId>infinispan-client-hotrod</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.infinispan.protostream</groupId>
             <artifactId>protostream-processor</artifactId>
         </dependency>
@@ -334,6 +338,80 @@
                                 <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                             </excludes>
                         </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>infinispan-buffer-remote</id>
+            <properties>
+                <log.mining.buffer.type.name>infinispan_remote</log.mining.buffer.type.name>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <excludes>
+                                <!-- When compiling with this profile, xstream is not added by default -->
+                                <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <configuration>
+                            <watchInterval>500</watchInterval>
+                            <logDate>default</logDate>
+                            <verbose>true</verbose>
+                            <images>
+                                <image>
+                                    <!-- A docker image using Infinispan -->
+                                    <name>infinispan/server:12.1</name>
+                                    <run>
+                                        <namingStrategy>none</namingStrategy>
+                                        <env>
+                                            <USER>admin</USER>
+                                            <PASS>admin</PASS>
+                                        </env>
+                                        <ports>
+                                            <port>11222:11222</port>
+                                        </ports>
+                                        <log>
+                                            <prefix>infinispan</prefix>
+                                            <enabled>true</enabled>
+                                            <color>green</color>
+                                        </log>
+                                        <wait>
+                                            <time>60000</time> <!-- 60 seconds max -->
+                                            <log>Infinispan Server [0-9a-zA-z.]* started</log>
+                                        </wait>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                        <!--
+                        Connect this plugin to the maven lifecycle around the integration-test phase:
+                        start the container in pre-integration-test and stop it in post-integration-test.
+                        -->
+                        <executions>
+                            <execution>
+                                <id>start</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

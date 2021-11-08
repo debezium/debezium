@@ -19,7 +19,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applicable for LogMiner")
-public class InfinispanProcessorIT extends AbstractProcessorTest {
+public class EmbeddedInfinispanProcessorIT extends AbstractProcessorTest {
     @Before
     public void before() throws Exception {
         super.before();
@@ -33,9 +33,11 @@ public class InfinispanProcessorIT extends AbstractProcessorTest {
 
     @Override
     protected Configuration.Builder getBufferImplementationConfig() {
-        return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.INFINISPAN)
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_LOCATION, "./target/data");
+        final LogMiningBufferType bufferType = LogMiningBufferType.INFINISPAN;
+        return TestHelper.withDefaultInfinispanCacheConfigurations(bufferType,
+                TestHelper.defaultConfig()
+                        .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferType)
+                        .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true));
     }
 
     @Override

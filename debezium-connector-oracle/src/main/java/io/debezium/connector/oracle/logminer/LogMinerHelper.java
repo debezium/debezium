@@ -74,7 +74,7 @@ public class LogMinerHelper {
             executeCallableStatement(connection, addLogFileStatement);
         }
 
-        LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}\n", lastProcessedScn, logFilesNames);
+        LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}", lastProcessedScn, logFilesNames);
     }
 
     static void logWarn(OracleStreamingChangeEventSourceMetrics streamingMetrics, String format, Object... args) {

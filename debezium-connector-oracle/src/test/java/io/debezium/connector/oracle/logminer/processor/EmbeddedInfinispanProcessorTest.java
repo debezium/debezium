@@ -14,28 +14,36 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
-import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.infinispan.AbstractInfinispanLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
 
 /**
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applicable for LogMiner")
-public class MemoryProcessorTest extends AbstractProcessorUnitTest<MemoryLogMinerEventProcessor> {
+public class EmbeddedInfinispanProcessorTest extends AbstractProcessorUnitTest<AbstractInfinispanLogMinerEventProcessor> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MemoryProcessorTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedInfinispanProcessorTest.class);
 
     @Override
     protected Configuration.Builder getConfig() {
-        return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.MEMORY)
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
+        final LogMiningBufferType bufferType = LogMiningBufferType.INFINISPAN;
+        return TestHelper.withDefaultInfinispanCacheConfigurations(bufferType,
+                TestHelper.defaultConfig()
+                        .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferType)
+                        .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true));
     }
 
     @Override
-    protected MemoryLogMinerEventProcessor getProcessor(OracleConnectorConfig connectorConfig) {
+    protected boolean isTransactionAbandonmentSupported() {
+        return false;
+    }
+
+    @Override
+    protected AbstractInfinispanLogMinerEventProcessor getProcessor(OracleConnectorConfig connectorConfig) {
         assertThat(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error)).isTrue();
-        return new MemoryLogMinerEventProcessor(context,
+        return new EmbeddedInfinispanLogMinerEventProcessor(context,
                 connectorConfig,
                 connection,
                 dispatcher,
