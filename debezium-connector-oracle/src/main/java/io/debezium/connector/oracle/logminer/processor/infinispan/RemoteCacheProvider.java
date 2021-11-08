@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.LogMinerEventMarshallerImpl;
@@ -57,20 +58,11 @@ public class RemoteCacheProvider implements CacheProvider {
         this.cacheManager = new RemoteCacheManager(config, true);
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
 
-        final String transactionConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
-        this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, transactionConfig);
-
-        final String committedTransactionsConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS);
-        this.recentlyCommittedTransactionsCache = createCache(COMMIT_TRANSACTIONS_CACHE_NAME, committedTransactionsConfig);
-
-        final String rollbackTransactionsConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS);
-        this.rollbackTransactionsCache = createCache(ROLLBACK_TRANSACTIONS_CACHE_NAME, rollbackTransactionsConfig);
-
-        final String schemaChangesConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
-        this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, schemaChangesConfig);
-
-        final String eventsConfig = connectorConfig.getConfig().getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
-        this.eventCache = createCache(EVENTS_CACHE_NAME, eventsConfig);
+        this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
+        this.recentlyCommittedTransactionsCache = createCache(COMMIT_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS);
+        this.rollbackTransactionsCache = createCache(ROLLBACK_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS);
+        this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
+        this.eventCache = createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
     }
 
     private Properties getHotrodClientProperties(OracleConnectorConfig connectorConfig) {
@@ -150,9 +142,8 @@ public class RemoteCacheProvider implements CacheProvider {
         }
     }
 
-    private <C, V> RemoteCache<C, V> createCache(String cacheName, String cacheConfiguration) {
+    private <C, V> RemoteCache<C, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
-        Objects.requireNonNull(cacheConfiguration);
 
         RemoteCache<C, V> cache = cacheManager.getCache(cacheName);
         if (cache != null) {
@@ -161,7 +152,9 @@ public class RemoteCacheProvider implements CacheProvider {
             return cache;
         }
 
-        // In ISPN 12.1, configuration can only be supplied as XML.
+        final String cacheConfiguration = connectorConfig.getConfig().getString(field);
+        Objects.requireNonNull(cacheConfiguration);
+
         cache = cacheManager.administration().createCache(cacheName, new XMLStringConfiguration(cacheConfiguration));
         if (cache == null) {
             throw new DebeziumException("Failed to create remote Infinispan cache: " + cacheName);
