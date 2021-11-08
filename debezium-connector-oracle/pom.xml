@@ -112,6 +112,22 @@
     <properties>
         <adapter.name>logminer</adapter.name>
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
+
+        <!--
+        Specify properties that will be used for setting up the integration tests' Docker container.
+        Note that the `dockerhost.ip` property is computed from the IP addrses of DOCKER_HOST, which will
+        work on all platforms.  We'll set some of these system properties during integration testing.
+        -->
+
+        <!-- This should be kept in sync with the infinispan dependencies used -->
+        <version.infinispan.server>12.1</version.infinispan.server>
+        <oracle.infinispan.host>${docker.host.address}</oracle.infinispan.host>
+        <oracle.infinispan.image>infinispan/server:${version.infinispan.server}</oracle.infinispan.image>
+        <oracle.infinispan.port>11222</oracle.infinispan.port>
+        <oracle.infinispan.user>admin</oracle.infinispan.user>
+        <oracle.infinispan.password>admin</oracle.infinispan.password>
+        <docker.skip>false</docker.skip>
+        <docker.showLogs>true</docker.showLogs>
     </properties>
 
     <build>
@@ -369,19 +385,19 @@
                             <images>
                                 <image>
                                     <!-- A docker image using Infinispan -->
-                                    <name>infinispan/server:12.1</name>
+                                    <name>${oracle.infinispan.image}</name>
                                     <run>
                                         <namingStrategy>none</namingStrategy>
                                         <env>
-                                            <USER>admin</USER>
-                                            <PASS>admin</PASS>
+                                            <USER>${oracle.infinispan.user}</USER>
+                                            <PASS>${oracle.infinispan.password}</PASS>
                                         </env>
                                         <ports>
-                                            <port>11222:11222</port>
+                                            <port>${oracle.infinispan.port}:11222</port>
                                         </ports>
                                         <log>
                                             <prefix>infinispan</prefix>
-                                            <enabled>true</enabled>
+                                            <enabled>${docker.showLogs}</enabled>
                                             <color>green</color>
                                         </log>
                                         <wait>
