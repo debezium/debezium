@@ -1294,6 +1294,14 @@ public class JdbcConnection implements AutoCloseable {
         return Optional.empty();
     }
 
+    /**
+     * Allow implementations an opportunity to adjust the current state of the {@link ColumnEditor}
+     * that has been seeded with data from the column metadata from the JDBC driver.  In some
+     * cases, the data from the driver may be misleading and needs some adjustments.
+     *
+     * @param column the column editor, should not be {@code null}
+     * @return the adjusted column editor instance
+     */
     protected ColumnEditor overrideColumn(ColumnEditor column) {
         // allows the implementation to override column-specifics; the default does no overrides
         return column;
