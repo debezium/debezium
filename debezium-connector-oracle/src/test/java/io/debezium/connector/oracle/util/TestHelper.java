@@ -329,6 +329,8 @@ public class TestHelper {
             connection.execute("DROP SEQUENCE " + sequence);
         }
         catch (SQLException e) {
+            // ORA-02289 - sequence does not exist
+            // Since Oracle does not support "IF EXISTS", only throw exceptions that aren't ORA-02289
             if (!e.getMessage().contains("ORA-02289") || 2289 != e.getErrorCode()) {
                 throw new RuntimeException(e);
             }
