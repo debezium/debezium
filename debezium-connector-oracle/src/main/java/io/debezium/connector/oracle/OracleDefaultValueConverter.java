@@ -42,13 +42,11 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
     private static Logger LOGGER = LoggerFactory.getLogger(OracleDefaultValueConverter.class);
 
     private final OracleValueConverters valueConverters;
-    private final OracleConnection jdbcConnection;
     private final Map<Integer, DefaultValueMapper> defaultValueMappers;
 
     public OracleDefaultValueConverter(OracleValueConverters valueConverters, OracleConnection jdbcConnection) {
         this.valueConverters = valueConverters;
-        this.jdbcConnection = jdbcConnection;
-        this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers());
+        this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers(jdbcConnection));
     }
 
     @Override
@@ -100,7 +98,7 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         return defaultValue;
     }
 
-    private Map<Integer, DefaultValueMapper> createDefaultValueMappers() {
+    private static Map<Integer, DefaultValueMapper> createDefaultValueMappers(OracleConnection jdbcConnection) {
         // Data types that are supported should be registered in the map. Many of the data types
         // have String-based conversions defined in OracleValueConverters since LogMiner provides
         // column values as strings. The only special handling that is needed here is if a type
@@ -120,11 +118,11 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         result.put(OracleTypes.FLOAT, nullableDefaultValueMapper());
 
         // Date and time
-        result.put(OracleTypes.DATE, nullableDefaultValueMapper(castTemporalFunctionCall()));
-        result.put(OracleTypes.TIME, nullableDefaultValueMapper(castTemporalFunctionCall()));
-        result.put(OracleTypes.TIMESTAMP, nullableDefaultValueMapper(castTemporalFunctionCall()));
-        result.put(OracleTypes.TIMESTAMPTZ, nullableDefaultValueMapper(castTemporalFunctionCall()));
-        result.put(OracleTypes.TIMESTAMPLTZ, nullableDefaultValueMapper(castTemporalFunctionCall()));
+        result.put(OracleTypes.DATE, nullableDefaultValueMapper(castTemporalFunctionCall(jdbcConnection)));
+        result.put(OracleTypes.TIME, nullableDefaultValueMapper(castTemporalFunctionCall(jdbcConnection)));
+        result.put(OracleTypes.TIMESTAMP, nullableDefaultValueMapper(castTemporalFunctionCall(jdbcConnection)));
+        result.put(OracleTypes.TIMESTAMPTZ, nullableDefaultValueMapper(castTemporalFunctionCall(jdbcConnection)));
+        result.put(OracleTypes.TIMESTAMPLTZ, nullableDefaultValueMapper(castTemporalFunctionCall(jdbcConnection)));
         result.put(OracleTypes.INTERVALYM, nullableDefaultValueMapper(convertIntervalYearMonthStringLiteral()));
         result.put(OracleTypes.INTERVALDS, nullableDefaultValueMapper(convertIntervalDaySecondStringLiteral()));
 
@@ -140,11 +138,11 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         return result;
     }
 
-    private DefaultValueMapper nullableDefaultValueMapper() {
+    private static DefaultValueMapper nullableDefaultValueMapper() {
         return nullableDefaultValueMapper(null);
     }
 
-    private DefaultValueMapper nullableDefaultValueMapper(DefaultValueMapper mapper) {
+    private static DefaultValueMapper nullableDefaultValueMapper(DefaultValueMapper mapper) {
         return (column, value) -> {
             if ("NULL".equalsIgnoreCase(value)) {
                 return null;
@@ -156,7 +154,7 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         };
     }
 
-    private DefaultValueMapper convertIntervalDaySecondStringLiteral() {
+    private static DefaultValueMapper convertIntervalDaySecondStringLiteral() {
         return (column, value) -> {
             if (value != null && value.length() > 2 && value.startsWith("'") && value.endsWith("'")) {
                 // When supplied as a string literal, pass to value converter as the Oracle type
@@ -166,7 +164,7 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         };
     }
 
-    private DefaultValueMapper convertIntervalYearMonthStringLiteral() {
+    private static DefaultValueMapper convertIntervalYearMonthStringLiteral() {
         return (column, value) -> {
             if (value != null && value.length() > 2 && value.startsWith("'") && value.endsWith("'")) {
                 // When supplied as a string literal, pass to value converter as the Oracle type
@@ -176,15 +174,15 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         };
     }
 
-    private DefaultValueMapper enforceCharFieldPadding() {
+    private static DefaultValueMapper enforceCharFieldPadding() {
         return (column, value) -> value != null ? Strings.pad(unquote(value), column.length(), ' ') : null;
     }
 
-    private DefaultValueMapper enforceStringUnquote() {
+    private static DefaultValueMapper enforceStringUnquote() {
         return (column, value) -> value != null ? unquote(value) : null;
     }
 
-    private DefaultValueMapper castTemporalFunctionCall() {
+    private static DefaultValueMapper castTemporalFunctionCall(OracleConnection jdbcConnection) {
         return (column, value) -> {
             if ("SYSDATE".equalsIgnoreCase(value.trim())) {
                 return column.isOptional() ? null : "0";
