@@ -7,7 +7,9 @@ package io.debezium.connector.oracle;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -187,7 +189,21 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
     private static DefaultValueMapper castTemporalFunctionCall(OracleConnection jdbcConnection) {
         return (column, value) -> {
             if ("SYSDATE".equalsIgnoreCase(value.trim())) {
-                return column.isOptional() ? null : "0";
+                if (column.isOptional()) {
+                    // If the column is optional, the default value is ignored
+                    return null;
+                }
+                else if (column.jdbcType() == OracleTypes.TIMESTAMPTZ || column.jdbcType() == OracleTypes.TIMESTAMPLTZ) {
+                    // If the column is a TIMESTAMP WITH [LOCAL] TIME ZONE, the non-null default is based on EPOCH
+                    return Date.from(Instant.EPOCH);
+                }
+                else {
+                    // For all other temporal types, return "0".
+                    // The return is a string-value as the OracleValueConverters know how to explicitly infer
+                    // whether to emit the final converted value as either a string or numeric value based on
+                    // the column's data type.
+                    return "0";
+                }
             }
             else if (value.toUpperCase().startsWith("TO_TIMESTAMP")) {
                 switch (column.jdbcType()) {

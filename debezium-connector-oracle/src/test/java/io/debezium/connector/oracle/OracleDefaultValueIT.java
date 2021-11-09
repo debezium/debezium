@@ -388,7 +388,8 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
             if (column.temporalType) {
                 assertSchemaFieldWithDefaultSysdate(record, column.name.toUpperCase() + "_SYSDATE", null);
                 if (column.expectedAddDefaultValue instanceof String) {
-                    assertSchemaFieldDefaultAndNonNullValue(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", "0");
+                    final String assertionValue = column.isZonedTimestamp() ? "1970-01-01T00:00:00Z" : "0";
+                    assertSchemaFieldDefaultAndNonNullValue(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", assertionValue);
                 }
                 else {
                     assertSchemaFieldWithDefaultSysdate(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", 0L);
@@ -466,7 +467,8 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
             if (column.temporalType) {
                 assertSchemaFieldWithDefaultSysdate(record, column.name.toUpperCase() + "_SYSDATE", null);
                 if (column.expectedAddDefaultValue instanceof String) {
-                    assertSchemaFieldDefaultAndNonNullValue(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", "0");
+                    final String assertionValue = column.isZonedTimestamp() ? "1970-01-01T00:00:00Z" : "0";
+                    assertSchemaFieldDefaultAndNonNullValue(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", assertionValue);
                 }
                 else {
                     assertSchemaFieldWithDefaultSysdate(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", 0L);
@@ -551,8 +553,9 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
                 assertSchemaFieldWithDefaultSysdate(record, column.name.toUpperCase() + "_SYSDATE", null);
                 assertSchemaFieldWithDefaultSysdate(record, "A" + column.name.toUpperCase() + "_SYSDATE", null);
                 if (column.expectedAddDefaultValue instanceof String) {
-                    assertSchemaFieldDefaultAndNonNullValue(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", "0");
-                    assertSchemaFieldDefaultAndNonNullValue(record, "A" + column.name.toUpperCase() + "_SYSDATE_NONNULL", "0");
+                    final String assertionValue = column.isZonedTimestamp() ? "1970-01-01T00:00:00Z" : "0";
+                    assertSchemaFieldDefaultAndNonNullValue(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", assertionValue);
+                    assertSchemaFieldDefaultAndNonNullValue(record, "A" + column.name.toUpperCase() + "_SYSDATE_NONNULL", assertionValue);
                 }
                 else {
                     assertSchemaFieldWithDefaultSysdate(record, column.name.toUpperCase() + "_SYSDATE_NONNULL", 0L);
@@ -666,6 +669,11 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
             this.expectedModifyDefaultValue = expectedModifyDefaultValue;
             this.assertionType = assertionType;
             this.temporalType = definition.equalsIgnoreCase("date") || definition.toUpperCase().startsWith("TIMESTAMP");
+        }
+
+        public boolean isZonedTimestamp() {
+            return definition.equalsIgnoreCase("timestamp with time zone")
+                    || definition.equalsIgnoreCase("timestamp with local time zone");
         }
     }
 }
