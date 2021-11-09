@@ -196,7 +196,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         streamingMetrics.setProcessGlobalAreaMemory(sessionProcessGlobalAreaMemory, sessionProcessGlobalAreaMaxMemory);
 
         final DecimalFormat format = new DecimalFormat("#.##");
-        LOGGER.info("Oracle Session UGA {}MB (max = {}MB), PGA {}MB (max = {}MB)",
+        LOGGER.debug("Oracle Session UGA {}MB (max = {}MB), PGA {}MB (max = {}MB)",
                 format.format(sessionUserGlobalAreaMemory / 1024.f / 1024.f),
                 format.format(sessionUserGlobalAreaMaxMemory / 1024.f / 1024.f),
                 format.format(sessionProcessGlobalAreaMemory / 1024.f / 1024.f),
