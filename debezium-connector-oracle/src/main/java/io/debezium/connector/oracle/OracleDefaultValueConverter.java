@@ -19,6 +19,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
@@ -37,6 +38,7 @@ import oracle.sql.TIMESTAMPTZ;
  * @author Chris Cranford
  */
 @ThreadSafe
+@Immutable
 public class OracleDefaultValueConverter implements DefaultValueConverter {
 
     private static Logger LOGGER = LoggerFactory.getLogger(OracleDefaultValueConverter.class);

@@ -1294,14 +1294,18 @@ A string representation of a timestamp in UTC.
 
 [[oracle-default-values]]
 === Default Values
-If a default value is specified for a column in the database schema, the Oracle connector will attempt to propagate this value to the Kafka schema whenever possible. Most common data types are supported, including:
+If a default value is specified for a column in the database schema, the Oracle connector will attempt to propagate this value to the schema of the corresponding Kafka record field. Most common data types are supported, including:
 
 * Character types (`CHAR`, `NCHAR`, `VARCHAR`, `VARCHAR2`, `NVARCHAR`, `NVARCHAR2`)
 * Numeric types (`INTEGER`, `NUMERIC`, etc.)
 * Temporal types (`DATE`, `TIMESTAMP`, `INTERVAL`, etc.)
 
-Note that for temporal types, these are often represented by function calls and will be translated by an additional database call.
-If a temporal type is represented by a constant, such as `SYSDATE`, the connector will instead export either `null` or `0` depending on the column's optionality.
+If a temporal type uses a function call such as `TO_TIMESTAMP` or `TO_DATE` to represent the default value, the connector will resolve the default value by making an additional database call to evaluate the function.
+For example, if a `DATE` column is defined with the default value of `TO_DATE('2021-01-02', 'YYYY-MM-DD')`, the column's default value will be the number of days since epoch for that date or `18629` in this case.
+
+If a temporal type uses the `SYSDATE` constant to represent the default value, the connector will resolve this based on whether the column is defined as `NOT NULL` or `NULL`.
+If the column is nullable, no default value will be set; however, if the column isn't nullable then the default value will be resolved as `0`.
+For most temporal types, the default value type will be numeric except if the column is a `TIMESTAMP WITH TIME ZONE` or `TIMESTAMP WITH LOCAL TIME ZONE` in which case its emitted as a string.
 
 // Type: assembly
 // ModuleID: setting-up-oracle-to-work-with-debezium
