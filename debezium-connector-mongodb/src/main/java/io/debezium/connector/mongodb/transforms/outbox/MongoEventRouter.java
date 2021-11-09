@@ -28,8 +28,8 @@ import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
 import io.debezium.data.Envelope;
 import io.debezium.time.Timestamp;
-import io.debezium.transforms.outbox.EventRouter;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
+import io.debezium.transforms.outbox.EventRouterDelegate;
 
 /**
  * Debezium MongoDB Outbox Event Router SMT
@@ -38,7 +38,7 @@ import io.debezium.transforms.outbox.EventRouterConfigDefinition;
  */
 public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
 
-    private static final Logger logger = LoggerFactory.getLogger(MongoEventRouter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoEventRouter.class);
 
     private final JsonWriterSettings jsonWriterSettings = JsonWriterSettings.builder()
             .outputMode(JsonMode.EXTENDED)
@@ -53,21 +53,19 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
     private boolean expandPayload;
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
-    private final EventRouter<R> sqlOutboxEventRouter = new EventRouter<>();
+    private final EventRouterDelegate<R> eventRouterDelegate = new EventRouterDelegate<>();
 
     @Override
     public R apply(R r) {
-        R expandedAfterFieldRecord = r;
-        try {
-            expandedAfterFieldRecord = expandAfterField(r);
-        }
-        catch (Exception e) {
-            // when the record includes update event or
-            // 'after' field is not valid MongoDB data format for converting to Kafka Connect data format
-            logger.warn("Filed to expand after field: " + e.getMessage(), e);
-        }
-
-        return sqlOutboxEventRouter.apply(expandedAfterFieldRecord);
+        return eventRouterDelegate.apply(r, (record) -> {
+            try {
+                return expandAfterField(r);
+            }
+            catch (Exception e) {
+                LOGGER.warn("Failed to expand after field: " + e.getMessage(), e);
+                return r;
+            }
+        });
     }
 
     @Override
@@ -77,7 +75,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
 
     @Override
     public void close() {
-        sqlOutboxEventRouter.close();
+        eventRouterDelegate.close();
     }
 
     @Override
@@ -95,30 +93,24 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         // Convert configuration fields from MongoDB Outbox Event Router to SQL Outbox Event Router's
         Map<String, ?> convertedConfigMap = convertConfigMap(configMap);
 
-        sqlOutboxEventRouter.configure(convertedConfigMap);
+        eventRouterDelegate.configure(convertedConfigMap);
     }
 
-    private R expandAfterField(R originalRecord) throws Exception {
+    /**
+     * Replaces <i>after</i> field by parsing and expanding original JSON string to Struct type.
+     *
+     * @param originalRecord an original Record from MongoDB Connector
+     * @return a new Record of which <i>after</i> field is replaced with new one
+     * @throws Exception if <i>after</i> field of original Record is not an expected form
+     */
+    private R expandAfterField(R originalRecord) throws IllegalStateException {
         final R afterRecord = afterExtractor.apply(originalRecord);
 
         // Convert 'after' field format from JSON String to Struct
         Object after = afterRecord.value();
 
-        // For delete operation
-        if (after == null) {
-            return originalRecord.newRecord(
-                    originalRecord.topic(),
-                    originalRecord.kafkaPartition(),
-                    originalRecord.keySchema(),
-                    originalRecord.key(),
-                    SchemaBuilder.struct().build(),
-                    null,
-                    originalRecord.timestamp(),
-                    originalRecord.headers());
-        }
-
         if (!(after instanceof String)) {
-            throw new Exception("Unable to expand non-String after field: " + after.getClass());
+            throw new IllegalStateException("Unable to expand non-String after field: " + after.getClass());
         }
 
         Schema originalValueSchema = originalRecord.valueSchema();
@@ -145,6 +137,14 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
                 originalRecord.headers());
     }
 
+    /**
+     * Builds a new Schema object of STRUCT type with BsonDocument parsed from original <i>after</i> field JSON string
+     * using MongoDataConverter.
+     *
+     * @param schemaName        a name of new Schema to be built
+     * @param afterBsonDocument a BsonDocument parsed from JSON string of <i>after</i> field in a change event
+     * @return a Schema object built
+     */
     private Schema buildNewAfterSchema(String schemaName, BsonDocument afterBsonDocument) {
         SchemaBuilder afterSchemaBuilder = SchemaBuilder.struct().name(schemaName);
 
@@ -167,6 +167,14 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         return afterSchemaBuilder.build();
     }
 
+    /**
+     * Builds a new Struct object with previously built Schema and BsonDocument parsed from original <i>after</i> field
+     * JSON string using MongoDataConverter.
+     *
+     * @param afterSchema       a new Schema of <i>after</i> field previously built with BsonDocument
+     * @param afterBsonDocument a BsonDocument parsed from JSON string of <i>after</i> field in a change event
+     * @return a Struct object built
+     */
     private Struct buildNewAfterStruct(Schema afterSchema, BsonDocument afterBsonDocument) {
         Struct afterStruct = new Struct(afterSchema);
 
@@ -189,6 +197,14 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         return afterStruct;
     }
 
+    /**
+     * Builds a new Schema object for Kafka Record's value replacing original <i>after</i> field with newly built Schema.
+     *
+     * @param valueSchemaName     a name of new Schema to be built
+     * @param originalValueSchema an original Schema of Record's value
+     * @param afterSchema         a new Schema of <i>after</i> field that'll replace original one
+     * @return a Schema object built
+     */
     private Schema buildNewValueSchema(String valueSchemaName, Schema originalValueSchema, Schema afterSchema) {
         SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(valueSchemaName);
         for (Field field : originalValueSchema.fields()) {
@@ -203,6 +219,14 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         return valueSchemaBuilder.build();
     }
 
+    /**
+     * Builds a new Struct object for Kafka Record's value replacing original <i>after</i> field with newly built Struct.
+     *
+     * @param originalValueStruct an original Struct of Record's value
+     * @param newValueSchema      a new Schema of Record's value
+     * @param newAfterStruct      a new Struct of <i>after</i> field that'll replace original one
+     * @return
+     */
     private Struct buildNewValueStruct(Struct originalValueStruct, Schema newValueSchema, Struct newAfterStruct) {
         Struct newValueStruct = new Struct(newValueSchema);
         for (Field field : originalValueStruct.schema().fields()) {
@@ -217,6 +241,13 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         return newValueStruct;
     }
 
+    /**
+     * Converts MongoDB Outbox Event Router-style configMap to relational one
+     *
+     * @param oldConfigMap an original configMap
+     * @param <T>          a type of values of given configMap
+     * @return a converted configMap
+     */
     private <T> Map<String, T> convertConfigMap(Map<String, T> oldConfigMap) {
         Map<String, String> fieldNameConverter = createFieldNameConverter();
 
@@ -241,6 +272,11 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         return configMap.containsKey(EventRouterConfigDefinition.FIELD_EVENT_ID.name());
     }
 
+    /**
+     * Creates configuration properties converter to convert MongoDB Outbox Event Router's to relational one.
+     *
+     * @return a HashMap object for converting configuration fields
+     */
     private Map<String, String> createFieldNameConverter() {
         Map<String, String> fieldNameConverter = new HashMap<>();
 
