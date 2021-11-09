@@ -28,10 +28,9 @@ import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.ObjectId;
+import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mongodb.MongoDbFieldName;
@@ -47,9 +46,6 @@ import io.debezium.transforms.outbox.EventRouterConfigDefinition;
  * @author Sungho Hwang
  */
 public class MongoEventRouterTest {
-
-    @Rule
-    public ExpectedException exceptionRule = ExpectedException.none();
 
     JsonWriterSettings COMPACT_JSON_SETTINGS = JsonWriterSettings.builder()
             .outputMode(JsonMode.EXTENDED)
@@ -155,10 +151,8 @@ public class MongoEventRouterTest {
                 valueSchema,
                 value);
 
-        exceptionRule.expect(DataException.class);
-        exceptionRule.expectMessage("op is not a valid field name");
-
-        router.apply(eventRecord);
+        DataException e = Assert.assertThrows(DataException.class, () -> router.apply(eventRecord));
+        assertThat(e).hasMessage("op is not a valid field name");
     }
 
     @Test
@@ -849,7 +843,7 @@ public class MongoEventRouterTest {
     }
 
     @Test
-    public void canExpandJSONPayloadIfConfigured() {
+    public void canExpandJsonPayloadIfConfigured() {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 MongoEventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),

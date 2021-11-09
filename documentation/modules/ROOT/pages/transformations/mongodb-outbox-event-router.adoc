@@ -14,6 +14,13 @@
 
 toc::[]
 
+ifdef::community[]
+[NOTE]
+====
+The MongoDB Outbox Event Router SMT is under active development. The structure of the emitted message or other details might change as development progresses.
+====
+endif::community[]
+
 [NOTE]
 ====
 This SMT is supported only for the MongoDB connector.
@@ -34,7 +41,7 @@ A connector can capture changes in more than one outbox collection only if each 
 
 [NOTE]
 ====
-This SMT might require multi-document transactions, which have been being supported since MongoDB 4.0, if you need to atomically update a document in a separate collection. For future update, to enable updating existing data and inserting outbox event in an ACID transaction without multi-document transactions, we are planned to support additional configurations for storing outbox events in a form of a sub-document of the existing collection, rather than an independent outbox collection.
+To use this SMT, operations on the actual business collection(s) and the insert into the outbox collection must be done as part of a multi-document transaction, which have been being supported since MongoDB 4.0, to prevent potential data inconsistencies between business collection(s) and outbox collection. For future update, to enable updating existing data and inserting outbox event in an ACID transaction without multi-document transactions, we have planned to support additional configurations for storing outbox events in a form of a sub-document of the existing collection, rather than an independent outbox collection.
 ====
 
 See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works.
@@ -80,7 +87,7 @@ A {prodname} connector that is configured to apply the MongoDB outbox event rout
   "patch": null,
   "after": "{\"_id\": {\"$oid\": \"596e275826f08b2730779e1f\"}, \"aggregateid\": \"1\", \"aggregatetype\": \"Order\", \"type\": \"OrderCreated\", \"payload\": {\"_id\": {\"$oid\": \"da8d6de63b7745ff8f4457db\"}, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}}",
   "source": {
-    "version": "1.8.0.Alpha1",
+    "version": "{debezium-version}",
     "connector": "mongodb",
     "name": "fulfillment",
     "ts_ms": 1558965508000,

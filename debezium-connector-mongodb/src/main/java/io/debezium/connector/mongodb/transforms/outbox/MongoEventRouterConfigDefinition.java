@@ -82,61 +82,25 @@ public class MongoEventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The field which contains the event schema version within the outbox collection");
 
-    static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
-            .withDisplayName("Field to route events by")
-            .withType(ConfigDef.Type.STRING)
-            .withDefault("aggregatetype")
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.HIGH)
+    static final Field ROUTE_BY_FIELD = EventRouterConfigDefinition.ROUTE_BY_FIELD
             .withDescription("The field which determines how the events will be routed within the outbox collection. The value will become a part of" +
                     " the topic name");
 
-    static final Field ROUTE_TOPIC_REGEX = Field.create("route.topic.regex")
-            .withDisplayName("The name of the routed topic")
-            .withType(ConfigDef.Type.STRING)
-            .withValidation(Field::isRegex)
-            .withDefault("(?<routedByValue>.*)")
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("The default regex to use within the RegexRouter, the default capture will allow" +
-                    " to replace the routed field into a new topic name defined in 'route.topic.replacement'");
+    static final Field ROUTE_TOPIC_REGEX = EventRouterConfigDefinition.ROUTE_TOPIC_REGEX;
 
-    static final Field ROUTE_TOPIC_REPLACEMENT = Field.create("route.topic.replacement")
-            .withDisplayName("The name of the routed topic")
-            .withType(ConfigDef.Type.STRING)
-            .withDefault("outbox.event.${routedByValue}")
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.HIGH)
+    static final Field ROUTE_TOPIC_REPLACEMENT = EventRouterConfigDefinition.ROUTE_TOPIC_REPLACEMENT
             .withDescription("The name of the topic in which the events will be routed, a replacement" +
                     " '${routedByValue}' is available which is the value of the field configured" +
                     " via 'route.by.field'");
 
-    static final Field ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD = Field.create("route.tombstone.on.empty.payload")
-            .withDisplayName("Empty payloads cause a tombstone message")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withDefault(false)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("Whether or not an empty payload should cause a tombstone event.");
+    static final Field ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD = EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD;
 
-    static final Field OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
-            .withDisplayName("Behavior when the route fails to apply")
-            .withEnum(EventRouterConfigDefinition.InvalidOperationBehavior.class, EventRouterConfigDefinition.InvalidOperationBehavior.SKIP_AND_WARN)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
+    static final Field OPERATION_INVALID_BEHAVIOR = EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR
             .withDescription("While Debezium is monitoring the collection, it's expecting only to see 'create' document events," +
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process");
 
-    static final Field EXPAND_JSON_PAYLOAD = Field.create("debezium.expand.json.payload")
-            .withDisplayName("Expand Payload escaped string as real JSON")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withDefault(false)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("Whether or not to try unescaping a JSON string and make it real JSON. It will infer schema information" +
-                    " from payload and update the record schema accordingly. If content is not JSON, it just produces a warning" +
-                    " and emits the record unchanged");
+    static final Field EXPAND_JSON_PAYLOAD = EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD;
 
     /**
      * There are 3 configuration groups available:
