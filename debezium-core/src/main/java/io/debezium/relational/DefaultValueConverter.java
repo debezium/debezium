@@ -36,4 +36,19 @@ public interface DefaultValueConverter {
         return (column, defaultValueExpression) -> Optional.ofNullable(defaultValueExpression);
     }
 
+    /**
+     * Converts the raw JDBC default value expression for a column into an object.
+     */
+    @FunctionalInterface
+    public interface DefaultValueMapper {
+        /**
+         * Parses the string-representation of the default value to an object.
+         *
+         * @param column the column, should never be {@code null}
+         * @param value the default value string representation / expression
+         * @return the default value
+         * @throws Exception if there was a parsing error
+         */
+        Object parse(Column column, String value) throws Exception;
+    }
 }

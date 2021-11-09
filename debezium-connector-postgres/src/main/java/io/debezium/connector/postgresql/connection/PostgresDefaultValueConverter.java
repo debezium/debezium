@@ -47,22 +47,6 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
             "float4", "float8", "int2", "int4", "serial", "int8", "bigserial", "smallserial", "uuid", "date", "time",
             "timestamp", "timestamptz", "interval");
 
-    /**
-     * Converts JDBC string representation of a default column value to an object.
-     */
-    @FunctionalInterface
-    private interface DefaultValueMapper {
-
-        /**
-         * Parses string to an object.
-         *
-         * @param value string representation
-         * @return value
-         * @throws Exception if there is an parsing error
-         */
-        Object parse(String value) throws Exception;
-    }
-
     private final PostgresValueConverter valueConverters;
     private final Map<String, DefaultValueMapper> defaultValueMappers;
 
@@ -90,7 +74,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         }
 
         try {
-            Object rawDefaultValue = mapper.parse(defaultValueExpression);
+            Object rawDefaultValue = mapper.parse(column, defaultValueExpression);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
             if (convertedDefaultValue == null) {
                 return Optional.empty();
@@ -134,12 +118,12 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
     }
 
     private static DefaultValueMapper parseNullDefault(DefaultValueMapper mapper) {
-        return x -> {
+        return (c, x) -> {
             if (x.startsWith("NULL::")) {
                 return null;
             }
             else {
-                return mapper.parse(x);
+                return mapper.parse(c, x);
             }
         };
     }
@@ -147,7 +131,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
     private static Map<String, DefaultValueMapper> createDefaultValueMappers(TimestampUtils timestampUtils) {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
-        result.put("bit", v -> {
+        result.put("bit", (c, v) -> {
             String defaultValue = extractDefault(v, "00"); // if default is generated, assume length > 1
             if (defaultValue.length() == 1) {
                 // treat as a bool
@@ -155,35 +139,35 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
             }
             return defaultValue;
         }); // Sample values: `B'1'::"bit"`, `B'11'::"bit"`
-        result.put("varbit", v -> extractDefault(v, "0")); // Sample value: B'110'::"bit"
+        result.put("varbit", (c, v) -> extractDefault(v, "0")); // Sample value: B'110'::"bit"
 
-        result.put("bool", parseNullDefault(v -> Boolean.parseBoolean(extractDefault(v, "false")))); // Sample value: true
+        result.put("bool", parseNullDefault((c, v) -> Boolean.parseBoolean(extractDefault(v, "false")))); // Sample value: true
 
-        result.put("bpchar", v -> extractDefault(v, "")); // Sample value: 'abcd'::bpchar
-        result.put("varchar", v -> extractDefault(v, "")); // Sample value: `abcde'::character varying
-        result.put("text", v -> extractDefault(v, "")); // Sample value: 'asdf'::text
+        result.put("bpchar", (c, v) -> extractDefault(v, "")); // Sample value: 'abcd'::bpchar
+        result.put("varchar", (c, v) -> extractDefault(v, "")); // Sample value: `abcde'::character varying
+        result.put("text", (c, v) -> extractDefault(v, "")); // Sample value: 'asdf'::text
 
-        result.put("numeric", parseNullDefault(v -> new BigDecimal(extractDefault(v, "0.0")))); // Sample value: 12345.67891
-        result.put("float4", parseNullDefault(v -> Float.parseFloat(extractDefault(v, "0.0")))); // Sample value: 1.234
-        result.put("float8", parseNullDefault(v -> Double.parseDouble(extractDefault(v, "0.0")))); // Sample values: `1.234`, `'12345678901234567890'::numeric`
-        result.put("int2", parseNullDefault(v -> Short.parseShort(extractDefault(v, "0")))); // Sample value: 32767
-        result.put("int4", parseNullDefault(v -> Integer.parseInt(extractDefault(v, "0")))); // Sample value: 123
-        result.put("serial", parseNullDefault(v -> Integer.parseInt(extractDefault(v, "0"))));
-        result.put("int8", parseNullDefault(v -> Long.parseLong(extractDefault(v, "0")))); // Sample values: `123`, `'9223372036854775807'::bigint`
-        result.put("bigserial", parseNullDefault(v -> Long.parseLong(extractDefault(v, "0"))));
-        result.put("smallserial", parseNullDefault(v -> Short.parseShort(extractDefault(v, "0"))));
+        result.put("numeric", parseNullDefault((c, v) -> new BigDecimal(extractDefault(v, "0.0")))); // Sample value: 12345.67891
+        result.put("float4", parseNullDefault((c, v) -> Float.parseFloat(extractDefault(v, "0.0")))); // Sample value: 1.234
+        result.put("float8", parseNullDefault((c, v) -> Double.parseDouble(extractDefault(v, "0.0")))); // Sample values: `1.234`, `'12345678901234567890'::numeric`
+        result.put("int2", parseNullDefault((c, v) -> Short.parseShort(extractDefault(v, "0")))); // Sample value: 32767
+        result.put("int4", parseNullDefault((c, v) -> Integer.parseInt(extractDefault(v, "0")))); // Sample value: 123
+        result.put("serial", parseNullDefault((c, v) -> Integer.parseInt(extractDefault(v, "0"))));
+        result.put("int8", parseNullDefault((c, v) -> Long.parseLong(extractDefault(v, "0")))); // Sample values: `123`, `'9223372036854775807'::bigint`
+        result.put("bigserial", parseNullDefault((c, v) -> Long.parseLong(extractDefault(v, "0"))));
+        result.put("smallserial", parseNullDefault((c, v) -> Short.parseShort(extractDefault(v, "0"))));
 
-        result.put("json", v -> extractDefault(v, "{}")); // Sample value: '{}'::json
-        result.put("jsonb", v -> extractDefault(v, "{}")); // Sample value: '{}'::jsonb
-        result.put("xml", v -> extractDefault(v, "")); // Sample value: '<foo>bar</foo>'::xml
+        result.put("json", (c, v) -> extractDefault(v, "{}")); // Sample value: '{}'::json
+        result.put("jsonb", (c, v) -> extractDefault(v, "{}")); // Sample value: '{}'::jsonb
+        result.put("xml", (c, v) -> extractDefault(v, "")); // Sample value: '<foo>bar</foo>'::xml
 
-        result.put("uuid", v -> UUID.fromString(extractDefault(v, "00000000-0000-0000-0000-000000000000"))); // Sample value: '76019d1a-ad2e-4b22-96e9-1a6d6543c818'::uuid
+        result.put("uuid", (c, v) -> UUID.fromString(extractDefault(v, "00000000-0000-0000-0000-000000000000"))); // Sample value: '76019d1a-ad2e-4b22-96e9-1a6d6543c818'::uuid
 
-        result.put("date", v -> timestampUtils.toLocalDateTime(extractDefault(v, "1970-01-01")));
-        result.put("time", v -> timestampUtils.toLocalTime(extractDefault(v, "00:00")));
-        result.put("timestamp", v -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
-        result.put("timestamptz", v -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
-        result.put("interval", v -> new PGInterval(extractDefault(v, "epoch")));
+        result.put("date", (c, v) -> timestampUtils.toLocalDateTime(extractDefault(v, "1970-01-01")));
+        result.put("time", (c, v) -> timestampUtils.toLocalTime(extractDefault(v, "00:00")));
+        result.put("timestamp", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
+        result.put("timestamptz", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
+        result.put("interval", (c, v) -> new PGInterval(extractDefault(v, "epoch")));
 
         // Other data types, such as box, bytea, and more are not handled.
         return result;
