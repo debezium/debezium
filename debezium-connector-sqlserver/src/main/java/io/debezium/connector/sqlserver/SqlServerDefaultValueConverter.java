@@ -46,22 +46,6 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
         Connection get() throws SQLException;
     }
 
-    /**
-     * Converts JDBC string representation of a default column value to an object.
-     */
-    @FunctionalInterface
-    private interface DefaultValueMapper {
-
-        /**
-         * Parses string to an object.
-         *
-         * @param value string representation
-         * @return value
-         * @throws Exception if there is an parsing error
-         */
-        Object parse(String value) throws Exception;
-    }
-
     private final ConnectionProvider connectionProvider;
     private final SqlServerValueConverters valueConverters;
     private final Map<String, DefaultValueMapper> defaultValueMappers;
@@ -86,7 +70,7 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
         }
 
         try {
-            Object rawDefaultValue = mapper.parse(defaultValueExpression);
+            Object rawDefaultValue = mapper.parse(column, defaultValueExpression);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
             return Optional.ofNullable(convertedDefaultValue);
         }
@@ -125,68 +109,69 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
 
         // Exact numbers
         result.put("bigint",
-                v -> nullableDefaultValueMapper(v, value -> Long.parseLong(value.charAt(value.length() - 1) == '.' ? value.substring(0, value.length() - 1) : value))); // Sample value: ((3147483648.))
-        result.put("int", v -> nullableDefaultValueMapper(v, Integer::parseInt)); // Sample value: ((2147483647))
-        result.put("smallint", v -> nullableDefaultValueMapper(v, Short::parseShort)); // Sample value: ((32767))
-        result.put("tinyint", v -> nullableDefaultValueMapper(v, Short::parseShort)); // Sample value: ((255))
-        result.put("bit", v -> v.equals("((1))")); // Either ((1)) or ((0))
-        result.put("decimal", v -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((100.12345))
-        result.put("numeric", v -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((100.12345))
-        result.put("money", v -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((922337203685477.58))
-        result.put("smallmoney", v -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((214748.3647))
+                (c, v) -> nullableDefaultValueMapper(c, v,
+                        (col, value) -> Long.parseLong(value.charAt(value.length() - 1) == '.' ? value.substring(0, value.length() - 1) : value))); // Sample value: ((3147483648.))
+        result.put("int", (c, v) -> nullableDefaultValueMapper(c, v, (col, value) -> Integer.parseInt(value))); // Sample value: ((2147483647))
+        result.put("smallint", (c, v) -> nullableDefaultValueMapper(c, v, (col, value) -> Short.parseShort(value))); // Sample value: ((32767))
+        result.put("tinyint", (c, v) -> nullableDefaultValueMapper(c, v, (col, value) -> Short.parseShort(value))); // Sample value: ((255))
+        result.put("bit", (c, v) -> v.equals("((1))")); // Either ((1)) or ((0))
+        result.put("decimal", (c, v) -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((100.12345))
+        result.put("numeric", (c, v) -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((100.12345))
+        result.put("money", (c, v) -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((922337203685477.58))
+        result.put("smallmoney", (c, v) -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((214748.3647))
 
         // Approximate numerics
-        result.put("float", v -> nullableDefaultValueMapper(v, Double::parseDouble)); // Sample value: ((1.2345000000000000e+003))
-        result.put("real", v -> nullableDefaultValueMapper(v, Float::parseFloat)); // Sample value: ((1.2345000000000000e+003))
+        result.put("float", (c, v) -> nullableDefaultValueMapper(c, v, (col, value) -> Double.parseDouble(value))); // Sample value: ((1.2345000000000000e+003))
+        result.put("real", (c, v) -> nullableDefaultValueMapper(c, v, (col, value) -> Float.parseFloat(value))); // Sample value: ((1.2345000000000000e+003))
 
         // Date and time
-        result.put("date", v -> { // Sample value: ('2019-02-03')
+        result.put("date", (c, v) -> { // Sample value: ('2019-02-03')
             String rawValue = v.substring(2, v.length() - 2);
             return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS date)", st -> st.setString(1, rawValue), rs -> rs.getDate(1));
         });
-        result.put("datetime", v -> { // Sample value: ('2019-01-01 00:00:00.000')
+        result.put("datetime", (c, v) -> { // Sample value: ('2019-01-01 00:00:00.000')
             String rawValue = v.substring(2, v.length() - 2);
             return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS datetime)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
         });
-        result.put("datetime2", v -> { // Sample value: ('2019-01-01 00:00:00.1234567')
+        result.put("datetime2", (c, v) -> { // Sample value: ('2019-01-01 00:00:00.1234567')
             String rawValue = v.substring(2, v.length() - 2);
             return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS datetime2)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
         });
-        result.put("datetimeoffset", v -> { // Sample value: ('2019-01-01 00:00:00.1234567+02:00')
+        result.put("datetimeoffset", (c, v) -> { // Sample value: ('2019-01-01 00:00:00.1234567+02:00')
             String rawValue = v.substring(2, v.length() - 2);
             return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS datetimeoffset)", st -> st.setString(1, rawValue),
                     rs -> (DateTimeOffset) rs.getObject(1));
         });
-        result.put("smalldatetime", v -> { // Sample value: ('2019-01-01 00:00:00')
+        result.put("smalldatetime", (c, v) -> { // Sample value: ('2019-01-01 00:00:00')
             String rawValue = v.substring(2, v.length() - 2);
             return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS smalldatetime)", st -> st.setString(1, rawValue),
                     rs -> rs.getTimestamp(1));
         });
-        result.put("time", v -> { // Sample value: ('2019-01-01 00:00:00')
+        result.put("time", (c, v) -> { // Sample value: ('2019-01-01 00:00:00')
             String rawValue = v.substring(2, v.length() - 2);
             return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS time)", st -> st.setString(1, rawValue), rs -> rs.getTime(1));
         });
 
         // Character strings
-        result.put("char", v -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("text", v -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("varchar", v -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("char", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("text", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("varchar", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
 
         // Unicode character strings
-        result.put("nchar", v -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("ntext", v -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("nvarchar", v -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("nchar", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("ntext", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("nvarchar", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
 
         // Binary strings
-        result.put("binary", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
-        result.put("image", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
-        result.put("varbinary", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
+        result.put("binary", (c, v) -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
+        result.put("image", (c, v) -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
+        result.put("varbinary", (c, v) -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
 
         // Other data types, such as cursor, xml or uniqueidentifier, have been omitted.
         return result;
     }
 
-    public static Object nullableDefaultValueMapper(String v, DefaultValueMapper mapper) throws Exception {
+    public static Object nullableDefaultValueMapper(Column column, String v, DefaultValueMapper mapper) throws Exception {
         int start = v.lastIndexOf('(') == -1 ? 0 : v.lastIndexOf('(') + 1;
         int end = !v.contains(")") ? v.length() : v.indexOf(')');
         final String value = v.substring(start, end); // trim leading and trailing parenthesis
@@ -194,7 +179,7 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
             return null;
         }
         else {
-            return mapper.parse(value);
+            return mapper.parse(column, value);
         }
     }
 }

@@ -41,22 +41,6 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
 
     private static Logger LOGGER = LoggerFactory.getLogger(OracleDefaultValueConverter.class);
 
-    /**
-     * Converts JDBC string representation of a default column value to an object.
-     */
-    @FunctionalInterface
-    private interface DefaultValueMapper {
-        /**
-         * Parses string to an object.
-         *
-         * @param column the column, never {@code null}
-         * @param value string representation
-         * @return the parsed value
-         * @throws Exception if there is a parsing error
-         */
-        Object parse(Column column, String value) throws Exception;
-    }
-
     private final OracleValueConverters valueConverters;
     private final OracleConnection jdbcConnection;
     private final Map<Integer, DefaultValueMapper> defaultValueMappers;
