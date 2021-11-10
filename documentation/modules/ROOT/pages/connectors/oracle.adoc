@@ -482,15 +482,66 @@ The connector drops change events that are discarded by a rollback.
 
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
+==== Heap
 The default buffer type is configured using `memory`.
 Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records.
 If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment.
 
 ifdef::community[]
-An additional buffer type can be configured using `infinispan`.
-You can also set the buffer type to  `infinispan` to have the connector use Infinispan in embedded-mode to cache buffered events.
-Using Infinispan as the buffer type permits the cache to be persisted to disk.
-If you use the `infinispan` option, you must also set the xref:oracle-property-log-mining-buffer-location[`log.mining.buffer.location`] property to specify the location to which the connector writes persisted cache files.
+[[oracle-event-buffering-infinispan]]
+==== Infinispan
+The {prodname} Oracle connector can also be configured to use Infinispan as it's cache provider, supporting cache stores both locally with embedded mode or remotely on a server cluster.
+In order to use Infinispan, the xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`] must be configured using either `infinispan_embedded` or `infinispan_remote`.
+
+In order to allow flexibility with Infinispan cache configurations, the connector expects a series of cache configuration properties to be supplied when using Infinispan to buffer event data.
+
+`log.mining.buffer.infinispan.cache.transactions`::
+Specifies the XML configuration for the transaction cache.
+`log.mining.buffer.infinispan.cache.events`::
+Specifies the XML configuration for the event cache.
+`log.mining.buffer.infinispan.cache.committed_transactions`::
+Specifies the XML configuration for the committed transactions cache.
+`log.mining.buffer.infinispan.cache.rollback_transactions`::
+Specifies the XML configuration for the rollback transactions cache.
+`log.mining.buffer.infinispan.cache.schema_changes`::
+Specifies the XML configuration for the schema changes cache.
+
+The contents of each of these configuration properties depend on whether the connector is to integrate with a remote Infinispan cluster or to use the embedded engine.
+
+For example, the following illustrates what an embedded configuration would look like for the transaction cache property when using Infinispan in embedded mode:
+
+[source,xml]
+----
+<local-cache name="transactions">
+  <persistence passivation="false">
+    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" path="./data" />
+  </persistence>
+</local-cache>
+----
+
+Looking at the configuration in-depth, the cache is configured to be persistent.
+All caches should be configured this way to avoid loss of transaction events across connector restarts if a transaction is in-progress.
+Additionally, the location where the cache is kept is defined by the `path` attribute and this should be a shared location accessible all possible runtime environments.
+
+Another example, the following illustrates the same cache configured with an Infinispan cluster:
+
+[source,xml]
+----
+<distributed-cache name="transactions" statistics="true">
+  <encoding media-type="application/x-protostream" />
+  <persistence passivation="false">
+    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" />
+  </persistence>
+</distributed-cache>
+----
+
+Just like the embedded local-cache configuration from the previous example, this configuration is also defined to be persistent.
+All caches should be configured this way to avoid loss of transaction events across connector restarts if a transaction is in-progress.
+
+However, there are a few differences with noting.
+First, the cache is defined as a distributed cache rather than a local-cache.
+Secondly, the cache is defined to use the `application/x-protostream` encoding, which is required for all Debezium caches.
+And lastly, no `path` attribute is necessary on the file store definition since the Infinispan cluster will handle this automatically.
 
 [IMPORTANT]
 ====
@@ -500,6 +551,16 @@ The migration notes will indicate whether this is needed.
 Additionally, when removing a {prodname} Oracle connector that uses the Infinispan buffer, the persisted cache files are not removed from disk automatically.
 If the same buffer location will be used by a new connector deployment, the files should be removed manually before deploying the new connector.
 ====
+
+===== Infinispan Hotrod client integration
+
+The {prodname} Oracle connector utilizes the Hotrod client to communicate with the Infinispan cluster.
+Any connector property that is prefixed with `log.mining.buffer.infinispan.client.` will be passed directly to the Hotrod client using the `infinispan.client.` namespace, allowing for complete customization of how the client is to interact with the cluster.
+
+There is at least one required configuration property that must be supplied when using this Infinspan mode:
+
+`log.mining.buffer.infinispan.client.hotrod.server_list`::
+Specifies the list of Infinispan server hostname and port combinations, using `<hostname>:<port>` format.
 endif::community[]
 
 // Type: concept
@@ -2344,11 +2405,29 @@ Since the buffer state is persisted across restarts, the buffer does not need to
 The infinispan option requires that you specify a cache file directory.
 Use the `log.mining.buffer.location` property to define the location for storing cache files.
 
-|[[oracle-property-log-mining-buffer-location]]<<oracle-property-log-mining-buffer-location, `+log.mining.buffer.location+`>>
+|[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.transactions+`>>
 |No default
-|Specifies the location of the directory that the connector uses to read and write the buffer cache.
-Specify a directory that every node in the Kafka cluster can access and that is unique for the connector deployment.
-endif::community[]
+|The XML configuration for the Infinispan transaction cache.
+See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
+
+|[[oracle-property-log-mining-buffer-infinispan-cache-events]]<<oracle-property-log-mining-buffer-infinispan-cache-events, `+log.mining.buffer.infinispan.cache.events+`>>
+|No default
+|The XML configuration for the Infinispan events cache.
+See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
+
+|[[oracle-property-log-mining-buffer-infinispan-cache-committed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-committed-transactions, `+log.mining.buffer.infinispan.cache.committed_transactions+`>>
+|No default
+|The XML configuration for the Infinispan committed transactions cache.
+See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
+
+|[[oracle-property-log-mining-buffer-infinispan-cache-rollback-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-rollback-transactions, `+log.mining.buffer.infinispan.cache.rollback_transactions+`>>
+|No default
+|The XML configuration for the Infinispan rollback transactions cache.
+See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
+
+|[[oracle-property-log-mining-buffer-infinispan-cache-schema-changes]]<<oracle-property-log-mining-buffer-infinispan-cache-schema-changes, `+log.mining.buffer.infinispan.cache.schema_changes+`>>
+|No default
+|The XML configuration for the Infinispan schema changes cachen.
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
 |`false`
@@ -2358,6 +2437,7 @@ This setting only impacts buffer implementations that persist state across resta
 The default behavior is that the buffer state is always retained between restarts. +
  +
 Set to `true` only in testing or development environments.
+endif::community[]
 
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
