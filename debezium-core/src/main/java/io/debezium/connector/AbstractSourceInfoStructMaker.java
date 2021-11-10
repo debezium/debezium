@@ -24,7 +24,7 @@ import io.debezium.data.Enum;
  */
 public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo> implements SourceInfoStructMaker<T> {
 
-    public static final Schema SNAPSHOT_RECORD_SCHEMA = Enum.builder("true,last,false").defaultValue("false").optional().build();
+    public static final Schema SNAPSHOT_RECORD_SCHEMA = Enum.builder("true,last,false,incremental").defaultValue("false").optional().build();
 
     private final String version;
     private final String connector;

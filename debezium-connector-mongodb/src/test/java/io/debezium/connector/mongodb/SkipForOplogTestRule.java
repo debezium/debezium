@@ -12,7 +12,11 @@ import org.junit.runners.model.Statement;
 /**
  * JUnit rule that skips tests not intended for oplog capture mode.
  *
+<<<<<<< HEAD
  * @author Jiri Pechanec
+=======
+ * @author Horia Chiorean
+>>>>>>> DBZ-3342 Incremental snapshot support for MongoDB
  */
 public class SkipForOplogTestRule implements TestRule {
 

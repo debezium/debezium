@@ -305,7 +305,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             }
         });
 
-        ctx.offset = new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(), positions);
+        ctx.offset = new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
+                new MongoDbIncrementalSnapshotContext<>(false), positions);
     }
 
     private void createDataEvents(ChangeEventSourceContext sourceContext, MongoDbSnapshotContext snapshotContext, ReplicaSet replicaSet,

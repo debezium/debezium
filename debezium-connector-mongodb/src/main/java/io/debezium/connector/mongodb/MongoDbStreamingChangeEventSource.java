@@ -581,7 +581,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         });
 
-        return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(), positions);
+        return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
+                new MongoDbIncrementalSnapshotContext<>(false), positions);
     }
 
     private static String getTransactionId(Document event) {
