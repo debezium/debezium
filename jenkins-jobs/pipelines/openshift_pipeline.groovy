@@ -16,6 +16,21 @@ pipeline {
             }
         }
 
+        stage('Checkout - Debezium DB2 connector') {
+            when {
+                expression { !params.PRODUCT_BUILD }
+            }
+            steps {
+                checkout([
+                        $class           : 'GitSCM',
+                        branches         : [[name: "${DBZ_GIT_BRANCH_DB2}"]],
+                        userRemoteConfigs: [[url: "${DBZ_GIT_REPOSITORY_DB2}"]],
+                        extensions       : [[$class           : 'RelativeTargetDirectory',
+                                             relativeTargetDir: 'debezium-connector-db2']],
+                ])
+            }
+        }
+
         stage('Checkout - Upstream Strimzi') {
             when {
                 expression { !params.PRODUCT_BUILD }
@@ -108,15 +123,38 @@ pipeline {
                     env.OCP_PROJECT_SQLSERVER = "debezium-${BUILD_NUMBER}-sqlserver"
                     env.OCP_PROJECT_MONGO = "debezium-${BUILD_NUMBER}-mongo"
                     env.OCP_PROJECT_DB2 = "debezium-${BUILD_NUMBER}-db2"
-                    env.TEST_PROPERTY_VERSION_KAFKA = env.TEST_VERSION_KAFKA ? "-Dversion.kafka=${env.TEST_VERSION_KAFKA}" : ""
-                    env.TEST_PROPERTY_TAGS = env.TEST_TAGS ? "-Dgroups=${env.TEST_TAGS}" : ""
-                    env.TEST_PROPERTY_TAGS_EXCLUDE = env.TEST_TAGS_EXCLUDE ? "-DexcludeGroups=${env.TEST_TAGS_EXCLUDE }" : ""
+                    env.OCP_PROJECT_ORACLE = "debezium-${BUILD_NUMBER}-oracle"
+
+                    env.MVN_PROFILE_PROD = params.PRODUCT_BUILD ? "-Pproduct" : ""
+
+                    env.TEST_CONNECT_STRZ_BUILD = params.TEST_CONNECT_STRZ_IMAGE ? false : true
+
+                    env.IMAGE_TAG_SUFFIX="${BUILD_NUMBER}"
+                    env.MVN_IMAGE_CONNECT_STRZ = params.IMAGE_CONNECT_STRZ ? "-Dimage.kc=${params.IMAGE_CONNECT_STRZ}" : ""
+                    env.MVN_IMAGE_CONNECT_RHEL = params.IMAGE_CONNECT_RHEL ? "-Ddocker.image.kc=${params.IMAGE_CONNECT_RHEL}" : ""
+                    env.MVN_IMAGE_DBZ_AS = params.IMAGE_DBZ_AS ? "-Dimage.as=${params.IMAGE_DBZ_AS}" : ""
+
+                    env.MVN_TAGS = params.TEST_TAGS ? "-Dgroups=${params.TEST_TAGS}" : ""
+                    env.MVN_TAGS_EXCLUDE = params.TEST_TAGS_EXCLUDE ? "-DexcludedGroups=${params.TEST_TAGS_EXCLUDE }" : ""
+
+                    env.MVN_VERSION_KAFKA = params.TEST_VERSION_KAFKA ? "-Dversion.kafka=${params.TEST_VERSION_KAFKA}" : ""
+                    env.MVN_VERSION_AS_DEBEZIUM = params.AS_VERSION_DEBEZIUM ? "-Das.debezium.version=${params.AS_VERSION_DEBEZIUM}" : ""
+                    env.MVN_VERSION_AS_APICURIO = params.AS_VERSION_APICURIO ? "-Das.apicurio.version=${params.AS_VERSION_APICURIO}" : ""
+
+                    env.ORACLE_ARTIFACT_VERSION='21.1.0.0'
+                    env.ORACLE_ARTIFACT_DIR = "${env.HOME}/oracle-libs/21.1.0.0.0"
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
                         usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
 
                 ]) {
+                    sh '''
+                    set -x
+                    cd ${ORACLE_ARTIFACT_DIR}
+                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar
+                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar
+                    '''
                     sh '''
                     set -x            
                     oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
@@ -126,6 +164,7 @@ pipeline {
                     oc new-project ${OCP_PROJECT_SQLSERVER}
                     oc new-project ${OCP_PROJECT_MONGO}
                     oc new-project ${OCP_PROJECT_DB2}
+                    oc new-project ${OCP_PROJECT_ORACLE}
                     '''
                     sh '''
                     set -x
@@ -142,6 +181,8 @@ pipeline {
                     oc project ${OCP_PROJECT_DB2}
                     oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_DB2}:default
                     oc adm policy add-scc-to-user privileged system:serviceaccount:${OCP_PROJECT_DB2}:default
+                    oc project ${OCP_PROJECT_ORACLE}
+                    oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_ORACLE}:default
                     '''
                     sh '''
                     set -x
@@ -156,19 +197,37 @@ pipeline {
                 sh '''
                 set -x
                 cd ${WORKSPACE}/debezium
-                mvn clean install -DskipTests -DskipITs -Passembly
+                mvn clean install -DskipTests -DskipITs
                 '''
             }
         }
 
-        stage('Build & Deploy Image -- Community') {
+        stage('Build -- Upstream') {
             when {
-                expression { !params.DBZ_CONNECT_IMAGE && !params.PRODUCT_BUILD }
+                expression { !params.PRODUCT_BUILD }
             }
             steps {
-                script {
-                    env.DBZ_CONNECT_IMAGE = "quay.io/debezium/testing-system-connect:ci-${currentBuild.number}"
-                }
+//              Build DB2 Connector
+                sh '''
+                set -x
+                cd ${WORKSPACE}/debezium-connector-db2
+                mvn clean install -DskipTests -DskipITs -Passembly
+                '''
+//              Build Oracle connector
+                sh '''
+                set -x
+                cd ${WORKSPACE}/debezium
+                mvn install -Passembly,oracle -DskipTests -DskipITs 
+                '''
+            }
+        }
+
+
+        stage('Build & Deploy AS Image -- Upstream') {
+            when {
+                expression { !params.PRODUCT_BUILD && !params.IMAGE_CONNECT_STRZ && !params.IMAGE_DBZ_AS  }
+            }
+            steps {
                 withCredentials([
                         usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
                 ]) {
@@ -176,8 +235,24 @@ pipeline {
                     set -x 
                     cd ${WORKSPACE}/debezium
                     docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
-                    mvn install -pl debezium-testing/debezium-testing-system -DskipTests -DskipITs -Pimages -Dimage.build.skip.push=false -Dimage.kc=${DBZ_CONNECT_IMAGE}   
+                    
+                    mvn install -pl debezium-testing/debezium-testing-system -Pimages,oracle-image,oracleITs \\
+                    -DskipTests \\
+                    -DskipITs \\
+                    -Dimage.build.kc.skip=true \\
+                    -Dimage.tag.suffix="${IMAGE_TAG_SUFFIX}"
                     '''
+                }
+            }
+        }
+
+        stage('Enable debug') {
+            when {
+                expression { params.DEBUG_MODE }
+            }
+            steps {
+                script {
+                    env.MAVEN_OPTS="-DforkCount=0 -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=*:5005"
                 }
             }
         }
@@ -185,28 +260,36 @@ pipeline {
         stage('Test') {
             steps {
                 withCredentials([
+                        usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
                         file(credentialsId: "${PULL_SECRET}", variable: 'SECRET_PATH'),
                 ]) {
                     sh '''
                     set -x
                     cd ${WORKSPACE}/debezium
-                    mvn install -pl debezium-testing/debezium-testing-system -PsystemITs \\
-                    -Dimage.kc="${DBZ_CONNECT_IMAGE}" \\
-                    -Dtest.docker.image.rhel.kafka=${DBZ_CONNECT_RHEL_IMAGE} \\
-                    -Dtest.ocp.username="${OCP_USERNAME}" \\
-                    -Dtest.ocp.password="${OCP_PASSWORD}" \\
-                    -Dtest.ocp.url="${OCP_URL}" \\
-                    -Dtest.ocp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \\
-                    -Dtest.ocp.project.mysql="${OCP_PROJECT_MYSQL}"  \\
-                    -Dtest.ocp.project.postgresql="${OCP_PROJECT_POSTGRESQL}" \\
-                    -Dtest.ocp.project.sqlserver="${OCP_PROJECT_SQLSERVER}"  \\
-                    -Dtest.ocp.project.mongo="${OCP_PROJECT_MONGO}" \\
-                    -Dtest.ocp.project.db2="${OCP_PROJECT_DB2}" \\
-                    -Dtest.ocp.pull.secret.paths="${SECRET_PATH}" \\
+                    mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \\
+                    ${MVN_PROFILE_PROD} \\
+                    -Docp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \\
+                    -Docp.project.mysql="${OCP_PROJECT_MYSQL}"  \\
+                    -Docp.project.postgresql="${OCP_PROJECT_POSTGRESQL}" \\
+                    -Docp.project.sqlserver="${OCP_PROJECT_SQLSERVER}"  \\
+                    -Docp.project.mongo="${OCP_PROJECT_MONGO}" \\
+                    -Docp.project.db2="${OCP_PROJECT_DB2}" \\
+                    -Docp.project.oracle="${OCP_PROJECT_ORACLE}" \\
+                    -Docp.username="${OCP_USERNAME}" \\
+                    -Docp.password="${OCP_PASSWORD}" \\
+                    -Docp.url="${OCP_URL}" \\
+                    -Docp.pull.secret.paths="${SECRET_PATH}" \\
+                    -Dstrimzi.kc.build=${TEST_CONNECT_STRZ_BUILD} \\
+                    -Dimage.tag.suffix="${IMAGE_TAG_SUFFIX}" \\
                     -Dtest.wait.scale="${TEST_WAIT_SCALE}" \\
-                    ${TEST_PROPERTY_VERSION_KAFKA} \\
-                    ${TEST_PROPERTY_TAGS} \\
-                    ${TEST_PROPERTY_TAGS_EXCLUDE}
+                    ${MVN_IMAGE_CONNECT_STRZ} \\
+                    ${MVN_IMAGE_CONNECT_RHEL} \\
+                    ${MVN_IMAGE_DBZ_AS} \\
+                    ${MVN_VERSION_KAFKA} \\
+                    ${MVN_VERSION_AS_DEBEZIUM} \\
+                    ${MVN_VERSION_AS_APICURIO} \\
+                    ${MVN_TAGS} \\
+                    ${MVN_TAGS_EXCLUDE}
                     '''
                 }
             }
@@ -224,12 +307,9 @@ OpenShift interoperability test run ${BUILD_URL} finished with result: ${current
         }
         success {
             sh '''
-            oc delete project ${OCP_PROJECT_DEBEZIUM}
-            oc delete project ${OCP_PROJECT_MYSQL}
-            oc delete project ${OCP_PROJECT_POSTGRESQL}
-            oc delete project ${OCP_PROJECT_SQLSERVER}
-            oc delete project ${OCP_PROJECT_MONGO}
-            oc delete project ${OCP_PROJECT_DB2}
+            for project in $(oc projects | grep -Po "debezium-${BUILD_NUMBER}.*"); do
+                oc delete project "${project}"
+            done
             '''
         }
     }

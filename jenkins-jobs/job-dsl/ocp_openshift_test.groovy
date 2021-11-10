@@ -20,17 +20,26 @@ pipelineJob('ocp-debezium-testing-system') {
 //        DEBEZIUM CONFIG
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
         stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
-        stringParam('DBZ_CONNECT_IMAGE', '', 'Kafka Connect Strimzi Image with DBZ plugins.')
-        stringParam('DBZ_CONNECT_RHEL_IMAGE', '', 'Kafka Connect RHEL Image with DBZ plugins.')
+        stringParam('DBZ_GIT_REPOSITORY_DB2', 'https://github.com/debezium/debezium-connector-db2.git', 'Repository from which Debezium DB2 sources are cloned')
+        stringParam('DBZ_GIT_BRANCH_DB2', 'main', 'A branch/tag of Debezium DB2 sources')
 //        STRIMZI CONFIG
         stringParam('STRZ_GIT_REPOSITORY', 'https://github.com/strimzi/strimzi-kafka-operator.git', 'Repository from which Strimzi is cloned')
         stringParam('STRZ_GIT_BRANCH', 'main', 'A branch/tag from which Debezium is built')
         stringParam('STRZ_RESOURCES_ARCHIVE_URL', '', 'URL to productised strimzi sources')
+//      Images config
+        stringParam('IMAGE_DBZ_AS', '', "Debezium artifact server image (usable with Strimzi's build mechanism")
+        stringParam('IMAGE_CONNECT_STRZ', '', 'Kafka Connect Strimzi Image with DBZ plugins.')
+        stringParam('IMAGE_CONNECT_RHEL', '', 'Kafka Connect RHEL Image with DBZ plugins.')
 //        TEST CONFIG
         stringParam('TEST_WAIT_SCALE', '1', 'Wait time scaling factor')
-        stringParam('TEST_VERSION_KAFKA', '', 'Kafka version')
         stringParam('TEST_TAGS', '', 'Which test tags to run (empty for all)')
         stringParam('TEST_TAGS_EXCLUDE', '', 'Which test tags to skip (empty for none)')
+//        Artifact Versions
+        stringParam('TEST_VERSION_KAFKA', '', 'Kafka version')
+        stringParam('AS_VERSION_APICURIO', '', 'Service registry bits version')
+        stringParam('AS_VERSION_DEBEZIUM', '', 'Debezium bits version')
+//        Maven
+        booleanParam('DEBUG_MODE', false, 'Enable remote debugger')
     }
 
     definition {

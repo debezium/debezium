@@ -18,7 +18,7 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
-@Tag("oracle ")
+@Tag("oracle")
 @Tag("openshift")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class OcpOracleConnectorIT

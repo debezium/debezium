@@ -9,7 +9,6 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ_USERNAME;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -39,10 +38,11 @@ public class OcpDB2Controller extends OcpSqlDatabaseController {
     public void initialize() {
         LOGGER.info("Waiting until DB2 instance is ready");
         SqlDatabaseClient client = getDatabaseClient(DATABASE_DB2_DBZ_USERNAME, DATABASE_DB2_DBZ_PASSWORD);
-        try (Connection connection = client.connect()) {
+        try (Connection connection = client.connectWithRetries()) {
             LOGGER.info("Database connection established successfully!");
         }
-        catch (SQLException e) {
+        catch (Throwable e) {
+            LOGGER.error(e.getMessage());
             throw new RuntimeException(e);
         }
     }
