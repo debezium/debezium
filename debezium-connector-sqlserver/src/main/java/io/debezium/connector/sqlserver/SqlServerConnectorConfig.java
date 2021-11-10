@@ -321,6 +321,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE = Field.create("incremental.snapshot.option.recompile")
+            .withDisplayName("Recompile SELECT statements")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription("Add OPTION(RECOMPILE) on each SELECT statement during the incremental snapshot process. "
+                    + "This prevents parameter sniffing but can cause CPU pressure on the source database.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -337,7 +346,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SNAPSHOT_ISOLATION_MODE,
                     SOURCE_TIMESTAMP_MODE,
                     MAX_TRANSACTIONS_PER_ITERATION,
-                    BINARY_HANDLING_MODE)
+                    BINARY_HANDLING_MODE,
+                    INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
@@ -362,6 +372,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
     private final boolean multiPartitionMode;
+    private final boolean optionRecompile;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
@@ -402,6 +413,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
             LOGGER.warn("The option '{}' is no longer taken into account. The optimization is always enabled.", MAX_LSN_OPTIMIZATION.name());
         }
+
+        this.optionRecompile = config.getBoolean(INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE);
     }
 
     public Configuration jdbcConfig() {
@@ -438,6 +451,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public int getMaxTransactionsPerIteration() {
         return maxTransactionsPerIteration;
+    }
+
+    public boolean getOptionRecompile() {
+        return optionRecompile;
     }
 
     @Override

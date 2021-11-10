@@ -244,6 +244,17 @@ public class TestHelper {
                 Collections.emptySet(), true);
     }
 
+    public static SqlServerConnection testConnectionWithOptionRecompile() {
+        Configuration config = defaultJdbcConfig()
+                .edit()
+                .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + TEST_DATABASE + "]")
+                .build();
+
+        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                Collections.emptySet(), true, true);
+    }
+
     /**
      * Enables CDC for a given database, if not already enabled.
      *
