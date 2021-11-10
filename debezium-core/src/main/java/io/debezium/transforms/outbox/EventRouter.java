@@ -5,8 +5,6 @@
  */
 package io.debezium.transforms.outbox;
 
-import static java.util.function.Function.identity;
-
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -27,7 +25,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     @Override
     public R apply(R r) {
-        return eventRouterDelegate.apply(r, identity());
+        return eventRouterDelegate.apply(r, rec -> rec);
     }
 
     @Override

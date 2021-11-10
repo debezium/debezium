@@ -298,7 +298,7 @@ being deduced from the JSON document itself. That way the result in Kafka messag
 }
 ----
 
-To enable this transformation, you have to set the `debezium.expand.json.payload` to true like below:
+To enable this transformation, you have to set the xref:outbox-event-router-property-debezium-expand-json-payload[`debezium.expand.json.payload`] to true like below:
 
 [source]
 ----
