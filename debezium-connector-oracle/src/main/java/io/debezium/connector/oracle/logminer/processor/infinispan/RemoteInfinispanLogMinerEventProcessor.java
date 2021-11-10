@@ -58,6 +58,8 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
     private static final String HOTROD_CLIENT_LOOKUP_PREFIX = "log.mining.buffer.infinispan.client.";
     private static final String HOTROD_CLIENT_PREFIX = "infinispan.client.";
 
+    public static final String HOTROD_SERVER_LIST = HOTROD_CLIENT_LOOKUP_PREFIX + "hotrod.server_list";
+
     private final RemoteCacheManager cacheManager;
     private final boolean dropBufferOnStop;
 
