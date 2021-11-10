@@ -561,6 +561,11 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |Redis does not support the notion of data without key.
 So this string will be used as key for records without primary key.
 
+|[[redis-null-value]]<<redis-null-value, `debezium.sink.redis.null.value`>>
+|`default`
+|Redis does not support the notion of null payloads, as is the case with tombstone events.
+So this string will be used as value for records without a payload.
+
 |===
 
 
