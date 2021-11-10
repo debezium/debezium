@@ -9,7 +9,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -28,20 +27,15 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerQueryBuilder;
 import io.debezium.connector.oracle.logminer.SqlUtils;
-import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
-import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
 
 /**
  * A {@link LogMinerEventProcessor} that uses the JVM heap to store events as they're being
@@ -53,7 +47,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryLogMinerEventProcessor.class);
 
-    private final ChangeEventSourceContext context;
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<TableId> dispatcher;
     private final OraclePartition partition;
@@ -71,11 +64,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private final Set<Scn> schemaChangesCache = new HashSet<>();
     private final Set<String> abandonedTransactionsCache = new HashSet<>();
 
-    private Scn currentOffsetScn = Scn.NULL;
-    private Scn currentOffsetCommitScn = Scn.NULL;
-    private Scn lastCommittedScn = Scn.NULL;
-    private Scn maxCommittedScn = Scn.NULL;
-
     public MemoryLogMinerEventProcessor(ChangeEventSourceContext context,
                                         OracleConnectorConfig connectorConfig,
                                         OracleConnection jdbcConnection,
@@ -85,7 +73,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                                         OracleDatabaseSchema schema,
                                         OracleStreamingChangeEventSourceMetrics metrics) {
         super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
-        this.context = context;
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.partition = partition;
@@ -117,48 +104,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     @Override
     public void close() throws Exception {
         // close any resources used here
-    }
-
-    @Override
-    public Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
-        counters.reset();
-
-        try (PreparedStatement statement = createQueryStatement()) {
-            LOGGER.debug("Fetching results for SCN [{}, {}]", startScn, endScn);
-            statement.setFetchSize(getConfig().getMaxQueueSize());
-            statement.setFetchDirection(ResultSet.FETCH_FORWARD);
-            statement.setString(1, startScn.toString());
-            statement.setString(2, endScn.toString());
-
-            Instant queryStart = Instant.now();
-            try (ResultSet resultSet = statement.executeQuery()) {
-                metrics.setLastDurationOfBatchCapturing(Duration.between(queryStart, Instant.now()));
-
-                Instant startProcessTime = Instant.now();
-                processResults(resultSet);
-
-                Duration totalTime = Duration.between(startProcessTime, Instant.now());
-                metrics.setLastCapturedDmlCount(counters.dmlCount);
-
-                if (counters.dmlCount > 0 || counters.commitCount > 0 || counters.rollbackCount > 0) {
-                    warnPotentiallyStuckScn(currentOffsetScn, currentOffsetCommitScn);
-
-                    currentOffsetScn = offsetContext.getScn();
-                    if (offsetContext.getCommitScn() != null) {
-                        currentOffsetCommitScn = offsetContext.getCommitScn();
-                    }
-                }
-
-                LOGGER.debug("{}.", counters);
-                LOGGER.debug("Processed in {} ms. Log: {}. Offset SCN: {}, Offset Commit SCN: {}, Active Transactions: {}, Sleep: {}",
-                        totalTime.toMillis(), metrics.getLagFromSourceInMilliseconds(), offsetContext.getScn(),
-                        offsetContext.getCommitScn(), metrics.getNumberOfActiveTransactions(),
-                        metrics.getMillisecondToSleepBetweenMiningQuery());
-
-                metrics.addProcessedRows(counters.rows);
-                return calculateNewStartScn(endScn);
-            }
-        }
     }
 
     @Override
@@ -208,140 +153,33 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected void handleCommit(LogMinerEventRow row) throws InterruptedException {
-        final String transactionId = row.getTransactionId();
-        if (isRecentlyProcessed(transactionId)) {
-            return;
-        }
+    protected MemoryTransaction getAndRemoveTransactionFromCache(String transactionId) {
+        return getTransactionCache().remove(transactionId);
+    }
 
-        final MemoryTransaction transaction = transactionCache.remove(transactionId);
-        if (transaction == null) {
-            LOGGER.trace("Transaction {} not found.", transactionId);
-            return;
-        }
+    @Override
+    protected void removeTransactionAndEventsFromCache(MemoryTransaction transaction) {
+        abandonedTransactionsCache.remove(transaction.getTransactionId());
+    }
 
-        final boolean skipExcludedUserName;
-        if (transaction.getUserName() == null && !transaction.getEvents().isEmpty()) {
-            LOGGER.debug("Got transaction with null username {}", transaction);
-            skipExcludedUserName = false;
-        }
-        else if (getConfig().getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
-            LOGGER.trace("Skipping transaction with excluded username {}", transaction);
-            skipExcludedUserName = true;
-        }
-        else {
-            skipExcludedUserName = false;
-        }
+    @Override
+    protected Iterator<LogMinerEvent> getTransactionEventIterator(MemoryTransaction transaction) {
+        return transaction.getEvents().iterator();
+    }
 
-        final Scn smallestScn = getTransactionCacheMinimumScn();
-        metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
-        abandonedTransactionsCache.remove(transactionId);
-
-        final Scn commitScn = row.getScn();
-        final Scn offsetCommitScn = offsetContext.getCommitScn();
-        if ((offsetCommitScn != null && offsetCommitScn.compareTo(commitScn) > 0) || lastCommittedScn.compareTo(commitScn) > 0) {
-            LOGGER.debug("Transaction {} has already been processed. Commit SCN in offset is {} while commit SCN " +
-                    "of transaction is {} and last seen committed SCN is {}.",
-                    transactionId, offsetCommitScn, commitScn, lastCommittedScn);
-            metrics.setActiveTransactions(transactionCache.size());
-            return;
-        }
-
-        counters.commitCount++;
-        Instant start = Instant.now();
-
-        int numEvents = transaction.getEvents().size();
-
-        LOGGER.trace("Commit: (smallest SCN {}) {}", smallestScn, row);
-        LOGGER.trace("Transaction {} has {} events", transactionId, numEvents);
-
-        BlockingConsumer<LogMinerEvent> delegate = new BlockingConsumer<LogMinerEvent>() {
-            private int numEvents = getTransactionEventCount(transaction);
-
-            @Override
-            public void accept(LogMinerEvent event) throws InterruptedException {
-                // Update SCN in offset context only if processed SCN less than SCN of other transactions
-                if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
-                    offsetContext.setScn(event.getScn());
-                    metrics.setOldestScn(event.getScn());
-                }
-
-                offsetContext.setTransactionId(transactionId);
-                offsetContext.setSourceTime(event.getChangeTime());
-                offsetContext.setTableId(event.getTableId());
-                if (--numEvents == 0) {
-                    // reached the last event update the commit scn in the offsets
-                    offsetContext.setCommitScn(commitScn);
-                }
-
-                final DmlEvent dmlEvent = (DmlEvent) event;
-                if (!skipExcludedUserName) {
-                    dispatcher.dispatchDataChangeEvent(event.getTableId(),
-                            new LogMinerChangeRecordEmitter(
-                                    partition,
-                                    offsetContext,
-                                    dmlEvent.getEventType(),
-                                    dmlEvent.getDmlEntry().getOldValues(),
-                                    dmlEvent.getDmlEntry().getNewValues(),
-                                    getSchema().tableFor(event.getTableId()),
-                                    Clock.system()));
-                }
-            }
-        };
-
-        int eventCount = 0;
-        try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, getConfig(), getSchema())) {
-            for (LogMinerEvent event : transaction.getEvents()) {
-                if (!context.isRunning()) {
-                    return;
-                }
-
-                eventCount++;
-                LOGGER.trace("Dispatching event {} {}", eventCount, event.getEventType());
-                commitConsumer.accept(event);
-            }
-        }
-
-        lastCommittedScn = Scn.valueOf(commitScn.longValue());
-        if (!transaction.getEvents().isEmpty() && !skipExcludedUserName) {
-            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
-        }
-        else {
-            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
-        }
-
-        metrics.calculateLagMetrics(row.getChangeTime());
-        if (lastCommittedScn.compareTo(maxCommittedScn) > 0) {
-            maxCommittedScn = lastCommittedScn;
-        }
-
+    @Override
+    protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
         if (getConfig().isLobEnabled()) {
             // cache recently committed transactions by transaction id
             recentlyProcessedTransactionsCache.put(transactionId, commitScn);
         }
-
-        metrics.incrementCommittedTransactions();
-        metrics.setActiveTransactions(transactionCache.size());
-        metrics.incrementCommittedDmlCount(eventCount);
-        metrics.setCommittedScn(commitScn);
-        metrics.setOffsetScn(offsetContext.getScn());
-        metrics.setLastCommitDuration(Duration.between(start, Instant.now()));
     }
 
     @Override
-    protected void handleRollback(LogMinerEventRow row) {
-        final MemoryTransaction transaction = transactionCache.get(row.getTransactionId());
-        if (transaction != null) {
-            transactionCache.remove(row.getTransactionId());
-            abandonedTransactionsCache.remove(row.getTransactionId());
-            recentlyProcessedTransactionsCache.put(row.getTransactionId(), row.getScn());
-
-            metrics.setActiveTransactions(transactionCache.size());
-            metrics.incrementRolledBackTransactions();
-            metrics.addRolledBackTransactionId(row.getTransactionId());
-
-            counters.rollbackCount++;
-        }
+    protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
+        transactionCache.remove(transactionId);
+        abandonedTransactionsCache.remove(transactionId);
+        recentlyProcessedTransactionsCache.put(transactionId, rollbackScn);
     }
 
     @Override
@@ -386,7 +224,8 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         return transaction.getEvents().size();
     }
 
-    private PreparedStatement createQueryStatement() throws SQLException {
+    @Override
+    protected PreparedStatement createQueryStatement() throws SQLException {
         final String query = LogMinerQueryBuilder.build(getConfig(), getSchema());
         return jdbcConnection.connection().prepareStatement(query,
                 ResultSet.TYPE_FORWARD_ONLY,
@@ -394,7 +233,8 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 ResultSet.HOLD_CURSORS_OVER_COMMIT);
     }
 
-    private Scn calculateNewStartScn(Scn endScn) throws InterruptedException {
+    @Override
+    protected Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException {
         if (getConfig().isLobEnabled()) {
             if (transactionCache.isEmpty() && !maxCommittedScn.isNull()) {
                 offsetContext.setScn(maxCommittedScn);
