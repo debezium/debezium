@@ -310,6 +310,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     System.lineSeparator() +
                     "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.");
 
+    @Deprecated
+    public static final Field LOG_MINING_BUFFER_LOCATION = Field.create("log.mining.buffer.location")
+            .withDisplayName("Location where Infinispan stores buffer caches")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateBufferLocation)
+            .withDescription("(Deprecated) Path to location where Infinispan will store buffer caches");
+
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.transactions")
             .withDisplayName("Infinispan 'transactions' cache configuration")
             .withType(Type.STRING)
@@ -420,6 +429,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_USERNAME_EXCLUDE_LIST,
                     LOG_MINING_ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
+                    LOG_MINING_BUFFER_LOCATION,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
@@ -1175,6 +1185,19 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         // Validates that the field is required but only when an URL field is not present
         if (config.getString(HOSTNAME) == null) {
             return Field.isRequired(config, field, problems);
+        }
+        return 0;
+    }
+
+    public static int validateBufferLocation(Configuration config, Field field, ValidationOutput problems) {
+        // Log error if this field is provided in the configuration since its no longer valid and has been removed
+        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        if (bufferType.isInfinispan()) {
+            final String location = config.getString(LOG_MINING_BUFFER_LOCATION);
+            if (!Strings.isNullOrEmpty(location)) {
+                problems.accept(field, location, "Configuration option is no longer valid, please use 'log.mining.buffer.infinispan.cache.*' options");
+                return 1;
+            }
         }
         return 0;
     }
