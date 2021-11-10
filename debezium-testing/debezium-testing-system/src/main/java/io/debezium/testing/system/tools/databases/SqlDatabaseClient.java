@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -74,6 +75,15 @@ public class SqlDatabaseClient implements DatabaseClient<Connection, SQLExceptio
     }
 
     public Connection connect() throws SQLException {
+        LOGGER.info("Connecting to " + url);
         return DriverManager.getConnection(url, username, password);
+    }
+
+    public Connection connectWithRetries() {
+        return await()
+                .atMost(scaled(2), TimeUnit.MINUTES)
+                .pollInterval(5, TimeUnit.SECONDS)
+                .ignoreExceptions()
+                .until(this::connect, Objects::nonNull);
     }
 }

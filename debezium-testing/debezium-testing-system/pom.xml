@@ -23,8 +23,8 @@
 
     <!--KC image configuration-->
     <image.build.registry>quay.io</image.build.registry>
-    <image.kc>${image.build.registry}/debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.kc>
-    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}</image.as>
+    <image.kc>${image.build.registry}/debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}${image.tag.suffix}</image.kc>
+    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}${image.tag.suffix}</image.as>
 
     <!--Docker configuration-->
     <docker.image.mysql>quay.io/debezium/example-mysql:latest</docker.image.mysql>
@@ -446,11 +446,12 @@
       <id>images</id>
 
       <properties>
-        <image.build.skip.push>true</image.build.skip.push>
-        <image.build.kc.skip>false</image.build.kc.skip>
+        <image.build.kc.skip>true</image.build.kc.skip>
+        <image.build.kc.skip.push>${image.build.kc.skip}</image.build.kc.skip.push>
         <image.build.kc.base.tag>latest</image.build.kc.base.tag>
-        <image.build.kc.base>quay.io/strimzi/kafka:${image.build.kc.base.tag}-kafka-${version.kafka}</image.build.kc.base>
+        <image.build.kc.base>quay.io/strimzi/kafka:${image.build.kc.base.tag}-kafka-${version.strimzi.kafka}</image.build.kc.base>
         <image.build.as.skip>false</image.build.as.skip>
+        <image.build.as.skip.push>${image.build.as.skip}</image.build.as.skip.push>
       </properties>
 
       <dependencies>
@@ -506,7 +507,6 @@
             <configuration>
               <imagePullPolicy>IfNotPresent</imagePullPolicy>
               <pushRegistry>${image.build.registry}</pushRegistry>
-              <skipPush>${image.build.skip.push}</skipPush>
 
               <!-- Artifact Server Image -->
               <images>
@@ -514,6 +514,7 @@
                   <name>${image.as}</name>
                   <build>
                     <skip>${image.build.as.skip}</skip>
+                    <skipPush>${image.build.as.skip.push}</skipPush>
                     <contextDir>${project.basedir}/../../jenkins-jobs/docker/artifact-server</contextDir>
                     <assembly>
                       <name>plugins</name>
@@ -560,6 +561,7 @@
                   <build>
                     <from>${image.build.kc.base}</from>
                     <skip>${image.build.kc.skip}</skip>
+                    <skipPush>${image.build.kc.skip.push}</skipPush>
                     <assembly>
                       <targetDir>/opt/kafka/plugins</targetDir>
                       <inline>
@@ -659,7 +661,7 @@
 
                 <test.artifact.server.url>${as.url}</test.artifact.server.url>
                 <!--Docker Configuration-->
-                <test.docker.image.rhel.kafka>${docker.image.rhel.kafka}</test.docker.image.rhel.kafka>
+                <test.docker.image.kc>${docker.image.kc}</test.docker.image.kc>
                 <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
                 <test.docker.image.postgresql>${docker.image.postgresql}</test.docker.image.postgresql>
                 <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
