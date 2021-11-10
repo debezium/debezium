@@ -56,6 +56,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
     String nullKey;
 
+    @ConfigProperty(name = PROP_PREFIX + "null.value", defaultValue = "default")
+    String nullValue;
+
     private Jedis client = null;
 
     @Inject
@@ -118,7 +121,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
                 String destination = streamNameMapper.map(record.destination());
                 String key = (record.key() != null) ? getString(record.key()) : nullKey;
-                String value = getString(record.value());
+                String value = (record.value() != null) ? getString(record.value()) : nullValue;
                 client.xadd(destination, null, Collections.singletonMap(key, value));
 
                 committer.markProcessed(record);
