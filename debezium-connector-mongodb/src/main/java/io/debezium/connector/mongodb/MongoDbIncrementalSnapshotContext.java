@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.source.snapshot.incremental;
+package io.debezium.connector.mongodb;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -24,20 +24,20 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
 
 /**
- * A class describing current state of incremental snapshot
+ * A class describing current state of incremental snapshot of MongoDB connector
  *
  * @author Jiri Pechanec
  *
  */
 @NotThreadSafe
-public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapshotContext<T> {
+public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshotContext<T> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotContext.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbIncrementalSnapshotContext.class);
 
     // TODO Consider which (if any) information should be exposed in source info
     public static final String INCREMENTAL_SNAPSHOT_KEY = "incremental_snapshot";
@@ -78,7 +78,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     private boolean schemaVerificationPassed;
 
-    public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
+    public MongoDbIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
@@ -169,13 +169,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @SuppressWarnings("unchecked")
     public List<T> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds) {
         final List<T> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> (T) TableId.parse(x, useCatalogBeforeSchema))
+                .map(x -> (T) CollectionId.parse(x))
+                .filter(x -> x != null) // Remove collections with incorrectly formatted name
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         return newDataCollectionIds;
     }
 
-    protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
+    protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
         final String lastEventSentKeyStr = (String) offsets.get(EVENT_PRIMARY_KEY);
         context.chunkEndPosition = (lastEventSentKeyStr != null)
                 ? context.serializedStringToArray(EVENT_PRIMARY_KEY, lastEventSentKeyStr)
@@ -272,9 +273,15 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         LOGGER.info("Incremental snapshot's schema verification passed = {}, schema = {}", schemaVerificationPassed, schema);
     }
 
+    public static <U> MongoDbIncrementalSnapshotContext<U> load(Map<String, ?> offsets, boolean useCatalogBeforeSchema) {
+        final MongoDbIncrementalSnapshotContext<U> context = new MongoDbIncrementalSnapshotContext<>(useCatalogBeforeSchema);
+        init(context, offsets);
+        return context;
+    }
+
     @Override
     public String toString() {
-        return "IncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
+        return "MongoDbIncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
                 + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + dataCollectionsToSnapshot
                 + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
                 + Arrays.toString(maximumKey) + "]";

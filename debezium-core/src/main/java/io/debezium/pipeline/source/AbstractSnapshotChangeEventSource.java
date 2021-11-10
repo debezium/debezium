@@ -37,6 +37,11 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
+    /**
+     * Interval for showing a log statement with the progress while scanning a single table.
+     */
+    public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
+
     private final CommonConnectorConfig connectorConfig;
     private final SnapshotProgressListener snapshotProgressListener;
 

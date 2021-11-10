@@ -557,7 +557,8 @@ public final class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected SnapshotRecord snapshot() {
-        return isInitialSyncOngoing(replicaSetName) ? SnapshotRecord.TRUE : SnapshotRecord.FALSE;
+        return isInitialSyncOngoing(replicaSetName) ? SnapshotRecord.TRUE
+                : snapshotRecord == SnapshotRecord.INCREMENTAL ? SnapshotRecord.INCREMENTAL : SnapshotRecord.FALSE;
     }
 
     @Override

@@ -19,7 +19,7 @@ public interface IncrementalSnapshotContext<T> {
 
     List<T> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds);
 
-    int tablesToBeSnapshottedCount();
+    int dataCollectionsToBeSnapshottedCount();
 
     boolean openWindow(String id);
 

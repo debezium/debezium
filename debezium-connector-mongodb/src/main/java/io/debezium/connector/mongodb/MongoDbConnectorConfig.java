@@ -16,6 +16,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.data.Struct;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +29,8 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.data.Envelope;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * The configuration properties.
@@ -811,5 +815,32 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             }
             return config.getInteger(MAX_COPY_THREADS);
         }
+    }
+
+    @Override
+    public Optional<String[]> parseSignallingMessage(Struct value) {
+        final String after = value.getString(Envelope.FieldName.AFTER);
+        if (after == null) {
+            LOGGER.warn("After part of signal '{}' is missing", value);
+            return Optional.empty();
+        }
+        final Document fields = Document.parse(after);
+        if (fields.size() != 3) {
+            LOGGER.warn("The signal event '{}' should have 3 fields but has {}", after, fields.size());
+            return Optional.empty();
+        }
+        final String[] result = new String[3];
+        int idx = 0;
+        for (Object fieldValue : fields.values()) {
+            result[idx++] = fieldValue.toString();
+        }
+        return Optional.of(result);
+    }
+
+    @Override
+    public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
+        final CollectionId id = (CollectionId) dataCollectionId;
+        return getSignalingDataCollectionId() != null
+                && getSignalingDataCollectionId().equals(id.dbName() + "." + id.name());
     }
 }

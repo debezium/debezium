@@ -42,6 +42,32 @@ public class CollectionIdTest {
         assertThat(CollectionId.parse("rs0", "a")).isNull();
     }
 
+    @Test
+    public void shouldNotFullParseStringWithDot() {
+        final CollectionId collectionId = CollectionId.parse("rs0.a.b.c");
+        assertThat(collectionId.replicaSetName()).isEqualTo("rs0");
+        assertThat(collectionId.dbName()).isEqualTo("a");
+        assertThat(collectionId.name()).isEqualTo("b.c");
+    }
+
+    @Test
+    public void shouldNotFullParseStringWithDotAtStart() {
+        assertThat(CollectionId.parse(".rs0.a.b")).isNull();
+    }
+
+    @Test
+    public void shouldNotParseFullStringWithDotAtEnd() {
+        assertThat(CollectionId.parse("rs0.")).isNull();
+        assertThat(CollectionId.parse("rs0.a.")).isNull();
+    }
+
+    @Test
+    public void shouldNotParseFullStringWithMissingSegment() {
+        assertThat(CollectionId.parse("rs0")).isNull();
+        assertThat(CollectionId.parse("rs0.a")).isNull();
+        assertThat(CollectionId.parse("rs0..a")).isNull();
+    }
+
     protected void assertParseable(String replicaSetName, String dbName, String collectionName) {
         String str = dbName + "." + collectionName;
         id = CollectionId.parse(replicaSetName, str);

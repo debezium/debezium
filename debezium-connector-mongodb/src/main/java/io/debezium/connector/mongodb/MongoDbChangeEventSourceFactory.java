@@ -5,13 +5,18 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Optional;
+
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 /**
@@ -27,15 +32,17 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     private final Clock clock;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
+    private final MongoDbSchema schema;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler, EventDispatcher<CollectionId> dispatcher,
-                                           Clock clock, ReplicaSets replicaSets, MongoDbTaskContext taskContext) {
+                                           Clock clock, ReplicaSets replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
+        this.schema = schema;
     }
 
     @Override
@@ -59,5 +66,22 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 dispatcher,
                 errorHandler,
                 clock);
+    }
+
+    @Override
+    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                              MongoDbOffsetContext offsetContext,
+                                                                                                                              SnapshotProgressListener snapshotProgressListener,
+                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+        final MongoDbIncrementalSnapshotChangeEventSource<CollectionId> incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource<CollectionId>(
+                configuration,
+                taskContext,
+                replicaSets,
+                dispatcher,
+                schema,
+                clock,
+                snapshotProgressListener,
+                dataChangeEventListener);
+        return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }

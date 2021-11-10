@@ -413,7 +413,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
      */
     private boolean createDataEventsForTable() {
         long exportStart = clock.currentTimeInMillis();
-        LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.tablesToBeSnapshottedCount());
+        LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.dataCollectionsToBeSnapshottedCount());
 
         final String selectStatement = buildChunkQuery(currentTable);
         LOGGER.debug("\t For table '{}' using select statement: '{}', key: '{}', maximum key: '{}'", currentTable.id(),
