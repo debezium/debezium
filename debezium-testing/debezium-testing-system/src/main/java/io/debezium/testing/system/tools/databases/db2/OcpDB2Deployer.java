@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.databases.AbstractOcpDatabaseDeployer;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -25,9 +26,10 @@ public class OcpDB2Deployer extends AbstractOcpDatabaseDeployer<OcpDB2Controller
     private OcpDB2Deployer(
                            String project,
                            Deployment deployment,
+                           Secret pullSecret,
                            List<Service> services,
                            OpenShiftClient ocp) {
-        super(project, deployment, services, ocp);
+        super(project, deployment, services, pullSecret, ocp);
     }
 
     @Override
@@ -41,6 +43,7 @@ public class OcpDB2Deployer extends AbstractOcpDatabaseDeployer<OcpDB2Controller
             return new OcpDB2Deployer(
                     project,
                     deployment,
+                    pullSecret,
                     services,
                     ocpClient);
         }

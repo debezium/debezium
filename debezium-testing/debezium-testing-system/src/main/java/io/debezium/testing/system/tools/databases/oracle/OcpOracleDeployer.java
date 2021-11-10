@@ -18,9 +18,9 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public class OcpOracleDeployer extends AbstractOcpDatabaseDeployer<OcpOracleController> {
 
-    public OcpOracleDeployer(String project, Deployment deployment, List<Secret> pullSecrets,
+    public OcpOracleDeployer(String project, Deployment deployment, Secret pullSecret,
                              List<Service> services, OpenShiftClient ocp) {
-        super(project, deployment, services, pullSecrets, ocp);
+        super(project, deployment, services, pullSecret, ocp);
     }
 
     @Override
@@ -34,7 +34,7 @@ public class OcpOracleDeployer extends AbstractOcpDatabaseDeployer<OcpOracleCont
             return new OcpOracleDeployer(
                     project,
                     deployment,
-                    pullSecrets,
+                    pullSecret,
                     services,
                     ocpClient);
         }
