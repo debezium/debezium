@@ -2413,6 +2413,10 @@ By default, no operations are skipped.
 |Specifies the maximum number of transactions per iteration to be used to reduce the memory footprint when streaming changes from multiple tables in a database.
 When set to `0` (the default), the connector uses the current maximum LSN as the range to fetch changes from.
 When set to a value greater than zero, the connector uses the n-th LSN specified by this setting as the range to fetch changes from.
+
+|[[sqlserver-property-incremental-snapshot-option-recompile]]<<sqlserver-property-incremental-snapshot-option-recompile, `+incremental.snapshot.option.recompile+`>>
+|`false`
+|Uses OPTION(RECOMPILE) query option to all SELECT statements used during an incremental snapshot. This can help to solve parameter sniffing issues that may occur but can cause increased CPU load on the source database, depending on the frequency of query execution.
 |===
 
 [id="debezium-{context}-connector-database-history-configuration-properties"]
