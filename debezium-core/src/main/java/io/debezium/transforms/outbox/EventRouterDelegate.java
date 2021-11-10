@@ -11,7 +11,6 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -44,6 +43,11 @@ import io.debezium.transforms.tracing.ActivateTracingSpan;
  */
 public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
+    @FunctionalInterface
+    public static interface RecordConverter<R> {
+        R convert(R record);
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(EventRouterDelegate.class);
 
     private static final String ENVELOPE_PAYLOAD = "payload";
@@ -75,7 +79,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     private SmtManager<R> smtManager;
 
-    public R apply(R r, Function<R, R> recordConverter) {
+    public R apply(R r, RecordConverter<R> recordConverter) {
         // Ignoring tombstones
         if (r.value() == null) {
             LOGGER.debug("Tombstone message ignored. Message key: \"{}\"", r.key());
@@ -103,7 +107,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             return null;
         }
 
-        r = recordConverter.apply(r);
+        r = recordConverter.convert(r);
 
         tracingSmt.apply(r);
 
