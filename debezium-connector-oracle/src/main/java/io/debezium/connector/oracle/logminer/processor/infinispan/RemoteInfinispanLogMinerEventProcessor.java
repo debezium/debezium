@@ -55,6 +55,9 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RemoteInfinispanLogMinerEventProcessor.class);
 
+    private static final String HOTROD_CLIENT_LOOKUP_PREFIX = "log.mining.buffer.infinispan.client.";
+    private static final String HOTROD_CLIENT_PREFIX = "infinispan.client.";
+
     private final RemoteCacheManager cacheManager;
     private final boolean dropBufferOnStop;
 
@@ -161,12 +164,12 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
 
     private Properties getHotrodClientProperties(OracleConnectorConfig connectorConfig) {
         final Map<String, String> clientSettings = connectorConfig.getConfig()
-                .subset("log.mining.buffer.infinispan.client.", true)
+                .subset(HOTROD_CLIENT_LOOKUP_PREFIX, true)
                 .asMap();
 
         final Properties properties = new Properties();
         for (Map.Entry<String, String> entry : clientSettings.entrySet()) {
-            properties.put("infinispan.client." + entry.getKey(), entry.getValue());
+            properties.put(HOTROD_CLIENT_PREFIX + entry.getKey(), entry.getValue());
             if (entry.getKey().toLowerCase().endsWith(ConfigurationProperties.AUTH_USERNAME.toLowerCase())) {
                 // If an authentication username is supplied, enforce authentication required
                 properties.put(ConfigurationProperties.USE_AUTH, "true");
