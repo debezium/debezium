@@ -30,6 +30,7 @@ import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -1229,6 +1230,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LogMiningBufferType.INFINISPAN.getValue(),
                     LOG_MINING_BUFFER_TYPE.name(),
                     LogMiningBufferType.INFINISPAN_EMBEDDED.getValue());
+        }
+        if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
+            // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
+            final String serverList = config.getString(RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST);
+            if (Strings.isNullOrEmpty(serverList)) {
+                LOGGER.error("The option '{}' must be supplied when using the buffer type '{}'",
+                        RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST,
+                        bufferType.name());
+                return 1;
+            }
         }
         return 0;
     }
