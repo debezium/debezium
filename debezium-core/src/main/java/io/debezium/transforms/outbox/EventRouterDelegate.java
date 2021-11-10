@@ -75,7 +75,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     private SmtManager<R> smtManager;
 
-    public R apply(R r, Function<R, R> transformer) {
+    public R apply(R r, Function<R, R> recordConverter) {
         // Ignoring tombstones
         if (r.value() == null) {
             LOGGER.debug("Tombstone message ignored. Message key: \"{}\"", r.key());
@@ -103,7 +103,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             return null;
         }
 
-        r = transformer.apply(r);
+        r = recordConverter.apply(r);
 
         tracingSmt.apply(r);
 
