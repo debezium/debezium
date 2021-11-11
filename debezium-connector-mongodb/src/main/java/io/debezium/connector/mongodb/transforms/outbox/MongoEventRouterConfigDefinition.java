@@ -116,15 +116,11 @@ public class MongoEventRouterConfigDefinition {
                 config,
                 "Collection",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELD_SCHEMA_VERSION);
+                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
                 "Router",
                 ROUTE_BY_FIELD, ROUTE_TOPIC_REGEX, ROUTE_TOPIC_REPLACEMENT, ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD);
-        Field.group(
-                config,
-                "Debezium",
-                OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
                 "Tracing",
