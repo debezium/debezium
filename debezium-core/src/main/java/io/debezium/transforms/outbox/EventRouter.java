@@ -11,14 +11,11 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * Debezium Outbox Transform Event Router
  *
  * @author Renato mefi (gh@mefi.in)
  */
-@Incubating
 public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     EventRouterDelegate<R> eventRouterDelegate = new EventRouterDelegate<>();
