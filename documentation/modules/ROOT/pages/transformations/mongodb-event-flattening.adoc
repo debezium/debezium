@@ -35,7 +35,7 @@ E.g. the general message structure for a insert event looks like this:
 ----
 {
   "op": "r",
-  "after": "{\"field1\":newvalue1,\"field2\":\"newvalue1\"}",
+  "after": "{\"field1\":\"newvalue1\",\"field2\":\"newvalue1\"}",
   "source": { ... }
 }
 ----
@@ -173,8 +173,8 @@ Such document will be encoded as
 ----
 {
     "_id": 1,
-    "a_c": 1,
-    "a_d": "none",
+    "a_b": 1,
+    "a_c": "none",
     "d": 100
 }
 ----
