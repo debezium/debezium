@@ -1173,7 +1173,7 @@ public class JdbcConnection implements AutoCloseable {
         try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null,
                 new String[]{ "VIEW", "MATERIALIZED VIEW", "TABLE" })) {
             while (rs.next()) {
-                final String catalogName = rs.getString(1);
+                final String catalogName = resolveCatalogName(rs.getString(1));
                 final String schemaName = rs.getString(2);
                 final String tableName = rs.getString(3);
                 final String tableType = rs.getString(4);
@@ -1223,6 +1223,11 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
+    protected String resolveCatalogName(String catalogName) {
+        // default behavior is to simply return the value from the JDBC result set
+        return catalogName;
+    }
+
     private Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
                                                          String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
                                                          final Set<TableId> viewIds)
@@ -1230,7 +1235,7 @@ public class JdbcConnection implements AutoCloseable {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
         try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
             while (columnMetadata.next()) {
-                String catalogName = columnMetadata.getString(1);
+                String catalogName = resolveCatalogName(columnMetadata.getString(1));
                 String schemaName = columnMetadata.getString(2);
                 String metaTableName = columnMetadata.getString(3);
                 TableId tableId = new TableId(catalogName, schemaName, metaTableName);

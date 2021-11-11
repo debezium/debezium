@@ -35,11 +35,9 @@ import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
-import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
@@ -264,27 +262,9 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern, TableFilter tableFilter,
-                           ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
-            throws SQLException {
-
-        super.readSchema(tables, null, schemaNamePattern, tableFilter, columnFilter, removeTablesNotFoundInJdbc);
-
-        Set<TableId> tableIds = tables.tableIds().stream().filter(x -> schemaNamePattern.equals(x.schema())).collect(Collectors.toSet());
-
-        for (TableId tableId : tableIds) {
-            // super.readSchema() populates ids without the catalog; hence we apply the filtering only
-            // here and if a table is included, overwrite it with a new id including the catalog
-            TableId tableIdWithCatalog = new TableId(databaseCatalog, tableId.schema(), tableId.table());
-
-            if (tableFilter.isIncluded(tableIdWithCatalog)) {
-                TableEditor editor = tables.editTable(tableId);
-                editor.tableId(tableIdWithCatalog);
-                tables.overwriteTable(editor.create());
-            }
-
-            tables.removeTable(tableId);
-        }
+    protected String resolveCatalogName(String catalogName) {
+        final String pdbName = config().getString("pdb.name");
+        return !Strings.isNullOrEmpty(pdbName) ? pdbName : config().getString("dbname");
     }
 
     @Override
