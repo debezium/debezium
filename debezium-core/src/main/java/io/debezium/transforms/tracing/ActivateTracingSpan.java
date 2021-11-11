@@ -58,6 +58,8 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
     private static final String TRACING_COMPONENT = "debezium";
     private static final String TX_LOG_WRITE_OPERATION_NAME = "db-log-write";
 
+    private static final boolean OPEN_TRACING_AVAILABLE = resolveOpenTracingApiAvailable();
+
     public static final Field TRACING_SPAN_CONTEXT_FIELD = Field.create("tracing.span.context.field")
             .withDisplayName("Serialized tracing span context field")
             .withType(ConfigDef.Type.STRING)
@@ -229,5 +231,20 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             }
             span.withTag(targetFieldName, fieldValue.toString());
         }
+    }
+
+    public static boolean isOpenTracingAvailable() {
+        return OPEN_TRACING_AVAILABLE;
+    }
+
+    private static boolean resolveOpenTracingApiAvailable() {
+        try {
+            GlobalTracer.get();
+            return true;
+        }
+        catch (NoClassDefFoundError e) {
+            // ignored
+        }
+        return false;
     }
 }

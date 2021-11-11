@@ -109,7 +109,9 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         r = recordConverter.convert(r);
 
-        tracingSmt.apply(r);
+        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+            tracingSmt.apply(r);
+        }
 
         final R afterRecord = afterExtractor.apply(r);
         Struct eventStruct = requireStruct(afterRecord.value(), "Read Outbox Event");
@@ -295,13 +297,17 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     }
 
     public void close() {
-        tracingSmt.close();
+        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+            tracingSmt.close();
+        }
     }
 
     public void configure(Map<String, ?> configMap) {
-        tracingSmt.configure(configMap);
-        if (!configMap.containsKey(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name())) {
-            tracingSmt.setRequireContextField(true);
+        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+            tracingSmt.configure(configMap);
+            if (!configMap.containsKey(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name())) {
+                tracingSmt.setRequireContextField(true);
+            }
         }
         final Configuration config = Configuration.from(configMap);
         smtManager = new SmtManager<>(config);
