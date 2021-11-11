@@ -83,10 +83,23 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * Queries the list of capture instances in the given database.
      *
-     * We use a query instead of {@code sys.sp_cdc_help_change_data_capture} because the stored procedure doesn't allow
-     * filtering capture instances by start LSN.
+     * If two or more capture instances with the same start LSN are available for a given source table,
+     * only the newest one will be returned.
+     *
+     * We use a query instead of {@code sys.sp_cdc_help_change_data_capture} because:
+     *   1. The stored procedure doesn't allow filtering capture instances by start LSN.
+     *   2. There is no way to use the result returned by a stored procedure in a query.
      */
-    private static final String GET_CHANGE_TABLES = "SELECT s.name AS source_schema, o.name AS source_table, ct.capture_instance, ct.object_id, ct.start_lsn FROM [#db].cdc.change_tables ct INNER JOIN [#db].sys.objects o ON ct.source_object_id = o.object_id INNER JOIN [#db].sys.schemas s ON s.schema_id = o.schema_id";
+    private static final String GET_CHANGE_TABLES = "WITH ordered_change_tables" +
+            " AS (SELECT ROW_NUMBER() OVER (PARTITION BY ct.source_object_id, ct.start_lsn ORDER BY ct.create_date DESC) AS ct_sequence," +
+            " ct.*" +
+            " FROM [#db].cdc.change_tables AS ct#)" +
+            " SELECT OBJECT_SCHEMA_NAME(source_object_id, DB_ID(?))," +
+            " OBJECT_NAME(source_object_id, DB_ID(?))," +
+            " capture_instance," +
+            " object_id," +
+            " start_lsn" +
+            " FROM ordered_change_tables WHERE ct_sequence = 1";
 
     private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String OPENING_QUOTING_CHARACTER = "[";
@@ -415,12 +428,21 @@ public class SqlServerConnection extends JdbcConnection {
         String query = replaceDatabaseNamePlaceholder(GET_CHANGE_TABLES, databaseName);
 
         if (toLsn.isAvailable()) {
-            return prepareQueryAndMap(query + " WHERE ct.start_lsn <= ?",
-                    ps -> ps.setBytes(1, toLsn.getBinary()),
+            return prepareQueryAndMap(query.replace(STATEMENTS_PLACEHOLDER, " WHERE ct.start_lsn <= ?"),
+                    ps -> {
+                        ps.setBytes(1, toLsn.getBinary());
+                        ps.setString(2, databaseName);
+                        ps.setString(3, databaseName);
+                    },
                     mapper);
         }
         else {
-            return queryAndMap(query, mapper);
+            return prepareQueryAndMap(query.replace(STATEMENTS_PLACEHOLDER, ""),
+                    ps -> {
+                        ps.setString(1, databaseName);
+                        ps.setString(2, databaseName);
+                    },
+                    mapper);
         }
     }
 
