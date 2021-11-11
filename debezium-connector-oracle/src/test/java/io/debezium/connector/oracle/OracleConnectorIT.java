@@ -2518,6 +2518,90 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-3611")
+    public void shouldSafelySnapshotAndStreamWithDatabaseIncludeList() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz3611");
+
+            connection.execute("CREATE TABLE dbz3611 (id numeric(9,0), data varchar2(30))");
+            TestHelper.streamTable(connection, "dbz3611");
+
+            connection.execute("INSERT INTO dbz3611 values (1, 'snapshot')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.DATABASE_INCLUDE_LIST, "ORCLPDB1")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.dbz3611")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            System.out.println(records.topics());
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3611")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ3611").get(0);
+            Struct after = ((Struct) record.value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("snapshot");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz3611 values (2, 'streaming')");
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3611");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3611")
+    public void shouldSafelySnapshotAndStreamWithDatabaseExcludeList() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz3611");
+
+            connection.execute("CREATE TABLE dbz3611 (id numeric(9,0), data varchar2(30))");
+            TestHelper.streamTable(connection, "dbz3611");
+
+            connection.execute("INSERT INTO dbz3611 values (1, 'snapshot')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.DATABASE_EXCLUDE_LIST, "ORCLPDB2")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.dbz3611")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            System.out.println(records.topics());
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3611")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ3611").get(0);
+            Struct after = ((Struct) record.value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("snapshot");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz3611 values (2, 'streaming')");
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3611");
+        }
+    }
+
     @FixFor("DBZ-3986")
     private void consumeRecords(Configuration config) throws SQLException, InterruptedException {
         // Poll for records ...

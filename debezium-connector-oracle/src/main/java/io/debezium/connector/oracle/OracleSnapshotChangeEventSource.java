@@ -249,7 +249,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             // else {
             jdbcConnection.readSchema(
                     snapshotContext.tables,
-                    snapshotContext.catalogName,
+                    null,
                     schema,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
