@@ -338,6 +338,7 @@ The SMT automatically filters out `DELETE` operations on an outbox collection.
 |`_id`
 |Collection
 |Specifies the outbox collection field that contains the unique event ID.
+This ID will be stored in the emitted event's headers under the `id` key.
 
 |[[mongodb-outbox-event-router-property-collection-field-event-key]]<<mongodb-outbox-event-router-property-collection-field-event-key, `collection.field.event.key`>>
 |`aggregateid`
@@ -358,6 +359,7 @@ The SMT automatically filters out `DELETE` operations on an outbox collection.
 |`aggregateid`
 |Collection
 |Specifies the outbox collection field that contains the payload ID.
+This ID will be used as the emitted event's key.
 
 |[[mongodb-outbox-event-router-property-collection-expand-json-payload]]<<mongodb-outbox-event-router-property-collection-expand-json-payload, `collection.expand.json.payload`>>
 |`false`
