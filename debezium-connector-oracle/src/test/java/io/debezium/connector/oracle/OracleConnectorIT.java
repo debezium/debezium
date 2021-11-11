@@ -2560,6 +2560,10 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    /**
+     * database include/exclude list are not support (yet) for the Oracle connector; this test is just there to make 
+     * sure that the presence of these (functionally ignored) properties doesn't cause any problems.
+     */
     @Test
     @FixFor("DBZ-3611")
     public void shouldSafelySnapshotAndStreamWithDatabaseExcludeList() throws Exception {
