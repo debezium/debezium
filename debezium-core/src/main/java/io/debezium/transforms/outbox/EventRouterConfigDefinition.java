@@ -117,6 +117,15 @@ public class EventRouterConfigDefinition {
         }
     }
 
+    public static final Field OPERATION_INVALID_BEHAVIOR = Field.create("table.op.invalid.behavior")
+            .withDisplayName("Behavior when the route fails to apply")
+            .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("While Debezium is monitoring the table, it's expecting only to see 'create' row events," +
+                    " in case something else is processed this transform can log it as warning, error or stop the" +
+                    " process.");
+
     public static final Field FIELD_EVENT_ID = Field.create("table.field.event.id")
             .withDisplayName("Event ID Field")
             .withType(ConfigDef.Type.STRING)
@@ -218,16 +227,17 @@ public class EventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Whether or not an empty payload should cause a tombstone event.");
 
-    public static final Field OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
+    @Deprecated
+    public static final Field DEBEZIUM_OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
             .withDisplayName("Behavior when the route fails to apply")
             .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDescription("While Debezium is monitoring the table, it's expecting only to see 'create' row events," +
                     " in case something else is processed this transform can log it as warning, error or stop the" +
-                    " process");
+                    " process.  This option is deprecated, use 'table.op.invalid.behavior' instead.");
 
-    public static final Field EXPAND_JSON_PAYLOAD = Field.create("debezium.expand.json.payload")
+    public static final Field EXPAND_JSON_PAYLOAD = Field.create("table.expand.json.payload")
             .withDisplayName("Expand Payload escaped string as real JSON")
             .withType(ConfigDef.Type.BOOLEAN)
             .withDefault(false)
@@ -250,6 +260,7 @@ public class EventRouterConfigDefinition {
             ROUTE_TOPIC_REGEX,
             ROUTE_TOPIC_REPLACEMENT,
             ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
+            DEBEZIUM_OPERATION_INVALID_BEHAVIOR,
             OPERATION_INVALID_BEHAVIOR,
             EXPAND_JSON_PAYLOAD
     };
@@ -268,7 +279,7 @@ public class EventRouterConfigDefinition {
                 config,
                 "Table",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELD_SCHEMA_VERSION);
+                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
                 "Router",
@@ -276,7 +287,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Debezium",
-                OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
+                DEBEZIUM_OPERATION_INVALID_BEHAVIOR);
         Field.group(
                 config,
                 "Tracing",
