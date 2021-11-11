@@ -9,11 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
+import io.debezium.util.Strings;
 
 /**
  * Debezium Outbox Transform configuration definition
@@ -21,6 +24,8 @@ import io.debezium.transforms.tracing.ActivateTracingSpan;
  * @author Renato mefi (gh@mefi.in)
  */
 public class EventRouterConfigDefinition {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventRouterConfigDefinition.class);
 
     public enum InvalidOperationBehavior implements EnumeratedValue {
         SKIP_AND_WARN("warn"),
@@ -117,6 +122,15 @@ public class EventRouterConfigDefinition {
         }
     }
 
+    public static final Field OPERATION_INVALID_BEHAVIOR = Field.create("table.op.invalid.behavior")
+            .withDisplayName("Behavior when capturing an unexpected outbox event")
+            .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("While Debezium is capturing changes from the outbox table, it is expecting only to process 'create' or 'delete' row events;" +
+                    " in case something else is processed this transform can log it as warning, error or stop the" +
+                    " process.");
+
     public static final Field FIELD_EVENT_ID = Field.create("table.field.event.id")
             .withDisplayName("Event ID Field")
             .withType(ConfigDef.Type.STRING)
@@ -156,13 +170,15 @@ public class EventRouterConfigDefinition {
             .withDefault("payload")
             .withDescription("The column which contains the event payload within the outbox table");
 
+    @Deprecated
     public static final Field FIELD_PAYLOAD_ID = Field.create("table.field.event.payload.id")
             .withDisplayName("Event Payload ID Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(EventRouterConfigDefinition::validateFieldPayloadId)
             .withDefault("aggregateid")
-            .withDescription("The column which contains the payload ID within the outbox table");
+            .withDescription("The column which contains the payload ID within the outbox table; deprecated use 'table.field.event.key' instead.");
 
     public static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("table.fields.additional.placement")
             .withDisplayName("Settings for each additional column in the outbox table")
@@ -218,16 +234,17 @@ public class EventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Whether or not an empty payload should cause a tombstone event.");
 
-    public static final Field OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
+    @Deprecated
+    public static final Field DEBEZIUM_OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
             .withDisplayName("Behavior when the route fails to apply")
             .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("While Debezium is monitoring the table, it's expecting only to see 'create' row events," +
+            .withDescription("While Debezium is capturing changes from the table, it's expecting only to see 'create' row events," +
                     " in case something else is processed this transform can log it as warning, error or stop the" +
-                    " process");
+                    " process.  This option is deprecated, use 'table.op.invalid.behavior' instead.");
 
-    public static final Field EXPAND_JSON_PAYLOAD = Field.create("debezium.expand.json.payload")
+    public static final Field EXPAND_JSON_PAYLOAD = Field.create("table.expand.json.payload")
             .withDisplayName("Expand Payload escaped string as real JSON")
             .withType(ConfigDef.Type.BOOLEAN)
             .withDefault(false)
@@ -250,6 +267,7 @@ public class EventRouterConfigDefinition {
             ROUTE_TOPIC_REGEX,
             ROUTE_TOPIC_REPLACEMENT,
             ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
+            DEBEZIUM_OPERATION_INVALID_BEHAVIOR,
             OPERATION_INVALID_BEHAVIOR,
             EXPAND_JSON_PAYLOAD
     };
@@ -268,7 +286,7 @@ public class EventRouterConfigDefinition {
                 config,
                 "Table",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELD_SCHEMA_VERSION);
+                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
                 "Router",
@@ -276,7 +294,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Debezium",
-                OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
+                DEBEZIUM_OPERATION_INVALID_BEHAVIOR);
         Field.group(
                 config,
                 "Tracing",
@@ -299,5 +317,16 @@ public class EventRouterConfigDefinition {
         }
 
         return additionalFields;
+    }
+
+    static int validateFieldPayloadId(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String value = config.getString(field);
+        if (!Strings.isNullOrEmpty(value)) {
+            LOGGER.warn("Configuration option '{}' is deprecated and will be removed in future releases. " +
+                    "Please use '{}' instead.",
+                    field.name(),
+                    FIELD_EVENT_KEY.name());
+        }
+        return 0;
     }
 }
