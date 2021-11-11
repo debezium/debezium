@@ -313,9 +313,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         smtManager = new SmtManager<>(config);
 
         io.debezium.config.Field.Set allFields = io.debezium.config.Field.setOf(EventRouterConfigDefinition.CONFIG_FIELDS);
-        if (!config.validateAndRecord(allFields, LOGGER::error)) {
-            throw new ConnectException("Unable to validate config.");
-        }
+        smtManager.validate(config, allFields);
 
         invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
                 config.getFallbackStringPropertyWithWarning(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR,
