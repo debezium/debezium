@@ -1,6 +1,6 @@
 ---
 name: "Debezium Quarkus Outbox"
-description: "Use outbox pattern with Debezium"
+description: "Implement the outbox pattern for reliable microservices data exchange with Debezium and change data capture"
 metadata:
   keywords:
   - "debezium"
