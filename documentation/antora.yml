@@ -8,7 +8,7 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.8.0.Alpha1'
+    debezium-version: '1.8.0.Alpha2'
     debezium-dev-version: '1.8'
     debezium-kafka-version: '2.8.0'
     debezium-docker-label: '1.8'
@@ -18,7 +18,7 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.18.0'
-    apicurio-version: '2.0.0.Final'
+    apicurio-version: '2.0.2.Final'
     db2-version: '11.5.0.0'
     community: true
     registry: 'Apicurio Registry'
