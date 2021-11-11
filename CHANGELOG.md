@@ -2,6 +2,71 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.8.0.Alpha2
+November 11th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377154)
+
+### New features since 1.8.0.Alpha1
+
+* TableChangesSerializer ignored defaultValue and enumValues [DBZ-3966](https://issues.jboss.org/browse/DBZ-3966)
+* Support for heartbeat action queries for MySQL [DBZ-4029](https://issues.jboss.org/browse/DBZ-4029)
+* Expose the transaction topicname as a config [DBZ-4077](https://issues.jboss.org/browse/DBZ-4077)
+* Improvement to the topic creation step [DBZ-4172](https://issues.jboss.org/browse/DBZ-4172)
+* Process transaction started/committed in MySQL read-only incremental snapshot [DBZ-4197](https://issues.jboss.org/browse/DBZ-4197)
+* Ability to use base image from authenticated registry with KC build mechanism [DBZ-4227](https://issues.jboss.org/browse/DBZ-4227)
+* Remove SqlServerConnector database.user Required Validator [DBZ-4231](https://issues.jboss.org/browse/DBZ-4231)
+* Specify database hot name as 0.0.0.0 for Oracle connector tests CI [DBZ-4242](https://issues.jboss.org/browse/DBZ-4242)
+* Suport all charsets in MySQL parser [DBZ-4261](https://issues.jboss.org/browse/DBZ-4261)
+
+
+### Breaking changes since 1.8.0.Alpha1
+
+* Store buffered events in separate Infinispan cache [DBZ-4159](https://issues.jboss.org/browse/DBZ-4159)
+
+
+### Fixes since 1.7.0.Final
+
+* "table" is null for table.include.list and column.include.list [DBZ-3611](https://issues.jboss.org/browse/DBZ-3611)
+* Debezium server crashes when deleting a record from a SQLServer table (redis sink) [DBZ-3708](https://issues.jboss.org/browse/DBZ-3708)
+* Invalid default value error on captured table DDL with default value [DBZ-3710](https://issues.jboss.org/browse/DBZ-3710)
+* Incremental snapshot doesn't work without primary key [DBZ-4107](https://issues.jboss.org/browse/DBZ-4107)
+* Error: PostgresDefaultValueConverter - Cannot parse column default value 'NULL::numeric' to type 'numeric'. Expression evaluation is not supported. [DBZ-4137](https://issues.jboss.org/browse/DBZ-4137)
+* Container images for Apache Kafka and ZooKeeper fail to start up [DBZ-4160](https://issues.jboss.org/browse/DBZ-4160)
+* Debezium 1.7 image disables unsecure algorithms. Breaks unpatched databases [DBZ-4167](https://issues.jboss.org/browse/DBZ-4167)
+* DDL statement couldn't be parsed - Modify Column [DBZ-4174](https://issues.jboss.org/browse/DBZ-4174)
+* DML statement couldn't be parsed [DBZ-4194](https://issues.jboss.org/browse/DBZ-4194)
+* Debezium log miner processes get terminated with ORA-04030 error in idle database environment. [DBZ-4204](https://issues.jboss.org/browse/DBZ-4204)
+* DDL with Oracle SDO_GEOMETRY cannot be parsed [DBZ-4206](https://issues.jboss.org/browse/DBZ-4206)
+* DDL with Oracle sequence as default for primary key fails schema generation [DBZ-4208](https://issues.jboss.org/browse/DBZ-4208)
+* io.debezium.text.ParsingException: DDL statement couldn't be parsed. Please open a Jira issue with the statement 'DROP TABLE IF EXISTS condition' [DBZ-4210](https://issues.jboss.org/browse/DBZ-4210)
+* Support MySQL Dual Passwords in DDL Parser [DBZ-4215](https://issues.jboss.org/browse/DBZ-4215)
+* Debezium Metrics not being set correctly [DBZ-4222](https://issues.jboss.org/browse/DBZ-4222)
+* CREATE PROCEDURE DDL throws ParsingException [DBZ-4229](https://issues.jboss.org/browse/DBZ-4229)
+* Exception ORA-00310 is not gracefully handled during streaming [DBZ-4230](https://issues.jboss.org/browse/DBZ-4230)
+* CHAR / NCHAR precision is not correctly derived from DDL statements [DBZ-4233](https://issues.jboss.org/browse/DBZ-4233)
+* Oracle connector parses NUMBER(*,0) as NUMBER(0,0) in DDL [DBZ-4240](https://issues.jboss.org/browse/DBZ-4240)
+* Signal based incremental snapshot is failing if database name contains dash  [DBZ-4244](https://issues.jboss.org/browse/DBZ-4244)
+* SQL Server connector doesn't handle retriable errors during database state transitions [DBZ-4245](https://issues.jboss.org/browse/DBZ-4245)
+* Does Debezium support database using charset GB18030? [DBZ-4246](https://issues.jboss.org/browse/DBZ-4246)
+* Broken anchors in Debezium Documentation [DBZ-4254](https://issues.jboss.org/browse/DBZ-4254)
+* Reduce verbosity of logging Oracle memory metrics [DBZ-4255](https://issues.jboss.org/browse/DBZ-4255)
+* When Debezium executes `select *` in the snapshot phase, it does not catch the sql exception, resulting in confusing exceptions and logs [DBZ-4257](https://issues.jboss.org/browse/DBZ-4257)
+
+
+### Other changes since 1.8.0.Alpha1
+
+* Rename "master" branches to "main" for remaining repos [DBZ-3626](https://issues.jboss.org/browse/DBZ-3626)
+* Support Oracle Logminer docker image in system level test-suite [DBZ-3929](https://issues.jboss.org/browse/DBZ-3929)
+* Missing documentation for max.iteration.transactions option [DBZ-4129](https://issues.jboss.org/browse/DBZ-4129)
+* Use topic auto-creation UI backend endpoint [DBZ-4148](https://issues.jboss.org/browse/DBZ-4148)
+* Remove superfluous build triggers [DBZ-4200](https://issues.jboss.org/browse/DBZ-4200)
+* Tag debezium/tooling:1.2 version [DBZ-4238](https://issues.jboss.org/browse/DBZ-4238)
+* Rework MySqlTimestampColumnIT test [DBZ-4241](https://issues.jboss.org/browse/DBZ-4241)
+* Remove unused code [DBZ-4252](https://issues.jboss.org/browse/DBZ-4252)
+* Optimize tooling image [DBZ-4258](https://issues.jboss.org/browse/DBZ-4258)
+* Change DB2 image in testsuite to use private registry [DBZ-4268](https://issues.jboss.org/browse/DBZ-4268)
+
+
+
 ## 1.8.0.Alpha1
 October 27th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12355606)
 
