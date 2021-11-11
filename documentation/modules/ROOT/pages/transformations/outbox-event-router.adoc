@@ -339,6 +339,7 @@ The SMT automatically filters out `DELETE` operations on an outbox table.
 |`id`
 |Table
 |Specifies the outbox table column that contains the unique event ID.
+This ID will be stored in the emitted event's headers under the `id` key.
 
 |[[outbox-event-router-property-table-field-event-key]]<<outbox-event-router-property-table-field-event-key, `table.field.event.key`>>
 |`aggregateid`
@@ -359,6 +360,7 @@ The SMT automatically filters out `DELETE` operations on an outbox table.
 |`aggregateid`
 |Table
 |Specifies the outbox table column that contains the payload ID.
+This ID will be used as the emitted event's key.
 
 |[[outbox-event-router-property-table-expand-json-payload]]<<outbox-event-router-property-table-expand-json-payload, `table.expand.json.payload`>>
 |`false`
