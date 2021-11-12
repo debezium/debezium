@@ -118,7 +118,19 @@ Note this mode is only safe to be used when it is guaranteed that no schema chan
 
 |===
 
+ifdef::community[]
+// Type: concept
+// ModuleID: debezium-{context}-ad-hoc-snapshots
+[id="{context}-ad-hoc-snapshot"]
+==== Ad hoc snapshots
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
+// ModuleID: debezium-{context}-incremental-snapshots
+[id="{context}-incremental-snapshots"]
+==== Incremental snapshots
+include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+endif::community[]
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
@@ -170,7 +182,7 @@ The payload of a schema change event message includes the following elements:
 
 `ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
 `databaseName`:: The name of the database to which the statements are applied.
-The value of `databaseName` serves as the message key. 
+The value of `databaseName` serves as the message key.
 `tableChanges`::  A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
 Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
@@ -1967,7 +1979,7 @@ Information about the properties is organized as follows:
 * xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 [id="required-debezium-{context}-connector-configuration-properties"]
-==== Required {prodname} Oracle connector configuration properties
+==== {prodname} Oracle connector configuration properties
 The following configuration properties are _required_ unless a default value is available.
 
 [cols="30%a,25%a,45%a"]
@@ -2031,7 +2043,49 @@ You can set the following values:
 
 `logminer`(default):: The connector uses the native Oracle LogMiner API.
 `xstream`:: The connector uses the Oracle XStreams API.
+ifdef::[community]
+|[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|1024
+|The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
+The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+Increasing the chunk size causes the snapshot to run a smaller total number of larger snapshot queries.
+An increased chunk size requires a greater amount of memory to buffer the data.
+Test different chunk size values to determine the value that works best in your environment.
+endif::[community[]
+////
+ifdef::[product]
+[IMPORTANT]
+====
+Incremental snapshots is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::[product]
+////
 
+ifdef::[community]
+|[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
+|No default value
+a|Fully-qualified name of the data collection that is used to send signals to the connector. +
+Use the following format to specify the collection name: +
+`_<schemaName>_._<tableName>_`
+
+endif::[community[]
+
+////
+ifdef::[product]
+[IMPORTANT]
+====
+Signaling is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::[product]
+////
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
 |Specifies the mode that the connector uses to take snapshots of a captured table.
@@ -2796,7 +2850,7 @@ The Oracle connector automatically tracks and applies table schema changes by pa
 If the DDL parser encounters an incompatible statement, if needed, the connector provides an alternative way to apply the schema change.
 
 By default, the connector stops when it encountered a DDL statement that it cannot parse.
-You can use {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema from such DDL statements.
+You can use {prodname} link:/documentation/reference/configuration/signalling[signaling] to trigger the update of the database schema from such DDL statements.
 
 The type of the schema update action is `schema-changes`.
 This action updates the schema of all tables enumerated in the signal parameters.

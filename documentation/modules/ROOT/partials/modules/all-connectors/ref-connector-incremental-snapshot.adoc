@@ -1,108 +1,203 @@
-[[{context}-adhoc-snapshot]]
-
-= Ad-hoc snapshot
-
+ifdef::[community]
 [NOTE]
 ====
-This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+This feature is currently in incubating state. The exact semantics, configuration options, and so forth is subject to change in future revisions, based on the feedback we receive.
 Please let us know if you encounter any problems while using this extension.
 ====
+endif::[community]
 
-When the initial snapshot is completed then it is not executed again as further data are acquired via streaming.
+ifdef::[product]
+[IMPORTANT]
+====
+The use of incremental snapshots is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::[product]
+To enable greater flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
+//a snapshot of a set of tables during the streaming phase without interrupting the streaming
+Unlike an initial snapshot, which must capture the full state of a database all at once, during an incremental snapshot {prodname} captures data in a series of configurable chunks.
+Watermarks track the progress of the capture process.
+If the the snapshot is interrupted, it refers to the watermarks to determine which tables have been snapshot and which have not. 
+In this way, the snapshot can resume from the point at which it stops, rather than repeating the capture process from the beginning.
+You can pause and resume incremental snapshots at any time.
+This ability to pause and resume snapshots is especially useful when capturing databases that include large tables.
 
-Sometimes it would be really useful to re-execute a snapshot, either completely, or for only a subset of tables.
-Examples for such use cases include:
+Because an incremental snapshot captures tables in piecemeal fashion, event streaming is not postponed for the entire time that it takes for the snapshot to complete.   
+Depending on the size and number of the tables to be captured, an initial snapshot of a large data set might require hours, or even days, to complete.  
+//Change data streaming runs continuously together with snapshotting
+With an incremental snapshot, the capture of real-time events can continue in parallel with snapshot operations on select rows.
+Neither operation blocks the other.
+That is, the connector can begin or continue to stream change events while the snapshot runs.
 
-* a new table was added into the list of captured tables
-* some of the topics were deleted and their content needs to be rebuilt
-* the data were corrupted due to a configuration error
+You cannot pause the operation and you cannot stream data from the transaction log until the operation completes.
 
-Debezium can be requested via the {link-prefix}:{link-signalling}[signalling table] mechanism to execute a new snapshot of a defined list of tables.
-The signal is named `execute-snapshot` and accepts messages in the following format:
+//The initial snapshot that a {prodname} connector performs on a database is essential for establishing the current baseline for the database.
+//However, the following constraints are associated with the initial snapshot process:
 
-.Example of a signal record
-[cols="2,2,6",options="header"]
+* 
+* If an initial snapshot is interrupted, you cannot resume progress from the point at which the process stopped. 
+Data captured by the interrupted snapshot process is discarded, and the snapshot process must be restarted from the beginning.
+////
+.Resumable
+
+You can pause and resume snapshots for large tables so that a snapshot operation is not required to capture the full state at once and you can resume the process at any time without the need to restart the capture from the beginning.
+////
+
+
+
+
+//Implements a watermark-based approach that provides for capturing the full state of a database by .
+The default chunk size for incremental snapshots is 1KB.
+You can configure the chunk size  xref:{context}-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`].
+
+* The initial snapshot captures data from a table, only if the table exists before the snapshot begins.
+If you add tables to the configuration of a running connector, by modifying the include/exclude lists, {prodname} does not include these tables in the snapshot.
+As a result, the data in the Kafka topics for these tables is no longer synchronized to the current state of the database.
+
+Streamed events and snapshot events from the table are interspersed in the topic.
+
+You can trigger incremental snapshots at any time and you can repeat them as needed.
+
+Currently, the only way to perform an incremental snapshot, is to initiate it as an {link-prefix}:#{context}-ad-hoc-snapshot[ad hoc snapshot].
+
+For more information about enabling signaling, see xref:{link-signalling}#sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
+
+
+
+ifdef::[community]
+Incremental snapshots are based on the link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
+endif::[community]
+
+The incremental snapshot preserves the chronology of events so that earlier versions of a row do not overwrite later versions.
+//{prodname} must maintain the chronology of the `READ` events that originate from the snapshot process alongside of any `UPDATE` or `DELETE` events that originate from the streaming process.
+
+During an incremental snapshot, {prodname} reads the initial state of each table row directly from the source table and writes the data to Kafka as a `READ` event. 
+At the same time, the streaming process continues to capture change events that occur in each source table.
+If a streamed event modifies an existing row, {prodname} captures the changes as `UPDATE` or `DELETE` events. 
+//Because of the way that the incremental snapshot captures tables in chunks, it's possible that an `UPDATE` or `DELETE` event that modifies a row might be written to the destination Kafka topic before the snapshot process captures the row. 
+Because of the way that the incremental snapshot captures tables in chunks, the connector might encounter `UPDATE` or `DELETE` events that modify a row before it captures the snapshot `READ` event that represents the row's initial state.
+To maintain the chronology of events when `UPDATE` or `DELETE` events are received out of sequence, {prodname} first records the snapshot `READ` events for each chunk into a buffer. 
+It then performs a deduplication step to resolve conflicts among event entries.
+
+For a specified chunk, if `UPDATE` or `DELETE` events exist for a corresponding `READ` event (that is, the events share a primary key), then {prodname} applies the following rules to disposition the `READ` event:   
+
+* If a `DELETE` event arrives before a corresponding `READ` event, the connector discards the `READ` event from the buffer.
+* If an `UPDATE` event arrives before a corresponding `READ` event, the connector either discards the `READ` event or delivers it with the updated value.
+
+The connector repeats the process for each snapshot chunk.
+
+.Triggering an incremental snapshot
+
+You trigger an incremental snapshot by sending a snapshot signal (`execute-snapshot`) to a designated signaling table.
+You send the signal by submitting it in a SQL `INSERT` query to the table.
+After {prodname} detects the change to the table, it captures the change event, which triggers it to initiate the requested operation.
+//When {prodname} receives the `execute-snapshot` signal, it runs a snapshot operation to capture data from the specified tables.
+
+.Prerequisites
+
+* xref:{link-signalling}#debezium-enabling-signaling"[Signaling is enabled]. +
+
+////
+See the following properties for more information:
+** xref:{context}-property-signal-data-collection[`signal.data.collection`]
+** xref:{context}-property-incremental-snapshot-chunk-size[incremental.snapshot.chunk.size]
+////
+
+.Procedure
+
+Compose a SQL query to send an ad hoc snapshot request to the signaling database.  
+//The query specifies the kind of operation that you want the connector to run. +
+//Currently, for snapshots operations, the only valid option is the default value, `incremental`. +
+//If you do not specify a value, the connector runs an incremental snapshot.
+
+
+.Example of sending a SQL command to initiate an incremental snapshot
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id,`type`,`data`) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema1.table2"],"type":"INCREMENTAL"}');
+----
+
+|==
+
+[cols="1,9",options="header"]
 |===
-|Field | Default | Value
+|Column | Value
 
-|`type`
-|`incremental`
-| The type of the snapshot to be executed. Currently only `incremental` is supported. +
-See the next section for more details.
+|id
+|`d139b9b7-7777-4547-917d-e1775ea61d41`
 
-|`data-collections`
-|_N/A_
-| An array of qualified names of table to be snapshotted. +
-The format of the names is the same as for {link-prefix}:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
+|type
+|`execute-snapshot`
+
+|data
+|`{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}`
 
 |===
 
-An example of the signal to be triggered is this:
+
+The values of the `id`,`type`, and `data` fields in the command correspond to the xref:debezium-signaling-required-structure-of-a-signaling-data-collection[fields of the signaling table].
+
+
+For example,
 
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema1.table2"]}')
+INSERT INTO _<schema>_.dbz_signal VALUES ('signal-1', 'execute-snapshot', '{\"data-collections\": [\"inventory.orders\"],"type":"INCREMENTAL"}');
 ----
 
-[[{context}-incremental-snapshot]]
+The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
 
-= Incremental snapshot
-
-[NOTE]
-====
-This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
-Please let us know if you encounter any problems while using this extension.
-====
-
-Initial snapshots are a great way to obtain a consistent set of all data stored in a database upfront.
-But there are also some downsides to this approach, though:
-
-* For larger datasets it can take very long to complete; hours or even days
-* The snapshot must be completed before the start of streaming
-* Snapshots are not resumable
-If a snapshot hasn't been completed when the connector gets stopped or restarted, the snapshot must be restarted from scratch
-* New tables that are added among the captured ones later are not snapshotted.
-
-To mitigate these issues, a new mechanism called _incremental snapshotting_ has been introduced.
-
-[NOTE]
-====
-Incremental snapshots can be started current only as {link-prefix}:#{context}-adhoc-snapshot[an ad-hoc snapshot].
-====
-
-[NOTE]
-====
-Configuration option {link-prefix}:#{context}-property-signal-data-collection[signal.data.collection] must be set.
-====
-
-Incremental snapshot is based on link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
-In this case the table is snapshotted in chunks and streaming and snapshot events are blended together.
-The snaphot events are still denoted using operation `r` and the `snapshot` field in `source` info block is set to `incremental`.
-
-.Example
+.Example: Incremental snapshot event message
 [source,json,index=0]
 ----
 {
-   "before":null,
-   "after": {
-      "pk":"1",
-      "value":"New data"
-   },
-   "source": {
-...
-      "snapshot":"incremental"
-   },
-   "op":"r",
-   "ts_ms":"1620393591654",
-   "transaction":null
+    "before":null,
+    "after": {
+        "pk":"1",
+        "value":"New data"
+    },
+    "source": {
+        ...
+        "snapshot":"incremental" <1>
+    },
+    "op":"r", <2>
+    "ts_ms":"1620393591654",
+    "transaction":null
 }
 ----
+[cols="1,1,4",options="header"]
+|===
+|Item |Field name |Description
+|1
+|`snapshot`
+|Specifies the type of snapshot operation to run. +
+Currently, the only valid option is the default value, `incremental`. +
+Specifying a `type` value in the SQL query that you submit to the signaling table is optional. +
+If you do not specify a value, the connector runs an incremental snapshot.
 
-The incremental snapshot events should be understood in a different way than events from an initial snapshot.
-The `read` events should be understood like a materialization of data in a certain period of time.
-This means that event semantics differ between initial and incremental snapshots:
+|2
+|`op`
+|Specifies the event type. +
+The value for snapshot events is `r`, signifying a `READ` operation.
 
-* `update` and `delete` events can arrive before `read` events
-* if `delete` event arrives first then `read` event is never delivered
-* if `update` event arrives first then `read` event will either not be delivered at all or it will be delivered with the updated value
+|===
 
+////
+.Descriptions of fields in a SQL command for sending an incremental snapshot signal to the signaling table
+[cols="1,4",options="header"]
+|===
+|Field |Description
+
+|`id`
+| An arbitrary string that that you assign to identify a signal request. +
+WHen {prodname} runs the requested snapshot, it generates its own `id` string as a watermarking signal.
+
+|`type`
+| Specifies the kind of snapshot operation that you want the connector to run. +
+Currently, the only valid option is the default value, `incremental`. +
+Specifying a `type` value is optional. +
+If you do not specify a value, the connector runs an incremental snapshot.
+////

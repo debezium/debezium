@@ -131,6 +131,16 @@ The level of the lock is determined by `snapshot.isolation.mode` configuration o
 The resulting initial snapshot captures the current state of each row in the tables that are enabled for CDC.
 From this baseline state, the connector captures subsequent changes as they occur.
 
+// Type: concept
+// ModuleID: debezium-{context}-ad-hoc-snapshots
+[id="{context}-ad-hoc-snapshot"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
+// ModuleID: debezium-{context}-incremental-snapshots
+[id="{context}-incremental-snapshots"]
+==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 // Type: concept
@@ -196,7 +206,7 @@ Messages that the connector sends to the schema change topic contain a payload, 
 The payload of a schema change event message includes the following elements:
 
 `databaseName`:: The name of the database to which the statements are applied.
-The value of `databaseName` serves as the message key. 
+The value of `databaseName` serves as the message key.
 `tableChanges`::  A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
 Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
@@ -2203,6 +2213,42 @@ The following _advanced_ configuration properties have good defaults that will w
 |Default
 |Description
 
+|[[sqlserver-property-incremental-snapshot-chunk-size]]<<sqlserver-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|1024
+|The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
+The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+Increasing the chunk size causes the snapshot to run a smaller total number of larger snapshot queries.
+An increased chunk size requires a greater amount of memory to buffer the data.
+Test different chunk size values to determine the value that works best in your environment.
+
+ifdef::[product]
+[IMPORTANT]
+====
+Incremental snapshots is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::[product]
+
+|[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection,`+signal.data.collection+`>>
+|No default value
+a|Fully-qualified name of the data collection that is used to send signals to the connector. +
+Use the following format to specify the collection name: +
+`_<databaseName>_._<schemaName>_._<tableName>_`
+
+ifdef::[product]
+[IMPORTANT]
+====
+Signaling is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::[product]
+
 |[[sqlserver-property-snapshot-mode]]<<sqlserver-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables.
@@ -2361,11 +2407,6 @@ See {link-prefix}:{link-sqlserver-connector}#sqlserver-transaction-metadata[Tran
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
-
-|[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection, `+signal.data.collection+`>>
-|No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
-The name format is _database_name.schema-name.table-name_.
 
 |[[sqlserver-property-max-iteration-transactions]]<<sqlserver-property-max-iteration-transactions, `+max.iteration.transactions+`>>
 |0
