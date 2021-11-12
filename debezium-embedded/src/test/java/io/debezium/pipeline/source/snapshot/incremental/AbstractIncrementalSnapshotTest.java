@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
@@ -52,6 +53,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected abstract String signalTableName();
 
     protected abstract Configuration.Builder config();
+
+    protected String alterTableStatement(String tableName) {
+        return "ALTER TABLE " + tableName + " add col3 int default 0";
+    }
 
     protected String tableDataCollectionId() {
         return tableName();
@@ -358,6 +363,31 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                         restarted.set(true);
                     }
                 });
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4272")
+    public void snapshotProceededBySchemaChange() throws Exception {
+        Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+        waitForConnectorToStart();
+
+        // Initiate a schema change to the table immediately before the adhoc-snapshot
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute(alterTableStatement(tableName()));
+        }
+
+        // Some connectors, such as PostgreSQL won't be notified of the previous schema change
+        // until a DML event occurs, but regardless the incremental snapshot should succeed.
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }

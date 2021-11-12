@@ -34,7 +34,7 @@ public class ColumnUtils {
     public static ColumnArray toArray(ResultSet resultSet, Table table) throws SQLException {
         ResultSetMetaData metaData = resultSet.getMetaData();
 
-        Column[] columns = new Column[metaData.getColumnCount()];
+        Column[] columns = new Column[Math.min(table.columns().size(), metaData.getColumnCount())];
         int greatestColumnPosition = 0;
         for (int i = 0; i < columns.length; i++) {
             columns[i] = table.columnWithName(metaData.getColumnName(i + 1));
