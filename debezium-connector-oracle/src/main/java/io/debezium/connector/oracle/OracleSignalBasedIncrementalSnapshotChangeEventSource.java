@@ -8,13 +8,13 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
@@ -27,7 +27,7 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
     private final String pdbName;
     private final OracleConnection connection;
 
-    public OracleSignalBasedIncrementalSnapshotChangeEventSource(CommonConnectorConfig config,
+    public OracleSignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                                  JdbcConnection jdbcConnection,
                                                                  EventDispatcher<TableId> dispatcher,
                                                                  DatabaseSchema<?> databaseSchema,
