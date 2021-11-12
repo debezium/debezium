@@ -56,7 +56,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4");
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
+                // DBZ-4272 required to allow dropping columns during incremental snapshots
+                .with("database.autosave", "conservative");
     }
 
     @Override
