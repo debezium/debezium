@@ -127,7 +127,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     }
 
     @Override
-    protected String alterTableStatement(String tableName) {
+    protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " ADD col3 INTEGER DEFAULT 0";
     }
 }

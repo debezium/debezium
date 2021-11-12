@@ -54,8 +54,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract Configuration.Builder config();
 
-    protected String alterTableStatement(String tableName) {
+    protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " add col3 int default 0";
+    }
+
+    protected String alterTableDropColumnStatement(String tableName) {
+        return "ALTER TABLE " + tableName + " drop column col3";
     }
 
     protected String tableDataCollectionId() {
@@ -378,8 +382,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         waitForConnectorToStart();
 
         // Initiate a schema change to the table immediately before the adhoc-snapshot
+        // Adds a new column to the table; this column will be dropped later in this test.
         try (JdbcConnection connection = databaseConnection()) {
-            connection.execute(alterTableStatement(tableName()));
+            connection.execute(alterTableAddColumnStatement(tableName()));
         }
 
         // Some connectors, such as PostgreSQL won't be notified of the previous schema change
@@ -387,7 +392,22 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotSignal();
 
         final int expectedRecordCount = ROW_COUNT;
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+
+        // Initiate a schema change to the table immediately before the adhoc-snapshot
+        // This schema change will drop the previously added column from above.
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute(alterTableDropColumnStatement(tableName()));
+        }
+
+        // Some connectors, such as PostgreSQL won't be notified of the previous schema change
+        // until a DML event occurs, but regardless the incremental snapshot should succeed.
+        sendAdHocSnapshotSignal();
+
+        dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
