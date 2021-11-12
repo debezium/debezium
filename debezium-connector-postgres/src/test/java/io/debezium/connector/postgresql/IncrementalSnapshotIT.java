@@ -19,6 +19,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
@@ -53,7 +54,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
+                // DBZ-4272 required to allow dropping columns during incremental snapshots
+                .with("database.autosave", "conservative");
     }
 
     @Override
