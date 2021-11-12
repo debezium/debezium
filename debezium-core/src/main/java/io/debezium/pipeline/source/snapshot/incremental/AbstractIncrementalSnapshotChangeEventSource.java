@@ -269,6 +269,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                 }
                 final TableId currentTableId = (TableId) context.currentDataCollectionId();
                 if (!context.maximumKey().isPresent()) {
+                    currentTable = refreshTableSchema(currentTable);
                     context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
                         if (!rs.next()) {
                             return null;
@@ -578,6 +579,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     protected void postIncrementalSnapshotCompleted() {
         // no-op
+    }
+
+    protected Table refreshTableSchema(Table table) throws SQLException {
+        // default behavior is to simply return the existing table with no refresh
+        // this allows connectors that may require a schema refresh to trigger it, such as PostgreSQL
+        // since schema changes are not emitted as change events in the same way that they are for
+        // connectors like MySQL or Oracle
+        return table;
     }
 
     private KeyMapper getKeyMapper() {
