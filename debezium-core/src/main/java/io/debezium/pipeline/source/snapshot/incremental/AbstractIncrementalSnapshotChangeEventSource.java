@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -31,6 +30,8 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
+import io.debezium.relational.Key.KeyMapper;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.SnapshotChangeRecordEmitter;
@@ -53,7 +54,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
-    private final CommonConnectorConfig connectorConfig;
+    private final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener progressListener;
@@ -67,7 +68,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     protected JdbcConnection jdbcConnection;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
 
-    public AbstractIncrementalSnapshotChangeEventSource(CommonConnectorConfig config, JdbcConnection jdbcConnection, EventDispatcher<T> dispatcher,
+    public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config, JdbcConnection jdbcConnection, EventDispatcher<T> dispatcher,
                                                         DatabaseSchema<?> databaseSchema, Clock clock, SnapshotProgressListener progressListener,
                                                         DataChangeEventListener dataChangeEventListener) {
         this.connectorConfig = config;
@@ -257,6 +258,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                     continue;
                 }
                 if (!context.maximumKey().isPresent()) {
+                    currentTable = refreshTableSchema(currentTable);
                     context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
                         if (!rs.next()) {
                             return null;
@@ -462,5 +464,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     protected void postIncrementalSnapshotCompleted() {
         // no-op
+    }
+
+    protected Table refreshTableSchema(Table table) throws SQLException {
+        // default behavior is to simply return the existing table with no refresh
+        // this allows connectors that may require a schema refresh to trigger it, such as PostgreSQL
+        // since schema changes are not emitted as change events in the same way that they are for
+        // connectors like MySQL or Oracle
+        return table;
+    }
+
+    private KeyMapper getKeyMapper() {
+        return connectorConfig.getKeyMapper() == null ? table -> table.primaryKeyColumns() : connectorConfig.getKeyMapper();
     }
 }
