@@ -36,6 +36,7 @@ import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.Protobuf;
+import io.debezium.server.events.ConnectorCompletedEvent;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.Startup;
@@ -78,6 +79,7 @@ public class DebeziumServer {
     private static final Pattern SHELL_PROPERTY_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+_+[a-zA-Z0-9_]+$");
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private int returnCode = 0;
 
     @Inject
     BeanManager beanManager;
@@ -145,7 +147,7 @@ public class DebeziumServer {
                 engine.run();
             }
             finally {
-                Quarkus.asyncExit();
+                Quarkus.asyncExit(returnCode);
             }
         });
         LOGGER.info("Engine executor started");
@@ -192,6 +194,12 @@ public class DebeziumServer {
             LOGGER.error("Exception while shuttting down Debezium", e);
         }
         consumerBean.destroy(consumer, consumerBeanCreationalContext);
+    }
+
+    void connectorCompleted(@Observes ConnectorCompletedEvent event) {
+        if (!event.isSuccess()) {
+            returnCode = 1;
+        }
     }
 
     /**
