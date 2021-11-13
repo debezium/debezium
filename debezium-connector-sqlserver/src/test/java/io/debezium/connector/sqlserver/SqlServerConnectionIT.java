@@ -203,7 +203,7 @@ public class SqlServerConnectionIT {
                     "varbinary_column", "image_column");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
-                    null, 0, null, null, capturedColumns);
+                    null, 0, null, capturedColumns);
             Table table = connection.getTableSchemaFromTable(TestHelper.TEST_DATABASE, changeTable);
 
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
@@ -373,7 +373,7 @@ public class SqlServerConnectionIT {
                             "real_column");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
-                    null, 0, null, null, capturedColumns);
+                    null, 0, null, capturedColumns);
             Table table = connection.getTableSchemaFromTable(TestHelper.TEST_DATABASE, changeTable);
 
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(

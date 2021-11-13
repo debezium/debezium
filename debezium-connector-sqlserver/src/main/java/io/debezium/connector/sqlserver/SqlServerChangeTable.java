@@ -32,7 +32,7 @@ public class SqlServerChangeTable extends ChangeTable {
     /**
      * A LSN to which the data in the change table are relevant
      */
-    private Lsn stopLsn;
+    private Lsn stopLsn = Lsn.NULL;
 
     /**
      * List of columns captured by the CDC table.
@@ -40,16 +40,15 @@ public class SqlServerChangeTable extends ChangeTable {
     @Immutable
     private final List<String> capturedColumns;
 
-    public SqlServerChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn,
+    public SqlServerChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn,
                                 List<String> capturedColumns) {
         super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance), changeTableObjectId);
         this.startLsn = startLsn;
-        this.stopLsn = stopLsn;
         this.capturedColumns = capturedColumns != null ? Collections.unmodifiableList(capturedColumns) : Collections.emptyList();
     }
 
-    public SqlServerChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
-        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn, null);
+    public SqlServerChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn) {
+        this(null, captureInstance, changeTableObjectId, startLsn, null);
     }
 
     public Lsn getStartLsn() {
