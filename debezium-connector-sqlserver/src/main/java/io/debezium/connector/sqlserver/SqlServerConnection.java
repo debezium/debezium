@@ -373,7 +373,6 @@ public class SqlServerConnection extends JdbcConnection {
                                 rs.getString(3),
                                 rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
-                                Lsn.valueOf(rs.getBytes(7)),
                                 Arrays.asList(BRACKET_PATTERN.matcher(Optional.ofNullable(rs.getString(15)).orElse(""))
                                         .replaceAll("").split(", "))));
             }
@@ -395,8 +394,7 @@ public class SqlServerConnection extends JdbcConnection {
                         changeTables.add(new SqlServerChangeTable(
                                 rs.getString(4),
                                 rs.getInt(1),
-                                Lsn.valueOf(rs.getBytes(5)),
-                                Lsn.valueOf(rs.getBytes(6))));
+                                Lsn.valueOf(rs.getBytes(5))));
                     }
                     return changeTables;
                 });
