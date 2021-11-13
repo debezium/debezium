@@ -2664,9 +2664,9 @@ endif::community[]
 |1024
 |The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
 The value determines the number of rows that the snapshot collects during each fetch operation on the database.
-Increasing the chunk size causes the snapshot to run a smaller total number of larger snapshot queries.
-An increased chunk size requires a greater amount of memory to buffer the data.
-Test different chunk size values to determine the value that works best in your environment.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
 
 ifdef::[product]
 [IMPORTANT]

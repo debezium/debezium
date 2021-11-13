@@ -62,9 +62,12 @@ You must explicitly enable signaling for each connector that you want to use it 
 . On source databases that implement a native change data capture (CDC) mechanism, such as Db2 or SQL Server, enable CDC for the signaling table.
 
 . Add the name of the signaling data collection to the {prodname} connector configuration. +
-  In the connector configuration, add the property `signal.data.collection`, and set its value to the fully-qualified name of the signaling data collection that you created in Step 1.
-  Use one of the following fully-qualified name formats depending on your connector:
-
+  In the connector configuration, add the property `signal.data.collection`, and set its value to the fully-qualified name of the signaling data collection that you created in Step 1. +
+ +
+For example, `signal.data.collection = inventory.debezium_signals`. +
+ +
+The format for the fully-qualified name of the signaling collection depends on which connector you use. +
+See the following list to find the naming format to use with your connector:
 
 ifdef::[community]
 Db2, Oracle, or PostgreSQL:: `_<schemaName>_._<tableName>_`
@@ -74,8 +77,6 @@ Db2 or PostgreSQL:: `_<schemaName>_._<tableName>_`
 endif::product[]
 MySQL:: `_<databaseName>_._<tableName>_`
 SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_` +
- +
-For example, `inventory.debezium_signals`. +
  +
 For more information about setting the `signal.data.collection` property, see the table of configuration properties for your connector.
 . Add the signaling table to the list of tables to monitor. +
@@ -90,15 +91,10 @@ For more information about the `table.include.list` property, see the table of c
 === Structure of a signaling data collection
 
 A signaling data collection, or signaling table, stores signals that users send to trigger a connector to perform a specified operation.
-
-Records in a signaling tables must conform to the following standard format.
+The structure of the signaling table must conform to the following standard format.
 
 * Contain three fields (columns).
 * Fields are arranged in a specific order, as shown in xref:debezium-signaling-required-structure-of-a-signaling-data-collection[Table 1].
-+
-NOTE: The column names in a data collection are arbitrary.
-The following table provides suggested column names.
-If you use a different naming scheme, ensure that the values in each field are consistent with the intended content.
 
 [id="debezium-signaling-required-structure-of-a-signaling-data-collection"]
 .Required structure of a signaling data collection
@@ -132,6 +128,10 @@ Each signal type requires a specific set of data.
 
 |===
 
+NOTE: The column names in a data collection are arbitrary.
+The preceding table provides suggested column names.
+If you use a different naming scheme, ensure that the values in each field are consistent with the intended content.
+
 // Type: procedure
 // Title: Creating a {prodname} signaling data collection
 [id="debezium-signaling-creating-a-signal-data-collection"]
@@ -146,20 +146,17 @@ You create a signaling table by submitting a standard SQL DDL query to the sourc
 .Procedure
 
 * Submit a SQL query to the source database to create a table that is consistent with the xref:debezium-signaling-required-structure-of-a-signaling-data-collection[required structure], as shown in the following example: +
-
-[source,sql, options="nowrap" subs="+quotes"]
-----
-CREATE TABLE _<tableName>_ (id VARCHAR(_<varcharValue>_) PRIMARY KEY, type VARCHAR(__<varcharValue>__) NOT NULL, data VARCHAR(_<varcharValue>_) NULL);
-----
+ +
+`CREATE TABLE _<tableName>_ (id VARCHAR(_<varcharValue>_) PRIMARY KEY, type VARCHAR(__<varcharValue>__) NOT NULL, data VARCHAR(_<varcharValue>_) NULL);` +
 
 [NOTE]
 ====
-The space that you allocate to the `id` variable must be sufficient to accommodate the size of the ID strings of signals sent to the signaling table. +
+Allocate enough space in the `VARCHAR` parameter for the `id` variable to accommodate the size of the ID strings of signals sent to the signaling table. +
 If the size of an ID exceeds the available space, the connector cannot process the signal.
 ====
 
-The following example shows a `CREATE TABLE` command that creates a three-column `debezium_signal` table: +
- +
+The following example shows a `CREATE TABLE` command that creates a three-column `debezium_signal` table:
+
 [source,sql]
 ----
 CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
@@ -264,7 +261,7 @@ By capturing the initial state of the specified tables in chunks rather than in 
 The incremental snapshot concurrently captures events records directly from tables and from the transaction log.
 All of the records for a specified table are streamed to the same destination Kafka topic, both for the `READ`events that connector obtains through the snapshot process and the `UPDATE` and `DELETE` records that it captures from the transaction log.
 For each snapshot chunk, {prodname} buffers the two sets of records in memory and then compares the records that have the same primary key.
-The connector writes only the most recent version of a record to the destination topic. 
+The connector writes only the most recent version of a record to the destination topic.
 
 For more information about incremental snapshots, see the _Snapshots_ topic in the documentation for your connector.
 

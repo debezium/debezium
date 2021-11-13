@@ -16,51 +16,28 @@ This Technology Preview feature provides early access to upcoming product innova
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::[product]
-To enable greater flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
-//a snapshot of a set of tables during the streaming phase without interrupting the streaming
-Unlike an initial snapshot, which must capture the full state of a database all at once, during an incremental snapshot {prodname} captures data in a series of configurable chunks.
-Watermarks track the progress of the capture process.
-If the the snapshot is interrupted, it refers to the watermarks to determine which tables have been snapshot and which have not. 
-In this way, the snapshot can resume from the point at which it stops, rather than repeating the capture process from the beginning.
-You can pause and resume incremental snapshots at any time.
-This ability to pause and resume snapshots is especially useful when capturing databases that include large tables.
-
-Because an incremental snapshot captures tables in piecemeal fashion, event streaming is not postponed for the entire time that it takes for the snapshot to complete.   
-Depending on the size and number of the tables to be captured, an initial snapshot of a large data set might require hours, or even days, to complete.  
-//Change data streaming runs continuously together with snapshotting
-With an incremental snapshot, the capture of real-time events can continue in parallel with snapshot operations on select rows.
-Neither operation blocks the other.
-That is, the connector can begin or continue to stream change events while the snapshot runs.
-
-You cannot pause the operation and you cannot stream data from the transaction log until the operation completes.
-
-//The initial snapshot that a {prodname} connector performs on a database is essential for establishing the current baseline for the database.
-//However, the following constraints are associated with the initial snapshot process:
-
-* 
-* If an initial snapshot is interrupted, you cannot resume progress from the point at which the process stopped. 
-Data captured by the interrupted snapshot process is discarded, and the snapshot process must be restarted from the beginning.
-////
-.Resumable
-
-You can pause and resume snapshots for large tables so that a snapshot operation is not required to capture the full state at once and you can resume the process at any time without the need to restart the capture from the beginning.
-////
-
-
-
-
-//Implements a watermark-based approach that provides for capturing the full state of a database by .
-The default chunk size for incremental snapshots is 1KB.
+To provide flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
+Incremental snapshots enable you to capture a snapshot of a set of tables for a running connector.
+Unlike an initial snapshot, which must capture the full state of a database all at once, during an incremental snapshot {prodname} captures data in a phases, in a series of configurable chunks.
+The default chunk size for incremental snapshots is 1 KB.
 You can configure the chunk size  xref:{context}-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`].
 
-* The initial snapshot captures data from a table, only if the table exists before the snapshot begins.
-If you add tables to the configuration of a running connector, by modifying the include/exclude lists, {prodname} does not include these tables in the snapshot.
-As a result, the data in the Kafka topics for these tables is no longer synchronized to the current state of the database.
+Watermarks track the progress of the capture process, allowing you to pause and resume snapshots without losing data.
+If the the snapshot is interrupted, it refers to the watermarks to determine which tables have been snapshot and which have not.
+In this way, the snapshot can resume from the point at which it stops, rather than repeating the capture process from the beginning as happens after an initial snapshot is stopped. 
 
-Streamed events and snapshot events from the table are interspersed in the topic.
+This phased approach to capturing data allows for the snapshot to run in parallel with streamed data capture.
+Neither operation blocks the other.
+Change data streaming runs continuously throughout the snapshot.
+This contrasts with an initial snapshot, in which streaming is postponed until the snapshot completes. 
+The ability to stream data during the snapshot, and to pause and resume snapshots on demand is especially useful when capturing databases that include large tables.
+In a database that includes many large tables, an initial snapshot of a large data set might require hours, or even days, to complete.
+
+Incremental snapshot provide a mechanism for capturing tables that are created after you initialize the connector.
+You can modify the `include` list in the connector configuration to specify new tables to capture, and then run an incremental snapshot. 
+The snapshot captures the new tables and resynchronize data in the Kafka topics for these tables with the current state of the database.
 
 You can trigger incremental snapshots at any time and you can repeat them as needed.
-
 Currently, the only way to perform an incremental snapshot, is to initiate it as an {link-prefix}:#{context}-ad-hoc-snapshot[ad hoc snapshot].
 
 For more information about enabling signaling, see xref:{link-signalling}#sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
@@ -71,18 +48,23 @@ ifdef::[community]
 Incremental snapshots are based on the link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
 endif::[community]
 
-The incremental snapshot preserves the chronology of events so that earlier versions of a row do not overwrite later versions.
+When you run an incremental snapshot, {prodname} continues to capture records related to ongoing table changes along with the snapshot records that it captures directly from source tables. 
+During the window for capturing a table chunk, {prodname} compares the primary key of each table record in the snapshot to the keys  
+of the `UPDATE` or `DELETE` event records that the connector obtains by streaming.
+The state of an event that the connector captureds through the streaming process might be in conflict with the state represented by the snapshot process.
+might be the incremental snapshot captures the table chunk that includes the "initial" state of that record,  tracks the event chronology so that earlier versions of a row do not overwrite later versions.
+//In general, `READ` events represent the state of the record at an arbitrary point of time, rather than the initial state of the record in a table 
 //{prodname} must maintain the chronology of the `READ` events that originate from the snapshot process alongside of any `UPDATE` or `DELETE` events that originate from the streaming process.
 
-During an incremental snapshot, {prodname} reads the initial state of each table row directly from the source table and writes the data to Kafka as a `READ` event. 
+During an incremental snapshot, {prodname} reads the initial state of each table row directly from the source table and writes the data to Kafka as a `READ` event.
 At the same time, the streaming process continues to capture change events that occur in each source table.
-If a streamed event modifies an existing row, {prodname} captures the changes as `UPDATE` or `DELETE` events. 
-//Because of the way that the incremental snapshot captures tables in chunks, it's possible that an `UPDATE` or `DELETE` event that modifies a row might be written to the destination Kafka topic before the snapshot process captures the row. 
+If a streamed event modifies an existing row, {prodname} captures the changes as `UPDATE` or `DELETE` events.
+//Because of the way that the incremental snapshot captures tables in chunks, it's possible that an `UPDATE` or `DELETE` event that modifies a row might be written to the destination Kafka topic before the snapshot process captures the row.
 Because of the way that the incremental snapshot captures tables in chunks, the connector might encounter `UPDATE` or `DELETE` events that modify a row before it captures the snapshot `READ` event that represents the row's initial state.
-To maintain the chronology of events when `UPDATE` or `DELETE` events are received out of sequence, {prodname} first records the snapshot `READ` events for each chunk into a buffer. 
+To maintain the chronology of events when `UPDATE` or `DELETE` events are received out of sequence, {prodname} first records the snapshot `READ` events for each chunk into a buffer.
 It then performs a deduplication step to resolve conflicts among event entries.
 
-For a specified chunk, if `UPDATE` or `DELETE` events exist for a corresponding `READ` event (that is, the events share a primary key), then {prodname} applies the following rules to disposition the `READ` event:   
+For a specified chunk, if `UPDATE` or `DELETE` events exist for a corresponding `READ` event (that is, the events share a primary key), then {prodname} applies the following rules to disposition the `READ` event:
 
 * If a `DELETE` event arrives before a corresponding `READ` event, the connector discards the `READ` event from the buffer.
 * If an `UPDATE` event arrives before a corresponding `READ` event, the connector either discards the `READ` event or delivers it with the updated value.
@@ -108,7 +90,7 @@ See the following properties for more information:
 
 .Procedure
 
-Compose a SQL query to send an ad hoc snapshot request to the signaling database.  
+Compose a SQL query to send an ad hoc snapshot request to the signaling database.
 //The query specifies the kind of operation that you want the connector to run. +
 //Currently, for snapshots operations, the only valid option is the default value, `incremental`. +
 //If you do not specify a value, the connector runs an incremental snapshot.

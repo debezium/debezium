@@ -112,11 +112,10 @@ The format of the names is the same as for {link-prefix}:{context}-property-sign
 
 ==== Triggering an ad hoc snapshot
 
-Send a message to the signaling database that specifies the action type `execute-snapshot`.
+You initiate an ad hoc snapshot by adding a signaling table entry with the `execute-snapshot` signal type.
 After the connector processes the message, it starts the snapshot operation.
 The operation reads the first and last primary key values and uses those values as the start and end point for each table.
 
-You initiate an ad hoc snapshot by adding a signaling table entry with the `execute-snapshot` signal type.
 
 Currently, the `execute-snapshot` action type triggers xref:debezium-signaling-incremental-snapshots[incremental snapshots] only.
 
