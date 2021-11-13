@@ -811,7 +811,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             LOGGER.info("Streaming is disabled for snapshot mode {}", connectorConfig.getSnapshotMode());
             return;
         }
-        taskContext.getSchema().assureNonEmptySchema();
+        if (connectorConfig.getSnapshotMode() != MySqlConnectorConfig.SnapshotMode.NEVER) {
+            taskContext.getSchema().assureNonEmptySchema();
+        }
         final Set<Operation> skippedOperations = connectorConfig.getSkippedOperations();
 
         final MySqlOffsetContext effectiveOffsetContext = offsetContext != null

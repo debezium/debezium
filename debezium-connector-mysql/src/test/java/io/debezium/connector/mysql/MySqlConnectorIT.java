@@ -2478,4 +2478,22 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         stopConnector();
     }
+
+    @Test
+    @FixFor("DBZ-1344")
+    public void testNoEmptySchemaLogWarningWithSnapshotNever() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "my_database")
+                .build();
+
+        start(MySqlConnector.class, config);
+
+        consumeRecordsByTopic(12);
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse());
+    }
 }
