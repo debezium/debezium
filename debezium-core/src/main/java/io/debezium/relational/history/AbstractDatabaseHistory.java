@@ -43,7 +43,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
             .withDefault(false)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Prefer DDL for schema reovery in case logica schema is present")
+            .withDescription("Prefer DDL for schema recovery in case logical schema is present")
             .withInvisibleRecommender()
             .withNoValidation();
 
