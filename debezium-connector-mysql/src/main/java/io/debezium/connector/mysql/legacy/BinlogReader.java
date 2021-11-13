@@ -330,7 +330,9 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doStart() {
-        context.dbSchema().assureNonEmptySchema();
+        if (context.snapshotMode() != MySqlConnectorConfig.SnapshotMode.NEVER) {
+            context.dbSchema().assureNonEmptySchema();
+        }
         Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOperations();
 
         // Register our event handlers ...
