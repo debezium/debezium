@@ -2859,6 +2859,30 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
     }
 
+    @Test
+    @FixFor("DBZ-1042")
+    public void testStreamingWithNumericReplicationSlotName() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SLOT_NAME, "12345");
+        start(PostgresConnector.class, configBuilder.build());
+        waitForStreamingRunning();
+        assertConnectorIsRunning();
+
+        // insert records
+        TestHelper.execute("INSERT into s1.a VALUES(201, 1)");
+        TestHelper.execute("INSERT into s1.a VALUES(202, 2)");
+        TestHelper.execute("INSERT into s1.a VALUES(203, 3)");
+
+        SourceRecords records = consumeRecordsByTopic(5);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.a"));
+
+        assertThat(recordsForTopic.size()).isEqualTo(4);
+        assertInsert(recordsForTopic.get(1), PK_FIELD, 201);
+        assertInsert(recordsForTopic.get(2), PK_FIELD, 202);
+        assertInsert(recordsForTopic.get(3), PK_FIELD, 203);
+    }
+
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
         return record -> {
             Struct key = (Struct) record.key();
