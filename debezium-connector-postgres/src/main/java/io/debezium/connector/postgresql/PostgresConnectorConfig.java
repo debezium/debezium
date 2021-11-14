@@ -1003,6 +1003,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "the original value is a toasted value not provided by the database. " +
                     "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.");
 
+    public static final Field MONEY_FRACTION_DIGITS = Field.create("money.fraction.digits")
+            .withDisplayName("Money fraction digits")
+            .withType(Type.SHORT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 1))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(2)
+            .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
+
     private final TruncateHandlingMode truncateHandlingMode;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
@@ -1120,6 +1129,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return Strings.hexStringToByteArray(placeholder.substring(4));
         }
         return placeholder.getBytes();
+    }
+
+    protected int moneyFractionDigits() {
+        return getConfig().getInteger(MONEY_FRACTION_DIGITS);
     }
 
     @Override

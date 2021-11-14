@@ -11,6 +11,7 @@ import static java.time.ZoneId.systemDefault;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -153,6 +154,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private final String toastPlaceholderString;
     private final byte[] toastPlaceholderBinary;
 
+    private final int moneyFractionDigits;
+
     public static PostgresValueConverter of(PostgresConnectorConfig connectorConfig, Charset databaseCharset, TypeRegistry typeRegistry) {
         return new PostgresValueConverter(
                 databaseCharset,
@@ -165,14 +168,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 connectorConfig.hStoreHandlingMode(),
                 connectorConfig.binaryHandlingMode(),
                 connectorConfig.intervalHandlingMode(),
-                connectorConfig.getUnavailableValuePlaceholder());
+                connectorConfig.getUnavailableValuePlaceholder(),
+                connectorConfig.moneyFractionDigits());
     }
 
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
                                      TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                      BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
                                      HStoreHandlingMode hStoreMode, BinaryHandlingMode binaryMode, IntervalHandlingMode intervalMode,
-                                     byte[] toastPlaceholder) {
+                                     byte[] toastPlaceholder, int moneyFractionDigits) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode, binaryMode);
         this.databaseCharset = databaseCharset;
         this.jsonFactory = new JsonFactory();
@@ -182,6 +186,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         this.intervalMode = intervalMode;
         this.toastPlaceholderBinary = toastPlaceholder;
         this.toastPlaceholderString = new String(toastPlaceholder);
+        this.moneyFractionDigits = moneyFractionDigits;
     }
 
     @Override
@@ -371,8 +376,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case DOUBLE:
                 return SchemaBuilder.float64();
             case PRECISE:
-                // Money has always scale 2
-                return Decimal.builder(2);
+                return Decimal.builder(moneyFractionDigits);
             case STRING:
                 return SchemaBuilder.string();
             default:
@@ -736,7 +740,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertMoney(Column column, Field fieldDefn, Object data, DecimalMode mode) {
-        return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(2), (r) -> {
+        return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(moneyFractionDigits), (r) -> {
             switch (mode) {
                 case DOUBLE:
                     if (data instanceof Double) {
@@ -748,11 +752,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     break;
                 case PRECISE:
                     if (data instanceof Double) {
-                        r.deliver(BigDecimal.valueOf((Double) data).setScale(2));
+                        r.deliver(BigDecimal.valueOf((Double) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
                     else if (data instanceof Number) {
-                        // the plugin will return a 64bit signed integer where the last 2 are always decimals
-                        r.deliver(BigDecimal.valueOf(((Number) data).longValue(), 2));
+                        // the plugin will return a 64bit signed integer where the last #moneyFractionDigits are always decimals
+                        r.deliver(BigDecimal.valueOf(((Number) data).longValue()).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
                     break;
                 case STRING:

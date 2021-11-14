@@ -2890,6 +2890,35 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(consumer.isEmpty()).isTrue();
     }
 
+    @Test
+    @FixFor("DBZ-1931")
+    public void testStreamMoneyPreciseDecimalFraction() throws Exception {
+        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE)
+                .with(PostgresConnectorConfig.MONEY_FRACTION_DIGITS, 1)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.salary"),
+                false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO salary (name, salary) values ('Joe', 123.4567);");
+
+        SourceRecord rec = assertRecordInserted("public.salary", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "salary");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("name", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "Joe"),
+                new SchemaAndValueField("salary", Decimal.builder(1).optional().build(), BigDecimal.valueOf(123.5)));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
     private void assertHeartBeatRecordInserted() {
         assertFalse("records not generated", consumer.isEmpty());
 
