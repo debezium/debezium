@@ -2848,6 +2848,17 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-1042")
+    public void testCreateNumericReplicationSlotName() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SLOT_NAME, "12345");
+        start(PostgresConnector.class, configBuilder.build());
+        waitForStreamingRunning();
+        assertConnectorIsRunning();
+    }
+
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
         return record -> {
             Struct key = (Struct) record.key();
