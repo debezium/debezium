@@ -408,6 +408,7 @@ public final class TestHelper {
                 config.hStoreHandlingMode(),
                 config.binaryHandlingMode(),
                 config.intervalHandlingMode(),
-                config.getUnavailableValuePlaceholder());
+                config.getUnavailableValuePlaceholder(),
+                config.moneyFractionDigits());
     }
 }
