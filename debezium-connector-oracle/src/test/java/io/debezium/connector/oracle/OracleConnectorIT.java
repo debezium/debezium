@@ -2540,7 +2540,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             SourceRecords records = consumeRecordsByTopic(1);
-            System.out.println(records.topics());
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3611")).hasSize(1);
 
             SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ3611").get(0);
@@ -2551,7 +2550,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             connection.execute("INSERT INTO dbz3611 values (2, 'streaming')");
-            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3611")).hasSize(1);
 
             assertNoRecordsToConsume();
         }
@@ -2586,7 +2587,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             SourceRecords records = consumeRecordsByTopic(1);
-            System.out.println(records.topics());
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3611")).hasSize(1);
 
             SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ3611").get(0);
@@ -2597,7 +2597,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             connection.execute("INSERT INTO dbz3611 values (2, 'streaming')");
-            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3611")).hasSize(1);
 
             assertNoRecordsToConsume();
         }
