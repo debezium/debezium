@@ -13,7 +13,6 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -25,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -623,16 +621,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField("salary", Decimal.builder(2).optional()
+                new SchemaAndValueField("salary", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
-                        .build(), BigDecimal.valueOf(7.25)),
-                new SchemaAndValueField("salary2", Decimal.builder(2).optional()
+                        .build(), 7.25),
+                new SchemaAndValueField("salary2", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY2")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
-                        .build(), BigDecimal.valueOf(8.25)),
+                        .build(), 8.25),
                 new SchemaAndValueField("a", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
