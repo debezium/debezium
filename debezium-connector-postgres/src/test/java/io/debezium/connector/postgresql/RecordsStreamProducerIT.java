@@ -2081,7 +2081,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, data VARCHAR(50), salary money, salary2 money2, PRIMARY KEY(pk));");
 
         startConnector(config -> config
-                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.alias_table"),
@@ -2134,8 +2134,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         List<SchemaAndValueField> expected = Arrays.asList(
                 new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("data", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "hello"),
-                new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), new BigDecimal(7.25)),
-                new SchemaAndValueField("salary2", Decimal.builder(2).build(), new BigDecimal(8.25)),
+                new SchemaAndValueField("salary", SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA, 7.25),
+                new SchemaAndValueField("salary2", SchemaBuilder.FLOAT64_SCHEMA, 8.25),
                 new SchemaAndValueField("salary3", SchemaBuilder.float64()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY3")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
@@ -2805,6 +2805,89 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         for (int i = 0; i < fields.size(); i++) {
             assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
         }
+    }
+
+    @Test
+    @FixFor("DBZ-1931")
+    public void testStreamMoneyAsDefaultPrecise() throws Exception {
+        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.salary"),
+                false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO salary (name, salary) values ('Joe', 123.45);");
+
+        SourceRecord rec = assertRecordInserted("public.salary", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "salary");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("name", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "Joe"),
+                new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), BigDecimal.valueOf(123.45)));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1931")
+    public void testStreamMoneyAsString() throws Exception {
+        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.salary"),
+                false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO salary (name, salary) values ('Joe', 123.45);");
+
+        SourceRecord rec = assertRecordInserted("public.salary", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "salary");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("name", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "Joe"),
+                new SchemaAndValueField("salary", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "123.45"));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1931")
+    public void testStreamMoneyAsDouble() throws Exception {
+        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.salary"),
+                false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO salary (name, salary) values ('Joe', 123.45);");
+
+        SourceRecord rec = assertRecordInserted("public.salary", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "salary");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("name", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "Joe"),
+                new SchemaAndValueField("salary", SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA, 123.45));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
     }
 
     private void assertHeartBeatRecordInserted() {

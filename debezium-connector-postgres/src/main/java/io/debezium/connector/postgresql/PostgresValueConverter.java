@@ -221,8 +221,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.POINT:
                 return Point.builder();
             case PgOid.MONEY:
-                // Money has always scale 2
-                return Decimal.builder(2);
+                return moneySchema();
             case PgOid.NUMERIC:
                 return numericSchema(column);
             case PgOid.BYTEA:
@@ -367,6 +366,20 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
     }
 
+    private SchemaBuilder moneySchema() {
+        switch (decimalMode) {
+            case DOUBLE:
+                return SchemaBuilder.float64();
+            case PRECISE:
+                // Money has always scale 2
+                return Decimal.builder(2);
+            case STRING:
+                return SchemaBuilder.string();
+            default:
+                throw new IllegalArgumentException("Unknown decimalMode");
+        }
+    }
+
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = column.nativeType();
@@ -403,7 +416,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
-                return data -> convertMoney(column, fieldDefn, data);
+                return data -> convertMoney(column, fieldDefn, data, decimalMode);
             case PgOid.NUMERIC:
                 return (data) -> convertDecimal(column, fieldDefn, data, decimalMode);
             case PgOid.BYTEA:
@@ -722,14 +735,31 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return super.convertBits(column, fieldDefn, data, numBytes);
     }
 
-    protected Object convertMoney(Column column, Field fieldDefn, Object data) {
+    protected Object convertMoney(Column column, Field fieldDefn, Object data, DecimalMode mode) {
         return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(2), (r) -> {
-            if (data instanceof Double) {
-                r.deliver(BigDecimal.valueOf((Double) data).setScale(2));
-            }
-            else if (data instanceof Number) {
-                // the plugin will return a 64bit signed integer where the last 2 are always decimals
-                r.deliver(BigDecimal.valueOf(((Number) data).longValue(), 2));
+            switch (mode) {
+                case DOUBLE:
+                    if (data instanceof Double) {
+                        r.deliver(data);
+                    }
+                    else if (data instanceof Number) {
+                        r.deliver(((Number) data).doubleValue());
+                    }
+                    break;
+                case PRECISE:
+                    if (data instanceof Double) {
+                        r.deliver(BigDecimal.valueOf((Double) data).setScale(2));
+                    }
+                    else if (data instanceof Number) {
+                        // the plugin will return a 64bit signed integer where the last 2 are always decimals
+                        r.deliver(BigDecimal.valueOf(((Number) data).longValue(), 2));
+                    }
+                    break;
+                case STRING:
+                    r.deliver(String.valueOf(data));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown decimalMode");
             }
         });
     }
