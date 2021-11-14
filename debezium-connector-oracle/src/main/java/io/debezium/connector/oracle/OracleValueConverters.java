@@ -57,6 +57,11 @@ import oracle.sql.TIMESTAMPTZ;
 
 public class OracleValueConverters extends JdbcValueConverters {
 
+    /**
+     * Marker value indicating an unavilable column value.
+     */
+    public static final Object UNAVAILABLE_VALUE = new Object();
+
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
 
     private static final ZoneId GMT_ZONE_ID = ZoneId.of("GMT");
@@ -104,11 +109,15 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private final OracleConnection connection;
     private final boolean lobEnabled;
+    private final byte[] unavailableValuePlaceholderBinary;
+    private final String unavailableValuePlaceholderString;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, null);
         this.connection = connection;
         this.lobEnabled = config.isLobEnabled();
+        this.unavailableValuePlaceholderString = config.getUnavailableValuePlaceholder();
+        this.unavailableValuePlaceholderBinary = this.unavailableValuePlaceholderString.getBytes();
     }
 
     @Override
@@ -276,6 +285,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
 
+        if (data == UNAVAILABLE_VALUE) {
+            return unavailableValuePlaceholderString;
+        }
+
         return super.convertString(column, fieldDefn, data);
     }
 
@@ -306,6 +319,10 @@ public class OracleValueConverters extends JdbcValueConverters {
                 }
                 Blob blob = (Blob) data;
                 data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
+            }
+
+            if (data == UNAVAILABLE_VALUE) {
+                data = unavailableValuePlaceholderBinary;
             }
 
             return super.convertBinary(column, fieldDefn, data, mode);

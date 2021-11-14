@@ -216,10 +216,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 1);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         Struct before = before(record);
         assertThat(before.get("ID")).isEqualTo(1);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertThat(after(record)).isNull();
 
@@ -235,20 +235,20 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(2);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertThat(after(record)).isNull();
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(2);
         VerifyRecord.isValidDelete(record, "ID", 3);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(3);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertThat(after(record)).isNull();
     }
@@ -368,10 +368,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 1);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         Struct before = before(record);
         assertThat(before.get("ID")).isEqualTo(1);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test1U");
 
         assertThat(after(record)).isNull();
@@ -388,10 +388,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(2);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test2U");
 
         assertThat(after(record)).isNull();
@@ -399,10 +399,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(2);
         VerifyRecord.isValidDelete(record, "ID", 3);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(3);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test3U");
 
         assertThat(after(record)).isNull();
@@ -516,10 +516,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 1);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         Struct before = before(record);
         assertThat(before.get("ID")).isEqualTo(1);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertThat(after(record)).isNull();
 
@@ -536,20 +536,20 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(2);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertThat(after(record)).isNull();
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(2);
         VerifyRecord.isValidDelete(record, "ID", 3);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(3);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertThat(after(record)).isNull();
     }
@@ -669,10 +669,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 1);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         Struct before = before(record);
         assertThat(before.get("ID")).isEqualTo(1);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test1U");
 
         assertThat(after(record)).isNull();
@@ -690,10 +690,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(2);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test2U");
 
         assertThat(after(record)).isNull();
@@ -701,10 +701,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(2);
         VerifyRecord.isValidDelete(record, "ID", 3);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(3);
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test3U");
 
         assertThat(after(record)).isNull();
@@ -856,11 +856,11 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 1);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         Struct before = before(record);
         assertThat(before.get("ID")).isEqualTo(1);
-        assertThat(before.get("VAL_BLOBS")).isNull();
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOBS")).isEqualTo(getUnavailableValuePlaceholder(config));
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test1U");
 
         assertThat(after(record)).isNull();
@@ -878,11 +878,11 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(2);
-        assertThat(before.get("VAL_BLOBS")).isNull();
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOBS")).isEqualTo(getUnavailableValuePlaceholder(config));
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test2U");
 
         assertThat(after(record)).isNull();
@@ -890,11 +890,11 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(2);
         VerifyRecord.isValidDelete(record, "ID", 3);
 
-        // blob fields will never have a "before" state
+        // blob fields will never have a "before" state; emitted with unavailable value placeholder
         before = before(record);
         assertThat(before.get("ID")).isEqualTo(3);
-        assertThat(before.get("VAL_BLOBS")).isNull();
-        assertThat(before.get("VAL_BLOB")).isNull();
+        assertThat(before.get("VAL_BLOBS")).isEqualTo(getUnavailableValuePlaceholder(config));
+        assertThat(before.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
         assertThat(before.get("VAL_DATA")).isEqualTo("Test3U");
 
         assertThat(after(record)).isNull();
@@ -1198,6 +1198,78 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4276")
+    public void shouldStreamBlobWithUnavailableColumnValuePlaceholder() throws Exception {
+        TestHelper.dropTable(connection, "dbz4276");
+        try {
+            connection.execute("CREATE TABLE dbz4276 (id numeric(9,0), data blob not null, data3 varchar2(50), primary key(id))");
+            TestHelper.streamTable(connection, "dbz4276");
+
+            // Empty function usage
+            connection.execute("INSERT INTO dbz4276 (id,data,data3) values (1,EMPTY_BLOB(),'Test')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4276")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DBZ4276"))).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic(topicName("DBZ4276")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo(ByteBuffer.wrap("".getBytes()));
+            assertThat(after.get("DATA3")).isEqualTo("Test");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Test unavailable column placeholder with update
+            connection.execute("UPDATE dbz4276 set data3 = '123' WHERE id = 1");
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DBZ4276"))).hasSize(1);
+
+            record = records.recordsForTopic(topicName("DBZ4276")).get(0);
+            Struct before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.get("ID")).isEqualTo(1);
+            assertThat(before.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(before.get("DATA3")).isEqualTo("Test");
+
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(after.get("DATA3")).isEqualTo("123");
+
+            // Test unavailable column placeholder with update
+            connection.execute("DELETE FROM dbz4276 WHERE id = 1");
+
+            records = consumeRecordsByTopic(2); // delete and tombstone
+            assertThat(records.recordsForTopic(topicName("DBZ4276"))).hasSize(2);
+
+            record = records.recordsForTopic(topicName("DBZ4276")).get(0);
+            before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.get("ID")).isEqualTo(1);
+            assertThat(before.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(before.get("DATA3")).isEqualTo("123");
+
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after).isNull();
+
+            // As a sanity check, there should be no more records.
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4276");
+        }
+    }
+
     private static byte[] part(byte[] buffer, int start, int length) {
         return Arrays.copyOfRange(buffer, start, length);
     }
@@ -1232,5 +1304,9 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     private static ByteBuffer getByteBufferFromBlob(Blob blob) throws SQLException {
         return ByteBuffer.wrap(blob.getBytes(1, (int) blob.length()));
+    }
+
+    private static ByteBuffer getUnavailableValuePlaceholder(Configuration config) {
+        return ByteBuffer.wrap(config.getString(OracleConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER).getBytes());
     }
 }
