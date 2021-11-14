@@ -16,6 +16,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BlobChunkList;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
@@ -322,6 +323,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             else if (prevEventIsInsert && "EMPTY_BLOB()".equals(prevValue)) {
                 LOGGER.trace("\tAssigning column index {} with updated BLOB value.", i);
                 prevEvent.getDmlEntry().getNewValues()[i] = value;
+            }
+            else if (!prevEventIsInsert && OracleValueConverters.UNAVAILABLE_VALUE.equals(value)) {
+                LOGGER.trace("\tSkipped column index {} with unavailable column value.", i);
             }
             else if (!prevEventIsInsert && value != null) {
                 LOGGER.trace("\tUpdating column index {} in previous event", i);
