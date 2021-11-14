@@ -570,7 +570,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .getReplicationAPI()
                 .replicationStream()
                 .logical()
-                .withSlotName(slotName)
+                .withSlotName("\"" + slotName + "\"")
                 .withStartPosition(lsn.asLogSequenceNumber())
                 .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder);
