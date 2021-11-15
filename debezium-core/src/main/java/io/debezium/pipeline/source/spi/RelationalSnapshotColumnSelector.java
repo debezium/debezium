@@ -42,6 +42,18 @@ public class RelationalSnapshotColumnSelector {
     }
 
     /**
+     * Prepares a list of key columns to be used in snapshot chunk limit selects.
+     *
+     * @return list of snapshot select columns
+     */
+    public List<String> getPreparedKeyColumnNames(Table table) {
+        return table.primaryKeyColumnNames()
+                .stream()
+                .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Prepares a list of columns to be used in the snapshot select.
      * The selected columns are based on the column include/exclude filters and if all columns are excluded,
      * the list will contain all the primary key columns.

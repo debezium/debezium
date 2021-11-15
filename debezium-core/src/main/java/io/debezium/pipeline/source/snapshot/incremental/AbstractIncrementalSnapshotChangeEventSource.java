@@ -219,7 +219,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                 .map(Column::name)
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
 
-        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, columnSelector.getPreparedColumnNames(table), Optional.empty(), orderBy);
+        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, columnSelector.getPreparedKeyColumnNames(table), Optional.empty(), orderBy);
     }
 
     @Override
