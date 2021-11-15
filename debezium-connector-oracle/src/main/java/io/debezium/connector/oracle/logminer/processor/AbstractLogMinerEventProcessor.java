@@ -92,13 +92,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     }
 
     /**
-     * Check whether a transaction has been recently committed.
-     * Any implementation that does not support recently-committed tracking should return false.
+     * Check whether a transaction has been recently processed through either a commit or rollback.
      *
      * @param transactionId the unique transaction id
-     * @return true if the transaction has been recently committed, false otherwise
+     * @return true if the transaction has been recently processed, false otherwise
      */
-    protected boolean isRecentlyCommitted(String transactionId) {
+    protected boolean isRecentlyProcessed(String transactionId) {
         return false;
     }
 
@@ -110,17 +109,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected boolean hasSchemaChangeBeenSeen(LogMinerEventRow row) {
         return false;
-    }
-
-    /**
-     * Return whether a give transaction can be added to the processor's buffer.
-     * The default implementation is to allow all transaction ids.
-     *
-     * @param transactionId the unique transaction id
-     * @return whether a transaction id can be added to the processor's buffer
-     */
-    protected boolean isTransactionIdAllowed(String transactionId) {
-        return true;
     }
 
     /**
@@ -240,11 +228,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected void handleStart(LogMinerEventRow row) {
         final String transactionId = row.getTransactionId();
         final AbstractTransaction transaction = getTransactionCache().get(transactionId);
-        if (transaction == null && !isRecentlyCommitted(transactionId)) {
+        if (transaction == null && !isRecentlyProcessed(transactionId)) {
             getTransactionCache().put(transactionId, createTransaction(row));
             metrics.setActiveTransactions(getTransactionCache().size());
         }
-        else if (transaction != null && !isRecentlyCommitted(transactionId)) {
+        else if (transaction != null && !isRecentlyProcessed(transactionId)) {
             LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
             transaction.start();
         }

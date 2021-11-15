@@ -333,21 +333,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'transactions' cache");
 
-    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.committed_transactions")
-            .withDisplayName("Infinispan 'committed-transactions' cache configuration")
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.processed_transactions")
+            .withDisplayName("Infinispan 'processed-transactions' cache configuration")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
-            .withDescription("Specifies the XML configuration for the Infinispan 'committed-transactions' cache");
-
-    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.rollback_transactions")
-            .withDisplayName("Infinispan 'rollback-transactions' cache configuration")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
-            .withDescription("Specifies the XML configuration for the Infinispan 'rollback-transactions' cache");
+            .withDescription("Specifies the XML configuration for the Infinispan 'processed-transactions' cache");
 
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS = Field.create("log.mining.buffer.infinispan.cache.events")
             .withDisplayName("Infinispan 'events' cache configurations")
@@ -439,8 +431,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_DROP_ON_STOP,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
-                    LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS,
-                    LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
                     LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,

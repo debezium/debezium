@@ -79,16 +79,20 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     @Override
     public void displayCacheStatistics() {
         LOGGER.info("Overall Cache Statistics:");
-        LOGGER.info("\tTransactions   : {}", getTransactionCache().size());
-        LOGGER.info("\tCommitted Trxs : {}", getCommittedTransactionsCache().size());
-        LOGGER.info("\tRollback Trxs  : {}", getRollbackTransactionsCache().size());
-        LOGGER.info("\tSchema Changes : {}", getSchemaChangesCache().size());
-        LOGGER.info("\tEvents         : {}", getEventCache().size());
+        LOGGER.info("\tTransactions        : {}", getTransactionCache().size());
+        LOGGER.info("\tRecent Transactions : {}", getProcessedTransactionsCache().size());
+        LOGGER.info("\tSchema Changes      : {}", getSchemaChangesCache().size());
+        LOGGER.info("\tEvents              : {}", getEventCache().size());
         if (!getEventCache().isEmpty()) {
             for (String eventKey : getEventCache().keySet()) {
                 LOGGER.debug("\t\tFound Key: {}", eventKey);
             }
         }
+    }
+
+    @Override
+    protected boolean isRecentlyProcessed(String transactionId) {
+        return getProcessedTransactionsCache().containsKey(transactionId);
     }
 
     @Override
@@ -157,7 +161,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     @Override
     protected void processRow(LogMinerEventRow row) throws SQLException, InterruptedException {
         final String transactionId = row.getTransactionId();
-        if (getCommittedTransactionsCache().containsKey(transactionId)) {
+        if (isRecentlyProcessed(transactionId)) {
             LOGGER.trace("Transaction {} has been seen by connector, skipped.", transactionId);
             return;
         }
@@ -170,19 +174,6 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     }
 
     @Override
-    protected boolean isTransactionIdAllowed(String transactionId) {
-        if (getRollbackTransactionsCache().containsKey(transactionId)) {
-            LOGGER.warn("Event for transaction {} skipped as transaction is marked for rollback.", transactionId);
-            return false;
-        }
-        if (getCommittedTransactionsCache().containsKey(transactionId)) {
-            LOGGER.warn("Event for transaction {} skipped as transaction was recently committed.", transactionId);
-            return false;
-        }
-        return true;
-    }
-
-    @Override
     protected boolean hasSchemaChangeBeenSeen(LogMinerEventRow row) {
         return getSchemaChangesCache().containsKey(row.getScn().toString());
     }
@@ -190,7 +181,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     @Override
     protected void handleCommit(LogMinerEventRow row) throws InterruptedException {
         final String transactionId = row.getTransactionId();
-        if (getCommittedTransactionsCache().containsKey(transactionId)) {
+        if (isRecentlyProcessed(transactionId)) {
             LOGGER.debug("\tTransaction is already committed, skipped.");
             return;
         }
@@ -314,7 +305,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         }
 
         // cache recently committed transactions by transaction id
-        getCommittedTransactionsCache().put(transactionId, commitScn.toString());
+        getProcessedTransactionsCache().put(transactionId, commitScn.toString());
 
         // Clear the event queue for the transaction
         removeEventsWithTransaction(transaction);
@@ -333,7 +324,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         if (transaction != null) {
             removeEventsWithTransaction(transaction);
             getTransactionCache().remove(row.getTransactionId());
-            getRollbackTransactionsCache().put(row.getTransactionId(), row.getScn().toString());
+            getProcessedTransactionsCache().put(row.getTransactionId(), row.getScn().toString());
 
             metrics.setActiveTransactions(getTransactionCache().size());
             metrics.incrementRolledBackTransactions();
@@ -353,7 +344,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
-        if (isTransactionIdAllowed(transactionId)) {
+        if (!isRecentlyProcessed(transactionId)) {
             InfinispanTransaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
                 LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
@@ -369,6 +360,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             // When using Infinispan, this extra put is required so that the state is properly synchronized
             getTransactionCache().put(transactionId, transaction);
             metrics.setActiveTransactions(getTransactionCache().size());
+        }
+        else {
+            LOGGER.warn("Event for transaction {} skipped as transaction has been processed.", transactionId);
         }
     }
 
@@ -395,13 +389,11 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         // Cleanup caches based on current state of the transaction cache
         final Scn minCacheScn = getTransactionCacheMinimumScn();
         if (!minCacheScn.isNull()) {
-            getCommittedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-            getRollbackTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+            getProcessedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
             getSchemaChangesCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
         }
         else {
-            getCommittedTransactionsCache().clear();
-            getRollbackTransactionsCache().clear();
+            getProcessedTransactionsCache().clear();
             getSchemaChangesCache().clear();
         }
 

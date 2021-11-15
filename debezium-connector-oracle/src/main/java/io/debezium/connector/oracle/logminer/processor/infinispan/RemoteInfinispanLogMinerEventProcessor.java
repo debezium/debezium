@@ -5,9 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer.processor.infinispan;
 
-import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS;
-import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
 
@@ -65,8 +64,7 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
 
     private final RemoteCache<String, InfinispanTransaction> transactionCache;
     private final RemoteCache<String, LogMinerEvent> eventCache;
-    private final RemoteCache<String, String> recentlyCommittedTransactionsCache;
-    private final RemoteCache<String, String> rollbackTransactionsCache;
+    private final RemoteCache<String, String> processedTransactionsCache;
     private final RemoteCache<String, String> schemaChangesCache;
 
     public RemoteInfinispanLogMinerEventProcessor(ChangeEventSourceContext context,
@@ -91,8 +89,7 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
 
         this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
-        this.recentlyCommittedTransactionsCache = createCache(COMMIT_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_COMMITTED_TRANSACTIONS);
-        this.rollbackTransactionsCache = createCache(ROLLBACK_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACK_TRANSACTIONS);
+        this.processedTransactionsCache = createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS);
         this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
         this.eventCache = createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
 
@@ -106,13 +103,11 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
             transactionCache.clear();
             eventCache.clear();
             schemaChangesCache.clear();
-            recentlyCommittedTransactionsCache.clear();
-            rollbackTransactionsCache.clear();
+            processedTransactionsCache.clear();
 
             // this block should only be used by tests, should we wrap this in case admin rights aren't given?
             cacheManager.administration().removeCache(CacheProvider.TRANSACTIONS_CACHE_NAME);
-            cacheManager.administration().removeCache(CacheProvider.COMMIT_TRANSACTIONS_CACHE_NAME);
-            cacheManager.administration().removeCache(CacheProvider.ROLLBACK_TRANSACTIONS_CACHE_NAME);
+            cacheManager.administration().removeCache(CacheProvider.PROCESSED_TRANSACTIONS_CACHE_NAME);
             cacheManager.administration().removeCache(CacheProvider.SCHEMA_CHANGES_CACHE_NAME);
             cacheManager.administration().removeCache(CacheProvider.EVENTS_CACHE_NAME);
         }
@@ -136,13 +131,8 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
     }
 
     @Override
-    public BasicCache<String, String> getCommittedTransactionsCache() {
-        return recentlyCommittedTransactionsCache;
-    }
-
-    @Override
-    public BasicCache<String, String> getRollbackTransactionsCache() {
-        return rollbackTransactionsCache;
+    public BasicCache<String, String> getProcessedTransactionsCache() {
+        return processedTransactionsCache;
     }
 
     @Override
