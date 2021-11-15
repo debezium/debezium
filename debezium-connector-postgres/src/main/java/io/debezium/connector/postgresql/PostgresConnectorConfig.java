@@ -984,16 +984,24 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "The default is set to 0 ms, which disables tracking xmin.")
             .withValidation(Field::isNonNegativeLong);
 
+    @Deprecated
     public static final Field TOASTED_VALUE_PLACEHOLDER = Field.create("toasted.value.placeholder")
             .withDisplayName("Toasted value placeholder")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
             .withWidth(Width.MEDIUM)
-            .withDefault("__debezium_unavailable_value")
+            .withDefault(DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER)
             .withImportance(Importance.MEDIUM)
+            .withValidation(PostgresConnectorConfig::validateToastedValuePlaceholder)
             .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
                     "the original value is a toasted value not provided by the database. " +
-                    "If starts with 'hex:' prefix it is expected that the rest of the string repesents hexadecimally encoded octets.");
+                    "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets." +
+                    "Deprecated, use 'unavailable.value.placeholder' instead.");
+
+    public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = RelationalDatabaseConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER
+            .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
+                    "the original value is a toasted value not provided by the database. " +
+                    "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.");
 
     private final TruncateHandlingMode truncateHandlingMode;
     private final HStoreHandlingMode hStoreHandlingMode;
@@ -1103,7 +1111,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected byte[] toastedValuePlaceholder() {
-        final String placeholder = getConfig().getString(TOASTED_VALUE_PLACEHOLDER);
+        String placeholder = getConfig().getString(TOASTED_VALUE_PLACEHOLDER);
+        if (Strings.isNullOrEmpty(placeholder)) {
+            placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
+        }
         if (placeholder.startsWith("hex:")) {
             return Strings.hexStringToByteArray(placeholder.substring(4));
         }
@@ -1207,6 +1218,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
         }
         return errors;
+    }
+
+    private static int validateToastedValuePlaceholder(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String placeholder = config.getString(TOASTED_VALUE_PLACEHOLDER);
+        if (!Strings.isNullOrEmpty(placeholder)) {
+            LOGGER.warn("Configuration property '{}' is deprecated and will be removed in future versions. Please use '{}' instead.",
+                    TOASTED_VALUE_PLACEHOLDER.name(),
+                    UNAVAILABLE_VALUE_PLACEHOLDER.name());
+        }
+        return 0;
     }
 
     @Override
