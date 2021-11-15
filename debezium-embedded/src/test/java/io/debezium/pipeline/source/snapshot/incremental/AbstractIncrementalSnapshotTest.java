@@ -201,7 +201,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void snapshotOnly() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector();
@@ -217,7 +217,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void invalidTablesInTheList() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector();
@@ -233,7 +233,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void inserts() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector();
@@ -260,7 +260,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void updates() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector();
@@ -288,7 +288,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void updatesWithRestart() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         final Configuration config = config().build();
@@ -333,7 +333,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void updatesLargeChunk() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, ROW_COUNT));
@@ -354,7 +354,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void snapshotOnlyWithRestart() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         final Configuration config = config().build();
