@@ -25,6 +25,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
+import io.debezium.pipeline.source.spi.RelationalSnapshotColumnSelector;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -59,8 +60,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener progressListener;
     private final DataChangeEventListener dataListener;
-    private long totalRowsScanned = 0;
+    private final RelationalSnapshotColumnSelector columnSelector;
 
+    private long totalRowsScanned = 0;
     private Table currentTable;
 
     protected EventDispatcher<T> dispatcher;
@@ -82,6 +84,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         this.clock = clock;
         this.progressListener = progressListener;
         this.dataListener = dataChangeEventListener;
+        this.columnSelector = new RelationalSnapshotColumnSelector(connectorConfig, jdbcConnection);
     }
 
     @Override
@@ -134,7 +137,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             return;
         }
         if (key instanceof Struct) {
-            if (window.remove((Struct) key) != null) {
+            if (window.remove(key) != null) {
                 LOGGER.info("Removed '{}' from window", key);
             }
         }
@@ -163,17 +166,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             condition = sql.toString();
         }
 
-        final String selectColumns = table.columns().stream()
-                .map(Column::name)
-                .collect(Collectors.joining(", "));
-
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.joining(", "));
 
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
                 connectorConfig.getIncrementalSnashotChunkSize(),
-                selectColumns,
+                columnSelector.getPreparedColumnNames(table),
                 Optional.ofNullable(condition),
                 orderBy);
     }
@@ -216,15 +215,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     protected String buildMaxPrimaryKeyQuery(Table table) {
         final List<Column> keyColumns = getKeyMapper().getKeyKolumns(table);
 
-        final String selectColumns = keyColumns.stream()
-                .map(Column::name)
-                .collect(Collectors.joining(", "));
-
         final String orderBy = keyColumns.stream()
                 .map(Column::name)
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
 
-        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, selectColumns, Optional.empty(), orderBy);
+        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, columnSelector.getPreparedColumnNames(table), Optional.empty(), orderBy);
     }
 
     @Override
