@@ -272,6 +272,8 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO tablec VALUES(1, 'c')");
         // Enable CDC for already existing table
         TestHelper.enableTableCdc(connection, "tablec");
+        // Make sure table's capture instance exists first; avoids unexpected ALTER
+        TestHelper.waitForEnabledCdc(connection, "tablec");
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -293,8 +295,13 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config2);
         assertConnectorIsRunning();
 
+        // Guarantee we've started streaming and not still in bootstrap steps
+        TestHelper.waitForStreamingStarted();
+
         // CDC for newly added table
         TestHelper.enableTableCdc(connection, "tabled");
+        // Make sure table's capture instance exists first
+        TestHelper.waitForEnabledCdc(connection, "tabled");
 
         connection.execute("INSERT INTO tabled VALUES(1, 'd')");
 
