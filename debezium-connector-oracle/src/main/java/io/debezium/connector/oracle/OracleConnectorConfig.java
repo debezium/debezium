@@ -30,8 +30,13 @@ import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -872,18 +877,79 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public enum LogMiningBufferType implements EnumeratedValue {
-        MEMORY("memory"),
+        MEMORY("memory") {
+            @Override
+            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
+                                                          OracleConnectorConfig connectorConfig,
+                                                          OracleConnection connection,
+                                                          EventDispatcher<TableId> dispatcher,
+                                                          OraclePartition partition,
+                                                          OracleOffsetContext offsetContext,
+                                                          OracleDatabaseSchema schema,
+                                                          OracleStreamingChangeEventSourceMetrics metrics) {
+                return new MemoryLogMinerEventProcessor(context, connectorConfig, connection, dispatcher, partition,
+                        offsetContext, schema, metrics);
+            }
+        },
 
         /**
          * @deprecated use either {@link #INFINISPAN_EMBEDDED} or {@link #INFINISPAN_REMOTE}.
          */
         @Deprecated
-        INFINISPAN("infinispan"),
+        INFINISPAN("infinispan") {
+            @Override
+            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
+                                                          OracleConnectorConfig connectorConfig,
+                                                          OracleConnection connection,
+                                                          EventDispatcher<TableId> dispatcher,
+                                                          OraclePartition partition,
+                                                          OracleOffsetContext offsetContext,
+                                                          OracleDatabaseSchema schema,
+                                                          OracleStreamingChangeEventSourceMetrics metrics) {
+                return new EmbeddedInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
+                        partition, offsetContext, schema, metrics);
+            }
+        },
 
-        INFINISPAN_EMBEDDED("infinispan_embedded"),
-        INFINISPAN_REMOTE("infinispan_remote");
+        INFINISPAN_EMBEDDED("infinispan_embedded") {
+            @Override
+            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
+                                                          OracleConnectorConfig connectorConfig,
+                                                          OracleConnection connection,
+                                                          EventDispatcher<TableId> dispatcher,
+                                                          OraclePartition partition,
+                                                          OracleOffsetContext offsetContext,
+                                                          OracleDatabaseSchema schema,
+                                                          OracleStreamingChangeEventSourceMetrics metrics) {
+                return new EmbeddedInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
+                        partition, offsetContext, schema, metrics);
+            }
+        },
+
+        INFINISPAN_REMOTE("infinispan_remote") {
+            @Override
+            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
+                                                          OracleConnectorConfig connectorConfig,
+                                                          OracleConnection connection,
+                                                          EventDispatcher<TableId> dispatcher,
+                                                          OraclePartition partition,
+                                                          OracleOffsetContext offsetContext,
+                                                          OracleDatabaseSchema schema,
+                                                          OracleStreamingChangeEventSourceMetrics metrics) {
+                return new RemoteInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
+                        partition, offsetContext, schema, metrics);
+            }
+        };
 
         private final String value;
+
+        /**
+         * Creates the buffer type's specific processor implementation
+         */
+        public abstract LogMinerEventProcessor createProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
+                                                               OracleConnection connection, EventDispatcher<TableId> dispatcher, OraclePartition partition,
+                                                               OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
+                                                               OracleStreamingChangeEventSourceMetrics metrics);
 
         LogMiningBufferType(String value) {
             this.value = value;

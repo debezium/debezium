@@ -40,9 +40,6 @@ import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrat
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -209,18 +206,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                                    OraclePartition partition,
                                                    OracleOffsetContext offsetContext) {
         final LogMiningBufferType bufferType = connectorConfig.getLogMiningBufferType();
-        if (bufferType.isInfinispanEmbedded()) {
-            return new EmbeddedInfinispanLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher,
-                    partition, offsetContext, schema, streamingMetrics);
-        }
-        else if (bufferType.isInfinispan()) {
-            return new RemoteInfinispanLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher,
-                    partition, offsetContext, schema, streamingMetrics);
-        }
-        else {
-            return new MemoryLogMinerEventProcessor(context, connectorConfig, jdbcConnection, dispatcher,
-                    partition, offsetContext, schema, streamingMetrics);
-        }
+        return bufferType.createProcessor(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, streamingMetrics);
     }
 
     /**

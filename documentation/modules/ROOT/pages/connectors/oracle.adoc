@@ -490,23 +490,12 @@ If you use the `memory` buffer setting, be sure that the amount of memory that y
 ifdef::community[]
 [[oracle-event-buffering-infinispan]]
 ==== Infinispan
-The {prodname} Oracle connector can also be configured to use Infinispan as it's cache provider, supporting cache stores both locally with embedded mode or remotely on a server cluster.
+The {prodname} Oracle connector can also be configured to use Infinispan as its cache provider, supporting cache stores both locally with embedded mode or remotely on a server cluster.
 In order to use Infinispan, the xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`] must be configured using either `infinispan_embedded` or `infinispan_remote`.
 
 In order to allow flexibility with Infinispan cache configurations, the connector expects a series of cache configuration properties to be supplied when using Infinispan to buffer event data.
-
-`log.mining.buffer.infinispan.cache.transactions`::
-Specifies the XML configuration for the transaction cache.
-`log.mining.buffer.infinispan.cache.events`::
-Specifies the XML configuration for the event cache.
-`log.mining.buffer.infinispan.cache.committed_transactions`::
-Specifies the XML configuration for the committed transactions cache.
-`log.mining.buffer.infinispan.cache.rollback_transactions`::
-Specifies the XML configuration for the rollback transactions cache.
-`log.mining.buffer.infinispan.cache.schema_changes`::
-Specifies the XML configuration for the schema changes cache.
-
-The contents of each of these configuration properties depend on whether the connector is to integrate with a remote Infinispan cluster or to use the embedded engine.
+See the xref:oracle-connector-properties[configuration properties] in the `log.mining.buffer.infinispan.cache` namespace.
+The contents of these configuration properties depend on whether the connector is to integrate with a remote Infinispan cluster or to use the embedded engine.
 
 For example, the following illustrates what an embedded configuration would look like for the transaction cache property when using Infinispan in embedded mode:
 
@@ -522,6 +511,11 @@ For example, the following illustrates what an embedded configuration would look
 Looking at the configuration in-depth, the cache is configured to be persistent.
 All caches should be configured this way to avoid loss of transaction events across connector restarts if a transaction is in-progress.
 Additionally, the location where the cache is kept is defined by the `path` attribute and this should be a shared location accessible all possible runtime environments.
+
+[NOTE]
+====
+When supplying XML configuration as a JSON connector property value, line breaks must be omitted or replaced with a `\n` character.
+====
 
 Another example, the following illustrates the same cache configured with an Infinispan cluster:
 
@@ -2451,7 +2445,7 @@ See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more 
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-schema-changes]]<<oracle-property-log-mining-buffer-infinispan-cache-schema-changes, `+log.mining.buffer.infinispan.cache.schema_changes+`>>
 |No default
-|The XML configuration for the Infinispan schema changes cachen.
+|The XML configuration for the Infinispan schema changes cache.
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
 |`false`
