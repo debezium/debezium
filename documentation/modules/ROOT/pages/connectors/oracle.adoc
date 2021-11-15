@@ -2433,14 +2433,9 @@ See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more 
 |The XML configuration for the Infinispan events cache.
 See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
 
-|[[oracle-property-log-mining-buffer-infinispan-cache-committed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-committed-transactions, `+log.mining.buffer.infinispan.cache.committed_transactions+`>>
+|[[oracle-property-log-mining-buffer-infinispan-cache-processed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-processed-transactions, `+log.mining.buffer.infinispan.cache.processed_transactions+`>>
 |No default
-|The XML configuration for the Infinispan committed transactions cache.
-See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
-
-|[[oracle-property-log-mining-buffer-infinispan-cache-rollback-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-rollback-transactions, `+log.mining.buffer.infinispan.cache.rollback_transactions+`>>
-|No default
-|The XML configuration for the Infinispan rollback transactions cache.
+|The XML configuration for the Infinispan processed transactions cache.
 See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-schema-changes]]<<oracle-property-log-mining-buffer-infinispan-cache-schema-changes, `+log.mining.buffer.infinispan.cache.schema_changes+`>>

@@ -20,14 +20,9 @@ public interface CacheProvider extends AutoCloseable {
     String TRANSACTIONS_CACHE_NAME = "transactions";
 
     /**
-     * The name for the recently committed transactions cache
+     * The name for the recently processed transactions cache
      */
-    String COMMIT_TRANSACTIONS_CACHE_NAME = "committed-transactions";
-
-    /**
-     * The name for the rollback transactions cache
-     */
-    String ROLLBACK_TRANSACTIONS_CACHE_NAME = "rollback-transactions";
+    String PROCESSED_TRANSACTIONS_CACHE_NAME = "processed-transactions";
 
     /**
      * The name for the schema changes cache
@@ -81,26 +76,14 @@ public interface CacheProvider extends AutoCloseable {
     BasicCache<String, String> getSchemaChangesCache();
 
     /**
-     * Get the recently committed transactions cache
+     * Get the processed transactions cache
      *
      * <ul>
      *     <li>Key - The unique transaction id</li>
-     *     <li>Value - The transaction's commit system change number</li>
+     *     <li>Value - The transaction's commit or rollback system change number</li>
      * </ul>
      *
-     * @return the committed transactions cache, never {@code null}
+     * @return the processed transactions cache, never {@code null}
      */
-    BasicCache<String, String> getCommittedTransactionsCache();
-
-    /**
-     * Get the rollback transactions cache.
-     *
-     * <ul>
-     *     <li>Key - The unique transaction id</li>
-     *     <li>Value - The transaction's rollback system change number</li>
-     * </ul>
-     *
-     * @return the rollback transactions cache, never {@code null}
-     */
-    BasicCache<String, String> getRollbackTransactionsCache();
+    BasicCache<String, String> getProcessedTransactionsCache();
 }
