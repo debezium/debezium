@@ -122,7 +122,7 @@ public class EventRouterConfigDefinition {
             .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("While Debezium is monitoring the table, it's expecting only to see 'create' row events," +
+            .withDescription("While Debezium is capturing changes from the table, it's expecting only to see 'create' row events," +
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process.");
 
@@ -233,7 +233,7 @@ public class EventRouterConfigDefinition {
             .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("While Debezium is monitoring the table, it's expecting only to see 'create' row events," +
+            .withDescription("While Debezium is capturing changes from the table, it's expecting only to see 'create' row events," +
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process.  This option is deprecated, use 'table.op.invalid.behavior' instead.");
 
