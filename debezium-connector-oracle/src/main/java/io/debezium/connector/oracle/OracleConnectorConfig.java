@@ -62,8 +62,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     protected final static Duration ARCHIVE_LOG_ONLY_POLL_TIME = Duration.ofMillis(10_000);
 
-    protected final static String DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
-
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -345,15 +343,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
                     " this value, consider it a SCN gap.");
 
-    public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = Field.create("unavailable.value.placeholder")
-            .withDisplayName("Unavailable value placeholder")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withDefault(DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
-                    "the original value is unavailable and not provided by the database.");
-
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -381,7 +370,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     SNAPSHOT_ENHANCEMENT_TOKEN,
                     SNAPSHOT_LOCKING_MODE,
                     RAC_NODES,
-                    UNAVAILABLE_VALUE_PLACEHOLDER,
                     LOG_MINING_ARCHIVE_LOG_HOURS,
                     LOG_MINING_BATCH_SIZE_DEFAULT,
                     LOG_MINING_BATCH_SIZE_MIN,
@@ -426,7 +414,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final StreamingAdapter streamingAdapter;
     private final String snapshotEnhancementToken;
     private final SnapshotLockingMode snapshotLockingMode;
-    private final String unavailableValuePlaceholder;
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
@@ -465,7 +452,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-        this.unavailableValuePlaceholder = config.getString(UNAVAILABLE_VALUE_PLACEHOLDER);
         this.lobEnabled = config.getBoolean(LOB_ENABLED);
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
@@ -932,13 +918,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Set<String> getRacNodes() {
         return racNodes;
-    }
-
-    /**
-     * @return the unavailable value place holder
-     */
-    public String getUnavailableValuePlaceholder() {
-        return unavailableValuePlaceholder;
     }
 
     /**
