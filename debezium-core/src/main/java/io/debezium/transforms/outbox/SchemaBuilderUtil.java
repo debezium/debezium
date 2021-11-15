@@ -33,7 +33,7 @@ public class SchemaBuilderUtil {
         return jsonNodeToSchemaBuilder(document).build();
     }
 
-    public static SchemaBuilder jsonNodeToSchemaBuilder(JsonNode document) {
+    private static SchemaBuilder jsonNodeToSchemaBuilder(JsonNode document) {
         final SchemaBuilder schemaBuilder = SchemaBuilder.struct().optional();
         if (document != null) {
             Iterator<Entry<String, JsonNode>> fieldsEntries = document.fields();
