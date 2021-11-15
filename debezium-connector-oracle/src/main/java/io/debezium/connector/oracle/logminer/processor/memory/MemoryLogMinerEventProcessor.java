@@ -59,6 +59,10 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final OracleStreamingChangeEventSourceMetrics metrics;
+
+    /**
+     * Cache of transactions, keyed based on the transaction's unique identifier
+     */
     private final Map<String, MemoryTransaction> transactionCache = new HashMap<>();
     private final Map<String, Scn> recentlyCommittedTransactionsCache = new HashMap<>();
     private final Set<Scn> schemaChangesCache = new HashSet<>();
