@@ -83,7 +83,8 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
-        Assertions.assertThat(source.buildChunkQuery(table)).isEqualTo("SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\", \"val2\" FROM \"s1\".\"table1\" ORDER BY pk1, pk2, pk3 LIMIT 1024");
+        Assertions.assertThat(source.buildChunkQuery(table))
+                .isEqualTo("SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\", \"val2\" FROM \"s1\".\"table1\" ORDER BY pk1, pk2, pk3 LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
         Assertions.assertThat(source.buildChunkQuery(table)).isEqualTo(
