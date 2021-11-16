@@ -316,14 +316,14 @@ public class SnapshotReader extends AbstractReader {
                                     logger.info("\t including '{}' among known tables", id);
                                 }
                                 else {
-                                    logger.info("\t '{}' is not added among known tables", id);
+                                    logger.debug("\t '{}' is not added among known tables", id);
                                 }
                                 if (filters.tableFilter().and(isAllowedForSnapshot).test(id)) {
                                     capturedTableIds.add(id);
                                     logger.info("\t including '{}' for further processing", id);
                                 }
                                 else {
-                                    logger.info("\t '{}' is filtered out of capturing", id);
+                                    logger.debug("\t '{}' is filtered out of capturing", id);
                                 }
                             }
                         });
