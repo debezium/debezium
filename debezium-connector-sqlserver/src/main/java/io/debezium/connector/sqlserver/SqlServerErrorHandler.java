@@ -33,6 +33,7 @@ public class SqlServerErrorHandler extends ErrorHandler {
                         || throwable.getMessage().contains("The connection has been closed.")
                         || throwable.getMessage().contains("The connection is closed.")
                         || throwable.getMessage().contains("The login failed.")
+                        || throwable.getMessage().contains("Server is in script upgrade mode.")
                         || throwable.getMessage().contains("Try the statement later.")
                         || throwable.getMessage().contains("Connection reset")
                         || throwable.getMessage().contains("SHUTDOWN is in progress")
