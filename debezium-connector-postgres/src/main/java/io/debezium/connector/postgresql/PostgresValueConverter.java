@@ -165,7 +165,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 connectorConfig.hStoreHandlingMode(),
                 connectorConfig.binaryHandlingMode(),
                 connectorConfig.intervalHandlingMode(),
-                connectorConfig.toastedValuePlaceholder());
+                connectorConfig.getUnavailableValuePlaceholder());
     }
 
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
