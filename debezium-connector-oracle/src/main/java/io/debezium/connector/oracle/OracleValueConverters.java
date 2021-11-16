@@ -116,8 +116,8 @@ public class OracleValueConverters extends JdbcValueConverters {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, null);
         this.connection = connection;
         this.lobEnabled = config.isLobEnabled();
-        this.unavailableValuePlaceholderString = config.getUnavailableValuePlaceholder();
-        this.unavailableValuePlaceholderBinary = this.unavailableValuePlaceholderString.getBytes();
+        this.unavailableValuePlaceholderBinary = config.getUnavailableValuePlaceholder();
+        this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
     }
 
     @Override

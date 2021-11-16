@@ -1110,7 +1110,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
     }
 
-    protected byte[] toastedValuePlaceholder() {
+    @Override
+    public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(TOASTED_VALUE_PLACEHOLDER);
         if (Strings.isNullOrEmpty(placeholder)) {
             placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
@@ -1168,7 +1169,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     INTERVAL_HANDLING_MODE,
                     SCHEMA_REFRESH_MODE,
                     TRUNCATE_HANDLING_MODE,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+                    UNAVAILABLE_VALUE_PLACEHOLDER)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 

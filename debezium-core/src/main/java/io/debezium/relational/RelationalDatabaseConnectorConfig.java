@@ -610,8 +610,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     PROPAGATE_COLUMN_SOURCE_TYPE,
                     PROPAGATE_DATATYPE_SOURCE_TYPE,
                     SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
-                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
-                    UNAVAILABLE_VALUE_PLACEHOLDER)
+                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
     private final RelationalTableFilters tableFilters;
@@ -692,8 +691,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return heartbeatActionQuery;
     }
 
-    public String getUnavailableValuePlaceholder() {
-        return getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
+    public byte[] getUnavailableValuePlaceholder() {
+        return getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER).getBytes();
     }
 
     public Duration snapshotLockTimeout() {

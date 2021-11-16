@@ -388,7 +388,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_DROP_ON_STOP,
                     LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
-                    LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS)
+                    LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS,
+                    UNAVAILABLE_VALUE_PLACEHOLDER)
             .create();
 
     /**
