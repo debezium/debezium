@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.After;
@@ -172,6 +173,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 expectedRecordCount,
                 x -> true,
                 k -> k.getInt32("id"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
                 "server1.dbo.excluded_column_table_a",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {

@@ -30,6 +30,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
+import io.debezium.pipeline.source.spi.RelationalSnapshotColumnSelector;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -69,6 +70,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected final EventDispatcher<TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
+    private final RelationalSnapshotColumnSelector columnSelector;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                JdbcConnection jdbcConnection, RelationalDatabaseSchema schema,
@@ -80,6 +82,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
+        this.columnSelector = new RelationalSnapshotColumnSelector(connectorConfig, jdbcConnection);
     }
 
     @Override
@@ -442,43 +445,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
         }
 
-        List<String> columns = getPreparedColumnNames(schema.tableFor(tableId));
+        List<String> columns = columnSelector.getPreparedColumnNames(schema.tableFor(tableId));
 
         return getSnapshotSelect(snapshotContext, tableId, columns);
-    }
-
-    /**
-     * Prepares a list of columns to be used in the snapshot select.
-     * The selected columns are based on the column include/exclude filters and if all columns are excluded,
-     * the list will contain all the primary key columns.
-     *
-     * @return list of snapshot select columns
-     */
-    protected List<String> getPreparedColumnNames(Table table) {
-        List<String> columnNames = table.retrieveColumnNames()
-                .stream()
-                .filter(columnName -> additionalColumnFilter(table.id(), columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
-                .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
-                .collect(Collectors.toList());
-
-        if (columnNames.isEmpty()) {
-            LOGGER.info("\t All columns in table {} were excluded due to include/exclude lists, defaulting to selecting all columns", table.id());
-
-            columnNames = table.retrieveColumnNames()
-                    .stream()
-                    .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
-                    .collect(Collectors.toList());
-        }
-
-        return columnNames;
-    }
-
-    /**
-     * Additional filter handling for preparing column names for snapshot select
-     */
-    protected boolean additionalColumnFilter(TableId tableId, String columnName) {
-        return true;
     }
 
     /**
