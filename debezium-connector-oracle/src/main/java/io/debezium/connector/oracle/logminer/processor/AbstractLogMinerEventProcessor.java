@@ -246,6 +246,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         else if (transaction != null && !isRecentlyCommitted(transactionId)) {
             LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
             transaction.start();
+            if (transaction.getUserName() == null) {
+                transaction.setUserName(row.getUserName());
+            }
         }
     }
 

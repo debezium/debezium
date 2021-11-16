@@ -22,7 +22,7 @@ public abstract class AbstractTransaction implements Transaction {
     private final String transactionId;
     private final Scn startScn;
     private final Instant changeTime;
-    private final String userName;
+    private String userName;
 
     public AbstractTransaction(String transactionId, Scn startScn, Instant changeTime, String userName) {
         this.transactionId = transactionId;
@@ -49,6 +49,10 @@ public abstract class AbstractTransaction implements Transaction {
     @Override
     public String getUserName() {
         return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
     @Override
