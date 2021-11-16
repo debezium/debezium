@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -142,7 +143,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
         else {
             // Since the row has no chunk data, it can be dispatched immediately.
-            dispatchDataChangeEvent(row, new HashMap<>());
+            dispatchDataChangeEvent(row, null);
         }
     }
 
@@ -189,6 +190,12 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         // marker object so its transformed correctly by the value converters.
         if (connectorConfig.isLobEnabled()) {
             LOGGER.trace("Inspecting table '{}' LOB columns for unavailable value sets.", table.id());
+            if (chunkValues == null) {
+                // Happens when dispatching an LCR without any chunk data.
+                // Initializing the chunk values map with 1 entries as a baseline.
+                // todo: would be useful in the future to track some type of "has-lob" flag on Table
+                chunkValues = new HashMap<>(0);
+            }
             for (Column column : table.columns()) {
                 if (isLobColumn(column) && !chunkValues.containsKey(column.name())) {
                     // Column not supplied, initialize with unavailable value marker
@@ -196,6 +203,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     chunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
                 }
             }
+        }
+        else if (chunkValues == null) {
+            // it's safe to initialize as an empty map if LOB support is disabled
+            chunkValues = Collections.emptyMap();
         }
 
         dispatcher.dispatchDataChangeEvent(
