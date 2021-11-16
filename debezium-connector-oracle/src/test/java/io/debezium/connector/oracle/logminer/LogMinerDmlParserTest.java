@@ -438,7 +438,7 @@ public class LogMinerDmlParserTest {
 
         // test unchanged column values in update with both supplied & unsupported lob fields
         String sql = "update \"DEBEZIUM\".\"TEST\" set \"COL1\" = 'Test', \"VAL_CLOB2\" = 'X', \"VAL_BLOB2\" = HEXTORAW('0E') where \"ID\" = '1';";
-        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table);
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(7);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
@@ -459,7 +459,7 @@ public class LogMinerDmlParserTest {
 
         // test unchanged column values not supplied in delete statements
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"ID\" = '1';";
-        entry = fastDmlParser.parse(sql, table);
+        entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
         assertThat(entry.getOldValues()).hasSize(7);
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
