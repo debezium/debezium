@@ -150,6 +150,12 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
                 try {
                     if (!batch.tryAdd(eventData)) {
+                        if (added == 0) {
+                            // If we fail to add at least the very first event to the batch that is because
+                            // the event's size exceeds the maxBatchSize in which case we cannot safely
+                            // recover and dispatch the event, only option is to throw an exception.
+                            throw new DebeziumException("Event data is too large to fit into batch");
+                        }
                         // reached the maximum allowed size for the batch
                         LOGGER.trace("Maximum batch reached, dispatching {} events.", added);
                         break;
