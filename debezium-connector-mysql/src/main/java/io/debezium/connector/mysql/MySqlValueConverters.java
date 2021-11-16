@@ -74,8 +74,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
         void error(String message, Exception exception);
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
+    // TODO: This needs to be cleaned, or rejected by maintainer. Including in draft PR for comment.
+    private final static class CharsetMappingWrapper extends CharsetMapping {
+        String getJavaEncodingForMysqlCharSet(String mySqlCharsetName) {
+            return CharsetMapping.getStaticJavaEncodingForMysqlCharset(mySqlCharsetName);
+        }
 
+    }
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
+    private static final CharsetMappingWrapper CHARSET_MAPPING_WRAPPER = new CharsetMappingWrapper();
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
      */
@@ -327,10 +335,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
             logger.warn("Column is missing a character set: {}", column);
             return null;
         }
-        String encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName);
+        String encoding = CHARSET_MAPPING_WRAPPER.getJavaEncodingForMysqlCharSet(mySqlCharsetName);
         if (encoding == null) {
             logger.debug("Column uses MySQL character set '{}', which has no mapping to a Java character set, will try it in lowercase", mySqlCharsetName);
-            encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName.toLowerCase());
+            encoding = CHARSET_MAPPING_WRAPPER.getJavaEncodingForMysqlCharSet(mySqlCharsetName.toLowerCase());
         }
         if (encoding == null) {
             logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);
