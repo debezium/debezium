@@ -1522,7 +1522,7 @@ This behaviour mimics the standard behaviour of PostgreSQL JDBC driver - see `or
 
 The setting of the PostgreSQL connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types.
 
-When the `decimal.handling.mode` property is set to `precise`, the connector uses the Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns. This is the default mode.
+When the `decimal.handling.mode` property is set to `precise`, the connector uses the Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL`, `NUMERIC` and `MONEY` columns. This is the default mode.
 
 .Mappings when `decimal.handling.mode` is `precise`
 [cols="28%a,17%a,55%a",options="header"]
@@ -1543,12 +1543,19 @@ The `scale` schema parameter contains an integer representing how many digits th
  +
 The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
 
+|`MONEY[(M[,D])]`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
+The `scale` schema parameter is determined by `money.fraction.digits` connector configuration property.
+
 |===
 
 There is an exception to this rule.
 When the `NUMERIC` or `DECIMAL` types are used without scale constraints, the values coming from the database have a different (variable) scale for each value. In this case, the connector uses `io.debezium.data.VariableScaleDecimal`, which contains both the value and the scale of the transferred value.
 
-.Mappings of decimal types when there are no scale constraints
+.Mappings of `DECIMAL` and `NUMERIC` types when there are no scale constraints
 [cols="25%a,20%a,55%a",options="header"]
 |===
 |PostgreSQL data type
@@ -1569,7 +1576,7 @@ Contains a structure with two fields: `scale` of type `INT32` that contains the 
 
 |===
 
-When the `decimal.handling.mode` property is set to `double`, the connector represents all `DECIMAL` and `NUMERIC` values as Java double values and encodes them as shown in the following table.
+When the `decimal.handling.mode` property is set to `double`, the connector represents all `DECIMAL`, `NUMERIC` and `MONEY` values as Java double values and encodes them as shown in the following table.
 
 .Mappings when `decimal.handling.mode` is `double`
 [cols="30%a,30%a,40%a",options="header"]
@@ -1586,9 +1593,13 @@ When the `decimal.handling.mode` property is set to `double`, the connector repr
 |`FLOAT64`
 |
 
+|`MONEY[(M[,D])]`
+|`FLOAT64`
+|
+
 |===
 
-The last possible setting for the `decimal.handling.mode` configuration property is `string`. In this case, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation, and encodes them as shown in the following table.
+The last possible setting for the `decimal.handling.mode` configuration property is `string`. In this case, the connector represents `DECIMAL`, `NUMERIC` and `MONEY` values as their formatted string representation, and encodes them as shown in the following table.
 
 .Mappings when `decimal.handling.mode` is `string`
 [cols="30%a,30%a,40%a",options="header"]
@@ -1602,6 +1613,10 @@ The last possible setting for the `decimal.handling.mode` configuration property
 |
 
 |`DECIMAL[(M[,D])]`
+|`STRING`
+|
+
+|`MONEY[(M[,D])]`
 |`STRING`
 |
 
@@ -2771,6 +2786,11 @@ However, it's best to use the minimum number that are required to specify a uniq
 `include` causes those events to be included. +
  +
 For information about the structure of _truncate_ events and about their ordering semantics, see xref:postgresql-truncate-events[].
+
+|[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
+|`2`
+|Specifies how many decimal digits should be used when converting Postgres `money` type to `java.math.BigDecimal`, which represents the values in change events.
+Applicable only when `decimal.handling.mode` is set to `precise`.
 
 |===
 
