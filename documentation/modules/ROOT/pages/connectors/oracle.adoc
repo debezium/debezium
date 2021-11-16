@@ -1059,7 +1059,10 @@ The following table describes how the connector maps binary and character large 
 [NOTE]
 ====
 Oracle only supplies column values for `CLOB`, `NCLOB`, and `BLOB` data types if they're explicitly set or changed in a SQL statement.
-As {prodname} cannot safely provide the column value when its not provided by the database, the connector returns a placeholder as defined by the connector configuration property, `unavailable.value.placeholder`.
+This means that change events will never contain the value of an unchanged `CLOB`, `NCLOB`, or `BLOB` column,
+but a placeholder as defined by the connector property, `unavailable.value.placeholder`.
+
+If the value of a `CLOB`, `NCLOB`, or `BLOB` column gets updated, the new value will be contained in the `after` part of the corresponding update change events whereas the unavailable value placeholder will be used in the `before` part.
 ====
 
 [id="oracle-numeric-types"]
