@@ -137,7 +137,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             return;
         }
         if (key instanceof Struct) {
-            if (window.remove((Struct) key) != null) {
+            if (window.remove(key) != null) {
                 LOGGER.info("Removed '{}' from window", key);
             }
         }
@@ -169,12 +169,18 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             addLowerBound(table, sql);
             condition = sql.toString();
         }
+
+        final String selectColumns = table.columns().stream()
+                .map(Column::name)
+                .collect(Collectors.joining(", "));
+
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.joining(", "));
+
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
                 limit,
-                "*",
+                selectColumns,
                 Optional.ofNullable(condition),
                 orderBy);
     }
@@ -215,10 +221,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     }
 
     protected String buildMaxPrimaryKeyQuery(Table table) {
-        final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
+        final List<Column> keyColumns = getKeyMapper().getKeyKolumns(table);
+
+        final String selectColumns = keyColumns.stream()
+                .map(Column::name)
+                .collect(Collectors.joining(", "));
+
+        final String orderBy = keyColumns.stream()
                 .map(Column::name)
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
-        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, "*", Optional.empty(), orderBy);
+
+        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, selectColumns, Optional.empty(), orderBy);
     }
 
     @Override
