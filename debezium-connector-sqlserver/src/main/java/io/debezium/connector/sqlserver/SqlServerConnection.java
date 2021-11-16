@@ -39,6 +39,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.util.Strings;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -542,13 +543,13 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
-    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
+    public String buildSelectWithRowLimits(TableId tableId, int limit, List<String> projection, Optional<String> condition,
                                            String orderBy) {
         final StringBuilder sql = new StringBuilder("SELECT TOP ");
         sql
                 .append(limit)
                 .append(' ')
-                .append(projection)
+                .append(Strings.join(", ", projection))
                 .append(" FROM ");
         sql.append(quotedTableIdString(tableId));
         if (condition.isPresent()) {

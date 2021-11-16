@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.RelationalSnapshotColumnSelector;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -44,6 +45,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     private final SqlServerConnection jdbcConnection;
     private final SqlServerDatabaseSchema sqlServerDatabaseSchema;
     private final Map<SqlServerPartition, Map<TableId, SqlServerChangeTable>> changeTablesByPartition = new HashMap<>();
+    private final RelationalSnapshotColumnSelector<SqlServerPartition> columnSelector;
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection jdbcConnection,
                                               SqlServerDatabaseSchema schema, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
@@ -52,6 +54,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.sqlServerDatabaseSchema = schema;
+        this.columnSelector = new RelationalSnapshotColumnSelector<>(connectorConfig, jdbcConnection, this::filterChangeTableColumns);
     }
 
     @Override
@@ -271,18 +274,14 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                              String overriddenSelect, TableId tableId) {
-        String snapshotSelectColumns = getPreparedColumnNames(snapshotContext.partition, sqlServerDatabaseSchema.tableFor(tableId)).stream()
+        String snapshotSelectColumns = columnSelector.getPreparedColumnNames(snapshotContext.partition, sqlServerDatabaseSchema.tableFor(tableId))
+                .stream()
                 .collect(Collectors.joining(", "));
         return overriddenSelect.replaceAll(SELECT_ALL_PATTERN.pattern(), snapshotSelectColumns);
     }
 
-    @Override
-    protected boolean additionalColumnFilter(SqlServerPartition partition, TableId tableId, String columnName) {
-        return filterChangeTableColumns(partition, tableId, columnName);
-    }
-
-    private boolean filterChangeTableColumns(SqlServerPartition partition, TableId tableId, String columnName) {
-        SqlServerChangeTable changeTable = changeTablesByPartition.get(partition).get(tableId);
+    private boolean filterChangeTableColumns(SqlServerPartition partition, Table table, String columnName) {
+        SqlServerChangeTable changeTable = changeTablesByPartition.get(partition).get(table.id());
         if (changeTable != null) {
             return changeTable.getCapturedColumns().contains(columnName);
         }
