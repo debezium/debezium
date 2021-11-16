@@ -12,6 +12,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.events.EventType;
@@ -21,6 +22,8 @@ import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+
+import oracle.jdbc.OracleTypes;
 
 /**
  * @author Chris Cranford
@@ -418,5 +421,54 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[1]).isEqualTo("UNISTR('\0412\044B') || UNISTR('\043F\043E')");
         assertThat(entry.getNewValues()).hasSize(0);
+    }
+
+    @Test
+    public void shouldReturnUnavailableColumnValueForLobColumnTypes() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.TEST"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("COL1").create())
+                .addColumn(Column.editor().name("VAL_CLOB").jdbcType(OracleTypes.CLOB).create())
+                .addColumn(Column.editor().name("VAL_NCLOB").jdbcType(OracleTypes.NCLOB).create())
+                .addColumn(Column.editor().name("VAL_BLOB").jdbcType(OracleTypes.BLOB).create())
+                .addColumn(Column.editor().name("VAL_CLOB2").jdbcType(OracleTypes.CLOB).create())
+                .addColumn(Column.editor().name("VAL_BLOB2").jdbcType(OracleTypes.BLOB).create())
+                .create();
+
+        // test unchanged column values in update with both supplied & unsupported lob fields
+        String sql = "update \"DEBEZIUM\".\"TEST\" set \"COL1\" = 'Test', \"VAL_CLOB2\" = 'X', \"VAL_BLOB2\" = HEXTORAW('0E') where \"ID\" = '1';";
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(7);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getOldValues()[2]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[3]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[4]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[5]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[6]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getNewValues()).hasSize(7);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[2]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getNewValues()[3]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getNewValues()[4]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getNewValues()[5]).isEqualTo("X");
+        assertThat(entry.getNewValues()[6]).isEqualTo("HEXTORAW('0E')");
+
+        // test unchanged column values not supplied in delete statements
+        sql = "delete from \"DEBEZIUM\".\"TEST\" where \"ID\" = '1';";
+        entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(7);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getOldValues()[2]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[3]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[4]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[5]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getOldValues()[6]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getNewValues()).isEmpty();
     }
 }

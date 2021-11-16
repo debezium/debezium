@@ -1049,6 +1049,15 @@ The following table describes how the connector maps binary and character large 
 
 |===
 
+[NOTE]
+====
+Oracle only supplies column values for `CLOB`, `NCLOB`, and `BLOB` data types if they're explicitly set or changed in a SQL statement.
+This means that change events will never contain the value of an unchanged `CLOB`, `NCLOB`, or `BLOB` column,
+but a placeholder as defined by the connector property, `unavailable.value.placeholder`.
+
+If the value of a `CLOB`, `NCLOB`, or `BLOB` column gets updated, the new value will be contained in the `after` part of the corresponding update change events whereas the unavailable value placeholder will be used in the `before` part.
+====
+
 [id="oracle-numeric-types"]
 === Numeric types
 
@@ -2430,6 +2439,10 @@ If the difference between the timestamps is less than the specified value, and t
 By default, change events have large object columns, but the columns contain no values.
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
+
+|[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
+|`__debezium_unavailable_value`
+|Specifies the constant that the connector provides to indicate that the original value is unchanged and not provided by the database.
 
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |No default

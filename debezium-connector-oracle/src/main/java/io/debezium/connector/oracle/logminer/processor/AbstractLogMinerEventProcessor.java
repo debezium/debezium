@@ -340,11 +340,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void handleLobWrite(LogMinerEventRow row) {
         if (!getConfig().isLobEnabled()) {
-            LOGGER.trace("LOB support is disabled, LOB_WRITE '{}' skipped", row);
+            LOGGER.trace("LOB support is disabled, LOB_WRITE scn={}, tableId={} skipped", row.getScn(), row.getTableId());
             return;
         }
 
-        LOGGER.trace("LOB_WRITE: {}", row);
+        LOGGER.trace("LOB_WRITE: scn={}, tableId={}, changeTime={}, transactionId={}",
+                row.getScn(), row.getTableId(), row.getChangeTime(), row.getTransactionId());
+
         final TableId tableId = row.getTableId();
         final Table table = getSchema().tableFor(tableId);
         if (table == null) {

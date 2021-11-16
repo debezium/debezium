@@ -391,6 +391,6 @@ public final class TestHelper {
                 config.hStoreHandlingMode(),
                 config.binaryHandlingMode(),
                 config.intervalHandlingMode(),
-                config.toastedValuePlaceholder());
+                config.getUnavailableValuePlaceholder());
     }
 }

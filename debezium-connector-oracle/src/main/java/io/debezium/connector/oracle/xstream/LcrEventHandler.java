@@ -23,13 +23,16 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
+import oracle.jdbc.OracleTypes;
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.LCR;
@@ -140,7 +143,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
         else {
             // Since the row has no chunk data, it can be dispatched immediately.
-            dispatchDataChangeEvent(row, Collections.emptyMap());
+            dispatchDataChangeEvent(row, null);
         }
     }
 
@@ -174,6 +177,36 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
                 table = schema.tableFor(tableId);
             }
+        }
+
+        // LCR events may arrive both with and without chunk data.
+        //
+        // For example a DELETE by a primary key on a table with LOB columns will not supply any
+        // LOB chunk data. In other scenarios such as an UPDATE where a LOB column is modified,
+        // the updated LOB value will be provided but the prior value will not be.
+        //
+        // So in either case, the values need to be serialized here such that any LOB column that
+        // is not explicitly provided in the map is initialized with the unavailable value
+        // marker object so its transformed correctly by the value converters.
+        if (connectorConfig.isLobEnabled()) {
+            LOGGER.trace("Inspecting table '{}' LOB columns for unavailable value sets.", table.id());
+            if (chunkValues == null) {
+                // Happens when dispatching an LCR without any chunk data.
+                // Initializing the chunk values map with 1 entries as a baseline.
+                // todo: would be useful in the future to track some type of "has-lob" flag on Table
+                chunkValues = new HashMap<>(0);
+            }
+            for (Column column : table.columns()) {
+                if (isLobColumn(column) && !chunkValues.containsKey(column.name())) {
+                    // Column not supplied, initialize with unavailable value marker
+                    LOGGER.trace("\tColumn '{}' initialized with unavailable value.", column.name());
+                    chunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
+                }
+            }
+        }
+        else if (chunkValues == null) {
+            // it's safe to initialize as an empty map if LOB support is disabled
+            chunkValues = Collections.emptyMap();
         }
 
         dispatcher.dispatchDataChangeEvent(
@@ -326,5 +359,9 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     @Override
     public ChunkColumnValue createChunk() throws StreamsException {
         throw new UnsupportedOperationException("Should never be called");
+    }
+
+    private boolean isLobColumn(Column column) {
+        return column.jdbcType() == OracleTypes.CLOB || column.jdbcType() == OracleTypes.NCLOB || column.jdbcType() == OracleTypes.BLOB;
     }
 }
