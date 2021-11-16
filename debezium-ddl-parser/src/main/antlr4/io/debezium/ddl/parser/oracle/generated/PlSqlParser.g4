@@ -2622,7 +2622,7 @@ merge_table_partition
     ;
 
 modify_table_partition
-    : MODIFY PARTITION partition_name (ADD | DROP) list_values_clause
+    : MODIFY PARTITION partition_name ((ADD | DROP) list_values_clause)? (REBUILD UNUSABLE LOCAL INDEXES)?
     ;
 
 split_table_partition
