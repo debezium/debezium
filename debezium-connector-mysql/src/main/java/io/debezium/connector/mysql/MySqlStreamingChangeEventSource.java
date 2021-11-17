@@ -354,7 +354,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             // Capture that we've completed another event ...
             offsetContext.completeEvent();
 
-            // Set the value of lastOffset
+            // update last offset used for logging
             lastOffset = offsetContext.getOffset();
 
             if (skipEvent) {
