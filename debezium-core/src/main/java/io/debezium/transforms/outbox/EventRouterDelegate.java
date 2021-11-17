@@ -74,7 +74,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     private boolean onlyHeadersInOutputMessage = false;
 
-    private boolean expandJSONPayload;
+    private boolean expandJsonPayload;
     private ObjectMapper objectMapper;
 
     private SmtManager<R> smtManager;
@@ -136,7 +136,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         headers.add("id", eventId, eventIdField.schema());
 
         // Check to expand JSON string into real JSON.
-        if (expandJSONPayload) {
+        if (expandJsonPayload) {
             if (!(payload instanceof String)) {
                 LOGGER.warn("Expand JSON payload is turned on but payload is not a string in {}", r.key());
             }
@@ -145,13 +145,13 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
                 try {
                     // Parse and get Jackson JsonNode.
-                    final JsonNode jsonPayload = parseJSONPayload(payloadString);
+                    final JsonNode jsonPayload = parseJsonPayload(payloadString);
                     // Build a new Schema and new payload Struct that replace existing ones.
                     payloadSchema = SchemaBuilderUtil.jsonNodeToSchema(jsonPayload);
                     payload = StructBuilderUtil.jsonNodeToStruct(jsonPayload, payloadSchema);
                 }
                 catch (Exception e) {
-                    LOGGER.warn("ExpandJSONPayload: " + e.getMessage(), e);
+                    LOGGER.warn("JSON expansion failed", e);
                 }
             }
         }
@@ -283,10 +283,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         }
     }
 
-    /**
-     *
-     */
-    private JsonNode parseJSONPayload(String jsonString) throws Exception {
+    private JsonNode parseJsonPayload(String jsonString) throws Exception {
         if (jsonString.startsWith("{") || jsonString.startsWith("[")) {
             return objectMapper.readTree(jsonString);
         }
@@ -317,8 +314,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
                 config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR));
 
-        expandJSONPayload = config.getBoolean(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
-        if (expandJSONPayload) {
+        expandJsonPayload = config.getBoolean(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
+        if (expandJsonPayload) {
             objectMapper = new ObjectMapper();
         }
 
