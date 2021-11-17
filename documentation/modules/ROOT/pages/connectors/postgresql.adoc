@@ -15,7 +15,7 @@ ifdef::community[]
 
 toc::[]
 
-{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6, 10, 11, 12 and 13 are supported.
+{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6 - 14 are supported.
 endif::community[]
 ifdef::product[]
 {prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 10, 11, 12 and 13 are supported.
