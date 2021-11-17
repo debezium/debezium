@@ -546,19 +546,33 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
 
                 // Check if ALL COLUMNS supplemental logging is enabled for each captured table
-                for (TableId tableId : schema.getTables().tableIds()) {
+                for (TableId tableId : schema.tableIds()) {
                     if (!isTableAllColumnsSupplementalLoggingEnabled(connection, tableId)) {
                         throw new DebeziumException("Supplemental logging not properly configured for table " + tableId + ". "
                                 + "Use: ALTER TABLE " + tableId.schema() + "." + tableId.table()
                                 + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
                     }
-                    checkTableColumnNameLengths(schema.tableFor(tableId));
+                    final Table table = schema.tableFor(tableId);
+                    if (table == null) {
+                        // This should never happen; however in the event something would cause it we can
+                        // at least get the table identifier thrown in the error to debug from rather
+                        // than an erroneous NPE
+                        throw new DebeziumException("Unable to find table in relational model: " + tableId);
+                    }
+                    checkTableColumnNameLengths(table);
                 }
             }
             else {
                 // ALL supplemental logging is enabled, now check table/column lengths
-                for (TableId tableId : schema.getTables().tableIds()) {
-                    checkTableColumnNameLengths(schema.tableFor(tableId));
+                for (TableId tableId : schema.tableIds()) {
+                    final Table table = schema.tableFor(tableId);
+                    if (table == null) {
+                        // This should never happen; however in the event something would cause it we can
+                        // at least get the table identifier thrown in the error to debug from rather
+                        // than an erroneous NPE
+                        throw new DebeziumException("Unable to find table in relational model: " + tableId);
+                    }
+                    checkTableColumnNameLengths(table);
                 }
             }
         }
