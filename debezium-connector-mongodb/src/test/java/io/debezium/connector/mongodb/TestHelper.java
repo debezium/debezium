@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.junit.Assert.fail;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,6 +21,8 @@ import org.fest.assertions.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoDatabase;
 
 import io.debezium.config.Configuration;
@@ -36,6 +40,7 @@ public class TestHelper {
     protected final static Logger logger = LoggerFactory.getLogger(TestHelper.class);
 
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     public static Configuration getConfiguration() {
         final Builder cfgBuilder = Configuration.fromSystemProperties("connector.").edit()
@@ -122,7 +127,26 @@ public class TestHelper {
         Document actualAfter = TestHelper
                 .getDocumentWithoutLanguageVersion(value.getString("after"));
         Assertions.assertThat(actualAfter).isEqualTo(expectedAfter);
-        Assertions.assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
-        Assertions.assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
+        final String actualUpdatedFields = value.getStruct("updateDescription").getString("updatedFields");
+        if (actualUpdatedFields != null) {
+            Assertions.assertThat(updatedFields).isNotNull();
+            try {
+                Assertions.assertThat((Object) mapper.readTree(actualUpdatedFields)).isEqualTo(mapper.readTree(updatedFields));
+            }
+            catch (JsonProcessingException e) {
+                fail("Failed to parse JSON <" + actualUpdatedFields + "> or <" + updatedFields + ">");
+            }
+        }
+        else {
+            Assertions.assertThat(updatedFields).isNull();
+        }
+        final List<Object> actualRemovedFields = value.getStruct("updateDescription").getArray("removedFields");
+        if (actualRemovedFields != null) {
+            Assertions.assertThat(removedFields).isNotNull();
+            Assertions.assertThat(actualRemovedFields.containsAll(removedFields) && removedFields.containsAll(actualRemovedFields));
+        }
+        else {
+            Assertions.assertThat(removedFields).isNull();
+        }
     }
 }
