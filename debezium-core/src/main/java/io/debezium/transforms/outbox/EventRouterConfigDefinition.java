@@ -9,11 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
+import io.debezium.util.Strings;
 
 /**
  * Debezium Outbox Transform configuration definition
@@ -21,6 +24,8 @@ import io.debezium.transforms.tracing.ActivateTracingSpan;
  * @author Renato mefi (gh@mefi.in)
  */
 public class EventRouterConfigDefinition {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventRouterConfigDefinition.class);
 
     public enum InvalidOperationBehavior implements EnumeratedValue {
         SKIP_AND_WARN("warn"),
@@ -165,13 +170,15 @@ public class EventRouterConfigDefinition {
             .withDefault("payload")
             .withDescription("The column which contains the event payload within the outbox table");
 
+    @Deprecated
     public static final Field FIELD_PAYLOAD_ID = Field.create("table.field.event.payload.id")
             .withDisplayName("Event Payload ID Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(EventRouterConfigDefinition::validateFieldPayloadId)
             .withDefault("aggregateid")
-            .withDescription("The column which contains the payload ID within the outbox table");
+            .withDescription("The column which contains the payload ID within the outbox table; deprecated use 'table.field.event.key' instead.");
 
     public static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("table.fields.additional.placement")
             .withDisplayName("Settings for each additional column in the outbox table")
@@ -310,5 +317,16 @@ public class EventRouterConfigDefinition {
         }
 
         return additionalFields;
+    }
+
+    static int validateFieldPayloadId(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String value = config.getString(field);
+        if (!Strings.isNullOrEmpty(value)) {
+            LOGGER.warn("Configuration option '{}' is deprecated and will be removed in future releases. " +
+                    "Please use '{}' instead.",
+                    field.name(),
+                    FIELD_EVENT_KEY.name());
+        }
+        return 0;
     }
 }

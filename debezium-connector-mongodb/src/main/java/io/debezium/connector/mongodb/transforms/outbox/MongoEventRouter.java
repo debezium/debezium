@@ -303,10 +303,6 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
                 EventRouterConfigDefinition.FIELD_PAYLOAD.name());
 
         fieldNameConverter.put(
-                MongoEventRouterConfigDefinition.FIELD_PAYLOAD_ID.name(),
-                EventRouterConfigDefinition.FIELD_PAYLOAD_ID.name());
-
-        fieldNameConverter.put(
                 MongoEventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
                 EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name());
 

@@ -57,14 +57,6 @@ public class MongoEventRouterConfigDefinition {
             .withDefault("payload")
             .withDescription("The field which contains the event payload within the outbox collection");
 
-    static final Field FIELD_PAYLOAD_ID = Field.create("collection.field.event.payload.id")
-            .withDisplayName("Event Payload ID Field")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault("aggregateid")
-            .withDescription("The field which contains the payload ID within the outbox collection");
-
     static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("collection.fields.additional.placement")
             .withDisplayName("Settings for each additional column in the outbox table")
             .withType(ConfigDef.Type.LIST)
@@ -115,7 +107,7 @@ public class MongoEventRouterConfigDefinition {
         Field.group(
                 config,
                 "Collection",
-                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
+                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
                 FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,

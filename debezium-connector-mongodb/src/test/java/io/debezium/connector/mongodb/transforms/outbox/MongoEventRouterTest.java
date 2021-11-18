@@ -405,7 +405,7 @@ public class MongoEventRouterTest {
     public void canConfigureEveryTableField() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
-        config.put(MongoEventRouterConfigDefinition.FIELD_PAYLOAD_ID.name(), "payload_id");
+        config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "payload_id");
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_TYPE.name(), "event_type");
         config.put(MongoEventRouterConfigDefinition.FIELD_PAYLOAD.name(), "payload_body");
         config.put(MongoEventRouterConfigDefinition.ROUTE_BY_FIELD.name(), "payload_id");
@@ -453,7 +453,7 @@ public class MongoEventRouterTest {
     public void canInfluenceDocumentFieldTypes() {
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
-        config.put(MongoEventRouterConfigDefinition.FIELD_PAYLOAD_ID.name(), "payload_id");
+        config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "payload_id");
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_TYPE.name(), "event_type");
         config.put(MongoEventRouterConfigDefinition.FIELD_PAYLOAD.name(), "payload_body");
         config.put(MongoEventRouterConfigDefinition.ROUTE_BY_FIELD.name(), "my_route_field");
