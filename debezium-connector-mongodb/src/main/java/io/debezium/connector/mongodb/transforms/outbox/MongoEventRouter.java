@@ -23,6 +23,7 @@ import org.bson.json.JsonWriterSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
@@ -36,6 +37,7 @@ import io.debezium.transforms.outbox.EventRouterDelegate;
  *
  * @author Sungho Hwang
  */
+@Incubating
 public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoEventRouter.class);
