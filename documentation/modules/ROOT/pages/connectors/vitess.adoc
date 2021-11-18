@@ -1056,7 +1056,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[vitess-property-gtid]]<<vitess-property-gtid, `+vitess.gtid+`>>
 |_n/a_
-|An optional gtid position for a shard to stream from. This has to be set together with `vitess.shard`. If not configured, the connector streams changes from the latest position for the given shard.
+|An optional GTID position for a shard to stream from. This has to be set together with `vitess.shard`. If not configured, the connector streams changes from the latest position for the given shard.
 
 |[[vitess-property-stop-on-reshard]]<<vitess-property-stop-on-reshard, `+vitess.stop_on_reshard+`>>
 |`false`
@@ -1066,7 +1066,7 @@ The following configuration properties are _required_ unless a default value is 
  +
 `false` - the stream will be automatically migrated for the new shards after a reshard operation. +
  +
-If set to `true`, should also consider setting `vitess.gtid` in the configuration.
+If set to `true`, you should also consider setting `vitess.gtid` in the configuration.
 
 |[[vitess-property-database-user]]<<vitess-property-database-user, `+vitess.database.user+`>>
 |_n/a_
