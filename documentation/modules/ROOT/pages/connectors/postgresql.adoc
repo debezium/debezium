@@ -163,6 +163,16 @@ endif::community[]
 
 |===
 
+// Type: concept
+// ModuleID: debezium-{context}-ad-hoc-snapshots
+[id="{context}-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/ref-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
+// ModuleID: debezium-{context}-incremental-snapshots
+[id="{context}-incremental-snapshots"]
+==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
@@ -2937,6 +2947,37 @@ The following _advanced_ configuration properties have defaults that work in mos
 |Default
 |Description
 
+|[[postgresql-property-incremental-snapshot-chunk-size]]<<postgresql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|1024
+|The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
+The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
+ifdef::[product]
+[IMPORTANT]
+====
+Incremental snapshots is a Technology Preview feature.
+For more information, see xref:postgresql-incremental-snapshots[Incremental snapshots].
+====
+endif::[product]
+
+|[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
+|No default value
+a|Fully-qualified name of the data collection that is used to send signals to the connector. +
+Use the following format to specify the collection name: +
+`_<schemaName>_._<tableName>_`
+
+ifdef::[product]
+[IMPORTANT]
+====
+Signaling is a Technology Preview feature.
+For more information, see xref:sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
+====
+endif::[product]
+
+
 |[[postgresql-property-snapshot-mode]]<<postgresql-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
 |Specifies the criteria for performing a snapshot when the connector starts: +
@@ -2962,9 +3003,14 @@ ifdef::community[]
 |No default
 | A full Java class name that is an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Required when the `snapshot.mode` property is set to `custom`. See {link-prefix}:{link-postgresql-connector}#postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
+
 |[[postgresql-property-snapshot-include-collection-list]]<<postgresql-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match names of schemas specified in `table.include.list` for which you *want* to take the snapshot when the `snapshot.mode` is not `never`
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`.
+Incremental snapshots are not affected by the `snapshot.include.collection.list`.
+
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails. {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[How the connector performs snapshots] provides details.
@@ -3142,15 +3188,6 @@ If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix 
 |A comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
-
-|[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection, `+signal.data.collection+`>>
-|No default
-|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
-The name format is _schema-name.table-name_.
-
-|[[postgresql-property-incremental-snapshot-chunk-size]]<<postgresql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
-|`1024`
-| The number of rows fetched from the database for each incremental snapshot iteration.
 
 |===
 
