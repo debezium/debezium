@@ -355,12 +355,6 @@ This ID will be stored in the emitted event's headers under the `id` key.
 |Collection
 |Specifies the outbox collection field that contains the event payload.
 
-|[[mongodb-outbox-event-router-property-collection-field-event-payload-id]]<<mongodb-outbox-event-router-property-collection-field-event-payload-id, `collection.field.event.payload.id`>>
-|`aggregateid`
-|Collection
-|Specifies the outbox collection field that contains the payload ID.
-This ID will be used as the emitted event's key.
-
 |[[mongodb-outbox-event-router-property-collection-expand-json-payload]]<<mongodb-outbox-event-router-property-collection-expand-json-payload, `collection.expand.json.payload`>>
 |`false`
 |Collection
