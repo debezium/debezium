@@ -325,14 +325,14 @@ The following table describes the options that you can specify for the outbox ev
 |[[mongodb-outbox-event-router-property-collection-op-invalid-behavior]]<<mongodb-outbox-event-router-property-collection-op-invalid-behavior, `collection.op.invalid.behavior`>>
 |`warn`
 |Collection
-a|Determines the behavior of the SMT when there is an `UPDATE` operation on the outbox collection. Possible settings are:
+a|Determines the behavior of the SMT when there is an update operation on the outbox collection. Possible settings are:
 
 * `warn` - The SMT logs a warning and continues to the next outbox collection document.
 * `error` - The SMT logs an error and continues to the next outbox collection document.
 * `fatal` - The SMT logs an error and the connector stops processing.
 
-All changes in an outbox collection are expected to be `INSERT` operations. That is, an outbox collection functions as a queue; updates to documents in an outbox collection are not allowed.
-The SMT automatically filters out `DELETE` operations on an outbox collection.
+All changes in an outbox collection are expected to be an insert or delete operation. That is, an outbox collection functions as a queue; updates to documents in an outbox collection are not allowed.
+The SMT automatically filters out delete operations (for removing proceeded outbox events) on an outbox collection.
 
 |[[mongodb-outbox-event-router-property-collection-field-event-id]]<<mongodb-outbox-event-router-property-collection-field-event-id, `collection.field.event.id`>>
 |`_id`
