@@ -130,7 +130,7 @@
                         <color>yellow</color>
                       </log>
                       <wait>
-                        <log>.*waiting for connections on port 27017</log> <!-- internal port, multiline matching -->
+                        <log>.*[Ww]aiting for connections.*27017</log> <!-- internal port, multiline matching -->
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
