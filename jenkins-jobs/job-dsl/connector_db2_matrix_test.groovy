@@ -50,25 +50,26 @@ ls -A1 | xargs rm -rf
 
 # Retrieve sources
 if [ "$PRODUCT_BUILD" == true ] ; then
-    PROFILE_PROD="pnc"
     curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
+    pushd debezium-*-src
+    pushd $(ls | grep -P 'debezium-[^-]+.Final')
 
     # Build parent
     mvn clean install -s ~/.m2/settings-snapshots.xml -am -fae \
         -DskipTests -DskipITs \
         -Dinsecure.repositories=WARN \
-        -P$PROFILE_PROD
+        -Ppnc
 
     # Run connector tests
-    cd debezium-connector-db2
+    popd
+    pushd debezium-connector-db2-*
     mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -am -fae \
         -Dmaven.test.failure.ignore=true \
         -Dtest.argline="-Ddebezium.test.records.waittime=5" \
         -Dinsecure.repositories=WARN \
-        -P$PROFILE_PROD \
+        -Ppnc \
         $MAVEN_ARGS
 else
-    PROFILE_PROD="none"
     git clone $REPOSITORY .
     git checkout $BRANCH
 
