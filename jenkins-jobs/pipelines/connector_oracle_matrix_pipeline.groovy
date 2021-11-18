@@ -39,7 +39,7 @@ pipeline {
                 axes {
                     axis {
                         name 'ORACLE_VERSION'
-                        values '19.3.0'
+                        values '19.3.0', '12.2.0.1'
                     }
                 }
                 stages {
