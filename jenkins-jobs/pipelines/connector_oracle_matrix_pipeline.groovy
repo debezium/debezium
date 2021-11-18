@@ -29,8 +29,12 @@ pipeline {
                 }
 
                 sh '''
-                     curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
-                    '''
+                curl -OJs $SOURCE_URL && unzip debezium-*-src.zip               
+                pushd debezium-*-src
+                mv $(ls | grep -P 'debezium-[^-]+.Final') ${WORKSPACE}/debezium
+                popd
+                rm -rf debezium-*-src
+                '''
             }
         }
 

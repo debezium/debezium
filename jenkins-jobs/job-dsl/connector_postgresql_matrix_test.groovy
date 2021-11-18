@@ -59,10 +59,11 @@ ls -A1 | xargs rm -rf
 
 # Retrieve sources
 if [ "$PRODUCT_BUILD" == true ] ; then
-    PROFILE_PROD="pnc"
+    PROFILE_PROD="-Ppnc"
     curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
+    pushd debezium-*-src
+    pushd $(ls | grep -P 'debezium-[^-]+.Final')
 else
-    PROFILE_PROD="none"
     git clone $REPOSITORY . 
     git checkout $BRANCH
 fi
@@ -82,7 +83,7 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-
     -Ddecoder.plugin.name=$DECODER_PLUGIN \
     -Dtest.argline="-Ddebezium.test.records.waittime=5" \
     -Dinsecure.repositories=WARN \
-    -P$PROFILE_PROD \
+    $PROFILE_PROD \
     $MAVEN_ARGS
 ''')
     }
