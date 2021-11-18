@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version-mongo-server: ["4.0", "4.2"]
+        version-mongo-server: ["4.0", "4.2", "5.0"]
     steps:
       - uses: actions/checkout@v2
       - name: Setup java 17
