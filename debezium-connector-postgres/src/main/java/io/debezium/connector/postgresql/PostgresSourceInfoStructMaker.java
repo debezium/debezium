@@ -19,8 +19,8 @@ public class PostgresSourceInfoStructMaker extends AbstractSourceInfoStructMaker
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name("io.debezium.connector.postgresql.Source")
-                .field(SourceInfo.SCHEMA_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SourceInfo.TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(SourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.XMIN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
@@ -34,15 +34,13 @@ public class PostgresSourceInfoStructMaker extends AbstractSourceInfoStructMaker
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        assert sourceInfo.database() != null;
+        assert sourceInfo.database() != null
+                && sourceInfo.schemaName() != null
+                && sourceInfo.tableName() != null;
 
         Struct result = super.commonStruct(sourceInfo);
-        if (sourceInfo.schemaName() != null) {
-            result.put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.schemaName());
-        }
-        if (sourceInfo.tableName() != null) {
-            result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.tableName());
-        }
+        result.put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.schemaName());
+        result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.tableName());
         if (sourceInfo.txId() != null) {
             result.put(SourceInfo.TXID_KEY, sourceInfo.txId());
         }

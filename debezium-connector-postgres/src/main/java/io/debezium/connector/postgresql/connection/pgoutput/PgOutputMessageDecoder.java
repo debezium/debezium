@@ -589,9 +589,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         String prefix = readString(buffer);
         int contentLength = buffer.getInt();
         byte[] content = new byte[contentLength];
-        for (int i = 0; i < contentLength; i++) {
-            content[i] = buffer.get();
-        }
+        buffer.get(content);
 
         LOGGER.trace("Event: {}", MessageType.LOGICAL_DECODING_MESSAGE);
         LOGGER.trace("Commit LSN: {}", lsn);
@@ -601,7 +599,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Prefix: {}", prefix);
 
         processor.process(new LogicalDecodingMessage(
-                Operation.LOGICAL_DECODING_MESSAGE,
+                Operation.MESSAGE,
                 commitTimestamp,
                 transactionId,
                 isTransactional,

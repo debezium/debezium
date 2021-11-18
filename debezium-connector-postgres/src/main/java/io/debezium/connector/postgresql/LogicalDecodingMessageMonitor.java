@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Base64.Encoder;
@@ -23,6 +24,19 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.HexConverter;
 
+/**
+ * The class receives {@link LogicalDecodingMessage} events and delivers the event to the dedicated topic.
+ * <p>
+ * Every {@code MESSAGE} event has its {@code payload} block enriched to contain
+ *
+ * <ul>
+ * <li> boolean that significies if the messsage is transactional </li>
+ * <li> message prefix </li>
+ * <li> message content that is converted based on the connector's configured {@code binary.handling.mode}</li>
+ * </ul>
+ *
+ * @author Lairen Hightower
+ */
 public class LogicalDecodingMessageMonitor {
     private final BlockingConsumer<SourceRecord> sender;
     private final String topicName;
@@ -32,7 +46,7 @@ public class LogicalDecodingMessageMonitor {
     private final Schema schema;
 
     public static final String LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX = ".logical_decoding_message";
-    public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY = "logical_decoding_message";
+    public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY = "message";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY = "prefix";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY = "content";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY = "transactional";
@@ -67,13 +81,17 @@ public class LogicalDecodingMessageMonitor {
         logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, convertContent(message.getContent()));
 
         final Struct value = new Struct(schema);
-        value.put(Envelope.FieldName.OPERATION, Envelope.Operation.LOGICAL_DECODING_MESSAGE.code());
+        value.put(Envelope.FieldName.OPERATION, Envelope.Operation.MESSAGE.code());
         value.put(Envelope.FieldName.TIMESTAMP, timestamp);
         value.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, logicalMsgStruct);
         value.put(Envelope.FieldName.SOURCE, offsetContext.getSourceInfo());
 
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(), topicName,
                 null, null, null, value.schema(), value));
+
+        if (message.isLastEventForLsn()) {
+            offsetContext.getTransactionContext().endTransaction();
+        }
     }
 
     private Object convertContent(byte[] content) {
@@ -83,9 +101,9 @@ public class LogicalDecodingMessageMonitor {
             case HEX:
                 return HexConverter.convertToHexString(content);
             case BYTES:
-                return content;
+                return ByteBuffer.wrap(content);
             default:
-                return content;
+                return ByteBuffer.wrap(content);
         }
     }
 }

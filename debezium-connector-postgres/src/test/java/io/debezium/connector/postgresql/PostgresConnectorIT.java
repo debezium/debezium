@@ -2912,6 +2912,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE, "include");
+
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
@@ -2929,19 +2930,18 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
 
             assertNull(source.getInt64(SourceInfo.TXID_KEY));
-            assertNull(source.getString(SourceInfo.TABLE_NAME_KEY));
-            assertNull(source.getString(SourceInfo.SCHEMA_NAME_KEY));
-            assertNull(source.getInt64(SourceInfo.XMIN_KEY));
             assertNotNull(source.getInt64(SourceInfo.TIMESTAMP_KEY));
             assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
+            assertEquals("", source.getString(SourceInfo.TABLE_NAME_KEY));
+            assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
 
-            assertEquals(Envelope.Operation.LOGICAL_DECODING_MESSAGE.code(), op);
+            assertEquals(Envelope.Operation.MESSAGE.code(), op);
             assertEquals("foo", message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
             assertFalse(message.getBoolean(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY));
         });
 
         // emit transactional logical decoding message
-        TestHelper.execute("SELECT pg_logical_emit_message(true, 'txn_foo', 'E\"\\\\001');");
+        TestHelper.execute("SELECT pg_logical_emit_message(true, 'txn_foo', 'txn_bar');");
 
         SourceRecords txnRecords = consumeRecordsByTopic(1);
         List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("logical_decoding_message"));
@@ -2952,14 +2952,13 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             Struct source = value.getStruct(Envelope.FieldName.SOURCE);
             Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
 
-            assertNull(source.getString(SourceInfo.TABLE_NAME_KEY));
-            assertNull(source.getString(SourceInfo.SCHEMA_NAME_KEY));
-            assertNull(source.getInt64(SourceInfo.XMIN_KEY));
             assertNotNull(source.getInt64(SourceInfo.TXID_KEY));
             assertNotNull(source.getInt64(SourceInfo.TIMESTAMP_KEY));
             assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
+            assertEquals("", source.getString(SourceInfo.TABLE_NAME_KEY));
+            assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
 
-            assertEquals(Envelope.Operation.LOGICAL_DECODING_MESSAGE.code(), op);
+            assertEquals(Envelope.Operation.MESSAGE.code(), op);
             assertEquals("txn_foo", message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
             assertTrue(message.getBoolean(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY));
         });

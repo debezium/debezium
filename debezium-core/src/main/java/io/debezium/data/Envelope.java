@@ -52,9 +52,9 @@ public final class Envelope {
          */
         TRUNCATE("t"),
         /**
-         * An operation that resulted in a generic message posted directly to the replication slot
+         * An operation that resulted in a generic message
          */
-        LOGICAL_DECODING_MESSAGE("m");
+        MESSAGE("m");
 
         private final String code;
 

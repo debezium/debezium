@@ -9,6 +9,11 @@ package io.debezium.connector.postgresql.connection;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Replication message instance representing a generic logical decoding message
+ *
+ * @author Lairen Hightower
+ */
 public class LogicalDecodingMessage implements ReplicationMessage {
     private final Operation operation;
     private final Instant commitTime;

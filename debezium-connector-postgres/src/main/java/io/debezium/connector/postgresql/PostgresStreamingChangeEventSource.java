@@ -232,7 +232,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     }
                     maybeWarnAboutGrowingWalBacklog(true);
                 }
-                else if (message.getOperation() == Operation.LOGICAL_DECODING_MESSAGE) {
+                else if (message.getOperation() == Operation.MESSAGE) {
                     if (connectorConfig.logicalDecodingMessageHandlingMode() != PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE) {
                         LOGGER.debug("Received logical decoding message {}", message);
                         if (message.isLastEventForLsn()) {
@@ -248,8 +248,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         commitMessage(partition, offsetContext, lsn);
                     }
                     else {
-                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(),
-                                message.getTransactionId(), taskContext.getSlotXmin(connection));
+                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(),
+                                taskContext.getSlotXmin(connection));
                     }
 
                     dispatcher.dispatchLogicalDecodingMessage(

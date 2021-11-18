@@ -24,6 +24,11 @@ import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
 
+/**
+ * Custom extension of the {@link EventDispatcher} to accommodate routing {@link LogicalDecodingMessage} events to the change event queue.
+ *
+ * @author Lairen Hightower
+ */
 public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDispatcher<T> {
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final LogicalDecodingMessageMonitor logicalDecodingMessageMonitor;
