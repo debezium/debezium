@@ -1,0 +1,134 @@
+ifdef::[community]
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+Please let us know if you encounter any problems while using this extension.
+====
+endif::[community]
+
+ifdef::[product]
+[IMPORTANT]
+====
+The use of ad hoc snapshots is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::[product]
+
+//You can run an ad hoc snapshot to refresh data in a topic in cases where the initial snapshot is damaged or incomplete.
+//For, example, a new snapshot might be warranted if any of the following events occur in the database:
+//* The database is restored from a backup, or requires repairs related to downstream data loss or corruption.
+//* A subset of data requires repair, for example, if a specific set of rows becomes corrupted in the downstream topic.
+
+//You initiate an ad hoc snapshot by sending a message that specifies the action type `execute-snapshot` to the signaling database.
+//When the connector processes the message, it triggers the snapshot operation.
+//The operation reads the first and last primary key values and uses those values as the start and end point for each table.
+////
+The ad hoc snapshot process differs from the initial snapshot process in the following ways:
+
+Can be triggered while the connector is running.
+Can run concurrently with streaming. Ability to re-bootstrap previously snapshotted tables by generating a new snapshot.
+Can be resumed when interrupted by a connector restart.
+Can adapt to updates in the filter configuration (include/exclude lists for captured tables)
+
+Typically, it not necessary for an applications to have access to the entire data history of a database all at once.
+Instead, they require the data to be delivered at an unspecific point of time.
+This leads to the idea of incremental snapshotting, where the snapshot is taken in parallel with streaming.
+The result will be that the streaming will be executed from start and the snapshotting will be executed in chunks, which would allow resuming of snapshot in the middle of execution.
+Signals serve as triggers to perform some action.
+You run a SQL query to insert signals into the database. When the connector reads the new signal record, the connector performs the specified action.
+////
+
+By default, a connector runs an initial snapshot operation only after it starts for the first time.
+Following this initial snapshot, the snapshot process is not repeated, and the connector captures data for subsequent change events through streaming only.
+
+However, in some situations the data that the connector obtained during the initial snapshot might become stale, lost, or incomplete.
+To provide a mechanism for recapturing table data, {prodname} includes an option to perform ad hoc snapshots.
+The following changes in a database might be cause for performing an ad hoc snapshot:
+
+* The connector configuration is modified to capture a different set of tables.
+* Kafka topics are deleted and must be rebuilt.
+* Data corruption occurs due to a configuration error or some other problem.
+
+You can re-run a snapshot for a table for which you previously captured a snapshot by initiating a so-called _ad-hoc snapshot_.
+Ad hoc snapshots require the use of {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[signaling tables].
+You initiate an ad hoc snapshot by sending a signal request to the {prodname} signaling table.
+
+When you initiate an ad hoc snapshot of an existing table, the connector appends content to the topic that already exists for the table.
+It does not create a new topic, unless the topic was removed.
+// To enable {prodname} to create topics automatically, xref:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] must be enabled.
+////
+For each signal record that you send to the table, you specify a name,
+Incremental snapshotting in Debezium is available in form of ad-hoc snapshots.
+Rather than configuring the connector to run a snapshot, you send a snapshot signal that triggers the connector to run a snapshot of a set of tables.
+The signal for triggering an ad hoc snapshot is called `execute-snapshot` and it uses the following message format:
+
+{"data-collections": ["<table-id-1>", "<table-id-2>", "<table-id-3>", ...]}
+
+After you request an ad hoc table snapshot, {prodname} completes the following tasks:
+
+* Obtains the largest primary key in the table; this is the snapshot endpoint, and its value is stored in the connector offsets
+* Splits the table into chunks based on the primary key’s total order.
+* Performs a snapshot of the table data in chunks - no lengthy process at the connector start, and also in case of crashes or a controlled termination of the connector, the snapshotting can be resumed since the last completed chunk.
+The default chunk size is 1,024. You can specify a different chunk size in the `incremental.snapshot.chunk.size` configuration property.
+* After the connector queries a chunk, it selects the next set of records based on the configured chunk size, whose primary keys are larger than the last one from the previous chunk (or the first primary key for the first chunk) and which are smaller or equal to the recorded maximum primary key.
+The chunk size specifies the number of rows that the snapshot collects during each fetch operation on the database.
+ You can increase the value for efficiency purposes (a smaller total number of snapshot queries will be executed), but this should be balanced with the increased memory consumption needed for the buffer. It is recommended to do some experimentation in your own environment to identify the setting working best for your situation.
+////
+
+Each signal specifies the tables to include in the snapshot.
+An ad hoc snapshot can recapture the entire contents of the database, or capture only a subset of the tables in the database.
+
+Ad hoc snapshots are available for the following {prodname} connectors:
+
+* Db2
+* MySQL
+* Oracle
+* PostgreSQL
+* SQL Server
+
+You specify the tables to capture by listing them in a signal message that you send to the signaling table.
+The signal is named `execute-snapshot` and accepts messages in the following format:
+
+.Example of an ad hoc snapshot signal record
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| Specifies the type of snapshot that you want to run. +
+Currently, you can request only xref:{context}-incremental-snapshots[`incremental` snapshots]. 
+
+
+|`data-collections`
+|_N/A_
+| An array that contains the fully-qualified names of the tables to be snapshotted. +
+The format of the names is the same as for {link-prefix}:{context}-property-signal-data-collection[signal.data.collection] configuration option.
+
+|===
+
+==== Triggering an ad hoc snapshot
+
+You initiate an ad hoc snapshot by adding a signaling table entry with the `execute-snapshot` signal type.
+After the connector processes the message, it starts the snapshot operation.
+The operation reads the first and last primary key values and uses those values as the start and end point for each table.
+
+
+Currently, the `execute-snapshot` action type triggers xref:debezium-signaling-incremental-snapshots[incremental snapshots] only.
+
+.Prerequisites
+
+* xref:{link-signalling}#debezium-enabling-signaling"[Signaling is enabled].
+
+An example of the signal to be triggered is this:
+
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema1.table2"]}')
+----
+// `"INSERT INTO _<schema>_.debezium_signal VALUES ('signal-1', 'execute-snapshot', '{\"data-collections\": [\"inventory.orders\"]}')"`
+// In this release, ad hoc snapshots are limited to `"type": "incremental"`.
+//Because `incremental` is the default type.
