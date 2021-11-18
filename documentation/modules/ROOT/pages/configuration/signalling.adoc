@@ -1,5 +1,7 @@
+// Category: debezium-using
+// Type: assembly
 [id="sending-signals-to-a-debezium-connector"]
-= Sending signals to a Debezium connector
+= Sending signals to a {prodname} connector
 
 :toc:
 :toc-placement: macro
@@ -8,155 +10,210 @@
 :source-highlighter: highlight.js
 
 toc::[]
-
+ifdef::[community]
 [NOTE]
 ====
 This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this extension.
 ====
 
 == Overview
-Sometimes it is necessary for the user to modify a connector behaviour or trigger a one-time action (e.g. snapshot of a single table).
-To fulfill such needs {prodname} provides a mechanism how to send a signal to a {prodname} connector to trigger an action.
-As it might be necessary to synchronize such an action with the dataflow the signal is implemented as a write to a data collection.
+endif::[community]
 
-Signalling is disabled by default.
-The name of the signalling data collection must be set via connector configuration parameter to enable the function.
-The signalling data collection must be *explictly* added among captured data collections, i.e., included in the `table.include.list` parameter.
+ifdef::[product]
+[IMPORTANT]
+====
+Signaling is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::[product]
 
-.Connector configuration
-[cols="3,9",options="header"]
-|===
-|Parameter |  Description
+The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
+To trigger a connector to perform a specified action, you issue a SQL command to add a signal message to a specialized signaling table, also referred to as a signaling data collection.
+The signaling table, which you create on the source database, is designated exclusively for communicating with {prodname}.
+When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-signal-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-signal-record[ad hoc snapshot record] is added to the signaling table, it reads the signal, and initiates the requested operation.
 
-|`signal.data.collection`
-|Fully-qualified name of data collection. +
-The name format is connector specific, e.g. `"some_schema.debezium_signals"` in case of the {prodname} Postgres connector. +
-For SQL Server it should be formatted as `"some_database.some_schema.debezium_signals"`.
+Signaling is available for use with the following {prodname} connectors:
 
-|===
+* Db2
+* MySQL
+ifdef::[community]
+* Oracle
+endif::[community]
+* PostgreSQL
+* SQL Server
 
 
-=== Data collection structure
+// Type: procedure
+// Title: Enabling {prodname} signaling
+[id="debezium-signaling-enabling-signaling"]
+== Enabling signaling
 
-The signalling data collection must conform to a required format:
-It must contain three fields;
-the naming of the fields is arbitrary and only order of the field is important.
-It is recommended but not mandatory to use the field names as defined in the table below:
+By default, the {prodname} signaling mechanism is disabled.
+You must explicitly enable signaling for each connector that you want to use it with.
 
-.Signalling data collection structure
+.Procedure
+
+. On the source database, create a signaling data collection table for sending signals to the connector
+  For information about the required structure of the signaling data collection, see xref:{link-signalling}#debezium-signaling-data-collection-structure[Structure of a signaling data collection].
+
+. On source databases that implement a native change data capture (CDC) mechanism, such as Db2 or SQL Server, enable CDC for the signaling table.
+
+. Add the name of the signaling data collection to the {prodname} connector configuration. +
+  In the connector configuration, add the property `signal.data.collection`, and set its value to the fully-qualified name of the signaling data collection that you created in Step 1. +
+ +
+For example, `signal.data.collection = inventory.debezium_signals`. +
+ +
+The format for the fully-qualified name of the signaling collection depends on which connector you use. +
+See the following list to find the naming format to use with your connector:
+
+ifdef::[community]
+Db2, Oracle, or PostgreSQL:: `_<schemaName>_._<tableName>_`
+endif::[community]
+ifdef::[product]
+Db2 or PostgreSQL:: `_<schemaName>_._<tableName>_`
+endif::product[]
+MySQL:: `_<databaseName>_._<tableName>_`
+SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_` +
+ +
+For more information about setting the `signal.data.collection` property, see the table of configuration properties for your connector.
+. Add the signaling table to the list of tables to monitor. +
+  In the configuration for the {prodname} connector, add the name of the data collection that you created in Step 1 to the `table.include.list` property. +
+ +
+For more information about the `table.include.list` property, see the table of configuration properties for your connector.
+
+// Type: reference
+// ModuleID: debezium-signaling-required-structure-of-a-signaling-data-collection
+// Title: Required structure of a {prodname} signaling data collection
+[id="debezium-signaling-data-collection-structure"]
+=== Structure of a signaling data collection
+
+A signaling data collection, or signaling table, stores signals that users send to trigger a connector to perform a specified operation.
+The structure of the signaling table must conform to the following standard format.
+
+* Contain three fields (columns).
+* Fields are arranged in a specific order, as shown in xref:debezium-signaling-required-structure-of-a-signaling-data-collection[Table 1].
+
+[id="debezium-signaling-required-structure-of-a-signaling-data-collection"]
+.Required structure of a signaling data collection
 [cols="1,1,9",options="header"]
 |===
 |Column | Type | Description
 
-|`id`
-|`string` +
+|`id` +
 (required)
-|A unique identifier of this signal instance. +
-It can be used for logging, debugging or deduplication.
-Usually an UUID string.
+|`string`
 
-|`type`
-|`string` +
+|An arbitrary unique string that identifies a signal instance. +
+You assign an `id` to each signal that you submit to the signaling table. +
+Typically the ID is a UUID string. +
+You can use signal instances for logging, debugging, or de-duplication. +
+// When {prodname} runs the requested operation, it generates a signal message with an arbitrary `id` string that is unrelated to the string in the submitted signal.
+
+|`type` +
 (required)
-|The type of the signal to be sent. +
-There are signals common for all connectors or specific to a subset of connectors.
+|`string`
 
-|`data`
-|`string` +
+|Specifies the type of signal to send. +
+You can use some signal types with any connector for which signaling is available, while other signal types are available for specific connectors only.
+
+|`data` +
 (optional)
-|JSON formatted parameters that are passed to a signal action. +
-Each signal has its own expected set of data.
+|`string`
+
+|Specifies JSON-formatted parameters to pass to a signal action. +
+Each signal type requires a specific set of data.
 
 |===
 
-Such table could be created with a DDL command similar to:
+NOTE: The column names in a data collection are arbitrary.
+The preceding table provides suggested column names.
+If you use a different naming scheme, ensure that the values in each field are consistent with the intended content.
+
+// Type: procedure
+// Title: Creating a {prodname} signaling data collection
+[id="debezium-signaling-creating-a-signal-data-collection"]
+=== Creating a signaling data collection
+
+You create a signaling table by submitting a standard SQL DDL query to the source database.
+
+.Prerequisites
+
+* You have sufficient access privileges to create a table on the target database.
+
+.Procedure
+
+* Submit a SQL query to the source database to create a table that is consistent with the xref:debezium-signaling-required-structure-of-a-signaling-data-collection[required structure], as shown in the following example: +
+ +
+`CREATE TABLE _<tableName>_ (id VARCHAR(_<varcharValue>_) PRIMARY KEY, type VARCHAR(__<varcharValue>__) NOT NULL, data VARCHAR(_<varcharValue>_) NULL);` +
+
+[NOTE]
+====
+Allocate enough space in the `VARCHAR` parameter for the `id` variable to accommodate the size of the ID strings of signals sent to the signaling table. +
+If the size of an ID exceeds the available space, the connector cannot process the signal.
+====
+
+The following example shows a `CREATE TABLE` command that creates a three-column `debezium_signal` table:
 
 [source,sql]
 ----
 CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT NULL, data VARCHAR(2048) NULL);
 ----
 
-.Example of a signal record
-[cols="1,9",options="header"]
+// Type: concept
+// ModuleID: debezium-signaling-types-of-signal-actions
+// Title: Types of {prodname} signal actions
+== Signal actions
+
+You can use signaling to initiate the following actions:
+
+* xref:debezium-signaling-logging[Add messages to the log].
+* xref:debezium-signaling-triggering-incremental-snapshots[Trigger ad hoc snapshots].
+
+You can use the preceding signals with all of the {prodname} connectors that are compatible with signaling.
+
+// Type: concept
+[id="debezium-signaling-logging"]
+=== Logging signals
+
+You can request a connector to add an entry to the log by creating a signaling table entry with the `log` signal type.
+After processing the signal, the connector prints the specified message to the log.
+Optionally, you can configure the signal so that the resulting message includes the streaming coordinates.
+
+[id="debezium-signaling-example-of-a-logging-record"]
+.Example of a signaling record for adding a log message
+[cols="1,9,9",options="header"]
 |===
-|Column | Value
+|Column | Value | Description
 
 |id
 |`924e3ff8-2245-43ca-ba77-2af9af02fa07`
+|
 
 |type
 |`log`
+|The action type of the signal.
 
 |data
 |`{"message": "Signal message at offset {}"}`
-
+| The `message` parameter specifies the string to print to the log. +
+If you add a placeholder (`{}`) to the message, it is replaced with streaming coordinates.
 |===
 
+// Type: concept
+[id="debezium-signaling-ad-hoc-snapshots"]
+=== Ad hoc snapshot signals
 
-== Signal Actions
+You can request a connector to initiate an ad hoc snapshot by creating a signaling table entry with the `execute-snapshot` signal type.
+After processing the signal, the connector runs the requested snapshot operation.
 
-These signals are common to all connectors
+Unlike the initial snapshot that a connector runs after it first starts, an ad hoc snapshot occurs during runtime, after the connector has already begun to stream change events from a database.
+You can initiate ad hoc snapshots at any time.
 
-=== Logging
-
-The type of the logging action is `log`.
-It will print a provided message to the log optionally including streaming position.
-
-.Action parameters
-[cols="1,9",options="header"]
-|===
-|Name | Description
-
-|message
-|The string printed to the log. +
-If a placeholder `{}` is added to the message it will be replaced with streaming coordinates.
-
-|===
-
-.Example of a logging record
-[cols="1,9",options="header"]
-|===
-|Column | Value
-
-|id
-|`924e3ff8-2245-43ca-ba77-2af9af02fa07`
-
-|type
-|`log`
-
-|data
-|`{"message": "Signal message at offset {}"}`
-
-|===
-
-
-=== Triggering an Incremental Snapshot
-*Available for MySQL, PostgresSQL, Oracle, SQL Server and Db2 connectors*
-
-The type of the action is `execute-snapshot`.
-It will start an incremental snapshot operation. The operation first reads the first and last primary key values and use those as start and end point for each table.
-
-==== Optional Connector Configuration
-`incremental.snapshot.chunk.size`: Integer value. The number of rows collected at each fetch operation on the database.
-
-
-.Action parameters
-[cols="3,9",options="header", source, adoc]
-|===
-|Name | Description
-
-|data-collections
-a|The list of data collections to be snapshoted. +
-Formatting should be: +
-
-* MySQL: `"some_database.some_table"`
-* PostgresSQL and Db2: `"some_schema.some_table"`
-* SQL Server: `"some_database.some_schema.some_table"`
-* Oracle: `"some_schema.some_table"`
-
-|===
-
-.Example of executing an incremental snapshot
+[id="debezium-signaling-example-of-an-ad-hoc-signal-record"]
+.Example of an ad hoc snapshot signal record
 [cols="1,9",options="header"]
 |===
 |Column | Value
@@ -171,3 +228,49 @@ Formatting should be: +
 |`{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}`
 
 |===
+
+Currently, the `execute-snapshot` action type triggers xref:debezium-signaling-incremental-snapshots[incremental snapshots] only.
+
+For more information about ad hoc snapshots, see the _Snapshots_ topic in the documentation for your connector.
+
+.Additional resources
+
+* xref:{link-db2-connector}#{db2}-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
+* xref:{link-mysql-connector}#{mysql}-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
+ifdef::[community]
+* xref:{link-oracle-connector}#{oracle}-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
+endif::[community]
+* xref:{link-postgresql-connector}#{postgresql}-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
+* xref:{link-sqlserver-connector}#{sqlserver}-ad-hoc-snapshots[SQL Server connector ad hoc snapshots]
+
+// Type: concept
+[id="debezium-signaling-incremental-snapshots"]
+==== Incremental snapshots
+
+Incremental snapshots are a specific type of ad hoc snapshot.
+In an incremental snapshot, the connector captures the baseline state of the tables that you specify, similar to an initial snapshot.
+However, unlike an initial snapshot, an incremental snapshot captures tables in chunks, rather than all at once.
+The connector uses a watermarking method to track the progress of the snapshot.
+
+By capturing the initial state of the specified tables in chunks rather than in a single monolithic operation, incremental snapshots provide the following advantages over the initial snapshot process:
+
+* While the connector captures the baseline state of the specified tables, streaming of near real-time events from the transaction log continues uninterrupted.
+* If the incremental snapshot process is interrupted, it can be resumed from the point at which it stopped.
+* You can initiate an incremental snapshot at any time.
+
+The incremental snapshot concurrently captures events records directly from tables and from the transaction log.
+All of the records for a specified table are streamed to the same destination Kafka topic, both for the `READ`events that connector obtains through the snapshot process and the `UPDATE` and `DELETE` records that it captures from the transaction log.
+For each snapshot chunk, {prodname} buffers the two sets of records in memory and then compares the records that have the same primary key.
+The connector writes only the most recent version of a record to the destination topic.
+
+For more information about incremental snapshots, see the _Snapshots_ topic in the documentation for your connector.
+
+.Additional resources
+
+* xref:{link-db2-connector}#{db2}-incremental-snapshots[Db2 connector incremental snapshots]
+* xref:{link-mysql-connector}#{mysql}-incremental-snapshots[MySQL connector incremental snapshots]
+ifdef::[community]
+* xref:{link-oracle-connector}#{oracle}-incremental-snapshots[Oracle connector incremental snapshots]
+endif::[community]
+* xref:{link-postgresql-connector}#{postgresql}-incremental-snapshots[PostgreSQL connector incremental snapshots]
+* xref:{link-sqlserver-connector}#{sqlserver}-incremental-snapshots[SQL Server connector incremental snapshots]
