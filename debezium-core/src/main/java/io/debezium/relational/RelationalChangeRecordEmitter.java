@@ -27,8 +27,6 @@ import io.debezium.util.Clock;
 public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecordEmitter<TableSchema> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalChangeRecordEmitter.class);
-    // for backwards compat with connectors in other repos
-    protected final Logger logger = LOGGER;
 
     public static final String PK_UPDATE_OLDKEY_FIELD = "__debezium.oldkey";
     public static final String PK_UPDATE_NEWKEY_FIELD = "__debezium.newkey";
