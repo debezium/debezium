@@ -1292,18 +1292,22 @@ STRING_USER_NAME:                    (
                                        | [0-9]+ '.' [0-9]+ '.' [0-9]+ '.' [0-9]+
                                        | [0-9A-Fa-f:]+
                                      );
-LOCAL_ID:                            '@'
-                                (
-                                  [A-Z0-9._$]+ 
-                                  | SQUOTA_STRING
-                                  | DQUOTA_STRING
-                                  | BQUOTA_STRING
-                                );
-GLOBAL_ID:                           '@' '@' 
-                                (
-                                  [A-Z0-9._$]+ 
-                                  | BQUOTA_STRING
-                                );
+STRING_USER_NAME_MARIADB:            (
+                                        SQUOTA_STRING | DQUOTA_STRING
+                                        | BQUOTA_STRING | ID_LITERAL
+                                     )  '@';
+LOCAL_ID:                               '@'
+                                     (
+                                        [A-Z0-9._$]+
+                                        | SQUOTA_STRING
+                                        | DQUOTA_STRING
+                                        | BQUOTA_STRING
+                                    );
+GLOBAL_ID:                              '@' '@'
+                                    (
+                                        [A-Z0-9._$]+
+                                        | BQUOTA_STRING
+                                    );
 
 
 // Fragments for Literal primitives
