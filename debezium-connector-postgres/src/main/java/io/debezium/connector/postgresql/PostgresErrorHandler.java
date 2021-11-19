@@ -24,9 +24,10 @@ public class PostgresErrorHandler extends ErrorHandler {
     @Override
     protected boolean isRetriable(Throwable throwable) {
         if (throwable instanceof PSQLException
+                && throwable.getMessage() != null
                 && (throwable.getMessage().contains("Database connection failed when writing to copy")
-                        || throwable.getMessage().contains("Database connection failed when reading from copy"))
-                || throwable.getMessage().contains("FATAL: terminating connection due to administrator command")) {
+                        || throwable.getMessage().contains("Database connection failed when reading from copy")
+                        || throwable.getMessage().contains("FATAL: terminating connection due to administrator command"))) {
             return true;
         }
 

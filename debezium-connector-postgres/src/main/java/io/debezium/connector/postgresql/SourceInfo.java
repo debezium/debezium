@@ -107,11 +107,11 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param commitTime the commit time of the transaction that generated the event;
      * may be null indicating that this information is not available
      * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
-     * @param tableId the table that should be included in the source info; may be null
      * @param xmin the xmin of the slot, may be null
+     * @param tableId the table that should be included in the source info; may be null
      * @return this instance
      */
-    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, Long xmin, TableId tableId) {
         this.lsn = lsn;
         if (commitTime != null) {
             this.timestamp = commitTime;
@@ -121,21 +121,19 @@ public final class SourceInfo extends BaseSourceInfo {
         if (tableId != null && tableId.schema() != null) {
             this.schemaName = tableId.schema();
         }
+        else {
+            this.schemaName = "";
+        }
         if (tableId != null && tableId.table() != null) {
             this.tableName = tableId.table();
+        }
+        else {
+            this.tableName = "";
         }
         return this;
     }
 
-    /**
-     * Updates the source with the LSN of the last committed transaction.
-     */
-    protected SourceInfo updateLastCommit(Lsn lsn) {
-        this.lastCommitLsn = lsn;
-        this.lsn = lsn;
-        return this;
-    }
-
+    // TODO https://issues.redhat.com/browse/DBZ-4329, make this call the method above, so to reset the attributes not provided here
     protected SourceInfo update(Instant timestamp, TableId tableId) {
         this.timestamp = timestamp;
         if (tableId != null && tableId.schema() != null) {
@@ -151,12 +149,15 @@ public final class SourceInfo extends BaseSourceInfo {
      * Updates the source with information about a particular received or read event that does not have an associated table or schema
      */
     protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, Long xmin) {
+        return update(lsn, commitTime, txId, xmin, null);
+    }
+
+    /**
+     * Updates the source with the LSN of the last committed transaction.
+     */
+    protected SourceInfo updateLastCommit(Lsn lsn) {
+        this.lastCommitLsn = lsn;
         this.lsn = lsn;
-        this.timestamp = commitTime;
-        this.txId = txId;
-        this.xmin = xmin;
-        this.tableName = "";
-        this.schemaName = "";
         return this;
     }
 
@@ -168,6 +169,7 @@ public final class SourceInfo extends BaseSourceInfo {
         return this.xmin;
     }
 
+    @Override
     public String sequence() {
         List<String> sequence = new ArrayList<String>(2);
         String lastCommitLsn = (this.lastCommitLsn != null)

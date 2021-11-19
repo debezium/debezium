@@ -30,7 +30,7 @@ import io.debezium.util.HexConverter;
  * Every {@code MESSAGE} event has its {@code payload} block enriched to contain
  *
  * <ul>
- * <li> boolean that significies if the messsage is transactional </li>
+ * <li> boolean that signifies if the message is transactional </li>
  * <li> message prefix </li>
  * <li> message content that is converted based on the connector's configured {@code binary.handling.mode}</li>
  * </ul>
@@ -38,18 +38,19 @@ import io.debezium.util.HexConverter;
  * @author Lairen Hightower
  */
 public class LogicalDecodingMessageMonitor {
-    private final BlockingConsumer<SourceRecord> sender;
-    private final String topicName;
-    private final BinaryHandlingMode binaryMode;
-    private final Encoder base64Encoder;
-    private final Schema blockSchema;
-    private final Schema schema;
 
     public static final String LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX = ".message";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY = "message";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY = "prefix";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY = "content";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY = "transactional";
+
+    private final BlockingConsumer<SourceRecord> sender;
+    private final String topicName;
+    private final BinaryHandlingMode binaryMode;
+    private final Encoder base64Encoder;
+    private final Schema blockSchema;
+    private final Schema schema;
 
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
         this.sender = sender;
@@ -69,7 +70,6 @@ public class LogicalDecodingMessageMonitor {
                 .field(Envelope.FieldName.SOURCE, connectorConfig.getSourceInfoStructMaker().schema())
                 .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, blockSchema)
                 .build();
-
     }
 
     public void logicalDecodingMessageEvent(Partition partition, OffsetContext offsetContext, Long timestamp,
