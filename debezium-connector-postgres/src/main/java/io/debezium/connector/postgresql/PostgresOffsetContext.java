@@ -52,7 +52,7 @@ public class PostgresOffsetContext implements OffsetContext {
 
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
-        sourceInfo.update(lsn, time, txId, null, sourceInfo.xmin());
+        sourceInfo.update(lsn, time, txId, sourceInfo.xmin(), null);
         sourceInfo.updateLastCommit(lastCommitLsn);
         sourceInfoSchema = sourceInfo.schema();
 
@@ -126,13 +126,9 @@ public class PostgresOffsetContext implements OffsetContext {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
-    public void updateSnapshotPosition(Instant timestamp, TableId tableId) {
-        sourceInfo.update(timestamp, tableId);
-    }
-
     public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
-        sourceInfo.update(lsn, commitTime, txId, tableId, xmin);
+        sourceInfo.update(lsn, commitTime, txId, xmin, tableId);
     }
 
     /**
