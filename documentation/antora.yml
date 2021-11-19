@@ -1,7 +1,7 @@
 name: reference
 title: Debezium Documentation
 version: 'master'
-display_version: 'Nightly'
+display_version: 'nightly'
 prerelease: true
 nav:
   - modules/ROOT/nav.adoc
