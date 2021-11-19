@@ -108,7 +108,7 @@ public class CustomConverterRegistry {
 
                 @Override
                 public boolean hasDefaultValue() {
-                    return column.hasDefaultValue();
+                    return column.defaultValueExpression().isPresent();
                 }
 
                 @Override

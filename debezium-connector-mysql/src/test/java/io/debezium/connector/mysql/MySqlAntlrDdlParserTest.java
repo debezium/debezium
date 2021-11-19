@@ -247,7 +247,7 @@ public class MySqlAntlrDdlParserTest {
         Table table = tables.forTable(null, null, "rack_shelf_bin");
         assertThat(table.columns()).hasSize(2);
         // The default value is computed for column dynamically so we set default to null
-        assertThat(table.columnWithName("bin_volume").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("bin_volume").defaultValueExpression().isPresent()).isFalse();
         assertThat(getColumnSchema(table, "bin_volume").defaultValue()).isNull();
     }
 
@@ -419,7 +419,7 @@ public class MySqlAntlrDdlParserTest {
 
         table = tables.forTable(null, null, "mytable");
         assertThat(table.columnWithName("last_val")).isNotNull();
-        assertThat(table.columnWithName("last_val").hasDefaultValue()).isFalse();
+        assertThat(table.columnWithName("last_val").defaultValueExpression().isPresent()).isFalse();
     }
 
     @Test
@@ -1440,11 +1440,11 @@ public class MySqlAntlrDdlParserTest {
         assertColumn(table, "c1", "CHAR BINARY", Types.CHAR, 60, -1, false, false, false, false, null);
         assertColumn(table, "c2", "VARCHAR BINARY", Types.VARCHAR, 60, -1, false, false, false, true, "");
         assertColumn(table, "c3", "TINYTEXT BINARY", Types.VARCHAR, -1, -1, false, false, false, true, "N");
-        assertColumn(table, "c4", "TEXT BINARY", Types.VARCHAR, -1, -1, true, false, false, true, null);
-        assertColumn(table, "c5", "MEDIUMTEXT BINARY", Types.VARCHAR, -1, -1, true, false, false, true, null);
-        assertColumn(table, "c6", "LONGTEXT BINARY", Types.VARCHAR, -1, -1, true, false, false, true, null);
-        assertColumn(table, "c7", "NCHAR BINARY", Types.NCHAR, 60, -1, true, false, false, true, null);
-        assertColumn(table, "c8", "NVARCHAR BINARY", Types.NVARCHAR, 60, -1, true, false, false, true, null);
+        assertColumn(table, "c4", "TEXT BINARY", Types.VARCHAR, -1, -1, true, false, false, false, null);
+        assertColumn(table, "c5", "MEDIUMTEXT BINARY", Types.VARCHAR, -1, -1, true, false, false, false, null);
+        assertColumn(table, "c6", "LONGTEXT BINARY", Types.VARCHAR, -1, -1, true, false, false, false, null);
+        assertColumn(table, "c7", "NCHAR BINARY", Types.NCHAR, 60, -1, true, false, false, false, null);
+        assertColumn(table, "c8", "NVARCHAR BINARY", Types.NVARCHAR, 60, -1, true, false, false, false, null);
     }
 
     @Test
@@ -2800,11 +2800,11 @@ public class MySqlAntlrDdlParserTest {
 
         Table table = tables.forTable(new TableId(null, null, "data"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("id").hasDefaultValue()).isEqualTo(false);
+        assertThat(table.columnWithName("id").defaultValueExpression().isPresent()).isEqualTo(false);
 
         Table tableDef = tables.forTable(new TableId(null, null, "datadef"));
         assertThat(tableDef.columnWithName("id").isOptional()).isEqualTo(false);
-        assertThat(tableDef.columnWithName("id").hasDefaultValue()).isEqualTo(true);
+        assertThat(tableDef.columnWithName("id").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(tableDef, "id").defaultValue()).isEqualTo(0);
 
         ddl = "DROP TABLE IF EXISTS data; " +
@@ -2813,7 +2813,7 @@ public class MySqlAntlrDdlParserTest {
 
         table = tables.forTable(new TableId(null, null, "data"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("id").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("id").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "id").defaultValue()).isEqualTo(1);
     }
 
@@ -2831,15 +2831,15 @@ public class MySqlAntlrDdlParserTest {
         String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
 
         assertThat(table.columnWithName("ts_col").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col").defaultValue()).isEqualTo(isoEpoch);
 
         assertThat(table.columnWithName("ts_col2").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("ts_col2").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col2").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col2").defaultValue()).isEqualTo(isoEpoch);
 
         assertThat(table.columnWithName("ts_col3").isOptional()).isEqualTo(true);
-        assertThat(table.columnWithName("ts_col3").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col3").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col3").defaultValue()).isNull();
 
         final String alter1 = "ALTER TABLE my_table " +
@@ -2850,7 +2850,7 @@ public class MySqlAntlrDdlParserTest {
 
         assertThat(table.columns().size()).isEqualTo(4);
         assertThat(table.columnWithName("ts_col4").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("ts_col4").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col4").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col4").defaultValue()).isEqualTo(isoEpoch);
 
         final String alter2 = "ALTER TABLE my_table " +
@@ -2861,7 +2861,7 @@ public class MySqlAntlrDdlParserTest {
 
         assertThat(table.columns().size()).isEqualTo(5);
         assertThat(table.columnWithName("ts_col5").isOptional()).isEqualTo(false);
-        assertThat(table.columnWithName("ts_col5").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col5").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col5").defaultValue()).isEqualTo(isoEpoch);
     }
 
@@ -2899,55 +2899,55 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
 
         Table table = tables.forTable(new TableId(null, null, "my_table"));
-        assertThat(table.columnWithName("ts_col01").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col01").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col01").defaultValue()).isEqualTo(toIsoString("2020-01-02 00:00:00"));
-        assertThat(table.columnWithName("ts_col02").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col02").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col02").defaultValue()).isEqualTo(toIsoString("2020-01-02 00:00:00"));
-        assertThat(table.columnWithName("ts_col03").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col03").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col03").defaultValue()).isEqualTo(toIsoString("2020-01-02 00:00:00"));
-        assertThat(table.columnWithName("ts_col04").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col04").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col04").defaultValue()).isEqualTo(toIsoString("2020-01-02 00:00:00"));
-        assertThat(table.columnWithName("ts_col05").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col05").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col05").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:00:00"));
-        assertThat(table.columnWithName("ts_col06").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col06").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col06").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:00:00"));
-        assertThat(table.columnWithName("ts_col07").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col07").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col07").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:00:00"));
-        assertThat(table.columnWithName("ts_col08").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col08").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col08").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
-        assertThat(table.columnWithName("ts_col09").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col09").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col09").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
-        assertThat(table.columnWithName("ts_col10").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col10").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col10").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col11").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col11").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col11").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05.123456"));
-        assertThat(table.columnWithName("ts_col12").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col12").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col12").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col13").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col13").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col13").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col14").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col14").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col14").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col15").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col15").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col15").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col16").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col16").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col16").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col17").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col17").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col17").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col18").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col18").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col18").defaultValue()).isEqualTo(toIsoString("1970-01-01 00:00:01"));
-        assertThat(table.columnWithName("ts_col19").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col19").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col19").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
-        assertThat(table.columnWithName("ts_col20").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col20").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col20").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
-        assertThat(table.columnWithName("ts_col21").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col21").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col21").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
-        assertThat(table.columnWithName("ts_col22").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col22").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col22").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
-        assertThat(table.columnWithName("ts_col23").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col23").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col23").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
-        assertThat(table.columnWithName("ts_col24").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col24").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col24").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
-        assertThat(table.columnWithName("ts_col25").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col25").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col25").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
 
         final String alter1 = "ALTER TABLE my_table ADD ts_col TIMESTAMP DEFAULT '2020-01-02';";
@@ -2955,7 +2955,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(alter1, tables);
         table = tables.forTable(new TableId(null, null, "my_table"));
 
-        assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col").defaultValue()).isEqualTo(toIsoString("2020-01-02 00:00:00"));
 
         final String alter2 = "ALTER TABLE my_table MODIFY ts_col TIMESTAMP DEFAULT '2020-01-02:03:04:05';";
@@ -2963,7 +2963,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(alter2, tables);
         table = tables.forTable(new TableId(null, null, "my_table"));
 
-        assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col").defaultValueExpression().isPresent()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
     }
 
@@ -3120,7 +3120,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(column.isOptional()).isEqualTo(optional);
         assertThat(column.isGenerated()).isEqualTo(generated);
         assertThat(column.isAutoIncremented()).isEqualTo(autoIncremented);
-        assertThat(column.hasDefaultValue()).isEqualTo(hasDefaultValue);
+        assertThat(column.defaultValueExpression().isPresent()).isEqualTo(hasDefaultValue);
         assertThat(getColumnSchema(table, name).defaultValue()).isEqualTo(defaultValue);
     }
 

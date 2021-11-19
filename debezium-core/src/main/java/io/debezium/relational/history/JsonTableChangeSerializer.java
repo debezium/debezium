@@ -91,7 +91,6 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         document.setBoolean("autoIncremented", column.isAutoIncremented());
         document.setBoolean("generated", column.isGenerated());
         document.setString("comment", column.comment());
-        document.setBoolean("hasDefaultValue", column.hasDefaultValue());
 
         column.defaultValueExpression().ifPresent(d -> document.setString("defaultValueExpression", d));
 
@@ -162,13 +161,9 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                         columnEditor.comment(columnComment);
                     }
 
-                    Boolean hasDefaultValue = v.getBoolean("hasDefaultValue");
                     String defaultValueExpression = v.getString("defaultValueExpression");
                     if (defaultValueExpression != null) {
                         columnEditor.defaultValueExpression(defaultValueExpression);
-                    }
-                    else if (Boolean.TRUE.equals(hasDefaultValue)) {
-                        columnEditor.defaultValueExpression(null);
                     }
 
                     Array enumValues = v.getArray("enumValues");

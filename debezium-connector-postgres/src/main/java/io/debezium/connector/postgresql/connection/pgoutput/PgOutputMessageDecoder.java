@@ -271,7 +271,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         final List<io.debezium.relational.Column> readColumns = getTableColumnsFromDatabase(connection, databaseMetadata, tableId);
         columnDefaults = readColumns.stream()
-                .filter(io.debezium.relational.Column::hasDefaultValue)
+                .filter(c -> c.defaultValueExpression().isPresent())
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
 
         columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));

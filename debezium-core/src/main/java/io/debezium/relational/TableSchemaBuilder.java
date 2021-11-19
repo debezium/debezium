@@ -404,7 +404,7 @@ public class TableSchemaBuilder {
             }
 
             // if the default value is provided
-            if (column.hasDefaultValue()) {
+            if (column.defaultValueExpression().isPresent()) {
                 fieldBuilder
                         .defaultValue(customConverterRegistry.getValueConverter(table.id(), column)
                                 .orElse(ValueConverter.passthrough()).convert(defaultValue));
