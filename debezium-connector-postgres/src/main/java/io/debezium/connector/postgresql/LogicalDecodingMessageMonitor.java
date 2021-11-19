@@ -45,7 +45,7 @@ public class LogicalDecodingMessageMonitor {
     private final Schema blockSchema;
     private final Schema schema;
 
-    public static final String LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX = ".logical_decoding_message";
+    public static final String LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX = ".message";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY = "message";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY = "prefix";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY = "content";

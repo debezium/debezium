@@ -2885,6 +2885,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertInsert(recordsForTopic.get(1), PK_FIELD, 201);
         assertInsert(recordsForTopic.get(2), PK_FIELD, 202);
         assertInsert(recordsForTopic.get(3), PK_FIELD, 203);
+    }
 
     @Test
     @FixFor("DBZ-2363")
@@ -2922,7 +2923,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', 'bar');");
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("logical_decoding_message"));
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
         recordsForTopic.forEach(record -> {
             Struct value = (Struct) record.value();
             String op = value.getString(Envelope.FieldName.OPERATION);
@@ -2944,7 +2945,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute("SELECT pg_logical_emit_message(true, 'txn_foo', 'txn_bar');");
 
         SourceRecords txnRecords = consumeRecordsByTopic(1);
-        List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("logical_decoding_message"));
+        List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("message"));
 
         txnRecordsForTopic.forEach(record -> {
             Struct value = (Struct) record.value();
