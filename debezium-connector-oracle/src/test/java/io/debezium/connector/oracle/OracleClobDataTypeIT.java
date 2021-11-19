@@ -1538,6 +1538,141 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             assertThat(after.get("DATA")).isNull();
             assertThat(((Struct) record.value()).get("op")).isEqualTo("c");
 
+            // Test updates with small clob fields
+            connection.executeWithoutCommitting("UPDATE dbz3645 set data='Test3U' WHERE id = 3");
+            connection.commit();
+
+            // Get streaming records
+            sourceRecords = consumeRecordsByTopic(1);
+            table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+            VerifyRecord.isValidUpdate(table.get(0), "ID", 3);
+
+            // When updating a table that contains a small CLOB value but the update does not modify
+            // any of the non-CLOB fields, we expect the placeholder in the before and the value in the after.
+            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getAfterField(table.get(0), "DATA")).isEqualTo("Test3U");
+            assertNoRecordsToConsume();
+
+            // Test updates with large clob fields
+            Clob clob2 = createClob(part(JSON_DATA, 1000, 21500));
+            connection.prepareQuery("UPDATE dbz3645 set data=? WHERE id=4", ps -> ps.setClob(1, clob2), null);
+            connection.commit();
+
+            // When updating a table that contains a large CLOB value but the update does not modify
+            // any of the non-CLOB fields, don't expect any events to be emitted. This is because
+            // the event is treated as a SELECT_LOB_LOCATOR and LOB_WRITE series which is ignored.
+            waitForAvailableRecords(10, TimeUnit.SECONDS);
+            assertNoRecordsToConsume();
+
+            // Update updates small clob row by changing non-clob fields
+            connection.executeWithoutCommitting("UPDATE dbz3645 set id=5 where id=3");
+            connection.commit();
+
+            // Get streaming records
+            // We expect 3 events: delete for ID=3, tombstone for ID=3, and insert for ID=5
+            sourceRecords = consumeRecordsByTopic(3);
+            table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+            VerifyRecord.isValidDelete(table.get(0), "ID", 3);
+            VerifyRecord.isValidTombstone(table.get(1), "ID", 3);
+            VerifyRecord.isValidInsert(table.get(2), "ID", 5);
+
+            // When updating a table that contains a CLOB value but the update does not modify
+            // any of the CLOB fields, we expect the placeholder.
+            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertNoRecordsToConsume();
+
+            // Test update large clob row by changing non-clob fields
+            connection.executeWithoutCommitting("UPDATE dbz3645 SET ID=6 WHERE ID=4");
+            connection.commit();
+
+            // Get streaming records
+            // We expect 3 events: delete for ID=4, tombstone for ID=4, and insert for ID=6
+            sourceRecords = consumeRecordsByTopic(3);
+            table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+            VerifyRecord.isValidDelete(table.get(0), "ID", 4);
+            VerifyRecord.isValidTombstone(table.get(1), "ID", 4);
+            VerifyRecord.isValidInsert(table.get(2), "ID", 6);
+
+            // When updating a table that contains a large CLOB value but the update does not modify
+            // any of the CLOB fields, we expect the placeholder.
+            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertNoRecordsToConsume();
+
+            // Test updating both small clob and non-clob fields
+            Clob clob1u2 = createClob(part(JSON_DATA, 10, 260));
+            connection.prepareQuery("UPDATE dbz3645 SET data=?, id=7 WHERE id=5", ps -> ps.setClob(1, clob1u2), null);
+            connection.commit();
+
+            // Get streaming records
+            // Expect 4 records: delete for ID=5, tombstone for ID=5, create for ID=7, update for ID=7
+            //
+            // NOTE: The extra update event is because the CLOB value is treated inline and so LogMiner
+            // does not emit a SELECT_LOB_LOCATOR event but rather a subsequent update that is captured
+            // but not merged since event merging happens only when LOB is enabled.
+            sourceRecords = consumeRecordsByTopic(4);
+            sourceRecords.allRecordsInOrder().forEach(System.out::println);
+            table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+            VerifyRecord.isValidDelete(table.get(0), "ID", 5);
+            VerifyRecord.isValidTombstone(table.get(1), "ID", 5);
+            VerifyRecord.isValidInsert(table.get(2), "ID", 7);
+            VerifyRecord.isValidUpdate(table.get(3), "ID", 7);
+
+            // When updating a table's small clob and non-clob columns
+            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getBeforeField(table.get(3), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getAfterField(table.get(3), "DATA")).isEqualTo(getClobString(clob1u2));
+            assertNoRecordsToConsume();
+
+            // Test updating both large clob and non-clob fields
+            Clob clob2u2 = createClob(part(JSON_DATA, 10, 12500));
+            connection.prepareQuery("UPDATE dbz3645 SET data=?, id=8 WHERE id=6", ps -> ps.setClob(1, clob2u2), null);
+            connection.commit();
+
+            // Get streaming records
+            // Expect 3 records: delete for ID=6, tombstone for ID=6, create for ID=8
+            sourceRecords = consumeRecordsByTopic(3);
+            table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+            VerifyRecord.isValidDelete(table.get(0), "ID", 6);
+            VerifyRecord.isValidTombstone(table.get(1), "ID", 6);
+            VerifyRecord.isValidInsert(table.get(2), "ID", 8);
+
+            // When updating a table's large clob and non-clob columns, we expect placeholder in after
+            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertNoRecordsToConsume();
+
+            // delete row with small clob data
+            connection.execute("DELETE FROM dbz3645 WHERE id=7");
+
+            // Get streaming records
+            // We expect 2 events: delete for ID=7, tombstone for ID=7
+            sourceRecords = consumeRecordsByTopic(2);
+            table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+            VerifyRecord.isValidDelete(table.get(0), "ID", 7);
+            VerifyRecord.isValidTombstone(table.get(1), "ID", 7);
+
+            // When delete from a table that contains a CLOB value we always expect the placeholder
+            // to be supplied, even when LOB support is disabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertNoRecordsToConsume();
+
+            // Test deleting a row from a table with a large clob column
+            connection.execute("DELETE FROM dbz3645 WHERE id=8");
+
+            // Get streaming records
+            // We expect 2 events: delete for ID=8, tombstone for ID=8
+            sourceRecords = consumeRecordsByTopic(2);
+            table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+            VerifyRecord.isValidDelete(table.get(0), "ID", 8);
+            VerifyRecord.isValidTombstone(table.get(1), "ID", 8);
+
+            // When delete from a table that contains a CLOB value we always expect the placeholder
+            // to be supplied, even when LOB support is disabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+
             // As a sanity, there should be no more records.
             assertNoRecordsToConsume();
         }
@@ -1693,5 +1828,13 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     private static String getUnavailableValuePlaceholder(Configuration config) {
         return config.getString(OracleConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER);
+    }
+
+    private static Object getBeforeField(SourceRecord record, String fieldName) {
+        return before(record).get(fieldName);
+    }
+
+    private static Object getAfterField(SourceRecord record, String fieldName) {
+        return after(record).get(fieldName);
     }
 }
