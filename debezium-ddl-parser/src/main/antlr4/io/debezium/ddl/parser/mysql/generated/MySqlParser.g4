@@ -1984,7 +1984,7 @@ indexColumnName
     ;
 
 userName
-    : STRING_USER_NAME | ID | STRING_LITERAL | keywordsCanBeId;
+    : STRING_USER_NAME | STRING_USER_NAME_MARIADB | ID | STRING_LITERAL | keywordsCanBeId;
 
 mysqlVariable
     : LOCAL_ID
