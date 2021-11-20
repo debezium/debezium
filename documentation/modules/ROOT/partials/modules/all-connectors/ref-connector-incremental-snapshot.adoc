@@ -23,51 +23,51 @@ Incremental snapshots are based on the link:https://github.com/debezium/debezium
 endif::[community]
 
 In an incremental snapshot, instead of capturing the full state of a database all at once, as in an initial snapshot, {prodname} captures each table in phases, in a series of configurable chunks.
-The capture process uses watermarks to track its progress, maintaining a record of each table row that it captures.
-This phased approach to capturing data provides the following advantages over the initial snapshot process:
+You can specify the tables that you want the snapshot to capture and the xref:{context}-property-incremental-snapshot-chunk-size[size of each chunk].
+The default chunk size for incremental snapshots is 1 KB.
+As the snapshot proceeds, {prodname} uses watermarks to track its progress, maintaining a record of each table row that it captures.
+
+This phased approach to capturing data provides the following advantages over the standard initial snapshot process:
 
 * You can run incremental snapshots in parallel with streamed data capture, instead of postponing streaming until the snapshot completes.
   The connector continues to capture near real-time events from the change log throughout the snapshot process, and neither operation blocks the other.
 * If the progress of an incremental snapshot is interrupted, you can resume it without losing any data.
   After the process resumes, the snapshot begins at the point where it stopped, rather than recapturing the table from the beginning.
-* You can run an incremental snapshot on demand at any time, and repeat the process as needed do adapt to database updates.
-  For example, you might re-run a snapshot to capture new tables and synchronize the Kafka topics to the current state of the database.
+* You can run an incremental snapshot on demand at any time, and repeat the process as needed to adapt to database updates.
+  For example, you might re-run a snapshot after you modify the connector configuration to add a table to its `table.include.list`.
+
+.Incremental snapshot process
+When you run an incremental snapshot, {prodname} splits each table into chunks based on the primary key’s total order the configured chunk size.
+During an incremental snapshot, {prodname} captures records from a table one chunk at a time, and emits a `READ` event for each record that it captures.
+Each `READ` event represents the value of a table record at the time that the snapshot begins to capture the containing table chunk.
+As the snapshot is underway, other processes can continue to modify records in the table.
+As further updates are committed to the transaction log, {prodname} emits the appropriate `INSERT`,`UPDATE` or `DELETE` events for each change.
+As a result, the Kafka topic for the table comes to include a mixture of different event types.
 
 [id="{context}-how-debezium-resolves-conflicts-when-it-captures-multiple-events-for-records-that-have-the-same-primary-key"]
 .How {prodname} resolves conflicts among records with the same primary key
+Because {prodname} continues to stream changes in parallel with the snapshot process, streamed events can be received out of sequence.
+That is, the streaming process might emit an `UPDATE` or `DELETE` event that modifies a table record before the snapshot captures the chunk that contains the `READ` event for that record.
+The value that is represented in the `READ` event record is thus superseded before it's ever recorded.
+//To resolve conflicts in the values of events that are received through the snapshot and streaming processes,
+//effectively maintain the chronology of events when `INSERT`,`UPDATE` or `DELETE` events are received out of sequence,
+To ensure that an incremental snapshot event that arrives out of sequence is processed in the correct logical order, {prodname} employs a buffering scheme for resolving conflicts.
+Only after it resolves any conflicts between snapshot events and streamed events that affect the same record does {prodname} emit an event record to Kafka.
 
-When you run an incremental snapshot, as {prodname} captures a table chunk, it emits a `READ` event for each captured record.
-Meanwhile, alongside the snapshot process, the {prodname} streaming process continues to run, capturing change events as they occur in each source table.
-These streaming events are captured as `UPDATE` or `DELETE` events.
+.Snapshot window
+To ensure that earlier versions of a record do not overwrite later versions, {prodname} employs a so-called "snapshot window" to demarcate the interval during which an incremental snapshot captures data for a specified table chunk.
+Before the snapshot for a chunk begins, {prodname} sends any events that it reads from the transaction log directly downstream to the target Kafka topic.
+But after the snapshot window opens, that is, from the time that the snapshot for a particular chunk begins, until it ends, {prodname} performs a de-duplication step to resolve conflicts among event entries.
 
+The snapshot captures events for each table chunk as `READ` events and writes them to a memory buffer.
+Next, it examines any events that are streamed from the transaction log during the snapshot window, to verify whether they pertain to the table on which the snapshot operation is running.
+If the transaction log events belong to the table, {prodname} next checks the primary key values in the transaction log events, and compares them to primary keys among the `READ` events in the buffer.
+If it detects a match, {prodname} removes from matching `READ` event from the buffer, because, within the capture window, events received from the transaction log logically supersede `READ` events for the same primary key.
+The transaction log event is then emitted to the topic for the table.
+After the snapshot window for the chunk completes, only `READ` events for which no related transaction log events exist remain in the buffer.
+{prodname} emits these remaining `READ` events to the table's Kafka topic.
 
-//It's not unusual for the connector to emit `UPDATE` or `DELETE` events that modify an existing row before the snapshot process captures the chunk with the `READ` event the represents the row's initial value.
-// arrive out of sequence
-//events are received out of sequence
-Because the incremental snapshot captures tables in chunks, invariably, the streaming process emits `UPDATE` or `DELETE` events that modify a row before the snapshot captures the chunk that includes the `READ` event.
-//{prodname} must manage the chronology of `READ` events that originate from the snapshot process alongside of any `UPDATE` or `DELETE` events that originate from the streaming process.
-During the window for capturing a table chunk, {prodname} compares the primary keys of the events that it captures through each method.
-If the state of a row that the connector captures through the streaming process might conflict with the state that is captured during the snapshot process.
-
-//The default chunk size for incremental snapshots is 1 KB.
-//You can configure the chunk size  xref:{context}-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`].
-
-For a specified chunk, if an `UPDATE` or `DELETE` event exists for a corresponding `READ` event (that is, the events share a primary key), then {prodname}
-record in the snapshot to the keys
-of the `UPDATE` or `DELETE` event records that the connector obtains by streaming.
-Depending on when an incremental snapshot captures the table chunk that includes the "initial" state of a record, the value of the record might already be obsolete.
-Updates to a row value might be captured before the snapshot process captures the chunk that includes the record.
-tracks the event chronology so that earlier versions of a row do not overwrite later versions.
-
-To maintain the chronology of events when `UPDATE` or `DELETE` events are received out of sequence, {prodname} first records the snapshot `READ` events for each chunk into a buffer.
-It then performs a de-duplication step to resolve conflicts among event entries.
 The connector repeats the process for each snapshot chunk.
-
-//To determine which version of a record to use in the event of a conflict, the connector compares the primary keys of transactions that occur within a chunk window.
-//To resolve conflicts, {prodname} sorts events chronologically.
-
-//* If a `DELETE` event arrives before a corresponding `READ` event, the connector discards the `READ` event from the buffer.
-//* If an `UPDATE` event arrives before a corresponding `READ` event, the connector either discards the `READ` event or delivers it with the updated value.
 
 [id="debezium-{context}-triggering-an-incremental-snapshot"]
 .Triggering an incremental snapshot
