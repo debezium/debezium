@@ -38,7 +38,7 @@ matrixJob('connector-debezium-postgresql-matrix-test') {
         preBuildCleanup()
 
         timeout {
-            noActivity(1200)
+            noActivity(3600)
         }
     }
 
