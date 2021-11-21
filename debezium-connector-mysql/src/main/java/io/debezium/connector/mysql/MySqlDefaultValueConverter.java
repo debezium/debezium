@@ -19,11 +19,14 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Column;
@@ -42,6 +45,8 @@ import io.debezium.util.Collect;
 @Immutable
 public class MySqlDefaultValueConverter implements DefaultValueConverter {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlDefaultValueConverter.class);
+
     private static final Pattern EPOCH_EQUIVALENT_TIMESTAMP = Pattern.compile("(\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}) (00:00:00(\\.\\d{1,6})?)");
 
     private static final Pattern EPOCH_EQUIVALENT_DATE = Pattern.compile("\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}");
@@ -49,6 +54,8 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
     private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
 
     private static final String EPOCH_DATE = "1970-01-01";
+
+    private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
 
     @Immutable
     private static final Set<Integer> TRIM_DATA_TYPES = Collect.unmodifiableSet(Types.TINYINT, Types.INTEGER,
@@ -167,7 +174,19 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         if (zero) {
             value = EPOCH_DATE;
         }
-        return LocalDate.from(ISO_LOCAL_DATE_WITH_OPTIONAL_TIME.parse(value));
+
+        try {
+            return LocalDate.from(ISO_LOCAL_DATE_WITH_OPTIONAL_TIME.parse(value));
+        }
+        catch (Exception e) {
+            LOGGER.warn("Invalid default value '{}' for date column '{}'", value, column.name());
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return LocalDate.from(ISO_LOCAL_DATE_WITH_OPTIONAL_TIME.parse(EPOCH_DATE));
+            }
+        }
     }
 
     /**
@@ -189,7 +208,18 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
             value = EPOCH_TIMESTAMP;
         }
 
-        return LocalDateTime.from(timestampFormat(column.length()).parse(value));
+        try {
+            return LocalDateTime.from(timestampFormat(column.length()).parse(value));
+        }
+        catch (Exception e) {
+            LOGGER.warn("Invalid default value '{}' for datetime column '{}'", value, column.name());
+            if (column.isOptional()) {
+                return null;
+            }
+            else {
+                return LocalDateTime.from(timestampFormat(column.length()).parse(EPOCH_TIMESTAMP));
+            }
+        }
     }
 
     /**
@@ -222,6 +252,10 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
      * @return the converted value;
      */
     private Object convertToDuration(Column column, String value) {
+        Matcher matcher = TIMESTAMP_PATTERN.matcher(value);
+        if (matcher.matches()) {
+            value = matcher.group(2);
+        }
         return MySqlValueConverters.stringToDuration(value);
     }
 
