@@ -290,7 +290,7 @@ public class MongoEventRouterTest {
 
         assertThat(eventRouted).isNotNull();
         assertThat(eventRouted.keySchema().type()).isEqualTo(Schema.Type.STRING);
-        assertThat(eventRouted.key()).isEqualTo("10711fa5");
+        assertThat(eventRouted.key()).isEqualTo("000000000000000000000001");
     }
 
     @Test
@@ -381,7 +381,7 @@ public class MongoEventRouterTest {
         final SourceRecord userUpdatedEventRecord = createEventRecord(
                 "da8d6de63b7745ff8f4457db",
                 "UserUpdate",
-                "10711fa5",
+                new ObjectId("000000000000000000000001"),
                 "User",
                 new Document());
         final SourceRecord userUpdatedEventRouted = router.apply(userUpdatedEventRecord);
@@ -392,7 +392,7 @@ public class MongoEventRouterTest {
         final SourceRecord addressCreatedEventRecord = createEventRecord(
                 "1a8d6de63b7745ff8f4451db",
                 "AddressCreated",
-                "10711fa5",
+                new ObjectId("000000000000000000000001"),
                 "Address",
                 new Document());
         final SourceRecord addressCreatedEventRouted = router.apply(addressCreatedEventRecord);
@@ -650,7 +650,7 @@ public class MongoEventRouterTest {
 
         Struct value = (Struct) eventRouted.value();
         assertThat(value.get("payloadType")).isEqualTo("UserCreated");
-        assertThat(value.get("payloadId")).isEqualTo("10711fa5");
+        assertThat(value.get("payloadId")).isEqualTo("000000000000000000000001");
         assertThat(eventRouted.headers().lastWithName("payloadType").value()).isEqualTo("UserCreated");
     }
 
@@ -853,7 +853,7 @@ public class MongoEventRouterTest {
         final SourceRecord eventRecord = createEventRecord(
                 "000000000000000000000000",
                 "UserCreated",
-                "10711fa5",
+                new ObjectId("000000000000000000000001"),
                 "User",
                 new Document()
                         .append("fullName", "John Doe")
@@ -891,7 +891,7 @@ public class MongoEventRouterTest {
         final SourceRecord eventRecord = createEventRecord(
                 "000000000000000000000000",
                 "UserCreated",
-                "10711fa5",
+                new ObjectId("000000000000000000000001"),
                 "User",
                 new Document()
                         .append("fullName", "John Doe")
@@ -913,7 +913,7 @@ public class MongoEventRouterTest {
         return createEventRecord(
                 "da8d6de63b7745ff8f4457db",
                 "UserCreated",
-                "10711fa5",
+                new ObjectId("000000000000000000000001"),
                 "User",
                 new Document());
     }
@@ -921,7 +921,7 @@ public class MongoEventRouterTest {
     private SourceRecord createEventRecord(
                                            String eventId,
                                            String eventType,
-                                           String payloadId,
+                                           ObjectId payloadId,
                                            String payloadType,
                                            Object payload) {
         return createEventRecord(

@@ -68,7 +68,7 @@ To learn about how to configure the {prodname} outbox event router SMT, consider
 [source,javascript,indent=0]
 ----
 # Kafka Topic: outbox.event.order
-# Kafka Message key: "1"
+# Kafka Message key: "b2730779e1f596e275826f08"
 # Kafka Message Headers: "id=596e275826f08b2730779e1f"
 # Kafka Message Timestamp: 1556890294484
 {
@@ -85,7 +85,7 @@ A {prodname} connector that is configured to apply the MongoDB outbox event rout
 # Kafka Message Timestamp: 1556890294484
 {
   "patch": null,
-  "after": "{\"_id\": {\"$oid\": \"596e275826f08b2730779e1f\"}, \"aggregateid\": \"1\", \"aggregatetype\": \"Order\", \"type\": \"OrderCreated\", \"payload\": {\"_id\": {\"$oid\": \"da8d6de63b7745ff8f4457db\"}, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}}",
+  "after": "{\"_id\": {\"$oid\": \"596e275826f08b2730779e1f\"}, \"aggregateid\": {\"$oid\": \"b2730779e1f596e275826f08\"}, \"aggregatetype\": \"Order\", \"type\": \"OrderCreated\", \"payload\": {\"_id\": {\"$oid\": \"da8d6de63b7745ff8f4457db\"}, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}}",
   "source": {
     "version": "{debezium-version}",
     "connector": "mongodb",
@@ -118,7 +118,7 @@ To apply the default MongoDB outbox event router SMT configuration, your outbox 
 {
   "_id": "objectId",
   "aggregatetype": "string",
-  "aggregateid": "string",
+  "aggregateid": "objectId",
   "type": "string",
   "payload": "object"
 }
