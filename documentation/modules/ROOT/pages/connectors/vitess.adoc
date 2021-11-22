@@ -1055,7 +1055,7 @@ The following configuration properties are _required_ unless a default value is 
 |An optional name of the shard from which to stream the changes. If not configured, in case of unsharded keyspace, the connector streams changes from the only shard, in case of sharded keyspace, the connector streams changes from all shards in the keyspace. We recommend not configuring it in order to stream from all shards in the keyspace because it has better support for reshard operation. If configured, for example, `-80`, the connector will stream changes from the `-80` shard.
 
 |[[vitess-property-gtid]]<<vitess-property-gtid, `+vitess.gtid+`>>
-|_n/a_
+|`current`
 |An optional GTID position for a shard to stream from. This has to be set together with `vitess.shard`. If not configured, the connector streams changes from the latest position for the given shard.
 
 |[[vitess-property-stop-on-reshard]]<<vitess-property-stop-on-reshard, `+vitess.stop_on_reshard+`>>
@@ -1075,22 +1075,6 @@ If set to `true`, you should also consider setting `vitess.gtid` in the configur
 |[[vitess-property-database-password]]<<vitess-property-database-password, `+vitess.database.password+`>>
 |_n/a_
 |An optional password of the Vitess database server (VTGate). If not configured, unauthenticated VTGate gRPC is used.
-
-|[[vitess-property-vtctld-host]]<<vitess-property-vtctld-host, `+vitess.vtctld.host+`>>
-|
-|IP address or hostname of the VTCtld server.
-
-|[[vitess-property-vtctld-port]]<<vitess-property-vtctld-port, `+vitess.vtctld.port+`>>
-|`15999`
-|Integer port number of the VTCtld server.
-
-|[[vitess-property-vtctld-user]]<<vitess-property-vtctld-user, `+vitess.vtctld.user+`>>
-|_n/a_
-|An optional username of the VTCtld server. If not configured, unauthenticated VTCtld gRPC is used.
-
-|[[vitess-property-vtctld-password]]<<vitess-property-vtctld-password, `+vitess.vtctld.password+`>>
-|_n/a_
-|An optional password of the VTCtld server. If not configured, unauthenticated VTCtld gRPC is used.
 
 |[[vitess-property-tablet-type]]<<vitess-property-tablet-type, `+vitess.tablet.type+`>>
 |`MASTER`

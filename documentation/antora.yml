@@ -1,7 +1,7 @@
 name: reference
 title: Debezium Documentation
 version: 'master'
-display_version: 'Nightly'
+display_version: 'nightly'
 prerelease: true
 nav:
   - modules/ROOT/nav.adoc
@@ -38,8 +38,6 @@ asciidoc:
     link-mongodb-event-flattening: 'transformations/mongodb-event-flattening.adoc'
     link-mysql-connector: 'connectors/mysql.adoc'
     link-oracle-connector: 'connectors/oracle.adoc'
-    link-outbox-event-router: 'transformations/outbox-event-router.adoc'
-    link-mongodb-outbox-event-router: 'transformations/mongodb-outbox-event-router.adoc'
     link-prefix: 'xref'
     link-postgresql-connector: 'connectors/postgresql.adoc'
     link-postgresql-plugins: 'postgres-plugins.adoc'

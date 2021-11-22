@@ -26,11 +26,16 @@ pipeline {
             steps {
                 script {
                     env.MVN_PROFILE = '-Ppnc'
+                    env.MAVEN_OPTS = '-Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true'
                 }
 
                 sh '''
-                     curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
-                    '''
+                curl -OJs $SOURCE_URL && unzip debezium-*-src.zip               
+                pushd debezium-*-src
+                mv $(ls | grep -P 'debezium-[^-]+.Final') ${WORKSPACE}/debezium
+                popd
+                rm -rf debezium-*-src
+                '''
             }
         }
 

@@ -28,25 +28,25 @@ Restart your Kafka Connect process to pick up the new JARs.
 
 The connector plug-ins are available from Maven:
 
-ifeval::['{page-version}' == 'master']
+ifeval::['{page-version}' == 'main']
 * {link-mysql-plugin-snapshot}[MySQL Connector plugin archive]
 * {link-postgres-plugin-snapshot}[Postgres Connector plugin archive]
 * {link-mongodb-plugin-snapshot}[MongoDB Connector plugin archive]
 * {link-sqlserver-plugin-snapshot}[SQL Server Connector plugin archive]
-* {link-oracle-plugin-snapshot}[Oracle Connector plugin archive] (incubating)
-* {link-db2-plugin-snapshot}[Db2 Connector plugin archive] (incubating)
+* {link-oracle-plugin-snapshot}[Oracle Connector plugin archive]
+* {link-db2-plugin-snapshot}[Db2 Connector plugin archive]
 * {link-cassandra-plugin-snapshot}[Cassandra plugin archive] (incubating)
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} master branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
-ifeval::['{page-version}' != 'master']
+ifeval::['{page-version}' != 'main']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[Postgres Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[MongoDB Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-{debezium-version}-plugin.tar.gz[Cassandra plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 endif::[]
@@ -62,9 +62,10 @@ Alternatively, you can add further directories to the plugin path by specifying 
 (e.g. `-e KAFKA_CONNECT_PLUGINS_DIR=/kafka/connect/,/path/to/further/plugins`).
 When using the container image for Kafka Connect provided by Confluent, you can specify the `CONNECT_PLUGIN_PATH` environment variable to achieve the same.
 
-Not that Java 8 or later is required to run the {prodname} connectors.
+Note that Java 8 or later is required to run the {prodname} connectors.
+Java 11 or later is required for running {prodname} UI.
 
-ifeval::['{page-version}' != 'master']
+ifeval::['{page-version}' != 'main']
 === Consuming Snapshot Releases
 
 {prodname} executes nightly builds and deployments into the Sonatype snapshot repository.

@@ -23,25 +23,17 @@ link:https://debezium.io/blog/2018/07/19/advantages-of-log-based-change-data-cap
 
 {prodname} connectors capture data changes with a range of related capabilities and options:
 
-* *Snapshots:* optionally, an initial snapshot of a database's current state can be taken if a connector is started and not all logs still exist. Typically, this is the case when the database has been running for some time and has discarded trannsaction logs that are no longer needed for transaction recovery or replication. There are different modes for performing snapshots. See the documentation for the connector that you are using.
+* *Snapshots:* optionally, an initial snapshot of a database's current state can be taken if a connector is started and not all logs still exist. Typically, this is the case when the database has been running for some time and has discarded trannsaction logs that are no longer needed for transaction recovery or replication. There are different modes for performing snapshots, including support for _incremental_ snapshots, which can be triggered at connector runtime. For more details, see the documentation for the connector that you are using.
 * *Filters:* you can configure the set of captured schemas, tables and columns with include/exclude list filters.
 * *Masking:* the values from specific columns can be masked, for example, when they contain sensitive data.
 * *Monitoring:* most connectors can be monitored by using JMX.
-* Ready-to-use *message transformations* for:  
-
-** {link-prefix}:{link-topic-routing}[Message routing]
-** {link-prefix}:{link-content-based-routing}[Content-based routing]
-ifdef::community[]
-** {link-prefix}:{link-event-flattening}[Extraction of new record state for relational connectors] and {link-prefix}:{link-mongodb-event-flattening}[for the MongoDB connector]
-endif::community[]
-ifdef::product[]
-** {link-prefix}:{link-event-flattening}[Extraction of new record state for relational connectors]
-endif::product[]
-** {link-prefix}:{link-filtering}[Filtering]
-** {link-prefix}:{link-outbox-event-router}[Routing of events] from a transactional outbox table
+* Ready-to-use *message transformations* for message routing, filtering, event flattening, and more; see xref:transformations/index.adoc[Transformations] for an overview of all the SMTs coming with {prodname}.
 
 ifdef::community[]
 See the {link-prefix}:{link-connectors}[connector documentation] for a list of all supported databases and detailed information about the features and configuration options of each connector.
+
+{prodname} can also be used as xref:development/engine.adoc[library embedded] into your JVM-based applications;
+via xref:operations/debezium-server.adoc[Debezium Server], you can emit change events to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, etc.
 endif::community[]
 
 ifdef::product[]

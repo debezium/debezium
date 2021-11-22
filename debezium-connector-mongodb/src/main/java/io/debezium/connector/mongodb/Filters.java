@@ -20,7 +20,7 @@ import io.debezium.util.Collect;
  */
 public final class Filters {
 
-    protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("local", "admin");
+    protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("local", "admin", "config");
 
     private final Predicate<String> databaseFilter;
     private final Predicate<CollectionId> collectionFilter;
