@@ -17,26 +17,6 @@ For more information about support scope, see link:https://access.redhat.com/sup
 ====
 endif::product[]
 
-
-//You initiate an ad hoc snapshot by sending a message that specifies the action type `execute-snapshot` to the signaling database.
-//When the connector processes the message, it triggers the snapshot operation.
-//The operation reads the first and last primary key values and uses those values as the start and end point for each table.
-////
-The ad hoc snapshot process differs from the initial snapshot process in the following ways:
-
-Can be triggered while the connector is running.
-Can run concurrently with streaming. Ability to re-bootstrap previously snapshotted tables by generating a new snapshot.
-Can be resumed when interrupted by a connector restart.
-Can adapt to updates in the filter configuration (include/exclude lists for captured tables)
-
-Typically, it not necessary for an applications to have access to the entire data history of a database all at once.
-Instead, they require the data to be delivered at an unspecific point of time.
-This leads to the idea of incremental snapshotting, where the snapshot is taken in parallel with streaming.
-The result will be that the streaming will be executed from start and the snapshotting will be executed in chunks, which would allow resuming of snapshot in the middle of execution.
-Signals serve as triggers to perform some action.
-You run a SQL query to insert signals into the database. When the connector reads the new signal record, the connector performs the specified action.
-////
-
 By default, a connector runs an initial snapshot operation only after it starts for the first time.
 Following this initial snapshot, the snapshot process is not repeated, and the connector captures data for subsequent change events through streaming only.
 
@@ -54,24 +34,6 @@ You initiate an ad hoc snapshot by sending a signal request to the {prodname} si
 
 When you initiate an ad hoc snapshot of an existing table, the connector appends content to the topic that already exists for the table.
 If a previously existing topic was removed, {prodname} can create a topic automatically if xref:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] is enabled.
-////
-For each signal record that you send to the table, you specify a name,
-Incremental snapshotting in Debezium is available in form of ad-hoc snapshots.
-Rather than configuring the connector to run a snapshot, you send a snapshot signal that triggers the connector to run a snapshot of a set of tables.
-The signal for triggering an ad hoc snapshot is called `execute-snapshot` and it uses the following message format:
-
-{"data-collections": ["<table-id-1>", "<table-id-2>", "<table-id-3>", ...]}
-
-After you request an ad hoc table snapshot, {prodname} completes the following tasks:
-
-* Obtains the largest primary key in the table; this is the snapshot endpoint, and its value is stored in the connector offsets
-* Splits the table into chunks based on the primary key’s total order.
-* Performs a snapshot of the table data in chunks - no lengthy process at the connector start, and also in case of crashes or a controlled termination of the connector, the snapshotting can be resumed since the last completed chunk.
-The default chunk size is 1,024. You can specify a different chunk size in the `incremental.snapshot.chunk.size` configuration property.
-* After the connector queries a chunk, it selects the next set of records based on the configured chunk size, whose primary keys are larger than the last one from the previous chunk (or the first primary key for the first chunk) and which are smaller or equal to the recorded maximum primary key.
-The chunk size specifies the number of rows that the snapshot collects during each fetch operation on the database.
- You can increase the value for efficiency purposes (a smaller total number of snapshot queries will be executed), but this should be balanced with the increased memory consumption needed for the buffer. It is recommended to do some experimentation in your own environment to identify the setting working best for your situation.
-////
 
 Each signal specifies the tables to include in the snapshot.
 An ad hoc snapshot can recapture the entire contents of the database, or capture only a subset of the tables in the database.
