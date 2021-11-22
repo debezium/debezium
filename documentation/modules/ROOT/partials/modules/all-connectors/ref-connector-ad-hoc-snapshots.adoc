@@ -17,10 +17,6 @@ For more information about support scope, see link:https://access.redhat.com/sup
 ====
 endif::[product]
 
-//You can run an ad hoc snapshot to refresh data in a topic in cases where the initial snapshot is damaged or incomplete.
-//For, example, a new snapshot might be warranted if any of the following events occur in the database:
-//* The database is restored from a backup, or requires repairs related to downstream data loss or corruption.
-//* A subset of data requires repair, for example, if a specific set of rows becomes corrupted in the downstream topic.
 
 //You initiate an ad hoc snapshot by sending a message that specifies the action type `execute-snapshot` to the signaling database.
 //When the connector processes the message, it triggers the snapshot operation.
@@ -57,8 +53,7 @@ Ad hoc snapshots require the use of {link-prefix}:{link-signalling}#sending-sign
 You initiate an ad hoc snapshot by sending a signal request to the {prodname} signaling table.
 
 When you initiate an ad hoc snapshot of an existing table, the connector appends content to the topic that already exists for the table.
-It does not create a new topic, unless the topic was removed.
-// To enable {prodname} to create topics automatically, xref:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] must be enabled.
+If a previously existing topic was removed, {prodname} can create a topic automatically if xref:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] is enabled.
 ////
 For each signal record that you send to the table, you specify a name,
 Incremental snapshotting in Debezium is available in form of ad-hoc snapshots.
@@ -100,7 +95,7 @@ The signal is named `execute-snapshot` and accepts messages in the following for
 |`type`
 |`incremental`
 | Specifies the type of snapshot that you want to run. +
-Currently, you can request only xref:{context}-incremental-snapshots[`incremental` snapshots]. 
+Currently, you can request only xref:{context}-incremental-snapshots[`incremental` snapshots].
 
 
 |`data-collections`
@@ -116,7 +111,6 @@ You initiate an ad hoc snapshot by adding a signaling table entry with the `exec
 After the connector processes the message, it starts the snapshot operation.
 The operation reads the first and last primary key values and uses those values as the start and end point for each table.
 
-
 Currently, the `execute-snapshot` action type triggers xref:debezium-signaling-incremental-snapshots[incremental snapshots] only.
 
 .Prerequisites
@@ -129,6 +123,3 @@ An example of the signal to be triggered is this:
 ----
 INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema1.table2"]}')
 ----
-// `"INSERT INTO _<schema>_.debezium_signal VALUES ('signal-1', 'execute-snapshot', '{\"data-collections\": [\"inventory.orders\"]}')"`
-// In this release, ad hoc snapshots are limited to `"type": "incremental"`.
-//Because `incremental` is the default type.

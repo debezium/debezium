@@ -24,9 +24,10 @@ endif::[community]
 
 In an incremental snapshot, instead of capturing the full state of a database all at once, as in an initial snapshot, {prodname} captures each table in phases, in a series of configurable chunks.
 You can specify the tables that you want the snapshot to capture and the xref:{context}-property-incremental-snapshot-chunk-size[size of each chunk].
+The chunk size determines the number of rows that the snapshot collects during each fetch operation on the database.
 The default chunk size for incremental snapshots is 1 KB.
-As the snapshot proceeds, {prodname} uses watermarks to track its progress, maintaining a record of each table row that it captures.
 
+As an incremental snapshot proceeds, {prodname} uses watermarks to track its progress, maintaining a record of each table row that it captures.
 This phased approach to capturing data provides the following advantages over the standard initial snapshot process:
 
 * You can run incremental snapshots in parallel with streamed data capture, instead of postponing streaming until the snapshot completes.
@@ -34,37 +35,39 @@ This phased approach to capturing data provides the following advantages over th
 * If the progress of an incremental snapshot is interrupted, you can resume it without losing any data.
   After the process resumes, the snapshot begins at the point where it stopped, rather than recapturing the table from the beginning.
 * You can run an incremental snapshot on demand at any time, and repeat the process as needed to adapt to database updates.
-  For example, you might re-run a snapshot after you modify the connector configuration to add a table to its `table.include.list`.
+  For example, you might re-run a snapshot after you modify the connector configuration to add a table to its xref:{context}-property-table-include-list[`table.include.list`] property.
 
 .Incremental snapshot process
-When you run an incremental snapshot, {prodname} splits each table into chunks based on the primary key’s total order the configured chunk size.
-During an incremental snapshot, {prodname} captures records from a table one chunk at a time, and emits a `READ` event for each record that it captures.
-Each `READ` event represents the value of a table record at the time that the snapshot begins to capture the containing table chunk.
-As the snapshot is underway, other processes can continue to modify records in the table.
-As further updates are committed to the transaction log, {prodname} emits the appropriate `INSERT`,`UPDATE` or `DELETE` events for each change.
-As a result, the Kafka topic for the table comes to include a mixture of different event types.
+When you run an incremental snapshot, {prodname} sorts each table by primary key and then splits the table into chunks based on the xref:{context}-property-incremental-snapshot-chunk-size[configured chunk size].
+Working chunk by chunk, it then captures each table row in a chunk.
+For each row that it captures, the snapshot emits a `READ` event.
+That event represents the value of the row when the snapshot for the chunk began.
+
+As a snapshot proceeds, other processes can continue to access the database and potentially modify records in the table.
+Modifications to the table are committed to the transaction log as per usual, and are detected by the ongoing {prodname} streaming process.
+{prodname} continues to emit `INSERT`,`UPDATE` or `DELETE` events to reflect these transaction log changes.
 
 [id="{context}-how-debezium-resolves-conflicts-when-it-captures-multiple-events-for-records-that-have-the-same-primary-key"]
 .How {prodname} resolves conflicts among records with the same primary key
-Because {prodname} continues to stream changes in parallel with the snapshot process, streamed events can be received out of sequence.
-That is, the streaming process might emit an `UPDATE` or `DELETE` event that modifies a table record before the snapshot captures the chunk that contains the `READ` event for that record.
-The value that is represented in the `READ` event record is thus superseded before it's ever recorded.
-//To resolve conflicts in the values of events that are received through the snapshot and streaming processes,
-//effectively maintain the chronology of events when `INSERT`,`UPDATE` or `DELETE` events are received out of sequence,
-To ensure that an incremental snapshot event that arrives out of sequence is processed in the correct logical order, {prodname} employs a buffering scheme for resolving conflicts.
-Only after it resolves any conflicts between snapshot events and streamed events that affect the same record does {prodname} emit an event record to Kafka.
+In some cases, the `UPDATE` or `DELETE` events that the streaming process emits are received out of sequence.
+That is, the streaming process might emit an event that modifies a table row before the snapshot captures the chunk that contains the `READ` event for that row.
+When the snapshot eventually emits the corresponding `READ` event for the row, its value is already superseded.
+To ensure that incremental snapshot events that arrive out of sequence are processed in the correct logical order, {prodname} employs a buffering scheme for resolving conflicts.
+Only after conflicts between the snapshot events and the streamed events are resolved does {prodname} emit an event record to Kafka.
 
 .Snapshot window
-To ensure that earlier versions of a record do not overwrite later versions, {prodname} employs a so-called "snapshot window" to demarcate the interval during which an incremental snapshot captures data for a specified table chunk.
-Before the snapshot for a chunk begins, {prodname} sends any events that it reads from the transaction log directly downstream to the target Kafka topic.
-But after the snapshot window opens, that is, from the time that the snapshot for a particular chunk begins, until it ends, {prodname} performs a de-duplication step to resolve conflicts among event entries.
+To assist in resolving conflicts between late-arriving `READ` events and streamed events that modify the same table row, {prodname} employs a so-called _snapshot window_.
+The snapshot windows demarcates the interval during which an incremental snapshot captures data for a specified table chunk.
+Before the snapshot window for a chunk opens, {prodname} follows its usual behavior and emits events from the transaction log directly downstream to the target Kafka topic.
+But from the moment that the snapshot for a particular chunk opens, until it closes, {prodname} performs a de-duplication step to resolve potential conflicts among events.
 
-The snapshot captures events for each table chunk as `READ` events and writes them to a memory buffer.
-Next, it examines any events that are streamed from the transaction log during the snapshot window, to verify whether they pertain to the table on which the snapshot operation is running.
-If the transaction log events belong to the table, {prodname} next checks the primary key values in the transaction log events, and compares them to primary keys among the `READ` events in the buffer.
-If it detects a match, {prodname} removes from matching `READ` event from the buffer, because, within the capture window, events received from the transaction log logically supersede `READ` events for the same primary key.
-The transaction log event is then emitted to the topic for the table.
-After the snapshot window for the chunk completes, only `READ` events for which no related transaction log events exist remain in the buffer.
+During the snapshot window for a table chunk, the incremental snapshot sends the `READ` events that it captures from a table to a memory buffer.
+Next, it examines the events that the streaming process emits from the transaction log.
+Events that are not related to records that already exist in the table are sent to Kafka.
+But for events that modify existing records in the table, {prodname} searches the buffer for a `READ` event that has a matching primary key.
+Any matching `READ` events in the buffer are dropped, because the corresponding transaction log events logically supersede them.
+The transaction log event for the record is then emitted to Kafka.
+After the snapshot window for the chunk closes, the buffer contains only `READ` events for which no related transaction log events exist.
 {prodname} emits these remaining `READ` events to the table's Kafka topic.
 
 The connector repeats the process for each snapshot chunk.
@@ -72,16 +75,14 @@ The connector repeats the process for each snapshot chunk.
 [id="debezium-{context}-triggering-an-incremental-snapshot"]
 .Triggering an incremental snapshot
 
-Currently, the only way to perform an incremental snapshot, is to initiate it as an {link-prefix}:#{context}-ad-hoc-snapshot[ad hoc snapshot].
-You trigger an incremental snapshot by sending an ad hoc snapshot signal to the signaling table on the source database.
-You send the signal by submitting it in a SQL `INSERT` query to the table.
+Currently, the only way to initiate an incremental snapshot is to send an {link-prefix}:#{context}-ad-hoc-snapshot[ad hoc snapshot signal] to the signaling table on the source database.
+You submit signals to the table as SQL `INSERT` queries.
 After {prodname} detects the change in the signaling table, it reads the signal, and runs the requested snapshot operation.
 
-The query that you submit specifies the kind of snapshot operation that you want to run the and the tables to include in the snapshot.
-Currently, for snapshots operations, the only valid option is the default value, `incremental`.
-If you do not specify a value, the connector runs an incremental snapshot.
+The query that you submit the tables to include in the snapshot, and optionally specifies the kind of snapshot operation.
+Currently, the only valid option for snapshots operations is the default value, `incremental`.
 
-To specify the tables to include in the snapshot, you create a `data-collections` array that lists the tables, for example, +
+To specify the tables to include in the snapshot, provide a `data-collections` array that lists the tables, for example, +
 `{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}` +
 
 The `data-collections` array for an incremental snapshot signal has no default value.
