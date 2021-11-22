@@ -51,9 +51,6 @@
     <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
     <ocp.image.oracle>${docker.image.oracle}</ocp.image.oracle>
 
-    <!-- Artifact repository for KC build -->
-    <artifact.server.url>http://debezium-artifact-server.${ocp.project.debezium}.svc.cluster.local:8080</artifact.server.url>
-
     <!--Strimzi configuration-->
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
     <strimzi.crd.version>v1beta2</strimzi.crd.version>
@@ -115,6 +112,12 @@
 
     <!--Debezium connector versions-->
     <version.debezium.connector>${project.version}</version.debezium.connector>
+
+    <!-- Artifact repository for KC build -->
+    <as.url>http://debezium-artifact-server.${ocp.project.debezium}.svc.cluster.local:8080</as.url>
+    <as.debezium.version>${version.debezium.connector}</as.debezium.version>
+    <as.apicurio.version>${version.apicurio.converter}</as.apicurio.version>
+    <as.apicurio.url>${as.url}/apicurio-registry-distro-connect-converter-${as.apicurio.version}.zip</as.apicurio.url>
   </properties>
 
   <dependencyManagement>
@@ -357,6 +360,14 @@
   </dependencies>
 
   <profiles>
+    <profile>
+      <!-- Required to run tests against downstream -->
+      <id>product</id>
+
+      <properties>
+        <as.apicurio.url>${as.url}/service-registry-${as.apicurio.version}-distro-connect-converter.zip</as.apicurio.url>
+      </properties>
+    </profile>
     <profile>
       <!-- Required to run Oracle tests -->
       <id>oracleITs</id>
@@ -646,7 +657,7 @@
               <systemPropertyVariables>
                 <test.wait.scale>1</test.wait.scale>
 
-                <test.artifact.server.url>${artifact.server.url}</test.artifact.server.url>
+                <test.artifact.server.url>${as.url}</test.artifact.server.url>
                 <!--Docker Configuration-->
                 <test.docker.image.rhel.kafka>${docker.image.rhel.kafka}</test.docker.image.rhel.kafka>
                 <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>

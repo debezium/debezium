@@ -12,55 +12,55 @@ spec:
       - name: debezium-connector-mysql
         artifacts:
           - type: zip
-            url: ${artifact.server.url}/debezium-connector-mysql-${version.debezium.connector}-plugin.zip
+            url: ${as.url}/debezium-connector-mysql-${as.debezium.version}-plugin.zip
           - type: zip
-            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+            url: ${as.apicurio.url}
           - type: zip
-            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+            url: ${as.url}/debezium-scripting-${as.debezium.version}.zip
       - name: debezium-connector-postgres
         artifacts:
           - type: zip
-            url: ${artifact.server.url}/debezium-connector-postgres-${version.debezium.connector}-plugin.zip
+            url: ${as.url}/debezium-connector-postgres-${as.debezium.version}-plugin.zip
           - type: zip
-            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+            url: ${as.apicurio.url}
           - type: zip
-            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+            url: ${as.url}/debezium-scripting-${as.debezium.version}.zip
       - name: debezium-connector-mongodb
         artifacts:
           - type: zip
-            url: ${artifact.server.url}/debezium-connector-mongodb-${version.debezium.connector}-plugin.zip
+            url: ${as.url}/debezium-connector-mongodb-${as.debezium.version}-plugin.zip
           - type: zip
-            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+            url: ${as.apicurio.url}
           - type: zip
-            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+            url: ${as.url}/debezium-scripting-${as.debezium.version}.zip
       - name: debezium-connector-db2
         artifacts:
           - type: zip
-            url: ${artifact.server.url}/debezium-connector-db2-${version.debezium.connector}-plugin.zip
+            url: ${as.url}/debezium-connector-db2-${as.debezium.version}-plugin.zip
           - type: zip
-            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+            url: ${as.apicurio.url}
           - type: zip
-            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+            url: ${as.url}/debezium-scripting-${as.debezium.version}.zip
           - type: jar
-            url: ${artifact.server.url}/jdbc/jcc-${version.db2.driver}.jar
+            url: ${as.url}/jdbc/jcc-${version.db2.driver}.jar
       - name: debezium-connector-sqlserver
         artifacts:
           - type: zip
-            url: ${artifact.server.url}/debezium-connector-sqlserver-${version.debezium.connector}-plugin.zip
+            url: ${as.url}/debezium-connector-sqlserver-${as.debezium.version}-plugin.zip
           - type: zip
-            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+            url: ${as.apicurio.url}
           - type: zip
-            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+            url: ${as.url}/debezium-scripting-${as.debezium.version}.zip
       - name: debezium-connector-oracle
         artifacts:
           - type: zip
-            url: ${artifact.server.url}/debezium-connector-oracle-${version.debezium.connector}-plugin.zip
+            url: ${as.url}/debezium-connector-oracle-${as.debezium.version}-plugin.zip
           - type: zip
-            url: ${artifact.server.url}/apicurio-registry-distro-connect-converter-${version.apicurio.converter}.zip
+            url: ${as.apicurio.url}
           - type: zip
-            url: ${artifact.server.url}/debezium-scripting-${version.debezium.connector}.zip
+            url: ${as.url}/debezium-scripting-${as.debezium.version}.zip
           - type: jar
-            url: ${artifact.server.url}/jdbc/ojdbc8-${version.oracle.driver}.jar
+            url: ${as.url}/jdbc/ojdbc8-${version.oracle.driver}.jar
 
   bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
   logging:

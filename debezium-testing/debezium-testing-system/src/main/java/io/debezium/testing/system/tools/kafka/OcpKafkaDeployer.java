@@ -116,6 +116,12 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
                 .editKafka()
                 .withNewTemplate().withPod(podTemplate).endTemplate()
                 .endKafka()
+                .editZookeeper()
+                .withNewTemplate().withPod(podTemplate).endTemplate()
+                .endZookeeper()
+                .editEntityOperator()
+                .withNewTemplate().withPod(podTemplate).endTemplate()
+                .endEntityOperator()
                 .endSpec();
     }
 
