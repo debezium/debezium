@@ -92,7 +92,15 @@ public class MongoEventRouterConfigDefinition {
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process");
 
-    static final Field EXPAND_JSON_PAYLOAD = EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD;
+    static final Field EXPAND_JSON_PAYLOAD = Field.create("collection.expand.json.payload")
+            .withDisplayName("Expand Payload escaped string as real JSON")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Whether or not to try unescaping a JSON string and make it real JSON. It will infer schema information" +
+                    " from payload and update the record schema accordingly. If content is not JSON, it just produces a warning" +
+                    " and emits the record unchanged");
 
     /**
      * There are 3 configuration groups available:
