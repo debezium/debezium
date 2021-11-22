@@ -2171,13 +2171,13 @@ The value determines the number of rows that the snapshot collects during each f
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Incremental snapshots is a Technology Preview feature.
 For more information, see xref:db2-incremental-snapshots[Incremental snapshots].
 ====
-endif::[product]
+endif::product[]
 
 |[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
@@ -2185,13 +2185,13 @@ a|Fully-qualified name of the data collection that is used to send signals to th
 Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_`
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Signaling is a Technology Preview feature.
 For more information, see xref:sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
 ====
-endif::[product]
+endif::product[]
 
 |[[db2-property-snapshot-delay-ms]]<<db2-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default

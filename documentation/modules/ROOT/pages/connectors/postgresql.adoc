@@ -2955,13 +2955,13 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Incremental snapshots is a Technology Preview feature.
 For more information, see xref:postgresql-incremental-snapshots[Incremental snapshots].
 ====
-endif::[product]
+endif::product[]
 
 |[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
@@ -2969,13 +2969,13 @@ a|Fully-qualified name of the data collection that is used to send signals to th
 Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_`
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Signaling is a Technology Preview feature.
 For more information, see xref:sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
 ====
-endif::[product]
+endif::product[]
 
 
 |[[postgresql-property-snapshot-mode]]<<postgresql-property-snapshot-mode, `+snapshot.mode+`>>
@@ -3008,8 +3008,8 @@ endif::community[]
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`.
-Incremental snapshots are not affected by the `snapshot.include.collection.list`.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots.
 
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`

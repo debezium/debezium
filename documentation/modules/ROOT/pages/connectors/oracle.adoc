@@ -2136,7 +2136,7 @@ However, larger chunk sizes also require more memory to buffer the snapshot data
 Adjust the chunk size to a value that provides the best performance in your environment.
 endif::[community[]
 ////
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Incremental snapshots is a Technology Preview feature.
@@ -2145,7 +2145,7 @@ therefore, Red Hat does not recommend implementing any Technology Preview featur
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
-endif::[product]
+endif::product[]
 ////
 
 ifdef::[community]
@@ -2158,7 +2158,7 @@ Use the following format to specify the collection name: +
 endif::[community[]
 
 ////
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Signaling is a Technology Preview feature.
@@ -2167,7 +2167,7 @@ therefore, Red Hat does not recommend implementing any Technology Preview featur
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
-endif::[product]
+endif::product[]
 ////
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
@@ -2203,8 +2203,8 @@ You can set the following values:
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`.
-Incremental snapshots are not affected by the `snapshot.include.collection.list`.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default

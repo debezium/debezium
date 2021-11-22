@@ -1,12 +1,12 @@
-ifdef::[community]
+ifdef::community[]
 [NOTE]
 ====
 This feature is currently in incubating state. The exact semantics, configuration options, and so forth is subject to change in future revisions, based on the feedback we receive.
 Please let us know if you encounter any problems while using this extension.
 ====
-endif::[community]
+endif::community[]
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 The use of incremental snapshots is a Technology Preview feature.
@@ -15,12 +15,12 @@ therefore, Red Hat does not recommend implementing any Technology Preview featur
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
-endif::[product]
+endif::product[]
 To provide flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
 Incremental snapshots rely on the {prodname} mechanism for xref:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
-ifdef::[community]
+ifdef::community[]
 Incremental snapshots are based on the link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
-endif::[community]
+endif::community[]
 
 In an incremental snapshot, instead of capturing the full state of a database all at once, as in an initial snapshot, {prodname} captures each table in phases, in a series of configurable chunks.
 You can specify the tables that you want the snapshot to capture and the xref:{context}-property-incremental-snapshot-chunk-size[size of each chunk].
@@ -75,11 +75,11 @@ The connector repeats the process for each snapshot chunk.
 [id="debezium-{context}-triggering-an-incremental-snapshot"]
 .Triggering an incremental snapshot
 
-Currently, the only way to initiate an incremental snapshot is to send an {link-prefix}:#{context}-ad-hoc-snapshot[ad hoc snapshot signal] to the signaling table on the source database.
+Currently, the only way to initiate an incremental snapshot is to send an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot signal] to the signaling table on the source database.
 You submit signals to the table as SQL `INSERT` queries.
 After {prodname} detects the change in the signaling table, it reads the signal, and runs the requested snapshot operation.
 
-The query that you submit the tables to include in the snapshot, and optionally specifies the kind of snapshot operation.
+The query that you submit specifies the tables to include in the snapshot, and, optionally, specifies the kind of snapshot operation.
 Currently, the only valid option for snapshots operations is the default value, `incremental`.
 
 To specify the tables to include in the snapshot, provide a `data-collections` array that lists the tables, for example, +

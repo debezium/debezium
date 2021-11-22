@@ -2667,7 +2667,7 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Incremental snapshots is a Technology Preview feature.
@@ -2676,7 +2676,7 @@ therefore, Red Hat does not recommend implementing any Technology Preview featur
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
-endif::[product]
+endif::product[]
 
 |[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
@@ -2684,7 +2684,7 @@ a|Fully-qualified name of the data collection that is used to send {link-prefix}
 Use the following format to specify the collection name: +
 `_<databaseName>_._<tableName>_`
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Signaling is a Technology Preview feature.
@@ -2693,7 +2693,7 @@ therefore, Red Hat does not recommend implementing any Technology Preview featur
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
-endif::[product]
+endif::product[]
 
 |[[mysql-property-snapshot-mode]]<<mysql-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
@@ -2727,7 +2727,7 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
 This property does not affect the behavior of incremental snapshots.
 
 |[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>

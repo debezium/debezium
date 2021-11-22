@@ -1,12 +1,12 @@
-ifdef::[community]
+ifdef::community[]
 [NOTE]
 ====
 This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
 Please let us know if you encounter any problems while using this extension.
 ====
-endif::[community]
+endif::community[]
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 The use of ad hoc snapshots is a Technology Preview feature.
@@ -15,7 +15,7 @@ therefore, Red Hat does not recommend implementing any Technology Preview featur
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
-endif::[product]
+endif::product[]
 
 
 //You initiate an ad hoc snapshot by sending a message that specifies the action type `execute-snapshot` to the signaling database.
@@ -76,14 +76,6 @@ The chunk size specifies the number of rows that the snapshot collects during ea
 Each signal specifies the tables to include in the snapshot.
 An ad hoc snapshot can recapture the entire contents of the database, or capture only a subset of the tables in the database.
 
-Ad hoc snapshots are available for the following {prodname} connectors:
-
-* Db2
-* MySQL
-* Oracle
-* PostgreSQL
-* SQL Server
-
 You specify the tables to capture by listing them in a signal message that you send to the signaling table.
 The signal is named `execute-snapshot` and accepts messages in the following format:
 
@@ -105,7 +97,7 @@ The format of the names is the same as for {link-prefix}:{context}-property-sign
 
 |===
 
-==== Triggering an ad hoc snapshot
+.Triggering an ad hoc snapshot
 
 You initiate an ad hoc snapshot by adding a signaling table entry with the `execute-snapshot` signal type.
 After the connector processes the message, it starts the snapshot operation.

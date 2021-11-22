@@ -2,7 +2,7 @@
 // Type: assembly
 [id="sending-signals-to-a-debezium-connector"]
 = Sending signals to a {prodname} connector
-
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -10,16 +10,16 @@
 :source-highlighter: highlight.js
 
 toc::[]
-ifdef::[community]
+
 [NOTE]
 ====
 This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this extension.
 ====
 
 == Overview
-endif::[community]
+endif::community[]
 
-ifdef::[product]
+ifdef::product[]
 [IMPORTANT]
 ====
 Signaling is a Technology Preview feature.
@@ -28,7 +28,7 @@ therefore, Red Hat does not recommend implementing any Technology Preview featur
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
-endif::[product]
+endif::product[]
 
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
 To trigger a connector to perform a specified action, you issue a SQL command to add a signal message to a specialized signaling table, also referred to as a signaling data collection.
@@ -39,9 +39,9 @@ Signaling is available for use with the following {prodname} connectors:
 
 * Db2
 * MySQL
-ifdef::[community]
+ifdef::community[]
 * Oracle
-endif::[community]
+endif::community[]
 * PostgreSQL
 * SQL Server
 
@@ -69,10 +69,10 @@ For example, `signal.data.collection = inventory.debezium_signals`. +
 The format for the fully-qualified name of the signaling collection depends on which connector you use. +
 See the following list to find the naming format to use with your connector:
 
-ifdef::[community]
+ifdef::community[]
 Db2, Oracle, or PostgreSQL:: `_<schemaName>_._<tableName>_`
-endif::[community]
-ifdef::[product]
+endif::community[]
+ifdef::product[]
 Db2 or PostgreSQL:: `_<schemaName>_._<tableName>_`
 endif::product[]
 MySQL:: `_<databaseName>_._<tableName>_`
@@ -170,7 +170,7 @@ CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT N
 You can use signaling to initiate the following actions:
 
 * xref:debezium-signaling-logging[Add messages to the log].
-* xref:debezium-signaling-triggering-incremental-snapshots[Trigger ad hoc snapshots].
+* xref:debezium-signaling-ad-hoc-snapshots[Trigger ad hoc snapshots].
 
 You can use the preceding signals with all of the {prodname} connectors that are compatible with signaling.
 
@@ -212,6 +212,16 @@ After processing the signal, the connector runs the requested snapshot operation
 Unlike the initial snapshot that a connector runs after it first starts, an ad hoc snapshot occurs during runtime, after the connector has already begun to stream change events from a database.
 You can initiate ad hoc snapshots at any time.
 
+Ad hoc snapshots are available for the following {prodname} connectors:
+
+* Db2
+* MySQL
+ifdef::community[]
+* Oracle
+endif::community[]
+* PostgreSQL
+* SQL Server
+
 [id="debezium-signaling-example-of-an-ad-hoc-signal-record"]
 .Example of an ad hoc snapshot signal record
 [cols="1,9",options="header"]
@@ -235,13 +245,13 @@ For more information about ad hoc snapshots, see the _Snapshots_ topic in the do
 
 .Additional resources
 
-* xref:{link-db2-connector}#{db2}-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
-* xref:{link-mysql-connector}#{mysql}-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
-ifdef::[community]
-* xref:{link-oracle-connector}#{oracle}-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
-endif::[community]
-* xref:{link-postgresql-connector}#{postgresql}-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
-* xref:{link-sqlserver-connector}#{sqlserver}-ad-hoc-snapshots[SQL Server connector ad hoc snapshots]
+* xref:{link-db2-connector}#db2-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
+* xref:{link-mysql-connector}#mysql-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
+ifdef::community[]
+* xref:{link-oracle-connector}#oracle-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
+endif::community[]
+* xref:{link-postgresql-connector}#postgresql-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
+* xref:{link-sqlserver-connector}#sqlserver-ad-hoc-snapshots[SQL Server connector ad hoc snapshots]
 
 // Type: concept
 [id="debezium-signaling-incremental-snapshots"]
@@ -267,10 +277,10 @@ For more information about incremental snapshots, see the _Snapshots_ topic in t
 
 .Additional resources
 
-* xref:{link-db2-connector}#{db2}-incremental-snapshots[Db2 connector incremental snapshots]
-* xref:{link-mysql-connector}#{mysql}-incremental-snapshots[MySQL connector incremental snapshots]
-ifdef::[community]
-* xref:{link-oracle-connector}#{oracle}-incremental-snapshots[Oracle connector incremental snapshots]
-endif::[community]
-* xref:{link-postgresql-connector}#{postgresql}-incremental-snapshots[PostgreSQL connector incremental snapshots]
-* xref:{link-sqlserver-connector}#{sqlserver}-incremental-snapshots[SQL Server connector incremental snapshots]
+* xref:{link-db2-connector}#db2-incremental-snapshots[Db2 connector incremental snapshots]
+* xref:{link-mysql-connector}#mysql-incremental-snapshots[MySQL connector incremental snapshots]
+ifdef::community[]
+* xref:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
+endif::community[]
+* xref:{link-postgresql-connector}#postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
+* xref:{link-sqlserver-connector}#sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]
