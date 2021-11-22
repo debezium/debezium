@@ -24,7 +24,7 @@ endif::community[]
 [NOTE]
 ====
 This SMT is supported only for the MongoDB connector.
-See {link-prefix}:{link-outbox-event-router}[Outbox Event Router] for the relational database equivalent to this SMT.
+See xref:transformations/outbox-event-router.adoc[Outbox Event Router] for the relational database equivalent to this SMT.
 ====
 
 The outbox pattern is a way to safely and reliably exchange data between multiple (micro) services. An outbox pattern implementation avoids inconsistencies between a service's internal state (as typically persisted in its database) and state in events consumed by services that need the same data.
@@ -35,7 +35,7 @@ To implement the outbox pattern in a {prodname} application, configure a {prodna
 * Apply the {prodname} MongoDB outbox event router single message transformation (SMT)
 
 A {prodname} connector that is configured to apply the MongoDB outbox SMT should capture changes that occur in an outbox collection only.
-For more information, see {link-prefix}:{link-mongodb-outbox-event-router}#options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
+For more information, see xref:options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
 
 A connector can capture changes in more than one outbox collection only if each outbox collection has the same structure.
 
@@ -103,7 +103,7 @@ A {prodname} connector that is configured to apply the MongoDB outbox event rout
 }
 ----
 
-This example of a {prodname} outbox message is based on the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-configuration-options[default outbox event router configuration], which assumes an outbox collection structure and event routing based on aggregates. To customize behavior, the outbox event router SMT provides numerous {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-configuration-options[configuration options].
+This example of a {prodname} outbox message is based on the xref:mongodb-outbox-event-router-configuration-options[default outbox event router configuration], which assumes an outbox collection structure and event routing based on aggregates. To customize behavior, the outbox event router SMT provides numerous xref:mongodb-outbox-event-router-configuration-options[configuration options].
 
 // Type: concept
 // Title: Outbox collection structure expected by {prodname} mongodb outbox event router SMT
@@ -133,25 +133,25 @@ To apply the default MongoDB outbox event router SMT configuration, your outbox 
 |`id`
 |Contains the unique ID of the event. In an outbox message, this value is a header. You can use this ID, for example, to remove duplicate messages. +
  +
-To obtain the unique ID of the event from a different outbox collection field, set the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-property-collection-field-event-id[`collection.field.event.id` SMT option] in the connector configuration.
+To obtain the unique ID of the event from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-collection-field-event-id[`collection.field.event.id` SMT option] in the connector configuration.
 
 |[[route-by-field-example]]`aggregatetype`
-|Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
+|Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
  +
-For example, in a default configuration, the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option is set to `outbox.event.pass:[${routedByValue}]`.
+For example, in a default configuration, the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option is set to `outbox.event.pass:[${routedByValue}]`.
 Suppose that your application adds two documents to the outbox collection. In the first document, the value in the `aggregatetype` field is `customers`.
 In the second document, the value in the `aggregatetype` field is `orders`.
 The connector emits the first document to the `outbox.event.customers` topic.
 The connector emits the second document to the `outbox.event.orders` topic. +
  +
-To obtain this value from a different outbox collection field, set the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-property-route-by-field[`route.by.field` SMT option] in the connector configuration.
+To obtain this value from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field` SMT option] in the connector configuration.
 
 |`aggregateid`
 |Contains the event key, which provides an ID for the payload.
 The SMT uses this value as the key in the emitted outbox message.
 This is important for maintaining correct order in Kafka partitions. +
  +
-To obtain the event key from a different outbox collection field, set the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-property-collection-field-event-key[`collection.field.event.key` SMT option] in the connector configuration.
+To obtain the event key from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-collection-field-event-key[`collection.field.event.key` SMT option] in the connector configuration.
 
 |`payload`
 |A representation of the outbox change event.
@@ -160,10 +160,10 @@ By default, the Kafka message value is solely comprised of the `payload` value.
 However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately.
 For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields]. +
  +
-To obtain the event payload from a different outbox collection field, set the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-property-collection-field-event-payload[`collection.field.event.payload` SMT option] in the connector configuration.
+To obtain the event payload from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-collection-field-event-payload[`collection.field.event.payload` SMT option] in the connector configuration.
 
 |Additional custom fields
-|Any additional fields from the outbox collection can be {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. +
+|Any additional fields from the outbox collection can be xref:mongodb-outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. +
  +
 One example could be a field `eventType` which conveys a user-defined value that helps to categorize or organize events.
 
@@ -373,7 +373,7 @@ To specify an alias for the field, specify a trio with the alias as the third va
 
 The second value is the placement and it must always be `header` or `envelope`.
 
-Configuration examples are in {link-prefix}:{link-mongodb-outbox-event-router}#emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
+Configuration examples are in xref:emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
 
 |[[mongodb-outbox-event-router-property-collection-field-event-schema-version]]<<mongodb-outbox-event-router-property-collection-field-event-schema-version, `collection.field.event.schema.version`>>
 |
@@ -383,7 +383,7 @@ Configuration examples are in {link-prefix}:{link-mongodb-outbox-event-router}#e
 |[[mongodb-outbox-event-router-property-route-by-field]]<<mongodb-outbox-event-router-property-route-by-field, `route.by.field`>>
 |`aggregatetype`
 |Router
-|Specifies the name of a field in the outbox collection. The default behavior is that the value in this field becomes a part of the name of the topic to which the connector emits the outbox messages. An example is in the {link-prefix}:{link-mongodb-outbox-event-router}#route-by-field-example[description of the expected outbox collection].
+|Specifies the name of a field in the outbox collection. The default behavior is that the value in this field becomes a part of the name of the topic to which the connector emits the outbox messages. An example is in the xref:route-by-field-example[description of the expected outbox collection].
 
 |[[mongodb-outbox-event-router-property-route-topic-regex]]<<mongodb-outbox-event-router-property-route-topic-regex, `route.topic.regex`>>
 |`(?<routedByValue>.*)`
