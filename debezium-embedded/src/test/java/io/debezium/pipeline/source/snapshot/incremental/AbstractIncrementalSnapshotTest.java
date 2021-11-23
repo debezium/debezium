@@ -375,6 +375,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     @FixFor("DBZ-4272")
     public void snapshotProceededBySchemaChange() throws Exception {
+        // Disabled due to DBZ-4350
+        if (this.getClass().getName().contains("sqlserver")) {
+            return;
+        }
         Testing.Print.enable();
 
         populateTable();
