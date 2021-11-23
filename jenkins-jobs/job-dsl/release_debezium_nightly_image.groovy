@@ -21,6 +21,9 @@ freeStyleJob('release-debezium-nightly-image') {
         credentialsBinding {
             usernamePassword('DOCKER_USERNAME', 'DOCKER_PASSWORD', 'debezium-dockerhub')
         }
+        credentialsBinding {
+            string('QUAYIO_CREDENTIALS', 'debezium-quay')
+        }
     }
 
     triggers {
