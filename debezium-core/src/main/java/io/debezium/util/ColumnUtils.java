@@ -11,6 +11,9 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
@@ -18,6 +21,8 @@ import io.debezium.relational.Table;
  * Utility class for mapping columns to various data structures from from {@link Table} and {@link ResultSet}.
  */
 public class ColumnUtils {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ColumnUtils.class);
 
     public static MappedColumns toMap(Table table) {
         Map<String, Column> sourceTableColumns = new HashMap<>();
@@ -37,7 +42,27 @@ public class ColumnUtils {
         Column[] columns = new Column[metaData.getColumnCount()];
         int greatestColumnPosition = 0;
         for (int i = 0; i < columns.length; i++) {
-            columns[i] = table.columnWithName(metaData.getColumnName(i + 1));
+            final String columnName = metaData.getColumnName(i + 1);
+            columns[i] = table.columnWithName(columnName);
+            if (columns[i] == null) {
+                // This situation can happen when SQL Server and Db2 schema is changed before
+                // an incremental snapshot is started and no event with the new schema has been
+                // streamed yet.
+                // This warning will help to identify the issue in case of a support request.
+
+                final String[] resultSetColumns = new String[metaData.getColumnCount()];
+                for (int j = 0; j < metaData.getColumnCount(); j++) {
+                    resultSetColumns[j] = metaData.getColumnName(j + 1);
+                }
+                LOGGER.warn(
+                        "Column '{}' not found in result set '{}' for table '{}', {}. This might be caused by DBZ-4350",
+                        columnName,
+                        String.join(", ", resultSetColumns),
+                        table.id(),
+                        table,
+                        new IllegalArgumentException("Columns in schema do not match result set"));
+                continue;
+            }
             greatestColumnPosition = greatestColumnPosition < columns[i].position()
                     ? columns[i].position()
                     : greatestColumnPosition;
