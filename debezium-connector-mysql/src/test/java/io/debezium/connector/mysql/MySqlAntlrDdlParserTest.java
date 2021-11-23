@@ -90,7 +90,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-4166")
+    @FixFor({ "DBZ-4166", "DBZ-4320" })
     public void shouldAllowIndexExpressionForTable() {
         String ddlSql = "CREATE TABLE `cached_sales` (\n"
                 + "`id` bigint unsigned NOT NULL AUTO_INCREMENT,\n"
@@ -139,6 +139,17 @@ public class MySqlAntlrDdlParserTest {
                 + "KEY `cached_sales_gender_ids_index` (((cast(json_extract(`gender_ids`,_utf8mb4'$') as unsigned array))))\n"
                 + ") ENGINE=InnoDB AUTO_INCREMENT=13594436 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         parser.parse(ddlSql, tables);
+
+        ddlSql = "CREATE TABLE `orders_json`(\n"
+                + "`id` int NOT NULL AUTO_INCREMENT,\n"
+                + "`reward` json DEFAULT NULL,\n"
+                + "`additional_info` json DEFAULT NULL,\n"
+                + "`created_at` timestamp NULL DEFAULT NULL,\n"
+                + "`updated_at` timestamp NULL DEFAULT NULL,\n"
+                + "PRIMARY KEY (`id`)\n"
+                + ") ENGINE=InnoDB;";
+        parser.parse(ddlSql, tables);
+        parser.parse("ALTER TABLE orders_json ADD INDEX `idx_order_codes`((cast(json_extract(`additional_info`,_utf8mb4'$.order_codes') as char(17) array)))", tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
 
         ddlSql = "CREATE TABLE tbl (\n"
