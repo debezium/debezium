@@ -1258,13 +1258,21 @@ Represents the number of milliseconds past epoch, and does not include timezone 
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`INTERVAL YEAR[(M)] TO MONTH`
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`TIMESTAMP(0 - 3)`
 |`INT64`
@@ -1316,13 +1324,21 @@ Represents the number of days since the epoch.
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`INTERVAL YEAR[(M)] TO MONTH`
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`TIMESTAMP(0 - 3)`
 |`INT64`
@@ -2254,6 +2270,14 @@ You can set one of the following options:
 `string`:: Encodes values as formatted strings.
   Using the `string` option is easier to consume, but results in a loss of semantic information about the real type.
   For more information, see <<oracle-decimal-types>>.
+
+|[[oracle-property-interval-handling-mode]]<<oracle-property-interval-handling-mode, `+interval.handling.mode+`>>
+|`numeric`
+| Specifies how the connector should handle values for `interval` columns: +
+ +
+`numeric` represents intervals using approximate number of microseconds. +
+ +
+`string` represents intervals exactly by using the string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`. For example: `P1Y2M3DT4H5M6.78S`.
 
 |[[oracle-property-event-processing-failure-handling-mode]]<<oracle-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`

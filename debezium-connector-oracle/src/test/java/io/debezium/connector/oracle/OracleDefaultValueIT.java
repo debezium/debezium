@@ -27,6 +27,7 @@ import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
 import io.debezium.util.Testing;
 
@@ -39,9 +40,12 @@ import io.debezium.util.Testing;
 public class OracleDefaultValueIT extends AbstractConnectorTest {
 
     private OracleConnection connection;
+    private Consumer<Configuration.Builder> configUpdater;
 
     @Before
     public void before() throws Exception {
+        configUpdater = builder -> {
+        };
         connection = TestHelper.testConnection();
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -275,6 +279,28 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1539")
+    public void shouldHandleIntervalDefaultTypesAsString() throws Exception {
+        configUpdater = builder -> {
+            builder.with(OracleConnectorConfig.INTERVAL_HANDLING_MODE,
+                    OracleConnectorConfig.IntervalHandlingMode.STRING.getValue());
+        };
+        List<ColumnDefinition> columnDefinitions = Arrays.asList(
+                new ColumnDefinition("val_int_ytm", "interval year to month",
+                        "'5-3'", "'7-4'",
+                        getOracleIntervalYearMonthString(5, 3),
+                        getOracleIntervalYearMonthString(7, 4),
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+                new ColumnDefinition("val_int_dts", "interval day(3) to second(3)",
+                        "'5 1:2:3.456'", "'3 2:1:4.567'",
+                        getOracleIntervalDaySecondString(5, 1, 2, 3, 456000),
+                        getOracleIntervalDaySecondString(3, 2, 1, 4, 567000),
+                        AssertionType.FIELD_DEFAULT_EQUAL));
+
+        shouldHandleDefaultValuesCommon(columnDefinitions);
+    }
+
+    @Test
     @FixFor("DBZ-4208")
     public void shouldHandleDefaultValueFromSequencesAsNoDefault() throws Exception {
         // Used to track the number of default value parser exceptions
@@ -294,8 +320,17 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         return MicroDuration.durationMicros(years, month, 0, 0, 0, 0, MicroDuration.DAYS_PER_MONTH_AVG);
     }
 
+    private String getOracleIntervalYearMonthString(int years, int month) {
+        return Interval.toIsoString(years, month, 0, 0, 0, BigDecimal.ZERO);
+    }
+
     private long getOracleIntervalDaySecond(int days, int hours, int minutes, int seconds, int micros) {
         return MicroDuration.durationMicros(0, 0, days, hours, minutes, seconds, micros, MicroDuration.DAYS_PER_MONTH_AVG);
+    }
+
+    private String getOracleIntervalDaySecondString(int days, int hours, int minutes, int seconds, int micros) {
+        double secondsDouble = (double) seconds + (double) micros / 1_000_000D;
+        return Interval.toIsoString(0, 0, days, hours, minutes, BigDecimal.valueOf(secondsDouble));
     }
 
     /**
@@ -356,6 +391,7 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
 
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DEFAULT_VALUE_TEST")
+                .apply(configUpdater)
                 .build();
 
         // Start connector

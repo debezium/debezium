@@ -93,6 +93,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateOutServerName)
             .withDescription("Name of the XStream Out server to connect to.");
 
+    public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
+            .withDisplayName("Interval Handling")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 21))
+            .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
+                    + "'string' represents values as an exact ISO formatted string"
+                    + "'numeric' (default) represents values using the inexact conversion into microseconds");
+
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -413,6 +423,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     SNAPSHOT_ENHANCEMENT_TOKEN,
                     SNAPSHOT_LOCKING_MODE,
                     RAC_NODES,
+                    INTERVAL_HANDLING_MODE,
                     LOG_MINING_ARCHIVE_LOG_HOURS,
                     LOG_MINING_BATCH_SIZE_DEFAULT,
                     LOG_MINING_BATCH_SIZE_MIN,
@@ -457,6 +468,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String databaseName;
     private final String pdbName;
     private final String xoutServerName;
+    private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
 
     private final String oracleVersion;
@@ -496,6 +508,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
+        this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.oracleVersion = config.getString(ORACLE_VERSION);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
@@ -552,6 +565,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return xoutServerName;
     }
 
+    public IntervalHandlingMode getIntervalHandlingMode() {
+        return intervalHandlingMode;
+    }
+
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
     }
@@ -567,6 +584,67 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
         return getAdapter().getHistoryRecordComparator();
+    }
+
+    /**
+     * Defines modes of representation of {@code interval} datatype
+     */
+    public enum IntervalHandlingMode implements EnumeratedValue {
+
+        /**
+         * Represents interval as inexact microseconds count
+         */
+        NUMERIC("numeric"),
+
+        /**
+         * Represents interval as ISO 8601 time interval
+         */
+        STRING("string");
+
+        private final String value;
+
+        IntervalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static IntervalHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (IntervalHandlingMode option : IntervalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @param defaultValue the default value ; may be null
+         * @return the matching option or null if the match is not found and non-null default is invalid
+         */
+        public static IntervalHandlingMode parse(String value, String defaultValue) {
+            IntervalHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
     }
 
     /**
