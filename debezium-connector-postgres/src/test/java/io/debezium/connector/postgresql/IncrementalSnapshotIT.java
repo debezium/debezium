@@ -52,6 +52,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
     }
 
