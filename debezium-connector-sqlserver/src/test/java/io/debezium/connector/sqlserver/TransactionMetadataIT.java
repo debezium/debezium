@@ -153,7 +153,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                     return false;
                 }
 
-                for (SqlServerChangeTable ct : connection.listOfChangeTables(TestHelper.TEST_DATABASE)) {
+                for (SqlServerChangeTable ct : connection.getChangeTables(TestHelper.TEST_DATABASE)) {
                     final String tableName = ct.getChangeTableId().table();
                     if (tableName.endsWith("dbo_" + connection.getNameOfChangeTable("tablea"))) {
                         try {

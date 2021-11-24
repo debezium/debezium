@@ -762,7 +762,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
             // verify pre-snapshot inserts have succeeded
             Map<String, Boolean> resultMap = new HashMap<>();
-            connection.listOfChangeTables(TestHelper.TEST_DATABASE).forEach(ct -> {
+            connection.getChangeTables(TestHelper.TEST_DATABASE).forEach(ct -> {
                 final String tableName = ct.getChangeTableId().table();
                 if (tableName.endsWith("dbo_" + tableaCT) || tableName.endsWith("dbo_" + tablebCT)) {
                     try {
