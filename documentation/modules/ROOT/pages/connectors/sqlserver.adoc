@@ -2467,7 +2467,7 @@ The procedure for completing an online schema updates is simpler than the proced
 and you can complete it without requiring any downtime in application and data processing.
 However, with online schema updates, a potential processing gap can occur after you update the schema in the source database,
 but before you create the new capture instance.
-During that interval, change events continue to be captured by the old instance of the change table, Q
+During that interval, change events continue to be captured by the old instance of the change table,
 and the change data that is saved to the old table retains the structure of the earlier schema.
 So, for example, if you added a new column to a source table, change events that are produced before the new capture table is ready, do not contain a field for the new column.
 If your application does not tolerate such a transition period, it is best to use the offline schema update procedure.
