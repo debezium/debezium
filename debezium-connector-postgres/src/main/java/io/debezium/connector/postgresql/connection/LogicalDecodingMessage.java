@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.OptionalLong;
 
 /**
  * Replication message instance representing a generic logical decoding message
@@ -17,12 +18,12 @@ import java.util.List;
 public class LogicalDecodingMessage implements ReplicationMessage {
     private final Operation operation;
     private final Instant commitTime;
-    private final long transactionId;
+    private final Long transactionId;
     private final boolean isTransactional;
     private final String prefix;
     private final byte[] content;
 
-    public LogicalDecodingMessage(Operation op, Instant commitTimestamp, long transactionId, boolean isTransactional,
+    public LogicalDecodingMessage(Operation op, Instant commitTimestamp, Long transactionId, boolean isTransactional,
                                   String prefix, byte[] content) {
         this.operation = op;
         this.commitTime = commitTimestamp;
@@ -48,8 +49,8 @@ public class LogicalDecodingMessage implements ReplicationMessage {
     }
 
     @Override
-    public long getTransactionId() {
-        return transactionId;
+    public OptionalLong getTransactionId() {
+        return transactionId == null ? OptionalLong.empty() : OptionalLong.of(transactionId);
     }
 
     @Override
@@ -78,9 +79,5 @@ public class LogicalDecodingMessage implements ReplicationMessage {
 
     public byte[] getContent() {
         return content;
-    }
-
-    public boolean isTransactional() {
-        return isTransactional;
     }
 }

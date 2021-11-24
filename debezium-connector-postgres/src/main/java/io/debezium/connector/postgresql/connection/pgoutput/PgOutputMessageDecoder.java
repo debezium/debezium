@@ -70,7 +70,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private final PostgresConnection connection;
 
     private Instant commitTimestamp;
-    private int transactionId;
+    private Long transactionId;
 
     public enum MessageType {
         RELATION,
@@ -180,12 +180,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 handleRelationMessage(buffer, typeRegistry);
                 break;
             case LOGICAL_DECODING_MESSAGE:
-                if (decoderContext.getConfig().logicalDecodingMessageHandlingMode() == PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE) {
-                    handleLogicalDecodingMessage(buffer, processor);
-                }
-                else {
-                    LOGGER.debug("Message Type {} skipped, not processed.", messageType);
-                }
+                handleLogicalDecodingMessage(buffer, processor);
                 break;
             case INSERT:
                 decodeInsert(buffer, typeRegistry, processor);
@@ -214,8 +209,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
         return builder.withSlotOption("proto_version", 1)
                 .withSlotOption("publication_names", decoderContext.getConfig().publicationName())
-                .withSlotOption("messages",
-                        decoderContext.getConfig().logicalDecodingMessageHandlingMode() == PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE);
+                .withSlotOption("messages", true);
     }
 
     @Override
@@ -232,7 +226,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private void handleBeginMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
         this.commitTimestamp = PG_EPOCH.plus(buffer.getLong(), ChronoUnit.MICROS);
-        this.transactionId = buffer.getInt();
+        this.transactionId = (long) buffer.getInt();
         LOGGER.trace("Event: {}", MessageType.BEGIN);
         LOGGER.trace("Final LSN of transaction: {}", lsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
@@ -577,7 +571,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             throws SQLException, InterruptedException {
         // As of PG14, the MESSAGE message format is as described:
         // Byte1 Always 'M'
-        // Int32 Xid of the transaction (only present for streamed transactions). This field is available since protocol version 2.
+        // Int32 Xid of the transaction (only present for streamed transactions in protocol version 2).
         // Int8 flags; Either 0 for no flags or 1 if the logical decoding message is transactional.
         // Int64 The LSN of the logical decoding message
         // String The prefix of the logical decoding message.
@@ -585,11 +579,17 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         // Byten The content of the logical decoding message.
 
         boolean isTransactional = buffer.get() == 1;
-        final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
+        final Lsn lsn = Lsn.valueOf(buffer.getLong());
         String prefix = readString(buffer);
         int contentLength = buffer.getInt();
         byte[] content = new byte[contentLength];
         buffer.get(content);
+
+        // non-transactional messages do not have xids or commitTimestamps
+        if (!isTransactional) {
+            transactionId = null;
+            commitTimestamp = null;
+        }
 
         LOGGER.trace("Event: {}", MessageType.LOGICAL_DECODING_MESSAGE);
         LOGGER.trace("Commit LSN: {}", lsn);

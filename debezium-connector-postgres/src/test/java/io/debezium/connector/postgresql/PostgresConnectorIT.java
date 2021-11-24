@@ -11,12 +11,7 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -247,8 +242,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateConfigField(validatedConfig, PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.PRECISE);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_SOCKET_FACTORY, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.TCP_KEEPALIVE, true);
-        validateConfigField(validatedConfig, PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE,
-                PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.SKIP);
+        validateConfigField(validatedConfig, PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, null);
+        validateConfigField(validatedConfig, PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, null);
     }
 
     @Test
@@ -2891,38 +2886,44 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-2363")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Database Version less than 14")
-    public void shouldNotConsumeLogicalDecodingMessagesWhenConfigIsSetToSkip() throws Exception {
+    public void shouldNotConsumeLogicalDecodingMessagesWhenAllPrefixesAreInTheExcludedList() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE, "skip");
+                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, ".*");
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted();
 
         // emit logical decoding message
         TestHelper.execute("SELECT pg_logical_emit_message(false, 'prefix', 'content');");
+        TestHelper.execute("INSERT into s1.a VALUES(201, 1);");
 
-        assertNoRecordsToConsume();
+        SourceRecords records = consumeRecordsByTopic(2);
+        List<SourceRecord> insertRecords = records.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> logicalMessageRecords = records.recordsForTopic(topicName("message"));
+        assertThat(insertRecords.size()).isEqualTo(1);
+        assertNull(logicalMessageRecords);
     }
 
     @Test
     @FixFor("DBZ-2363")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
-    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Database Version less than 14")
-    public void shouldConsumeLogicalDecodingMessagesWhenConfigIsSetToInclude() throws Exception {
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldConsumeNonTransactionalLogicalDecodingMessages() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
-        Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE, "include");
+        Configuration.Builder configBuilder = TestHelper.defaultConfig();
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
         assertRecordsFromSnapshot(2, 1, 1);
 
-        // emit non transactional logical decoding message
+        // emit non transactional logical decoding message with text
         TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', 'bar');");
+        // emit non transactional logical decoding message with binary
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', E'bar'::bytea);");
 
-        SourceRecords records = consumeRecordsByTopic(1);
+        SourceRecords records = consumeRecordsByTopic(2);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
         recordsForTopic.forEach(record -> {
             Struct value = (Struct) record.value();
@@ -2937,12 +2938,30 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
 
             assertEquals(Envelope.Operation.MESSAGE.code(), op);
-            assertEquals("foo", message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
-            assertFalse(message.getBoolean(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY));
+            assertEquals("foo",
+                    message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
+            assertArrayEquals("bar".getBytes(),
+                    message.getBytes(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY));
         });
+    }
 
-        // emit transactional logical decoding message
+    @Test
+    @FixFor("DBZ-2363")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldConsumeTransactionalLogicalDecodingMessages() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig();
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        assertRecordsFromSnapshot(2, 1, 1);
+
+        // emit transactional logical decoding message with text
         TestHelper.execute("SELECT pg_logical_emit_message(true, 'txn_foo', 'txn_bar');");
+        // emit transactional logical decoding message with binary
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', E'txn_bar'::bytea);");
 
         SourceRecords txnRecords = consumeRecordsByTopic(1);
         List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("message"));
@@ -2960,8 +2979,70 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
 
             assertEquals(Envelope.Operation.MESSAGE.code(), op);
-            assertEquals("txn_foo", message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
-            assertTrue(message.getBoolean(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY));
+            assertEquals("txn_foo",
+                    message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
+            assertArrayEquals("txn_bar".getBytes(),
+                    message.getBytes(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY));
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-2363")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Database Version less than 14")
+    public void shouldNotConsumeLogicalDecodingMessagesWithExludedPrefixes() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, "excluded_prefix, prefix:excluded");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // emit logical decoding message
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'included_prefix', 'content');");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'excluded_prefix', 'content');");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'prefix:excluded', 'content');");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'prefix:included', 'content');");
+
+        SourceRecords records = consumeRecordsByTopic(4);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
+        assertEquals(2, recordsForTopic.size());
+
+        recordsForTopic.forEach(record -> {
+            Struct message = ((Struct) record.value()).getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+            assertThat(message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY))
+                    .doesNotMatch("excluded_prefix");
+            assertThat(message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY))
+                    .doesNotMatch("prefix:excluded");
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-2363")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Database Version less than 14")
+    public void shouldOnlyConsumeLogicalDecodingMessagesWithIncludedPrefixes() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, "included_prefix, prefix:included");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // emit logical decoding message
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'included_prefix', 'content');");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'excluded_prefix', 'content');");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'prefix:excluded', 'content');");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'prefix:included', 'content');");
+
+        SourceRecords records = consumeRecordsByTopic(4);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
+        assertEquals(2, recordsForTopic.size());
+
+        recordsForTopic.forEach(record -> {
+            Struct message = ((Struct) record.value()).getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+            assertThat(message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY))
+                    .matches("included_prefix|prefix:included");
         });
     }
 

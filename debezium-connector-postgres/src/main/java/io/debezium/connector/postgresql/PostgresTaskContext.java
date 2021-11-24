@@ -111,7 +111,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .withPublicationAutocreateMode(config.publicationAutocreateMode())
                 .withPlugin(config.plugin())
                 .withTruncateHandlingMode(config.truncateHandlingMode())
-                .withLogicalDecodingMessageHandlingMode(config.logicalDecodingMessageHandlingMode())
+                .withLogicalDecodingMessageFilter(config.getMessageFilter())
                 .dropSlotOnClose(dropSlotOnStop)
                 .streamParams(config.streamParams())
                 .statusUpdateInterval(config.statusUpdateInterval())

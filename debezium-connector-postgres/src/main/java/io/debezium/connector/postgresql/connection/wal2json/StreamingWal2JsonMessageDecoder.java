@@ -104,7 +104,7 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
      */
     private byte[] currentChunk;
 
-    private long txId;
+    private Long txId;
 
     private Instant commitTime;
 

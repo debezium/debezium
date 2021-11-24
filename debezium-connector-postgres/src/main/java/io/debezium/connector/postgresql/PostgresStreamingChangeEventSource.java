@@ -224,7 +224,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
                             taskContext.getSlotXmin(connection));
                     if (message.getOperation() == Operation.BEGIN) {
-                        dispatcher.dispatchTransactionStartedEvent(partition, Long.toString(message.getTransactionId()), offsetContext);
+                        dispatcher.dispatchTransactionStartedEvent(partition, message.getTransactionId().toString(), offsetContext);
                     }
                     else if (message.getOperation() == Operation.COMMIT) {
                         commitMessage(partition, offsetContext, lsn);
@@ -233,23 +233,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     maybeWarnAboutGrowingWalBacklog(true);
                 }
                 else if (message.getOperation() == Operation.MESSAGE) {
-                    if (connectorConfig.logicalDecodingMessageHandlingMode() != PostgresConnectorConfig.LogicalDecodingMessageHandlingMode.INCLUDE) {
-                        LOGGER.debug("Received logical decoding message {}", message);
-                        if (message.isLastEventForLsn()) {
-                            commitMessage(partition, offsetContext, lsn);
-                        }
-                        return;
-                    }
+                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(),
+                            taskContext.getSlotXmin(connection));
 
-                    // non-transactional messages will not have a commitTime or txId
+                    // non-transactional message that will not be followed by a COMMIT message
                     if (message.isLastEventForLsn()) {
-                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null,
-                                taskContext.getSlotXmin(connection));
                         commitMessage(partition, offsetContext, lsn);
-                    }
-                    else {
-                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(),
-                                taskContext.getSlotXmin(connection));
                     }
 
                     dispatcher.dispatchLogicalDecodingMessage(
