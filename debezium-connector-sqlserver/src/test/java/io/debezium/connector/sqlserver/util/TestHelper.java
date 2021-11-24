@@ -461,7 +461,7 @@ public class TestHelper {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.listOfChangeTables(TEST_DATABASE)) {
+                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith("dbo_" + connection.getNameOfChangeTable(tableName))) {
                                 try {
@@ -516,7 +516,7 @@ public class TestHelper {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.listOfChangeTables(TEST_DATABASE)) {
+                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith(connection.getNameOfChangeTable(captureInstanceName))) {
                                 try {

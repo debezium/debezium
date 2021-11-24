@@ -71,8 +71,8 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT *# FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private final String get_all_changes_for_table;
     protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET([#db].sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
-    private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC [#db].sys.sp_cdc_help_change_data_capture";
-    private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
+    private static final String GET_CHANGE_TABLES = "EXEC [#db].sys.sp_cdc_help_change_data_capture";
+    private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final Pattern BRACKET_PATTERN = Pattern.compile("[\\[\\]]");
     private static final String OPENING_QUOTING_CHARACTER = "[";
     private static final String CLOSING_QUOTING_CHARACTER = "]";
@@ -363,9 +363,9 @@ public class SqlServerConnection extends JdbcConnection {
         }
     }
 
-    public Set<SqlServerChangeTable> listOfChangeTables(String databaseName) throws SQLException {
-        return queryAndMap(replaceDatabaseNamePlaceholder(GET_LIST_OF_CDC_ENABLED_TABLES, databaseName), rs -> {
-            final Set<SqlServerChangeTable> changeTables = new HashSet<>();
+    public List<SqlServerChangeTable> getChangeTables(String databaseName) throws SQLException {
+        return queryAndMap(replaceDatabaseNamePlaceholder(GET_CHANGE_TABLES, databaseName), rs -> {
+            final List<SqlServerChangeTable> changeTables = new ArrayList<>();
             while (rs.next()) {
                 changeTables.add(
                         new SqlServerChangeTable(
@@ -380,8 +380,8 @@ public class SqlServerConnection extends JdbcConnection {
         });
     }
 
-    public Set<SqlServerChangeTable> listOfNewChangeTables(String databaseName, Lsn fromLsn, Lsn toLsn) throws SQLException {
-        final String query = replaceDatabaseNamePlaceholder(GET_LIST_OF_NEW_CDC_ENABLED_TABLES, databaseName);
+    public List<SqlServerChangeTable> getNewChangeTables(String databaseName, Lsn fromLsn, Lsn toLsn) throws SQLException {
+        final String query = replaceDatabaseNamePlaceholder(GET_NEW_CHANGE_TABLES, databaseName);
 
         return prepareQueryAndMap(query,
                 ps -> {
@@ -389,7 +389,7 @@ public class SqlServerConnection extends JdbcConnection {
                     ps.setBytes(2, toLsn.getBinary());
                 },
                 rs -> {
-                    final Set<SqlServerChangeTable> changeTables = new HashSet<>();
+                    final List<SqlServerChangeTable> changeTables = new ArrayList<>();
                     while (rs.next()) {
                         changeTables.add(new SqlServerChangeTable(
                                 rs.getString(4),
