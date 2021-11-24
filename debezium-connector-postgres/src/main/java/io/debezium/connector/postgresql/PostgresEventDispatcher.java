@@ -7,6 +7,8 @@
 package io.debezium.connector.postgresql;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
@@ -30,8 +32,10 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Lairen Hightower
  */
 public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDispatcher<T> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresEventDispatcher.class);
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final LogicalDecodingMessageMonitor logicalDecodingMessageMonitor;
+    private final LogicalDecodingMessageFilter messageFilter;
 
     public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
@@ -57,12 +61,18 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
                 customHeartbeat, schemaNameAdjuster, jdbcConnection);
         this.queue = queue;
         this.logicalDecodingMessageMonitor = new LogicalDecodingMessageMonitor(connectorConfig, this::enqueueLogicalDecodingMessage);
+        this.messageFilter = connectorConfig.getMessageFilter();
     }
 
     public void dispatchLogicalDecodingMessage(Partition partition, OffsetContext offset, Long decodeTimestamp,
                                                LogicalDecodingMessage message)
             throws InterruptedException {
-        logicalDecodingMessageMonitor.logicalDecodingMessageEvent(partition, offset, decodeTimestamp, message);
+        if (messageFilter.isIncluded(message.getPrefix())) {
+            logicalDecodingMessageMonitor.logicalDecodingMessageEvent(partition, offset, decodeTimestamp, message);
+        }
+        else {
+            LOGGER.trace("Filtered data change event for logical decoding message with prefix{}", message.getPrefix());
+        }
     }
 
     private void enqueueLogicalDecodingMessage(SourceRecord record) throws InterruptedException {

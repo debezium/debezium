@@ -43,7 +43,6 @@ public class LogicalDecodingMessageMonitor {
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY = "message";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY = "prefix";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY = "content";
-    public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY = "transactional";
 
     private final BlockingConsumer<SourceRecord> sender;
     private final String topicName;
@@ -59,7 +58,6 @@ public class LogicalDecodingMessageMonitor {
         this.base64Encoder = Base64.getEncoder();
 
         this.blockSchema = SchemaBuilder.struct().optional()
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY, Schema.BOOLEAN_SCHEMA)
                 .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, binaryMode.getSchema().build())
                 .build();
@@ -76,7 +74,6 @@ public class LogicalDecodingMessageMonitor {
                                             LogicalDecodingMessage message)
             throws InterruptedException {
         final Struct logicalMsgStruct = new Struct(blockSchema);
-        logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_TRANSACTIONAL_KEY, message.isTransactional());
         logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, message.getPrefix());
         logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, convertContent(message.getContent()));
 

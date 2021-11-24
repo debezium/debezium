@@ -1211,7 +1211,6 @@ The message value looks like this for transactional messages:
         "op": "m", // <2>
         "ts_ms": 1559033904961 // <3>
         "message": { // <4>
-            "transactional": true,
             "prefix": "foo",
             "content": "Ymfy"
     }
@@ -1241,7 +1240,6 @@ The message value looks like this for non-transactional messages:
         "op": "m", // <2>
         "ts_ms": 1559033904961 // <3>
         "message": { // <4>
-            "transactional": false,
             "prefix": "foo",
             "content": "Ymfy"
     }
@@ -1262,7 +1260,7 @@ a|Mandatory field that describes the source metadata for the event. In a _messag
 * Database name
 * Schema name (always `""` for _mesage_ events)
 * Table name (always `""` for _message_ events)
-* If the event was part of a snapshot
+* If the event was part of a snapshot (always `false` for _message_ events)
 * ID of the transaction in which the operation was performed (`null` for non-transactional _message_ events)
 * Offset of the operation in the database log
 * Transactional messages: Timestamp for when the message was inserted into the WAL
@@ -1276,7 +1274,7 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 |`ts_ms`
 a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
-For transaction _message_ events, In the `source` object, `ts_ms` indicates the time that the change was made in the database for transactional _message_ events. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+For transactional _message_ events, the `ts_ms` attribute of the `source` object indicates the time that the change was made in the database for transactional _message_ events. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 For non-transactional _message_ events, the `source` object's `ts_ms` indicates time at which the connector encounters the _message_ event, while the `payload.ts_ms` indicates the time at which the connector processed the event. This difference is due to the fact that the commit timestamp is not present in Postgres's generic logical message format and non-transactional logical messages are not preceded by a `BEGIN` event (which has timestamp information).
 
@@ -1284,7 +1282,6 @@ For non-transactional _message_ events, the `source` object's `ts_ms` indicates 
 |`message`
 a|Field that contains the message metadata
 
-* Boolean that indicates if the message was part of current transaction or if it was written immediately)
 * Prefix (text)
 * Content (byte array that is encoded based on the {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[binary handling mode] setting)
 
@@ -2908,14 +2905,16 @@ For information about the structure of _truncate_ events and about their orderin
 |Specifies how many decimal digits should be used when converting Postgres `money` type to `java.math.BigDecimal`, which represents the values in change events.
 Applicable only when `decimal.handling.mode` is set to `precise`.
 
-|[[postgresql-property-logical-decoding-message-handling-mode]]<<postgresql-property-logical-decoding-message-handling-mode, `+logical_decoding_message.handling.mode+`>>
-|skip
-|Specifies whether `MESSSAGE` events should be propagated or not (only available when using the `pgoutput` plug-in with Postgres 14 or later): +
- +
-`skip` causes those event to be omitted (the default). +
- +
-`include` causes those events to be included. +
- +
+|[[postgresql-property-logical-decoding-message-handling-mode]]<<postgresql-property-logical-decoding-message-prefix-include-list, `+message.prefix.include.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *want* to capture. Any logical decoding message with a prefix not included in `message.prefix.include.list` is excluded By default, all logical decoding messages are captured. Do not also set the `message.prefix.exclude.list` property.
+
+For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
+
+|[[postgresql-property-logical-decoding-message-handling-mode]]<<postgresql-property-logical-decoding-message-prefix-exclude-list, `+message.prefix.exclude.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *do not* to capture. Any logical decoding message with a prefix that is not included in `message.prefix.exclude.list` is included. Do not also set the `message.prefix.include.list` property. To exclude all logiacl decoding messages pass `.*` into this config.
+
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
 |===

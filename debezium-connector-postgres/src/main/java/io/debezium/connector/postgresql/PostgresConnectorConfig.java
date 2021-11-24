@@ -608,46 +608,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     /**
-     * The set of predefined LogicalDecodingMessageHandlingMode options or aliases
-     */
-    public enum LogicalDecodingMessageHandlingMode implements EnumeratedValue {
-
-        /**
-         * Skip MESSAGE messages
-         */
-        SKIP("skip"),
-
-        /**
-         * Handle & Include MESSAGE messages
-         */
-        INCLUDE("include");
-
-        private final String value;
-
-        LogicalDecodingMessageHandlingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public static LogicalDecodingMessageHandlingMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (LogicalDecodingMessageHandlingMode option : LogicalDecodingMessageHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-    }
-
-    /**
      * The set of predefined SchemaRefreshMode options or aliases.
      */
     public enum SchemaRefreshMode implements EnumeratedValue {
@@ -965,16 +925,32 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
                             + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
 
-    public static final Field LOGICAL_DECODING_MESSAGE_HANDLING_MODE = Field.create("logical_decoding_message.handling.mode")
-            .withDisplayName("Logical Decoding Message handling mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 24))
-            .withEnum(LogicalDecodingMessageHandlingMode.class, LogicalDecodingMessageHandlingMode.SKIP)
-            .withWidth(Width.MEDIUM)
+    /**
+     * A comma-separated list of regular expressions that match the prefix of logical decoding messages to be excluded
+     * from monitoring. Must not be used with {@link #LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST}
+     */
+    public static final Field LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST = Field.create("message.prefix.exclude.list")
+            .withDisplayName("Exclude Logical Decoding Message Prefixes")
+            .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 25))
+            .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withValidation(PostgresConnectorConfig::logicalDecodingMessageHandlingMode)
-            .withDescription("Specify how MESSAGE operations are handled (supported only on pg14+ pgoutput plugin), including: " +
-                    "'skip' to skip / ignore MESSAGE events (default), " +
-                    "'include' to handle and include MESSAGE events");
+            .withValidation(Field::isListOfRegex, PostgresConnectorConfig::validateLogicalDecodingMessageExcludeList)
+            .withDescription("A comma-separated list of regular expressions that match the logical decoding message prefixes to be excluded from monitoring.");
+
+    /**
+     * A comma-separated list of regular expressions that match the prefix of logical decoding messages to be monitored.
+     * Must not be used with {@link #LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST}
+     */
+    public static final Field LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST = Field.create("message.prefix.include.list")
+            .withDisplayName("Include Logical Decoding Message Prefixes")
+            .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 24))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex)
+            .withDescription(
+                    "A comma-separated list of regular expressions that match the logical decoding message prefixes to be monitored. All prefixes are monitored by default.");
 
     public static final Field TRUNCATE_HANDLING_MODE = Field.create("truncate.handling.mode")
             .withDisplayName("Truncate handling mode")
@@ -1096,7 +1072,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
 
     private final TruncateHandlingMode truncateHandlingMode;
-    private final LogicalDecodingMessageHandlingMode logicalDecodingMessageHandlingMode;
+    private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -1112,8 +1088,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 ColumnFilterMode.SCHEMA);
 
         this.truncateHandlingMode = TruncateHandlingMode.parse(config.getString(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE));
-        this.logicalDecodingMessageHandlingMode = LogicalDecodingMessageHandlingMode
-                .parse(config.getString(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_HANDLING_MODE));
+        this.logicalDecodingMessageFilter = new LogicalDecodingMessageFilter(config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST),
+                config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST));
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         this.hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
@@ -1177,8 +1153,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return truncateHandlingMode;
     }
 
-    public LogicalDecodingMessageHandlingMode logicalDecodingMessageHandlingMode() {
-        return logicalDecodingMessageHandlingMode;
+    public LogicalDecodingMessageFilter getMessageFilter() {
+        return logicalDecodingMessageFilter;
     }
 
     protected HStoreHandlingMode hStoreHandlingMode() {
@@ -1274,7 +1250,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     TRUNCATE_HANDLING_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
-                    LOGICAL_DECODING_MESSAGE_HANDLING_MODE)
+                    LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST,
+                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
@@ -1336,31 +1313,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return 0;
     }
 
-    private static int logicalDecodingMessageHandlingMode(Configuration config, Field field, Field.ValidationOutput problems) {
-        final String value = config.getString(field);
-        int errors = 0;
-        if (value != null) {
-            LogicalDecodingMessageHandlingMode mode = LogicalDecodingMessageHandlingMode.parse(value);
-            if (mode == null) {
-                List<String> validModes = Arrays.stream(LogicalDecodingMessageHandlingMode.values()).map(LogicalDecodingMessageHandlingMode::getValue)
-                        .collect(Collectors.toList());
-                String message = String.format("Valid values for %s are %s, but got '%s'", field.name(), validModes, value);
-                problems.accept(field, value, message);
-                errors++;
-                return errors;
-            }
-            if (mode == LogicalDecodingMessageHandlingMode.INCLUDE) {
-                final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
-                if (!logicalDecoder.supportsLogicalDecodingMessage()) {
-                    String message = String.format(
-                            "%s '%s' is not supported with configuration %s '%s'",
-                            field.name(), mode.getValue(), PLUGIN_NAME.name(), logicalDecoder.getValue());
-                    problems.accept(field, value, message);
-                    errors++;
-                }
-            }
+    private static int validateLogicalDecodingMessageExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+        String includeList = config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST);
+        String excludeList = config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST);
+
+        if (includeList != null && excludeList != null) {
+            problems.accept(LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, excludeList,
+                    "\"logical_decoding_message.prefix.include.list\" is already specified");
+            return 1;
         }
-        return errors;
+        return 0;
     }
 
     @Override
