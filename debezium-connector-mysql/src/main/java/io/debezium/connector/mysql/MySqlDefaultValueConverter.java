@@ -179,7 +179,7 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
             return LocalDate.from(ISO_LOCAL_DATE_WITH_OPTIONAL_TIME.parse(value));
         }
         catch (Exception e) {
-            LOGGER.warn("Invalid default value '{}' for date column '{}'", value, column.name());
+            LOGGER.warn("Invalid default value '{}' for date column '{}'; {}", value, column.name(), e.getMessage());
             if (column.isOptional()) {
                 return null;
             }
@@ -212,7 +212,7 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
             return LocalDateTime.from(timestampFormat(column.length()).parse(value));
         }
         catch (Exception e) {
-            LOGGER.warn("Invalid default value '{}' for datetime column '{}'", value, column.name());
+            LOGGER.warn("Invalid default value '{}' for datetime column '{}'; {}", value, column.name(), e.getMessage());
             if (column.isOptional()) {
                 return null;
             }
