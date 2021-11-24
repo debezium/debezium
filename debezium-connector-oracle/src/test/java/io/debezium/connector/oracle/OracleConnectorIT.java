@@ -11,6 +11,7 @@ import static io.debezium.connector.oracle.util.TestHelper.TYPE_SCALE_PARAMETER_
 import static io.debezium.connector.oracle.util.TestHelper.defaultConfig;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.fail;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.MapAssert.entry;
 
@@ -945,6 +946,220 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(before.schema().field("F1").schema().parameters()).includes(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
+    }
+
+    @Test
+    @FixFor("DBZ-1539")
+    public void shouldHandlerIntervalTypesAsInt64() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.interval");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.interval (" +
+                    " id numeric(6) constraint interval_id_nn not null, " +
+                    " intYM interval year to month," +
+                    " intYM2 interval year(9) to month," + // max precision
+                    " intDS interval day to second, " +
+                    " intDS2 interval day(9) to second(9), " + // max precision
+                    " constraint interval_pk primary key(id)" +
+                    ")";
+
+            // create table
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.interval to " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.interval ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (1, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (2, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.INTERVAL")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Verify record generated during snapshot
+            final List<SourceRecord> records = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records.size()).isEqualTo(2);
+            records.forEach(rec -> {
+                Struct after = ((Struct) rec.value()).getStruct(AFTER);
+                Struct key = (Struct) rec.key();
+                switch ((int) key.get("ID")) {
+                    case 1:
+                        assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
+                        assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
+                        assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
+                        assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+                        break;
+                    case 2:
+                        assertThat(after.getInt64("INTYM")).isEqualTo(0L);
+                        assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
+                        assertThat(after.getInt64("INTDS")).isEqualTo(0L);
+                        assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
+                        break;
+                    default:
+                        fail("unexpected id");
+                }
+            });
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (3, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (4, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            // Verify record generated during streaming
+            List<SourceRecord> streamingRecords = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(streamingRecords.size()).isEqualTo(2);
+
+            streamingRecords.forEach(rec -> {
+                Struct after = ((Struct) rec.value()).getStruct(AFTER);
+                Struct key = (Struct) rec.key();
+                switch ((int) key.get("ID")) {
+                    case 3:
+                        assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
+                        assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
+                        assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
+                        assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+                        break;
+                    case 4:
+                        assertThat(after.getInt64("INTYM")).isEqualTo(0L);
+                        assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
+                        assertThat(after.getInt64("INTDS")).isEqualTo(0L);
+                        assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
+                        break;
+                    default:
+                        fail("unexpected id");
+                }
+            });
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.interval");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1539")
+    public void shouldHandlerIntervalTypesAsString() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.interval");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.interval (" +
+                    " id numeric(6) constraint interval_id_nn not null, " +
+                    " intYM interval year to month," +
+                    " intYM2 interval year(9) to month," + // max precision
+                    " intDS interval day to second, " +
+                    " intDS2 interval day(9) to second(9), " + // max precision
+                    " constraint interval_pk primary key(id)" +
+                    ")";
+
+            // create table
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.interval to " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.interval ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (1, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (2, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.INTERVAL")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .with(OracleConnectorConfig.INTERVAL_HANDLING_MODE,
+                            OracleConnectorConfig.IntervalHandlingMode.STRING.getValue())
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Verify record generated during snapshot
+            final List<SourceRecord> records = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records.size()).isEqualTo(2);
+            records.forEach(rec -> {
+                Struct after = ((Struct) rec.value()).getStruct(AFTER);
+                Struct key = (Struct) rec.key();
+                switch ((int) key.get("ID")) {
+                    case 1:
+                        assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
+                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
+                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+                        break;
+                    case 2:
+                        assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
+                        break;
+                    default:
+                        fail("unexpected id");
+                }
+            });
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (3, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (4, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            // Verify record generated during streaming
+            List<SourceRecord> streamingRecords = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(streamingRecords.size()).isEqualTo(2);
+
+            streamingRecords.forEach(rec -> {
+                Struct after = ((Struct) rec.value()).getStruct(AFTER);
+                Struct key = (Struct) rec.key();
+                switch ((int) key.get("ID")) {
+                    case 3:
+                        assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
+                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
+                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+                        break;
+                    case 4:
+                        assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
+                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
+                        break;
+                    default:
+                        fail("unexpected id");
+                }
+            });
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.interval");
+        }
     }
 
     @Test
