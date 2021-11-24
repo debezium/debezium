@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.util.List;
+import java.util.OptionalLong;
 
 import org.postgresql.geometric.PGbox;
 import org.postgresql.geometric.PGcircle;
@@ -150,7 +151,7 @@ public interface ReplicationMessage {
     /**
      * @return An id of transaction to which this change belongs
      */
-    public long getTransactionId();
+    public OptionalLong getTransactionId();
 
     /**
      * @return Table changed
@@ -193,11 +194,11 @@ public interface ReplicationMessage {
 
     public class TransactionMessage implements ReplicationMessage {
 
-        private final long transationId;
+        private final OptionalLong transationId;
         private final Instant commitTime;
         private final Operation operation;
 
-        public TransactionMessage(Operation operation, long transactionId, Instant commitTime) {
+        public TransactionMessage(Operation operation, OptionalLong transactionId, Instant commitTime) {
             this.operation = operation;
             this.transationId = transactionId;
             this.commitTime = commitTime;
@@ -214,7 +215,7 @@ public interface ReplicationMessage {
         }
 
         @Override
-        public long getTransactionId() {
+        public OptionalLong getTransactionId() {
             return transationId;
         }
 
@@ -250,11 +251,11 @@ public interface ReplicationMessage {
      */
     public class NoopMessage implements ReplicationMessage {
 
-        private final long transactionId;
+        private final Long transactionId;
         private final Instant commitTime;
         private final Operation operation;
 
-        public NoopMessage(long transactionId, Instant commitTime) {
+        public NoopMessage(Long transactionId, Instant commitTime) {
             this.operation = Operation.NOOP;
             this.transactionId = transactionId;
             this.commitTime = commitTime;
@@ -271,8 +272,8 @@ public interface ReplicationMessage {
         }
 
         @Override
-        public long getTransactionId() {
-            return transactionId;
+        public OptionalLong getTransactionId() {
+            return transactionId == null ? OptionalLong.empty() : OptionalLong.of(transactionId);
         }
 
         @Override

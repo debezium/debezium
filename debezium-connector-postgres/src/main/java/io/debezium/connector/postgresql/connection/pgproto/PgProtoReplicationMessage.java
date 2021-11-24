@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql.connection.pgproto;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -67,8 +68,8 @@ class PgProtoReplicationMessage implements ReplicationMessage {
     }
 
     @Override
-    public long getTransactionId() {
-        return Integer.toUnsignedLong(rawMessage.getTransactionId());
+    public OptionalLong getTransactionId() {
+        return OptionalLong.of(Integer.toUnsignedLong(rawMessage.getTransactionId()));
     }
 
     @Override

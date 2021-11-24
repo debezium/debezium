@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.OptionalLong;
 
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
@@ -22,12 +23,12 @@ public class PgOutputReplicationMessage implements ReplicationMessage {
 
     private Operation op;
     private Instant commitTimestamp;
-    private long transactionId;
+    private Long transactionId;
     private String table;
     private List<Column> oldColumns;
     private List<Column> newColumns;
 
-    public PgOutputReplicationMessage(Operation op, String table, Instant commitTimestamp, long transactionId, List<Column> oldColumns, List<Column> newColumns) {
+    public PgOutputReplicationMessage(Operation op, String table, Instant commitTimestamp, Long transactionId, List<Column> oldColumns, List<Column> newColumns) {
         this.op = op;
         this.commitTimestamp = commitTimestamp;
         this.transactionId = transactionId;
@@ -47,8 +48,8 @@ public class PgOutputReplicationMessage implements ReplicationMessage {
     }
 
     @Override
-    public long getTransactionId() {
-        return transactionId;
+    public OptionalLong getTransactionId() {
+        return transactionId == null ? OptionalLong.empty() : OptionalLong.of(transactionId);
     }
 
     @Override
