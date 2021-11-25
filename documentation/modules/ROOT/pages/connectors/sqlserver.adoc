@@ -153,6 +153,14 @@ After a restart, the connector resumes processing from the last offset (commit a
 The connector is able to detect whether CDC is enabled or disabled for included source tables and adjust its behavior.
 
 // Type: concept
+// ModuleID: limitations-sql-server-connector
+// Title: Limitations of {prodname} SQL Server connector
+=== Limitations
+
+SQL Server specifically requires the base object to be a table in order to create a change capture instance.
+As consequence, capturing changes from indexed views (aka. materialized views) is not supported by SQL Server and hence {prodname} SQL Server connector.
+
+// Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-sql-server-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} SQL Server change event records
 [[sqlserver-topic-names]]
