@@ -15,6 +15,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.sql.SQLException;
+import java.util.Base64;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
@@ -148,6 +149,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
 
         SourceRecords txnRecords = consumeRecordsByTopic(1);
         List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("message"));
+        assertThat(txnRecordsForTopic).hasSize(1);
 
         txnRecordsForTopic.forEach(record -> {
             Struct value = (Struct) record.value();
@@ -167,6 +169,33 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
             assertArrayEquals("txn_bar".getBytes(),
                     message.getBytes(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY));
         });
+    }
+
+    @Test
+    @FixFor("DBZ-2363")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldApplyBinaryHandlingMode() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, "base64");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // emit transactional logical decoding message with binary
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', E'txn_bar'::bytea);");
+
+        SourceRecords txnRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("message"));
+        assertThat(txnRecordsForTopic).hasSize(1);
+        SourceRecord record = txnRecordsForTopic.get(0);
+
+        Struct value = (Struct) record.value();
+        Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+        assertThat(new String(Base64.getEncoder().encode("txn_bar".getBytes("UTF-8")), "UTF-8"))
+                .isEqualTo(message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY));
     }
 
     @Test
