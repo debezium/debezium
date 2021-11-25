@@ -952,6 +952,16 @@ public final class Strings {
     }
 
     /**
+     * Check if the string is blank (i.e. it's blank or only contains whitespace characters) or null.
+     *
+     * @param str the string to check
+     * @return {@code true} if the string is blank or null
+     */
+    public static boolean isNullOrBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
+    /**
      * Check if the string contains only digits.
      *
      * @param str the string to check

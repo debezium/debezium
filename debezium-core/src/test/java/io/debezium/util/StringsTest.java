@@ -364,6 +364,26 @@ public class StringsTest {
         assertThat(Strings.getBegin("delete from ", 7).toUpperCase()).isEqualTo("DELETE ");
     }
 
+    @Test
+    public void isBlankShouldReturnTrueForNull() {
+        assertThat(Strings.isNullOrBlank(null)).isTrue();
+    }
+
+    @Test
+    public void isBlankShouldReturnTrueForEmptyString() {
+        assertThat(Strings.isNullOrBlank("")).isTrue();
+    }
+
+    @Test
+    public void isBlankShouldReturnTrueForStringWithOnlyWhitespace() {
+        assertThat(Strings.isNullOrBlank("  \t ")).isTrue();
+    }
+
+    @Test
+    public void isBlankShouldReturnFalseForStringWithNonWhitespaceCharacters() {
+        assertThat(Strings.isNullOrBlank("not blank")).isFalse();
+    }
+
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);

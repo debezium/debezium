@@ -13,9 +13,6 @@ import java.util.OptionalLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -32,8 +29,6 @@ import io.debezium.util.Strings;
  * @author Jiri Pechanec
  */
 class PgProtoReplicationMessage implements ReplicationMessage {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoReplicationMessage.class);
 
     private final PgProto.RowMessage rawMessage;
     private final TypeRegistry typeRegistry;
@@ -56,9 +51,9 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 return Operation.BEGIN;
             case COMMIT:
                 return Operation.COMMIT;
+            default:
+                throw new IllegalArgumentException("Unknown operation '" + rawMessage.getOp() + "' in replication stream message");
         }
-        throw new IllegalArgumentException(
-                "Unknown operation '" + rawMessage.getOp() + "' in replication stream message");
     }
 
     @Override
