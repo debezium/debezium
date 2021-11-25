@@ -18,13 +18,13 @@ import java.util.OptionalLong;
  */
 public class TransactionMessage implements ReplicationMessage {
 
-    private final Long transationId;
+    private final long transactionId;
     private final Instant commitTime;
     private final Operation operation;
 
-    public TransactionMessage(Operation operation, Long transactionId, Instant commitTime) {
+    public TransactionMessage(Operation operation, long transactionId, Instant commitTime) {
         this.operation = operation;
-        this.transationId = transactionId;
+        this.transactionId = transactionId;
         this.commitTime = commitTime;
     }
 
@@ -40,7 +40,7 @@ public class TransactionMessage implements ReplicationMessage {
 
     @Override
     public OptionalLong getTransactionId() {
-        return transationId == null ? OptionalLong.empty() : OptionalLong.of(transationId);
+        return OptionalLong.of(transactionId);
     }
 
     @Override
@@ -70,7 +70,7 @@ public class TransactionMessage implements ReplicationMessage {
 
     @Override
     public String toString() {
-        return "TransactionMessage [transationId=" + transationId + ", commitTime=" + commitTime + ", operation="
+        return "TransactionMessage [transactionId=" + transactionId + ", commitTime=" + commitTime + ", operation="
                 + operation + "]";
     }
 }

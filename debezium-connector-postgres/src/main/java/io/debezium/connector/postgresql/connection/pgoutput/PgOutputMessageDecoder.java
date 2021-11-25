@@ -70,6 +70,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private final PostgresConnection connection;
 
     private Instant commitTimestamp;
+
+    /**
+     * Will be null for a non-transactional decoding message
+     */
     private Long transactionId;
 
     public enum MessageType {
@@ -226,7 +230,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private void handleBeginMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
         this.commitTimestamp = PG_EPOCH.plus(buffer.getLong(), ChronoUnit.MICROS);
-        this.transactionId = (long) buffer.getInt();
+        this.transactionId = Integer.toUnsignedLong(buffer.getInt());
         LOGGER.trace("Event: {}", MessageType.BEGIN);
         LOGGER.trace("Final LSN of transaction: {}", lsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);

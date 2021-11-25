@@ -23,6 +23,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.HexConverter;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * The class receives {@link LogicalDecodingMessage} events and delivers the event to the dedicated topic.
@@ -44,6 +45,7 @@ public class LogicalDecodingMessageMonitor {
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY = "prefix";
     public static final String DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY = "content";
 
+    private final SchemaNameAdjuster schemaNameAdjuster;
     private final BlockingConsumer<SourceRecord> sender;
     private final String topicName;
     private final BinaryHandlingMode binaryMode;
@@ -52,17 +54,22 @@ public class LogicalDecodingMessageMonitor {
     private final Schema schema;
 
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
+        this.schemaNameAdjuster = SchemaNameAdjuster.create();
         this.sender = sender;
         this.topicName = connectorConfig.getLogicalName() + LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX;
         this.binaryMode = connectorConfig.binaryHandlingMode();
         this.base64Encoder = Base64.getEncoder();
 
-        this.blockSchema = SchemaBuilder.struct().optional()
+        this.blockSchema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.Message"))
+                .optional()
                 .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, binaryMode.getSchema().build())
                 .build();
 
-        this.schema = SchemaBuilder.struct().optional()
+        this.schema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageValue"))
+                .optional()
                 .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.SOURCE, connectorConfig.getSourceInfoStructMaker().schema())
