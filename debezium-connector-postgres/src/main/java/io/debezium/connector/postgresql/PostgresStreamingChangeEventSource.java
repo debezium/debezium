@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -90,6 +91,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     }
 
+    @Override
     public void init() {
         // refresh the schema so we have a latest view of the DB tables
         try {
@@ -221,10 +223,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         return;
                     }
 
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
-                            taskContext.getSlotXmin(connection));
+                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
+                            taskContext.getSlotXmin(connection),
+                            null);
                     if (message.getOperation() == Operation.BEGIN) {
-                        dispatcher.dispatchTransactionStartedEvent(partition, message.getTransactionId().toString(), offsetContext);
+                        dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext);
                     }
                     else if (message.getOperation() == Operation.COMMIT) {
                         commitMessage(partition, offsetContext, lsn);
@@ -233,7 +236,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     maybeWarnAboutGrowingWalBacklog(true);
                 }
                 else if (message.getOperation() == Operation.MESSAGE) {
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(),
+                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                             taskContext.getSlotXmin(connection));
 
                     // non-transactional message that will not be followed by a COMMIT message
@@ -257,8 +260,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         Objects.requireNonNull(tableId);
                     }
 
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
-                            taskContext.getSlotXmin(connection));
+                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
+                            taskContext.getSlotXmin(connection),
+                            tableId);
 
                     boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
                             tableId,
@@ -419,6 +423,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      */
     private boolean isInPreSnapshotCatchUpStreaming(PostgresOffsetContext offsetContext) {
         return offsetContext.getStreamingStoppingLsn() != null;
+    }
+
+    private Long toLong(OptionalLong l) {
+        return l.isPresent() ? Long.valueOf(l.getAsLong()) : null;
+    }
+
+    private String toString(OptionalLong l) {
+        return l.isPresent() ? String.valueOf(l.getAsLong()) : null;
     }
 
     @FunctionalInterface

@@ -149,7 +149,8 @@ public interface ReplicationMessage {
     public Instant getCommitTime();
 
     /**
-     * @return An id of transaction to which this change belongs
+     * @return An id of transaction to which this change belongs; will not be
+     *         present for non-transactional logical decoding messages for instance
      */
     public OptionalLong getTransactionId();
 
@@ -191,59 +192,6 @@ public interface ReplicationMessage {
     default boolean isTransactionalMessage() {
         return getOperation() == Operation.BEGIN || getOperation() == Operation.COMMIT;
     }
-
-    public class TransactionMessage implements ReplicationMessage {
-
-        private final OptionalLong transationId;
-        private final Instant commitTime;
-        private final Operation operation;
-
-        public TransactionMessage(Operation operation, OptionalLong transactionId, Instant commitTime) {
-            this.operation = operation;
-            this.transationId = transactionId;
-            this.commitTime = commitTime;
-        }
-
-        @Override
-        public boolean isLastEventForLsn() {
-            return true;
-        }
-
-        @Override
-        public boolean hasTypeMetadata() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public OptionalLong getTransactionId() {
-            return transationId;
-        }
-
-        @Override
-        public String getTable() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Operation getOperation() {
-            return operation;
-        }
-
-        @Override
-        public List<Column> getOldTupleList() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public List<Column> getNewTupleList() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Instant getCommitTime() {
-            return commitTime;
-        }
-    };
 
     /**
      * A special message type that is used to replace event filtered already at {@link MessageDecoder}.

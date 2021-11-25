@@ -146,13 +146,6 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     /**
-     * Updates the source with information about a particular received or read event that does not have an associated table or schema
-     */
-    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, Long xmin) {
-        return update(lsn, commitTime, txId, xmin, null);
-    }
-
-    /**
      * Updates the source with the LSN of the last committed transaction.
      */
     protected SourceInfo updateLastCommit(Lsn lsn) {
