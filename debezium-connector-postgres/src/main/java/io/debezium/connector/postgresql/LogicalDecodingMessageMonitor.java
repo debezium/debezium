@@ -50,8 +50,19 @@ public class LogicalDecodingMessageMonitor {
     private final String topicName;
     private final BinaryHandlingMode binaryMode;
     private final Encoder base64Encoder;
+
+    /**
+     * The key schema; a struct like this:
+     * <p>
+     * {@code
+     * { "prefix" : "my-prefix" }
+     * }
+     * <p>
+     * Using a struct over the plain prefix as a string for better evolvability down the road.
+     */
+    private final Schema keySchema;
     private final Schema blockSchema;
-    private final Schema schema;
+    private final Schema valueSchema;
 
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
         this.schemaNameAdjuster = SchemaNameAdjuster.create();
@@ -60,16 +71,23 @@ public class LogicalDecodingMessageMonitor {
         this.binaryMode = connectorConfig.binaryHandlingMode();
         this.base64Encoder = Base64.getEncoder();
 
-        this.blockSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.Message"))
-                .optional()
+        this.keySchema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageKey"))
                 .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, binaryMode.getSchema().build())
                 .build();
 
-        this.schema = SchemaBuilder.struct()
+        // pg_logical_emit_message accepts null for prefix and content, but these
+        // messages are not received actually via logical decoding still marking these
+        // schemas as optional, just in case we will receive null values for either
+        // field at some point
+        this.blockSchema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.Message"))
+                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, binaryMode.getSchema().optional().build())
+                .build();
+
+        this.valueSchema = SchemaBuilder.struct()
                 .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageValue"))
-                .optional()
                 .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.SOURCE, connectorConfig.getSourceInfoStructMaker().schema())
@@ -84,14 +102,17 @@ public class LogicalDecodingMessageMonitor {
         logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, message.getPrefix());
         logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, convertContent(message.getContent()));
 
-        final Struct value = new Struct(schema);
+        Struct key = new Struct(keySchema);
+        key.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, message.getPrefix());
+
+        final Struct value = new Struct(valueSchema);
         value.put(Envelope.FieldName.OPERATION, Envelope.Operation.MESSAGE.code());
         value.put(Envelope.FieldName.TIMESTAMP, timestamp);
         value.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, logicalMsgStruct);
         value.put(Envelope.FieldName.SOURCE, offsetContext.getSourceInfo());
 
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(), topicName,
-                null, null, null, value.schema(), value));
+                keySchema, key, value.schema(), value));
 
         if (message.isLastEventForLsn()) {
             offsetContext.getTransactionContext().endTransaction();

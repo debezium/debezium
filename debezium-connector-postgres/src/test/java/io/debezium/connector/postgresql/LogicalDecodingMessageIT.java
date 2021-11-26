@@ -247,8 +247,13 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
         assertThat(recordsForTopic).hasSize(3);
 
+        assertThat(((Struct) recordsForTopic.get(0).key()).getString("prefix")).isEqualTo("included_prefix");
         assertThat(getPrefix(recordsForTopic.get(0))).isEqualTo("included_prefix");
+
+        assertThat(((Struct) recordsForTopic.get(1).key()).getString("prefix")).isEqualTo("prefix:included");
         assertThat(getPrefix(recordsForTopic.get(1))).isEqualTo("prefix:included");
+
+        assertThat(((Struct) recordsForTopic.get(2).key()).getString("prefix")).isEqualTo("another_included");
         assertThat(getPrefix(recordsForTopic.get(2))).isEqualTo("another_included");
     }
 

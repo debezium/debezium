@@ -1187,7 +1187,8 @@ when those events are read from different partitions.
 This event type is only supported through the `pgoutput` plugin on Postgres 14+ (link:https://www.postgresql.org/docs/14/protocol-logicalrep-message-formats.html[Postgres Documentation])
 ====
 
-A  _message_ event signals that a generic logical decoding message has been inserted directly into the WAL typically with the `pg_logical_emit_message` function. The message key is `null` in this case.
+A  _message_ event signals that a generic logical decoding message has been inserted directly into the WAL typically with the `pg_logical_emit_message` function.
+The message key is a `Struct` with a single field named `prefix` in this case, carrying the prefix specified when inserting the message.
 The message value looks like this for transactional messages:
 
 [source,json,indent=0,subs="+attributes"]
