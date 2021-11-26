@@ -1133,11 +1133,24 @@ public class VerifyRecord {
                 Objects.equals(schema1.name(), schema2.name()) &&
                 Objects.equals(schema1.doc(), schema2.doc()) &&
                 Objects.equals(schema1.type(), schema2.type()) &&
-                Objects.deepEquals(schema1.defaultValue(), schema2.defaultValue()) &&
                 fieldsEqual &&
                 keySchemasEqual &&
                 valueSchemasEqual &&
                 Objects.equals(schema1.parameters(), schema2.parameters());
+
+        // The default value after de-serialization can be of byte[] even if the value
+        // before serialization is ByteBuffer. This must be taken into account for comparison.
+        if (equal) {
+            Object default1 = schema1.defaultValue();
+            Object default2 = schema2.defaultValue();
+            if (default1 instanceof ByteBuffer && default2 instanceof byte[]) {
+                default1 = ((ByteBuffer) default1).array();
+            }
+            if (default1 instanceof byte[] && default2 instanceof ByteBuffer) {
+                default2 = ((ByteBuffer) default2).array();
+            }
+            equal = Objects.deepEquals(default1, default2);
+        }
 
         return equal;
     }
