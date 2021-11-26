@@ -32,6 +32,9 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenConnectorUnderTest;
+import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
@@ -374,11 +377,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     @FixFor("DBZ-4272")
-    public void snapshotProceededBySchemaChange() throws Exception {
-        // Disabled due to DBZ-4350
-        if (this.getClass().getName().contains("sqlserver")) {
-            return;
-        }
+    // Disabled due to DBZ-4350
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = Connector.SQL_SERVER)
+    public void snapshotPreceededBySchemaChange() throws Exception {
         Testing.Print.enable();
 
         populateTable();

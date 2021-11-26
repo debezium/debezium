@@ -100,6 +100,24 @@ public class SkipTestRule extends AnnotationBasedTestRule {
             }
         }
 
+        final SkipWhenConnectorUnderTest connectorUnderTestAnnotation = hasAnnotation(description, SkipWhenConnectorUnderTest.class);
+        if (connectorUnderTestAnnotation != null) {
+            boolean isConnectorUnderTest;
+
+            switch (connectorUnderTestAnnotation.check()) {
+                case EQUAL:
+                    isConnectorUnderTest = connectorUnderTestAnnotation.value().isEqualTo(description.getClassName());
+                    break;
+                default:
+                    isConnectorUnderTest = false;
+                    break;
+            }
+
+            if (isConnectorUnderTest) {
+                return emptyStatement("Connector under test " + connectorUnderTestAnnotation.value(), description);
+            }
+        }
+
         // First check if multiple database version skips are specified.
         SkipWhenDatabaseVersions skipWhenDatabaseVersions = hasAnnotation(description, SkipWhenDatabaseVersions.class);
         if (skipWhenDatabaseVersions != null) {
