@@ -213,7 +213,7 @@ The message contains a logical representation of the table schema.
   ...
   },
   "payload": {
-        "source": {  // <1>
+        "source": {  //<1>
         "version": "{debezium-version}",
         "connector": "mysql",
         "name": "dbserver1",
@@ -230,19 +230,19 @@ The message contains a logical representation of the table schema.
         "thread": null,
         "query": null
     },
-    "databaseName": "inventory", // <2>
+    "databaseName": "inventory", //<2>
     "schemaName": null,
-    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)", // <3>
-    "tableChanges": [  // <4>
+    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)", //<3>
+    "tableChanges": [  //<4>
         {
-        "type": "ALTER", // <5>
-        "id": "\"inventory\".\"customers\"",  // <6>
-        "table": { // <7>
+        "type": "ALTER", //<5>
+        "id": "\"inventory\".\"customers\"",  //<6>
+        "table": { //<7>
             "defaultCharsetName": "latin1",
-            "primaryKeyColumnNames": [  // <8>
+            "primaryKeyColumnNames": [  //<8>
                 "id"
             ],
-            "columns": [ // <9>
+            "columns": [ //<9>
                 {
                 "name": "id",
                 "jdbcType": 4,
