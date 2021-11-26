@@ -23,7 +23,6 @@ import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -31,7 +30,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2561,11 +2559,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(consumer.isEmpty()).isTrue();
     }
 
-    private long asEpochMicros(String timestamp) {
-        Instant instant = LocalDateTime.parse(timestamp).atOffset(ZoneOffset.UTC).toInstant();
-        return instant.getEpochSecond() * 1_000_000 + instant.getNano() / 1_000;
-    }
-
     private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart)
             throws Exception {
         if (tablesBeforeStart) {
@@ -2919,12 +2912,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(consumer.isEmpty()).isTrue();
     }
 
-    private void assertHeartBeatRecordInserted() {
-        assertFalse("records not generated", consumer.isEmpty());
-
-        assertHeartBeatRecord(consumer.remove());
-    }
-
     private void assertHeartBeatRecord(SourceRecord heartbeat) {
         assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER, heartbeat.topic());
 
@@ -2933,25 +2920,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         Struct value = (Struct) heartbeat.value();
         assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
-    }
-
-    private Optional<SourceRecord> isHeartBeatRecordInserted() {
-        assertFalse("records not generated", consumer.isEmpty());
-        final String heartbeatTopicName = "__debezium-heartbeat." + TestHelper.TEST_SERVER;
-
-        SourceRecord record = consumer.remove();
-        if (!heartbeatTopicName.equals(record.topic())) {
-            return Optional.of(record);
-        }
-
-        assertEquals(heartbeatTopicName, record.topic());
-
-        Struct key = (Struct) record.key();
-        assertThat(key.get("serverName")).isEqualTo(TestHelper.TEST_SERVER);
-
-        Struct value = (Struct) record.value();
-        assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
-        return Optional.empty();
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
