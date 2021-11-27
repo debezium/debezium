@@ -128,10 +128,10 @@ public class Signal {
     }
 
     public boolean process(Partition partition, String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
-        LOGGER.debug("Arrived signal id = '{}', type = '{}', data = '{}'", id, type, data);
+        LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", id, type, data);
         final Action action = signalActions.get(type);
         if (action == null) {
-            LOGGER.warn("Signal '{}' has arrived but the type '{}' is not recognized", id, type);
+            LOGGER.warn("Signal '{}' has been received but the type '{}' is not recognized", id, type);
             return false;
         }
         try {
@@ -140,7 +140,7 @@ public class Signal {
             return action.arrived(new Payload(partition, id, type, jsonData, offset, source));
         }
         catch (IOException e) {
-            LOGGER.warn("Signal '{}' has arrived but the data '{}' cannot be parsed", id, data, e);
+            LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", id, data, e);
             return false;
         }
     }
@@ -150,7 +150,7 @@ public class Signal {
     }
 
     /**
-     * 
+     *
      * @param value Envelope with change from signaling table
      * @param offset offset of the incoming signal
      * @return true if the signal was processed

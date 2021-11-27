@@ -1198,6 +1198,8 @@ public class JdbcConnection implements AutoCloseable {
         }
         else {
             for (TableId includeTable : tableIds) {
+                LOGGER.debug("Retrieving columns of table {}", includeTable);
+
                 Map<TableId, List<Column>> cols = getColumnsDetails(databaseCatalog, schemaNamePattern, includeTable.table(), tableFilter,
                         columnFilter, metadata, viewIds);
                 columnsByTable.putAll(cols);

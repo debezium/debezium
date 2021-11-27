@@ -56,6 +56,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
+import org.postgresql.util.PSQLException;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -90,6 +91,8 @@ import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
@@ -2566,9 +2569,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     "DROP TABLE IF EXISTS test_table;",
                     "CREATE TABLE test_table (id SERIAL, not_toast int, text TEXT);",
                     "ALTER TABLE test_table REPLICA IDENTITY FULL");
+
+            awaitTableMetaDataIsQueryable(new TableId(null, "public", "test_table"));
         }
 
         startConnector(config -> config.with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, mode), false);
+        assertConnectorIsRunning();
         consumer = testConsumer(1);
 
         final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
@@ -2578,6 +2584,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     "DROP TABLE IF EXISTS test_table;",
                     "CREATE TABLE test_table (id SERIAL, not_toast int, text TEXT);",
                     "ALTER TABLE test_table REPLICA IDENTITY FULL");
+
+            awaitTableMetaDataIsQueryable(new TableId(null, "public", "test_table"));
+
         }
 
         // INSERT
@@ -2683,6 +2692,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), deletedRecord, Envelope.FieldName.BEFORE);
         }
+    }
+
+    /**
+     * It appears in some cases retrieving column metadata "too quickly" raises
+     * a PSQLException: ERROR: could not open relation with OID xyz.
+     * This causes intermittent failures during schema refresh.
+     * This is an attempt to avoid that situation by making sure the metadata can be retrieved
+     * before proceeding.
+     */
+    private void awaitTableMetaDataIsQueryable(TableId tableId) {
+        Awaitility.await()
+                .atMost(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS)
+                .ignoreException(PSQLException.class)
+                .until(() -> {
+                    try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+                        Tables tables = new Tables();
+                        connection.readSchema(tables, null, "public", TableFilter.fromPredicate(t -> t.equals(tableId)), null, false);
+                        return tables.forTable(tableId) != null;
+                    }
+                });
     }
 
     @Test()

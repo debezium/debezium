@@ -72,7 +72,7 @@ public class SignalsIT extends AbstractConnectorTest {
 
         final SourceRecords records = consumeRecordsByTopic(2);
         Assertions.assertThat(records.allRecordsInOrder()).hasSize(2);
-        Assertions.assertThat(logInterceptor.containsMessage("Signal message")).isTrue();
+        Assertions.assertThat(logInterceptor.containsMessage("Received signal")).isTrue();
     }
 
     @Test
@@ -102,7 +102,7 @@ public class SignalsIT extends AbstractConnectorTest {
 
         final SourceRecords records = consumeRecordsByTopic(2);
         Assertions.assertThat(records.allRecordsInOrder()).hasSize(2);
-        Assertions.assertThat(logInterceptor.containsMessage("Signal message")).isFalse();
+        Assertions.assertThat(logInterceptor.containsMessage("Received signal")).isFalse();
     }
 
     @Test
