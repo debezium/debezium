@@ -95,7 +95,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
             .withDisplayName("Interval Handling")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 21))
             .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
