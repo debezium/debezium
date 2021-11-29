@@ -120,6 +120,11 @@ Note this mode is only safe to be used when it is guaranteed that no schema chan
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+[WARNING]
+====
+The {prodname} connector for Oracle does not support schema changes while an incremental snapshot is running.
+====
+
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} Oracle change event records

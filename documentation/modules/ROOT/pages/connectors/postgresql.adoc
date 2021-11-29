@@ -165,6 +165,12 @@ endif::community[]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+[WARNING]
+====
+The {prodname} connector for PostgreSQL does not support schema changes while an incremental snapshot is running.
+If a schema change is performed _before_ the incremental snapshot start but _after_ sending the signal then passthrough config option `database.autosave` is set to `conservative` to correctly process the schema change.
+====
+
 ifdef::community[]
 [[postgresql-custom-snapshot]]
 === Custom snapshotter SPI
