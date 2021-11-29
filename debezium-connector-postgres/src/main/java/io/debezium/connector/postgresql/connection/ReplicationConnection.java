@@ -13,7 +13,6 @@ import java.util.Optional;
 import org.postgresql.replication.PGReplicationStream;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.postgresql.LogicalDecodingMessageFilter;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -150,24 +149,6 @@ public interface ReplicationConnection extends AutoCloseable {
          * @see #PROTOBUF_PLUGIN_NAME
          */
         Builder withPlugin(final PostgresConnectorConfig.LogicalDecoder plugin);
-
-        /**
-         * Sets the instance for the Truncate handling mode
-         *
-         * @param truncateHandlingMode Truncate handling mode, may not be null.
-         * @return this instance
-         * @see io.debezium.connector.postgresql.PostgresConnectorConfig.TruncateHandlingMode
-         */
-        Builder withTruncateHandlingMode(final PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode);
-
-        /**
-         * Sets the prefixes to watch for logical decoding messages
-         *
-         * @param  logicalDecodingMessageFilter
-         * @return this instance
-         * @see #config.getMessageFilter
-         */
-        Builder withLogicalDecodingMessageFilter(final LogicalDecodingMessageFilter logicalDecodingMessageFilter);
 
         /**
          * Whether or not to drop the replication slot once the replication connection closes
