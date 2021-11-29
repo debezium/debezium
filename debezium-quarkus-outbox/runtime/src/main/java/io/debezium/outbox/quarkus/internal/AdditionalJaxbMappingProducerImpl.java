@@ -16,10 +16,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Collections;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 
 import org.hibernate.boot.jaxb.Origin;
 import org.hibernate.boot.jaxb.SourceType;
@@ -74,6 +79,10 @@ public class AdditionalJaxbMappingProducerImpl implements AdditionalJaxbMappingP
                     try (BufferedInputStream bis = new BufferedInputStream(bais)) {
                         final Binding<?> jaxbBinding = mappingBinder.bind(bis, origin);
                         final JaxbHbmHibernateMapping mapping = (JaxbHbmHibernateMapping) jaxbBinding.getRoot();
+
+                        logOutboxMapping(mapping);
+
+                        LOGGER.info("Contributed XML mapping for entity: {}", mapping.getClazz().get(0).getEntityName());
                         return Collections.singletonList(new MappingDocument(mapping, origin, buildingContext));
                     }
                 }
@@ -94,5 +103,22 @@ public class AdditionalJaxbMappingProducerImpl implements AdditionalJaxbMappingP
 
         // Attempt to load the XML using the current class loader
         return getClass().getResourceAsStream("/" + OUTBOX_ENTITY_HBMXML);
+    }
+
+    private void logOutboxMapping(JaxbHbmHibernateMapping mapping) {
+        try {
+            JAXBContext context = JAXBContext.newInstance(JaxbHbmHibernateMapping.class);
+
+            Marshaller marshaller = context.createMarshaller();
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+
+            final StringWriter writer = new StringWriter();
+            marshaller.marshal(mapping, writer);
+
+            LOGGER.debug("Debezium Outbox XML Mapping:\n{}", writer);
+        }
+        catch (JAXBException e) {
+            throw new RuntimeException("Failed to marshal Debezium Outbox XML mapping", e);
+        }
     }
 }
