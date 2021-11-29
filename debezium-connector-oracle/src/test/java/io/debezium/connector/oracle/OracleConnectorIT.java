@@ -11,7 +11,6 @@ import static io.debezium.connector.oracle.util.TestHelper.TYPE_SCALE_PARAMETER_
 import static io.debezium.connector.oracle.util.TestHelper.defaultConfig;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.fail;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.MapAssert.entry;
 
@@ -967,8 +966,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // create table
             connection.execute(ddl);
-            connection.execute("GRANT SELECT ON debezium.interval to " + TestHelper.getConnectorUserName());
-            connection.execute("ALTER TABLE debezium.interval ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+            TestHelper.streamTable(connection, "debezium.interval");
 
             // Insert a snapshot record
             connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
@@ -991,28 +989,25 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Verify record generated during snapshot
-            final List<SourceRecord> records = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
-            assertThat(records.size()).isEqualTo(2);
-            records.forEach(rec -> {
-                Struct after = ((Struct) rec.value()).getStruct(AFTER);
-                Struct key = (Struct) rec.key();
-                switch ((int) key.get("ID")) {
-                    case 1:
-                        assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
-                        assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
-                        assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
-                        assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
-                        break;
-                    case 2:
-                        assertThat(after.getInt64("INTYM")).isEqualTo(0L);
-                        assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
-                        assertThat(after.getInt64("INTDS")).isEqualTo(0L);
-                        assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
-                        break;
-                    default:
-                        fail("unexpected id");
-                }
-            });
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+            assertThat(snapshotRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(snapshotRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
+
+            List<SourceRecord> records = snapshotRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            Struct after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.getInt64("INTYM")).isEqualTo(0L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
@@ -1025,29 +1020,28 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.commit();
 
             // Verify record generated during streaming
-            List<SourceRecord> streamingRecords = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
-            assertThat(streamingRecords.size()).isEqualTo(2);
+            final SourceRecords streamingRecords = consumeRecordsByTopic(2);
+            assertThat(streamingRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(streamingRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
 
-            streamingRecords.forEach(rec -> {
-                Struct after = ((Struct) rec.value()).getStruct(AFTER);
-                Struct key = (Struct) rec.key();
-                switch ((int) key.get("ID")) {
-                    case 3:
-                        assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
-                        assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
-                        assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
-                        assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
-                        break;
-                    case 4:
-                        assertThat(after.getInt64("INTYM")).isEqualTo(0L);
-                        assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
-                        assertThat(after.getInt64("INTDS")).isEqualTo(0L);
-                        assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
-                        break;
-                    default:
-                        fail("unexpected id");
-                }
-            });
+            records = streamingRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(4);
+            assertThat(after.getInt64("INTYM")).isEqualTo(0L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
+
+            assertNoRecordsToConsume();
         }
         finally {
             TestHelper.dropTable(connection, "debezium.interval");
@@ -1073,8 +1067,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // create table
             connection.execute(ddl);
-            connection.execute("GRANT SELECT ON debezium.interval to " + TestHelper.getConnectorUserName());
-            connection.execute("ALTER TABLE debezium.interval ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+            TestHelper.streamTable(connection, "debezium.interval");
 
             // Insert a snapshot record
             connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
@@ -1099,28 +1092,26 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Verify record generated during snapshot
-            final List<SourceRecord> records = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
-            assertThat(records.size()).isEqualTo(2);
-            records.forEach(rec -> {
-                Struct after = ((Struct) rec.value()).getStruct(AFTER);
-                Struct key = (Struct) rec.key();
-                switch ((int) key.get("ID")) {
-                    case 1:
-                        assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
-                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
-                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
-                        break;
-                    case 2:
-                        assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
-                        break;
-                    default:
-                        fail("unexpected id");
-                }
-            });
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+            assertThat(snapshotRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(snapshotRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
+
+            List<SourceRecord> records = snapshotRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            Struct after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
@@ -1133,29 +1124,28 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.commit();
 
             // Verify record generated during streaming
-            List<SourceRecord> streamingRecords = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.INTERVAL");
-            assertThat(streamingRecords.size()).isEqualTo(2);
+            final SourceRecords streamingRecords = consumeRecordsByTopic(2);
+            assertThat(streamingRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(streamingRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
 
-            streamingRecords.forEach(rec -> {
-                Struct after = ((Struct) rec.value()).getStruct(AFTER);
-                Struct key = (Struct) rec.key();
-                switch ((int) key.get("ID")) {
-                    case 3:
-                        assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
-                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
-                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
-                        break;
-                    case 4:
-                        assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
-                        assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
-                        break;
-                    default:
-                        fail("unexpected id");
-                }
-            });
+            records = streamingRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(4);
+            assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
+
+            assertNoRecordsToConsume();
         }
         finally {
             TestHelper.dropTable(connection, "debezium.interval");
