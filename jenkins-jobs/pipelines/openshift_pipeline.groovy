@@ -308,7 +308,7 @@ OpenShift interoperability test run ${BUILD_URL} finished with result: ${current
         success {
             sh '''
             for project in $(oc projects | grep -Po "debezium-${BUILD_NUMBER}.*"); do
-                oc delete project "${project}"
+                oc delete project "${project}" --ignore-not-found
             done
             '''
         }
