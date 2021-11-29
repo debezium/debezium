@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.function.Function;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
@@ -81,13 +82,13 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
     }
 
     @Override
-    public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
-        return optionsWithoutMetadata(builder)
+    public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
+        return optionsWithoutMetadata(builder, hasMinimumServerVersion)
                 .withSlotOption("include-not-null", "true");
     }
 
     @Override
-    public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
+    public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
         return builder
                 .withSlotOption("pretty-print", 1)
                 .withSlotOption("write-in-chunks", 0)
