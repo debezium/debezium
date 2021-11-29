@@ -63,7 +63,7 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         }
 
         try {
-            Object rawDefaultValue = mapper.parse(column, defaultValue);
+            Object rawDefaultValue = mapper.parse(column, defaultValue != null ? defaultValue.trim() : defaultValue);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
             if (convertedDefaultValue instanceof Struct) {
                 // Workaround for KAFKA-12694
