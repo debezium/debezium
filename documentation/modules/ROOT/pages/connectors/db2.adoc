@@ -125,6 +125,11 @@ The level of the lock is determined by the `snapshot.isolation.mode` connector  
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+[WARNING]
+====
+The {prodname} connector for Db2 does not support schema changes while an incremental snapshot is running.
+====
+
 // Type: concept
 // Title: How {prodname} Db2 connectors read change-data tables
 [id="how-debezium-db2-connectors-read-change-data-tables"]

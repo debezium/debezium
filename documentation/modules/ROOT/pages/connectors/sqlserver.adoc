@@ -133,6 +133,11 @@ From this baseline state, the connector captures subsequent changes as they occu
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+[WARNING]
+====
+The {prodname} connector for SQL Server does not support schema changes while an incremental snapshot is running.
+====
+
 // Type: concept
 // ModuleID: how-the-debezium-sql-server-connector-reads-change-data-tables
 // Title: How {prodname} SQL Server connectors read change data tables
