@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
-import io.debezium.connector.postgresql.LogicalDecodingMessageFilter;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -62,7 +61,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final String slotName;
     private final String publicationName;
     private final RelationalTableFilters tableFilter;
-    private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
     private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
@@ -83,7 +81,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param slotName                  the name of the DB slot for logical replication; may not be null
      * @param publicationName           the name of the DB publication for logical replication; may not be null
      * @param tableFilter               the tables to watch of the DB publication for logical replication; may not be null
-     * @param logicalDecodingMessageFilter the type of logical decoding messages to watch for; may not be bull
      * @param publicationAutocreateMode the mode for publication autocreation; may not be null
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
@@ -99,7 +96,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           String slotName,
                                           String publicationName,
                                           RelationalTableFilters tableFilter,
-                                          LogicalDecodingMessageFilter logicalDecodingMessageFilter,
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
                                           boolean dropSlotOnClose,
@@ -114,7 +110,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.slotName = slotName;
         this.publicationName = publicationName;
         this.tableFilter = tableFilter;
-        this.logicalDecodingMessageFilter = logicalDecodingMessageFilter;
         this.publicationAutocreateMode = publicationAutocreateMode;
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
@@ -657,10 +652,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private String slotName = DEFAULT_SLOT_NAME;
         private String publicationName = DEFAULT_PUBLICATION_NAME;
         private RelationalTableFilters tableFilter;
-        private LogicalDecodingMessageFilter logicalDecodingMessageFilter;
         private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
-        private PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
         private boolean doSnapshot;
@@ -709,20 +702,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
-        public Builder withTruncateHandlingMode(PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode) {
-            assert truncateHandlingMode != null;
-            this.truncateHandlingMode = truncateHandlingMode;
-            return this;
-        }
-
-        @Override
-        public Builder withLogicalDecodingMessageFilter(LogicalDecodingMessageFilter logicalDecodingMessageFilter) {
-            assert logicalDecodingMessageFilter != null;
-            this.logicalDecodingMessageFilter = logicalDecodingMessageFilter;
-            return this;
-        }
-
-        @Override
         public ReplicationConnectionBuilder dropSlotOnClose(final boolean dropSlotOnClose) {
             this.dropSlotOnClose = dropSlotOnClose;
             return this;
@@ -761,7 +740,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, logicalDecodingMessageFilter,
+            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter,
                     publicationAutocreateMode, plugin, dropSlotOnClose, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
         }
 
