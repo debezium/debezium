@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -183,11 +184,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             catch (SQLException e) {
                 throw new JdbcConnectionException(e);
             }
-
-            // This is what ties the publication definition to the replication stream
-            streamParams.put("proto_version", 1);
-            streamParams.put("publication_names", publicationName);
-            streamParams.put("messages", true);
         }
     }
 
@@ -569,7 +565,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         };
     }
 
-    private PGReplicationStream startPgReplicationStream(final Lsn lsn, Function<ChainedLogicalStreamBuilder, ChainedLogicalStreamBuilder> configurator)
+    private PGReplicationStream startPgReplicationStream(final Lsn lsn,
+                                                         BiFunction<ChainedLogicalStreamBuilder, Function<Integer, Boolean>, ChainedLogicalStreamBuilder> configurator)
             throws SQLException {
         assert lsn != null;
         ChainedLogicalStreamBuilder streamBuilder = pgConnection()
@@ -579,7 +576,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .withSlotName("\"" + slotName + "\"")
                 .withStartPosition(lsn.asLogSequenceNumber())
                 .withSlotOptions(streamParams);
-        streamBuilder = configurator.apply(streamBuilder);
+        streamBuilder = configurator.apply(streamBuilder, this::hasMinimumVersion);
 
         if (statusUpdateInterval != null && statusUpdateInterval.toMillis() > 0) {
             streamBuilder.withStatusInterval(toIntExact(statusUpdateInterval.toMillis()), TimeUnit.MILLISECONDS);
@@ -596,6 +593,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
         stream.forceUpdateStatus();
         return stream;
+    }
+
+    private Boolean hasMinimumVersion(int version) {
+        try {
+            return pgConnection().haveMinimumServerVersion(version);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(e);
+        }
     }
 
     @Override
