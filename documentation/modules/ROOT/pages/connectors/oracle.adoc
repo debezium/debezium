@@ -2866,19 +2866,19 @@ Under optimal operations, this should always be or remain close to `0`.
 |The number of DDL records that have been detected but could not be parsed by the DDL parser.
 This should always be `0`; however when allowing unparsable DDL to be skipped, this metric can be used to determine if any warnings have been written to the connector logs.
 
-|[[oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes, `+MiningSessionUserGlobalAreaMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes, `+MiningSessionUserGlobalAreaMemoryInBytes+`>>
 |`long`
 |The current mining session's user global area (UGA) memory consumption in bytes.
 
-|[[oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes, `+MiningSessionUserGlobalAreaMaxMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes, `+MiningSessionUserGlobalAreaMaxMemoryInBytes+`>>
 |`long`
 |The maximum mining session's user global area (UGA) memory consumption in bytes across all mining sessions.
 
-|[[oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes, `+MiningSessionProcessGlobalAreaMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes, `+MiningSessionProcessGlobalAreaMemoryInBytes+`>>
 |`long`
 |The current mining session's process global area (PGA) memory consumption in bytes.
 
-|[[oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes, `+MiningSessionProcessGlobalAreaMaxMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes, `+MiningSessionProcessGlobalAreaMaxMemoryInBytes+`>>
 |`long`
 |The maximum mining session's process global area (PGA) memory consumption in bytes across all mining sessions.
 
