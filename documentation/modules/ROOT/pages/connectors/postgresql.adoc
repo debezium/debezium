@@ -2910,17 +2910,17 @@ For information about the structure of _truncate_ events and about their orderin
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`
 |Specifies how many decimal digits should be used when converting Postgres `money` type to `java.math.BigDecimal`, which represents the values in change events.
-Applicable only when `decimal.handling.mode` is set to `precise`.
+Applicable only when xref:postgresql-property-decimal-handling-mode[`decimal.handling.mode`] is set to `precise`.
 
-|[[postgresql-property-logical-decoding-message-handling-mode]]<<postgresql-property-logical-decoding-message-prefix-include-list, `+message.prefix.include.list+`>>
+|[[postgresql-property-logical-decoding-message-prefix-include-list]]<<postgresql-property-logical-decoding-message-prefix-include-list, `+message.prefix.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *want* to capture. Any logical decoding message with a prefix not included in `message.prefix.include.list` is excluded By default, all logical decoding messages are captured. Do not also set the `message.prefix.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *want* to capture. Any logical decoding message with a prefix not included in `message.prefix.include.list` is excluded By default, all logical decoding messages are captured. Do not also set the xref:postgresql-property-logical-decoding-message-prefix-exclude-list[`message.prefix.exclude.list`] property.
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
-|[[postgresql-property-logical-decoding-message-handling-mode]]<<postgresql-property-logical-decoding-message-prefix-exclude-list, `+message.prefix.exclude.list+`>>
+|[[postgresql-property-logical-decoding-message-prefix-exclude-list]]<<postgresql-property-logical-decoding-message-prefix-exclude-list, `+message.prefix.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *do not* to capture. Any logical decoding message with a prefix that is not included in `message.prefix.exclude.list` is included. Do not also set the `message.prefix.include.list` property. To exclude all logiacl decoding messages pass `.*` into this config.
+|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *do not* to capture. Any logical decoding message with a prefix that is not included in `message.prefix.exclude.list` is included. Do not also set the xref:postgresql-property-logical-decoding-message-prefix-include-list[`message.prefix.include.list`] property. To exclude all logical decoding messages pass `.*` into this config.
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
