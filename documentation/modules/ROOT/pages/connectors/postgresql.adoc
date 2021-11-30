@@ -1216,10 +1216,11 @@ The message value looks like this for transactional messages:
             "xmin": null
         },
         "op": "m", // <2>
-        "ts_ms": 1559033904961 // <3>
+        "ts_ms": 1559033904961, // <3>
         "message": { // <4>
             "prefix": "foo",
             "content": "Ymfy"
+        }
     }
 }
 ----
