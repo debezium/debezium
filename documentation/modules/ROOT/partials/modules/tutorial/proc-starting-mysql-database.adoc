@@ -51,7 +51,7 @@ You should see output similar to the following:
 [source,shell,options="nowrap"]
 ----
 ...
-017-09-21T07:18:50.824629Z 0 [Note] mysqld: ready for connections.
-Version: '5.7.19-log'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server (GPL)
+[System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.27'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server - GPL.
+[System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /var/run/mysqld/mysqlx.sock
 ----
 --
