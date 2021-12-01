@@ -209,7 +209,7 @@ Messages that the connector sends to the schema change topic contain a payload, 
 The payload of a schema change event message includes the following elements:
 
 `databaseName`:: The name of the database to which the statements are applied.
-The value of `databaseName` serves as the message key. 
+The value of `databaseName` serves as the message key.
 `tableChanges`::  A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
 Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
@@ -1725,24 +1725,23 @@ You then need to create the following custom resources (CRs):
 │   ├── ...
 ----
 
-.. Create a Docker file that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
+.. Create a `Dockerfile` that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following command:
 +
 [source,shell,subs="+attributes,+quotes"]
 ----
 cat <<EOF >debezium-container-for-sqlserver.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
-COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+COPY ./debezium-connector-sqlserver/ /opt/kafka/plugins/debezium-connector-sqlserver
 USER 1001
 EOF
 ----
 <1> You can specify any file name that you want.
-<2> Replace `my-plugins` with the name of your plug-ins directory.
 +
-The command creates a Docker file with the name `debezium-container-for-sqlserver.yaml` in the current directory.
+The command creates a `Dockerfile` with the name `debezium-container-for-sqlserver.yaml` in the current directory.
 
-.. Build the container image from the `debezium-container-for-sqlserver.yaml` Docker file that you created in the previous step.
+.. Build the container image from the `debezium-container-for-sqlserver.yaml` `Dockerfile` that you created in the previous step.
 From the directory that contains the file, open a terminal window and enter one of the following commands:
 +
 [source,shell,options="nowrap"]

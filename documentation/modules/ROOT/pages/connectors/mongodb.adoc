@@ -946,24 +946,23 @@ You then create two custom resources (CRs):
 │   ├── ...
 ----
 
-.. Create a Docker file that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
+.. Create a `Dockerfile` that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following command:
 +
 [source,shell,subs="+attributes,+quotes"]
 ----
 cat <<EOF >debezium-container-for-mongodb.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
-COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+COPY ./debezium-connector-mongodb/ /opt/kafka/plugins/debezium-connector-mongodb/
 USER 1001
 EOF
 ----
 <1> You can specify any file name that you want.
-<2> Replace `my-plugins` with the name of your plug-ins directory.
 +
-The command creates a Docker file with the name `debezium-container-for-mongodb.yaml` in the current directory.
+The command creates a `Dockerfile` with the name `debezium-container-for-mongodb.yaml` in the current directory.
 
-.. Build the container image from the `debezium-container-for-mongodb.yaml` Docker file that you created in the previous step.
+.. Build the container image from the `debezium-container-for-mongodb.yaml` `Dockerfile` that you created in the previous step.
 From the directory that contains the file, open a terminal window and enter one of the following commands:
 +
 [source,shell,options="nowrap"]
