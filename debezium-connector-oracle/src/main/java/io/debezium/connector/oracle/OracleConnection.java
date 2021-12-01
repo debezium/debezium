@@ -264,7 +264,7 @@ public class OracleConnection extends JdbcConnection {
     @Override
     protected String resolveCatalogName(String catalogName) {
         final String pdbName = config().getString("pdb.name");
-        return !Strings.isNullOrEmpty(pdbName) ? pdbName : config().getString("dbname");
+        return (!Strings.isNullOrEmpty(pdbName) ? pdbName : config().getString("dbname")).toUpperCase();
     }
 
     @Override
