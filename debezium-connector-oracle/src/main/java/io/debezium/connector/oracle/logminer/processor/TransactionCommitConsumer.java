@@ -197,6 +197,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             // nothing is done with the event, its just consumed and treated as merged.
             LOGGER.warn("\tLOB_ERASE for table '{}' column '{}' is not supported.",
                     lastSelectLobLocatorEvent.getTableId(), lastSelectLobLocatorEvent.getColumnName());
+            if (lastEvent != null && EventType.SELECT_LOB_LOCATOR == lastEvent.getEventType()) {
+                LOGGER.trace("\tSkipped LOB_ERASE, discarding it and the prior SELECT_LOB_LOCATOR");
+                lastEvent = null;
+                return true;
+            }
             LOGGER.trace("\tSkipped LOB_ERASE, treated as merged.");
             return true;
         }
