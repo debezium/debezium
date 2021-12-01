@@ -53,6 +53,7 @@ import io.debezium.util.Strings;
 public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
     protected static final int DEFAULT_PORT = 1528;
+    protected static final int DEFAULT_LOG_FILE_QUERY_MAX_RETRIES = 5;
 
     protected static final int DEFAULT_VIEW_FETCH_SIZE = 10_000;
 
@@ -395,6 +396,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
                     " this value, consider it a SCN gap.");
 
+    public static final Field LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES = Field.create("log.mining.log.file.query.max.retries")
+            .withDisplayName("Maximum number of retries to get logs before throwing an exception")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDefault(DEFAULT_LOG_FILE_QUERY_MAX_RETRIES)
+            .withDescription("Specifies the number of extra attempts the connector will use to resolve available logs " +
+                    "from Oracle before throwing an exception if a log with the offset SCN cannot be located.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -447,7 +458,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
                     LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
-                    BINARY_HANDLING_MODE)
+                    BINARY_HANDLING_MODE,
+                    LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES)
             .create();
 
     /**
@@ -500,6 +512,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningBufferDropOnStop;
     private final int logMiningScnGapDetectionGapSizeMin;
     private final int logMiningScnGapDetectionTimeIntervalMaxMs;
+    private final int logMiningLogFileQueryMaxRetries;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
@@ -543,6 +556,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
         this.logMiningScnGapDetectionTimeIntervalMaxMs = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS);
+        this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES);
     }
 
     private static String toUpperCase(String property) {
@@ -1278,6 +1292,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public int getLogMiningBatchSizeDefault() {
         return logMiningBatchSizeDefault;
+    }
+
+    /**
+     * @return the maximum number of retries that should be used to resolve log filenames for mining
+     */
+    public int getDefaultLogFileQueryMaxRetries() {
+        return logMiningLogFileQueryMaxRetries;
     }
 
     @Override
