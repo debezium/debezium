@@ -2,6 +2,38 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.6.4.Final
+December 1st 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12376252)
+
+### New features since 1.6.3.Final
+
+None
+
+
+### Breaking changes since 1.6.2.Final
+
+None
+
+
+### Fixes since 1.6.3.Final
+
+* OracleSchemaMigrationIT#shouldNotEmitDdlEventsForNonTableObjects fails for Xstream [DBZ-4186](https://issues.redhat.com/browse/DBZ-4186)
+* DML statement couldn't be parsed [DBZ-4194](https://issues.redhat.com/browse/DBZ-4194)
+* Debezium log miner processes get terminated with ORA-04030 error in idle database environment. [DBZ-4204](https://issues.redhat.com/browse/DBZ-4204)
+* io.debezium.text.ParsingException: DDL statement couldn't be parsed. Please open a Jira issue with the statement 'DROP TABLE IF EXISTS condition' [DBZ-4210](https://issues.redhat.com/browse/DBZ-4210)
+* DDL statement couldn't be parsed [DBZ-4224](https://issues.redhat.com/browse/DBZ-4224)
+* CHAR / NCHAR precision is not correctly derived from DDL statements [DBZ-4233](https://issues.redhat.com/browse/DBZ-4233)
+* RelationalChangeRecordEmitter calls "LoggerFactory.getLogger(getClass())" for each instance of the emitter [DBZ-4309](https://issues.redhat.com/browse/DBZ-4309)
+
+
+### Other changes since 1.6.3.Final
+
+* Document incremental chunk size setting [DBZ-4127](https://issues.redhat.com/browse/DBZ-4127)
+* Missing documentation for max.iteration.transactions option [DBZ-4129](https://issues.redhat.com/browse/DBZ-4129)
+* Upgrade MySQL JDBC driver to 8.0.27 [DBZ-4286](https://issues.redhat.com/browse/DBZ-4286)
+
+
+
 ## 1.6.3.Final
 October 21st 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12373670)
 

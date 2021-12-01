@@ -2,6 +2,7 @@ Cobolbaby
 Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
+Abhishek Hodavdekar
 Addison Higham
 Adham
 Adrian Kreuziger
@@ -24,6 +25,7 @@ Andrew Garrett
 Andrew Tongen
 Andrey Ignatenko
 Andrey Pustovetov
+Andrey Yegorov
 Andy Teijelo
 Anisha Mohanty
 Anton Kondratev
@@ -32,6 +34,8 @@ Arik Cohen
 Arkoprabho Chakraborti
 artiship
 Ashhar Hasan
+Ashique Ansari
+Ashmeet Lamba
 Attila Szucs
 Aykut Farsak
 Babur Duisenov
@@ -40,6 +44,7 @@ Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
 Ben Williams
+Biel Garau Estarellas
 Bin Li
 Bingqin Zhou
 Björn Häuser
@@ -60,6 +65,7 @@ Chris Cranford
 Chris Egerton
 Chris Riccomini
 Christian Posta
+Christopher Burch
 Christopher Sang
 Chuck Ha
 Claus Guttesen
@@ -68,6 +74,7 @@ Collin Van Dyck
 Cory Harper
 Cyril Scetbon
 Daan Roosen
+Daniel Petisme
 Dave Cramer
 Dave Cumberland
 David Chen
@@ -98,11 +105,12 @@ Eric S. Kreiseir
 Erik Malm
 Ewen Cheslack-Postava
 Fabian Aussems
+Fabian Martinez
 Fabio Cantarini
 Fahim Farook
 Faizan
 Fatih Güçlü Akkaya
-Fándly Gergő 
+Fándly Gergő
 Felix Eckhardt
 Fintan Bolton
 Frank Koornstra
@@ -116,14 +124,17 @@ Guillaume Rosauro
 Guillaume Smet
 Gunnar Morling
 Gurnaaz Randhawa
+Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
+Jacob Gminder
 Jan Hendrik Dolling
+Jiabao Sun
+Juan Fiallo
 Hans-Peter Grahsl
 Harvey Yue
 Henryk Konsek
 Hoa Le
-Hongkai Wang
 Horia Chiorean
 Hossein Torabi
 Hussain Ansari
@@ -167,10 +178,12 @@ Jordan Bragg
 Jork Zijlstra
 Jorn Argelo
 Jos Huiting
+Jose Luis
 Josh Arenberg
 Josh Stanfield
 Joy Gao
 Juan Antonio Pedraza
+Judah Rand
 Jun Du
 Jure Kajzer
 Justin Hiza
@@ -182,6 +195,8 @@ Kevin Pullin
 Kewei Shang
 Krizhan Mariampillai
 Kyley Jex
+Lairen Hightower
+Laurent Broudoux
 Leo Mei
 Lev Zemlyanov
 Linh Nguyen Hoang
@@ -244,6 +259,7 @@ Peter Junos
 Peter Larsson
 Peter Urbanetz
 Philip Sanetra
+Plugaru Tudor
 Pradeep Mamillapalli
 Prannoy Mittal
 Preethi Sadagopan
@@ -280,6 +296,7 @@ Sergei Morozov
 Shane Paul
 Sherafudheen PM
 Sheldon Fuchs
+Shichao An
 Shivam Sharma
 Shubham Rawat
 Shuguang Xiang
@@ -306,6 +323,7 @@ Thomas Prelle
 Thomas Thornton
 Tin Nguyen
 Tom Bentley
+Tom Billiet
 Tomaz Lemos Fernandes
 Tommy Karlsson
 Tony Rizko
@@ -317,24 +335,34 @@ Vasily Ulianko
 Vedit Firat Arig
 Victar Malinouski
 Victor Xiang
+Vivek Wassan
 Vladimir Osin
+Vojtech Juranek
 Wang-Yu-Chao
 WenChao Ke
 Wei Wu
 WenZe Hu
 William Pursell
 Willie Cheong
+Willie Zhu
 Wout Scheepers
 Xiao Fu
+Xiaopu Zhu
 Xuan Shen
+Yang Wu
 Yang Yang
 yangsanity
 Yilong Chang
 Yiming Liu
 Yoann Rodière
+Yossi Shirizli
+Yuan Zhang
 Yuiham Chan
 Zheng Wang
+Zongwen Li
 Zoran Regvart
 志飞 张
-李宗文
 민규 김
+李宗文
+陆杰
+Ünal Sürmeli

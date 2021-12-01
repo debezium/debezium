@@ -85,8 +85,24 @@ chriscollingwood,Chris Collingwood
 jackey.zhang,Jackey Zhang
 gvaquez-ubi,Gilles Vaquez
 camile.sing,Camile Sing
+camilesing,Camile Sing
+spicy-sauce,Yossi Shirizli
 bep7520,Blake Peno
 Kate,Katerina Galieva
 pkgonan,민규 김
+jiabao.sun,Jiabao Sun
 indraraj,Indra Shukla
-Hongkai.Wang,Hongkai Wang
+judahrand,Judah Rand
+zxpzlp,Xiaopu Zhu
+unalsurmeli,Ünal Sürmeli
+juanfiallo,Juan Fiallo
+cburch824,Christopher Burch
+gkorland,Guy Korland
+famartinrh,Fabian Martinez
+PlugaruT,Plugaru Tudor
+lujiefsi,陆杰
+ahodavdekar,Abhishek Hodavdekar
+josetesan,Jose Luis
+yw,Yang Wu
+narcsfz,Yang Wu
+TomBillietKlarrio,Tom Billiet
