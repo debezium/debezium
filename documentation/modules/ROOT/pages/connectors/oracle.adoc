@@ -2517,6 +2517,13 @@ endif::community[]
 |`10000`
 |The number of content records that the connector fetches from the LogMiner content view.
 
+|[[oracle-property-log-mining-log-file-query-max-retries]]<<oracle-property-log-mining-log-file-query-max-retries, `+log.mining.log.file.query.max.retries+`>>
+|`5`
+|The number of additional query attempts the connector will make to get a list of transaction logs based on the current offset SCN. +
+ +
+There is a small window where Oracle may update several transaction log-based metadata tables in a non-atomic way and cause the connector to believe a log may not be available while it transitions from redo to archive.
+To safeguard against this problem, this property specifies the number of retry attempts that should be performed before throwing an exception.
+
 |[[oracle-property-log-mining-archive-log-hours]]<<oracle-property-log-mining-archive-log-hours, `+log.mining.archive.log.hours+`>>
 |`0`
 |The number of hours in the past from SYSDATE to mine archive logs.

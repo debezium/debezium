@@ -73,6 +73,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
     private final String archiveDestinationName;
+    private final int logFileQueryMaxRetries;
 
     private Scn startScn;
     private Scn endScn;
@@ -95,6 +96,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveDestinationName = connectorConfig.getLogMiningArchiveDestinationName();
+        this.logFileQueryMaxRetries = connectorConfig.getDefaultLogFileQueryMaxRetries();
     }
 
     /**
@@ -226,13 +228,15 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         return Scn.valueOf(oldestScn);
     }
 
-    private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn) throws SQLException {
+    private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn)
+            throws SQLException, InterruptedException {
         if (!postEndMiningSession) {
             if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                 buildDataDictionary(connection);
             }
             if (!isContinuousMining) {
-                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
+                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
+                        archiveDestinationName, logFileQueryMaxRetries);
             }
         }
         else {
@@ -240,7 +244,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                     buildDataDictionary(connection);
                 }
-                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
+                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
+                        archiveDestinationName, logFileQueryMaxRetries);
             }
         }
 
