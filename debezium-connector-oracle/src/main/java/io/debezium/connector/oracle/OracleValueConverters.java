@@ -313,16 +313,28 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof BlobChunkList) {
                 if (!lobEnabled) {
-                    return null;
+                    if (column.isOptional()) {
+                        return null;
+                    }
+                    data = NumberConversions.BYTE_ZERO;
                 }
-                data = convertBlobChunkList((BlobChunkList) data);
+                else {
+                    data = convertBlobChunkList((BlobChunkList) data);
+                }
             }
             else if (data instanceof Blob) {
                 if (!lobEnabled) {
-                    return null;
+                    if (column.isOptional()) {
+                        return null;
+                    }
+                    else {
+                        data = NumberConversions.BYTE_ZERO;
+                    }
                 }
-                Blob blob = (Blob) data;
-                data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
+                else {
+                    Blob blob = (Blob) data;
+                    data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
+                }
             }
 
             if (data == UNAVAILABLE_VALUE) {
