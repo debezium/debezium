@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
