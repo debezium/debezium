@@ -266,7 +266,10 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
         if (data instanceof Clob) {
             if (!lobEnabled) {
-                return null;
+                if (column.isOptional()) {
+                    return null;
+                }
+                return "";
             }
             try {
                 Clob clob = (Clob) data;
