@@ -23,6 +23,7 @@ import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAdjuster;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -322,6 +323,51 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
         // Otherwise, let the base class handle it ...
         return super.converter(column, fieldDefn);
+    }
+
+    @Override
+    public Optional<Object> fallbackColumnDefaultValue(Column column) {
+        if (!column.isOptional()) {
+            final String typeName = column.typeName().toUpperCase();
+            if (matches(typeName, "JSON")) {
+                return Optional.of("{}");
+            }
+            else if (matches(typeName, "YEAR")) {
+                return Optional.of(DEFAULT_INTEGER);
+            }
+            else if (matches(typeName, "ENUM")) {
+                return Optional.of(DEFAULT_EMPTY_STRING);
+            }
+            else if (matches(typeName, "SET")) {
+                return Optional.of(DEFAULT_EMPTY_STRING);
+            }
+            else if (matches(typeName, "TINYINT UNSIGNED") || matches(typeName, "TINYINT UNSIGNED ZEROFILL")
+                    || matches(typeName, "INT1 UNSIGNED") || matches(typeName, "INT1 UNSIGNED ZEROFILL")) {
+                return Optional.of(DEFAULT_TINY_SMALL_INT);
+            }
+            else if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")
+                    || matches(typeName, "INT2 UNSIGNED") || matches(typeName, "INT2 UNSIGNED ZEROFILL")) {
+                return Optional.of(DEFAULT_INTEGER);
+            }
+            else if (matches(typeName, "MEDIUMINT UNSIGNED") || matches(typeName, "MEDIUMINT UNSIGNED ZEROFILL")
+                    || matches(typeName, "INT3 UNSIGNED") || matches(typeName, "INT3 UNSIGNED ZEROFILL")
+                    || matches(typeName, "MIDDLEINT UNSIGNED") || matches(typeName, "MIDDLEINT UNSIGNED ZEROFILL")) {
+                return Optional.of(DEFAULT_INTEGER);
+            }
+            else if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")
+                    || matches(typeName, "INT4 UNSIGNED") || matches(typeName, "INT4 UNSIGNED ZEROFILL")) {
+                return Optional.of(DEFAULT_LONG);
+            }
+            else if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")
+                    || matches(typeName, "INT8 UNSIGNED") || matches(typeName, "INT8 UNSIGNED ZEROFILL")) {
+                return Optional.of(DEFAULT_LONG);
+            }
+
+            if (Types.TIME == column.jdbcType() && adaptiveTimeMicrosecondsPrecisionMode) {
+                return Optional.of(DEFAULT_LONG);
+            }
+        }
+        return super.fallbackColumnDefaultValue(column);
     }
 
     /**

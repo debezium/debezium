@@ -385,6 +385,84 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     @Override
+    public Optional<Object> fallbackColumnDefaultValue(Column column) {
+        if (!column.isOptional()) {
+            switch (column.nativeType()) {
+                case PgOid.BIT:
+                case PgOid.VARBIT:
+                    return fallbackBitDefaultValue(column);
+
+                case PgOid.INTERVAL:
+                    return Optional.of(NumberConversions.LONG_FALSE);
+
+                case PgOid.TIME:
+                    return fallbackTimeDefaultValue(column);
+
+                case PgOid.OID:
+                    return Optional.of(DEFAULT_LONG);
+
+                case PgOid.JSONB_OID:
+                case PgOid.UUID:
+                case PgOid.TSRANGE_OID:
+                case PgOid.TSTZRANGE_OID:
+                case PgOid.DATERANGE_OID:
+                case PgOid.JSON:
+                case PgOid.INET_OID:
+                case PgOid.CIDR_OID:
+                case PgOid.MACADDR_OID:
+                case PgOid.MACADDR8_OID:
+                case PgOid.INT4RANGE_OID:
+                case PgOid.NUM_RANGE_OID:
+                case PgOid.INT8RANGE_OID:
+                    return Optional.of(DEFAULT_EMPTY_STRING);
+
+                case PgOid.MONEY:
+                    return Optional.of(DEFAULT_NUMERIC.setScale(moneyFractionDigits));
+
+                case PgOid.NUMERIC:
+                    return Optional.of(DEFAULT_NUMERIC);
+
+                case PgOid.BYTEA:
+                    return fallbackBinaryDefaultValue(column);
+
+                case PgOid.INT2_ARRAY:
+                case PgOid.INT4_ARRAY:
+                case PgOid.INT8_ARRAY:
+                case PgOid.CHAR_ARRAY:
+                case PgOid.VARCHAR_ARRAY:
+                case PgOid.TEXT_ARRAY:
+                case PgOid.BPCHAR_ARRAY:
+                case PgOid.NUMERIC_ARRAY:
+                case PgOid.FLOAT4_ARRAY:
+                case PgOid.FLOAT8_ARRAY:
+                case PgOid.BOOL_ARRAY:
+                case PgOid.DATE_ARRAY:
+                case PgOid.INET_ARRAY:
+                case PgOid.CIDR_ARRAY:
+                case PgOid.MACADDR_ARRAY:
+                case PgOid.MACADDR8_ARRAY:
+                case PgOid.TSRANGE_ARRAY:
+                case PgOid.TSTZRANGE_ARRAY:
+                case PgOid.DATERANGE_ARRAY:
+                case PgOid.INT4RANGE_ARRAY:
+                case PgOid.NUM_RANGE_ARRAY:
+                case PgOid.INT8RANGE_ARRAY:
+                case PgOid.UUID_ARRAY:
+                case PgOid.JSONB_ARRAY:
+                case PgOid.JSON_ARRAY:
+                case PgOid.TIME_ARRAY:
+                case PgOid.TIMETZ_ARRAY:
+                case PgOid.TIMESTAMP_ARRAY:
+                case PgOid.TIMESTAMPTZ_ARRAY:
+                case PgOid.OID_ARRAY:
+                    return Optional.of(Collections.emptyList());
+            }
+        }
+
+        return super.fallbackColumnDefaultValue(column);
+    }
+
+    @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = column.nativeType();
         switch (oidValue) {

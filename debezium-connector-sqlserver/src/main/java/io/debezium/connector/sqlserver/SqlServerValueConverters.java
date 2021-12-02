@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -91,6 +93,20 @@ public class SqlServerValueConverters extends JdbcValueConverters {
             default:
                 return super.converter(column, fieldDefn);
         }
+    }
+
+    @Override
+    public Optional<Object> fallbackColumnDefaultValue(Column column) {
+        if (!column.isOptional()) {
+            switch (column.jdbcType()) {
+                case microsoft.sql.Types.SMALLMONEY:
+                case microsoft.sql.Types.MONEY:
+                    return Optional.of(DEFAULT_NUMERIC);
+                case microsoft.sql.Types.DATETIMEOFFSET:
+                    return fallbackTimestampWithTimeZone(column);
+            }
+        }
+        return super.fallbackColumnDefaultValue(column);
     }
 
     /**

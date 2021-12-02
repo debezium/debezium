@@ -27,6 +27,7 @@ import java.time.temporal.TemporalAdjuster;
 import java.util.Base64;
 import java.util.Base64.Encoder;
 import java.util.BitSet;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Field;
@@ -80,6 +81,19 @@ public class JdbcValueConverters implements ValueConverterProvider {
         PRECISE,
         LONG;
     }
+
+    // Default values
+    protected static final boolean DEFAULT_BOOLEAN = false;
+    protected static final byte[] DEFAULT_BYTE_ARRAY = BYTE_ZERO;
+    protected static final Short DEFAULT_TINY_SMALL_INT = SHORT_FALSE;
+    protected static final int DEFAULT_INTEGER = 0;
+    protected static final long DEFAULT_LONG = 0L;
+    protected static final double DEFAULT_DOUBLE = 0.0d;
+    protected static final float DEFAULT_FLOAT = 0.0f;
+    protected static final BigDecimal DEFAULT_NUMERIC = BigDecimal.valueOf(0);
+    protected static final String DEFAULT_EMPTY_STRING = "";
+    protected static final java.util.Date DEFAULT_DATE = new java.util.Date(0L);
+    protected static final ByteBuffer DEFAULT_BYTE_BUFFER = BYTE_BUFFER_ZERO;
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -362,6 +376,80 @@ public class JdbcValueConverters implements ValueConverterProvider {
         }
     }
 
+    @Override
+    public Optional<Object> fallbackColumnDefaultValue(Column column) {
+        if (column.isOptional()) {
+            return Optional.empty();
+        }
+
+        switch (column.jdbcType()) {
+            case Types.BIT:
+                return fallbackBitDefaultValue(column);
+
+            case Types.BOOLEAN:
+                return Optional.of(DEFAULT_BOOLEAN);
+
+            case Types.BLOB:
+            case Types.BINARY:
+            case Types.VARBINARY:
+            case Types.LONGVARBINARY:
+                return fallbackBinaryDefaultValue(column);
+
+            case Types.TINYINT:
+            case Types.SMALLINT:
+                return Optional.of(DEFAULT_TINY_SMALL_INT);
+
+            case Types.INTEGER:
+                return Optional.of(DEFAULT_INTEGER);
+
+            case Types.BIGINT:
+                return Optional.of(DEFAULT_LONG);
+
+            case Types.FLOAT:
+            case Types.DOUBLE:
+                return Optional.of(DEFAULT_DOUBLE);
+
+            case Types.REAL:
+                return Optional.of(DEFAULT_FLOAT);
+
+            case Types.NUMERIC:
+            case Types.DECIMAL:
+                return Optional.of(DEFAULT_NUMERIC);
+
+            case Types.CHAR:
+            case Types.VARCHAR:
+            case Types.LONGVARCHAR:
+            case Types.CLOB:
+            case Types.NCHAR:
+            case Types.NVARCHAR:
+            case Types.LONGNVARCHAR:
+            case Types.NCLOB:
+            case Types.DATALINK:
+            case Types.SQLXML:
+                return Optional.of(DEFAULT_EMPTY_STRING);
+
+            case Types.DATE:
+                return fallbackDateDefaultValue(column);
+
+            case Types.TIME:
+                return fallbackTimeDefaultValue(column);
+
+            case Types.TIMESTAMP:
+                return Optional.of(0L);
+
+            case Types.TIME_WITH_TIMEZONE:
+            case Types.TIMESTAMP_WITH_TIMEZONE:
+                return fallbackTimestampWithTimeZone(column);
+
+            case Types.ROWID:
+                return Optional.of(DEFAULT_BYTE_BUFFER);
+
+            default:
+                // any other types are automatically returned as legacy behavior
+                return Optional.empty();
+        }
+    }
+
     protected ValueConverter convertBits(Column column, Field fieldDefn) {
         if (column.length() > 1) {
             int numBits = column.length();
@@ -457,7 +545,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_LONG, (r) -> {
             try {
                 r.deliver(Timestamp.toEpochMillis(data, adjuster));
             }
@@ -482,7 +570,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_LONG, (r) -> {
             try {
                 r.deliver(MicroTimestamp.toEpochMicros(data, adjuster));
             }
@@ -507,7 +595,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_LONG, (r) -> {
             try {
                 r.deliver(NanoTimestamp.toEpochNanos(data, adjuster));
             }
@@ -532,7 +620,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_DATE, (r) -> {
             try {
                 r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster)));
             }
@@ -558,7 +646,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimeToMillisPastMidnight(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_INTEGER, (r) -> {
             try {
                 r.deliver(Time.toMilliOfDay(data, supportsLargeTimeValues()));
             }
@@ -584,7 +672,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimeToMicrosPastMidnight(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_LONG, (r) -> {
             try {
                 r.deliver(MicroTime.toMicroOfDay(data, supportsLargeTimeValues()));
             }
@@ -610,7 +698,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimeToNanosPastMidnight(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_LONG, (r) -> {
             try {
                 r.deliver(NanoTime.toNanoOfDay(data, supportsLargeTimeValues()));
             }
@@ -636,7 +724,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimeToMillisPastMidnightAsDate(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_DATE, (r) -> {
             try {
                 r.deliver(new java.util.Date(Time.toMilliOfDay(data, supportsLargeTimeValues())));
             }
@@ -661,7 +749,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertDateToEpochDays(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, 0, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_INTEGER, (r) -> {
             try {
                 r.deliver(Date.toEpochDay(data, adjuster));
             }
@@ -689,7 +777,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_DATE, (r) -> {
             try {
                 int epochDay = Date.toEpochDay(data, adjuster);
                 long epochMillis = TimeUnit.DAYS.toMillis(epochDay);
@@ -753,7 +841,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, "", (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_EMPTY_STRING, (r) -> {
             Encoder base64Encoder = Base64.getEncoder();
 
             if (data instanceof String) {
@@ -783,7 +871,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, "", (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_EMPTY_STRING, (r) -> {
 
             if (data instanceof String) {
                 r.deliver(HexConverter.convertToHexString(((String) data).getBytes(StandardCharsets.UTF_8)));
@@ -886,7 +974,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, 0, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_INTEGER, (r) -> {
             if (data instanceof Integer) {
                 r.deliver(data);
             }
@@ -913,7 +1001,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_LONG, (r) -> {
             if (data instanceof Long) {
                 r.deliver(data);
             }
@@ -953,7 +1041,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, 0.0d, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_DOUBLE, (r) -> {
             if (data instanceof Double) {
                 r.deliver(data);
             }
@@ -981,7 +1069,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertReal(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, 0.0f, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_FLOAT, (r) -> {
             if (data instanceof Float) {
                 r.deliver(data);
             }
@@ -1079,7 +1167,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, "", (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_EMPTY_STRING, (r) -> {
             if (data instanceof SQLXML) {
                 try {
                     r.deliver(((SQLXML) data).getString());
@@ -1123,7 +1211,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBit(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, false, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_BOOLEAN, (r) -> {
             if (data instanceof Boolean) {
                 r.deliver(data);
             }
@@ -1154,7 +1242,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
-        return convertValue(column, fieldDefn, data, new byte[0], (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_BYTE_ARRAY, (r) -> {
             if (data instanceof Boolean) {
                 Boolean value = (Boolean) data;
                 r.deliver(new byte[]{ value.booleanValue() ? (byte) 1 : (byte) 0 });
@@ -1218,7 +1306,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, false, (r) -> {
+        return convertValue(column, fieldDefn, data, DEFAULT_BOOLEAN, (r) -> {
             if (data instanceof Boolean) {
                 r.deliver(data);
             }
@@ -1298,6 +1386,49 @@ public class JdbcValueConverters implements ValueConverterProvider {
         logger.trace("Callback is: {}", callback);
         logger.trace("Value from ResultReceiver: {}", r);
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Optional<Object> fallbackBitDefaultValue(Column column) {
+        if (column.length() > 1) {
+            return Optional.of(DEFAULT_BYTE_ARRAY);
+        }
+        return Optional.of(DEFAULT_BOOLEAN);
+    }
+
+    protected Optional<Object> fallbackBinaryDefaultValue(Column column) {
+        switch (binaryMode) {
+            case BASE64:
+            case HEX:
+                return Optional.of(DEFAULT_EMPTY_STRING);
+            default:
+                return Optional.of(DEFAULT_BYTE_ARRAY);
+        }
+    }
+
+    protected Optional<Object> fallbackDateDefaultValue(Column column) {
+        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+            return Optional.of(DEFAULT_LONG);
+        }
+        return Optional.of(DEFAULT_DATE);
+    }
+
+    protected Optional<Object> fallbackTimeDefaultValue(Column column) {
+        if (adaptiveTimeMicrosecondsPrecisionMode) {
+            return Optional.of(DEFAULT_LONG);
+        }
+        else if (adaptiveTimePrecisionMode) {
+            if (column.length() <= 3) {
+                return Optional.of(DEFAULT_INTEGER);
+            }
+            return Optional.of(DEFAULT_LONG);
+        }
+        else {
+            return Optional.of(DEFAULT_DATE);
+        }
+    }
+
+    protected Optional<Object> fallbackTimestampWithTimeZone(Column column) {
+        return Optional.of(fallbackTimeWithTimeZone);
     }
 
     private boolean supportsLargeTimeValues() {

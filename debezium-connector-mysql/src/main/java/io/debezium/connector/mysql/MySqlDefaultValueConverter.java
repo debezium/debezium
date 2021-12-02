@@ -103,7 +103,12 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         final Field field = new Field(column.name(), -1, schema);
         final ValueConverter valueConverter = converters.converter(column, field);
 
-        return Optional.ofNullable(valueConverter.convert(logicalDefaultValue));
+        try {
+            return Optional.ofNullable(valueConverter.convert(logicalDefaultValue));
+        }
+        catch (Exception e) {
+            return converters.fallbackColumnDefaultValue(column);
+        }
     }
 
     /**

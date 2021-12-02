@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -231,6 +232,16 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.converter(column, fieldDefn);
     }
 
+    @Override
+    public Optional<Object> fallbackColumnDefaultValue(Column column) {
+        if (!column.isOptional()) {
+            if (Types.NUMERIC == column.jdbcType()) {
+                return fallbackNumericDefaultValue(column);
+            }
+        }
+        return super.fallbackColumnDefaultValue(column);
+    }
+
     private ValueConverter getNumericConverter(Column column, Field fieldDefn) {
         if (column.scale().isPresent()) {
             Integer scale = column.scale().get();
@@ -257,6 +268,26 @@ public class OracleValueConverters extends JdbcValueConverters {
         else {
             return data -> convertVariableScale(column, fieldDefn, data);
         }
+    }
+
+    private Optional<Object> fallbackNumericDefaultValue(Column column) {
+        if (column.scale().isPresent()) {
+            int scale = column.scale().get();
+            if (scale <= 0) {
+                int width = column.length() - scale;
+                if (width < 5) {
+                    // tinyint, smallint
+                    return Optional.of(DEFAULT_TINY_SMALL_INT);
+                }
+                else if (width < 10) {
+                    return Optional.of(DEFAULT_INTEGER);
+                }
+                else if (width < 19) {
+                    return Optional.of(DEFAULT_LONG);
+                }
+            }
+        }
+        return Optional.of(DEFAULT_INTEGER);
     }
 
     @Override

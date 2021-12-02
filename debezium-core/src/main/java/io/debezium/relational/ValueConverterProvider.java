@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import java.util.Optional;
+
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -22,7 +24,7 @@ public interface ValueConverterProvider {
      * @param columnDefinition the column definition; never null
      * @return the schema builder; null if the column's type information is unknown
      */
-    public SchemaBuilder schemaBuilder(Column columnDefinition);
+    SchemaBuilder schemaBuilder(Column columnDefinition);
 
     /**
      * Returns a {@link ValueConverter} that can be used to convert the JDBC values corresponding to the given JDBC temporal type
@@ -36,5 +38,13 @@ public interface ValueConverterProvider {
      *            never null
      * @return the value converter; never null
      */
-    public ValueConverter converter(Column columnDefinition, Field fieldDefn);
+    ValueConverter converter(Column columnDefinition, Field fieldDefn);
+
+    /**
+     * Returns the fallback default value for columns during schema generation.
+     *
+     * @param columnDefinition the column definition; never null
+     * @return the value as an optional; never null
+     */
+    Optional<Object> fallbackColumnDefaultValue(Column columnDefinition);
 }

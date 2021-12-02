@@ -89,7 +89,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         catch (Exception e) {
             LOGGER.warn("Cannot parse column default value '{}' to type '{}'. Expression evaluation is not supported.", defaultValueExpression, dataType);
             LOGGER.debug("Parsing failed due to error", e);
-            return Optional.empty();
+            return valueConverters.fallbackColumnDefaultValue(column);
         }
     }
 
