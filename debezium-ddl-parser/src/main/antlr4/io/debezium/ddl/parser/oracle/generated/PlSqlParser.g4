@@ -969,6 +969,8 @@ analyze
       )
 
       ( validation_clauses
+      | compute_clauses
+      | estimate_clauses
       | LIST CHAINED ROWS into_clause1?
       | DELETE SYSTEM? STATISTICS
       )
@@ -992,6 +994,25 @@ validation_clauses
         | CASCADE
         )?
         online_or_offline? into_clause?
+    ;
+
+compute_clauses
+    : COMPUTE SYSTEM? STATISTICS for_clause?
+    ;
+
+estimate_clauses
+    : ESTIMATE SYSTEM?STATISTICS for_clause? (SAMPLE UNSIGNED_INTEGER (ROWS | PERCENT_KEYWORD))?
+    ;
+
+for_clause
+    : FOR TABLE (for_clause)*
+    | FOR ALL INDEXED? COLUMNS (SIZE UNSIGNED_INTEGER)? (for_clause)*
+    | FOR COLUMNS (SIZE UNSIGNED_INTEGER)? for_column_clauses (for_clause)*
+    | FOR ALL LOCAL? INDEXES
+    ;
+
+for_column_clauses
+    : column_name (SIZE UNSIGNED_INTEGER) (for_column_clauses)*
     ;
 
 online_or_offline
