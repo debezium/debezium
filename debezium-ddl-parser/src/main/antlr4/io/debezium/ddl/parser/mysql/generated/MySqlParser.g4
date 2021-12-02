@@ -1513,7 +1513,7 @@ grantStatement
         )?
       (WITH (GRANT OPTION | userResourceOption)* )?
       (AS userName WITH ROLE roleOption)?
-    | GRANT uid (',' uid)*
+    | GRANT (userName | uid) (',' (userName | uid))*
       TO (userName | uid) (',' (userName | uid))*
       (WITH ADMIN OPTION)?
     ;
