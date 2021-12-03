@@ -83,11 +83,13 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String SESSION_TXN_ID = "stxnid";
     public static final String INITIAL_SYNC = "initsync";
     public static final String COLLECTION = "collection";
+    public static final String LSID = "lsid";
+    public static final String TXN_NUMBER = "txnNumber";
 
     // Change Stream fields
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
-    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0, null, null);
+    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0, null, null, null);
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -107,28 +109,33 @@ public final class SourceInfo extends BaseSourceInfo {
         private final Long opId;
         private final BsonTimestamp ts;
         private final long txOrder;
-        private final String sessionTxnId;
+        private final String oplogSessionTxnId;
+        private final SessionTransactionId changeStreamSessionTxnId;
         private final String resumeToken;
 
-        public Position(int ts, int order, Long opId, long txOrder, String sessionTxnId, String resumeToken) {
-            this(new BsonTimestamp(ts, order), opId, txOrder, sessionTxnId, resumeToken);
+        public Position(int ts, int order, Long opId, long txOrder, String oplogSessionTxnId,
+                        SessionTransactionId changeStreamsSessionTxnId, String resumeToken) {
+            this(new BsonTimestamp(ts, order), opId, txOrder, oplogSessionTxnId, changeStreamsSessionTxnId,
+                    resumeToken);
         }
 
-        private Position(BsonTimestamp ts, Long opId, long txOrder, String sessionTxnId, String resumeToken) {
+        private Position(BsonTimestamp ts, Long opId, long txOrder, String oplogSessionTxnId,
+                         SessionTransactionId changeStreamSessionTxnId, String resumeToken) {
             this.ts = ts;
             this.opId = opId;
             this.txOrder = txOrder;
-            this.sessionTxnId = sessionTxnId;
+            this.oplogSessionTxnId = oplogSessionTxnId;
+            this.changeStreamSessionTxnId = changeStreamSessionTxnId;
             this.resumeToken = resumeToken;
             assert this.ts != null;
         }
 
         public static Position oplogPosition(BsonTimestamp ts, Long opId, long txOrder, String sessionTxnId) {
-            return new Position(ts, opId, txOrder, sessionTxnId, null);
+            return new Position(ts, opId, txOrder, sessionTxnId, null, null);
         }
 
-        public static Position changeStreamPosition(BsonTimestamp ts, String resumeToken, String sessionTxnId) {
-            return new Position(ts, null, 0, sessionTxnId, resumeToken);
+        public static Position changeStreamPosition(BsonTimestamp ts, String resumeToken, SessionTransactionId sessionTxnId) {
+            return new Position(ts, null, 0, null, sessionTxnId, resumeToken);
         }
 
         public BsonTimestamp getTimestamp() {
@@ -147,8 +154,12 @@ public final class SourceInfo extends BaseSourceInfo {
             return this.opId;
         }
 
-        public String getSessionTxnId() {
-            return sessionTxnId;
+        public String getOplogSessionTxnId() {
+            return oplogSessionTxnId;
+        }
+
+        public SessionTransactionId getChangeStreamSessionTxnId() {
+            return changeStreamSessionTxnId;
         }
 
         public OptionalLong getTxOrder() {
@@ -157,6 +168,18 @@ public final class SourceInfo extends BaseSourceInfo {
 
         public Optional<String> getResumeToken() {
             return Optional.ofNullable(resumeToken);
+        }
+    }
+
+    static final class SessionTransactionId {
+
+        public final String lsid;
+        public final Long txnNumber;
+
+        public SessionTransactionId(String lsid, Long txnNumber) {
+            super();
+            this.txnNumber = txnNumber;
+            this.lsid = lsid;
         }
     }
 
@@ -247,20 +270,29 @@ public final class SourceInfo extends BaseSourceInfo {
             existing = INITIAL_POSITION;
         }
         if (isInitialSyncOngoing(replicaSetName)) {
-            return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
+            return addSessionTxnIdToOffset(existing, Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
                     ORDER, Integer.valueOf(existing.getInc()),
                     OPERATION_ID, existing.getOperationId(),
-                    SESSION_TXN_ID, existing.getSessionTxnId(),
-                    INITIAL_SYNC, true);
+                    INITIAL_SYNC, true));
         }
         Map<String, Object> offset = Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
                 ORDER, Integer.valueOf(existing.getInc()),
-                OPERATION_ID, existing.getOperationId(),
-                SESSION_TXN_ID, existing.getSessionTxnId());
+                OPERATION_ID, existing.getOperationId());
 
         existing.getTxOrder().ifPresent(txOrder -> offset.put(TX_ORD, txOrder));
         existing.getResumeToken().ifPresent(resumeToken -> offset.put(RESUME_TOKEN, resumeToken));
 
+        return addSessionTxnIdToOffset(existing, offset);
+    }
+
+    private Map<String, ?> addSessionTxnIdToOffset(Position position, Map<String, Object> offset) {
+        if (position.getOplogSessionTxnId() != null) {
+            offset.put(SESSION_TXN_ID, position.getOplogSessionTxnId());
+        }
+        if (position.getChangeStreamSessionTxnId() != null) {
+            offset.put(LSID, position.getChangeStreamSessionTxnId().lsid);
+            offset.put(TXN_NUMBER, position.getChangeStreamSessionTxnId().txnNumber);
+        }
         return offset;
     }
 
@@ -308,7 +340,6 @@ public final class SourceInfo extends BaseSourceInfo {
         String namespace = "";
         if (changeStreamEvent != null) {
             BsonTimestamp ts = changeStreamEvent.getClusterTime();
-            String sessionTxnId = null;
             position = Position.changeStreamPosition(ts, changeStreamEvent.getResumeToken().getString("_data").getValue(),
                     MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();
@@ -404,9 +435,16 @@ public final class SourceInfo extends BaseSourceInfo {
         int order = intOffsetValue(sourceOffset, ORDER);
         long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
         long txOrder = longOffsetValue(sourceOffset, TX_ORD);
-        String sessionTxnId = stringOffsetValue(sourceOffset, SESSION_TXN_ID);
+        String oplogSessionTxnId = stringOffsetValue(sourceOffset, SESSION_TXN_ID);
+        String changeStreamLsid = stringOffsetValue(sourceOffset, LSID);
+        Long changeStreamTxnNumber = longOffsetValue(sourceOffset, TXN_NUMBER);
+        SessionTransactionId changeStreamTxnId = null;
+        if (changeStreamLsid != null || changeStreamTxnNumber != null) {
+            changeStreamTxnId = new SessionTransactionId(changeStreamLsid, changeStreamTxnNumber);
+        }
         String resumeToken = stringOffsetValue(sourceOffset, RESUME_TOKEN);
-        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder, sessionTxnId, resumeToken));
+        positionsByReplicaSetName.put(replicaSetName,
+                new Position(time, order, operationId, txOrder, oplogSessionTxnId, changeStreamTxnId, resumeToken));
         return true;
     }
 
