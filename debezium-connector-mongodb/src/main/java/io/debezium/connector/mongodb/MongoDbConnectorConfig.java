@@ -730,6 +730,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return snapshotMode;
     }
 
+    /**
+     * Provides statically configured capture mode. The configured value can be overrided upon
+     * connector start if offsets stored were created by a different capture mode.
+     *
+     * See {@link MongoDbTaskContext#getCaptureMode()}
+     *
+     * @return capture mode requested by configuration
+     */
     public CaptureMode getCaptureMode() {
         return captureMode;
     }
@@ -803,9 +811,5 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             }
             return config.getInteger(MAX_COPY_THREADS);
         }
-    }
-
-    public void setCaptureMode(CaptureMode captureMode) {
-        this.captureMode = captureMode;
     }
 }
