@@ -1531,9 +1531,17 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
             assertThat(value.schema().fields()).hasSize(3);
         }
         else {
-            System.err.println(value.schema().fields());
             // 4 data fields + 1 __patch
             assertThat(value.schema().fields()).hasSize(4 + 1);
+
+            assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
+            assertThat(value.get("__patch")).isNull();
+
+            assertThat(value.get("b")).isEqualTo(2);
+            assertThat(value.schema().field("b").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+
+            assertThat(value.get("c")).isEqualTo(3);
+            assertThat(value.schema().field("c").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
         }
 
     }
