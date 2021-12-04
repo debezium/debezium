@@ -182,8 +182,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             if (pollOutputDelay.hasElapsed()) {
                 // We want to record the status ...
                 final Instant currentTime = clock.currentTime();
-                LOGGER.info("{} records sent during previous {}, last recorded offset: {}", recordCounter,
-                        Strings.duration(Duration.between(previousOutputInstant, currentTime).toMillis()), lastOffset);
+                LOGGER.info("batch size: {}. {} records sent during previous {}, last recorded offset: {}",
+                            batchSize, recordCounter, 
+                            Strings.duration(Duration.between(previousOutputInstant, currentTime).toMillis()),
+                            lastOffset);
                 recordCounter = 0;
                 previousOutputInstant = currentTime;
             }
