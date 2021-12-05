@@ -46,11 +46,13 @@ public class LobWriteEventAdapter extends LogMinerEventAdapter {
      * @param rsId the Oracle rollback segment identifier
      * @param changeTime the time the change occurred
      * @param data the LOB data
+     * @param offset the LOB data offset (0-based)
+     * @param length the LOB data length
      * @return the constructed DmlEvent
      */
     @ProtoFactory
-    public LobWriteEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, String data) {
-        return new LobWriteEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), data);
+    public LobWriteEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, String data, int offset, int length) {
+        return new LobWriteEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), data, offset, length);
     }
 
     /**
@@ -62,5 +64,27 @@ public class LobWriteEventAdapter extends LogMinerEventAdapter {
     @ProtoField(number = 7)
     public String getData(LobWriteEvent event) {
         return event.getData();
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code offset} field from a {@link LobWriteEvent} type.
+     *
+     * @param event the event instance, must not be {@code null}
+     * @return the offset of the data to be written for a LOB field
+     */
+    @ProtoField(number = 8, required = true)
+    public int getOffset(LobWriteEvent event) {
+        return event.getOffset();
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code length} field from a {@link LobWriteEvent} type.
+     *
+     * @param event the event instance, must not be {@code null}
+     * @return the length of the data to be written for a LOB field
+     */
+    @ProtoField(number = 9, required = true)
+    public int getLength(LobWriteEvent event) {
+        return event.getLength();
     }
 }

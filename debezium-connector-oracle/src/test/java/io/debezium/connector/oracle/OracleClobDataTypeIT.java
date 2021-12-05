@@ -1840,6 +1840,66 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4366")
+    public void shouldStreamClobsWrittenInChunkedMode() throws Exception {
+        TestHelper.dropTable(connection, "dbz4366");
+        try {
+            connection.execute("CREATE TABLE dbz4366 (id numeric(9,0), val_clob clob not null, val_nclob nclob not null, primary key(id))");
+            TestHelper.streamTable(connection, "dbz4366");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4366")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz4366 (id,val_clob,val_nclob) values (1,EMPTY_CLOB(),EMPTY_CLOB())");
+            // for bonus points, interleave the writes to the LOB fields
+            final String fillQuery = "DECLARE\n" +
+                    "  loc CLOB;\n" +
+                    "  nloc NCLOB;\n" +
+                    "  i PLS_INTEGER;\n" +
+                    "  str VARCHAR2(1024);\n" +
+                    "BEGIN\n" +
+                    "  str := ?;\n" +
+                    "  SELECT val_clob into loc FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "  SELECT val_nclob into nloc FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE);\n" +
+                    "  DBMS_LOB.OPEN(nloc, DBMS_LOB.LOB_READWRITE);\n" +
+                    "  FOR i IN 1..1024 LOOP\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc, 1024, str);\n" +
+                    "    DBMS_LOB.WRITEAPPEND(nloc, 1024, str);\n" +
+                    "  END LOOP;\n" +
+                    "  DBMS_LOB.CLOSE(loc);\n" +
+                    "  DBMS_LOB.CLOSE(nloc);\n" +
+                    "END;";
+            connection.prepareQuery(fillQuery, ps -> ps.setString(1, part(JSON_DATA, 0, 1024)), null);
+            connection.execute("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            String clobval = (String) after.get("VAL_CLOB");
+            assertThat(clobval.length()).isEqualTo(1024 * 1024);
+            String nclobval = (String) after.get("VAL_NCLOB");
+            assertThat(nclobval.length()).isEqualTo(1024 * 1024);
+
+            // As a sanity check, there should be no more records.
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4366");
+        }
+    }
+
     private Clob createClob(String data) throws SQLException {
         Clob clob = connection.connection().createClob();
         clob.setString(1, data);
