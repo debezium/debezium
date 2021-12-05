@@ -18,24 +18,40 @@ import io.debezium.relational.TableId;
 public class LobWriteEvent extends LogMinerEvent {
 
     private final String data;
+    private final int offset;
+    private final int length;
 
-    public LobWriteEvent(LogMinerEventRow row, String data) {
+    public LobWriteEvent(LogMinerEventRow row, String data, int offset, int length) {
         super(row);
         this.data = data;
+        this.offset = offset;
+        this.length = length;
     }
 
-    public LobWriteEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime, String data) {
+    public LobWriteEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime, String data, int offset, int length) {
         super(eventType, scn, tableId, rowId, rsId, changeTime);
         this.data = data;
+        this.offset = offset;
+        this.length = length;
     }
 
     public String getData() {
         return data;
     }
 
+    public int getOffset() {
+        return offset;
+    }
+
+    public int getLength() {
+        return length;
+    }
+
     @Override
     public String toString() {
         return "LobWriteEvent{" +
+                "offset=" + offset + ", " +
+                "length=" + length + ", " +
                 "data='" + data + '\'' +
                 "} " + super.toString();
     }

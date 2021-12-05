@@ -1443,6 +1443,242 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4366")
+    public void shouldStreamBlobsWrittenInChunkedMode() throws Exception {
+        TestHelper.dropTable(connection, "dbz4366");
+        try {
+            connection.execute("CREATE TABLE dbz4366 (id numeric(9,0), data blob not null, primary key(id))");
+            TestHelper.streamTable(connection, "dbz4366");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4366")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz4366 (id,data) values (1,EMPTY_BLOB())");
+            final String fillQuery = "DECLARE\n" +
+                    "  loc BLOB;\n" +
+                    "  i PLS_INTEGER;\n" +
+                    "BEGIN\n" +
+                    "  SELECT data into loc FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE);\n" +
+                    "  FOR i IN 1..1024 LOOP\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc, 1024, ?);\n" +
+                    "  END LOOP;\n" +
+                    "  DBMS_LOB.CLOSE(loc);\n" +
+                    "END;";
+            connection.prepareQuery(fillQuery, ps -> ps.setBytes(1, part(BIN_DATA, 0, 1024)), null);
+            connection.execute("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            ByteBuffer data = (ByteBuffer) after.get("DATA");
+            assertThat(data.array().length).isEqualTo(1024 * 1024);
+
+            // As a sanity check, there should be no more records.
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4366");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4366")
+    public void shouldStreamBlobsWrittenInInterleavedChunkedMode() throws Exception {
+        TestHelper.dropTable(connection, "dbz4366");
+        try {
+            connection.execute("CREATE TABLE dbz4366 (id numeric(9,0), data blob not null, data2 blob not null, primary key(id))");
+            TestHelper.streamTable(connection, "dbz4366");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4366")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz4366 (id,data,data2) values (1,EMPTY_BLOB(),EMPTY_BLOB())");
+            final String fillQuery = "DECLARE\n" +
+                    "  loc BLOB;\n" +
+                    "  loc2 BLOB;\n" +
+                    "  i PLS_INTEGER;\n" +
+                    "BEGIN\n" +
+                    "  FOR i IN 1..1024 LOOP\n" +
+                    "    SELECT data into loc FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "    DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE);\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc, 1024, ?);\n" +
+                    "    DBMS_LOB.CLOSE(loc);\n" +
+                    "    \n" +
+                    "    SELECT data2 into loc2 FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "    DBMS_LOB.OPEN(loc2, DBMS_LOB.LOB_READWRITE);\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc2, 1024, ?);\n" +
+                    "    DBMS_LOB.CLOSE(loc2);\n" +
+                    "  END LOOP;\n" +
+                    "END;";
+            connection.prepareQuery(fillQuery, ps -> {
+                ps.setBytes(1, part(BIN_DATA, 0, 1024));
+                ps.setBytes(2, part(BIN_DATA, 0, 1024));
+            }, null);
+            connection.execute("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            ByteBuffer data = (ByteBuffer) after.get("DATA");
+            assertThat(data.array().length).isEqualTo(1024 * 1024);
+            ByteBuffer data2 = (ByteBuffer) after.get("DATA2");
+            assertThat(data2.array().length).isEqualTo(1024 * 1024);
+
+            // As a sanity check, there should be no more records.
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4366");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4366")
+    public void shouldStreamBlobsWrittenInInterleavedChunkedMode2() throws Exception {
+        TestHelper.dropTable(connection, "dbz4366");
+        try {
+            connection.execute("CREATE TABLE dbz4366 (id numeric(9,0), data blob not null, data2 blob not null, primary key(id))");
+            TestHelper.streamTable(connection, "dbz4366");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4366")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz4366 (id,data,data2) values (1,EMPTY_BLOB(),EMPTY_BLOB())");
+            final String fillQuery = "DECLARE\n" +
+                    "  loc BLOB;\n" +
+                    "  loc2 BLOB;\n" +
+                    "  i PLS_INTEGER;\n" +
+                    "BEGIN\n" +
+                    "  SELECT data into loc FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE);\n" +
+                    "  SELECT data2 into loc2 FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "  DBMS_LOB.OPEN(loc2, DBMS_LOB.LOB_READWRITE);\n" +
+                    "  FOR i IN 1..1024 LOOP\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc, 1024, ?);\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc2, 1024, ?);\n" +
+                    "  END LOOP;\n" +
+                    "  DBMS_LOB.CLOSE(loc);\n" +
+                    "  DBMS_LOB.CLOSE(loc2);\n" +
+                    "END;";
+            connection.prepareQuery(fillQuery, ps -> {
+                ps.setBytes(1, part(BIN_DATA, 0, 1024));
+                ps.setBytes(2, part(BIN_DATA, 0, 1024));
+            }, null);
+            connection.execute("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            ByteBuffer data = (ByteBuffer) after.get("DATA");
+            assertThat(data.array().length).isEqualTo(1024 * 1024);
+            ByteBuffer data2 = (ByteBuffer) after.get("DATA2");
+            assertThat(data2.array().length).isEqualTo(1024 * 1024);
+
+            // As a sanity check, there should be no more records.
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4366");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4366")
+    public void shouldStreamBlobsWrittenInInterleavedChunkedMode3() throws Exception {
+        TestHelper.dropTable(connection, "dbz4366");
+        try {
+            connection.execute("CREATE TABLE dbz4366 (id numeric(9,0), data blob not null, primary key(id))");
+            TestHelper.streamTable(connection, "dbz4366");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4366")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz4366 (id,data) values (1,EMPTY_BLOB())");
+            connection.executeWithoutCommitting("INSERT INTO dbz4366 (id,data) values (2,EMPTY_BLOB())");
+            final String fillQuery = "DECLARE\n" +
+                    "  loc BLOB;\n" +
+                    "  loc2 BLOB;\n" +
+                    "  i PLS_INTEGER;\n" +
+                    "BEGIN\n" +
+                    "  SELECT data into loc FROM dbz4366 WHERE id = 1 FOR UPDATE;\n" +
+                    "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE);\n" +
+                    "  SELECT data into loc2 FROM dbz4366 WHERE id = 2 FOR UPDATE;\n" +
+                    "  DBMS_LOB.OPEN(loc2, DBMS_LOB.LOB_READWRITE);\n" +
+                    "  FOR i IN 1..1024 LOOP\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc, 1024, ?);\n" +
+                    "    DBMS_LOB.WRITEAPPEND(loc2, 1024, ?);\n" +
+                    "  END LOOP;\n" +
+                    "  DBMS_LOB.CLOSE(loc);\n" +
+                    "  DBMS_LOB.CLOSE(loc2);\n" +
+                    "END;";
+            connection.prepareQuery(fillQuery, ps -> {
+                ps.setBytes(1, part(BIN_DATA, 0, 1024));
+                ps.setBytes(2, part(BIN_DATA, 0, 1024));
+            }, null);
+            connection.execute("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(2);
+            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(2);
+
+            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            ByteBuffer data = (ByteBuffer) after.get("DATA");
+            assertThat(data.array().length).isEqualTo(1024 * 1024);
+
+            record = records.recordsForTopic(topicName("DBZ4366")).get(1);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            data = (ByteBuffer) after.get("DATA");
+            assertThat(data.array().length).isEqualTo(1024 * 1024);
+
+            // As a sanity check, there should be no more records.
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4366");
+        }
+    }
+
     private static byte[] part(byte[] buffer, int start, int length) {
         return Arrays.copyOfRange(buffer, start, length);
     }
