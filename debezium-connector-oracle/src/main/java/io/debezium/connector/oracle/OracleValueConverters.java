@@ -314,17 +314,6 @@ public class OracleValueConverters extends JdbcValueConverters {
                     data = RAW.hexString2Bytes(getHexToRawHexString(str));
                 }
             }
-            else if (data instanceof BlobChunkList) {
-                if (!lobEnabled) {
-                    if (column.isOptional()) {
-                        return null;
-                    }
-                    data = NumberConversions.BYTE_ZERO;
-                }
-                else {
-                    data = convertBlobChunkList((BlobChunkList) data);
-                }
-            }
             else if (data instanceof Blob) {
                 if (!lobEnabled) {
                     if (column.isOptional()) {
@@ -349,21 +338,6 @@ public class OracleValueConverters extends JdbcValueConverters {
         catch (SQLException e) {
             throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
         }
-    }
-
-    private byte[] convertBlobChunkList(BlobChunkList chunks) throws SQLException {
-        if (chunks.isEmpty()) {
-            // if there are no chunks, simply return null
-            return null;
-        }
-
-        // Iterate each chunk's hex-string and combine them together.
-        final StringBuilder hexString = new StringBuilder();
-        for (String chunk : chunks) {
-            hexString.append(getHexToRawHexString(chunk));
-        }
-
-        return RAW.hexString2Bytes(hexString.toString());
     }
 
     @Override

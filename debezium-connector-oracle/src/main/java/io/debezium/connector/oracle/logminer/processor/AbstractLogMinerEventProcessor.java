@@ -13,6 +13,8 @@ import java.time.Instant;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -626,7 +628,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         if (row.getRedoSql() != null) {
-            addToTransaction(row.getTransactionId(), row, () -> new LobWriteEvent(row, parseLobWriteSql(row.getRedoSql())));
+            addToTransaction(row.getTransactionId(), row, () -> {
+                final ParsedLobWriteSql parsed = parseLobWriteSql(row.getRedoSql());
+                return new LobWriteEvent(row, parsed.data, parsed.offset, parsed.length);
+            });
         }
     }
 
@@ -898,6 +903,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         return dmlEntry;
     }
 
+    private static Pattern LOB_WRITE_SQL_PATTERN = Pattern.compile(
+            "(?s).* := ((?:HEXTORAW\\()?'.*'(?:\\))?);\\s*dbms_lob.write\\([^,]+,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,[^,]+\\);.*");
+
     /**
      * Parses a {@code LOB_WRITE} operation SQL fragment.
      *
@@ -905,26 +913,36 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return the parsed statement
      * @throws DebeziumException if an unexpected SQL fragment is provided that cannot be parsed
      */
-    private String parseLobWriteSql(String sql) {
+    private ParsedLobWriteSql parseLobWriteSql(String sql) {
         if (sql == null) {
             return null;
         }
 
-        int start = sql.indexOf(":= '");
-        if (start != -1) {
-            // LOB_WRITE SQL is for a CLOB field
-            int end = sql.lastIndexOf("'");
-            return sql.substring(start + 4, end);
+        Matcher m = LOB_WRITE_SQL_PATTERN.matcher(sql.trim());
+        if (!m.matches()) {
+            throw new DebeziumException("Unable to parse unsupported LOB_WRITE SQL: " + sql);
         }
 
-        start = sql.indexOf(":= HEXTORAW");
-        if (start != -1) {
-            // LOB_WRITE SQL is for a BLOB field
-            int end = sql.lastIndexOf("'") + 2;
-            return sql.substring(start + 3, end);
+        String data = m.group(1);
+        if (data.startsWith("'")) {
+            // string data; drop the quotes
+            data = data.substring(1, data.length() - 1);
         }
+        int length = Integer.parseInt(m.group(2));
+        int offset = Integer.parseInt(m.group(3)) - 1; // Oracle uses 1-based offsets
+        return new ParsedLobWriteSql(offset, length, data);
+    }
 
-        throw new DebeziumException("Unable to parse unsupported LOB_WRITE SQL: " + sql);
+    private class ParsedLobWriteSql {
+        final int offset;
+        final int length;
+        final String data;
+
+        ParsedLobWriteSql(int _offset, int _length, String _data) {
+            offset = _offset;
+            length = _length;
+            data = _data;
+        }
     }
 
     /**
