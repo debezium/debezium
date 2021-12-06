@@ -4,6 +4,7 @@
 = {prodname} connector for PostgreSQL
 
 :context: postgresql
+:data-collection: table
 :mbean-name: postgres
 ifdef::community[]
 

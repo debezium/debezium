@@ -4,6 +4,7 @@
 = {prodname} Connector for Oracle
 
 :context: oracle
+:data-collection: table
 :mbean-name: {context}
 ifdef::community[]
 :toc:

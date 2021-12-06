@@ -4,6 +4,7 @@
 = {prodname} connector for MongoDB
 
 :context: mongodb
+:data-collection: collection
 :mbean-name: {context}
 ifdef::community[]
 
@@ -219,6 +220,14 @@ If the connector is stopped before the tasks' snapshots are completed, upon rest
 [NOTE]
 ====
 Try to avoid task reassignment and reconfiguration while the connector is performing a snapshot of any replica sets. The connector does log messages with the progress of the snapshot. For utmost control, run a separate cluster of Kafka Connect for each connector.
+====
+
+include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
+[NOTE]
+====
+Incremental snapshots are currently supported for single replica set deployments only.
+This limitation will be removed in the next version.
 ====
 
 // Type: concept

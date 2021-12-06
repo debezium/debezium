@@ -4,6 +4,7 @@
 = {prodname} connector for Db2
 
 :context: db2
+:data-collection: table
 :mbean-name: {context}
 ifdef::community[]
 
