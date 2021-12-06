@@ -3,11 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.api_generator;
+package io.debezium.metadata;
 
-import io.quarkus.test.junit.QuarkusTest;
+public interface ConnectorMetadataProvider {
 
-@QuarkusTest
-public class GeneratorCommandTest {
-
+    AbstractConnectorMetadata getConnectorMetadata();
 }

@@ -6,7 +6,6 @@
 package io.debezium.api_generator.formats;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 import org.eclipse.microprofile.openapi.models.Components;
@@ -21,6 +20,7 @@ import io.smallrye.openapi.api.models.info.InfoImpl;
 import io.smallrye.openapi.runtime.io.Format;
 import io.smallrye.openapi.runtime.io.OpenApiSerializer;
 
+@ApiFormatName("openapi")
 public class OpenApiFormat implements ApiFormat {
 
     private static final ApiFormatDescriptor DESCRIPTOR = new ApiFormatDescriptor() {
@@ -69,7 +69,7 @@ public class OpenApiFormat implements ApiFormat {
     }
 
     @Override
-    public String getSpec(List<Schema> connectorSchemas) {
+    public String getSpec(Schema connectorSchema) {
         OpenAPI debeziumAPI = new OpenAPIImpl();
         debeziumAPI.setOpenapi(OpenApiConstants.OPEN_API_VERSION);
 
@@ -81,9 +81,9 @@ public class OpenApiFormat implements ApiFormat {
         debeziumAPI.getInfo().setVersion(
                 IoUtil.loadProperties(OpenApiFormat.class, "io/debezium/api_generator/build.properties").getProperty("version"));
 
-        connectorSchemas.forEach(connectorSchema -> debeziumConnectorTypeComponents.addSchema(
+        debeziumConnectorTypeComponents.addSchema(
                 "debezium-" + connectorSchema.getExtensions().get("connector-id") + "-" + connectorSchema.getExtensions().get("version"),
-                connectorSchema));
+                connectorSchema);
 
         debeziumAPI.setComponents(debeziumConnectorTypeComponents);
 
@@ -94,5 +94,4 @@ public class OpenApiFormat implements ApiFormat {
             throw new RuntimeException(e);
         }
     }
-
 }

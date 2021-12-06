@@ -5,7 +5,6 @@
  */
 package io.debezium.api_generator.formats;
 
-import java.util.List;
 import java.util.Map;
 
 import org.eclipse.microprofile.openapi.models.media.Schema;
@@ -16,6 +15,6 @@ public interface ApiFormat {
 
     void configure(Map<String, Object> config);
 
-    String getSpec(List<Schema> connectorSchemas);
+    String getSpec(Schema connectorSchema);
 
 }

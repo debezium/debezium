@@ -6,14 +6,31 @@
 package io.debezium.metadata;
 
 public class ConnectorDescriptor {
-    public final String id;
-    public final String name;
-    public final String version;
+    private final String id;
+    private final String name;
+    private final String className;
+    private final String version;
 
-    public ConnectorDescriptor(String id, String name, String version) {
+    public ConnectorDescriptor(String id, String name, String className, String version) {
         this.id = id;
         this.name = name;
+        this.className = className;
         this.version = version;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public String getVersion() {
+        return version;
+    }
 }

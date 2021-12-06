@@ -519,6 +519,13 @@
               <version>${version.okhttp}</version>
             </dependency>
 
+            <!-- Code generators -->
+            <dependency>
+              <groupId>io.smallrye</groupId>
+              <artifactId>smallrye-open-api-core</artifactId>
+              <version>2.1.2</version>
+            </dependency>
+
             <!-- Debezium artifacts -->
             <dependency>
                 <groupId>io.debezium</groupId>

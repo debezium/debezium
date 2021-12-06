@@ -30,9 +30,9 @@ public class JsonSchemaCreatorService {
     private final Set<String> propertyIncludeList;
     private final List<String> errors = new ArrayList<>();
 
-    public JsonSchemaCreatorService(String connectorBaseName, AbstractConnectorMetadata connectorMetadata, Set<String> propertyIncludeList) {
-        this.connectorBaseName = connectorBaseName;
-        this.connectorName = connectorBaseName + "-" + connectorMetadata.getConnector().version();
+    public JsonSchemaCreatorService(AbstractConnectorMetadata connectorMetadata, Set<String> propertyIncludeList) {
+        this.connectorBaseName = connectorMetadata.getConnectorDescriptor().getId();
+        this.connectorName = connectorBaseName + "-" + connectorMetadata.getConnectorDescriptor().getVersion();
         this.connectorMetadata = connectorMetadata;
         if (null != propertyIncludeList) {
             this.propertyIncludeList = propertyIncludeList;
@@ -114,12 +114,12 @@ public class JsonSchemaCreatorService {
 
     public Schema buildConnectorSchema() {
         Schema schema = new SchemaImpl(connectorName);
-        String connectorVersion = connectorMetadata.getConnector().version();
-        schema.setTitle(connectorMetadata.getConnectorDescriptor().name);
+        String connectorVersion = connectorMetadata.getConnectorDescriptor().getVersion();
+        schema.setTitle(connectorMetadata.getConnectorDescriptor().getName());
         schema.setType(Schema.SchemaType.OBJECT);
         schema.addExtension("connector-id", connectorBaseName);
         schema.addExtension("version", connectorVersion);
-        schema.addExtension("className", connectorMetadata.getConnector().getClass().getName());
+        schema.addExtension("className", connectorMetadata.getConnectorDescriptor().getClassName());
 
         Map<Field.Group, SortedMap<Integer, SchemaImpl>> orderedPropertiesByCategory = new HashMap<>();
 

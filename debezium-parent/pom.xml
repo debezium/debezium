@@ -146,7 +146,12 @@
                         <removeUnused>true</removeUnused>
                     </configuration>
                 </plugin>
-               <plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.0.0</version>
+                </plugin>
+                <plugin>
                     <groupId>org.jboss.jandex</groupId>
                     <artifactId>jandex-maven-plugin</artifactId>
                     <version>${version.jandex}</version>

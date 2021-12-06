@@ -8,8 +8,6 @@ package io.debezium.connector.mysql;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.kafka.connect.source.SourceConnector;
-
 import io.debezium.config.Field;
 import io.debezium.metadata.AbstractConnectorMetadata;
 import io.debezium.metadata.ConnectorDescriptor;
@@ -18,12 +16,7 @@ public class MySqlConnectorMetadata extends AbstractConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("mysql", "Debezium MySQL Connector", getConnector().version());
-    }
-
-    @Override
-    public SourceConnector getConnector() {
-        return new MySqlConnector();
+        return new ConnectorDescriptor("mysql", "Debezium MySQL Connector", MySqlConnector.class.getName(), Module.version());
     }
 
     @Override
@@ -31,7 +24,8 @@ public class MySqlConnectorMetadata extends AbstractConnectorMetadata {
         return MySqlConnectorConfig.ALL_FIELDS;
     }
 
-    public List<String> deprecatedFieldNames() {
+    @Override
+	public List<String> deprecatedFieldNames() {
         return Collections.singletonList(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.name());
     }
 }

@@ -8,8 +8,6 @@ package io.debezium.connector.mongodb;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.kafka.connect.source.SourceConnector;
-
 import io.debezium.config.Field;
 import io.debezium.metadata.AbstractConnectorMetadata;
 import io.debezium.metadata.ConnectorDescriptor;
@@ -18,17 +16,12 @@ public class MongoDbConnectorMetadata extends AbstractConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("mongodb", "Debezium MongoDB Connector", getConnector().version());
+        return new ConnectorDescriptor("mongodb", "Debezium MongoDB Connector", MongoDbConnector.class.getName(), Module.version());
     }
 
     @Override
     public Field.Set getAllConnectorFields() {
         return MongoDbConnectorConfig.ALL_FIELDS;
-    }
-
-    @Override
-    public SourceConnector getConnector() {
-        return new MongoDbConnector();
     }
 
     @Override

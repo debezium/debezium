@@ -8,15 +8,11 @@ package io.debezium.metadata;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.kafka.connect.connector.Connector;
-
 import io.debezium.config.Field;
 
 public abstract class AbstractConnectorMetadata {
 
     public abstract ConnectorDescriptor getConnectorDescriptor();
-
-    public abstract Connector getConnector();
 
     public abstract Field.Set getAllConnectorFields();
 
