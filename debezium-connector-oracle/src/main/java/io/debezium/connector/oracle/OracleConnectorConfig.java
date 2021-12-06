@@ -396,7 +396,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
                     " this value, consider it a SCN gap.");
 
-    public static final Field LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES = Field.create("log.mining.log.file.query.max.retries")
+    public static final Field LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES = Field.createInternal("log.mining.log.file.query.max.retries")
             .withDisplayName("Maximum number of retries to get logs before throwing an exception")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
