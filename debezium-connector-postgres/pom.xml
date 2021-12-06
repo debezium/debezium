@@ -42,11 +42,6 @@
             <artifactId>debezium-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-api-generator</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
@@ -248,28 +243,22 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-api-generator</artifactId>
+                <version>${project.version}</version>
                 <executions>
                     <execution>
                         <id>generate-connector-metadata</id>
                         <goals>
-                            <goal>exec</goal>
+                            <goal>generate-openapi-spec</goal>
                         </goals>
                         <phase>prepare-package</phase>
+                        <configuration>
+                            <format>openapi</format>
+                            <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                     <executable>java</executable>
-                     <arguments>
-                         <argument>-classpath</argument>
-                         <classpath/>
-                         <argument>io.debezium.api_generator.OpenApiGenerator</argument>
-                         <argument>openapi</argument>
-                         <argument>${project.build.directory}/generated-sources</argument>
-                      </arguments>
-                      <classpathScope>compile</classpathScope>
-                </configuration>
             </plugin>
         </plugins>
         <resources>

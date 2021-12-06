@@ -11,6 +11,7 @@
   </parent>
 
   <artifactId>debezium-api-generator</artifactId>
+  <packaging>maven-plugin</packaging>
 
   <properties>
     <maven.compiler.release>11</maven.compiler.release>
@@ -29,6 +30,24 @@
       <groupId>io.smallrye</groupId>
       <artifactId>smallrye-open-api-core</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-plugin-api</artifactId>
+      <version>3.6.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven.plugin-tools</groupId>
+      <artifactId>maven-plugin-annotations</artifactId>
+      <version>3.6.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-project</artifactId>
+      <version>2.2.1</version>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -37,6 +56,15 @@
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-plugin-plugin</artifactId>
+          <version>3.6.0</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <resources>
       <resource>
         <filtering>true</filtering>
