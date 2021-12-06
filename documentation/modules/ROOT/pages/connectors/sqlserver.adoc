@@ -5,6 +5,7 @@
 = {prodname} connector for SQL Server
 
 :context: sqlserver
+:data-collection: table
 :mbean-name: sql_server
 ifdef::community[]
 

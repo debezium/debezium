@@ -4,6 +4,7 @@
 = {prodname} connector for MySQL
 
 :context: mysql
+:data-collection: table
 :mbean-name: {context}
 ifdef::community[]
 :toc:
