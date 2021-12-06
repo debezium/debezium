@@ -19,18 +19,18 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.eclipse.microprofile.openapi.models.media.Schema;
 
 import io.debezium.config.Field;
-import io.debezium.metadata.AbstractConnectorMetadata;
+import io.debezium.metadata.ConnectorMetadata;
 import io.smallrye.openapi.api.models.media.SchemaImpl;
 
 public class JsonSchemaCreatorService {
 
     private final String connectorBaseName;
     private final String connectorName;
-    private final AbstractConnectorMetadata connectorMetadata;
+    private final ConnectorMetadata connectorMetadata;
     private final Set<String> propertyIncludeList;
     private final List<String> errors = new ArrayList<>();
 
-    public JsonSchemaCreatorService(AbstractConnectorMetadata connectorMetadata, Set<String> propertyIncludeList) {
+    public JsonSchemaCreatorService(ConnectorMetadata connectorMetadata, Set<String> propertyIncludeList) {
         this.connectorBaseName = connectorMetadata.getConnectorDescriptor().getId();
         this.connectorName = connectorBaseName + "-" + connectorMetadata.getConnectorDescriptor().getVersion();
         this.connectorMetadata = connectorMetadata;
@@ -66,9 +66,8 @@ public class JsonSchemaCreatorService {
 
         if (propertyName.contains("whitelist")
                 || propertyName.contains("blacklist")
-                || propertyName.startsWith("internal.")
-                || connectorMetadata.deprecatedFieldNames().contains(propertyName)) {
-            // skip legacy, deprecated and internal properties
+                || propertyName.startsWith("internal.")) {
+            // skip legacy and internal properties
             return null;
         }
 
@@ -127,7 +126,7 @@ public class JsonSchemaCreatorService {
             orderedPropertiesByCategory.put(category, new TreeMap<>());
         });
 
-        connectorMetadata.getAllConnectorFields().forEach(field -> {
+        connectorMetadata.getConnectorFields().forEach(field -> {
             String propertyName = field.name();
             Field checkedField = checkField(field);
             if (null != checkedField) {
@@ -168,7 +167,7 @@ public class JsonSchemaCreatorService {
                 group -> orderedPropertiesByCategory.get(group).forEach((position, propertySchema) -> schema.addProperty(propertySchema.getName(), propertySchema)));
 
         Set<String> metadataProperties = new HashSet<>(propertyIncludeList);
-        propertyIncludeList.removeAll(connectorMetadata.getAllConnectorFields().allFieldNames());
+        propertyIncludeList.removeAll(connectorMetadata.getConnectorFields().allFieldNames());
         if (!metadataProperties.isEmpty()) {
             metadataProperties.forEach(missingProperty -> errors.add("[WARN] Connector metadata set for property \""
                     + missingProperty + "\" but the property is unknown for connector \"" + connectorName + "\"."));

@@ -17,12 +17,14 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -171,6 +173,18 @@ public final class Field {
 
         public java.util.Set<String> allFieldNames() {
             return this.fieldsByName.keySet();
+        }
+
+        public Set filtered(Predicate<Field> filter) {
+            LinkedHashSet<Field> filtered = new LinkedHashSet<>();
+
+            for (Entry<String, Field> field : fieldsByName.entrySet()) {
+                if (filter.test(field.getValue())) {
+                    filtered.add(field.getValue());
+                }
+            }
+
+            return new Set(filtered);
         }
     }
 

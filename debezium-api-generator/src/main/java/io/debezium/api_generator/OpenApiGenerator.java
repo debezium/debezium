@@ -21,7 +21,7 @@ import com.google.common.io.Files;
 
 import io.debezium.api_generator.formats.ApiFormat;
 import io.debezium.api_generator.formats.ApiFormatName;
-import io.debezium.metadata.AbstractConnectorMetadata;
+import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.metadata.ConnectorMetadataProvider;
 
 public class OpenApiGenerator {
@@ -45,11 +45,11 @@ public class OpenApiGenerator {
     }
 
     private void run(String formatName, Path outputDirectory) {
-        List<AbstractConnectorMetadata> allMetadata = getMetadata();
+        List<ConnectorMetadata> allMetadata = getMetadata();
 
         ApiFormat format = getApiFormat(formatName);
 
-        for (AbstractConnectorMetadata connectorMetadata : allMetadata) {
+        for (ConnectorMetadata connectorMetadata : allMetadata) {
             JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, null);
             Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
             String spec = format.getSpec(buildConnectorSchema);
@@ -63,7 +63,7 @@ public class OpenApiGenerator {
         }
     }
 
-    private List<AbstractConnectorMetadata> getMetadata() {
+    private List<ConnectorMetadata> getMetadata() {
         ServiceLoader<ConnectorMetadataProvider> metadataProviders = ServiceLoader.load(ConnectorMetadataProvider.class);
 
         return metadataProviders.stream()

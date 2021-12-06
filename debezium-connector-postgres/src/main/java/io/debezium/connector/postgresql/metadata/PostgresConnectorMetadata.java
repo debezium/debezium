@@ -9,10 +9,10 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.metadata.AbstractConnectorMetadata;
 import io.debezium.metadata.ConnectorDescriptor;
+import io.debezium.metadata.ConnectorMetadata;
 
-public class PostgresConnectorMetadata extends AbstractConnectorMetadata {
+public class PostgresConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
@@ -20,7 +20,7 @@ public class PostgresConnectorMetadata extends AbstractConnectorMetadata {
     }
 
     @Override
-    public Field.Set getAllConnectorFields() {
+    public Field.Set getConnectorFields() {
         return PostgresConnectorConfig.ALL_FIELDS;
     }
 
