@@ -522,8 +522,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The method used to capture changes from MongoDB server. "
                     + "Options include: "
                     + "'oplog' to capture changes from oplog, this is the original method; "
-                    + "'change_streams' to capture  via MongoDB Change Streams mechanism, update message do not contain full message; "
-                    + "'change_streams_update_full' (the default) to capture  via MongoDB Change Streams mechanism, update message do not contain full message ");
+                    + "'change_streams' to capture via MongoDB Change Streams mechanism, update message do not contain full message; "
+                    + "'change_streams_update_full' (the default) to capture  via MongoDB Change Streams mechanism, update message contains full message");
 
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")

@@ -1469,6 +1469,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldGenerateRecordForUpdateEvent() throws Exception {
+        Testing.Print.enable();
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
