@@ -12,7 +12,7 @@
 
 toc::[]
 
-{prodname}'s Vitess connector captures row-level changes in the shards of a Vitess link:https://vitess.io/docs/concepts/keyspace/[keyspace]. Vitess version {link-prefix}:{link-vitess-connector}#limitations-with-earlier-vitess-versions[8.0.0], 9.0.0 are supported.
+{prodname}'s Vitess connector captures row-level changes in the shards of a Vitess link:https://vitess.io/docs/concepts/keyspace/[keyspace]. Vitess version xref:limitations-with-earlier-vitess-versions[8.0.0], 9.0.0 are supported.
 
 The connector does not support snapshot feature at the moment. The first time it connects to a Vitess cluster, it starts from the current VGTID location of the keyspace and continuously captures row-level changes that insert, update, and delete database content and that were committed to a Vitess keyspace. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
 
@@ -198,7 +198,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 |`schema`
 |The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the first single-column unique key if the table does not have a primary key, for the table that was changed. Multi-column unique key is not supported. +
  +
-It is possible to override the table's primary key by setting the {link-prefix}:{link-vitess-connector}#vitess-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+It is possible to override the table's primary key by setting the xref:vitess-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
 
 |2
 |`payload`
@@ -215,7 +215,7 @@ It is possible to override the table's primary key by setting the {link-prefix}:
 |===
 
 
-By default behavior is that the connector streams change event records to {link-prefix}:{link-vitess-connector}#vitess-topic-names[topics with names that are the same as the event's originating table].
+By default behavior is that the connector streams change event records to xref:vitess-topic-names[topics with names that are the same as the event's originating table].
 
 [NOTE]
 ====
@@ -654,7 +654,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 
 [NOTE]
 ====
-Updating the columns for a row's primary key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a {link-prefix}:{link-vitess-connector}#vitess-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
+Updating the columns for a row's primary key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:vitess-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
 ====
 
 [[vitess-delete-events]]
@@ -986,7 +986,7 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
 <13> The logical name of the Vitess cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <14> Only one task should operate at any one time.
 
-See the {link-prefix}:{link-vitess-connector}#vitess-connector-properties[complete list of Vitess connector properties] that can be specified in these configurations.
+See the xref:vitess-connector-properties[complete list of Vitess connector properties] that can be specified in these configurations.
 
 You can send this configuration with a `POST` command to a running Kafka Connect service. The service records the configuration and starts the connector task that connects to the Vitess database and streams change event records to Kafka topics.
 
@@ -1024,7 +1024,7 @@ When the connector starts, it starts generating data change events for row-level
 
 The {prodname} Vitess connector provides only one type of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 
-* {link-prefix}:{link-vitess-connector}#vitess-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
+* xref:vitess-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
@@ -1260,7 +1260,7 @@ By default, no operations are skipped.
 
 |[[vitess-property-provide-transaction-metadata]]<<vitess-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
-|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-vitess-connector}#vitess-transaction-metadata[Transaction metadata] for details.
+|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:vitess-transaction-metadata[Transaction metadata] for details.
 
 |[[vitess-property-transaction-topic]]<<vitess-property-transaction-topic, `transaction.topic`>>
 |`${database.server.name}.transaction`
