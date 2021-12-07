@@ -98,7 +98,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     oplogBasedOffsets.add(offset);
                 }
             });
-            // TODO Add test
             if (!oplogBasedOffsets.isEmpty() && !changeStreamBasedOffsets.isEmpty()) {
                 LOGGER.error(
                         "Replica set offests are partially from oplog and partially from change streams. This is not supported situation and can lead to unpredicable behaviour.");

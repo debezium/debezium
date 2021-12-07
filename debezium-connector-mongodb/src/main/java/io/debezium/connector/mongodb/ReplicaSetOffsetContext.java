@@ -134,7 +134,9 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     }
 
     public boolean isFromOplog() {
-        return sourceInfo != null && sourceInfo.position() != null && sourceInfo.position().getOperationId() != null;
+        return sourceInfo != null && sourceInfo.lastPosition(replicaSetName) != null
+                && sourceInfo.lastPosition(replicaSetName).getOperationId() != null
+                && sourceInfo.lastResumeToken(replicaSetName) == null;
     }
 
     public boolean isFromChangeStream() {

@@ -256,6 +256,10 @@ public final class SourceInfo extends BaseSourceInfo {
         return existing != null ? existing.resumeToken : null;
     }
 
+    public Position lastPosition(String replicaSetName) {
+        return positionsByReplicaSetName.get(replicaSetName);
+    }
+
     /**
      * Get the Kafka Connect detail about the source "offset" for the named database, which describes the given position in the
      * database where we have last read. If the database has not yet been seen, this records the starting position
