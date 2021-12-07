@@ -774,6 +774,7 @@ public abstract class CommonConnectorConfig {
                 case "c":
                 case "u":
                 case "d":
+                case "t":
                     continue;
                 default:
                     problems.accept(field, operation, "Invalid operation");

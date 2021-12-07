@@ -948,8 +948,125 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor({ "DBZ-4385" })
+    public void shouldTruncate() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.truncate_ddl");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.truncate_ddl (" +
+                    "id NUMERIC(6), " +
+                    "name VARCHAR(100), " +
+                    "primary key(id))";
+
+            // create table
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.truncate_ddl");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (1, 'Acme')");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+            assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL")).hasSize(1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // truncate statement
+            connection.execute("TRUNCATE TABLE debezium.truncate_ddl");
+
+            SourceRecords streamingRecords = consumeRecordsByTopic(1);
+            List<SourceRecord> records = streamingRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL");
+            assertThat(records).hasSize(1);
+            String op = ((Struct) records.get(0).value()).getString("op");
+            assertThat(op).isEqualTo("t");
+
+            // verify record after truncate
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (2, 'Roadrunner')");
+            connection.commit();
+
+            streamingRecords = consumeRecordsByTopic(1);
+            records = streamingRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL");
+            assertThat(records).hasSize(1);
+            op = ((Struct) records.get(0).value()).getString("op");
+            assertThat(op).isEqualTo("c");
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.truncate_ddl");
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-4385" })
+    public void shouldNotTruncateWhenSkipped() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.truncate_ddl");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.truncate_ddl (" +
+                    "id NUMERIC(6), " +
+                    "name VARCHAR(100), " +
+                    "primary key(id))";
+
+            // create table
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.truncate_ddl");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (1, 'Acme')");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .with(OracleConnectorConfig.SKIPPED_OPERATIONS, "t") // Filter out truncate operations.
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+            assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL")).hasSize(1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // truncate statement
+            connection.execute("TRUNCATE TABLE debezium.truncate_ddl");
+            // Nothing happens, so nothing to verify either.
+
+            // verify record after truncate
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (2, 'Roadrunner')");
+            connection.commit();
+
+            SourceRecords streamingRecords = consumeRecordsByTopic(1);
+            List<SourceRecord> records = streamingRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL");
+            assertThat(records).hasSize(1);
+            String op = ((Struct) records.get(0).value()).getString("op");
+            assertThat(op).isEqualTo("c");
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.truncate_ddl");
+        }
+    }
+
     @FixFor("DBZ-1539")
-    public void shouldHandlerIntervalTypesAsInt64() throws Exception {
+    public void shouldHandleIntervalTypesAsInt64() throws Exception {
         // Drop table if it exists
         TestHelper.dropTable(connection, "debezium.interval");
 
@@ -1050,7 +1167,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1539")
-    public void shouldHandlerIntervalTypesAsString() throws Exception {
+    public void shouldHandleIntervalTypesAsString() throws Exception {
         // Drop table if it exists
         TestHelper.dropTable(connection, "debezium.interval");
 
