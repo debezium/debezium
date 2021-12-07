@@ -35,13 +35,6 @@ public class OpenApiGenerator {
         Path outputDirectory = new File(args[1]).toPath();
 
         new OpenApiGenerator().run(formatName, outputDirectory);
-
-        ServiceLoader<ConnectorMetadataProvider> metadata = ServiceLoader.load(ConnectorMetadataProvider.class);
-
-        metadata.forEach(provider -> {
-            JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(provider.getConnectorMetadata(), null);
-            jsonSchemaCreatorService.buildConnectorSchema();
-        });
     }
 
     private void run(String formatName, Path outputDirectory) {
@@ -50,7 +43,7 @@ public class OpenApiGenerator {
         ApiFormat format = getApiFormat(formatName);
 
         for (ConnectorMetadata connectorMetadata : allMetadata) {
-            JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, null);
+            JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, format.getFieldFilter());
             Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
             String spec = format.getSpec(buildConnectorSchema);
 

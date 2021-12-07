@@ -9,6 +9,8 @@ import java.util.Map;
 
 import org.eclipse.microprofile.openapi.models.media.Schema;
 
+import io.debezium.config.Field;
+
 public interface ApiFormat {
 
     ApiFormatDescriptor getDescriptor();
@@ -16,5 +18,18 @@ public interface ApiFormat {
     void configure(Map<String, Object> config);
 
     String getSpec(Schema connectorSchema);
+
+    /**
+     * Returns a filter to be applied to the fields of the schema. Only matching
+     * fields will be part of the serialized API spec. Defaults to including all the
+     * fields of the schema.
+     */
+    default FieldFilter getFieldFilter() {
+        return f -> true;
+    }
+
+    public interface FieldFilter {
+        boolean include(Field field);
+    }
 
 }

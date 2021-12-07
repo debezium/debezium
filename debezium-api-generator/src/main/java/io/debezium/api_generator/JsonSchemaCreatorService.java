@@ -8,7 +8,6 @@ package io.debezium.api_generator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +17,7 @@ import java.util.TreeMap;
 import org.apache.kafka.common.config.ConfigDef;
 import org.eclipse.microprofile.openapi.models.media.Schema;
 
+import io.debezium.api_generator.formats.ApiFormat.FieldFilter;
 import io.debezium.config.Field;
 import io.debezium.metadata.ConnectorMetadata;
 import io.smallrye.openapi.api.models.media.SchemaImpl;
@@ -27,19 +27,14 @@ public class JsonSchemaCreatorService {
     private final String connectorBaseName;
     private final String connectorName;
     private final ConnectorMetadata connectorMetadata;
-    private final Set<String> propertyIncludeList;
+    private final FieldFilter fieldFilter;
     private final List<String> errors = new ArrayList<>();
 
-    public JsonSchemaCreatorService(ConnectorMetadata connectorMetadata, Set<String> propertyIncludeList) {
+    public JsonSchemaCreatorService(ConnectorMetadata connectorMetadata, FieldFilter fieldFilter) {
         this.connectorBaseName = connectorMetadata.getConnectorDescriptor().getId();
         this.connectorName = connectorBaseName + "-" + connectorMetadata.getConnectorDescriptor().getVersion();
         this.connectorMetadata = connectorMetadata;
-        if (null != propertyIncludeList) {
-            this.propertyIncludeList = propertyIncludeList;
-        }
-        else {
-            this.propertyIncludeList = new HashSet<>();
-        }
+        this.fieldFilter = fieldFilter;
     }
 
     public static class JsonSchemaType {
@@ -71,7 +66,7 @@ public class JsonSchemaCreatorService {
             return null;
         }
 
-        if (!propertyIncludeList.isEmpty() && !propertyIncludeList.contains(propertyName)) {
+        if (!fieldFilter.include(field)) {
             // when a property includeList is specified, skip properties not in the list
             this.errors.add("[INFO] Skipped property \"" + propertyName
                     + "\" for connector \"" + connectorName + "\" because it was not in the include list file.");
@@ -165,13 +160,6 @@ public class JsonSchemaCreatorService {
 
         Arrays.stream(Field.Group.values()).forEach(
                 group -> orderedPropertiesByCategory.get(group).forEach((position, propertySchema) -> schema.addProperty(propertySchema.getName(), propertySchema)));
-
-        Set<String> metadataProperties = new HashSet<>(propertyIncludeList);
-        propertyIncludeList.removeAll(connectorMetadata.getConnectorFields().allFieldNames());
-        if (!metadataProperties.isEmpty()) {
-            metadataProperties.forEach(missingProperty -> errors.add("[WARN] Connector metadata set for property \""
-                    + missingProperty + "\" but the property is unknown for connector \"" + connectorName + "\"."));
-        }
 
         // Allow additional properties until OAS 3.1 is not avaialble with Swagger/microprofile-openapi
         // We need JSON Schema `patternProperties`, defined here: https://json-schema.org/understanding-json-schema/reference/object.html#pattern-properties
