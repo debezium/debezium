@@ -81,10 +81,12 @@ This is recommended mode starting with MongoDB 4.x.
 [WARNING]
 ====
 Both capture modes use different values stored in offsets that allow them to resume streaming from the last position seen.
-Thus it is not possible to switch from one mode to another.
+Thus it is not possible to switch from change streams to oplog.
 To prevent inadverent capture mode change the connector has a built-in safety check.
 
-When the connector is started it checks the stored offsets and will use the capture mode that was used last time when the connector was stopped regardless of the configuration and just emits a warning into a log about that.
+When the connector is started it checks the stored offsets.
+If the original capture mode was oplog based then it will try to migrate to change streams.
+If the original capture mode was change streams based then it will switch to change streams regardless of the configuration and just emits a warning into a log about that.
 If the capture mode should be switched then it is necessary to remove stored offsets and run the connector from scratch.
 ====
 

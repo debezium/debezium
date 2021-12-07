@@ -55,11 +55,8 @@ public class KeepCaptureModeAfterRestartIT extends AbstractMongoConnectorIT {
 
         testSwitch(CaptureMode.OPLOG, CaptureMode.CHANGE_STREAMS);
 
-        stopConnector(value -> assertThat(
-                logInterceptor.containsWarnMessage("Stored offsets were created using oplog capturing. Connector configuration expects change streams capturing.")
-                        && logInterceptor.containsWarnMessage("Switching configuration to 'OPLOG'")
-                        && logInterceptor.containsWarnMessage("Either reconfigure the connector or remove the old offsets"))
-                                .isTrue());
+        stopConnector(value -> assertThat(logInterceptor.containsMessage(
+                "Stored offsets were created using oplog capturing, trying to switch to change streams.")).isTrue());
     }
 
     public void testSwitch(CaptureMode from, CaptureMode to) throws InterruptedException {
