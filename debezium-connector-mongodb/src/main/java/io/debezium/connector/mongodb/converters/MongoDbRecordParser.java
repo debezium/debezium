@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -34,7 +35,8 @@ public class MongoDbRecordParser extends RecordParser {
             COLLECTION);
 
     public MongoDbRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.AFTER, "patch", "filter");
+        super(schema, record, Envelope.FieldName.AFTER, MongoDbFieldName.PATCH, MongoDbFieldName.FILTER,
+                MongoDbFieldName.UPDATE_DESCRIPTION);
     }
 
     @Override
