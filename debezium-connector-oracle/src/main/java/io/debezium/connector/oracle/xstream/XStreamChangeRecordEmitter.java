@@ -43,6 +43,8 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
                 return Operation.DELETE;
             case RowLCR.UPDATE:
                 return Operation.UPDATE;
+            case "TRUNCATE TABLE":
+                return Operation.TRUNCATE;
             default:
                 throw new IllegalArgumentException("Received event of unexpected command type: " + lcr);
         }

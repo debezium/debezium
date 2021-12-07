@@ -19,20 +19,24 @@ import io.debezium.util.Clock;
  */
 public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object> {
 
-    private final EventType eventType;
+    private final Operation operation;
     private final Object[] oldValues;
     private final Object[] newValues;
 
-    public LogMinerChangeRecordEmitter(Partition partition, OffsetContext offset, EventType eventType, Object[] oldValues,
+    public LogMinerChangeRecordEmitter(Partition partition, OffsetContext offset, Operation operation, Object[] oldValues,
                                        Object[] newValues, Table table, Clock clock) {
         super(partition, offset, table, clock);
-        this.eventType = eventType;
         this.oldValues = oldValues;
         this.newValues = newValues;
+        this.operation = operation;
     }
 
-    @Override
-    protected Operation getOperation() {
+    public LogMinerChangeRecordEmitter(Partition partition, OffsetContext offset, EventType eventType, Object[] oldValues,
+                                       Object[] newValues, Table table, Clock clock) {
+        this(partition, offset, getOperation(eventType), oldValues, newValues, table, clock);
+    }
+
+    private static Operation getOperation(EventType eventType) {
         switch (eventType) {
             case INSERT:
                 return Operation.CREATE;
@@ -44,6 +48,11 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object>
             default:
                 throw new DebeziumException("Unsupported operation type: " + eventType);
         }
+    }
+
+    @Override
+    protected Operation getOperation() {
+        return operation;
     }
 
     @Override

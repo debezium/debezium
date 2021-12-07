@@ -35,6 +35,7 @@ import io.debezium.util.Clock;
 import oracle.jdbc.OracleTypes;
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
+import oracle.streams.DefaultRowLCR;
 import oracle.streams.LCR;
 import oracle.streams.RowLCR;
 import oracle.streams.StreamsException;
@@ -173,7 +174,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                                 getTableMetadataDdl(tableId),
                                 schema,
                                 Instant.now(),
-                                streamingMetrics));
+                                streamingMetrics,
+                                null));
 
                 table = schema.tableFor(tableId);
             }
@@ -234,7 +236,28 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         ddlLcr.getDDLText(),
                         schema,
                         ddlLcr.getSourceTime().timestampValue().toInstant(),
-                        streamingMetrics));
+                        streamingMetrics,
+                        () -> processTruncateEvent(ddlLcr)));
+    }
+
+    private void processTruncateEvent(DDLLCR ddlLcr) {
+        LOGGER.debug("Handling truncate event");
+        DefaultRowLCR rowLCR = new DefaultRowLCR(
+                ddlLcr.getSourceDatabaseName(),
+                ddlLcr.getCommandType(),
+                ddlLcr.getObjectOwner(),
+                ddlLcr.getObjectName(),
+                ddlLcr.getTransactionId(),
+                ddlLcr.getTag(),
+                ddlLcr.getPosition(),
+                ddlLcr.getSourceTime());
+        try {
+            dispatchDataChangeEvent(rowLCR, null);
+        }
+        catch (InterruptedException e) {
+            throw new RuntimeException("Interrupted", e);
+        }
+
     }
 
     private TableId getTableId(LCR lcr) {

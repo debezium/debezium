@@ -1008,6 +1008,80 @@ The message value must be set to `null` to instruct Kafka to remove _all message
 To make this possible, by default, {prodname}'s Oracle connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 You can change the default behavior by setting the connector property xref:oracle-property-tombstones-on-delete[`tombstones.on.delete`].
 
+// Type: continue
+[[oracle-truncate-events]]
+=== _truncate_ events
+
+A  _truncate_ change event signals that a table has been truncated.
+The message key is `null` in this case, the message value looks like this:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "schema": { ... },
+    "payload": {
+        "before": null,
+        "after": null,
+        "source": { // <1>
+            "version": "{debezium-version}",
+            "connector": "oracle",
+            "name": "oracle_server",
+            "ts_ms": 1638974535000,
+            "snapshot": "false",
+            "db": "ORCLPDB1",
+            "sequence": null,
+            "schema": "DEBEZIUM",
+            "table": "TEST_TABLE",
+            "txId": "02000a0037030000",
+            "scn": "13234397",
+            "commit_scn": "13271102",
+            "lcr_position": null
+        },
+        "op": "t", // <2>
+        "ts_ms": 1638974558961, // <3>
+        "transaction": null
+    }
+}
+----
+
+.Descriptions of _truncate_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table, provides this metadata:
+
+* {prodname} version
+* Connector type and name
+* Database and table that contains the new row
+* Schema name
+* If the event was part of a snapshot (always `false` for _truncate_ events)
+* ID of the transaction in which the operation was performed
+* SCN of the operation
+* Timestamp for when the change was made in the database
+
+|2
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
+
+|3
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
++
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|===
+
+Note that since _truncate_ events represent a change made to an entire table and don't have a message key,
+unless you're working with topics with a single partition,
+there are no ordering guarantees for the change events pertaining to a table (_create_, _update_, etc.) and _truncate_ events for that table.
+For instance a consumer may receive an _update_ event only after a _truncate_ event for that table,
+when those events are read from different partitions.
+
+If _truncate_ events are not desired, they can be filtered out with the xref:oracle-property-skipped-operations[`skipped.operations`] option.
+
 // Type: reference
 // ModuleID: how-debezium-oracle-connectors-map-data-types
 // Title: How {prodname} Oracle connectors map data types
@@ -2620,6 +2694,7 @@ You can configure the connector to skip the following types of operations:
 * `c` (insert/create)
 * `u` (update)
 * `d` (delete)
+* `t` (truncate)
 
 By default, no operations are skipped.
 
