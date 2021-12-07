@@ -5,6 +5,7 @@
  */
 package io.debezium.kcrestextension;
 
+import java.time.Duration;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -17,7 +18,6 @@ import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 import io.debezium.testing.testcontainers.DebeziumContainer;
-import io.debezium.util.ContainerImageVersions;
 
 public class TestHelper {
 
@@ -35,23 +35,45 @@ public class TestHelper {
             .withNetworkAliases(KAFKA_HOSTNAME)
             .withNetwork(NETWORK);
 
-    private static final DebeziumContainer DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse(ContainerImageVersions.getStableImage("debezium/connect")))
-            .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
-            .withEnv("CONNECT_REST_EXTENSION_CLASSES", "io.debezium.kcrestextension.DebeziumConnectRestExtension")
-            .withNetwork(NETWORK)
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath(
-                            "target/debezium-connect-rest-extension-1.8.0-SNAPSHOT.jar"),
-                    "/kafka/libs/debezium-kcd-rest-extension-1.8.0.jar")
-            .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
-            .withLogConsumer(new Slf4jLogConsumer(LOGGER))
-            .dependsOn(KAFKA_CONTAINER);
+    private static DebeziumContainer DEBEZIUM_CONTAINER;
 
     public static DebeziumContainer getDebeziumContainer() {
         return DEBEZIUM_CONTAINER;
     }
 
+    public static void setupDebeziumContainer(String debeziumVersion) {
+        DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse("debezium/connect:" + debeziumVersion))
+                .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
+                .withEnv("CONNECT_REST_EXTENSION_CLASSES", "io.debezium.kcrestextension.DebeziumConnectRestExtension")
+                .withNetwork(NETWORK)
+                .withCopyFileToContainer(
+                        MountableFile.forHostPath(
+                                "target/debezium-connect-rest-extension-1.8.0-SNAPSHOT.jar"),
+                        "/kafka/libs/debezium-kcd-rest-extension-1.8.0.jar")
+                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
+                .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+                .withStartupTimeout(Duration.ofSeconds(90))
+                .dependsOn(KAFKA_CONTAINER);
+    }
+
+    public static void withEnv(String key, String value) {
+        DEBEZIUM_CONTAINER = DEBEZIUM_CONTAINER.withEnv(key, value);
+    }
+
     public static void startContainers() {
         Startables.deepStart(Stream.of(KAFKA_CONTAINER, DEBEZIUM_CONTAINER)).join();
+    }
+
+    public static void stopContainers() {
+        try {
+            if (DEBEZIUM_CONTAINER != null) {
+                DEBEZIUM_CONTAINER.stop();
+            }
+            if (KAFKA_CONTAINER != null) {
+                KAFKA_CONTAINER.stop();
+            }
+        }
+        catch (Exception ignored) {
+        }
     }
 }

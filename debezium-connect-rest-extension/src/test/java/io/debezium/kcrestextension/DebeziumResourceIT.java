@@ -11,26 +11,37 @@ import static org.hamcrest.Matchers.is;
 
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Tests topic creation (which is enabled in Kafka version greater than 2.6.0) and transforms endpoints.
+ * Debezium Container with 1.7 image is used for the same.
+ */
 public class DebeziumResourceIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumResourceIT.class);
-    private static int EXPOSED_PORT;
+    private static final String DEBEZIUM_VERSION = "1.7";
 
     @BeforeEach
-    public void setup() {
-        TestHelper.startContainers();
-        EXPOSED_PORT = TestHelper.getDebeziumContainer().getFirstMappedPort();
+    public void start() {
+        TestHelper.stopContainers();
+        TestHelper.setupDebeziumContainer(DEBEZIUM_VERSION);
+    }
+
+    @AfterEach
+    public void stop() {
+        TestHelper.stopContainers();
     }
 
     @Test
     public void testTopicCreationEndpoint() {
+        TestHelper.startContainers();
         given()
-                .port(EXPOSED_PORT)
+                .port(TestHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(TestHelper.API_PREFIX + TestHelper.TOPIC_CREATION_ENDPOINT)
                 .then().log().all()
@@ -39,9 +50,23 @@ public class DebeziumResourceIT {
     }
 
     @Test
-    public void testTransformsEndpoint() {
+    public void testTopicCreationEndpointWhenExplicitlyDisabled() {
+        TestHelper.withEnv("CONNECT_TOPIC_CREATION_ENABLE", "false");
+        TestHelper.startContainers();
         given()
-                .port(EXPOSED_PORT)
+                .port(TestHelper.getDebeziumContainer().getFirstMappedPort())
+                .when()
+                .get(TestHelper.API_PREFIX + TestHelper.TOPIC_CREATION_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .body(is("false"));
+    }
+
+    @Test
+    public void testTransformsEndpoint() {
+        TestHelper.startContainers();
+        given()
+                .port(TestHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().get(TestHelper.API_PREFIX + TestHelper.TRANSFORMS_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
