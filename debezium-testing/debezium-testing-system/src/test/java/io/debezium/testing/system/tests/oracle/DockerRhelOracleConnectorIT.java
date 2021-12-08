@@ -16,12 +16,16 @@ import io.debezium.testing.system.fixtures.kafka.DockerKafka;
 import io.debezium.testing.system.tests.DockerConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 
+/**
+ * @author Jakub Cechacek
+ */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
 @Tag("oracle ")
+@Tag("rhel")
 @Tag("docker")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DockerOracleConnectorIT
+public class DockerRhelOracleConnectorIT
         extends DockerConnectorTest<SqlDatabaseController>
         implements DockerKafka, DockerOracle, OracleConnector, OracleTestCases {
 }
