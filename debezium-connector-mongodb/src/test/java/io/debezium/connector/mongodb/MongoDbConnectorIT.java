@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -1469,7 +1470,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldGenerateRecordForUpdateEvent() throws Exception {
-        Testing.Print.enable();
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")

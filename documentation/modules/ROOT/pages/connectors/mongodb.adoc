@@ -56,7 +56,7 @@ MongoDB connector supports two distinct modes of capturing the changes controlle
 
 === Oplog capture mode (legacy)
 
-The MongoDB connector uses this same replication mechanism as described above, though it does not actually become a member of the replica set.
+The {prodname} MongoDB connector uses the same replication mechanism as described above, though it does not actually become a member of the replica set.
 Just like MongoDB secondaries, however, the connector always reads the oplog of the replica set's primary.
 And, when the connector sees a replica set for the first time, it looks at the oplog to get the last recorded transaction and then performs a snapshot of the primary's databases and collections.
 When all the data is copied, the connector then starts streaming changes from the position it read earlier from the oplog. Operations in the MongoDB oplog are https://docs.mongodb.com/manual/core/replica-set-oplog/[idempotent], so no matter how many times the operations are applied, they result in the same end state.
@@ -68,32 +68,28 @@ It is not supported on MongoDB 5 and the user is strongly advised to not use it 
 
 === Change Stream mode
 
-
-The MongoDB connector uses similar replication mechanism to the described above, though it does not actually become a member of the replica set.
-The main difference is that the connector does not read oplog directly but delegates capturing and decoding the oplog to https://docs.mongodb.com/manual/changeStreams/[Chnage Streams] features.
-When used then the MongoDB server exposes the changes to collections as an event stream.
-The connector watches the stream and delivers the changes downstream.
+The {prodname} MongoDB connector uses a similar replication mechanism to the one described above, though it does not actually become a member of the replica set.
+The main difference is that the connector does not read the oplog directly, but delegates capturing and decoding the oplog to MongoDB's https://docs.mongodb.com/manual/changeStreams/[Change Streams] feature.
+With change streams, the MongoDB server exposes changes to collections as an event stream.
+The {prodname} connector watches the stream and delivers the changes downstream.
 And, when the connector sees a replica set for the first time, it looks at the oplog to get the last recorded transaction and then performs a snapshot of the primary's databases and collections.
 When all the data is copied, the connector then creates a change stream from the position it read earlier from the oplog.
 
-This is recommended mode starting with MongoDB 4.x.
+This is the recommended mode starting with MongoDB 4.x.
 
 [WARNING]
 ====
-Both capture modes use different values stored in offsets that allow them to resume streaming from the last position seen.
-Thus it is not possible to switch from change streams to oplog.
-To prevent inadverent capture mode change the connector has a built-in safety check.
+Both capture modes use different values stored in offsets that allow them to resume streaming from the last position seen after a connector restart.
+Thus it is not possible to switch from the change streams mode to the oplog mode.
+To prevent any inadvertent capture mode changes, the connector has a built-in safety check.
 
 When the connector is started it checks the stored offsets.
-If the original capture mode was oplog based then it will try to migrate to change streams.
-If the original capture mode was change streams based then it will switch to change streams regardless of the configuration and just emits a warning into a log about that.
-If the capture mode should be switched then it is necessary to remove stored offsets and run the connector from scratch.
+If the original capture mode was oplog-based and the new mode is change streams based, then it will try to migrate to change streams.
+If the original capture mode was change streams based, it will keep using change streams, also if the new mode is oplog-based, and a warning about this will be emitted to the logs.
 ====
 
-'''
-
 As the MongoDB connector processes changes, it periodically records the position in the oplog/stream where the event originated.
-When the MongoDB connector stops, it records the last oplog/stream position that it processed, so that upon restart it simply begins streaming from that position.
+When the connector stops, it records the last oplog/stream position that it processed, so that upon restart it simply begins streaming from that position.
 In other words, the connector can be stopped, upgraded or maintained, and restarted some time later, and it will pick up exactly where it left off without losing a single event.
 Of course, MongoDB's oplogs are usually capped at a maximum size, which means that the connector should not be stopped for too long, or else some of the operations in the oplog might be purged before the connector has a chance to read them.
 In this case, upon restart the connector will detect the missing oplog operations, perform a snapshot, and then proceed with streaming the changes.
@@ -233,7 +229,7 @@ Try to avoid task reassignment and reconfiguration while the connector is perfor
 [[mongodb-tailing-the-oplog]]
 
 After the connector task for a replica set records an offset, it uses the offset to determine the position in the oplog where it should start streaming changes.
-The task then (depending on the configuration) either connects to the replica set's primary node or connects to a replica-set-wide change stream and start streaming changes from that position.
+The task then (depending on the configuration) either connects to the replica set's primary node or connects to a replica-set-wide change stream and starts streaming changes from that position.
 It processes all of create, insert, and delete operations, and converts them into {prodname} {link-prefix}:{link-mongodb-connector}#mongodb-events[change events].
 Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset.
 The interval at which the offset is recorded is governed by link:https://kafka.apache.org/documentation/#offset.flush.interval.ms[`offset.flush.interval.ms`], which is a Kafka Connect worker configuration property.
@@ -711,7 +707,7 @@ However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], y
 
 |6
 |`after`
-|An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events and also for `update` events when `capture.mode` is set to `change_streams_update_full`; in other words, a _create_ event is the only kind of event that contains an _after_ field for `capture.mode` set either to `oplog` or `change_streams`.
+|An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`; in other words, a _create_ event is the only kind of event that contains an _after_ field, when the `capture.mode` option is set either to `oplog` or `change_streams`.
 
 |7
 |`source`
@@ -829,7 +825,7 @@ In MongoDB's oplog, _update_ events do not contain the _before_ or _after_ state
 ====
 
 ==== Change streams capture mode
-The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does have an `after` value only if `capture.mode` is set to `change_streams_update_full`. There is a new structured field `updateDescription` with a few additional fields:
+The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does have an `after` value only if the `capture.mode` option is set to `change_streams_update_full`. There is a new structured field `updateDescription` with a few additional fields in this case:
 
 * `updatedFields` is a string field that contains the JSON representation of the updated document fields with their values
 
@@ -889,7 +885,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |`after`
 |Contains the JSON string representation of the actual MongoDB document.
  +
-An _update_ event value does not contain an `after` field if capture mode is not set to `change_streams_update_full`
+An _update_ event value does not contain an `after` field if the capture mode is not set to `change_streams_update_full`
 
 |4
 |`updatedFields`
@@ -913,7 +909,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 ====
 The `after` value in the event should be handled as the at-point-of-time value of the document.
 The value is not calculated dynamically but is obtained from the collection.
-It is thus possible if multiple updates are closely following one after the other that all _update_ updates events will contain the same `after` value which will be representing the last value stored in the document.
+It is thus possible if multiple updates are closely following one after the other, that all _update_ updates events will contain the same `after` value which will be representing the last value stored in the document.
 
 If your application depends on gradual change evolution then you should rely on `updateDescription` only.
 ====
@@ -1368,12 +1364,12 @@ Must not be used with `collection.include.list`.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
-|Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector reads a snapshot when either no offset is found or if the oplog/change stream no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
+|Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies that the connector reads a snapshot when either no offset is found or if the oplog/change stream no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
-|Specifies the method used to capture changes from MongoDB server. The default is *change_streams_update_full*, and specifies the connector captures changes via MongoDB Change Streams mechanism, update message contains a full message. The *change_streams* specifies to use the same method but not to provide the full update message. +
-Option `oplog` specifies to access MongoDB directly; this is the legacy method.
+|Specifies the method used to capture changes from the MongoDB server. The default is *change_streams_update_full*, and specifies that the connector captures changes via MongoDB Change Streams mechanism, and that _update_ events should contain the full document. The *change_streams* mode will use the same capturing method, but _update_ events won't contain the full document. +
+The *oplog* mode specifies that the MongoDB oplog will be accessed directly; this is the legacy method and should not be used for new connector instances.
 
 |[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All collections specified in `collection.include.list`
