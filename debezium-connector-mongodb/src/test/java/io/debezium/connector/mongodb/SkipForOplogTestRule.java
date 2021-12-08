@@ -12,7 +12,7 @@ import org.junit.runners.model.Statement;
 /**
  * JUnit rule that skips tests not intended for oplog capture mode.
  *
- * @author Horia Chiorean
+ * @author Jiri Pechanec
  */
 public class SkipForOplogTestRule implements TestRule {
 
