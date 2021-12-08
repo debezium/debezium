@@ -1278,7 +1278,6 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test3");
 
         // Update record
-        System.out.println("*** Start ***");
         Clob clob1Update = createClob(part(JSON_DATA, 1, 24500));
         NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 24500));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test1U' WHERE id = 1", ps -> {
@@ -1514,7 +1513,15 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             record = table.get(0);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(3);
-            assertThat(after.get("DATA")).isNull();
+            if (logMinerAdapter) {
+                // With LogMiner, the first event only contains the initialization of id
+                assertThat(after.get("DATA")).isNull();
+            }
+            else {
+                // Xstream combines the insert and subsequent LogMiner update into a single insert event
+                // automatically, so we receive the value here where the LogMiner implementation doesn't.
+                assertThat(after.get("DATA")).isEqualTo("Test3");
+            }
             assertThat(((Struct) record.value()).get("op")).isEqualTo("c");
 
             // LogMiner will pickup a separate update for CLOB fields.
@@ -1529,13 +1536,18 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 assertThat(((Struct) record.value()).get("op")).isEqualTo("u");
             }
 
-            // the second insert won't emit an update due to the clob field being set by using the
-            // SELECT_LOB_LOCATOR, LOB_WRITE, and LOB_TRIM operators when using LogMiner and the
-            // CLOB field will be excluded automatically by Xstream due to skipping chunk processing.
             record = table.get(logMinerAdapter ? 2 : 1);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(4);
-            assertThat(after.get("DATA")).isNull();
+            if (logMinerAdapter) {
+                // the second insert won't emit an update due to the clob field being set by using the
+                // SELECT_LOB_LOCATOR, LOB_WRITE, and LOB_TRIM operators when using LogMiner and the
+                assertThat(after.get("DATA")).isNull();
+            }
+            else {
+                // Xstream gets this value; it will be supplied.
+                assertThat(after.get("DATA")).isEqualTo(getClobString(clob1));
+            }
             assertThat(((Struct) record.value()).get("op")).isEqualTo("c");
 
             // Test updates with small clob fields
@@ -1558,10 +1570,21 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             connection.prepareQuery("UPDATE dbz3645 set data=? WHERE id=4", ps -> ps.setClob(1, clob2), null);
             connection.commit();
 
-            // When updating a table that contains a large CLOB value but the update does not modify
-            // any of the non-CLOB fields, don't expect any events to be emitted. This is because
-            // the event is treated as a SELECT_LOB_LOCATOR and LOB_WRITE series which is ignored.
-            waitForAvailableRecords(10, TimeUnit.SECONDS);
+            if (logMinerAdapter) {
+                // When updating a table that contains a large CLOB value but the update does not modify
+                // any of the non-CLOB fields, don't expect any events to be emitted. This is because
+                // the event is treated as a SELECT_LOB_LOCATOR and LOB_WRITE series which is ignored.
+                waitForAvailableRecords(10, TimeUnit.SECONDS);
+            }
+            else {
+                // Xstream actually picks up this particular event.
+                sourceRecords = consumeRecordsByTopic(1);
+                table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
+                VerifyRecord.isValidUpdate(table.get(0), "ID", 4);
+                assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+                assertThat(getAfterField(table.get(0), "DATA")).isEqualTo(getClobString(clob2));
+            }
+
             assertNoRecordsToConsume();
 
             // Update updates small clob row by changing non-clob fields
@@ -1606,24 +1629,36 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             connection.commit();
 
             // Get streaming records
-            // Expect 4 records: delete for ID=5, tombstone for ID=5, create for ID=7, update for ID=7
+            // The number of expected records depends on whether this test is using LogMiner or Xstream.
+            // LogMiner expects 4: delete for ID=5, tombstone for ID=5, create for ID=7, update for ID=7
+            // XStream expects 3: delete for ID=5, tombstone for ID=5, create for ID=7
             //
             // NOTE: The extra update event is because the CLOB value is treated inline and so LogMiner
             // does not emit a SELECT_LOB_LOCATOR event but rather a subsequent update that is captured
-            // but not merged since event merging happens only when LOB is enabled.
-            sourceRecords = consumeRecordsByTopic(4);
+            // but not merged since event merging happens only when LOB is enabled. Xstream handles
+            // this automatically hence the reason why it has 1 less event in the stream.
+            sourceRecords = consumeRecordsByTopic(logMinerAdapter ? 4 : 3);
             sourceRecords.allRecordsInOrder().forEach(System.out::println);
             table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
             VerifyRecord.isValidDelete(table.get(0), "ID", 5);
             VerifyRecord.isValidTombstone(table.get(1), "ID", 5);
             VerifyRecord.isValidInsert(table.get(2), "ID", 7);
-            VerifyRecord.isValidUpdate(table.get(3), "ID", 7);
+
+            if (logMinerAdapter) {
+                VerifyRecord.isValidUpdate(table.get(3), "ID", 7);
+            }
 
             // When updating a table's small clob and non-clob columns
             assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getBeforeField(table.get(3), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(3), "DATA")).isEqualTo(getClobString(clob1u2));
+            if (logMinerAdapter) {
+                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+                assertThat(getBeforeField(table.get(3), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+                assertThat(getAfterField(table.get(3), "DATA")).isEqualTo(getClobString(clob1u2));
+            }
+            else {
+                // Xstream combines the insert/update into a single insert
+                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getClobString(clob1u2));
+            }
             assertNoRecordsToConsume();
 
             // Test updating both large clob and non-clob fields
@@ -1639,10 +1674,21 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             VerifyRecord.isValidTombstone(table.get(1), "ID", 6);
             VerifyRecord.isValidInsert(table.get(2), "ID", 8);
 
-            // When updating a table's large clob and non-clob columns, we expect placeholder in after
+            // When updating a table's large clob and non-clob columns, we expect placeholder in before
             assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            if (logMinerAdapter) {
+                // LogMiner is unable to provide the value, so it gets emitted with the placeholder.
+                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            }
+            else {
+                // Xstream gets the value, so its provided.
+                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getClobString(clob2u2));
+            }
             assertNoRecordsToConsume();
+
+            if (!logMinerAdapter) {
+                return;
+            }
 
             // delete row with small clob data
             connection.execute("DELETE FROM dbz3645 WHERE id=7");
