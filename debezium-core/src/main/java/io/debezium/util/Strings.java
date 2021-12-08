@@ -752,29 +752,19 @@ public final class Strings {
      * <dt>SS</dt>
      * <dd>is the number of seconds written in 2 digits (e.g., "09")</dd>
      * <dt>mmm</dt>
-     * <dd>is the fractional part of seconds, written with 1-3 digits (any trailing zeros are dropped)</dd>
+     * <dd>is the fractional part of seconds, written with 3 digits</dd>
      * </dl>
      *
      * @param durationInMillis the duration in milliseconds
      * @return the readable duration.
      */
     public static String duration(long durationInMillis) {
-        // Calculate how many seconds, and don't lose any information ...
-        BigDecimal bigSeconds = BigDecimal.valueOf(Math.abs(durationInMillis)).divide(new BigDecimal(1000));
-        // Calculate the minutes, and round to lose the seconds
-        int minutes = bigSeconds.intValue() / 60;
-        // Remove the minutes from the seconds, to just have the remainder of seconds
-        double dMinutes = minutes;
-        double seconds = bigSeconds.doubleValue() - dMinutes * 60;
-        // Now compute the number of full hours, and change 'minutes' to hold the remaining minutes
-        int hours = minutes / 60;
-        minutes = minutes - (hours * 60);
-
-        // Format the string, and have at least 2 digits for the hours, minutes and whole seconds,
-        // and between 3 and 6 digits for the fractional part of the seconds...
-        String result = new DecimalFormat("######00").format(hours) + ':' + new DecimalFormat("00").format(minutes) + ':'
-                + new DecimalFormat("00.0##").format(seconds);
-        return result;
+        long seconds = durationInMillis / 1000;
+        long s = seconds % 60;
+        long m = (seconds / 60) % 60;
+        long h = (seconds / (60 * 60));
+        long q = durationInMillis % 1000;
+        return String.format("%02d:%02d:%02d.%03d",h,m,s,q);
     }
 
     /**
