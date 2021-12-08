@@ -6,6 +6,13 @@
 
 package io.debezium.connector.oracle.logminer.processor;
 
+/**
+ * This interface allows the Oracle schema change event emitter to pass a truncate event
+ * back to the caller to be handled differently.
+ */
 public interface TruncateReceiver {
+    /**
+     * Notify the receiver of the truncate event
+     */
     void processTruncateEvent();
 }
