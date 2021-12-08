@@ -129,6 +129,7 @@ public class ConnectorFactories {
                 .put("table.include.list", "DEBEZIUM.CUSTOMERS")
                 .put("database.pdb.name", ConfigProperties.DATABASE_ORACLE_PDBNAME)
                 .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.oracle");
+                .put("database.history.kafka.topic", "schema-changes.oracle")
+                .put("log.mining.strategy", "online_catalog");
     }
 }
