@@ -256,7 +256,7 @@ public class MongoUtil {
             return null;
         }
 
-        return new SourceInfo.SessionTransactionId(event.getLsid() == null ? null : event.getLsid().toJson(),
+        return new SourceInfo.SessionTransactionId(event.getLsid() == null ? null : event.getLsid().toJson(JsonSerialization.COMPACT_JSON_SETTINGS),
                 event.getTxnNumber() == null ? null : event.getTxnNumber().longValue());
     }
 
