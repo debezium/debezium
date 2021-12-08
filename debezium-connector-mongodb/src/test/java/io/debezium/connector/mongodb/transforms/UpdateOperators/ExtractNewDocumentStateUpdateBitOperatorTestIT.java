@@ -37,9 +37,9 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
         final Schema valueSchema = transformedUpdate.valueSchema();
 
-        VerifyRecord.assertConnectSchemasAreEqual("id", valueSchema.field("id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
+        VerifyRecord.assertConnectSchemasAreEqual("_id", valueSchema.field("_id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
         VerifyRecord.assertConnectSchemasAreEqual("dataInt", valueSchema.field("dataInt").schema(), Schema.OPTIONAL_INT32_SCHEMA);
-        assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedUpdateValue.get("_id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataInt")).isEqualTo(114);
     }
 
@@ -55,9 +55,9 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
         final Schema valueSchema = transformedUpdate.valueSchema();
 
-        VerifyRecord.assertConnectSchemasAreEqual("id", valueSchema.field("id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
+        VerifyRecord.assertConnectSchemasAreEqual("_id", valueSchema.field("_id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
         VerifyRecord.assertConnectSchemasAreEqual("dataInt", valueSchema.field("dataInt").schema(), Schema.OPTIONAL_INT32_SCHEMA);
-        assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedUpdateValue.get("_id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataInt")).isEqualTo(1019);
     }
 
@@ -73,9 +73,9 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
         final Schema valueSchema = transformedUpdate.valueSchema();
 
-        VerifyRecord.assertConnectSchemasAreEqual("id", valueSchema.field("id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
+        VerifyRecord.assertConnectSchemasAreEqual("_id", valueSchema.field("_id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
         VerifyRecord.assertConnectSchemasAreEqual("dataInt", valueSchema.field("dataInt").schema(), Schema.OPTIONAL_INT32_SCHEMA);
-        assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedUpdateValue.get("_id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataInt")).isEqualTo(20);
     }
 }

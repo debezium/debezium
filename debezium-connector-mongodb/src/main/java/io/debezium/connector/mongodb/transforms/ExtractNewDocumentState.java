@@ -408,11 +408,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             // In case of a full update we can use the whole Document as it is
             // see https://docs.mongodb.com/manual/reference/method/db.collection.update/#replace-a-document-entirely
             valueDocument = document;
-            valueDocument.remove("_id");
         }
 
-        if (!valueDocument.containsKey("id")) {
-            valueDocument.append("id", keyDocument.get("id"));
+        if (!valueDocument.containsKey("_id")) {
+            valueDocument.append("_id", keyDocument.get("id"));
         }
 
         if (flattenStruct) {
@@ -425,11 +424,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     }
 
     private BsonDocument getInsertDocument(R record, BsonDocument key) {
-        BsonDocument valueDocument = BsonDocument.parse(record.value().toString());
-        valueDocument.remove("_id");
-        valueDocument.append("id", key.get("id"));
-
-        return valueDocument;
+        return BsonDocument.parse(record.value().toString());
     }
 
     private Headers makeHeaders(List<FieldReference> additionalHeaders, Struct originalRecordValue) {

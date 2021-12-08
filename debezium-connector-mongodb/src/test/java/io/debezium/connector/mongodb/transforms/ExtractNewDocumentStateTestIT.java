@@ -116,7 +116,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // Test insert
         primary().execute("insert", client -> {
-            long timestamp = ZonedDateTime.of(2020, 1, 28, 10, 00, 33, 0, ZoneId.of("UTC")).toEpochSecond();
+            long timestamp = ZonedDateTime.of(2020, 1, 28, 10, 0, 33, 0, ZoneId.of("UTC")).toEpochSecond();
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse(
                             "{"
@@ -136,16 +136,16 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord transformedInsert = transformation.apply(insertRecord);
         final Struct transformedInsertValue = (Struct) transformedInsert.value();
 
-        assertThat(transformedInsert.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedInsert.valueSchema().field("_id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedInsert.valueSchema().field("dataStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
         assertThat(transformedInsert.valueSchema().field("dataInt").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedInsert.valueSchema().field("dataLong").schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
-        assertThat(transformedInsertValue.get("id")).isEqualTo(1);
+        assertThat(transformedInsertValue.get("_id")).isEqualTo(1);
         assertThat(transformedInsertValue.get("dataStr")).isEqualTo("hello");
         assertThat(transformedInsertValue.get("dataInt")).isEqualTo(123);
         assertThat(transformedInsertValue.get("dataLong")).isEqualTo(80_000_000_000l);
         assertThat(transformedInsertValue.get("dataDate")).isEqualTo(Date.from(Instant.from(ZonedDateTime.of(2020, 1, 27, 10, 47, 12, 311000000, ZoneId.of("UTC")))));
-        assertThat(transformedInsertValue.get("dataTimestamp")).isEqualTo(Date.from(Instant.from(ZonedDateTime.of(2020, 1, 28, 10, 00, 33, 0, ZoneId.of("UTC")))));
+        assertThat(transformedInsertValue.get("dataTimestamp")).isEqualTo(Date.from(Instant.from(ZonedDateTime.of(2020, 1, 28, 10, 0, 33, 0, ZoneId.of("UTC")))));
 
         // Test update
         primary().execute("update", client -> {
@@ -166,9 +166,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
 
-        assertThat(transformedUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedUpdate.valueSchema().field("_id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedUpdate.valueSchema().field("dataStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
-        assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedUpdateValue.get("_id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataStr")).isEqualTo("bye");
 
         // Test Update Multiple Fields
@@ -184,10 +184,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord transformedMultipleUpdate = transformation.apply(updateMultipleRecord);
         final Struct transformedMultipleUpdateValue = (Struct) transformedMultipleUpdate.value();
 
-        assertThat(transformedMultipleUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedMultipleUpdate.valueSchema().field("_id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedMultipleUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
         assertThat(transformedMultipleUpdate.valueSchema().field("dataInt").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
-        assertThat(transformedMultipleUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedMultipleUpdateValue.get("_id")).isEqualTo(1);
         assertThat(transformedMultipleUpdateValue.get("newStr")).isEqualTo("hello");
         assertThat(transformedMultipleUpdateValue.get("dataInt")).isEqualTo(456);
 
@@ -204,8 +204,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord transformedUnsetUpdate = transformation.apply(updateUnsetRecord);
         final Struct transformedUnsetUpdateValue = (Struct) transformedUnsetUpdate.value();
 
-        assertThat(transformedUnsetUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
-        assertThat(transformedUnsetUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedUnsetUpdate.valueSchema().field("_id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedUnsetUpdateValue.get("_id")).isEqualTo(1);
         if (TestHelper.isOplogCaptureMode()) {
             assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
         }
@@ -232,9 +232,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord transformedFullUpdate = transformation.apply(FullUpdateRecord);
         final Struct transformedFullUpdateValue = (Struct) transformedFullUpdate.value();
 
-        assertThat(transformedFullUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedFullUpdate.valueSchema().field("_id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedFullUpdate.valueSchema().field("dataStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
-        assertThat(transformedFullUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedFullUpdateValue.get("_id")).isEqualTo(1);
         assertThat(transformedFullUpdateValue.get("dataStr")).isEqualTo("Hi again");
 
         // Test Delete
@@ -469,12 +469,12 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().name()).isEqualTo(SERVER_NAME + "." + DB_NAME + "." + getCollectionName());
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
         assertThat(value.get("phone")).isEqualTo(123L);
         assertThat(value.get("active")).isEqualTo(true);
         assertThat(value.get("scores")).isEqualTo(Arrays.asList(1.2, 3.4, 5.6));
 
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
         assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
@@ -520,12 +520,12 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        assertThat(((Struct) value.get("id")).get("company")).isEqualTo(32);
-        assertThat(((Struct) value.get("id")).get("dept")).isEqualTo("home improvement");
+        assertThat(((Struct) value.get("_id")).get("company")).isEqualTo(32);
+        assertThat(((Struct) value.get("_id")).get("dept")).isEqualTo("home improvement");
         assertThat(value.get("name")).isEqualTo("Sally");
 
-        assertThat(value.schema().field("id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
-        assertThat(value.schema().field("id").schema().field("dept").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+        assertThat(value.schema().field("_id").schema().field("dept").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().fields()).hasSize(2);
     }
@@ -588,9 +588,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
 
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().fields()).hasSize(2);
     }
@@ -1074,11 +1074,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
         assertThat(value.get("address")).isEqualTo(new Struct(value.schema().field("address").schema())
                 .put("street", "Morris Park Ave").put("zipcode", "10462"));
 
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address").schema()).isEqualTo(
                 SchemaBuilder.struct()
@@ -1129,11 +1129,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
         assertThat(value.get("address_street")).isEqualTo("Morris Park Ave");
         assertThat(value.get("address_zipcode")).isEqualTo("10462");
 
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address_street").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address_zipcode").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
@@ -1180,11 +1180,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
         assertThat(value.get("address-street")).isEqualTo("Morris Park Ave");
         assertThat(value.get("address-zipcode")).isEqualTo("10462");
 
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-street").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-zipcode").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
@@ -1247,12 +1247,12 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
         assertThat(value.get("address-city")).isEqualTo("Canberra");
         assertThat(value.get("address-name")).isEqualTo("James");
         assertThat(value.get("address-city2-part")).isEqualTo(3);
 
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-city").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-city2-part").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
@@ -1518,10 +1518,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
         assertThat(value.get("a")).isEqualTo(22);
 
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("a").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
 
         if (TestHelper.isOplogCaptureMode()) {
