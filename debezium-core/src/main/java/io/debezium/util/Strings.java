@@ -748,9 +748,9 @@ public final class Strings {
      * <dt>HHH</dt>
      * <dd>is the number of hours written in at least 2 digits (e.g., "03")</dd>
      * <dt>MM</dt>
-     * <dd>is the number of hours written in at least 2 digits (e.g., "05")</dd>
+     * <dd>is the number of minutes written in 2 digits (e.g., "05")</dd>
      * <dt>SS</dt>
-     * <dd>is the number of hours written in at least 2 digits (e.g., "09")</dd>
+     * <dd>is the number of seconds written in 2 digits (e.g., "09")</dd>
      * <dt>mmm</dt>
      * <dd>is the fractional part of seconds, written with 1-3 digits (any trailing zeros are dropped)</dd>
      * </dl>
