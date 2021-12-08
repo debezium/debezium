@@ -970,7 +970,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
-                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
                     .build();
 
             // Perform a basic startup & initial snapshot of data
@@ -1031,7 +1030,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
-                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
                     .with(OracleConnectorConfig.SKIPPED_OPERATIONS, "t") // Filter out truncate operations.
                     .build();
 
