@@ -47,7 +47,7 @@ MongoDB replication works by having the primary record the changes in its _oplog
 When a new server is added to a replica set, that server first performs an https://docs.mongodb.com/manual/core/replica-set-sync/[snapshot] of all of the databases and collections on the primary, and then reads the primary's oplog to apply all changes that might have been made since it began the snapshot.
 This new server becomes a secondary (and able to handle queries) when it catches up to the tail of the primary's oplog.
 
-MongoDB connector supports two distinct modes of capturing the changes controlled by {link-prefix}:{link-mongodb-connector}#mongodb-property-capture-mode[`capture.mode`] option:
+MongoDB connector supports two distinct modes of capturing the changes controlled by xref:mongodb-property-capture-mode[[`capture.mode`] option:
 
 * oplog based
 * change streams based
@@ -61,7 +61,7 @@ Just like MongoDB secondaries, however, the connector always reads the oplog of 
 And, when the connector sees a replica set for the first time, it looks at the oplog to get the last recorded transaction and then performs a snapshot of the primary's databases and collections.
 When all the data is copied, the connector then starts streaming changes from the position it read earlier from the oplog. Operations in the MongoDB oplog are https://docs.mongodb.com/manual/core/replica-set-oplog/[idempotent], so no matter how many times the operations are applied, they result in the same end state.
 
-The disadvantage of this mode is that Debezium does not provide updated value in case of the changed value but only the operation that was used to modify the record which can be either the full knew value or an update instruction.
+The disadvantage of this mode is that only _insert_ change events will contain the full document, whereas _update_ events only contain a representation of changed fields (i.e. unmodified fields cannot be obtained from an _update_ event), and _delete_ events contain no representation of the deleted document apart from its key.
 
 This mode should be considered as the legacy one.
 It is not supported on MongoDB 5 and the user is strongly advised to not use it for MongoDB 4.x server.
@@ -860,7 +860,9 @@ Here is an example of a change event value in an event that the connector genera
         "ord": 1,
         "h": null,
         "tord": null,
-        "stxnid": null
+        "stxnid": null,
+        "lsid":"{\"id\": {\"$binary\": \"FA7YEzXgQXSX9OxmzllH2w==\",\"$type\": \"04\"},\"uid\": {\"$binary\": \"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=\",\"$type\": \"00\"}}",
+        "txnNumber":1
       }
     }
   }
@@ -1449,7 +1451,7 @@ The following _advanced_ configuration properties have good defaults that will w
 |Positive integer value that specifies the maximum delay when trying to reconnect to a primary after repeated failed connection attempts or when no primary is available. Defaults to 120 seconds (120,000 ms).
 
 |[[mongodb-property-connect-max-attempts]]<<mongodb-property-connect-max-attempts, `+connect.max.attempts+`>>
-|must `16`
+|`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
 
 |[[mongodb-property-mongodb-members-auto-discover]]<<mongodb-property-mongodb-members-auto-discover, `+mongodb.members.auto.discover+`>>
