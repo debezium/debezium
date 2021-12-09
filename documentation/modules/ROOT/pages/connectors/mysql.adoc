@@ -482,16 +482,16 @@ a|Records the completed snapshot in the connector offsets.
 |===
 
 // Type: concept
-// ModuleID: debezium-{context}-ad-hoc-snapshots
-[id="{context}-ad-hoc-snapshots"]
+// ModuleID: debezium-mysql-ad-hoc-snapshots
+[id="mysql-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
-include::{partialsdir}/modules/all-connectors/ref-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
 // Type: concept
-// ModuleID: debezium-{context}-incremental-snapshots
-[id="{context}-incremental-snapshots"]
+// ModuleID: debezium-mysql-incremental-snapshots
+[id="mysql-incremental-snapshots"]
 ==== Incremental snapshots
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 // Type: concept
 // ModuleID: debezium-{context}-read-only-incremental-snapshots
