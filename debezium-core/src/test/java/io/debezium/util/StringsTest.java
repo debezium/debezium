@@ -384,6 +384,21 @@ public class StringsTest {
         assertThat(Strings.isNullOrBlank("not blank")).isFalse();
     }
 
+    @Test
+    public void durationToString() {
+        assertThat(Strings.duration(0)).isEqualTo("00:00:00.0");
+        assertThat(Strings.duration(1)).isEqualTo("00:00:00.001");
+        assertThat(Strings.duration(10)).isEqualTo("00:00:00.01");
+        assertThat(Strings.duration(100)).isEqualTo("00:00:00.1");
+        assertThat(Strings.duration(1_000)).isEqualTo("00:00:01.0");
+        assertThat(Strings.duration(60_000)).isEqualTo("00:01:00.0");
+        assertThat(Strings.duration(61_010)).isEqualTo("00:01:01.01");
+        assertThat(Strings.duration(3_600_000)).isEqualTo("01:00:00.0");
+        assertThat(Strings.duration(36_000_000)).isEqualTo("10:00:00.0");
+        assertThat(Strings.duration(540_000_000)).isEqualTo("150:00:00.0");
+        assertThat(Strings.duration(541_934_321)).isEqualTo("150:32:14.321");
+    }
+
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);
