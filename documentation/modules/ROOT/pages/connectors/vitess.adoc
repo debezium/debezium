@@ -497,8 +497,8 @@ The following example shows the value portion of a change event that the connect
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
             "snapshot": true,
-            "db": "Vitess_server",
-            "schema": "commerce",
+            "db": "",
+            "keyspace": "commerce",
             "table": "customers",
             "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"80-\",\"gtid\":\"MariaDB/0-54610504-47\"},{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-45\"}]"
         },
@@ -605,8 +605,8 @@ The value of a change event for an update in the sample `customers` table has th
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
             "snapshot": null,
-            "db": "Vitess_server",
-            "schema": "commerce",
+            "db": "",
+            "keyspace": "commerce",
             "table": "customers",
             "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"80-\",\"gtid\":\"MariaDB/0-54610504-47\"},{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-46\"}]"
         },
@@ -680,8 +680,8 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
             "snapshot": null,
-            "db": "Vitess_server",
-            "schema": "commerce",
+            "db": "",
+            "keyspace": "commerce",
             "table": "customers",
             "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"80-\",\"gtid\":\"MariaDB/0-54610504-47\"},{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-47\"}]"
         },
