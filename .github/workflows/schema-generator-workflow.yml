@@ -1,0 +1,42 @@
+name: Build Schema Generator
+
+on:
+  push:
+    branches:
+      - main
+      - 1.*
+    paths:
+      - 'support/checkstyle/**'
+      - 'debezium-core/**'
+      - 'debezium-schema-generator/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
+      - 'pom.xml'
+      - '.github/workflows/schema-generator-workflow.yml'
+  pull_request:
+    branches:
+      - main
+      - 1.*
+    paths:
+      - 'support/checkstyle/**'
+      - 'debezium-core/**'
+      - 'debezium-schema-generator/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
+      - 'pom.xml'
+      - '.github/workflows/schema-generator-workflow.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Build Schema Generator
+        run: mvn clean install -B -pl debezium-schema-generator -am -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
