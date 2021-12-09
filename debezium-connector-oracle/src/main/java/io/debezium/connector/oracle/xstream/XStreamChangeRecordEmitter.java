@@ -25,13 +25,16 @@ import oracle.streams.RowLCR;
 public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnValue> {
 
     private final RowLCR lcr;
-    private final Map<String, Object> chunkValues;
+    private final Map<String, Object> oldChunkValues;
+    private final Map<String, Object> newChunkValues;
 
     public XStreamChangeRecordEmitter(Partition partition, OffsetContext offset, RowLCR lcr,
-                                      Map<String, Object> chunkValues, Table table, Clock clock) {
+                                      Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
+                                      Table table, Clock clock) {
         super(partition, offset, table, clock);
         this.lcr = lcr;
-        this.chunkValues = chunkValues;
+        this.oldChunkValues = oldChunkValues;
+        this.newChunkValues = newChunkValues;
     }
 
     @Override
@@ -52,15 +55,15 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
     @Override
     protected Object[] getOldColumnValues() {
-        return getColumnValues(lcr.getOldValues());
+        return getColumnValues(lcr.getOldValues(), oldChunkValues);
     }
 
     @Override
     protected Object[] getNewColumnValues() {
-        return getColumnValues(lcr.getNewValues());
+        return getColumnValues(lcr.getNewValues(), newChunkValues);
     }
 
-    private Object[] getColumnValues(ColumnValue[] columnValues) {
+    private Object[] getColumnValues(ColumnValue[] columnValues, Map<String, Object> chunkValues) {
         Object[] values = new Object[table.columns().size()];
         for (ColumnValue columnValue : columnValues) {
             int index = table.columnWithName(columnValue.getColumnName()).position() - 1;

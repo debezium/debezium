@@ -11,6 +11,7 @@ import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;
 
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 
 /**
@@ -41,6 +42,14 @@ public class LogMinerDmlEntryImplAdapter {
      * to mark a null element in an array.
      */
     private static final String NULL_VALUE_SENTINEL = "$$DBZ-NULL$$";
+
+    /**
+     * The supplied value arrays can now be populated with {@link OracleValueConverters#UNAVAILABLE_VALUE}
+     * which is simple java object.  This cannot be represented as a string in the cached Infinispan record
+     * and so this sentinel is used to translate the runtime object representation to a serializable form
+     * and back during cache to object conversion.
+     */
+    private static final String UNAVAILABLE_VALUE_SENTINEL = "$$DBZ-UNAVAILABLE-VALUE$$";
 
     /**
      * A ProtoStream factory that creates a {@link LogMinerDmlEntryImpl} instance from field values.
@@ -119,17 +128,23 @@ public class LogMinerDmlEntryImplAdapter {
     /**
      * Converts the provided object-array to a string-array.
      *
-     * This conversion is safe since LogMinerDmlParser always populates the object-array with strings.
-     * Any element in the array that is {@code null} will be initialized as {@link #NULL_VALUE_SENTINEL}.
+     * Internally this method examines the supplied object array and handles conversion for {@literal null}
+     * and {@link OracleValueConverters#UNAVAILABLE_VALUE} values so that they can be serialized.
      *
      * @param values the values array to be converted, should never be {@code null}
      * @return the values array converted to a string-array
      */
     private String[] objectArrayToStringArray(Object[] values) {
-        String[] results = Arrays.copyOf(values, values.length, String[].class);
-        for (int i = 0; i < results.length; ++i) {
-            if (results[i] == null) {
+        String[] results = new String[values.length];
+        for (int i = 0; i < values.length; ++i) {
+            if (values[i] == null) {
                 results[i] = NULL_VALUE_SENTINEL;
+            }
+            else if (values[i] == OracleValueConverters.UNAVAILABLE_VALUE) {
+                results[i] = UNAVAILABLE_VALUE_SENTINEL;
+            }
+            else {
+                results[i] = (String) values[i];
             }
         }
         return results;
@@ -138,8 +153,10 @@ public class LogMinerDmlEntryImplAdapter {
     /**
      * Converters the provided string-array to an object-array.
      *
-     * This conversion is safe since Strings are also Objects.  This method also is responsible for the
-     * conversion of {@link #NULL_VALUE_SENTINEL} sentinel values to {@code null}.
+     * Internally this method examines the supplied string array and handles the conversion of specific
+     * sentinel values back to their runtime equivalents.  For example, {@link #NULL_VALUE_SENTINEL}
+     * will be interpreted as {@literal null} and {@link #UNAVAILABLE_VALUE_SENTINEL} will be converted
+     * back to {@link OracleValueConverters#UNAVAILABLE_VALUE}.
      *
      * @param values the values array to eb converted, should never be {@code null}
      * @return the values array converted to an object-array
@@ -149,6 +166,9 @@ public class LogMinerDmlEntryImplAdapter {
         for (int i = 0; i < results.length; ++i) {
             if (results[i].equals(NULL_VALUE_SENTINEL)) {
                 results[i] = null;
+            }
+            else if (results[i].equals(UNAVAILABLE_VALUE_SENTINEL)) {
+                results[i] = OracleValueConverters.UNAVAILABLE_VALUE;
             }
         }
         return results;
