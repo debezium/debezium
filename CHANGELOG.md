@@ -2,6 +2,60 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.8.0.CR1
+December 9th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377385)
+
+### New features since 1.8.0.Beta1
+
+* Implement incremental snapshotting for MongoDB [DBZ-3342](https://issues.redhat.com/browse/DBZ-3342)
+* Add schema descriptors for the UI JSON Schema for SQL Server Connector [DBZ-3697](https://issues.redhat.com/browse/DBZ-3697)
+* Optionally add OPTION(RECOMPILE) to incremental snapshot queries [DBZ-4249](https://issues.redhat.com/browse/DBZ-4249)
+* Log count of changed records sent [DBZ-4341](https://issues.redhat.com/browse/DBZ-4341)
+* Add support for truncate in oracle connector [DBZ-4385](https://issues.redhat.com/browse/DBZ-4385)
+* Support binary_handling_mode for Oracle connector [DBZ-4400](https://issues.redhat.com/browse/DBZ-4400)
+* Enforce consistent vgtid representation in vitess connector [DBZ-4409](https://issues.redhat.com/browse/DBZ-4409)
+
+
+### Breaking changes since 1.8.0.Beta1
+
+* Fix source fields and keyspace field in vitess connector [DBZ-4412](https://issues.redhat.com/browse/DBZ-4412)
+* Fix issues with blob and uint64 types in Vitess connector [DBZ-4403](https://issues.redhat.com/browse/DBZ-4403)
+* Clean up "source" strucure for Vitess connector [DBZ-4428](https://issues.redhat.com/browse/DBZ-4428)
+
+
+### Fixes since 1.8.0.Beta1
+
+* Parallel write can be lost during catch-up phase [DBZ-2792](https://issues.redhat.com/browse/DBZ-2792)
+* None of log files contains offset SCN (SCN offset is no longer available in the online redo logs) [DBZ-3635](https://issues.redhat.com/browse/DBZ-3635)
+* [Debezium Server] Event Hubs exporter slow/Event data was too large [DBZ-4277](https://issues.redhat.com/browse/DBZ-4277)
+* NullPointer exception on Final stage of snapshot for Oracle connector [DBZ-4376](https://issues.redhat.com/browse/DBZ-4376)
+* Oracle pipeline matrix docker conflict [DBZ-4377](https://issues.redhat.com/browse/DBZ-4377)
+* System testsuite unable to pull apicurio operator from quay [DBZ-4382](https://issues.redhat.com/browse/DBZ-4382)
+* Oracle DDL Parser Error [DBZ-4388](https://issues.redhat.com/browse/DBZ-4388)
+* DDL couldn't be parsed: 'analyze table schema.table estimate statistics sample 5 percent;' [DBZ-4396](https://issues.redhat.com/browse/DBZ-4396)
+* MySQL: DDL Statement could not be parsed 'GRANT' [DBZ-4397](https://issues.redhat.com/browse/DBZ-4397)
+* Support keyword CHAR SET for defining charset options [DBZ-4402](https://issues.redhat.com/browse/DBZ-4402)
+* Xstream support with LOB unavailable value placeholder support is inconsistent [DBZ-4422](https://issues.redhat.com/browse/DBZ-4422)
+* Oracle Infinispan buffer fails to serialize unavailable value placeholders [DBZ-4425](https://issues.redhat.com/browse/DBZ-4425)
+* VStream gRPC connection closed after being idle for a few minutes [DBZ-4389](https://issues.redhat.com/browse/DBZ-4389)
+
+
+### Other changes since 1.8.0.Beta1
+
+* Oracle testing in system-level testsuite [DBZ-3963](https://issues.redhat.com/browse/DBZ-3963)
+* Upgrade to Quarkus 2.5.0.Final [DBZ-4035](https://issues.redhat.com/browse/DBZ-4035)
+* Document incremental chunk size setting [DBZ-4127](https://issues.redhat.com/browse/DBZ-4127)
+* Complete CDC implementation based on MongoDB Change Streams [DBZ-4205](https://issues.redhat.com/browse/DBZ-4205)
+* Record video demo showing Kafka topics creation and transformation UIs [DBZ-4260](https://issues.redhat.com/browse/DBZ-4260)
+* Add Oracle 12.2.0.1 to internal CI Oracle job [DBZ-4322](https://issues.redhat.com/browse/DBZ-4322)
+* OracleClobDataTypeIT shouldNotStreamAnyChangesWhenLobEraseIsDetected may fail randomly [DBZ-4384](https://issues.redhat.com/browse/DBZ-4384)
+* Upgrade impsort-maven-plugin from 1.6.0 to 1.6.2 [DBZ-4386](https://issues.redhat.com/browse/DBZ-4386)
+* Upgrade formatter-maven-plugin from 2.15.0 to 2.16.0 [DBZ-4387](https://issues.redhat.com/browse/DBZ-4387)
+* Unstable test for online DDL changes [DBZ-4391](https://issues.redhat.com/browse/DBZ-4391)
+* Create Debezium Kafka Connect REST Extension [DBZ-4028](https://issues.redhat.com/browse/DBZ-4028)
+
+
+
 ## 1.8.0.Beta1
 November 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12375780)
 
