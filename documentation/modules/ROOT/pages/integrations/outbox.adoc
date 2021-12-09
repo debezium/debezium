@@ -102,6 +102,10 @@ The following example illustrates an `OrderService` that emits the `OrderCreated
 ----
 @ApplicationScoped
 public class OrderService {
+
+    @Inject
+    OrderRepository orderRepository;
+
     @Inject
     Event<ExportedEvent<?, ?>> event;
 
