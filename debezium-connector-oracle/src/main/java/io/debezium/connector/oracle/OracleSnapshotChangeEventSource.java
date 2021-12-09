@@ -114,6 +114,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 }
             }
         }
+        else {
+            LOGGER.info("Schema locking was disabled in connector configuration");
+        }
     }
 
     @Override
