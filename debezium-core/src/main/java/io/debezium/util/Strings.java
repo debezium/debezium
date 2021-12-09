@@ -9,7 +9,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -759,22 +758,58 @@ public final class Strings {
      * @return the readable duration.
      */
     public static String duration(long durationInMillis) {
-        // Calculate how many seconds, and don't lose any information ...
-        BigDecimal bigSeconds = BigDecimal.valueOf(Math.abs(durationInMillis)).divide(new BigDecimal(1000));
-        // Calculate the minutes, and round to lose the seconds
-        int minutes = bigSeconds.intValue() / 60;
-        // Remove the minutes from the seconds, to just have the remainder of seconds
-        double dMinutes = minutes;
-        double seconds = bigSeconds.doubleValue() - dMinutes * 60;
-        // Now compute the number of full hours, and change 'minutes' to hold the remaining minutes
-        int hours = minutes / 60;
-        minutes = minutes - (hours * 60);
+        long seconds = durationInMillis / 1000;
+        long s = seconds % 60;
+        long m = (seconds / 60) % 60;
+        long h = (seconds / (60 * 60));
+        long q = durationInMillis % 1000;
 
-        // Format the string, and have at least 2 digits for the hours, minutes and whole seconds,
-        // and between 3 and 6 digits for the fractional part of the seconds...
-        String result = new DecimalFormat("######00").format(hours) + ':' + new DecimalFormat("00").format(minutes) + ':'
-                + new DecimalFormat("00.0##").format(seconds);
-        return result;
+        StringBuilder result = new StringBuilder(15);
+
+        if (h < 10) {
+            result.append("0");
+        }
+
+        result.append(h).append(":");
+
+        if (m < 10) {
+            result.append("0");
+        }
+
+        result.append(m).append(":");
+
+        if (s < 10) {
+            result.append("0");
+        }
+
+        result.append(s).append(".");
+
+        if (q == 0) {
+            result.append("0");
+            return result.toString();
+        }
+        else if (q < 10) {
+            result.append("00");
+        }
+        else if (q < 100) {
+            result.append("0");
+        }
+
+        result.append(q);
+
+        int length = result.length();
+
+        if (result.charAt(length - 1) == '0') {
+            if (result.charAt(length - 2) == '0') {
+                return result.substring(0, length - 2);
+            }
+            else {
+                return result.substring(0, length - 1);
+            }
+        }
+        else {
+            return result.toString();
+        }
     }
 
     /**
