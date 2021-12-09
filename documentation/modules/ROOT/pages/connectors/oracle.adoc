@@ -2074,7 +2074,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-   `_<fullyQualifiedTableName>_`:``_<keyColumn>_``,``_<keyColumn>``_ +
+   `_<fullyQualifiedTableName>_`:``_<keyColumn>_``,``_<keyColumn>_`` +
  +
 To base a table key on multiple column names, insert commas between the column names. +
 Each fully-qualified table name is a regular expression in the following format: +
