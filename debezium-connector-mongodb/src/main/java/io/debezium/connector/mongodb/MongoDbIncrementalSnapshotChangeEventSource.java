@@ -157,7 +157,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
                     final MongoCollection<Document> collection = database.getCollection(collectionId.name());
 
                     LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
-                    collection.insertOne(Document.parse("{\"_id\": \"" + id + "\", \"type\": \"" + OpenIncrementalSnapshotWindow.NAME + "\", \"payload\": \"\"}"));
+                    final Document signal = new Document();
+                    signal.put(DOCUMENT_ID, id);
+                    signal.put("type", OpenIncrementalSnapshotWindow.NAME);
+                    signal.put("payload", "");
+                    collection.insertOne(signal);
                 });
     }
 
@@ -174,7 +178,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
                     final MongoCollection<Document> collection = database.getCollection(collectionId.name());
 
                     LOGGER.trace("Emitting close window for chunk = '{}'", context.currentChunkId());
-                    collection.insertOne(Document.parse("{\"_id\": \"" + id + "\", \"type\": \"" + CloseIncrementalSnapshotWindow.NAME + "\", \"payload\": \"\"}"));
+                    final Document signal = new Document();
+                    signal.put(DOCUMENT_ID, id);
+                    signal.put("type", CloseIncrementalSnapshotWindow.NAME);
+                    signal.put("payload", "");
+                    collection.insertOne(signal);
                 });
     }
 

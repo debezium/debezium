@@ -29,7 +29,7 @@ import io.debezium.relational.Table;
 import io.debezium.util.HexConverter;
 
 /**
- * A class describing current state of incremental snapshot of MongoDB connector
+ * Describes current state of incremental snapshot of MongoDB connector
  *
  * @author Jiri Pechanec
  *
@@ -60,7 +60,6 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     // State to be stored and recovered from offsets
     private final Queue<T> dataCollectionsToSnapshot = new LinkedList<>();
 
-    private final boolean useCatalogBeforeSchema;
     /**
      * The PK of the last record that was passed to Kafka Connect. In case of
      * connector restart the start of the first chunk will be populated from it.
@@ -79,7 +78,6 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     private boolean schemaVerificationPassed;
 
     public MongoDbIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
-        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
     public boolean openWindow(String id) {
