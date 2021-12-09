@@ -10,7 +10,8 @@
     <relativePath>../debezium-parent/pom.xml</relativePath>
   </parent>
 
-  <artifactId>debezium-api-generator</artifactId>
+  <artifactId>debezium-schema-generator</artifactId>
+  <name>Debezium Schema Generator</name>
   <packaging>maven-plugin</packaging>
 
   <properties>

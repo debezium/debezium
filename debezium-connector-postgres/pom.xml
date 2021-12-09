@@ -244,7 +244,7 @@
             </plugin>
             <plugin>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-api-generator</artifactId>
+                <artifactId>debezium-schema-generator</artifactId>
                 <version>${project.version}</version>
                 <executions>
                     <execution>

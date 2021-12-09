@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.api_generator;
+package io.debezium.schemagenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,10 +19,10 @@ import org.eclipse.microprofile.openapi.models.media.Schema;
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
-import io.debezium.api_generator.formats.ApiFormat;
-import io.debezium.api_generator.formats.ApiFormatName;
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.metadata.ConnectorMetadataProvider;
+import io.debezium.schemagenerator.formats.ApiFormat;
+import io.debezium.schemagenerator.formats.ApiFormatName;
 
 public class OpenApiGenerator {
 

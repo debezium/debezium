@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.api_generator.maven;
+package io.debezium.schemagenerator.maven;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +33,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.base.Charsets;
 
 import io.debezium.DebeziumException;
-import io.debezium.api_generator.OpenApiGenerator;
+import io.debezium.schemagenerator.OpenApiGenerator;
 import io.smallrye.openapi.runtime.io.Format;
 
 /**

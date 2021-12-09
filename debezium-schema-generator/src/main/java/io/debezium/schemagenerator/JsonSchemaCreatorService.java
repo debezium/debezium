@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.api_generator;
+package io.debezium.schemagenerator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,9 +17,9 @@ import java.util.TreeMap;
 import org.apache.kafka.common.config.ConfigDef;
 import org.eclipse.microprofile.openapi.models.media.Schema;
 
-import io.debezium.api_generator.formats.ApiFormat.FieldFilter;
 import io.debezium.config.Field;
 import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.schemagenerator.formats.ApiFormat.FieldFilter;
 import io.smallrye.openapi.api.models.media.SchemaImpl;
 
 public class JsonSchemaCreatorService {
