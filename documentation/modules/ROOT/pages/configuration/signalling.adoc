@@ -33,7 +33,7 @@ endif::product[]
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
 To trigger a connector to perform a specified action, you issue a SQL command to add a signal message to a specialized signaling table, also referred to as a signaling data collection.
 The signaling table, which you create on the source database, is designated exclusively for communicating with {prodname}.
-When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-signal-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-signal-record[ad hoc snapshot record] is added to the signaling table, it reads the signal, and initiates the requested operation.
+When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-signal-record[ad hoc snapshot record] is added to the signaling table, it reads the signal, and initiates the requested operation.
 
 Signaling is available for use with the following {prodname} connectors:
 
@@ -57,7 +57,7 @@ You must explicitly enable signaling for each connector that you want to use it 
 .Procedure
 
 . On the source database, create a signaling data collection table for sending signals to the connector
-  For information about the required structure of the signaling data collection, see xref:{link-signalling}#debezium-signaling-data-collection-structure[Structure of a signaling data collection].
+  For information about the required structure of the signaling data collection, see xref:debezium-signaling-data-collection-structure[Structure of a signaling data collection].
 
 . On source databases that implement a native change data capture (CDC) mechanism, such as Db2 or SQL Server, enable CDC for the signaling table.
 
@@ -94,9 +94,9 @@ A signaling data collection, or signaling table, stores signals that users send 
 The structure of the signaling table must conform to the following standard format.
 
 * Contain three fields (columns).
-* Fields are arranged in a specific order, as shown in xref:debezium-signaling-required-structure-of-a-signaling-data-collection[Table 1].
+* Fields are arranged in a specific order, as shown in xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[Table 1].
 
-[id="debezium-signaling-required-structure-of-a-signaling-data-collection"]
+[id="debezium-signaling-description-of-required-structure-of-a-signaling-data-collection"]
 .Required structure of a signaling data collection
 [cols="1,1,9",options="header"]
 |===

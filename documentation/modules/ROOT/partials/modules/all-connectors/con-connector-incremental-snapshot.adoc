@@ -47,7 +47,6 @@ As a snapshot proceeds, other processes can continue to access the database and 
 Modifications to the table are committed to the transaction log as per usual, and are detected by the ongoing {prodname} streaming process.
 {prodname} continues to emit `INSERT`,`UPDATE` or `DELETE` events to reflect these transaction log changes.
 
-[id="{context}-how-debezium-resolves-conflicts-when-it-captures-multiple-events-for-records-that-have-the-same-primary-key"]
 .How {prodname} resolves conflicts among records with the same primary key
 In some cases, the `UPDATE` or `DELETE` events that the streaming process emits are received out of sequence.
 That is, the streaming process might emit an event that modifies a table row before the snapshot captures the chunk that contains the `READ` event for that row.
@@ -72,7 +71,6 @@ After the snapshot window for the chunk closes, the buffer contains only `READ` 
 
 The connector repeats the process for each snapshot chunk.
 
-[id="debezium-{context}-triggering-an-incremental-snapshot"]
 .Triggering an incremental snapshot
 
 Currently, the only way to initiate an incremental snapshot is to send an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot signal] to the signaling table on the source database.
