@@ -6,6 +6,7 @@
 :context: oracle
 :data-collection: table
 :mbean-name: {context}
+:connector-file: {context}
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -1873,7 +1874,7 @@ EOF
 <1> You can specify any file name that you want.
 <2> Replace `my-plugins` with the name of your plug-ins directory.
 +
-The command creates a Docker file with the name `debezium-container-for-oracle.yaml` in the current directory.
+The command creates a Dockerfile with the name `debezium-container-for-oracle.yaml` in the current directory.
 
 .. Build the container image from the `debezium-container-for-oracle.yaml` Docker file that you created in the previous step.
 From the directory that contains the file, open a terminal window and enter one of the following commands:
@@ -2014,32 +2015,9 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `server1` database as defined in the `KafkaConnector` CR.
 
-. Verify that the connector was created and has started:
-.. Display the Kafka Connect log output to verify that the connector was created and has started to capture changes in the specified database:
-+
-[source,shell,options="nowrap"]
-----
-oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
-----
-
-.. Review the log output to verify that {prodname} performs the initial snapshot.
-The log displays output that is similar to the following messages:
-+
-[source,shell,options="nowrap"]
-----
-... INFO Starting snapshot for ...
-... INFO Snapshot is using user 'c##dbzuser' ...
-----
-+
-If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing.
-Downstream applications can subscribe to these topics.
-
-.. Verify that the connector created the topics by running the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc get kafkatopics
-----
+[id="verifying-that-the-debezium-{context}-connector-is-running"]
+== Verifying that the connector is running
+include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoc
 
 endif::product[]
 

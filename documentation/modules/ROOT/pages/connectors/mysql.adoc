@@ -6,6 +6,8 @@
 :context: mysql
 :data-collection: table
 :mbean-name: {context}
+:connector-file: {context}
+:connector-class: MySql
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -2051,7 +2053,7 @@ For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOp
 │   ├── ...
 ----
 
-.. Create a Docker file that uses `{DockerKafkaConnect}` as the base image.
+.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
 +
 [source,shell,subs="+attributes,+quotes"]
@@ -2066,7 +2068,7 @@ EOF
 <1> You can specify any file name that you want.
 <2> Replace `my-plugins` with the name of your plug-ins directory.
 +
-The command creates a Docker file with the name `debezium-container-for-mysql.yaml` in the current directory.
+The command creates a Dockerfile with the name `debezium-container-for-mysql.yaml` in the current directory.
 
 .. Build the container image from the `debezium-container-for-mysql.yaml` Docker file that you created in the previous step.
 From the directory that contains the file, open a terminal window and enter one of the following commands:
@@ -2208,33 +2210,9 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` database as defined in the `KafkaConnector` CR.
 
-. Verify that the connector was created and has started:
-.. Display the Kafka Connect log output to verify that the connector was created and has started to capture changes in the specified database:
-+
-[source,shell,options="nowrap"]
-----
-oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
-----
-
-.. Review the log output to verify that {prodname} performs the initial snapshot.
-The log displays output that is similar to the following messages:
-+
-[source,shell,options="nowrap"]
-----
-... INFO Starting snapshot for ...
-... INFO Snapshot is using user 'debezium' ...
-----
-+
-If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing.
-For the example CR, there would be a topic for the table specified in the `include.list` property.
-Downstream applications can subscribe to these topics.
-
-.. Verify that the connector created the topics by running the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc get kafkatopics
-----
+[id="verifying-that-the-debezium-{context}-connector-is-running"]
+== Verifying that the connector is running
+include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoc
 endif::product[]
 
 ifdef::community[]
