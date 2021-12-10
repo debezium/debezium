@@ -6,6 +6,8 @@
 package io.debezium.outbox.quarkus;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.Map;
 
 import io.debezium.common.annotation.Incubating;
 
@@ -45,4 +47,11 @@ public interface ExportedEvent<I, P> {
      * The event payload.
      */
     P getPayload();
+
+    /**
+     * The additional field values to be stored.
+     */
+    default Map<String, Object> getAdditionalFieldValues() {
+        return Collections.emptyMap();
+    }
 }

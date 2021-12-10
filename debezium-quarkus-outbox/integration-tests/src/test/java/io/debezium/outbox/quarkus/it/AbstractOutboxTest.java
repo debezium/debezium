@@ -52,6 +52,9 @@ public abstract class AbstractOutboxTest {
         assertEquals(String.class, persister.getPropertyType("type").getReturnedClass());
         assertEquals(Instant.class, persister.getPropertyType("timestamp").getReturnedClass());
         assertEquals(String.class, persister.getPropertyType("payload").getReturnedClass());
+        assertEquals(String.class, persister.getPropertyType("name").getReturnedClass());
+        assertEquals(String.class, persister.getPropertyType("name_upper").getReturnedClass());
+        assertEquals(String.class, persister.getPropertyType("name_no_columndef").getReturnedClass());
     }
 
     @Test
@@ -66,5 +69,8 @@ public abstract class AbstractOutboxTest {
         assertEquals("SomeType", row.get("type"));
         assertTrue(((Instant) row.get("timestamp")).isBefore(Instant.now()));
         assertEquals("Some amazing payload", row.get("payload"));
+        assertEquals("John Doe", row.get("name"));
+        assertEquals("JOHN DOE", row.get("name_upper"));
+        assertEquals("Jane Doe", row.get("name_no_columndef"));
     }
 }

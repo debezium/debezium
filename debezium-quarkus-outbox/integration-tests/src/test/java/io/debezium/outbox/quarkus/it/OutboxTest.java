@@ -49,5 +49,8 @@ public class OutboxTest extends AbstractOutboxTest {
         assertTrue(((Instant) row.get("timestamp")).isBefore(Instant.now()));
         assertEquals("Some amazing payload", row.get("payload"));
         assertNotNull(row.get("tracingspancontext"));
+        assertEquals("John Doe", row.get("name"));
+        assertEquals("JOHN DOE", row.get("name_upper"));
+        assertEquals("Jane Doe", row.get("name_no_columndef"));
     }
 }

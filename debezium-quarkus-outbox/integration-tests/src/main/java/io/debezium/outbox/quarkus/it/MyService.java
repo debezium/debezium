@@ -5,6 +5,9 @@
  */
 package io.debezium.outbox.quarkus.it;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
@@ -20,6 +23,10 @@ public class MyService {
 
     @Transactional
     public void doSomething() {
-        event.fire(new MyOutboxEvent());
+        final Map<String, Object> values = new HashMap<>();
+        values.put("name", "John Doe"); // illustrates additional field with no converter
+        values.put("name_upper", "John Doe"); // illustrates additional field with converter
+        values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
+        event.fire(new MyOutboxEvent(values));
     }
 }

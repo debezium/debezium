@@ -92,6 +92,12 @@ public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
     public Instant getTimestamp() {
         return timestamp;
     }
+
+    @Override
+    public Map<String, Object> getAdditionalFieldValues() {
+        // no additional fields
+        return Collections.emptyMap();
+    }
 }
 ----
 
@@ -122,6 +128,62 @@ When the application code fires the event by calling `Event#fire()`, the Outbox 
 The {prodname} CDC connector in conjunction with the Outbox Event Router will be monitoring this table and will be responsible for relaying that data using CDC events.
 
 To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/main/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
+
+[id=additional-field-mappings]
+== Additional Field mappings
+
+The {prodname} Outbox SMT can be configured to read additional fields and emit those field values aa either part of the emitted event's header or envelope.
+
+In order to pass additional field mappings to be saved the Quarkus Outbox extension,
+the configuration property `quarkus.debezium-outbox.additional-fields` must be specified in the `application.properties`.
+This configuration property is a comma-separated list of additional field definitions that will be added to the Outbox entity mapping and passed by the application's implementation of the `ExportedEvent` interface.
+
+Each entry in this comma-separated list must follow this format:
+[source]
+----
+<field-name>:<field-java-type>[:<field-column-definition>[:<field-jpa-attribute-converter>]]
+----
+
+The pattern indicates that the field's name and java-type are required while the column definition and JPA attribute converter are optional.
+However, please note that if you wish to specify a JPA attribute converter then the column definition must be specified.
+
+The following example shows how to define an additional field called `customer_name` that is represented in Java as a `String` type but stored in the Outbox table as a `VARCHAR(100)` field.
+This example also shows a JPA Attribute converter defined that forces the storage of the string to upper-case.
+
+.application.properties
+[source,properties,indent=0]
+----
+quarkus.debezium-outbox.additional-fields=customer_name:string:varchar(100):example.UpperCase
+----
+
+Once the field(s) are configured in the application's `.properties` file, the application's code needs to pass these values to the extension.
+In order to do this, the application class that extends the `ExportedEvent` needs to override the method called `getAdditionalFieldValues()` and return a `Map` of the additional field names and values.
+
+In the following example, we show how to specify the `customer_name` field with a value of `Acme Goods`.
+Using our `OrderCreatedEvent` from the example section, we've extended the event:
+
+.OrderCreatedEvent.java
+[source,java,indent=0]
+----
+public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
+    ...
+    @Override
+    public Map<String, Object> getAdditionalFieldValues() {
+        return Collections.singletonMap("customer_name", "Acme Goods");
+    }
+}
+----
+
+[NOTE]
+====
+Additional field mappings do allow specifying a JPA attribute converter per field.
+
+In this example, we defined `example.UpperCase` that will convert any supplied string-value to upper-case prior to insertion.
+A JPA attribute converter allows decoupling this type of behavior from the call site, allowing reuse of a common behavior.
+====
+
+With the configuration in the application's `.properties` file and updating of `OrderCreateedEvent` to provide these additional fields and values,
+the {prodname} Outbox SMT now can access these additional field values and place them in the emitted event.
 
 == Configuration
 
@@ -255,6 +317,13 @@ The database-specific column definition for the tracing span context column. +
 for example, `text not null`
 |string
 |`VARCHAR(256)`
+
+|[[quarkus-debezium-outbox-additional-fields]]<<quarkus-debezium-outbox-additional-fields,`+quarkus.debezium-outbox.additional-fields+`>>::
+A comma-separated list of additional field mappings that will be persisted in the outbox table. +
+ +
+See xref:#additional-field-mappings[additional field mappings] for details on format and usage.
+|string
+|
 
 |===
 
