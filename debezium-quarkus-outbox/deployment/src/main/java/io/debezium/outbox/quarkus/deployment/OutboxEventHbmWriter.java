@@ -16,6 +16,7 @@ import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmHibernateMapping;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmIdentifierGeneratorDefinitionType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmRootEntityType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmSimpleIdType;
+import org.jboss.logging.Logger;
 
 import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
 import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
@@ -27,6 +28,7 @@ import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
  */
 public class OutboxEventHbmWriter {
 
+    private static final Logger LOGGER = Logger.getLogger(OutboxEventHbmWriter.class);
     private static final String JACKSON_JSONNODE = "com.fasterxml.jackson.databind.JsonNode";
 
     static JaxbHbmHibernateMapping write(DebeziumOutboxConfig config, OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
@@ -160,14 +162,22 @@ public class OutboxEventHbmWriter {
         attribute.setName("payload");
         attribute.setNotNull(false);
 
-        if (config.payload.converter.isPresent()) {
+        if (config.payload.explicitType.isPresent()) {
+            LOGGER.infof("Using payload explicit type: %s", config.payload.explicitType.get());
+            attribute.setTypeAttribute(config.payload.explicitType.get());
+        }
+        else if (config.payload.converter.isPresent()) {
+            LOGGER.infof("Using payload attribute converter: %s", config.payload.converter.get());
             attribute.setTypeAttribute("converted::" + config.payload.converter.get());
         }
         else if (isJacksonJsonNode) {
+            LOGGER.infof("Using payload attribute converter: %s", JsonNodeAttributeConverter.class.getName());
             attribute.setTypeAttribute("converted::" + JsonNodeAttributeConverter.class.getName());
         }
         else {
-            attribute.setTypeAttribute(outboxEventEntityBuildItem.getPayloadType().name().toString());
+            String resolvedTypeName = outboxEventEntityBuildItem.getPayloadType().name().toString();
+            LOGGER.infof("Using payload resolved type: %s", resolvedTypeName);
+            attribute.setTypeAttribute(resolvedTypeName);
         }
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
