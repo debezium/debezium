@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -546,6 +547,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         return Threads.timer(clock, RelationalSnapshotChangeEventSource.LOG_INTERVAL);
     }
 
+    @SuppressWarnings("unchecked")
     private Object[] keyFromRow(Object[] row) {
         if (row == null) {
             return null;
@@ -553,7 +555,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         final List<Column> keyColumns = getKeyMapper().getKeyKolumns(currentTable);
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
-            key[i] = row[keyColumns.get(i).position() - 1];
+            final Object fieldValue = row[keyColumns.get(i).position() - 1];
+            key[i] = fieldValue instanceof ValueWrapper<?> ? ((ValueWrapper<Object>) fieldValue).getWrappedValue()
+                    : fieldValue;
         }
         return key;
     }
