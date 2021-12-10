@@ -119,7 +119,7 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-   
+
     <build>
         <plugins>
             <plugin>
@@ -241,6 +241,24 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-schema-generator</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-connector-metadata</id>
+                        <goals>
+                            <goal>generate-openapi-spec</goal>
+                        </goals>
+                        <phase>prepare-package</phase>
+                        <configuration>
+                            <format>openapi</format>
+                            <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
         <resources>
