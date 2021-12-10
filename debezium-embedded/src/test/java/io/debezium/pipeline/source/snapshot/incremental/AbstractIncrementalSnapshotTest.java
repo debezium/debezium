@@ -69,12 +69,16 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return tableName();
     }
 
-    protected void populateTable(JdbcConnection connection) throws SQLException {
+    protected void populateTable(JdbcConnection connection, String tableName) throws SQLException {
         connection.setAutoCommit(false);
         for (int i = 0; i < ROW_COUNT; i++) {
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName(), i + 1, i));
+            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName, i + 1, i));
         }
         connection.commit();
+    }
+
+    protected void populateTable(JdbcConnection connection) throws SQLException {
+        populateTable(connection, tableName());
     }
 
     protected void populateTable() throws SQLException {
@@ -84,30 +88,31 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, x -> true, null);
+        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true, null);
     }
 
-    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount,
-                                                                        Predicate<Map.Entry<Integer, Integer>> dataCompleted, Consumer<List<SourceRecord>> recordConsumer)
+    protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount, Function<SourceRecord, V> valueConverter,
+                                                                      Predicate<Map.Entry<Integer, V>> dataCompleted,
+                                                                      Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted, k -> k.getInt32(pkFieldName()), topicName(), recordConsumer);
+        return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted, k -> k.getInt32(pkFieldName()), valueConverter, topicName(), recordConsumer);
     }
 
-    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(
-                                                                        int recordCount,
-                                                                        Predicate<Map.Entry<Integer, Integer>> dataCompleted,
-                                                                        Function<Struct, Integer> idCalculator,
-                                                                        String topicName,
-                                                                        Consumer<List<SourceRecord>> recordConsumer)
+    protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount,
+                                                                      Predicate<Map.Entry<Integer, V>> dataCompleted,
+                                                                      Function<Struct, Integer> idCalculator,
+                                                                      Function<SourceRecord, V> valueConverter,
+                                                                      String topicName,
+                                                                      Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
-        final Map<Integer, Integer> dbChanges = new HashMap<>();
+        final Map<Integer, V> dbChanges = new HashMap<>();
         int noRecords = 0;
         for (;;) {
             final SourceRecords records = consumeRecordsByTopic(1);
             final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;
-                Assertions.assertThat(noRecords).describedAs("Too many no data record results")
+                Assertions.assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
                         .isLessThanOrEqualTo(MAXIMUM_NO_RECORDS_CONSUMES);
                 continue;
             }
@@ -117,7 +122,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             }
             dataRecords.forEach(record -> {
                 final int id = idCalculator.apply((Struct) record.key());
-                final int value = ((Struct) record.value()).getStruct("after").getInt32(valueFieldName());
+                final V value = valueConverter.apply(record);
                 dbChanges.put(id, value);
             });
             if (recordConsumer != null) {
@@ -132,6 +137,23 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         Assertions.assertThat(dbChanges).hasSize(recordCount);
         return dbChanges;
+    }
+
+    protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), x -> true, null);
+    }
+
+    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, Integer>> dataCompleted,
+                                                                        Consumer<List<SourceRecord>> recordConsumer)
+            throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), dataCompleted,
+                recordConsumer);
+    }
+
+    protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, SourceRecord>> dataCompleted,
+                                                                                    Consumer<List<SourceRecord>> recordConsumer)
+            throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), dataCompleted, recordConsumer);
     }
 
     protected String valueFieldName() {
