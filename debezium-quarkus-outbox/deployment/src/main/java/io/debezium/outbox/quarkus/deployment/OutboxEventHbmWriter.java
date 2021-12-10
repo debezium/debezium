@@ -16,8 +16,10 @@ import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmHibernateMapping;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmIdentifierGeneratorDefinitionType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmRootEntityType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmSimpleIdType;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
 import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
 
@@ -28,7 +30,7 @@ import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
  */
 public class OutboxEventHbmWriter {
 
-    private static final Logger LOGGER = Logger.getLogger(OutboxEventHbmWriter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OutboxEventHbmWriter.class);
     private static final String JACKSON_JSONNODE = "com.fasterxml.jackson.databind.JsonNode";
 
     static JaxbHbmHibernateMapping write(DebeziumOutboxConfig config, OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
@@ -54,6 +56,34 @@ public class OutboxEventHbmWriter {
         entityType.getAttributes().add(createPayloadAttribute(config, outboxEventEntityBuildItem));
         if (config.tracingEnabled) {
             entityType.getAttributes().add(createTracingSpanAttribute(config));
+        }
+
+        // Additional fields
+        if (config.additionalFields.isPresent()) {
+            String[] fields = config.additionalFields.get().split(",");
+            for (int fieldIndex = 0; fieldIndex < fields.length; ++fieldIndex) {
+                String[] parts = fields[fieldIndex].split(":");
+                if (parts.length < 2) {
+                    throw new DebeziumException("Expected a column and data type for additional field #" + fieldIndex);
+                }
+                String fieldName = parts[0];
+                String fieldDataType = parts[1];
+
+                String sqlType = null;
+                if (parts.length >= 3) {
+                    sqlType = parts[2];
+                }
+
+                String fieldConverter = null;
+                if (parts.length == 4) {
+                    fieldConverter = parts[3];
+                }
+
+                LOGGER.info("Binding additional field '{}' as '{}' with {} converter.",
+                        fieldName, fieldDataType, fieldConverter == null ? "no" : "a");
+
+                entityType.getAttributes().add(createAdditionalField(fieldName, fieldDataType, sqlType, fieldConverter));
+            }
         }
 
         return mapping;
@@ -163,20 +193,20 @@ public class OutboxEventHbmWriter {
         attribute.setNotNull(false);
 
         if (config.payload.type.isPresent()) {
-            LOGGER.infof("Using payload type: %s", config.payload.type.get());
+            LOGGER.info("Using payload type: {}", config.payload.type.get());
             attribute.setTypeAttribute(config.payload.type.get());
         }
         else if (config.payload.converter.isPresent()) {
-            LOGGER.infof("Using payload attribute converter: %s", config.payload.converter.get());
+            LOGGER.info("Using payload attribute converter: {}", config.payload.converter.get());
             attribute.setTypeAttribute("converted::" + config.payload.converter.get());
         }
         else if (isJacksonJsonNode) {
-            LOGGER.infof("Using payload attribute converter: %s", JsonNodeAttributeConverter.class.getName());
+            LOGGER.info("Using payload attribute converter: {}", JsonNodeAttributeConverter.class.getName());
             attribute.setTypeAttribute("converted::" + JsonNodeAttributeConverter.class.getName());
         }
         else {
             String resolvedTypeName = outboxEventEntityBuildItem.getPayloadType().name().toString();
-            LOGGER.infof("Using payload resolved type: %s", resolvedTypeName);
+            LOGGER.info("Using payload resolved type: {}", resolvedTypeName);
             attribute.setTypeAttribute(resolvedTypeName);
         }
 
@@ -211,6 +241,27 @@ public class OutboxEventHbmWriter {
 
         attribute.getColumnOrFormula().add(column);
 
+        return attribute;
+    }
+
+    private static JaxbHbmBasicAttributeType createAdditionalField(String name, String dataType, String sqlType, String converter) {
+        final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
+        attribute.setName(name);
+
+        if (converter != null) {
+            attribute.setTypeAttribute("converted::" + converter);
+        }
+        else {
+            attribute.setTypeAttribute(dataType);
+        }
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(name);
+        if (sqlType != null) {
+            column.setSqlType(sqlType);
+        }
+
+        attribute.getColumnOrFormula().add(column);
         return attribute;
     }
 

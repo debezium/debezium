@@ -14,6 +14,8 @@ import javax.inject.Inject;
 import javax.persistence.EntityManager;
 
 import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 
@@ -23,6 +25,8 @@ import io.debezium.outbox.quarkus.ExportedEvent;
  * @author Chris Cranford
  */
 public abstract class AbstractEventDispatcher implements EventDispatcher {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEventDispatcher.class);
 
     protected static final String TIMESTAMP = "timestamp";
     protected static final String PAYLOAD = "payload";
@@ -64,6 +68,16 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         dataMap.put(TYPE, event.getType());
         dataMap.put(PAYLOAD, event.getPayload());
         dataMap.put(TIMESTAMP, event.getTimestamp());
+
+        for (Map.Entry<String, Object> additionalFields : event.getAdditionalFieldValues().entrySet()) {
+            if (dataMap.containsKey(additionalFields.getKey())) {
+                LOGGER.error("Outbox entity already contains field with name '{}', additional field mapping skipped",
+                        additionalFields.getKey());
+                continue;
+            }
+            dataMap.put(additionalFields.getKey(), additionalFields.getValue());
+        }
+
         return dataMap;
     }
 }

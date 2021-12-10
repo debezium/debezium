@@ -65,6 +65,12 @@ public class DebeziumOutboxConfig {
     public DebeziumOutboxConfigPayload payload;
 
     /**
+     * Outbox additional fields
+     */
+    @ConfigItem
+    public Optional<String> additionalFields;
+
+    /**
      * Outbox Tracing configurable attributes
      */
     @ConfigItem
