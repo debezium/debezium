@@ -6,6 +6,8 @@
 :context: db2
 :data-collection: table
 :mbean-name: {context}
+:connector-file: {context}
+:connector-class: Db2Connector
 ifdef::community[]
 
 :toc:
@@ -1611,15 +1613,24 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} Db2 connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add the connector configuration to your container.
-For details about deploying the {prodname} Db2 connector, see the following topics:
+You can use either of the following methods to deploy a {prodname} connector:
 
-* xref:deploying-debezium-db2-connectors[]
+* xref:debezium-{context}-using-streams-to-deploy-a-connector[Use {StreamsName} to automatically create a container image that includes the connector plug-in]
++ This is the preferred method.
+* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/proc-connector-streams-deployment.adoc[leveloffset=+1]
+
+
+.Additional resources
+
 * xref:descriptions-of-debezium-db2-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-db2-connectors
-=== Deploying {prodname} Db2 connectors
+=== Deploying a {prodname} Db2 connector by building a custom Kafka Connect container image from a Dockerfile
 
 To deploy a {prodname} Db2 connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
 You then need to create the following custom resources (CRs):
@@ -1657,7 +1668,7 @@ For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOp
 │   ├── ...
 ----
 
-.. Create a Docker file that uses `{DockerKafkaConnect}` as the base image.
+.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
 +
 [source,shell,subs="+attributes,+quotes"]
@@ -1672,7 +1683,7 @@ EOF
 <1> You can specify any file name that you want.
 <2> Replace `my-plugins` with the name of your plug-ins directory.
 +
-The command creates a Docker file with the name `debezium-container-for-db2.yaml` in the current directory.
+The command creates a Dockerfile with the name `debezium-container-for-db2.yaml` in the current directory.
 
 .. Build the container image from the `debezium-container-for-db2.yaml` Docker file that you created in the previous step.
 From the directory that contains the file, open a terminal window and enter one of the following commands:
@@ -1812,32 +1823,9 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `mydatabase` database as defined in the `KafkaConnector` CR.
 
-. Verify that the connector was created and has started:
-.. Display the Kafka Connect log output to verify that the connector was created and has started to capture changes in the specified database:
-+
-[source,shell,options="nowrap"]
-----
-oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
-----
-
-.. Review the log output to verify that {prodname} performs the initial snapshot.
-The log displays output that is similar to the following messages:
-+
-[source,shell,options="nowrap"]
-----
-... INFO Starting snapshot for ...
-... INFO Snapshot is using user 'debezium' ...
-----
-+
-If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing.
-For the example CR, there would be a topic for the table specified in the `include.list` property.
-Downstream applications can subscribe to these topics.
-
-.. Verify that the connector created the topics by running the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc get kafkatopics
+[id="verifying-that-the-debezium-{context}-connector-is-running"]
+== Verifying that the connector is running
+include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoct kafkatopics
 ----
 endif::product[]
 
