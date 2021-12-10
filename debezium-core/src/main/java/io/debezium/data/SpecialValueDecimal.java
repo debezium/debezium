@@ -23,7 +23,7 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
  * @author Jiri Pechanec
  *
  */
-public class SpecialValueDecimal implements Serializable {
+public class SpecialValueDecimal implements Serializable, ValueWrapper<BigDecimal> {
 
     private static final long serialVersionUID = 1L;
 
@@ -189,5 +189,10 @@ public class SpecialValueDecimal implements Serializable {
                 throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + columnName + " but current mode does not handle it. "
                         + "If you need to support it then set decimal handling mode to 'string'.");
         }
+    }
+
+    @Override
+    public BigDecimal getWrappedValue() {
+        return decimalValue;
     }
 }
