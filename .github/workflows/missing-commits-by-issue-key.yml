@@ -1,0 +1,21 @@
+name: Missing commits check
+
+on:
+  workflow_dispatch:
+    inputs:
+      fixed_version:
+        description: 'The Jira fixed version (e.g. 1.8.0.Final)'
+        required: true
+      branch_name:
+        description: 'The branch to be inspected (e.g. main or 1.8)'
+        required: true
+
+jobs:
+  script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout action
+        uses: actions/checkout@v1
+      - name: Run script
+        run: |
+          ./github-support/list-missing-commits-by-issue-key.sh ${{ github.event.inputs.fixed_version }} ${{ github.event.inputs.branch_name }}
