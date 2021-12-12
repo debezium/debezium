@@ -317,7 +317,7 @@ This task can be automated by means of the `heartbeat.action.query` connector op
 [TIP]
 ====
 For users on AWS RDS with Postgres, a similar situation to the third cause may occur on an idle environment,
-since AWS RDS makes writes to its own system tables not visible to the useres on a frequent basis (5 minutes).
+since AWS RDS makes writes to its own system tables not visible to the users on a frequent basis (5 minutes).
 Again regularly emitting events will solve the problem.
 ====
 
