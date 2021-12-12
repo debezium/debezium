@@ -1,0 +1,24 @@
+name: Missing commits check
+
+on:
+  workflow_dispatch:
+    inputs:
+      fixed_version:
+        description: 'The Jira fixed version (e.g. 1.8.0.Final)'
+        required: true
+      from_tag:
+        description: 'The tag to start from (e.g. v1.8.0.CR1)'
+        required: true
+      to_tag:
+        description: 'The tag to end at (e.g. v1.8.0.Final)'
+        required: true
+
+jobs:
+  script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout action
+        uses: actions/checkout@v1
+      - name: Run script
+        run: |
+          ./github-support/list-missing-commits-by-issue-key.sh ${{ github.event.inputs.fixed_version }} ${{ github.event.inputs.from_tag }} ${{ github.event.inputs.to_tag }}
