@@ -6,8 +6,11 @@ on:
       fixed_version:
         description: 'The Jira fixed version (e.g. 1.8.0.Final)'
         required: true
-      branch_name:
-        description: 'The branch to be inspected (e.g. main or 1.8)'
+      from_tag:
+        description: 'The tag to start from (e.g. v1.8.0.CR1)'
+        required: true
+      to_tag:
+        description: 'The tag to end at (e.g. v1.8.0.Final)'
         required: true
 
 jobs:
@@ -18,4 +21,4 @@ jobs:
         uses: actions/checkout@v1
       - name: Run script
         run: |
-          ./github-support/list-missing-commits-by-issue-key.sh ${{ github.event.inputs.fixed_version }} ${{ github.event.inputs.branch_name }}
+          ./github-support/list-missing-commits-by-issue-key.sh ${{ github.event.inputs.fixed_version }} ${{ github.event.inputs.from_tag }} ${{ github.event.inputs.to_tag }}
