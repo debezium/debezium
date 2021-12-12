@@ -4,11 +4,14 @@ set -ouo > /dev/null 2>&1
 
 if [ $# -eq 0 ]; then
   echo "No parameters provided."
-  echo "Syntax: ./list-missing-commits-by-issue-key.sh <fix-version> <branch-name>"
+  echo "Syntax: ./list-missing-commits-by-issue-key.sh <fix-version> <since-tag-name> <to-tag-name>"
   echo ""
-  echo "  fix-version : The Jira version for which issues will be compared against the Git history"
-  echo "  branch-name : The local GitHub branch that should be inspected for the commits"
-  echo "                Be sure you have synchronized your local repository!"
+  echo "  fix-version    : The Jira version for which issues will be compared against the Git history"
+  echo "  since-tag-name : The starting tag to begin inspecting Git history from"
+  echo "  to-tag-name    : The ending tag to stop inspecting Git history to"
+  echo ""
+  echo "An example of comparing the issues in Jira for 1.8.0.CR1 with Git history would be:"
+  echo "  ./list-missing-commits-by-issue-key.sh 1.8.0.CR1 v1.8.0.Beta1 v1.8.0.CR1"
   echo ""
   exit 1
 fi
