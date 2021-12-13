@@ -108,6 +108,7 @@
     <properties>
         <adapter.name>logminer</adapter.name>
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
+        <connector.assembly.ref>connector-distribution</connector.assembly.ref>
     </properties>
 
     <build>
@@ -233,7 +234,7 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
                                     </descriptorRefs>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
@@ -294,7 +295,7 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
                                     </descriptorRefs>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
