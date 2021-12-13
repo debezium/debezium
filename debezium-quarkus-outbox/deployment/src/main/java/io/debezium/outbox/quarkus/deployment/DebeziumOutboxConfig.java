@@ -201,10 +201,10 @@ public class DebeziumOutboxConfig {
         public Optional<String> converter;
 
         /**
-         * The column's explicit type definition class
+         * The column's type definition class
          */
         @ConfigItem
-        public Optional<String> explicitType;
+        public Optional<String> type;
     }
 
     @ConfigGroup

@@ -239,8 +239,8 @@ for example, `com.company.TheAttributeConverter`
 |string
 |
 
-|[[quarkus-debezium-outbox-payload-explicit-type]]<<quarkus-debezium-outbox-payload-explicit-type,`+quarkus.debezium-outbox.payload.explicit-type+`>>::
-A fully-qualified class name of the explicit type of the payload. +
+|[[quarkus-debezium-outbox-payload-type]]<<quarkus-debezium-outbox-payload-type,`+quarkus.debezium-outbox.payload.type+`>>::
+A fully-qualified class name of a Hibernate https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#basic-custom-type[user type] implementation. +
 for example, `io.company.types.JsonNodeBinaryType`
 |string
 |
