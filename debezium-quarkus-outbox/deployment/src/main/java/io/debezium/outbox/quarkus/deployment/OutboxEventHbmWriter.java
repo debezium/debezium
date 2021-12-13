@@ -162,9 +162,9 @@ public class OutboxEventHbmWriter {
         attribute.setName("payload");
         attribute.setNotNull(false);
 
-        if (config.payload.explicitType.isPresent()) {
-            LOGGER.infof("Using payload explicit type: %s", config.payload.explicitType.get());
-            attribute.setTypeAttribute(config.payload.explicitType.get());
+        if (config.payload.type.isPresent()) {
+            LOGGER.infof("Using payload type: %s", config.payload.type.get());
+            attribute.setTypeAttribute(config.payload.type.get());
         }
         else if (config.payload.converter.isPresent()) {
             LOGGER.infof("Using payload attribute converter: %s", config.payload.converter.get());
