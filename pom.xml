@@ -101,7 +101,6 @@
         <version.jackson>2.10.5</version.jackson>
         <version.jackson.databind>2.10.5.1</version.jackson.databind>
         <version.org.slf4j>1.7.30</version.org.slf4j>
-        <version.log4j>1.2.17</version.log4j>
         <version.netty>4.1.51.Final</version.netty>
 
         <!-- Scala version used to build Kafka -->
@@ -129,6 +128,9 @@
         <version.mysql.server>5.7</version.mysql.server>
         <version.mongo.server>3.6</version.mongo.server>
         <version.cassandra>3.11.10</version.cassandra>
+
+        <!-- Logging -->
+        <version.jboss.log4j.logmanager>1.2.2.Final</version.jboss.log4j.logmanager>
 
     </properties>
 
