@@ -128,6 +128,7 @@
         <oracle.infinispan.password>admin</oracle.infinispan.password>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+        <connector.assembly.ref>connector-distribution</connector.assembly.ref>
     </properties>
 
     <build>
@@ -253,7 +254,7 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
                                     </descriptorRefs>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
@@ -314,7 +315,7 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
                                     </descriptorRefs>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
