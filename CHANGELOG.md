@@ -3,6 +3,56 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 1.7.2.Final
+December 14th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377372)
+
+### New features since 1.7.1.Final
+
+* Support passing an unavailable placeholder value for CLOB/BLOB column types [DBZ-4276](https://issues.redhat.com/browse/DBZ-4276)
+
+
+### Breaking changes since 1.7.1.Final
+
+None
+
+
+### Fixes since 1.7.1.Final
+
+* None of log files contains offset SCN (SCN offset is no longer available in the online redo logs) [DBZ-3635](https://issues.redhat.com/browse/DBZ-3635)
+* Postgres testsuite hangs on PostgresConnectorIT#exportedSnapshotShouldNotSkipRecordOfParallelTx [DBZ-4081](https://issues.redhat.com/browse/DBZ-4081)
+* Container images for Apache Kafka and ZooKeeper fail to start up [DBZ-4160](https://issues.redhat.com/browse/DBZ-4160)
+* Debezium log miner processes get terminated with ORA-04030 error in idle database environment. [DBZ-4204](https://issues.redhat.com/browse/DBZ-4204)
+* Debezium Metrics not being set correctly [DBZ-4222](https://issues.redhat.com/browse/DBZ-4222)
+* DDL statement couldn't be parsed [DBZ-4224](https://issues.redhat.com/browse/DBZ-4224)
+* Exception ORA-00310 is not gracefully handled during streaming [DBZ-4230](https://issues.redhat.com/browse/DBZ-4230)
+* Reduce verbosity of logging Oracle memory metrics [DBZ-4255](https://issues.redhat.com/browse/DBZ-4255)
+* Signal based incremental snapshot is failing when launched right after a schema change [DBZ-4272](https://issues.redhat.com/browse/DBZ-4272)
+* [Debezium Server] Event Hubs exporter slow/Event data was too large [DBZ-4277](https://issues.redhat.com/browse/DBZ-4277)
+* ParsingException: DDL statement couldn't be parsed [DBZ-4280](https://issues.redhat.com/browse/DBZ-4280)
+* some data type is not working for sending signals to a Debezium connector [DBZ-4298](https://issues.redhat.com/browse/DBZ-4298)
+* NullPointerException may be thrown when validating table and column lengths [DBZ-4308](https://issues.redhat.com/browse/DBZ-4308)
+* RelationalChangeRecordEmitter calls "LoggerFactory.getLogger(getClass())" for each instance of the emitter [DBZ-4309](https://issues.redhat.com/browse/DBZ-4309)
+*  support for JSON function in MySQL index [DBZ-4320](https://issues.redhat.com/browse/DBZ-4320)
+* Avoid holding table metadata lock in read-only incremental snapshots [DBZ-4331](https://issues.redhat.com/browse/DBZ-4331)
+* Incremental Snapshot does not pick up table [DBZ-4343](https://issues.redhat.com/browse/DBZ-4343)
+* DDL couldn't be parsed: 'analyze table schema.table estimate statistics sample 5 percent;' [DBZ-4396](https://issues.redhat.com/browse/DBZ-4396)
+*  Xstream support with LOB unavailable value placeholder support is inconsistent [DBZ-4422](https://issues.redhat.com/browse/DBZ-4422)
+* Oracle Infinispan buffer fails to serialize unavailable value placeholders [DBZ-4425](https://issues.redhat.com/browse/DBZ-4425)
+
+
+### Other changes since 1.7.1.Final
+
+* Upgrade to Apicurio Registry 2.0 (QE, docs) [DBZ-3629](https://issues.redhat.com/browse/DBZ-3629)
+* Misc. documentation changes for the Debezium MySQL connector [DBZ-3974](https://issues.redhat.com/browse/DBZ-3974)
+* Promote Outbox SMT to GA [DBZ-4012](https://issues.redhat.com/browse/DBZ-4012)
+* Document incremental chunk size setting [DBZ-4127](https://issues.redhat.com/browse/DBZ-4127)
+* Upgrade MySQL JDBC driver to 8.0.27 [DBZ-4286](https://issues.redhat.com/browse/DBZ-4286)
+* OracleClobDataTypeIT shouldNotStreamAnyChangesWhenLobEraseIsDetected may fail randomly [DBZ-4384](https://issues.redhat.com/browse/DBZ-4384)
+* Optionally assemble Oracle connector distribution without Infinispan [DBZ-4446](https://issues.redhat.com/browse/DBZ-4446)
+* Drop JMS Appender class during container build [DBZ-4447](https://issues.redhat.com/browse/DBZ-4447)
+
+
+
 ## 1.7.1.Final
 November 5th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12374936)
 
