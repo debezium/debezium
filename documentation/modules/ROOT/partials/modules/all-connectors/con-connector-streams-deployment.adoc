@@ -1,31 +1,43 @@
+////
+
 //Include in the deployment section that is conditionalized for [product]
-// Add under a concept heading in the connector file.
+// You can use either of the following methods to deploy a {prodname} connector:
+//* Use {StreamsName} to automatically create a container image that includes the connector plug-in  This is the preferred method. [Links to Overview topic, which follows]
+//* Build a custom Kafka Connect container image from a Dockerfile.
 
-Beginning with {prodname} 1.6, the preferred method for deploying a {prodname} connector is to create a `KafkaConnect` custom resource CR that includes the connector configuration,
-and then to use {StreamsName} to build a Kafka Connect container image that includes the connector plug-in automatically.
-You then apply a `KafkaConnector` CR to deploy the connector.
+//.Additional resources
+//[Links to connector configuration properties]
 
-To specify the connector to incorporate into the Kafka Connect image, you add it to the `build.plugins` configuration of the `KafkaConnect` custom resource,
-alongside the standard Kafka Connect configuration properties, such as the number of replicas and the name of the Kafka Connect server.
+// Set the type to concept
+//(// Type: concept
+// Set the following ID
+//[id="overview-of-using-streams-to-deploy-a-debezium-<context>-connector"]
+The ID should explicitly specify the connector type vs. using the {context} variable
+// Add the following heading in the connector file.
+//=== Overview of using {StreamsName} to deploy a {prodname} {connector-name} connector
+// Follow the title with the following INCLUDE statement
+//include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
 
-You also add a `spec.build.output` parameter in the CR to specify where to store the resulting Kafka Connect container image.
-Container images can be stored in a Docker repository, or in an OpenShift ImageStream.
-To store images in an ImageStream, you must create the ImageStream manually before you deploy Kafka Connect.
+////
 
-//For {StreamsName} to create the new image automatically, the build configuration requires `output` properties that specify a container registry to store the container newly built image, and `plugins` properties that list the connector plug-ins and their artifacts to add to the image.
-//You specify the connectors to include by adding the list of connector plug-ins and their artifacts to the `.spec.build.plugins` section of the `KafkaConnect` custom resource.
+Beginning with {prodname} 1.6, the preferred method for deploying a {prodname} connector is to use {StreamsName} to build a Kafka Connect container image that includes the connector plug-in.
 
-When you build the Kafka Connect image, {kafka-streams} downloads the connector plug-in artifacts that you specify, and incorporates them into the `KafkaConnect` image.
-Optionally, for each connector plug-in, you can include other components that you want to use with the connector.
-For example, you can integrate service registry artifacts or the Debezium scripting component with a connector.
+During the deployment process, you create and use the following custom resources (CRs):
 
-After the Kafka Connect pod that contains your connector starts, you can start the connector by creating a `KafkaConnector` resource.
-The KafkaConnector CR specifies the connector configuration, which includes the following connection and deployment details:
+* A `KafkaConnect` CR that defines your Kafka Connect instance and includes information about the connector artifacts needs to include in the image.
+* A `KafkaConnector` CR that provides details that include information the connector uses to access the source database.
+  After {kafka-streams} starts the Kafka Connect pod, you start the connector by applying the `KafkaConnector` CR.
 
-* Name of the cluster where you want to deploy the connector.
-* The database server name.
-* Host address and port for connecting to the database
-* The database account and password that the connector uses to connect to the database.
+In the build specification for the Kafka Connect image, you can specify the connectors that are available to deploy.
+For each connector plug-in, you can also specify other components that you want to make available for deployment.
+For example, you can add {registry} artifacts, or the {prodname} scripting component.
+When {kafka-streams} builds the Kafka Connect image, it downloads the specified artifacts, and incorporates them into the image.
+
+The `spec.build.output` parameter in the `KafkaConnect` CR specifies where to store the resulting Kafka Connect container image.
+Container images can be stored in a Docker registry, or in an OpenShift ImageStream.
+To store images in an ImageStream, you must create the ImageStream before you deploy Kafka Connect.
+ImageStreams are not created automatically.
+
 
 NOTE: If you use a `KafkaConnect` resource to create a cluster, afterwards you cannot use the Kafka Connect REST API to create or update connectors.
 You can still use the REST API to retrieve information.

@@ -1,28 +1,32 @@
 
 ////
-Add this content to the deployment section that is conditionalized for [product]
+Add the content in this file to the part of the Deployment section in each connector file that is conditionalized for [product]
 
-{prodname} provides the following methods for deploying a {prodname} connector:
 You can use either of the following methods to deploy a {prodname} connector:
 
-Confirm whether it's necessary to obtain JDBC drivers for Db2 and Oracle.
-The current downstream doc doesn't explicitly mention obtaining the Db2 driver. Is it part of the RH package?
-
-
 * xref:debezium-{context}-using-streams-to-deploy-a-connector[Use {StreamsName} to automatically create a container image that includes the connector plug-in]
-
++ This is the preferred method.
 * xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/proc-connector-streams-deployment.adoc[leveloffset=+1]
+
+
+For Db2 and Oracle, customer must obtain JDBC drivers.
+WHere to insert that content.
+In the current downstream Db2 doc there's no mention of obtaining the Db2 driver, although the information is part of the upstream doc.
 
 // Insert the following anchor ID and title immediately after the bulleted list and add the connector name in place of <database>
 [id="using-streams-to-deploy-a-debezium-{context}-connector"]
-=== Using {StreamsName} to deploy a {prodname} <database> connector
+=== Using {StreamsName} to deploy a {prodname} {connector-name} connector
 // Follow the title with the following INCLUDE statement
 
 include::{partialsdir}/modules/all-connectors/proc-{context}-debezium-using-streams-to-deploy-a-connector.adoc
 ////
 
 When deploying {prodname} connectors on OpenShift, it's no longer necessary to first build your own Kafka Connect image.
-Rather, the preferred method for deploying connectors on OpenShift is to use a build configuration in {kafka-streams} to automatically build a Kafka Connect container image that includes the {prodname} connector plug-ins that you want to use.
+Instead, the preferred method for deploying connectors on OpenShift is to use a build configuration in {kafka-streams} to automatically build a Kafka Connect container image that includes the {prodname} connector plug-ins that you want to use.
 
 During the build process, the {kafka-streams} Operator transforms input parameters in a `KafkaConnect` custom resource, including {prodname} connector definitions, into a Kafka Connect container image.
 The build downloads the necessary artifacts from the Red Hat Maven repository or another configured HTTP server.
@@ -30,30 +34,27 @@ The newly created container is pushed to the container repository that is specif
 After {StreamsName} builds the Kafka Connect image, you create `KafkaConnector` custom resources to start the connectors that included in the build.
 
 .Prerequisites
-* You have administrator (?) access to an OpenShift cluster on which the cluster Operator is installed.
-* The {StreamsName} Operator is deployed and {StreamsName} is running.
-* A Kafka cluster is deployed as documented in link:{LinkDeployStreamsOpenShift}#kafka-cluster-str[{NameDeployStreamsOpenShift}].
+* You have access to an OpenShift cluster on which the cluster Operator is installed.
+* The {StreamsName} Operator is running.
+* An Apache Kafka cluster is deployed as documented in link:{LinkDeployStreamsOpenShift}#kafka-cluster-str[{NameDeployStreamsOpenShift}].
 * You have a {prodnamefull} license.
-* The OpenShift `oc` CLI client is installed.
-* You have access to the OpenShift Container Platform web console.
-* A source database is running on a server that is available to the OpenShift cluster.
-* You have one of the following:
-To store the build image for the connnector as a container in a container registry such as `quay.io` or `docker.io`::
+* The OpenShift `oc` CLI client is installed or you have access to the OpenShift Container Platform web console.
+* Depending on how you intend to store the Kafka Connect build image, you need registry permissions or you must create an ImageStream resource:
+To store the build image in an image registry, such as quay.io or Docker Hub:::
 +
-** An account and permissions to create and manage containers in the container registry.
-To store the build image for the connector as a native OpenShift ImageStream::
+** An account and permissions to create and manage images in the registry.
+To store the build image as a native OpenShift ImageStream::
 +
 ** An link:https://docs.openshift.com/container-platform/latest/openshift_images/images-understand.html#images-imagestream-use_images-understand[ImageStream] resource is deployed to the cluster.
 You must explicitly create an ImageStream for the cluster.
-ImageStreams are not created by default.
-
+ImageStreams are not available by default.
 
 .Procedure
 
 . Log in to the OpenShift cluster.
 . Create a new {prodname} `KafkaConnect` custom resource (CR) for the connector.
 For example, create a `KafkaConnect` CR that specifies the `metadata.annotations` and `spec.build` properties as shown xref:debezium-connector-deployment-kafka-connect-custom-resource[Example 1, window="_blank" rel="noopener noreferrer"].
-Save the file with the name `dbz-connect.yaml`.
+Save the file with a name such as `dbz-connect.yaml`.
 +
 [id="debezium-connector-deployment-kafka-connect-custom-resource"]
 .A `dbz-inventory-connector.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
@@ -76,9 +77,9 @@ spec:
       - name: debezium-connector-{connector-file}
         artifacts:
         - type: zip // <6>
-          url: {red-hat-maven-repository}/debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-_<build_number>_/{debezium-version}-.zip  // <7>
+          url: {red-hat-maven-repository}/debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-_<build_number>_/debezium-connector-{connector-file}-{debezium-version}.zip  // <7>
         - type: zip
-          url: {red-hat-maven-repository}/apicurio/apicurio-registry-distro-connect-converter/{registry-version}/apicurio-registry-distro-connect-converter-{registry-version}-converter.zip
+          url: {red-hat-maven-repository}/apicurio/apicurio-registry-distro-connect-converter/{registry-version}-redhat-_<build-number>_/apicurio-registry-distro-connect-converter-{registry-version}-redhat-_<build-number>.zip
         - type: zip
           url: {red-hat-maven-repository}/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.zip
 
@@ -93,28 +94,28 @@ spec:
 | Sets the `strimzi.io/use-connector-resources` annotation to `"true"` to enable the Cluster Operator to use `KafkaConnector` resources to configure connectors in this Kafka Connect cluster.
 
 |2
-|The `spec.build` configuration specifies where to output the container image and which plug-ins. The build configuration specifies the output location for storing the Kafka Connect image after it is built, and lists the plug-ins to include .
+|The `spec.build` configuration specifies where to store the build image and lists the plug-ins to include in the image, along with the location of the plug-in artifacts.
 
 |3
 |The `build.output` specifies the registry in which the newly built image is stored.
 
 |4
 |Specifies the name and image name for the image output.
-Valid values for `output.type` are `docker` to push into a container registry like Docker Hub or Quay, or `ImageStream` to push the image to an internal OpenShift registry.
-An ImageStream resource must be deployed to the cluster if you want to store the build image as a native OpenShift ImageStream rather than storing the image in a docker container.
+Valid values for `output.type` are `docker` to push into a container registry like Docker Hub or Quay, or `imagestream` to push the image to an internal OpenShift ImageStream.
+To use an ImageStream, an ImageStream resource must be deployed to the cluster.
 For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkStreamsOpenShift}#type-Build-reference[{StreamsName} Build schema reference documentation].
 
 |5
 |The `plugins` configuration lists all of the connectors that you want to include in the Kafka Connect image.
-For each entry in the list you specify a plug-in `name`, and provide type and location information for the `artifacts` that are required to build the connector.
-Optionally, for each connector plug-in, you can include other components that you want to use with the connector.
-For example, you can add service registry artifacts, or the Debezium scripting component if you want to use these with a connector.
+For each entry in the list, specify a plug-in `name`, and information for about the artifacts that are required to build the connector.
+Optionally, for each connector plug-in, you can include other components that you want to be available for use with the connector.
+For example, you can add Service Registry artifacts, or the {prodname} scripting component.
 
 |6
 |The value of `artifacts.type` specifies the file type of the artifact specified in the `artifacts.url`.
 Valid types are `zip`, `tgz`, or `jar`.
-{prodname} connector archives are provided in `zip` file format.
-JDBC driver files are in JAR format.
+{prodname} connector archives are provided in `.zip` file format.
+JDBC driver files are in `.jar` format.
 The `type` value must match the type of the file that is referenced in the `url` field.
 
 |7
@@ -132,12 +133,11 @@ oc create -f dbz-connect.yaml
 ----
 +
 Based on the configuration specified in the custom resource, the Streams Operator prepares a Kafka Connect image to deploy. +
-After the build completes, it pushes the image to the specified container registry or ImageStream.
-A Kafka Connect pod is started.
-The pod includes the connectors that you listed in the configuration.
+After the build completes, the Operator pushes the image to the specified registry or ImageStream, and starts the Kafka Connect cluster.
+The connector artifacts that you listed in the configuration are available in the cluster.
 
-. After the Kafka Connect connect pod starts, create a `KafkaConnector` resource to start the connector. +
-For example, create the following `KafkaConnector` CR and save it as `{context}-inventory-connector.yaml`
+. Create a `KafkaConnector` resource to define an instance of each connector that you want to deploy. +
+For example, create the following `KafkaConnector` CR, and save it as `{context}-inventory-connector.yaml`
 +
 [id="debezium-connector-deployment-kafkaconnector-custom-resource"]
 .A `{context}-inventory-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
@@ -210,6 +210,22 @@ The namespace is also used in the names of related Kafka Connect schemas, and th
 |The list of tables from which the connector captures change events.
 
 |===
+
+. Create the connector resource by running the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -n <namespace> -f _<kafkaConnector>_.yaml
+----
++
+For example,
++
+[source,shell,options="nowrap"]
+----
+oc create -n debezium-docs -f dbz-connect.yaml
+----
 +
 The connector is registered to the Kafka Connect cluster and starts to run against the database that is specified by `spec.config.database.dbname` in the `KafkaConnector` CR.
 After the connector pod is ready, {prodname} is running.
+
+For information about verifying the connector, see xref:[Verifying the connector deployment]

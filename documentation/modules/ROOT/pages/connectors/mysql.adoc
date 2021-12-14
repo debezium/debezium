@@ -8,6 +8,7 @@
 :mbean-name: {context}
 :connector-file: {context}
 :connector-class: MySql
+:connector-name: MySQL
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -2000,16 +2001,33 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} MySQL connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add the connector configuration to your container.
-For details about deploying the {prodname} MySQL connector, see the following topics:
+You can use either of the following methods to deploy a {prodname} MySQL connector:
 
-* xref:deploying-debezium-mysql-connectors[]
+* xref:using-streams-to-deploy-a-debezium-mysql-connector[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++
+This is the preferred method.
+* xref:deploying-debezium-mysql-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+.Additional resources
+
 * xref:descriptions-of-debezium-mysql-connector-configuration-properties[]
+
+// Type: concept
+[id="openshift-streams-mysql-connector-deployment"]
+=== MySQL connector deployment using {StreamsName}
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+
+//Type: procedure
+[id="using-streams-to-deploy-debezium-mysql-connectors"]
+=== Using {StreamsName} to deploy a {prodname} MySQL connector
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
 
 // Type: procedure
 // ModuleID: deploying-debezium-mysql-connectors
 === Deploying {prodname} MySQL connectors
 
+
+//To deploy a {prodname} MySQL connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add the connector configuration to your container.
 To deploy a {prodname} MySQL connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
 You then need to create the following custom resources (CRs):
 
@@ -2203,9 +2221,6 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` database as defined in the `KafkaConnector` CR.
 
-[id="verifying-that-the-debezium-{context}-connector-is-running"]
-== Verifying that the connector is running
-include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoc
 endif::product[]
 
 ifdef::community[]
@@ -2282,6 +2297,15 @@ endif::community[]
 .Results
 When the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapshots[performs a consistent snapshot] of the MySQL databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+
+ifdef::product[]
+// Type: procedure
+[id="verifying-that-the-debezium-mysql-connector-is-running"]
+=== Verifying that the {prodname} MySQL connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-debezium-connector-deployment.adoc
+
+endif::[product]
 
 // Type: reference
 // Title: Description of {prodname} MySQL connector configuration properties
