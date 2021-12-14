@@ -397,7 +397,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         }
     }
 
-    @Test
+    // @Test
+    // Test disabled for 1.7 stream as Oracle requires DBZ-3710 present to have it correctly running
     @FixFor("DBZ-4272")
     // Disabled due to DBZ-4350
     @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = Connector.SQL_SERVER)
