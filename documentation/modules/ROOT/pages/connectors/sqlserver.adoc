@@ -8,6 +8,7 @@
 :mbean-name: sql_server
 :connector-file: {context}
 :connector-class: SqlServer
+:connector-name: SQL Server
 ifdef::community[]
 
 :toc:

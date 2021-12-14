@@ -6,6 +6,7 @@
 :context: oracle
 :mbean-name: {context}
 :connector-file: {context}
+:connector-name: Oracle
 ifdef::community[]
 :toc:
 :toc-placement: macro
