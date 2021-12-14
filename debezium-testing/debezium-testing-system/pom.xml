@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-testing</artifactId>
-    <version>1.7.2.Final</version>
+    <version>1.7.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -97,7 +97,7 @@
     <database.db2.cdc.schema>ASNCDC</database.db2.cdc.schema>
 
     <!--Debezium connector versions-->
-    <version.debezium.connector>1.7.2.Final</version.debezium.connector>
+    <version.debezium.connector>1.7.0-SNAPSHOT</version.debezium.connector>
   </properties>
 
   <dependencyManagement>
