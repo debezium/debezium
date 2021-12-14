@@ -8,6 +8,7 @@
 :mbean-name: {context}
 :connector-file: {context}
 :connector-class: Db2Connector
+:connector-name: Db2
 ifdef::community[]
 
 :toc:
@@ -1623,13 +1624,20 @@ endif::community[]
 ifdef::product[]
 You can use either of the following methods to deploy a {prodname} connector:
 
-* xref:debezium-{context}-using-streams-to-deploy-a-connector[Use {StreamsName} to automatically create a container image that includes the connector plug-in]
+* xref:openshift-streams-db2-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 + This is the preferred method.
-* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+* xref:deploying-debezium-db2-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
-include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/all-connectors/proc-connector-streams-deployment.adoc[leveloffset=+1]
+// Type: concept
+[id="openshift-streams-db2-connector-deployment"]
+=== Db2 connector deployment using {StreamsName}
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+
+// Type: procedure
+[id="using-streams-to-deploy-debezium-db2-connectors"]
+=== Using {StreamsName} to deploy a {prodname} Db2 connector
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
 
 
 .Additional resources
@@ -1831,10 +1839,6 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `mydatabase` database as defined in the `KafkaConnector` CR.
 
-[id="verifying-that-the-debezium-{context}-connector-is-running"]
-== Verifying that the connector is running
-include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoct kafkatopics
-----
 endif::product[]
 
 ifdef::community[]
@@ -1912,6 +1916,14 @@ endif::community[]
 When the connector starts, it {link-prefix}:{link-db2-connector}#db2-snapshots[performs a consistent snapshot] of the Db2 database tables that the connector is configured to capture changes for.
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
+ifdef::product[]
+// Type: procedure
+[id="verifying-that-the-debezium-db2-connector-is-running"]
+=== Verifying that the {prodname} Db2 connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-debezium-connector-deployment.adoc
+
+endif::[product]
 // Type: reference
 // Title: Description of {prodname} Db2 connector configuration properties
 // ModuleID: descriptions-of-debezium-db2-connector-configuration-properties
@@ -2253,12 +2265,12 @@ endif::product[]
 [id="debezium-{context}-connector-database-history-configuration-properties"]
 ==== {prodname} connector database history configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc
 
 [id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc
 
 // Type: assembly
 // ModuleID: monitoring-debezium-db2-connector-performance
@@ -2280,9 +2292,9 @@ The {prodname} Db2 connector provides three types of metrics that are in additio
 [[db2-snapshot-metrics]]
 === Snapshot metrics
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc
 
 // Type: reference
 // ModuleID: monitoring-debezium-db2-connector-record-streaming
@@ -2290,7 +2302,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 [[db2-streaming-metrics]]
 === Streaming metrics
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc
 
 // Type: reference
 // ModuleID: monitoring-debezium-db2-connector-schema-history
@@ -2298,7 +2310,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[db2-schema-history-metrics]]
 === Schema history metrics
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc
 
 // Type: reference
 // ModuleID: managing-debezium-db2-connectors
