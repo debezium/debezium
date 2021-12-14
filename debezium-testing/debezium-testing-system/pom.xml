@@ -97,7 +97,7 @@
     <database.db2.cdc.schema>ASNCDC</database.db2.cdc.schema>
 
     <!--Debezium connector versions-->
-    <version.debezium.connector>1.7.0-SNAPSHOT</version.debezium.connector>
+    <version.debezium.connector>${project.version}</version.debezium.connector>
   </properties>
 
   <dependencyManagement>
