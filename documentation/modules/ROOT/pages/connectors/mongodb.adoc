@@ -1060,15 +1060,31 @@ The {prodname} xref:tutorial.adoc[tutorial] walks you through using these images
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} MongoDB connector, add the connector files to Kafka Connect, create a custom container to run the connector, and add the connector configuration to your container.
-Details are in the following topics:
+You can use either of the following methods to deploy a {prodname} MongoDB connector:
 
-* xref:deploying-debezium-mongodb-connectors[]
-* xref:mongodb-connector-properties[]
+* xref:openshift-streams-mongodb-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++ This is the preferred method.
+* xref:deploying-debezium-mongodb-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+.Additional resources
+
+* xref:descriptions-of-debezium-mongodb-connector-configuration-properties[]
+
+// Type: concept
+[id="openshift-streams-mongodb-connector-deployment"]
+=== MongoDB connector deployment using {StreamsName}
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+
+// Type: procedure
+[id="using-streams-to-deploy-debezium-mongodb-connectors"]
+=== Using {StreamsName} to deploy a {prodname} MongoDB connector
+
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
 
 // Type: procedure
 [id="deploying-debezium-mongodb-connectors"]
-=== Deploying {prodname} MongoDB connectors
+=== Deploying a {prodname} MongoDB connector by building a custom Kafka Connect container image from a Dockerfile
 
 To deploy a {prodname} MongoDB connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive and then push this container image to a container registry.
 You then create two custom resources (CRs):
@@ -1219,11 +1235,6 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` collection as defined in the `KafkaConnector` CR.
 
-[id="verifying-that-the-debezium-{context}-connector-is-running"]
-== Verifying that the connector is running
-include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoc
-endif::product[]
-
 ifdef::community[]
 [[mongodb-example-configuration]]
 === MongoDB connector configuration example
@@ -1285,12 +1296,20 @@ To start running a {prodname} MongoDB connector, create a connector configuratio
 endif::community[]
 
 .Results
-When the connector starts, it completes the following actions:
+After the connector starts, it completes the following actions:
 
 * {link-prefix}:{link-mongodb-connector}#mongodb-performing-a-snapshot[Performs a consistent snapshot] of the collections in your MongoDB replica sets.
 * Reads the oplogs/change streams for the replica sets.
 * Produces change events for every inserted, updated, and deleted document.
 * Streams change event records to Kafka topics.
+
+ifdef::product[]
+// Type: procedure
+[id="verifying-that-the-debezium-mongodb-connector-is-running"]
+== Verifying that the {prodname} MongoDB connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
+endif::product[]
 
 // Type: reference
 // Title: Description of {prodname} Db2 connector configuration properties
