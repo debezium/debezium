@@ -465,7 +465,7 @@ Following is an example of a message:
     "aa": "1"
   },
   "source": {
-...
+   ...
   },
   "op": "c",
   "ts_ms": "1580390884335",
@@ -1779,7 +1779,7 @@ When the `dhstore.handling.mode` property is set to `json` (the default), the co
 |`STRING`
 |`io.debezium.data.Json` +
  +
-Example: output representation using the JSON converter is `{\"key\" : \"val\"}`
+Example: output representation using the JSON converter is ``{"key" : "val"}``
 
 |`HSTORE`
 |`MAP`
@@ -2337,16 +2337,31 @@ If you are working with immutable containers, see link:https://hub.docker.com/r/
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Connect, create a custom container to run the connector, and add connector configuration to your container. Details are in the following topics:
+You can use either of the following methods to deploy a {prodname} PostgreSQL connector:
 
-* xref:deploying-debezium-postgresql-connectors[]
+* xref:openshift-streams-postgresql-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++ This is the preferred method.
+* xref:deploying-debezium-postgresql-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+.Additional resources
+
 * xref:descriptions-of-debezium-postgresql-connector-configuration-properties[]
 
+// Type: concept
+[id="openshift-streams-postgresql-connector-deployment"]
+=== PostgreSQL connector deployment using {StreamsName}
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+
 // Type: procedure
-// ModuleID: deploying-debezium-postgresql-connectors
-// Title: Deploying {prodname} PostgreSQL connectors
-[[postgresql-deploying-a-connector]]
-=== Deploying connectors
+[id="using-streams-to-deploy-debezium-postgresql-connectors"]
+=== Using {StreamsName} to deploy a {prodname} PostgreSQL connector
+
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
+
+// Type: procedure
+[id="deploying-debezium-postgresql-connectors"]
+=== Deploying a {prodname} PostgreSQL connector by building a custom Kafka Connect container image from a Dockerfile
 
 To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.
 You then need to create two custom resources (CRs):
@@ -2569,6 +2584,7 @@ The service records the configuration and starts one connector task that perform
 === Adding connector configuration
 
 To run a {prodname} PostgreSQL connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
+
 .Prerequisites
 
 * {link-prefix}:{link-postgresql-connector}#postgresql-server-configuration[PostgreSQL is configured to support logical replication].
@@ -2587,8 +2603,15 @@ endif::community[]
 
 .Results
 
-When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+After the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
+ifdef::product[]
+// Type: procedure
+[id="verifying-that-the-debezium-postgresql-connector-is-running"]
+=== Verifying that the {prodname} PostgreSQL connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
+endif::[product]
 
 // Type: reference
 // Title: Description of {prodname} PostgreSQL connector configuration properties
