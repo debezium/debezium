@@ -2285,6 +2285,7 @@ The service records the configuration and starts one connector task that perform
 
 [[mysql-adding-configuration]]
 === Adding connector configuration
+
 To start running a MySQL connector, configure a connector configuration, and add the configuration to your Kafka Connect cluster.
 
 .Prerequisites
@@ -2300,7 +2301,7 @@ To start running a MySQL connector, configure a connector configuration, and add
 endif::community[]
 
 .Results
-When the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapshots[performs a consistent snapshot] of the MySQL databases that the connector is configured for.
+After the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapshots[performs a consistent snapshot] of the MySQL databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
 ifdef::product[]
@@ -2309,7 +2310,6 @@ ifdef::product[]
 === Verifying that the {prodname} MySQL connector is running
 
 include::{partialsdir}/modules/all-connectors/proc-verifying-the-debezium-connector-deployment.adoc
-
 endif::[product]
 
 // Type: reference

@@ -1620,27 +1620,27 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 endif::community[]
 
 ifdef::product[]
-You can use either of the following methods to deploy a {prodname} connector:
+You can use either of the following methods to deploy a {prodname} Db2 connector:
 
 * xref:openshift-streams-db2-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 + This is the preferred method.
 * xref:deploying-debezium-db2-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
+.Additional resources
+
+* xref:descriptions-of-debezium-db2-connector-configuration-properties[]
 
 // Type: concept
 [id="openshift-streams-db2-connector-deployment"]
 === Db2 connector deployment using {StreamsName}
+
 include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
 
 // Type: procedure
 [id="using-streams-to-deploy-debezium-db2-connectors"]
 === Using {StreamsName} to deploy a {prodname} Db2 connector
+
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
-
-
-.Additional resources
-
-* xref:descriptions-of-debezium-db2-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-db2-connectors
@@ -1911,7 +1911,7 @@ endif::community[]
 
 .Results
 
-When the connector starts, it {link-prefix}:{link-db2-connector}#db2-snapshots[performs a consistent snapshot] of the Db2 database tables that the connector is configured to capture changes for.
+After the connector starts, it {link-prefix}:{link-db2-connector}#db2-snapshots[performs a consistent snapshot] of the Db2 database tables that the connector is configured to capture changes for.
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
 ifdef::product[]
@@ -1919,9 +1919,9 @@ ifdef::product[]
 [id="verifying-that-the-debezium-db2-connector-is-running"]
 === Verifying that the {prodname} Db2 connector is running
 
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-debezium-connector-deployment.adoc
-
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
 endif::[product]
+
 // Type: reference
 // Title: Description of {prodname} Db2 connector configuration properties
 // ModuleID: descriptions-of-debezium-db2-connector-configuration-properties
