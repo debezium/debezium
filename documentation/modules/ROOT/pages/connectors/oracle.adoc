@@ -1656,11 +1656,16 @@ For more information, see {link-prefix}:{link-oracle-connector}#obtaining-oracle
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} Oracle connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add connector configuration to your container.
-For details about deploying the {prodname} Oracle connector, see the following topics:
+You can use either of the following methods to deploy a {prodname} Oracle connector:
 
-* xref:obtaining-the-oracle-jdbc-driver[]
-* xref:deploying-debezium-oracle-server-connectors[]
+* xref:openshift-streams-oracle-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++ This is the preferred method.
+* xref:deploying-debezium-oracle-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+Regardless of which method you use, you must first xref:obtaining-the-oracle-jdbc-driver[obtain the Oracle JDBC driver].
+
+.Additional resources
+
 * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
 endif::product[]
 
@@ -1711,7 +1716,6 @@ instantclient_21_1/
 
 ----
 
-
 ifdef::community[]
 . Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
 +
@@ -1732,9 +1736,21 @@ endif::community[]
 ifdef::product[]
  Copy the `ojdbc8.jar` file to the `_<kafka_home>_/libs` directory.
 
+ // Type: concept
+ [id="openshift-streams-oracle-connector-deployment"]
+ === Oracle connector deployment using {StreamsName}
+
+ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+
+ // Type: procedure
+ [id="using-streams-to-deploy-debezium-oracle-connectors"]
+ === Using {StreamsName} to deploy a {prodname} Oracle connector
+
+ include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
+
 // Type: procedure
 // ModuleID: deploying-debezium-oracle-server-connectors
-=== Deploying {prodname} Oracle connectors
+=== Deploying a {prodname} Oracle connector by building a custom Kafka Connect container image from a Dockerfile
 
 To deploy a {prodname} Oracle connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
 You then need to create the following custom resources (CRs):
@@ -1933,10 +1949,6 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `server1` database as defined in the `KafkaConnector` CR.
 
-[id="verifying-that-the-debezium-{context}-connector-is-running"]
-== Verifying that the connector is running
-include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoc
-
 endif::product[]
 
 ifdef::community[]
@@ -2103,8 +2115,15 @@ endif::community[]
 
 .Results
 
-When the connector starts, it {link-prefix}:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
+After the connector starts, it {link-prefix}:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
+
+ifdef::product[]
+[id="verifying-that-the-debezium-oracle-connector-is-running"]
+== Verifying that the {prodname} Oracle connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
+endif::product[]
 
 // Type: reference
 // Title: Descriptions of {prodname} Oracle connector configuration properties
