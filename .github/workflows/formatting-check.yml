@@ -4,8 +4,6 @@ on:
     branches:
       - main
       - 1.*
-    paths-ignore:
-      - '.github/**'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,11 +14,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
-      - uses: actions/cache@v2
+      - name: Get date
+        id: get-date
+        run: |
+          echo "::set-output name=date::$(/bin/date -u "+%Y-%m")"
+        shell: bash
+      - name: Cache maven repository
+        uses: actions/cache@v2
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          #refresh cache every month to avoid unlimited growth
+          key: maven-key-${{ steps.get-date.outputs.date }}
       - name: Run formatting and import order checks
         run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
