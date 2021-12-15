@@ -2010,7 +2010,7 @@ endif::community[]
 ifdef::product[]
 You can use either of the following methods to deploy a {prodname} MySQL connector:
 
-* xref:using-streams-to-deploy-a-debezium-mysql-connector[Use {StreamsName} to automatically create an image that includes the connector plug-in].
+* xref:openshift-streams-mysql-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
 * xref:deploying-debezium-mysql-connectors[Build a custom Kafka Connect container image from a Dockerfile].
@@ -2022,16 +2022,18 @@ This is the preferred method.
 // Type: concept
 [id="openshift-streams-mysql-connector-deployment"]
 === MySQL connector deployment using {StreamsName}
-include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
 
 //Type: procedure
-[id="using-streams-to-deploy-debezium-mysql-connectors"]
+[id="using-streams-to-deploy-a-debezium-mysql-connector"]
 === Using {StreamsName} to deploy a {prodname} MySQL connector
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+
+For information about verifying the connector deployment, see xref:verifying-that-the-debezium-mysql-connector-is-running[Verifying that the {prodname} MySQL connector is running].
 
 // Type: procedure
 // ModuleID: deploying-debezium-mysql-connectors
-=== Deploying {prodname} MySQL connectors
+=== Deploying {prodname} MySQL connectors by building a custom Kafka Connect container image from a Dockerfile
 
 
 //To deploy a {prodname} MySQL connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add the connector configuration to your container.
@@ -2311,7 +2313,7 @@ ifdef::product[]
 [id="verifying-that-the-debezium-mysql-connector-is-running"]
 === Verifying that the {prodname} MySQL connector is running
 
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-debezium-connector-deployment.adoc
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
 endif::[product]
 
 // Type: reference
@@ -2843,7 +2845,7 @@ endif::product[]
 |Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 |===
 
-[id="debezium-{context}-connector-database-history-configuration-properties"]
+[id="debezium-mysql-connector-database-history-configuration-properties"]
 ==== {prodname} connector database history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
