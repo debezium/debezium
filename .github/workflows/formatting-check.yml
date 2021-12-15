@@ -25,5 +25,7 @@ jobs:
           path: ~/.m2/repository
           #refresh cache every month to avoid unlimited growth
           key: maven-key-${{ steps.get-date.outputs.date }}
+          restore-keys: |
+            maven-key-${{ steps.get-date.outputs.date }}
       - name: Run formatting and import order checks
         run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
