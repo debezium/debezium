@@ -8,14 +8,14 @@ package io.debezium.connector.mysql;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
-import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.DefaultSnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
  * @author Randall Hauch
  *
  */
-class MySqlSnapshotChangeEventSourceMetrics extends SnapshotChangeEventSourceMetrics implements MySqlSnapshotChangeEventSourceMetricsMXBean {
+class MySqlSnapshotChangeEventSourceMetrics extends DefaultSnapshotChangeEventSourceMetrics implements MySqlSnapshotChangeEventSourceMetricsMXBean {
 
     private final AtomicBoolean holdingGlobalLock = new AtomicBoolean();
 

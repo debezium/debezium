@@ -13,14 +13,14 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.DisconnectEvent;
 import io.debezium.connector.mongodb.PrimaryElectionEvent;
 import io.debezium.pipeline.ConnectorEvent;
-import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
  * @author Chris Cranford
  */
 @ThreadSafe
-public class MongoDbStreamingChangeEventSourceMetrics extends StreamingChangeEventSourceMetrics implements MongoDbStreamingChangeEventSourceMetricsMBean {
+public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics implements MongoDbStreamingChangeEventSourceMetricsMBean {
 
     private AtomicLong numberOfPrimaryElections = new AtomicLong();
     private AtomicLong numberOfDisconnects = new AtomicLong();

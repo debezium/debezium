@@ -18,13 +18,13 @@ public class DefaultChangeEventSourceMetricsFactory implements ChangeEventSource
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics getSnapshotMetrics(T taskContext,
                                                                                                 ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                                 EventMetadataProvider eventMetadataProvider) {
-        return new SnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+        return new DefaultSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 
     @Override
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics getStreamingMetrics(T taskContext,
                                                                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                                   EventMetadataProvider eventMetadataProvider) {
-        return new StreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+        return new DefaultStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 }
