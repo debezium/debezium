@@ -525,7 +525,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 .length(column.length())
                 .create();
 
-        Schema elementSchema = schemaBuilder(elementColumn)
+        SchemaBuilder elementSchemaBuilder = schemaBuilder(elementColumn);
+        if (elementSchemaBuilder == null) {
+            return null;
+        }
+        Schema elementSchema = elementSchemaBuilder
                 .optional()
                 .build();
 

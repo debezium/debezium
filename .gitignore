@@ -19,6 +19,7 @@ deploy/
 target/
 mods/
 *.swp
+.tags
 epom
 log
 npm-debug.log
