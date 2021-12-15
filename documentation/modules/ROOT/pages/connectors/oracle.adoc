@@ -1667,89 +1667,23 @@ Regardless of which method you use, you must first xref:obtaining-the-oracle-jdb
 .Additional resources
 
 * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
-endif::product[]
+
+// Type: concept
+[id="openshift-streams-oracle-connector-deployment"]
+=== {prodname} Oracle connector deployment using {StreamsName}
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
 
 // Type: procedure
-// Title: Obtaining the Oracle JDBC driver
-// ModuleID: obtaining-the-oracle-jdbc-driver
-[id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
-=== Obtaining the Oracle JDBC driver and XStream API files
+[id="using-streams-to-deploy-debezium-oracle-connectors"]
+=== Using {StreamsName} to deploy a {prodname} Oracle connector
 
-The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
-ifdef::community[]
-If the connector uses XStreams to access the database, you must also have the XStream API (`xstreams.jar`).
-Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
-However, the required files are available for free download as part of the Oracle Instant Client.
-The following steps describe how to download the Oracle Instant Client and extract the required files.
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
 
-endif::community[]
-ifdef::product[]
-Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
-You must download the required driver file directly from Oracle and add it to your Kafka Connect environment.
-The following steps describe how to download the Oracle Instant Client and extract the driver.
-endif::product[]
-
-.Procedure
-
-. From a browser, download the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client package] for your operating system.
-
-. Extract the archive and then open the `instantclient___<version>__` directory.
-+
-For example:
-+
-[source]
-----
-instantclient_21_1/
-├── adrci
-├── BASIC_LITE_LICENSE
-├── BASIC_LITE_README
-├── genezi
-├── libclntshcore.so -> libclntshcore.so.21.1
-├── libclntshcore.so.12.1 -> libclntshcore.so.21.1
-
-...
-
-├── ojdbc8.jar
-├── ucp.jar
-├── uidrvci
-└── xstreams.jar
-
-----
-
-ifdef::community[]
-. Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
-+
-[NOTE]
-====
-In environments that use the Oracle LogMiner implementation, copy only the `ojdbc8.jar` file.
-The `xstreams.jar` file is only required in environments that use the Oracle XStreams implementation.
-====
-. If you are using the XStreams implementation, create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
-+
-[source,bash,indent=0]
-----
-LD_LIBRARY_PATH=/path/to/instant_client/
-----
-+
-The `LD_LIBRARY_PATH` environment variable is not required if you run the Oracle LogMiner implementation.
-endif::community[]
-ifdef::product[]
- Copy the `ojdbc8.jar` file to the `_<kafka_home>_/libs` directory.
-
- // Type: concept
- [id="openshift-streams-oracle-connector-deployment"]
- === Oracle connector deployment using {StreamsName}
-
- include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
-
- // Type: procedure
- [id="using-streams-to-deploy-debezium-oracle-connectors"]
- === Using {StreamsName} to deploy a {prodname} Oracle connector
-
- include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
+For information about verifying the connector deployment, see xref:verifying-that-the-debezium-oracle-connector-is-running[Verifying that the {prodname} Oracle connector is running].
 
 // Type: procedure
-// ModuleID: deploying-debezium-oracle-server-connectors
+[id="deploying-debezium-oracle-connectors"]
 === Deploying a {prodname} Oracle connector by building a custom Kafka Connect container image from a Dockerfile
 
 To deploy a {prodname} Oracle connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
@@ -1763,7 +1697,7 @@ You then need to create the following custom resources (CRs):
 * A `KafkaConnector` CR that defines your {prodname} Oracle connector.
   Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
 
-  .Prerequisites
+.Prerequisites
 
 * Oracle Database is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-oracle-for-use-with-the-debezium-oracle-connector[set up Oracle to work with a {prodname} connector].
 
@@ -1951,6 +1885,75 @@ The preceding command registers `inventory-connector` and the connector starts t
 
 endif::product[]
 
+// Type: procedure
+// Title: Obtaining the Oracle JDBC driver
+// ModuleID: obtaining-the-oracle-jdbc-driver
+[id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
+=== Obtaining the Oracle JDBC driver and XStream API files
+
+The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
+ifdef::community[]
+If the connector uses XStreams to access the database, you must also have the XStream API (`xstreams.jar`).
+Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
+However, the required files are available for free download as part of the Oracle Instant Client.
+The following steps describe how to download the Oracle Instant Client and extract the required files.
+
+endif::community[]
+ifdef::product[]
+Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
+You must download the required driver file directly from Oracle and add it to your Kafka Connect environment.
+The following steps describe how to download the Oracle Instant Client and extract the driver.
+endif::product[]
+
+.Procedure
+
+. From a browser, download the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client package] for your operating system.
+
+. Extract the archive and then open the `instantclient___<version>__` directory.
++
+For example:
++
+[source]
+----
+instantclient_21_1/
+├── adrci
+├── BASIC_LITE_LICENSE
+├── BASIC_LITE_README
+├── genezi
+├── libclntshcore.so -> libclntshcore.so.21.1
+├── libclntshcore.so.12.1 -> libclntshcore.so.21.1
+
+...
+
+├── ojdbc8.jar
+├── ucp.jar
+├── uidrvci
+└── xstreams.jar
+
+----
+
+ifdef::community[]
+. Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
++
+[NOTE]
+====
+In environments that use the Oracle LogMiner implementation, copy only the `ojdbc8.jar` file.
+The `xstreams.jar` file is only required in environments that use the Oracle XStreams implementation.
+====
+. If you are using the XStreams implementation, create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
++
+[source,bash,indent=0]
+----
+LD_LIBRARY_PATH=/path/to/instant_client/
+----
++
+The `LD_LIBRARY_PATH` environment variable is not required if you run the Oracle LogMiner implementation.
+endif::community[]
+ifdef::product[]
+ Copy the `ojdbc8.jar` file to the `_<kafka_home>_/libs` directory.
+endif::product[]
+
+
 ifdef::community[]
 [[oracle-example-configuration]]
 === {prodname} Oracle connector configuration
@@ -2119,17 +2122,18 @@ After the connector starts, it {link-prefix}:{link-oracle-connector}#oracle-snap
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
 ifdef::product[]
+// Type: procedure
 [id="verifying-that-the-debezium-oracle-connector-is-running"]
-== Verifying that the {prodname} Oracle connector is running
+=== Verifying that the {prodname} Oracle connector is running
 
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
 endif::product[]
 
 // Type: reference
 // Title: Descriptions of {prodname} Oracle connector configuration properties
 // ModuleID: descriptions-of-debezium-oracle-connector-configuration-properties
 [[oracle-connector-properties]]
-=== Connector properties
+== Connector properties
 
 The {prodname} Oracle connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
 Many properties have default values.
@@ -2732,13 +2736,12 @@ Adjust the chunk size to a value that provides the best performance in your envi
 
 |===
 
-[id="debezium-{context}-connector-database-history-configuration-properties"]
-==== {prodname} connector database history configuration properties
+[id="debezium-oracle-connector-database-history-configuration-properties"]
+==== {prodname} Oracle connector database history configuration properties
+include::../../partials/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
-
-[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
-==== {prodname} connector pass-through database driver configuration properties
+[id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} Oracle connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 

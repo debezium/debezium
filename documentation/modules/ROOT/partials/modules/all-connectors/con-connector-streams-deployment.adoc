@@ -1,25 +1,3 @@
-////
-
-//Include in the deployment section that is conditionalized for [product]
-// You can use either of the following methods to deploy a {prodname} connector:
-//* Use {StreamsName} to automatically create a container image that includes the connector plug-in  This is the preferred method. [Links to Overview topic, which follows]
-//* Build a custom Kafka Connect container image from a Dockerfile.
-
-//.Additional resources
-//[Links to connector configuration properties]
-
-// Set the type to concept
-//(// Type: concept
-// Set the following ID
-//[id="overview-of-using-streams-to-deploy-a-debezium-<context>-connector"]
-The ID should explicitly specify the connector type vs. using the {context} variable
-// Add the following heading in the connector file.
-//=== Overview of using {StreamsName} to deploy a {prodname} {connector-name} connector
-// Follow the title with the following INCLUDE statement
-//include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
-
-////
-
 Beginning with {prodname} 1.6, the preferred method for deploying a {prodname} connector is to use {StreamsName} to build a Kafka Connect container image that includes the connector plug-in.
 
 During the deployment process, you create and use the following custom resources (CRs):

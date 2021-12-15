@@ -1075,19 +1075,21 @@ You can use either of the following methods to deploy a {prodname} MongoDB conne
 
 .Additional resources
 
-* xref:descriptions-of-debezium-mongodb-connector-configuration-properties[]
+* xref:mongodb-connector-properties[]
 
 // Type: concept
 [id="openshift-streams-mongodb-connector-deployment"]
 === MongoDB connector deployment using {StreamsName}
 
-include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="using-streams-to-deploy-debezium-mongodb-connectors"]
 === Using {StreamsName} to deploy a {prodname} MongoDB connector
 
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+
+For information about verifying the connector deployment, see xref:verifying-that-the-debezium-mongodb-connector-is-running[Verifying that the {prodname} MongoDB connector is running].
 
 // Type: procedure
 [id="deploying-debezium-mongodb-connectors"]
@@ -1313,9 +1315,9 @@ After the connector starts, it completes the following actions:
 ifdef::product[]
 // Type: procedure
 [id="verifying-that-the-debezium-mongodb-connector-is-running"]
-== Verifying that the {prodname} MongoDB connector is running
+=== Verifying that the {prodname} MongoDB connector is running
 
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
 endif::product[]
 
 // Type: reference
