@@ -1691,16 +1691,38 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 endif::community[]
 
 ifdef::product[]
+You can use either of the following methods to deploy a {prodname} SQL Server connector:
+
+* xref:openshift-streams-sqlserver-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++ This is the preferred method.
+* xref:deploying-debezium-sqlserver-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+.Additional resources
+
+* xref:descriptions-of-debezium-sqlserver-connector-configuration-properties[]
+
+// Type: concept
+[id="openshift-streams-sqlserver-connector-deployment"]
+=== SQL Server connector deployment using {StreamsName}
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="using-streams-to-deploy-debezium-sqlserver-connectors"]
+=== Using {StreamsName} to deploy a {prodname} SQL Server connector
+
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+
 To deploy a {prodname} SQL Server connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add connector configuration to your container.
 For details about deploying the {prodname} SQL Server connector, see the following topics:
 
-* xref:deploying-debezium-sql-server-connectors[]
-* xref:descriptions-of-debezium-sql-server-connector-configuration-properties[]
+* xref:deploying-debezium-sqlserver-connectors[]
+* xref:descriptions-of-debezium-sqlserver-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-sqlserver-connectors
 [[sql-server-deploying-a-connector]]
-=== Deploying {prodname} SQL Server connectors
+=== Deploying a {prodname} SQL Server connector by building a custom Kafka Connect container image from a Dockerfile
 
 To deploy a {prodname} SQL Server connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
 You then need to create the following custom resources (CRs):
@@ -1894,9 +1916,9 @@ oc apply -f fulfillment-connector.yaml
 +
 The preceding command registers `fulfillment-connector` and the connector starts to run against the `testDB` database as defined in the `KafkaConnector` CR.
 
-[id="verifying-that-the-debezium-{context}-connector-is-running"]
-== Verifying that the connector is running
-include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoc
+[id="verifying-that-the-debezium-sqlserver-connector-is-running"]
+=== Verifying that the connector is running
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
 
 endif::product[]
 
@@ -1976,7 +1998,7 @@ The connector then starts generating data change events for row-level operations
 
 // Type: reference
 // Title: Descriptions of {prodname} SQL Server connector configuration properties
-// ModuleID: descriptions-of-debezium-sql-server-connector-configuration-properties
+// ModuleID: descriptions-of-debezium-sqlserver-connector-configuration-properties
 [[sqlserver-connector-properties]]
 === Connector properties
 
@@ -1985,13 +2007,13 @@ Many properties have default values.
 
 Information about the properties is organized as follows:
 
-* xref:{context}-required-connector-configuration-properties[Required connector configuration properties]
-* xref:{context}-advanced-connector-configuration-properties[Advanced connector configuration properties]
-* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
-* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+* xref:sqlserver-required-connector-configuration-properties[Required connector configuration properties]
+* xref:sqlserver-advanced-connector-configuration-properties[Advanced connector configuration properties]
+* xref:debezium-sqlserver-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+** xref:sqlserver-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-sqlserver-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
-[id="{context}-required-connector-configuration-properties"]
+[id="sqlserver-required-connector-configuration-properties"]
 ==== Required {prodname} SQL Server connector configuration properties
 
 The following configuration properties are _required_ unless a default value is available.
@@ -2398,13 +2420,13 @@ When set to a value greater than zero, the connector uses the n-th LSN specified
 |Uses OPTION(RECOMPILE) query option to all SELECT statements used during an incremental snapshot. This can help to solve parameter sniffing issues that may occur but can cause increased CPU load on the source database, depending on the frequency of query execution.
 |===
 
-[id="debezium-{context}-connector-database-history-configuration-properties"]
-==== {prodname} connector database history configuration properties
+[id="debezium-sqlserver-connector-database-history-configuration-properties"]
+==== {prodname} SQL Server connector database history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
-==== {prodname} connector pass-through database driver configuration properties
+[id="debezium-sqlserver-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} SQL Server connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
@@ -2589,14 +2611,14 @@ GO
 The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 The connector provides the following metrics:
 
-* {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.
-* {link-prefix}:{link-sqlserver-connector}#sqlserver-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
-* {link-prefix}:{link-sqlserver-connector}#sqlserver-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
+* xref:sqlserver-connector-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.
+* xref:sqlserver-connector-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
+* xref:sqlserver-connector-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
 
 For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation].
 
 // Type: reference
-// ModuleID: debezium-sql-server-connector-snapshot-metrics
+// ModuleID: debezium-sqlserver-connector-snapshot-metrics
 // Title: {prodname} SQL Server connector snapshot metrics
 [[sqlserver-snapshot-metrics]]
 === Snapshot metrics
@@ -2606,7 +2628,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
-// ModuleID: debezium-sql-server-connector-streaming-metrics
+// ModuleID: debezium-sqlserver-connector-streaming-metrics
 // Title: {prodname} SQL Server connector streaming metrics
 [[sqlserver-streaming-metrics]]
 === Streaming metrics
@@ -2614,7 +2636,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 // Type: reference
-// ModuleID: debezium-sql-server-connector-schema-history-metrics
+// ModuleID: debezium-sqlserver-connector-schema-history-metrics
 // Title: {prodname} SQL Server connector schema history metrics
 [[sqlserver-schema-history-metrics]]
 === Schema history metrics
