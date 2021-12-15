@@ -18,11 +18,6 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import com.google.cloud.pubsublite.CloudRegionOrZone;
-import com.google.cloud.pubsublite.ProjectNumber;
-import com.google.cloud.pubsublite.TopicName;
-import com.google.cloud.pubsublite.TopicPath;
-import com.google.cloud.pubsublite.cloudpubsub.PublisherSettings;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -31,8 +26,13 @@ import org.slf4j.LoggerFactory;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
-import com.google.protobuf.ByteString;
+import com.google.cloud.pubsublite.CloudRegionOrZone;
+import com.google.cloud.pubsublite.ProjectNumber;
+import com.google.cloud.pubsublite.TopicName;
+import com.google.cloud.pubsublite.TopicPath;
 import com.google.cloud.pubsublite.cloudpubsub.Publisher;
+import com.google.cloud.pubsublite.cloudpubsub.PublisherSettings;
+import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 
 import io.debezium.DebeziumException;
@@ -78,7 +78,6 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
         long projectId = config.getValue(PROP_PROJECT_ID, long.class);
         String region = config.getValue(PROP_REGION, String.class);
 
-
         if (customPublisherBuilder.isResolvable()) {
             publisherBuilder = customPublisherBuilder.get();
             LOGGER.info("Obtained custom configured PublisherBuilder '{}'", customPublisherBuilder);
@@ -108,12 +107,12 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
         publishers.values().forEach(publisher -> {
             try {
                 publisher.stopAsync().awaitTerminated();
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 LOGGER.warn("Exception while closing publisher: {}", e);
             }
         });
     }
-
 
     @Override
     public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
@@ -129,26 +128,31 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
             if (orderingEnabled) {
                 if (record.key() == null) {
                     pubsubMessage.setOrderingKey(nullKey);
-                } else if (record.key() instanceof String) {
+                }
+                else if (record.key() instanceof String) {
                     pubsubMessage.setOrderingKey((String) record.key());
-                } else if (record.key() instanceof byte[]) {
+                }
+                else if (record.key() instanceof byte[]) {
                     pubsubMessage.setOrderingKeyBytes(ByteString.copyFrom((byte[]) record.key()));
                 }
             }
 
             if (record.value() instanceof String) {
                 pubsubMessage.setData(ByteString.copyFromUtf8((String) record.value()));
-            } else if (record.value() instanceof byte[]) {
+            }
+            else if (record.value() instanceof byte[]) {
                 pubsubMessage.setData(ByteString.copyFrom((byte[]) record.value()));
             }
 
             deliveries.add(publisher.publish(pubsubMessage.build()));
             committer.markProcessed(record);
-        };
+        }
+        ;
         List<String> messageIds;
         try {
             messageIds = ApiFutures.allAsList(deliveries).get();
-        } catch (ExecutionException e) {
+        }
+        catch (ExecutionException e) {
             throw new DebeziumException(e);
         }
         LOGGER.trace("Sent messages with ids: {}", messageIds);
