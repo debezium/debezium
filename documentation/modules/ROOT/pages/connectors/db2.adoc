@@ -1634,14 +1634,15 @@ You can use either of the following methods to deploy a {prodname} Db2 connector
 [id="openshift-streams-db2-connector-deployment"]
 === Db2 connector deployment using {StreamsName}
 
-include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[]
 
 // Type: procedure
 [id="using-streams-to-deploy-debezium-db2-connectors"]
 === Using {StreamsName} to deploy a {prodname} Db2 connector
 
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[]
 
+For information about verifying the connector deployment, see xref:verifying-that-the-debezium-db2-connector-is-running[Verifying that the {prodname} Db2 connector is running].
 // Type: procedure
 // ModuleID: deploying-debezium-db2-connectors
 === Deploying a {prodname} Db2 connector by building a custom Kafka Connect container image from a Dockerfile
@@ -1919,8 +1920,8 @@ ifdef::product[]
 [id="verifying-that-the-debezium-db2-connector-is-running"]
 === Verifying that the {prodname} Db2 connector is running
 
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
-endif::[product]
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
+endif::product[]
 
 // Type: reference
 // Title: Description of {prodname} Db2 connector configuration properties
@@ -1934,9 +1935,9 @@ Information about the properties is organized as follows:
 
 * xref:db2-required-configuration-properties[Required configuration properties]
 * xref:db2-advanced-configuration-properties[Advanced configuration properties]
-* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
-* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+* xref:debezium-db2-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+** xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database history properties]
+* xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 
 [id="db2-required-configuration-properties"]
@@ -2256,15 +2257,15 @@ endif::product[]
 
 |===
 
-[id="debezium-{context}-connector-database-history-configuration-properties"]
+[id="debezium-db2-connector-database-history-configuration-properties"]
 ==== {prodname} connector database history configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
+[id="debezium-db2-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-db2-connector-performance
@@ -2286,9 +2287,9 @@ The {prodname} Db2 connector provides three types of metrics that are in additio
 [[db2-snapshot-metrics]]
 === Snapshot metrics
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: monitoring-debezium-db2-connector-record-streaming
@@ -2296,7 +2297,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 [[db2-streaming-metrics]]
 === Streaming metrics
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: monitoring-debezium-db2-connector-schema-history
@@ -2304,7 +2305,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[db2-schema-history-metrics]]
 === Schema history metrics
 
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: managing-debezium-db2-connectors

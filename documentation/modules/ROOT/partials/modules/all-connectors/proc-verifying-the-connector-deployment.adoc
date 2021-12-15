@@ -1,10 +1,3 @@
-////
-Insert this content after the legacy deployment instructions, in place of the verification steps.
-// Add the following ID and title
-// [id="verifying-that-the-debezium-<connector-name>-connector-is-running"]
-// == Verifying that the {prodname}{connector-name} connector is running
-//include::{partialsdir}/modules/all-connectors/proc-verifying-the-debezium-connector-deployment.adoc
-////
 If the connector starts correctly without errors, it creates a topic for each table that the connector is configured to capture.
 Downstream applications can subscribe to these topics to retrieve information events that occur in the source database.
 

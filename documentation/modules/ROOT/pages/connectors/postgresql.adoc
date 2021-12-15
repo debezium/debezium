@@ -2216,13 +2216,13 @@ You can use either of the following methods to deploy a {prodname} PostgreSQL co
 [id="openshift-streams-postgresql-connector-deployment"]
 === PostgreSQL connector deployment using {StreamsName}
 
-include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adocleveloffset=+1]
 
 // Type: procedure
 [id="using-streams-to-deploy-debezium-postgresql-connectors"]
 === Using {StreamsName} to deploy a {prodname} PostgreSQL connector
 
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adocleveloffset=+1]
 
 // Type: procedure
 [id="deploying-debezium-postgresql-connectors"]
@@ -2390,9 +2390,6 @@ oc apply -f fulfillment-connector.yaml
 +
 This registers `fulfillment-connector` and the connector starts to run against the `sampledb` database as defined in the `KafkaConnector` CR.
 
-[id="verifying-that-the-debezium-{context}-connector-is-running"]
-== Verifying that the connector is running
-include::{partialsdir}/modules/all-connectors/proc-verifying-that-the-debezium-{context}-connector-is-running.adoc
 endif::product[]
 
 ifdef::community[]
@@ -2475,8 +2472,8 @@ ifdef::product[]
 [id="verifying-that-the-debezium-postgresql-connector-is-running"]
 === Verifying that the {prodname} PostgreSQL connector is running
 
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
-endif::[product]
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adocleveloffset=+1]
+endif::product[]
 
 // Type: reference
 // Title: Description of {prodname} PostgreSQL connector configuration properties
