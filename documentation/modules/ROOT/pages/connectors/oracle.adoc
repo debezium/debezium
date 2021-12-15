@@ -1745,7 +1745,8 @@ You can use either of the following methods to deploy a {prodname} Oracle connec
 + This is the preferred method.
 * xref:deploying-debezium-oracle-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
-Regardless of which method you use, you must first xref:obtaining-the-oracle-jdbc-driver[obtain the Oracle JDBC driver].
+The {prodname} Oracle connector requires the Oracle JDBC driver (ojdbc8.jar) to connect to Oracle databases.
+For information about how to obtain the driver, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 
 .Additional resources
 
@@ -1792,7 +1793,7 @@ You then need to create the following custom resources (CRs):
 * You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
 
 * You have a copy of the Oracle JDBC driver.
-Due to licensing requirements, the {prodname} Oracle connector does not include the required JDBC driver files.
+Due to licensing requirements, the {prodname} Oracle connector does not include the required driver file.
 +
 For more information, see {link-prefix}:{link-oracle-connector}#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 
@@ -1966,27 +1967,46 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `server1` database as defined in the `KafkaConnector` CR.
 
+// Type: procedure
+[id="obtaining-the-oracle-jdbc-driver"]
+=== Obtaining the Oracle JDBC driver
+
+Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
+Regardless of which deployment method that you use, you have obtain the Oracle JDBC driver to complete the deployment.
+
+There are two methods for obtaining the driver, depending on the deployment method that you use.
+
+* If you xref:openshift-streams-oracle-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image], add an artifact reference to the `KafkaConnect` custom resource and then add the location of the artifact as the `url` value.
+* If you xref:deploying-debezium-oracle-connectors[use a Dockerfile to build the connector], download the required driver file directly from Oracle and add it to your Kafka Connect environment.
+
+The following steps describe how to make the driver and available in your environment.
+
+.Procedure
+
+. Complete one of the following procedures, depending on your deployment type:
+** If you use {StreamsName} to deploy the connector:
+.. Navigate to link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/[Maven Central] and locate the `ojdbc8.jar` file for your release of Oracle Database.
+.. In the YAML for the `KafkaConnector` custom resource (CR), add the URL path for the driver to the `artifacts.url` field for the `debezium-connector-oracle` artifact.
++
+For more information about the YAML file for the `KafkaConnector` CR, see xref:openshift-streams-oracle-connector-deployment[Using {StreamsName} to deploy a {prodname} Oracle connector].
+
+** If you use a Dockerfile to deploy the connector:
+.. From a browser, navigate to the link:https://www.oracle.com/database/technologies/appdev/jdbc-downloads.html[Oracle JDBC and UCP Downloads page].
+.. Locate and download the `ojdbc8.jar` driver file for your version of Oracle Database.
+.. Copy the downloaded file to the directory that stores the {prodname} Oracle connector files, for example, `_<kafka_home>_/libs`.
++
+When the connector starts, it is automatically configured to use the specified driver.
 endif::product[]
 
-// Type: procedure
-// Title: Obtaining the Oracle JDBC driver
-// ModuleID: obtaining-the-oracle-jdbc-driver
+ifdef::community[]
 [id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
 === Obtaining the Oracle JDBC driver and XStream API files
 
 The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
-ifdef::community[]
 If the connector uses XStreams to access the database, you must also have the XStream API (`xstreams.jar`).
 Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
 However, the required files are available for free download as part of the Oracle Instant Client.
 The following steps describe how to download the Oracle Instant Client and extract the required files.
-
-endif::community[]
-ifdef::product[]
-Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
-You must download the required driver file directly from Oracle and add it to your Kafka Connect environment.
-The following steps describe how to download the Oracle Instant Client and extract the driver.
-endif::product[]
 
 .Procedure
 
@@ -2015,7 +2035,6 @@ instantclient_21_1/
 
 ----
 
-ifdef::community[]
 . Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
 +
 [NOTE]
@@ -2031,13 +2050,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 ----
 +
 The `LD_LIBRARY_PATH` environment variable is not required if you run the Oracle LogMiner implementation.
-endif::community[]
-ifdef::product[]
- Copy the `ojdbc8.jar` file to the `_<kafka_home>_/libs` directory.
-endif::product[]
 
-
-ifdef::community[]
 [[oracle-example-configuration]]
 === {prodname} Oracle connector configuration
 
@@ -2222,13 +2235,13 @@ The {prodname} Oracle connector has numerous configuration properties that you c
 Many properties have default values.
 Information about the properties is organized as follows:
 
-* xref:required-debezium-{context}-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
-* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
-* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+* xref:required-debezium-oracle-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
+* xref:debezium-oracle-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+** xref:oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-oracle-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 [id="required-debezium-{context}-connector-configuration-properties"]
-==== Required {prodname} Oracle connector configuration properties
+=== Required {prodname} Oracle connector configuration properties
 The following configuration properties are _required_ unless a default value is available.
 
 [cols="30%a,25%a,45%a"]

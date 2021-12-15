@@ -2618,9 +2618,9 @@ GO
 The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 The connector provides the following metrics:
 
-* xref:sqlserver-connector-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.
-* xref:sqlserver-connector-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
-* xref:sqlserver-connector-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
+* xref:debezium-sqlserver-connector-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.
+* xref:debezium-sqlserver-connector-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
+* xref:debezium-sqlserver-connector-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
 
 For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation].
 
