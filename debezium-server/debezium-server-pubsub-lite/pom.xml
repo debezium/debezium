@@ -27,7 +27,6 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-pubsublite</artifactId>
-            <version>1.4.5</version>
         </dependency>
 
         <dependency>
