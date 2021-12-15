@@ -24,14 +24,14 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
  * The metrics implementation for Oracle connector streaming phase.
  */
 @ThreadSafe
-public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEventSourceMetrics implements OracleStreamingChangeEventSourceMetricsMXBean {
+public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics implements OracleStreamingChangeEventSourceMetricsMXBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSourceMetrics.class);
 
