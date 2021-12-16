@@ -31,7 +31,7 @@ Save the file with a name such as `dbz-connect.yaml`.
 +
 .A `dbz-inventory-connector.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
 =====================================================================
-[source,yaml,subs="+attributes"]
+[source,yaml,subs="+attributes,+quotes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnect
@@ -49,11 +49,11 @@ spec:
       - name: debezium-connector-{connector-file}
         artifacts:
         - type: zip // <6>
-          url: {red-hat-maven-repository}/debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-_<build_number>_/debezium-connector-{connector-file}-{debezium-version}.zip  // <7>
+          url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}.zip  // <7>
         - type: zip
-          url: {red-hat-maven-repository}/apicurio/apicurio-registry-distro-connect-converter/{registry-version}-redhat-_<build-number>_/apicurio-registry-distro-connect-converter-{registry-version}-redhat-_<build-number>.zip
+          url: {red-hat-maven-repository}apicurio/apicurio-registry-distro-connect-converter/{registry-version}-redhat-_<build-number>_/apicurio-registry-distro-connect-converter-{registry-version}-redhat-_<build-number>_.zip
         - type: zip
-          url: {red-hat-maven-repository}/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.zip
+          url: {red-hat-maven-repository}debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.zip
 
   bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
 ----
@@ -198,3 +198,5 @@ oc create -n debezium-docs -f dbz-connect.yaml
 +
 The connector is registered to the Kafka Connect cluster and starts to run against the database that is specified by `spec.config.database.dbname` in the `KafkaConnector` CR.
 After the connector pod is ready, {prodname} is running.
+
+You are now ready to xref:verifying-that-the-debezium-{context}-connector-is-running[verify the {prodname}{connector-name} deployment].
