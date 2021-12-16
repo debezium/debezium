@@ -1714,12 +1714,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
 
-To deploy a {prodname} SQL Server connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add connector configuration to your container.
-For details about deploying the {prodname} SQL Server connector, see the following topics:
-
-* xref:deploying-debezium-sqlserver-connectors[]
-* xref:descriptions-of-debezium-sqlserver-connector-configuration-properties[]
-
 // Type: procedure
 // ModuleID: deploying-debezium-sqlserver-connectors
 [[sql-server-deploying-a-connector]]
@@ -1918,7 +1912,7 @@ oc apply -f fulfillment-connector.yaml
 The preceding command registers `fulfillment-connector` and the connector starts to run against the `testDB` database as defined in the `KafkaConnector` CR.
 
 [id="verifying-that-the-debezium-sqlserver-connector-is-running"]
-=== Verifying that the connector is running
+=== Verifying that the {prodname} SQL Server connector is running
 include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
 
 endif::product[]

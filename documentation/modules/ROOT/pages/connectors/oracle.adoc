@@ -1975,6 +1975,7 @@ ifdef::product[]
 === Verifying that the {prodname} Oracle connector is running
 
 include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
+
 endif::product[]
 
 // Type: reference

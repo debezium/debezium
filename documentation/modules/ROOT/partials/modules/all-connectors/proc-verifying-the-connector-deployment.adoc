@@ -1,13 +1,14 @@
 If the connector starts correctly without errors, it creates a topic for each table that the connector is configured to capture.
 Downstream applications can subscribe to these topics to retrieve information events that occur in the source database.
 
-To verify that the connector is running, perform the following operations from the OpenShift Container Platform web console, or through the OpenShift CLI tool (oc):
+To verify that the connector is running, you perform the following operations from the OpenShift Container Platform web console, or through the OpenShift CLI tool (oc):
 
 * Verify the connector status.
 * Verify that the connector generates topics.
 * Verify that topics are populated with events for read operations ("op":"r") that the connector generates during the initial snapshot of each table.
-*
+
 .Prerequisites
+
 * A {prodname} connector is deployed to {StreamsName} on OpenShift.
 * The OpenShift `oc` CLI client is installed.
 * You have access to the OpenShift Container Platform web console.
