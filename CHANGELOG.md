@@ -2,6 +2,39 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.8.0.Final
+December 16th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377386)
+
+### New features since 1.8.0.CR1
+
+* Allow to configure custom Hibernate user types for Quarkus outbox extension [DBZ-3552](https://issues.redhat.com/browse/DBZ-3552)
+* Create a Debezium schema generator for Debezium connectors (initial work) [DBZ-4393](https://issues.redhat.com/browse/DBZ-4393)
+
+### Breaking changes since 1.8.0.CR1
+
+* MongoDB ExtractNewDocumentState SMT overwrites existing document ID field  [DBZ-4413](https://issues.redhat.com/browse/DBZ-4413)
+
+
+### Fixes since 1.8.0.CR1
+
+* Outbox Event Router not working in Oracle Connector [DBZ-3940](https://issues.redhat.com/browse/DBZ-3940)
+* some data type is not working for sending signals to a Debezium connector [DBZ-4298](https://issues.redhat.com/browse/DBZ-4298)
+* Debezium UI - Connector create fails if topic group defaults not specified [DBZ-4378](https://issues.redhat.com/browse/DBZ-4378)
+
+
+### Other changes since 1.8.0.CR1
+
+* Intermittent test failure: SqlServerChangeTableSetIT#readHistoryAfterRestart() [DBZ-3306](https://issues.redhat.com/browse/DBZ-3306)
+* Upgrade to Apicurio Registry 2.0 (QE, docs) [DBZ-3629](https://issues.redhat.com/browse/DBZ-3629)
+* Oracle upstream tests in internal CI  [DBZ-4185](https://issues.redhat.com/browse/DBZ-4185)
+* Document MongoDB source format [DBZ-4420](https://issues.redhat.com/browse/DBZ-4420)
+* Missing log message for snapshot.locking.mode = none [DBZ-4426](https://issues.redhat.com/browse/DBZ-4426)
+* Caching not working in formatting job [DBZ-4429](https://issues.redhat.com/browse/DBZ-4429)
+* Optionally assemble Oracle connector distribution without Infinispan [DBZ-4446](https://issues.redhat.com/browse/DBZ-4446)
+* Simplify the implementation of method duration in debezium/util/Strings.java [DBZ-4423](https://issues.redhat.com/browse/DBZ-4423)
+* Exclude log4j from Debezium Server distribution in 1.8 [DBZ-4452](https://issues.redhat.com/browse/DBZ-4452)
+
+
 ## 1.8.0.CR1
 December 9th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377385)
 
