@@ -29,7 +29,7 @@ matrixJob('connector-debezium-mongodb-matrix-test') {
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
     }
     triggers {
-        cron('H 04 * * 1-5')
+        cron('H 04 * * *')
     }
 
     wrappers {
