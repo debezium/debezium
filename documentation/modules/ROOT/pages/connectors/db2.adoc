@@ -1647,8 +1647,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[]
 
-For information about verifying the connector deployment, see xref:verifying-that-the-debezium-db2-connector-is-running[Verifying that the {prodname} Db2 connector is running].
-
 // Type: procedure
 // ModuleID: deploying-debezium-db2-connectors
 === Deploying a {prodname} Db2 connector by building a custom Kafka Connect container image from a Dockerfile
