@@ -933,8 +933,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
 
-For information about verifying the connector deployment, see xref:verifying-that-the-debezium-mongodb-connector-is-running[Verifying that the {prodname} MongoDB connector is running].
-
 // Type: procedure
 [id="deploying-debezium-mongodb-connectors"]
 === Deploying a {prodname} MongoDB connector by building a custom Kafka Connect container image from a Dockerfile
