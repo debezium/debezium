@@ -2022,8 +2022,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 === Using {StreamsName} to deploy a {prodname} MySQL connector
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
 
-For information about verifying the connector deployment, see xref:verifying-that-the-debezium-mysql-connector-is-running[Verifying that the {prodname} MySQL connector is running].
-
 // Type: procedure
 // ModuleID: deploying-debezium-mysql-connectors
 === Deploying {prodname} MySQL connectors by building a custom Kafka Connect container image from a Dockerfile

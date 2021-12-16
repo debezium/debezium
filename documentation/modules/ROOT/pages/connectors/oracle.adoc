@@ -1674,8 +1674,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
 
-For information about verifying the connector deployment, see xref:verifying-that-the-debezium-oracle-connector-is-running[Verifying that the {prodname} Oracle connector is running].
-
 // Type: procedure
 [id="deploying-debezium-oracle-connectors"]
 === Deploying a {prodname} Oracle connector by building a custom Kafka Connect container image from a Dockerfile
