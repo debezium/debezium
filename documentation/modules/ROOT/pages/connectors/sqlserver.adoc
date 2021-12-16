@@ -1912,6 +1912,7 @@ The preceding command registers `fulfillment-connector` and the connector starts
 
 [id="verifying-that-the-debezium-sqlserver-connector-is-running"]
 === Verifying that the {prodname} SQL Server connector is running
+
 include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
 
 endif::product[]

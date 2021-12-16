@@ -199,4 +199,4 @@ oc create -n debezium-docs -f dbz-connect.yaml
 The connector is registered to the Kafka Connect cluster and starts to run against the database that is specified by `spec.config.database.dbname` in the `KafkaConnector` CR.
 After the connector pod is ready, {prodname} is running.
 
-You are now ready to xref:verifying-that-the-debezium-{context}-connector-is-running[verify the {prodname}{connector-name} deployment].
+You are now ready to xref:verifying-that-the-debezium-{context}-connector-is-running[verify the {prodname} {connector-name} deployment].
