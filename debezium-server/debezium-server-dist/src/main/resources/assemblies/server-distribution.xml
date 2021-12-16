@@ -22,6 +22,7 @@
             <exclude>org.glassfish.jersey.*:*:*</exclude>
             <exclude>org.eclipse.jetty:*:*</exclude>
             <exclude>org.apache.maven:*:*</exclude>
+            <exclude>log4j:log4j:*</exclude>
           </excludes>
       </dependencySet>
   </dependencySets>
