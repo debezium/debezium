@@ -728,7 +728,8 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Names of the collection and database that contain the new document.
 * If the event was part of a snapshot.
 * Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
-* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event.
+* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event (oplog capture mode only).
+* Unique identifiers of the MongoDB session `lsid` and transaction number `txnNumber` in case the change was executed inside a transaction (change streams capture mode only).
 
 |8
 |`op`
@@ -912,7 +913,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Names of the collection and database that contain the updated document.
 * If the event was part of a snapshot.
 * Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
-* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event.
+* Unique identifiers of the MongoDB session `lsid` and transaction number `txnNumber` in case the change was executed inside a transaction.
 
 |===
 
@@ -971,7 +972,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 
 |3
 |`filter`
-|Contains the JSON string representation of the MongoDB selection criteria that was used to identify the document to be deleted.
+|Contains the JSON string representation of the MongoDB selection criteria that was used to identify the document to be deleted (oplog capture mode only).
 
 |4
 |`source`
@@ -983,7 +984,8 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Names of the collection and database that contained the deleted document.
 * If the event was part of a snapshot.
 * Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
-* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the `oplog` event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the `oplog` event.
+* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event (oplog capture mode only).
+* Unique identifiers of the MongoDB session `lsid` and transaction number `txnNumber` in case the change was executed inside a transaction (change streams capture mode only).
 
 |===
 
