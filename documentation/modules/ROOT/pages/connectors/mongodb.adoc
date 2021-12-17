@@ -304,7 +304,8 @@ The following example shows a typical message:
 }
 ----
 
-The transaction events are written to the topic named `<database.server.name>.transaction`.
+Unless overridden via the {link-prefix}:{link-mongodb-connector}#mongodb-property-transaction-topic[`transaction.topic`] option,
+transaction events are written to the topic named `_database.server.name_.transaction`.
 
 .Change data event enrichment
 When transaction metadata is enabled, the data message `Envelope` is enriched with a new `transaction` field.
@@ -320,10 +321,7 @@ Following is an example of what a message looks like:
 ----
 {
   "patch": null,
-  "after": {
-    "pk": "2",
-    "aa": "1"
-  },
+  "after": "{\"_id\" : {\"$numberLong\" : \"1004\"},\"first_name\" : \"Anne\",\"last_name\" : \"Kretchmar\",\"email\" : \"annek@noanswer.org\"}",
   "source": {
 ...
   },
