@@ -222,7 +222,18 @@ If the connector is stopped before the tasks' snapshots are completed, upon rest
 Try to avoid task reassignment and reconfiguration while the connector is performing a snapshot of any replica sets. The connector does log messages with the progress of the snapshot. For utmost control, run a separate cluster of Kafka Connect for each connector.
 ====
 
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+// Type: concept
+// ModuleID: debezium-mongodb-ad-hoc-snapshots
+[id="mongodb-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
+// ModuleID: debezium-mongodb-incremental-snapshots
+[id="mongodb-incremental-snapshots"]
+==== Incremental snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
+
 
 [NOTE]
 ====
