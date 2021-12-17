@@ -119,7 +119,17 @@ Note this mode is only safe to be used when it is guaranteed that no schema chan
 
 |===
 
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+// Type: concept
+// ModuleID: debezium-oracle-ad-hoc-snapshots
+[id="oracle-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
+// ModuleID: debezium-oracle-incremental-snapshots
+[id="oracle-incremental-snapshots"]
+==== Incremental snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
 ====
@@ -176,7 +186,7 @@ The payload of a schema change event message includes the following elements:
 
 `ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
 `databaseName`:: The name of the database to which the statements are applied.
-The value of `databaseName` serves as the message key. 
+The value of `databaseName` serves as the message key.
 `tableChanges`::  A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
 Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
@@ -2224,7 +2234,11 @@ You can set the following values:
 
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match names of fully-qualified table names (`_<schemaName>_._<tableName>_`) included in `table.include.list` for which you want to take the snapshot.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+
+This property does not affect the behavior of xref:oracle-incremental-snapshots[incremental snapshots].
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -2534,17 +2548,17 @@ Use the `log.mining.buffer.location` property to define the location for storing
 |[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.transactions+`>>
 |No default
 |The XML configuration for the Infinispan transaction cache.
-See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
+For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-events]]<<oracle-property-log-mining-buffer-infinispan-cache-events, `+log.mining.buffer.infinispan.cache.events+`>>
 |No default
 |The XML configuration for the Infinispan events cache.
-See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
+For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-processed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-processed-transactions, `+log.mining.buffer.infinispan.cache.processed_transactions+`>>
 |No default
 |The XML configuration for the Infinispan processed transactions cache.
-See xref:oracle-event-buffering-infinispan[Infinispan event buffering] for more details.
+For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-schema-changes]]<<oracle-property-log-mining-buffer-infinispan-cache-schema-changes, `+log.mining.buffer.infinispan.cache.schema_changes+`>>
 |No default
@@ -2699,14 +2713,21 @@ You can configure the connector to skip the following types of operations:
 
 By default, no operations are skipped.
 
-|[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection, `+signal.data.collection+`>>
-|No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
-The name format is _database_name.schema-name.table-name_.
+
+|[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
+|No default value
+a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector. +
+Use the following format to specify the collection name: +
+`_<schemaName>_._<tableName>_`
+
 
 |[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-| The number of rows fetched from the database for each incremental snapshot iteration.
+|The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
+The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
 
 |===
 
@@ -2995,8 +3016,8 @@ ifdef::community[]
 The Oracle connector automatically tracks and applies table schema changes by parsing DDL from the redo logs.
 If the DDL parser encounters an incompatible statement, if needed, the connector provides an alternative way to apply the schema change.
 
-By default, the connector stops when it encountered a DDL statement that it cannot parse.
-You can use {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema from such DDL statements.
+By default, the connector stops when it encounters a DDL statement that it cannot parse.
+You can use {prodname} link:/documentation/reference/configuration/signalling[signaling] to trigger the update of the database schema from such DDL statements.
 
 The type of the schema update action is `schema-changes`.
 This action updates the schema of all tables enumerated in the signal parameters.

@@ -114,4 +114,3 @@ This means that event semantics differ between initial and incremental snapshots
 * `update` and `delete` events can arrive before `read` events
 * if `delete` event arrives first then `read` event is never delivered
 * if `update` event arrives first then `read` event will either not be delivered at all or it will be delivered with the updated value
-
