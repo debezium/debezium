@@ -48,8 +48,8 @@ public class TestHelper {
                 .withNetwork(NETWORK)
                 .withCopyFileToContainer(
                         MountableFile.forHostPath(
-                                "target/debezium-connect-rest-extension-1.8.0-SNAPSHOT.jar"),
-                        "/kafka/libs/debezium-kcd-rest-extension-1.8.0.jar")
+                                "target/debezium-connect-rest-extension-1.9.0-SNAPSHOT.jar"),
+                        "/kafka/libs/debezium-kcd-rest-extension-1.9.0.jar")
                 .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .withStartupTimeout(Duration.ofSeconds(90))
