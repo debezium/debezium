@@ -7,6 +7,7 @@ on:
       - 1.*
     paths:
       - 'debezium-core/**'
+      - 'debezium-embedded/**'
       - 'debezium-api/**'
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
@@ -18,6 +19,7 @@ on:
       - 1.*
     paths:
       - 'debezium-core/**'
+      - 'debezium-embedded/**'
       - 'debezium-api/**'
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
@@ -50,6 +52,6 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Build Debezium Core
-        run: mvn clean install -f core/pom.xml  -pl debezium-bom,debezium-core -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: mvn clean install -f core/pom.xml -pl debezium-bom,debezium-embedded -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Vitess
         run: mvn clean install -f vitess/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
