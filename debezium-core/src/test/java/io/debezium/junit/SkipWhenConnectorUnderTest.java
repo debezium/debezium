@@ -6,6 +6,7 @@
 package io.debezium.junit;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -18,6 +19,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD, ElementType.TYPE })
+@Repeatable(SkipWhenConnectorsUnderTest.class)
 public @interface SkipWhenConnectorUnderTest {
 
     Connector value();
@@ -32,6 +34,14 @@ public @interface SkipWhenConnectorUnderTest {
             @Override
             boolean isEqualTo(String packageName) {
                 return packageName != null && packageName.startsWith("io.debezium.connector.sqlserver");
+            }
+        },
+
+        DB2 {
+
+            @Override
+            boolean isEqualTo(String packageName) {
+                return packageName != null && packageName.startsWith("io.debezium.connector.db2");
             }
         };
 
