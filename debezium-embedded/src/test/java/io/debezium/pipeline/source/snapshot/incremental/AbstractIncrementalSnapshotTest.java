@@ -420,6 +420,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @FixFor("DBZ-4272")
     // Disabled due to DBZ-4350
     @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = Connector.SQL_SERVER)
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = Connector.DB2)
     public void snapshotPreceededBySchemaChange() throws Exception {
         Testing.Print.enable();
 
