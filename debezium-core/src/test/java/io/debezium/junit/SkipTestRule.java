@@ -134,19 +134,17 @@ public class SkipTestRule extends AnnotationBasedTestRule {
 
         final SkipWhenConnectorUnderTest connectorUnderTestAnnotation = hasAnnotation(description, SkipWhenConnectorUnderTest.class);
         if (connectorUnderTestAnnotation != null) {
-            boolean isConnectorUnderTest;
-
-            switch (connectorUnderTestAnnotation.check()) {
-                case EQUAL:
-                    isConnectorUnderTest = connectorUnderTestAnnotation.value().isEqualTo(description.getClassName());
-                    break;
-                default:
-                    isConnectorUnderTest = false;
-                    break;
-            }
-
-            if (isConnectorUnderTest) {
+            if (isSkippedByConnectorUnderTest(description, connectorUnderTestAnnotation)) {
                 return emptyStatement("Connector under test " + connectorUnderTestAnnotation.value(), description);
+            }
+        }
+
+        final SkipWhenConnectorsUnderTest connectorsUnderTestAnnotation = hasAnnotation(description, SkipWhenConnectorsUnderTest.class);
+        if (connectorsUnderTestAnnotation != null) {
+            for (SkipWhenConnectorUnderTest connector : connectorsUnderTestAnnotation.value()) {
+                if (isSkippedByConnectorUnderTest(description, connector)) {
+                    return emptyStatement("Connector under test " + connector.value(), description);
+                }
             }
         }
 
@@ -169,6 +167,20 @@ public class SkipTestRule extends AnnotationBasedTestRule {
         }
 
         return base;
+    }
+
+    public boolean isSkippedByConnectorUnderTest(Description description,
+                                                 final SkipWhenConnectorUnderTest connectorUnderTestAnnotation) {
+        boolean isConnectorUnderTest;
+        switch (connectorUnderTestAnnotation.check()) {
+            case EQUAL:
+                isConnectorUnderTest = connectorUnderTestAnnotation.value().isEqualTo(description.getClassName());
+                break;
+            default:
+                isConnectorUnderTest = false;
+                break;
+        }
+        return isConnectorUnderTest;
     }
 
     private boolean isSkippedByDatabaseVersion(SkipWhenDatabaseVersion skipWhenDatabaseVersion) {
