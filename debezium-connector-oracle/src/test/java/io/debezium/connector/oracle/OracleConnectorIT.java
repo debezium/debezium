@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import javax.management.JMException;
 import javax.management.MBeanServer;
@@ -50,6 +51,8 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
@@ -83,6 +86,7 @@ import io.debezium.util.Testing;
  * @author Gunnar Morling
  */
 public class OracleConnectorIT extends AbstractConnectorTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorIT.class);
 
     private static final long MICROS_PER_SECOND = TimeUnit.SECONDS.toMicros(1);
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
@@ -2964,6 +2968,174 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-4367")
+    public void shouldCaptureChangesForTransactionsAcrossSnapshotBoundary() throws Exception {
+        TestHelper.dropTable(connection, "DBZ4367");
+        try {
+            connection.execute("CREATE TABLE DBZ4367 (ID number(9, 0), DATA varchar2(50))");
+            TestHelper.streamTable(connection, "DBZ4367");
+
+            connection.execute("INSERT INTO DBZ4367 (ID, DATA) VALUES (1, 'pre-snapshot pre TX')");
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367 (ID, DATA) VALUES (2, 'pre-snapshot in TX')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367")
+                    .build();
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367 (ID, DATA) VALUES (3, 'post-snapshot in TX')");
+            connection.executeWithoutCommitting("COMMIT");
+            connection.execute("INSERT INTO DBZ4367 (ID, DATA) VALUES (4, 'post snapshot post TX')");
+
+            SourceRecords records = consumeRecordsByTopic(4);
+            List<Integer> ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367").stream()
+                    .map(r -> getAfter(r).getInt32("ID"))
+                    .collect(Collectors.toList());
+            assertThat(ids).containsOnly(1, 2, 3, 4);
+            assertThat(ids).doesNotHaveDuplicates();
+            assertThat(ids).hasSize(4);
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "DBZ4367");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4367")
+    public void shouldCaptureChangesForTransactionsAcrossSnapshotBoundaryWithoutDuplicatingSnapshottedChanges() throws Exception {
+        OracleConnection secondConnection = TestHelper.testConnection();
+        TestHelper.dropTable(connection, "DBZ4367");
+        try {
+            connection.execute("CREATE TABLE DBZ4367 (ID number(9, 0), DATA varchar2(50))");
+            TestHelper.streamTable(connection, "DBZ4367");
+
+            connection.execute("INSERT INTO DBZ4367 (ID, DATA) VALUES (1, 'pre-snapshot pre TX')");
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367 (ID, DATA) VALUES (2, 'pre-snapshot in TX')");
+            secondConnection.execute("INSERT INTO DBZ4367 (ID, DATA) VALUES (3, 'pre-snapshot in another TX')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367")
+                    .build();
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(2);
+            List<Integer> ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367").stream()
+                    .map(r -> getAfter(r).getInt32("ID"))
+                    .collect(Collectors.toList());
+            assertThat(ids).containsOnly(1, 3);
+            assertThat(ids).doesNotHaveDuplicates();
+            assertThat(ids).hasSize(2);
+
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367 (ID, DATA) VALUES (4, 'post-snapshot in TX')");
+            connection.executeWithoutCommitting("COMMIT");
+            connection.execute("INSERT INTO DBZ4367 (ID, DATA) VALUES (5, 'post snapshot post TX')");
+
+            records = consumeRecordsByTopic(3);
+            ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367").stream()
+                    .map(r -> getAfter(r).getInt32("ID"))
+                    .collect(Collectors.toList());
+            assertThat(ids).containsOnly(2, 4, 5);
+            assertThat(ids).doesNotHaveDuplicates();
+            assertThat(ids).hasSize(3);
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "DBZ4367");
+            secondConnection.close();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4367")
+    public void shouldCaptureChangesForTransactionsAcrossSnapshotBoundaryWithoutReemittingDDLChanges() throws Exception {
+        OracleConnection secondConnection = TestHelper.testConnection();
+        TestHelper.dropTable(connection, "DBZ4367");
+        TestHelper.dropTable(connection, "DBZ4367_EXTRA");
+        try {
+            connection.execute("CREATE TABLE DBZ4367 (ID number(9, 0), DATA varchar2(50))");
+            TestHelper.streamTable(connection, "DBZ4367");
+            connection.execute("CREATE TABLE DBZ4367_EXTRA (ID number(9, 0), DATA varchar2(50))");
+            TestHelper.streamTable(connection, "DBZ4367_EXTRA");
+
+            // some transactions that are complete pre-snapshot
+            connection.execute("INSERT INTO DBZ4367 (ID, DATA) VALUES (1, 'pre-snapshot pre TX')");
+            connection.execute("INSERT INTO DBZ4367_EXTRA (ID, DATA) VALUES (100, 'second table, pre-snapshot pre TX')");
+
+            // this is a transaction that spans the snapshot boundary, changes should be streamed
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367 (ID, DATA) VALUES (2, 'pre-snapshot in TX')");
+            // pre-snapshot DDL, should not be emitted in the streaming phase
+            secondConnection.execute("ALTER TABLE DBZ4367_EXTRA ADD DATA2 VARCHAR2(50) DEFAULT 'default2'");
+            secondConnection.execute("ALTER TABLE DBZ4367_EXTRA ADD DATA3 VARCHAR2(50) DEFAULT 'default3'");
+            secondConnection.execute("INSERT INTO DBZ4367_EXTRA (ID, DATA, DATA2, DATA3) VALUES (150, 'second table, with outdated schema', 'something', 'something')");
+            secondConnection.execute("ALTER TABLE DBZ4367_EXTRA DROP COLUMN DATA3");
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367_EXTRA (ID, DATA, DATA2) VALUES (200, 'second table, pre-snapshot in TX', 'something')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367,DEBEZIUM\\.DBZ4367_EXTRA")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .build();
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records;
+            List<SourceRecord> ddls;
+            List<Integer> ids;
+
+            // we expect two DDL records (synthetic CREATEs for the final table structure) and three DML records (one for each insert)
+            records = consumeRecordsByTopic(5);
+            ddls = records.ddlRecordsForDatabase("ORCLPDB1");
+            ddls.forEach(r -> assertThat(((Struct) r.value()).getString("ddl")).contains("CREATE TABLE"));
+            assertThat(ddls).hasSize(2);
+            ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367").stream()
+                    .map(r -> getAfter(r).getInt32("ID"))
+                    .collect(Collectors.toList());
+            assertThat(ids).containsExactly(1);
+            ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367_EXTRA").stream()
+                    .map(r -> getAfter(r).getInt32("ID"))
+                    .collect(Collectors.toList());
+            assertThat(ids).containsOnly(100, 150);
+            assertThat(ids).doesNotHaveDuplicates();
+            assertThat(ids).hasSize(2);
+
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367 (ID, DATA) VALUES (3, 'post-snapshot in TX')");
+            connection.executeWithoutCommitting("INSERT INTO DBZ4367_EXTRA (ID, DATA, DATA2) VALUES (300, 'second table, post-snapshot in TX', 'something')");
+            connection.executeWithoutCommitting("COMMIT");
+            // snapshot-spanning transaction ends here
+
+            // post-snapshot transaction, changes should be streamed
+            connection.execute("INSERT INTO DBZ4367 (ID, DATA) VALUES (4, 'post snapshot post TX')");
+            connection.execute("INSERT INTO DBZ4367_EXTRA (ID, DATA, DATA2) VALUES (400, 'second table, post-snapshot post TX', 'something')");
+
+            records = consumeRecordsByTopic(6);
+            ddls = records.ddlRecordsForDatabase("ORCLPDB1");
+            if (ddls != null) {
+                assertThat(ddls).isEmpty();
+            }
+            ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367").stream()
+                    .map(r -> getAfter(r).getInt32("ID"))
+                    .collect(Collectors.toList());
+            assertThat(ids).containsOnly(2, 3, 4);
+            assertThat(ids).doesNotHaveDuplicates();
+            assertThat(ids).hasSize(3);
+            ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367_EXTRA").stream()
+                    .map(r -> getAfter(r).getInt32("ID"))
+                    .collect(Collectors.toList());
+            assertThat(ids).containsOnly(200, 300, 400);
+            assertThat(ids).doesNotHaveDuplicates();
+            assertThat(ids).hasSize(3);
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "DBZ4367");
+            TestHelper.dropTable(connection, "DBZ4367_EXTRA");
+            secondConnection.close();
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();
@@ -2978,5 +3150,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                         return Scn.valueOf(scnValue).compareTo(scn) > 0;
                     });
         }
+    }
+
+    private Struct getAfter(SourceRecord record) {
+        return ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
     }
 }

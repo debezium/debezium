@@ -23,6 +23,8 @@ import io.debezium.schema.DataCollectionId;
 public class OracleOffsetContext implements OffsetContext {
 
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
+    public static final String SNAPSHOT_PENDING_TRANSACTIONS_PREFIX = "snapshot_pending_tx_";
+    public static final String SNAPSHOT_SCN_KEY = "snapshot_scn";
 
     private final Schema sourceInfoSchema;
 
@@ -31,24 +33,44 @@ public class OracleOffsetContext implements OffsetContext {
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
 
     /**
+     * SCN that was used for the initial consistent snapshot.
+     *
+     * We keep track of this field because it's a cutoff for emitting DDL statements,
+     * in case we start mining _before_ the snapshot SCN to cover transactions that were 
+     * ongoing at the time the snapshot was taken.
+     */
+    private final Scn snapshotScn;
+
+    /**
+     * Map of (txid, start SCN) for all transactions in progress at the time the
+     * snapshot was taken.
+     */
+    private Map<String, Scn> snapshotPendingTransactions;
+
+    /**
      * Whether a snapshot has been completed or not.
      */
     private boolean snapshotCompleted;
 
     public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Scn commitScn, String lcrPosition,
+                               Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        this(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext, incrementalSnapshotContext);
+        this(connectorConfig, scn, lcrPosition, snapshotScn, snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext, incrementalSnapshotContext);
         sourceInfo.setCommitScn(commitScn);
     }
 
     public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, String lcrPosition,
+                               Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         sourceInfo = new SourceInfo(connectorConfig);
         sourceInfo.setScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
         sourceInfoSchema = sourceInfo.schema();
+
+        this.snapshotScn = snapshotScn;
+        this.snapshotPendingTransactions = snapshotPendingTransactions;
 
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
@@ -71,6 +93,8 @@ public class OracleOffsetContext implements OffsetContext {
         private boolean snapshotCompleted;
         private TransactionContext transactionContext;
         private IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
+        private Map<String, Scn> snapshotPendingTransactions;
+        private Scn snapshotScn;
 
         public Builder logicalName(OracleConnectorConfig connectorConfig) {
             this.connectorConfig = connectorConfig;
@@ -107,8 +131,19 @@ public class OracleOffsetContext implements OffsetContext {
             return this;
         }
 
+        public Builder snapshotPendingTransactions(Map<String, Scn> snapshotPendingTransactions) {
+            this.snapshotPendingTransactions = snapshotPendingTransactions;
+            return this;
+        }
+
+        public Builder snapshotScn(Scn scn) {
+            this.snapshotScn = scn;
+            return this;
+        }
+
         OracleOffsetContext build() {
-            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext, incrementalSnapshotContext);
+            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshotScn, snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
+                    incrementalSnapshotContext);
         }
     }
 
@@ -126,6 +161,12 @@ public class OracleOffsetContext implements OffsetContext {
             offset.put(SourceInfo.SNAPSHOT_KEY, true);
             offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
+            if (snapshotPendingTransactions != null) {
+                snapshotPendingTransactions.entrySet().stream()
+                        .forEach(e -> offset.put(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX + e.getKey(), e.getValue().longValue()));
+            }
+            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.toString() : null);
+
             return offset;
         }
         else {
@@ -139,6 +180,12 @@ public class OracleOffsetContext implements OffsetContext {
                 offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : null);
                 offset.put(SourceInfo.COMMIT_SCN_KEY, commitScn != null ? commitScn.toString() : null);
             }
+            if (snapshotPendingTransactions != null) {
+                snapshotPendingTransactions.entrySet().stream()
+                        .forEach(e -> offset.put(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX + e.getKey(), e.getValue().longValue()));
+            }
+            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.toString() : null);
+
             return incrementalSnapshotContext.store(transactionContext.store(offset));
         }
     }
@@ -175,6 +222,18 @@ public class OracleOffsetContext implements OffsetContext {
 
     public String getLcrPosition() {
         return sourceInfo.getLcrPosition();
+    }
+
+    public Scn getSnapshotScn() {
+        return snapshotScn;
+    }
+
+    public Map<String, Scn> getSnapshotPendingTransactions() {
+        return snapshotPendingTransactions;
+    }
+
+    public void setSnapshotPendingTransactions(Map<String, Scn> snapshotPendingTransactions) {
+        this.snapshotPendingTransactions = snapshotPendingTransactions;
     }
 
     public void setTransactionId(String transactionId) {
@@ -276,5 +335,30 @@ public class OracleOffsetContext implements OffsetContext {
             return Scn.valueOf((Long) scn);
         }
         return null;
+    }
+
+    /**
+     * Helper method to read the in-progress transaction map from the offset map.
+     *
+     * @param offset the offset map
+     * @return the in-progress transaction map
+     */
+    public static Map<String, Scn> loadSnapshotPendingTransactions(Map<String, ?> offset) {
+        Map<String, Scn> snapshotPendingTransactions = new HashMap<>();
+        offset.keySet().stream()
+                .filter(key -> key.startsWith(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX))
+                .forEach(key -> snapshotPendingTransactions.put(
+                        key.substring(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX.length()), getScnFromOffsetMapByKey(offset, key)));
+        return snapshotPendingTransactions;
+    }
+
+    /**
+     * Helper method to read the snapshot SCN from the offset map.
+     *
+     * @param offset the offset map
+     * @return the snapshot SCN
+     */
+    public static Scn loadSnapshotScn(Map<String, ?> offset) {
+        return getScnFromOffsetMapByKey(offset, SNAPSHOT_SCN_KEY);
     }
 }

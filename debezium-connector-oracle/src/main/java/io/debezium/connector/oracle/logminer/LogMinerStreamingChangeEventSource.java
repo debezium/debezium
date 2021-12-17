@@ -77,6 +77,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     private Scn startScn;
     private Scn endScn;
+    private Scn snapshotScn;
     private List<BigInteger> currentRedoLogSequences;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
@@ -108,10 +109,58 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) {
         try {
+            Scn firstScn = getFirstScnInLogs(jdbcConnection);
             startScn = offsetContext.getScn();
+            snapshotScn = offsetContext.getSnapshotScn();
+            if (startScn.compareTo(snapshotScn) == 0) {
+                // This is the initial run of the streaming change event source.
+                // We need to compute the correct start offset for mining. That is not the snapshot offset,
+                // but the start offset of the oldest transaction that was still pending when the snapshot
+                // was taken.
+                Map<String, Scn> snapshotPendingTransactions = offsetContext.getSnapshotPendingTransactions();
+                if (snapshotPendingTransactions == null || snapshotPendingTransactions.isEmpty()) {
+                    // no pending transactions, we can start mining from the snapshot SCN
+                    startScn = snapshotScn;
+                }
+                else {
+                    // find the oldest transaction we can still fully process, and start from there.
+                    Scn minScn = snapshotScn;
+                    for (Map.Entry<String, Scn> entry : snapshotPendingTransactions.entrySet()) {
+                        String transactionId = entry.getKey();
+                        Scn scn = entry.getValue();
+                        LOGGER.info("Transaction {} was pending across snapshot boundary. Start SCN = {}, snapshot SCN = {}", transactionId, scn, startScn);
+                        if (scn.compareTo(firstScn) < 0) {
+                            LOGGER.warn(
+                                    "Transaction {} was still ongoing while snapshot was taken, but is no longer completely recorded in the archive logs. Events will be lost. Oldest SCN = {}, TX start SCN = {}",
+                                    transactionId, firstScn, scn);
+                            minScn = firstScn;
+                        }
+                        else if (scn.compareTo(minScn) < 0) {
+                            minScn = scn;
+                        }
+                    }
+
+                    // Make sure the commit SCN is at least the snapshot SCN - 1.
+                    // This ensures we'll never emit events for transactions that were complete before the snapshot was
+                    // taken.
+                    Scn originalCommitScn = offsetContext.getCommitScn();
+                    if (originalCommitScn == null || originalCommitScn.compareTo(snapshotScn) < 0) {
+                        LOGGER.info("Setting commit SCN to {} (snapshot SCN - 1) to ensure we don't double-emit events from pre-snapshot transactions.",
+                                snapshotScn.subtract(Scn.valueOf(1)));
+                        offsetContext.setCommitScn(snapshotScn.subtract(Scn.valueOf(1)));
+                    }
+
+                    // set start SCN to minScn
+                    if (minScn.compareTo(startScn) < 0) {
+                        LOGGER.info("Resetting start SCN from {} (snapshot SCN) to {} (start of oldest complete pending transaction)", startScn, minScn);
+                        startScn = minScn.subtract(Scn.valueOf(1));
+                    }
+                }
+                offsetContext.setScn(snapshotScn);
+            }
 
             try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
-                if (!isContinuousMining && startScn.compareTo(getFirstScnInLogs(jdbcConnection)) < 0) {
+                if (!isContinuousMining && startScn.compareTo(firstScn) < 0) {
                     throw new DebeziumException(
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
