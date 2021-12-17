@@ -83,6 +83,18 @@
 
   <profiles>
     <profile>
+      <id>quick</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+        <property>
+          <name>quick</name>
+        </property>
+      </activation>
+      <properties>
+        <skipITs>true</skipITs>
+      </properties>
+    </profile>
+    <profile>
       <id>skip-integration-tests</id>
       <activation>
         <activeByDefault>false</activeByDefault>
