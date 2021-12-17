@@ -253,6 +253,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         if (!row.getEventType().equals(EventType.MISSING_SCN)) {
             lastProcessedScn = row.getScn();
         }
+        // filter out all events that are captured as part of the initial snapshot
+        if (row.getScn().compareTo(offsetContext.getSnapshotScn()) < 0) {
+            Map<String, Scn> snapshotPendingTransactions = offsetContext.getSnapshotPendingTransactions();
+            if (snapshotPendingTransactions == null || !snapshotPendingTransactions.containsKey(row.getTransactionId())) {
+                LOGGER.info("Skipping event {} (SCN {}) because it is already encompassed by the initial snapshot", row.getEventType(), row.getScn());
+                return;
+            }
+        }
         switch (row.getEventType()) {
             case MISSING_SCN:
                 handleMissingScn(row);
@@ -338,7 +346,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         final Scn commitScn = row.getScn();
         if (isTransactionAlreadyProcessed(commitScn, offsetContext.getCommitScn())) {
             LOGGER.debug("Transaction {} has already been processed. "
-                    + "Offset Commit SCN {}, Tranasction Commit SCN {}, Last Seen Commit SCN {}.",
+                    + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
                     transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
             removeTransactionAndEventsFromCache(transaction);
             metrics.setActiveTransactions(getTransactionCache().size());
