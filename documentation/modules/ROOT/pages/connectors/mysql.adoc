@@ -213,7 +213,7 @@ The message contains a logical representation of the table schema.
   ...
   },
   "payload": {
-        "source": {  //<1>
+        "source": {  # (1)
         "version": "{debezium-version}",
         "connector": "mysql",
         "name": "dbserver1",
@@ -230,19 +230,19 @@ The message contains a logical representation of the table schema.
         "thread": null,
         "query": null
     },
-    "databaseName": "inventory", //<2>
+    "databaseName": "inventory", # (2)
     "schemaName": null,
-    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)", //<3>
-    "tableChanges": [  //<4>
+    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)", #(3)
+    "tableChanges": [ # (4)
         {
-        "type": "ALTER", //<5>
-        "id": "\"inventory\".\"customers\"",  //<6>
-        "table": { //<7>
+        "type": "ALTER", # (5)
+        "id": "\"inventory\".\"customers\"",  # (6)
+        "table": { # (7)
             "defaultCharsetName": "latin1",
-            "primaryKeyColumnNames": [  //<8>
+            "primaryKeyColumnNames": [  # (8)
                 "id"
             ],
-            "columns": [ //<9>
+            "columns": [ # (9)
                 {
                 "name": "id",
                 "jdbcType": 4,
@@ -488,30 +488,46 @@ a|Records the completed snapshot in the connector offsets.
 
 |===
 
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+// Type: concept
+// ModuleID: debezium-mysql-ad-hoc-snapshots
+[id="mysql-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
-==== Read-only Incremental snapshot
+// Type: concept
+// ModuleID: debezium-mysql-incremental-snapshots
+[id="mysql-incremental-snapshots"]
+==== Incremental snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
-The MySql connector supports Incremental snapshot with read-only connection to the database.
-It's achieved by using executed GTID set as high and low watermarks.
-The state of chunk's window gets updated by comparing GTIDs of binlog events or server's heartbeats against low and high watermarks.
+// Type: concept
+// ModuleID: debezium-mysql-read-only-incremental-snapshots
+[id="mysql-read-only-incremental-snapshots"]
+==== Read-only incremental snapshots
 
-To switch to read-only implementation set {link-prefix}:{link-mysql-connector}#mysql-property-read-only[read.only] to `true`.
+The MySQL connector allows for running incremental snapshots with a read-only connection to the database.
+To run an incremental snapshot with read-only access, the connector uses the executed global transaction IDs (GTID) set as high and low watermarks.
+The state of a chunk's window is updated by comparing the GTIDs of binary log (binlog) events or the server's heartbeats against low and high watermarks.
+
+To switch to a read-only implementation, set the value of the {link-prefix}:{link-mysql-connector}#mysql-property-read-only[`read.only`] property to `true`.
 
 .Prerequisites
 
-* {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[`enable-mysql-gtids`]
-* If connector is reading from a replica, then for multithreaded replicas (replicas on which `replica_parallel_workers` is set to a value greater than 0)
-it's required to set `replica_preserve_commit_order=1` or `slave_preserve_commit_order=1`
+* xref:enable-mysql-gtids[Enable MySQL GTIDs].
+* If the connector reads from a multi-threaded replica (that is, a replica for which the value of `replica_parallel_workers` is greater than `0`)
+you must set one of the following options:
 
-==== Ad-hoc read-only Incremental snapshot
+** `replica_preserve_commit_order=ON`
+** `slave_preserve_commit_order=ON`
 
-An alternative way to {link-prefix}:{link-signalling}[signalling table] mechanism to execute a new snapshot when the MySQL connection is read-only is to send a message to the Kafka topic configured with
-{link-prefix}:{link-mysql-connector}#mysql-property-signal-kafka-topic[signal.kafka.topic] property.
+==== Ad hoc read-only incremental snapshots
 
-The key of the Kafka message has to match the connector's name.
+When the MySQL connection is read-only, the {link-prefix}:{link-signalling}[signaling table] mechanism can also run a snapshot by sending a message to the Kafka topic that is specified in
+the {link-prefix}:{link-mysql-connector}#mysql-property-signal-kafka-topic[signal.kafka.topic] property.
 
-The value is a json with `type` and `data` fields.
+The key of the Kafka message must match the name of the connector.
+
+The value is a JSON object with `type` and `data` fields.
 
 The signal type is `execute-snapshot` and the `data` field must have the following fields:
 
@@ -534,20 +550,24 @@ The format of the names is the same as for {link-prefix}:#{context}-property-sig
 
 An example of the execute-snapshot Kafka message:
 
+----
 Key = `test_connector`
 
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
+----
 
 ifdef::community[]
 
 // Type: continue
 [id="mysql-snapshot-events"]
-=== Operation type for snapshot events
-The MySql connector emits snapshot events using the "r" operation type (`READ`). In case you want the connector to emit snapshot events as "c" events (`CREATE`, as done incorrectly in earlier versions), this can be achieved using a Simple Message Transforms (SMT).
-Configure the Debezium `ReadToInsertEvent` SMT by adding the SMT configuration details to your connector’s configuration.
+=== Operation type of snapshot events
 
-An example of the configuration is this:
+The MySQL connector emits snapshot events as `READ` operations `("op" : "r")`.
+If you prefer that the connector emits snapshot events as `CREATE` (`c`) events, configure the {prodname} `ReadToInsertEvent` single message transform (SMT) to modify the event type.
 
+The following example shows how to configure the SMT:
+
+.Example: Using the `ReadToInsertEvent` SMT to change the type of snapshot events
 ----
 transforms=snapshotasinsert,...
 transforms.snapshotasinsert.type=io.debezium.connector.mysql.transforms.ReadToInsertEvent
@@ -2638,6 +2658,7 @@ If the size of the transaction is larger than the buffer then {prodname} must re
  +
 NOTE: This feature is incubating. Feedback is encouraged. It is expected that this feature is not completely polished.
 endif::community[]
+
 |[[mysql-property-snapshot-mode]]<<mysql-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
 |Specifies the criteria for running a snapshot when the connector starts. Possible settings are: +
@@ -2668,7 +2689,10 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 
 |[[mysql-property-snapshot-include-collection-list]]<<mysql-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match names of schemas specified in `table.include.list` for which you *want* to take the snapshot.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>.<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:mysql-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property does not affect the behavior of xref:mysql-incremental-snapshots[incremental snapshots].
 
 |[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -2761,14 +2785,27 @@ endif::community[]
 |No default
 |Comma-separated list of operation types to skip during streaming. The following values are possible: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
 
-|[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection, `+signal.data.collection+`>>
-|No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
-The name format is _database-name.table-name_.
+|[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection,`+signal.data.collection+`>>
+|No default value
+|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector. +
+Use the following format to specify the collection name: +
+`_<databaseName>_._<tableName>_`
+
+ifdef::product[]
+xref:{link-signalling}#sending-signals-to-a-debezium-connector[Signaling] is a Technology Preview feature.
+endif::product[]
 
 |[[mysql-property-incremental-snapshot-chunk-size]]<<mysql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-| The number of rows fetched from the database for each incremental snapshot iteration.
+|The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
+The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
+ifdef::product[]
+xref:debezium-mysql-incremental-snapshots[Incremental snapshots] is a Technology Preview feature.
+endif::product[]
 
 |[[mysql-property-read-only]]<<mysql-property-read-only, `+read.only+`>>
 |`false`
@@ -2786,9 +2823,9 @@ The name format is _database-name.table-name_.
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 [id="debezium-{context}-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector kafka signals configuration properties
+==== {prodname} connector Kafka signals configuration properties
 
-When MySQL connector is configured as read-only the alternative for the signalling table is the signals Kafka topic.
+When the MySQL connector is configured as read-only, the alternative for the signaling table is the signals Kafka topic.
 
 {prodname} provides a set of `signal.*` properties that control how the connector interacts with the Kafka signals topic.
 
@@ -2800,7 +2837,7 @@ The following table describes the `signal` properties.
 |Property |Default |Description
 |[[{context}-property-signal-kafka-topic]]<<{context}-property-signal-kafka-topic, `+signal.kafka.topic+`>>
 |
-|The name of the Kafka topic that connector monitors for ad-hoc signals.
+|The name of the Kafka topic that the connector monitors for ad hoc signals.
 
 |[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
 |

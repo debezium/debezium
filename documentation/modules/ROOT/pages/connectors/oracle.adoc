@@ -119,7 +119,17 @@ After the snapshot completes, the connector begins to stream event records for s
 
 |===
 
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+// Type: concept
+// ModuleID: debezium-oracle-ad-hoc-snapshots
+[id="oracle-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
+// ModuleID: debezium-oracle-incremental-snapshots
+[id="oracle-incremental-snapshots"]
+==== Incremental snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
 ====
@@ -176,7 +186,7 @@ The payload of a schema change event message includes the following elements:
 
 `ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
 `databaseName`:: The name of the database to which the statements are applied.
-The value of `databaseName` serves as the message key. 
+The value of `databaseName` serves as the message key.
 `tableChanges`::  A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
 Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
@@ -487,11 +497,14 @@ The connector drops change events that are discarded by a rollback.
 
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
+==== Heap
 The default buffer type is configured using `memory`.
 Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records.
 If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment.
 
 ifdef::community[]
+[[oracle-event-buffering-infinispan]]
+==== Infinispan
 An additional buffer type can be configured using `infinispan`.
 You can also set the buffer type to  `infinispan` to have the connector use Infinispan in embedded-mode to cache buffered events.
 Using Infinispan as the buffer type permits the cache to be persisted to disk.
@@ -2057,7 +2070,11 @@ You can set the following values:
 
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match names of fully-qualified table names (`_<schemaName>_._<tableName>_`) included in `table.include.list` for which you want to take the snapshot.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+
+This property does not affect the behavior of xref:oracle-incremental-snapshots[incremental snapshots].
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -2345,7 +2362,6 @@ Use the `log.mining.buffer.location` property to define the location for storing
 |No default
 |Specifies the location of the directory that the connector uses to read and write the buffer cache.
 Specify a directory that every node in the Kafka cluster can access and that is unique for the connector deployment.
-endif::community[]
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
 |`false`
@@ -2355,6 +2371,7 @@ This setting only impacts buffer implementations that persist state across resta
 The default behavior is that the buffer state is always retained between restarts. +
  +
 Set to `true` only in testing or development environments.
+endif::community[]
 
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
@@ -2494,14 +2511,21 @@ You can configure the connector to skip the following types of operations:
 
 By default, no operations are skipped.
 
-|[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection, `+signal.data.collection+`>>
-|No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
-The name format is _database_name.schema-name.table-name_.
+
+|[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
+|No default value
+a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector. +
+Use the following format to specify the collection name: +
+`_<schemaName>_._<tableName>_`
+
 
 |[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-| The number of rows fetched from the database for each incremental snapshot iteration.
+|The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
+The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
 
 |===
 
@@ -2755,19 +2779,19 @@ Under optimal operations, this should always be or remain close to `0`.
 |The number of DDL records that have been detected but could not be parsed by the DDL parser.
 This should always be `0`; however when allowing unparsable DDL to be skipped, this metric can be used to determine if any warnings have been written to the connector logs.
 
-|[[oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes, `+MiningSessionUserGlobalAreaMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes, `+MiningSessionUserGlobalAreaMemoryInBytes+`>>
 |`long`
 |The current mining session's user global area (UGA) memory consumption in bytes.
 
-|[[oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes, `+MiningSessionUserGlobalAreaMaxMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes, `+MiningSessionUserGlobalAreaMaxMemoryInBytes+`>>
 |`long`
 |The maximum mining session's user global area (UGA) memory consumption in bytes across all mining sessions.
 
-|[[oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes, `+MiningSessionProcessGlobalAreaMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes, `+MiningSessionProcessGlobalAreaMemoryInBytes+`>>
 |`long`
 |The current mining session's process global area (PGA) memory consumption in bytes.
 
-|[[oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes, `+MiningSessionProcessGlobalAreaMaxMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes, `+MiningSessionProcessGlobalAreaMaxMemoryInBytes+`>>
 |`long`
 |The maximum mining session's process global area (PGA) memory consumption in bytes across all mining sessions.
 
@@ -2790,8 +2814,8 @@ ifdef::community[]
 The Oracle connector automatically tracks and applies table schema changes by parsing DDL from the redo logs.
 If the DDL parser encounters an incompatible statement, if needed, the connector provides an alternative way to apply the schema change.
 
-By default, the connector stops when it encountered a DDL statement that it cannot parse.
-You can use {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema from such DDL statements.
+By default, the connector stops when it encounters a DDL statement that it cannot parse.
+You can use {prodname} link:/documentation/reference/configuration/signalling[signaling] to trigger the update of the database schema from such DDL statements.
 
 The type of the schema update action is `schema-changes`.
 This action updates the schema of all tables enumerated in the signal parameters.
@@ -2865,7 +2889,7 @@ Instead, it contains the complete new schema structure.
 
 |===
 
-After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<oracle-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>> option as `true`.
+After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<{context}-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>> option as `true`.
 After the connector's commit SCN advances beyond the DDL change, to prevent unparseable DDL statements from being skipped unexpectedly, return the connector configuration to its previous state.
 
 .Example of a logging record
