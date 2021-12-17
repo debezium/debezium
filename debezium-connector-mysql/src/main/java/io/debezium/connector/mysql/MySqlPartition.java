@@ -49,10 +49,10 @@ public class MySqlPartition implements Partition {
         return "MySqlPartition [sourcePartition=" + getSourcePartition() + "]";
     }
 
-    static class Provider implements Partition.Provider<MySqlPartition> {
+    public static class Provider implements Partition.Provider<MySqlPartition> {
         private final MySqlConnectorConfig connectorConfig;
 
-        Provider(MySqlConnectorConfig connectorConfig) {
+        public Provider(MySqlConnectorConfig connectorConfig) {
             this.connectorConfig = connectorConfig;
         }
 

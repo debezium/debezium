@@ -41,8 +41,10 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final SlotState startingSlotInfo;
 
     public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
-                                             PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
-                                             SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
+                                             PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<PostgresPartition, TableId> dispatcher,
+                                             Clock clock,
+                                             SnapshotProgressListener<PostgresPartition> snapshotProgressListener, SlotCreationResult slotCreatedInfo,
+                                             SlotState startingSlotInfo) {
         super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -53,7 +55,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(PostgresOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(PostgresPartition partition, PostgresOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 

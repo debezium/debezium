@@ -23,17 +23,18 @@ import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
 
 @NotThreadSafe
-public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataCollectionId> extends AbstractIncrementalSnapshotChangeEventSource<T> {
+public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>
+        extends AbstractIncrementalSnapshotChangeEventSource<P, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
     private final String signalWindowStatement;
 
     public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                            JdbcConnection jdbcConnection,
-                                                           EventDispatcher<T> dispatcher, DatabaseSchema<?> databaseSchema,
+                                                           EventDispatcher<P, T> dispatcher, DatabaseSchema<?> databaseSchema,
                                                            Clock clock,
-                                                           SnapshotProgressListener progressListener,
-                                                           DataChangeEventListener dataChangeEventListener) {
+                                                           SnapshotProgressListener<P> progressListener,
+                                                           DataChangeEventListener<P> dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
         signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
                 + " VALUES (?, ?, null)";
@@ -64,7 +65,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
     }
 
     @Override
-    protected void emitWindowClose() throws SQLException {
+    protected void emitWindowClose(Partition partition) throws SQLException {
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Emitting close window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-close");

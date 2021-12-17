@@ -17,13 +17,14 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema> implements ChangeRecordEmitter {
+public abstract class AbstractChangeRecordEmitter<P extends Partition, T extends DataCollectionSchema>
+        implements ChangeRecordEmitter<P> {
 
-    private final Partition partition;
+    private final P partition;
     private final OffsetContext offsetContext;
     private final Clock clock;
 
-    public AbstractChangeRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock) {
+    public AbstractChangeRecordEmitter(P partition, OffsetContext offsetContext, Clock clock) {
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.clock = clock;
@@ -31,7 +32,7 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
 
     @Override
     @SuppressWarnings({ "unchecked" })
-    public void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
+    public void emitChangeRecords(DataCollectionSchema schema, Receiver<P> receiver) throws InterruptedException {
         Operation operation = getOperation();
         switch (operation) {
             case CREATE:
@@ -52,7 +53,7 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
     }
 
     @Override
-    public Partition getPartition() {
+    public P getPartition() {
         return partition;
     }
 
@@ -74,7 +75,7 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
      * @param receiver the handler for which the emitted record should be dispatched
      * @param schema the schema
      */
-    protected abstract void emitReadRecord(Receiver receiver, T schema) throws InterruptedException;
+    protected abstract void emitReadRecord(Receiver<P> receiver, T schema) throws InterruptedException;
 
     /**
      * Emits change record(s) associated with an insert operation.
@@ -82,7 +83,7 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
      * @param receiver the handler for which the emitted record should be dispatched
      * @param schema the schema
      */
-    protected abstract void emitCreateRecord(Receiver receiver, T schema) throws InterruptedException;
+    protected abstract void emitCreateRecord(Receiver<P> receiver, T schema) throws InterruptedException;
 
     /**
      * Emits change record(s) associated with an update operation.
@@ -90,7 +91,7 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
      * @param receiver the handler for which the emitted record should be dispatched
      * @param schema the schema
      */
-    protected abstract void emitUpdateRecord(Receiver receiver, T schema) throws InterruptedException;
+    protected abstract void emitUpdateRecord(Receiver<P> receiver, T schema) throws InterruptedException;
 
     /**
      * Emits change record(s) associated with a delete operation.
@@ -98,5 +99,5 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
      * @param receiver the handler for which the emitted record should be dispatched
      * @param schema the schema
      */
-    protected abstract void emitDeleteRecord(Receiver receiver, T schema) throws InterruptedException;
+    protected abstract void emitDeleteRecord(Receiver<P> receiver, T schema) throws InterruptedException;
 }

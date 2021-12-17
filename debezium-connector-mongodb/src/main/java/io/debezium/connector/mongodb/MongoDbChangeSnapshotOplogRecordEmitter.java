@@ -17,7 +17,6 @@ import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 
 /**
@@ -25,7 +24,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecordEmitter<MongoDbCollectionSchema> {
+public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecordEmitter<MongoDbPartition, MongoDbCollectionSchema> {
 
     private final Document oplogEvent;
 
@@ -47,7 +46,7 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeSnapshotOplogRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot) {
+    public MongoDbChangeSnapshotOplogRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot) {
         super(partition, offsetContext, clock);
         this.oplogEvent = oplogEvent;
         this.isSnapshot = isSnapshot;

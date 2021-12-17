@@ -34,7 +34,6 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -45,7 +44,8 @@ import io.debezium.util.Threads.Timer;
  * An incremental snapshot change event source that emits events from a MongoDB change stream interleaved with snapshot events.
  */
 @NotThreadSafe
-public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectionId> implements IncrementalSnapshotChangeEventSource<CollectionId> {
+public class MongoDbIncrementalSnapshotChangeEventSource
+        implements IncrementalSnapshotChangeEventSource<MongoDbPartition, CollectionId> {
 
     private static final String DOCUMENT_ID = "_id";
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbIncrementalSnapshotChangeEventSource.class);
@@ -54,8 +54,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
     private final MongoDbConnectorConfig connectorConfig;
     private final Clock clock;
     private final MongoDbSchema collectionSchema;
-    private final SnapshotProgressListener progressListener;
-    private final DataChangeEventListener dataListener;
+    private final SnapshotProgressListener<MongoDbPartition> progressListener;
+    private final DataChangeEventListener<MongoDbPartition> dataListener;
     private long totalRowsScanned = 0;
     private final ReplicaSets replicaSets;
     private final ConnectionContext connectionContext;
@@ -63,8 +63,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
 
     private MongoDbCollectionSchema currentCollection;
 
-    protected EventDispatcher<CollectionId> dispatcher;
-    protected IncrementalSnapshotContext<T> context = null;
+    protected EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
+    protected IncrementalSnapshotContext<CollectionId> context = null;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
     private MongoPrimary primary;
     private CollectionId signallingCollectionId;
@@ -72,11 +72,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbTaskContext taskContext,
                                                        ReplicaSets replicaSets,
-                                                       EventDispatcher<CollectionId> dispatcher,
+                                                       EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                                        MongoDbSchema collectionSchema,
                                                        Clock clock,
-                                                       SnapshotProgressListener progressListener,
-                                                       DataChangeEventListener dataChangeEventListener) {
+                                                       SnapshotProgressListener<MongoDbPartition> progressListener,
+                                                       DataChangeEventListener<MongoDbPartition> dataChangeEventListener) {
         this.connectorConfig = config;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
@@ -92,20 +92,20 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
 
     @Override
     @SuppressWarnings("unchecked")
-    public void closeWindow(Partition partition, String id, OffsetContext offsetContext) throws InterruptedException {
-        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+    public void closeWindow(MongoDbPartition partition, String id, OffsetContext offsetContext) throws InterruptedException {
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (!context.closeWindow(id)) {
             return;
         }
         sendWindowEvents(partition, offsetContext);
-        readChunk();
+        readChunk(partition);
     }
 
     protected String getSignalCollectionName(String dataCollectionId) {
         return dataCollectionId;
     }
 
-    protected void sendWindowEvents(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void sendWindowEvents(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
@@ -116,11 +116,12 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
     }
 
     // TODO Used typed dispatcher and offset context
-    protected void sendEvent(Partition partition, EventDispatcher dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
+    protected void sendEvent(MongoDbPartition partition, EventDispatcher<MongoDbPartition, CollectionId> dispatcher, OffsetContext offsetContext, Object[] row)
+            throws InterruptedException {
         context.sendEvent(keyFromRow(row));
-        ((ReplicaSetOffsetContext) offsetContext).readEvent((CollectionId) context.currentDataCollectionId(), clock.currentTimeAsInstant());
-        dispatcher.dispatchSnapshotEvent(context.currentDataCollectionId(),
-                getChangeRecordEmitter(partition, context.currentDataCollectionId(), offsetContext, row),
+        ((ReplicaSetOffsetContext) offsetContext).readEvent(context.currentDataCollectionId(), clock.currentTimeAsInstant());
+        dispatcher.dispatchSnapshotEvent(partition, context.currentDataCollectionId(),
+                getChangeRecordEmitter(partition, offsetContext, row),
                 dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
     }
 
@@ -128,8 +129,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
      * Returns a {@link ChangeRecordEmitter} producing the change records for
      * the given table row.
      */
-    protected ChangeRecordEmitter getChangeRecordEmitter(Partition partition, T dataCollectionId,
-                                                         OffsetContext offsetContext, Object[] row) {
+    protected ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(MongoDbPartition partition,
+                                                                           OffsetContext offsetContext, Object[] row) {
         return new MongoDbChangeSnapshotOplogRecordEmitter(partition, offsetContext, clock, (Document) row[0], true);
     }
 
@@ -188,14 +189,14 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
 
     @Override
     @SuppressWarnings("unchecked")
-    public void init(OffsetContext offsetContext) {
-        primary = establishConnectionToPrimary(replicaSets.all().get(0));
+    public void init(MongoDbPartition partition, OffsetContext offsetContext) {
+        primary = establishConnectionToPrimary(partition, replicaSets.all().get(0));
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
             postIncrementalSnapshotCompleted();
             return;
         }
-        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (!context.snapshotRunning()) {
             LOGGER.info("No incremental snapshot in progress, no action needed on start");
             postIncrementalSnapshotCompleted();
@@ -203,8 +204,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
         }
         LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
         try {
-            progressListener.snapshotStarted();
-            readChunk();
+            progressListener.snapshotStarted(partition);
+            readChunk(partition);
         }
         catch (InterruptedException e) {
             throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted");
@@ -212,7 +213,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
         LOGGER.info("Incremental snapshot in progress, loading of initial chunk completed");
     }
 
-    protected void readChunk() throws InterruptedException {
+    protected void readChunk(MongoDbPartition partition) throws InterruptedException {
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
@@ -223,18 +224,18 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
             context.startNewChunk();
             emitWindowOpen();
             while (context.snapshotRunning()) {
-                final CollectionId currentDataCollectionId = (CollectionId) context.currentDataCollectionId();
+                final CollectionId currentDataCollectionId = context.currentDataCollectionId();
                 currentCollection = (MongoDbCollectionSchema) collectionSchema.schemaFor(currentDataCollectionId);
                 if (replicaSets.all().size() > 1) {
                     LOGGER.warn("Incremental snapshotting supported only for single result set topology, skipping collection '{}', known collections {}",
                             currentDataCollectionId);
-                    nextDataCollection();
+                    nextDataCollection(partition);
                     continue;
                 }
                 // TODO Collection schema is calculated dynamically, it is necessary to use a different check
                 if (currentCollection == null) {
                     LOGGER.warn("Schema not found for collection '{}', known collections {}", currentDataCollectionId, collectionSchema);
-                    nextDataCollection();
+                    nextDataCollection(partition);
                     continue;
                 }
                 // MongoDB collection has always key so it is not necessary to check if it is available
@@ -244,7 +245,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of collection '{}' finished as it is empty",
                                 currentDataCollectionId);
-                        nextDataCollection();
+                        nextDataCollection(partition);
                         continue;
                     }
                     if (LOGGER.isInfoEnabled()) {
@@ -252,12 +253,12 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
                                 context.maximumKey().orElse(new Object[0]));
                     }
                 }
-                createDataEventsForDataCollection();
+                createDataEventsForDataCollection(partition);
                 if (window.isEmpty()) {
                     LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                             currentDataCollectionId);
-                    collectionScanCompleted();
-                    nextDataCollection();
+                    collectionScanCompleted(partition);
+                    nextDataCollection(partition);
                 }
                 else {
                     break;
@@ -276,10 +277,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
         }
     }
 
-    private void nextDataCollection() {
+    private void nextDataCollection(MongoDbPartition partition) {
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
-            progressListener.snapshotCompleted();
+            progressListener.snapshotCompleted(partition);
         }
     }
 
@@ -300,26 +301,26 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, OffsetContext offsetContext) throws InterruptedException {
-        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+    public void addDataCollectionNamesToSnapshot(MongoDbPartition partition, List<String> dataCollectionIds, OffsetContext offsetContext) throws InterruptedException {
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         final boolean shouldReadChunk = !context.snapshotRunning();
         final String rsName = replicaSets.all().get(0).replicaSetName();
         dataCollectionIds = dataCollectionIds
                 .stream()
                 .map(x -> rsName + "." + x)
                 .collect(Collectors.toList());
-        final List<T> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds);
+        final List<CollectionId> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds);
         if (shouldReadChunk) {
-            progressListener.snapshotStarted();
-            progressListener.monitoredDataCollectionsDetermined(newDataCollectionIds);
-            readChunk();
+            progressListener.snapshotStarted(partition);
+            progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds);
+            readChunk(partition);
         }
     }
 
     /**
      * Dispatches the data change events for the records of a single table.
      */
-    private void createDataEventsForDataCollection() throws InterruptedException {
+    private void createDataEventsForDataCollection(MongoDbPartition partition) throws InterruptedException {
         final CollectionId collectionId = (CollectionId) currentCollection.id();
         long exportStart = clock.currentTimeInMillis();
         LOGGER.debug("Exporting data chunk from collection '{}' (total {} collections)", currentCollection.id(), context.dataCollectionsToBeSnapshottedCount());
@@ -374,10 +375,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
             final Object[] firstKey = keyFromRow(firstRow);
             final Object[] lastKey = keyFromRow(lastRow);
             if (context.isNonInitialChunk()) {
-                progressListener.currentChunk(context.currentChunkId(), firstKey, lastKey);
+                progressListener.currentChunk(partition, context.currentChunkId(), firstKey, lastKey);
             }
             else {
-                progressListener.currentChunk(context.currentChunkId(), firstKey, lastKey, context.maximumKey().orElse(null));
+                progressListener.currentChunk(partition, context.currentChunkId(), firstKey, lastKey, context.maximumKey().orElse(null));
             }
             context.nextChunkPosition(lastKey);
             if (lastRow != null) {
@@ -396,8 +397,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
         // progressListener.rowsScanned(currentCollection.id(), totalRowsScanned);
     }
 
-    private void collectionScanCompleted() {
-        progressListener.dataCollectionSnapshotCompleted(currentCollection.id(), totalRowsScanned);
+    private void collectionScanCompleted(MongoDbPartition partition) {
+        progressListener.dataCollectionSnapshotCompleted(partition, currentCollection.id(), totalRowsScanned);
         totalRowsScanned = 0;
         // Reset chunk/table information in metrics
         progressListener.currentChunk(null, null, null, null);
@@ -414,14 +415,14 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
         return new Object[]{ ((Document) row[0]).get(DOCUMENT_ID) };
     }
 
-    protected void setContext(IncrementalSnapshotContext<T> context) {
+    protected void setContext(IncrementalSnapshotContext<CollectionId> context) {
         this.context = context;
     }
 
-    protected void preReadChunk(IncrementalSnapshotContext<T> context) {
+    protected void preReadChunk(IncrementalSnapshotContext<CollectionId> context) {
     }
 
-    protected void postReadChunk(IncrementalSnapshotContext<T> context) {
+    protected void postReadChunk(IncrementalSnapshotContext<CollectionId> context) {
         // no-op
     }
 
@@ -430,10 +431,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
     }
 
     @Override
-    public void processMessage(Partition partition, DataCollectionId dataCollectionId, Object key,
+    public void processMessage(MongoDbPartition partition, DataCollectionId dataCollectionId, Object key,
                                OffsetContext offsetContext)
             throws InterruptedException {
-        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
@@ -444,14 +445,14 @@ public class MongoDbIncrementalSnapshotChangeEventSource<T extends DataCollectio
         }
     }
 
-    private MongoPrimary establishConnectionToPrimary(ReplicaSet replicaSet) {
+    private MongoPrimary establishConnectionToPrimary(MongoDbPartition partition, ReplicaSet replicaSet) {
         return connectionContext.primaryFor(replicaSet, taskContext.filters(), (desc, error) -> {
             // propagate authorization failures
             if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
                 throw new ConnectException("Error while attempting to " + desc, error);
             }
             else {
-                dispatcher.dispatchConnectorEvent(new DisconnectEvent());
+                dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
                 LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
                 throw new ConnectException("Error while attempting to " + desc, error);
             }

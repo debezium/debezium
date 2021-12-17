@@ -65,7 +65,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private final OracleDatabaseSchema schema;
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final OracleStreamingChangeEventSourceMetrics metrics;
     private final LogMinerDmlParser dmlParser;
     private final SelectLobParser selectLobParser;
@@ -84,7 +84,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                           OracleDatabaseSchema schema,
                                           OraclePartition partition,
                                           OracleOffsetContext offsetContext,
-                                          EventDispatcher<TableId> dispatcher,
+                                          EventDispatcher<OraclePartition, TableId> dispatcher,
                                           OracleStreamingChangeEventSourceMetrics metrics) {
         this.context = context;
         this.connectorConfig = connectorConfig;
@@ -170,7 +170,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     }
 
     @Override
-    public Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+    public Scn process(OraclePartition partition, Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         counters.reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
@@ -185,7 +185,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 metrics.setLastDurationOfBatchCapturing(Duration.between(queryStart, Instant.now()));
 
                 Instant startProcessTime = Instant.now();
-                processResults(resultSet);
+                processResults(this.partition, resultSet);
 
                 Duration totalTime = Duration.between(startProcessTime, Instant.now());
                 metrics.setLastCapturedDmlCount(counters.dmlCount);
@@ -236,10 +236,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws SQLException if a database exception occurred
      * @throws InterruptedException if the dispatcher was interrupted sending an event
      */
-    protected void processResults(ResultSet resultSet) throws SQLException, InterruptedException {
+    protected void processResults(OraclePartition partition, ResultSet resultSet) throws SQLException, InterruptedException {
         while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
             counters.rows++;
-            processRow(LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
+            processRow(partition, LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
         }
     }
 
@@ -250,7 +250,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws SQLException if a database exception occurred
      * @throws InterruptedException if the dispatcher was interrupted sending an event
      */
-    protected void processRow(LogMinerEventRow row) throws SQLException, InterruptedException {
+    protected void processRow(OraclePartition partition, LogMinerEventRow row) throws SQLException, InterruptedException {
         if (!row.getEventType().equals(EventType.MISSING_SCN)) {
             lastProcessedScn = row.getScn();
         }
@@ -269,7 +269,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 handleStart(row);
                 break;
             case COMMIT:
-                handleCommit(row);
+                handleCommit(partition, row);
                 break;
             case ROLLBACK:
                 handleRollback(row);
@@ -327,7 +327,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param row the result set row
      * @throws InterruptedException if the event dispatcher was interrupted sending events
      */
-    protected void handleCommit(LogMinerEventRow row) throws InterruptedException {
+    protected void handleCommit(OraclePartition partition, LogMinerEventRow row) throws InterruptedException {
         final String transactionId = row.getTransactionId();
         if (isRecentlyProcessed(transactionId)) {
             LOGGER.debug("\tTransaction is already committed, skipped.");
@@ -407,7 +407,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                 getSchema().tableFor(event.getTableId()),
                                 Clock.system());
                     }
-                    dispatcher.dispatchDataChangeEvent(event.getTableId(), logMinerChangeRecordEmitter);
+                    dispatcher.dispatchDataChangeEvent(partition, event.getTableId(), logMinerChangeRecordEmitter);
 
                 }
             }
@@ -842,7 +842,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId,
                                                                           OracleOffsetContext offsetContext,
-                                                                          EventDispatcher<TableId> dispatcher)
+                                                                          EventDispatcher<OraclePartition, TableId> dispatcher)
             throws SQLException, InterruptedException {
         LOGGER.info("Table '{}' is new and will now be captured.", tableId);
         offsetContext.event(tableId, Instant.now());

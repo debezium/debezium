@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mysql.HaltingPredicate;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.document.Document;
 
 /**
@@ -38,9 +40,10 @@ public class ReconcilingBinlogReader implements Reader {
 
     private Boolean aReaderLeading = null;
 
+    private final AtomicReference<MySqlPartition> partition = new AtomicReference<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean completed = new AtomicBoolean(false);
-    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<Consumer<MySqlPartition>> uponCompletion = new AtomicReference<>();
 
     private final long serverId;
 
@@ -75,13 +78,14 @@ public class ReconcilingBinlogReader implements Reader {
     }
 
     @Override
-    public void uponCompletion(Runnable handler) {
+    public void uponCompletion(Consumer<MySqlPartition> handler) {
         uponCompletion.set(handler);
     }
 
     @Override
-    public void start() {
+    public void start(MySqlPartition partition) {
         if (running.compareAndSet(false, true)) {
+            this.partition.set(partition);
             completed.set(false);
             determineLeadingReader();
 
@@ -94,7 +98,7 @@ public class ReconcilingBinlogReader implements Reader {
                     laggingReaderContext,
                     offsetLimitPredicate,
                     serverId);
-            reconcilingReader.start();
+            reconcilingReader.start(partition);
         }
     }
 
@@ -127,9 +131,9 @@ public class ReconcilingBinlogReader implements Reader {
             setupUnifiedReader();
             LOGGER.info("Completed reconciliation of parallel readers.");
 
-            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            Consumer<MySqlPartition> completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
             if (completionHandler != null) {
-                completionHandler.run();
+                completionHandler.accept(partition.get());
             }
         }
     }

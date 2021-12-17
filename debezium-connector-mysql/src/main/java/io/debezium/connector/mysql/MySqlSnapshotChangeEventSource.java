@@ -60,7 +60,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlConnection connection,
-                                          MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                          MySqlDatabaseSchema schema, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
         super(connectorConfig, connection, schema, dispatcher, clock, metrics);
@@ -73,7 +73,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MySqlOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 

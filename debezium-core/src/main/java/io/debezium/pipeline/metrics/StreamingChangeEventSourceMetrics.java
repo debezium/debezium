@@ -6,9 +6,11 @@
 package io.debezium.pipeline.metrics;
 
 import io.debezium.pipeline.source.spi.StreamingProgressListener;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * Metrics related to the streaming phase of a connector.
  */
-public interface StreamingChangeEventSourceMetrics extends ChangeEventSourceMetrics, StreamingProgressListener {
+public interface StreamingChangeEventSourceMetrics<P extends Partition>
+        extends ChangeEventSourceMetrics<P>, StreamingProgressListener {
 }

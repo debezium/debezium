@@ -61,7 +61,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
 
     private final OracleConnection jdbcConnection;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final JdbcConfiguration jdbcConfiguration;
@@ -81,7 +81,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private List<BigInteger> currentRedoLogSequences;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
-                                              OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
+                                              OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
                                               Configuration jdbcConfig, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConnection = jdbcConnection;
@@ -183,7 +183,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                         if (context.isRunning()) {
                             startMiningSession(jdbcConnection, startScn, endScn);
-                            startScn = processor.process(startScn, endScn);
+                            startScn = processor.process(partition, startScn, endScn);
 
                             captureSessionMemoryStatistics(jdbcConnection);
 

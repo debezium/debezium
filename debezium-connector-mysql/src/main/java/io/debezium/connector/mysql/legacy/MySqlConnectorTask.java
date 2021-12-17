@@ -34,8 +34,8 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.TopicSelector;
-import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 
@@ -55,9 +55,8 @@ public final class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MyS
 
     /**
      * Create an instance of the log reader that uses Kafka to store database schema history and the
-     * {@link TopicSelector#defaultSelector(String) default topic selector} of "{@code <serverName>.<databaseName>.<tableName>}"
-     * for
-     * data and "{@code <serverName>}" for metadata.
+     * {@link TopicSelector#defaultSelector(String, String, String, TopicSelector.DataCollectionTopicNamer)}
+     * of "{@code <serverName>.<databaseName>.<tableName>}" for data and "{@code <serverName>}" for metadata.
      */
     public MySqlConnectorTask() {
     }
@@ -75,8 +74,16 @@ public final class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MyS
         try {
             // Get the offsets for our partition ...
             boolean startWithSnapshot = false;
-            Map<String, String> partition = Collect.hashMapOf(SourceInfo.SERVER_PARTITION_KEY, serverName);
-            Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition));
+
+            final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
+            Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(
+                    new MySqlPartition.Provider(connectorConfig),
+                    new MySqlOffsetContext.Loader(connectorConfig));
+
+            MySqlPartition partition = previousOffsets.getTheOnlyPartition();
+            MySqlOffsetContext offsetContext = previousOffsets.getTheOnlyOffset();
+
+            Map<String, ?> offsets = getRestartOffset(offsetContext != null ? offsetContext.getOffset() : null);
             final SourceInfo source;
             if (offsets != null) {
                 Filters filters = SourceInfo.offsetsHaveFilterInfo(offsets) ? getOldFilters(offsets, config) : getAllFilters(config);
@@ -257,7 +264,7 @@ public final class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MyS
                         chainedReaderBuilder.addReader(reconcilingBinlogReader);
                         chainedReaderBuilder.addReader(unifiedBinlogReader);
 
-                        unifiedBinlogReader.uponCompletion(unifiedTaskContext::shutdown);
+                        unifiedBinlogReader.uponCompletion((p) -> unifiedTaskContext.shutdown());
                     }
                 }
                 else {
@@ -273,7 +280,7 @@ public final class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MyS
 
             // And finally initialize and start the chain of readers ...
             this.readers.initialize();
-            this.readers.start();
+            this.readers.start(partition);
         }
         catch (Throwable e) {
             // If we don't complete startup, then Kafka Connect will not attempt to stop the connector. So if we
@@ -483,7 +490,7 @@ public final class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MyS
      * stop and before all their records have been consumed via the {@link #poll()} method. This method signals that
      * all of this has completed.
      */
-    protected void completeReaders() {
+    protected void completeReaders(MySqlPartition partition) {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             // Flush and stop database history, close all JDBC connections ...

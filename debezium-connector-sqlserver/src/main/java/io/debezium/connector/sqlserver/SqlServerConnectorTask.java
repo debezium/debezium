@@ -105,7 +105,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        final EventDispatcher<SqlServerPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
@@ -121,7 +121,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 SqlServerConnector.class,
                 connectorConfig,
                 new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
-                new DefaultChangeEventSourceMetricsFactory(),
+                new DefaultChangeEventSourceMetricsFactory<>(),
                 dispatcher,
                 schema,
                 clock);

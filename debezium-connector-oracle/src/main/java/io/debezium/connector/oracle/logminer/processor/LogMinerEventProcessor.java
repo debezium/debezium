@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer.processor;
 import java.sql.SQLException;
 import java.time.Duration;
 
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 
 /**
@@ -23,7 +24,7 @@ public interface LogMinerEventProcessor extends AutoCloseable {
      * @param endScn the ending system change number, must not be {@code null}
      * @return the next iteration's starting system change number, never {@code null}
      */
-    Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException;
+    Scn process(OraclePartition partition, Scn startScn, Scn endScn) throws SQLException, InterruptedException;
 
     /**
      * A callback for the event processor to abandon long running transactions.

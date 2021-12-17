@@ -13,6 +13,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -24,6 +25,7 @@ import com.github.shyiko.mysql.binlog.network.ServerException;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.mysql.HaltingPredicate;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -44,12 +46,13 @@ public abstract class AbstractReader implements Reader {
     protected final MySqlJdbcContext connectionContext;
     private final BlockingQueue<SourceRecord> records;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicReference<MySqlPartition> partition = new AtomicReference<>();
     private final AtomicBoolean success = new AtomicBoolean(false);
     private final AtomicReference<ConnectException> failure = new AtomicReference<>();
     private ConnectException failureException;
     private final int maxBatchSize;
     private final Metronome metronome;
-    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<Consumer<MySqlPartition>> uponCompletion = new AtomicReference<>();
     private final Duration pollInterval;
     protected final ChangeEventQueueMetrics changeEventQueueMetrics;
 
@@ -105,7 +108,7 @@ public abstract class AbstractReader implements Reader {
     }
 
     @Override
-    public void uponCompletion(Runnable handler) {
+    public void uponCompletion(Consumer<MySqlPartition> handler) {
         assert this.uponCompletion.get() == null;
         this.uponCompletion.set(handler);
     }
@@ -121,11 +124,12 @@ public abstract class AbstractReader implements Reader {
     }
 
     @Override
-    public void start() {
+    public void start(MySqlPartition partition) {
         if (this.running.compareAndSet(false, true)) {
+            this.partition.set(partition);
             this.failure.set(null);
             this.success.set(false);
-            doStart();
+            doStart(partition);
         }
     }
 
@@ -139,7 +143,7 @@ public abstract class AbstractReader implements Reader {
             List<SourceRecord> unsent = new ArrayList<>();
             records.drainTo(unsent);
             logger.info("Discarding {} unsent record(s) due to the connector shutting down", unsent.size());
-            doStop();
+            doStop(partition.get());
             running.set(false);
         }
         finally {
@@ -154,7 +158,7 @@ public abstract class AbstractReader implements Reader {
 
     /**
      * The reader has been requested to initialize resources prior to starting. This should only be
-     * called once before {@link #doStart()}.
+     * called once before {@link #doStart(MySqlPartition)}.
      */
     protected void doInitialize() {
         // do nothing
@@ -162,7 +166,7 @@ public abstract class AbstractReader implements Reader {
 
     /**
      * The reader has been requested to de-initialize resources after stopping. This should only be
-     * called once after {@link #doStop()}.
+     * called once after {@link #doStop(MySqlPartition)}.
      */
     protected void doDestroy() {
         // do nothing
@@ -172,16 +176,16 @@ public abstract class AbstractReader implements Reader {
      * The reader has been requested to start, so initialize any un-initialized resources required
      * by the reader.
      */
-    protected abstract void doStart();
+    protected abstract void doStart(MySqlPartition partition);
 
     /**
      * The reader has been requested to stop, so perform any work required to stop the reader's resources that were previously
-     * {@link #start() started}.
+     * {@link #start(MySqlPartition) started}.
      * <p>
-     * This method is always called when {@link #stop()} is called, and the first time {@link #isRunning()} will return
+     * This method is always called when {@link Reader#stop()} is called, and the first time {@link #isRunning()} will return
      * {@code true} the first time and {@code false} for any subsequent calls.
      */
-    protected abstract void doStop();
+    protected abstract void doStop(MySqlPartition partition);
 
     /**
      * The reader has completed all processing and all {@link #enqueueRecord(SourceRecord) enqueued records} have been
@@ -273,7 +277,7 @@ public abstract class AbstractReader implements Reader {
 
         // this reader has been stopped before it reached the success or failed end state, so clean up and abort
         if (!running.get()) {
-            cleanupResources();
+            cleanupResources(partition.get());
             throw new InterruptedException("Reader was stopped while polling");
         }
 
@@ -297,7 +301,7 @@ public abstract class AbstractReader implements Reader {
         if (batch.isEmpty() && success.get() && records.isEmpty()) {
             // We found no records but the operation completed successfully, so we're done
             this.running.set(false);
-            cleanupResources();
+            cleanupResources(partition.get());
             return null;
         }
         pollComplete(batch);
@@ -307,18 +311,18 @@ public abstract class AbstractReader implements Reader {
 
     /**
      * This method is normally called by {@link #poll()} when there this reader finishes normally and all generated
-     * records are consumed prior to being {@link #stop() stopped}. However, if this reader is explicitly
-     * {@link #stop() stopped} while still working, then subclasses should call this method when they have completed
+     * records are consumed prior to being {@link Reader#stop() stopped}. However, if this reader is explicitly
+     * {@link Reader#stop() stopped} while still working, then subclasses should call this method when they have completed
      * all of their shutdown work.
      */
-    protected void cleanupResources() {
+    protected void cleanupResources(MySqlPartition partition) {
         try {
             doCleanup();
         }
         finally {
-            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            Consumer<MySqlPartition> completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
             if (completionHandler != null) {
-                completionHandler.run();
+                completionHandler.accept(partition);
             }
         }
     }

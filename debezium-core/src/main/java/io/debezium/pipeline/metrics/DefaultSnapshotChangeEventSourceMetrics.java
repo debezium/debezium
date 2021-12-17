@@ -20,6 +20,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
@@ -29,8 +30,8 @@ import io.debezium.schema.DataCollectionId;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public class DefaultSnapshotChangeEventSourceMetrics extends PipelineMetrics
-        implements SnapshotChangeEventSourceMetrics, SnapshotChangeEventSourceMetricsMXBean {
+public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extends PipelineMetrics<P>
+        implements SnapshotChangeEventSourceMetrics<P>, SnapshotChangeEventSourceMetricsMXBean {
 
     private final AtomicBoolean snapshotRunning = new AtomicBoolean();
     private final AtomicBoolean snapshotCompleted = new AtomicBoolean();
@@ -108,7 +109,7 @@ public class DefaultSnapshotChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
+    public void monitoredDataCollectionsDetermined(P partition, Iterable<? extends DataCollectionId> dataCollectionIds) {
         Iterator<? extends DataCollectionId> it = dataCollectionIds.iterator();
         while (it.hasNext()) {
             DataCollectionId dataCollectionId = it.next();
@@ -119,13 +120,13 @@ public class DefaultSnapshotChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
+    public void dataCollectionSnapshotCompleted(P partition, DataCollectionId dataCollectionId, long numRows) {
         rowsScanned.put(dataCollectionId.identifier(), numRows);
         remainingTables.remove(dataCollectionId.identifier());
     }
 
     @Override
-    public void snapshotStarted() {
+    public void snapshotStarted(P partition) {
         this.snapshotRunning.set(true);
         this.snapshotCompleted.set(false);
         this.snapshotAborted.set(false);
@@ -134,7 +135,7 @@ public class DefaultSnapshotChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void snapshotCompleted() {
+    public void snapshotCompleted(P partition) {
         this.snapshotCompleted.set(true);
         this.snapshotAborted.set(false);
         this.snapshotRunning.set(false);
@@ -142,7 +143,7 @@ public class DefaultSnapshotChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void snapshotAborted() {
+    public void snapshotAborted(P partition) {
         this.snapshotCompleted.set(false);
         this.snapshotAborted.set(true);
         this.snapshotRunning.set(false);
@@ -150,7 +151,7 @@ public class DefaultSnapshotChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void rowsScanned(TableId tableId, long numRows) {
+    public void rowsScanned(P partition, TableId tableId, long numRows) {
         rowsScanned.put(tableId.toString(), numRows);
     }
 
@@ -160,15 +161,15 @@ public class DefaultSnapshotChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo) {
+    public void currentChunk(P partition, String chunkId, Object[] chunkFrom, Object[] chunkTo) {
         this.chunkId.set(chunkId);
         this.chunkFrom.set(chunkFrom);
         this.chunkTo.set(chunkTo);
     }
 
     @Override
-    public void currentChunk(String chunkId, Object[] chunkFrom, Object[] chunkTo, Object tableTo[]) {
-        currentChunk(chunkId, chunkFrom, chunkTo);
+    public void currentChunk(P partition, String chunkId, Object[] chunkFrom, Object[] chunkTo, Object tableTo[]) {
+        currentChunk(partition, chunkId, chunkFrom, chunkTo);
         this.tableFrom.set(chunkFrom);
         this.tableTo.set(tableTo);
     }

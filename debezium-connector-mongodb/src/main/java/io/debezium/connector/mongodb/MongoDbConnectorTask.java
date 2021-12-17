@@ -129,7 +129,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             final MongoDbEventMetadataProvider metadataProvider = new MongoDbEventMetadataProvider();
 
-            final EventDispatcher<CollectionId> dispatcher = new EventDispatcher<>(
+            final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     taskContext.topicSelector(),
                     schema,

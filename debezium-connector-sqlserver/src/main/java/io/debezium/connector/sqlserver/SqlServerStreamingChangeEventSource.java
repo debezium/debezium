@@ -77,7 +77,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      */
     private final SqlServerConnection metadataConnection;
 
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<SqlServerPartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
@@ -88,8 +88,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
-                                               SqlServerConnection metadataConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
-                                               SqlServerDatabaseSchema schema) {
+                                               SqlServerConnection metadataConnection,
+                                               EventDispatcher<SqlServerPartition, TableId> dispatcher,
+                                               ErrorHandler errorHandler, Clock clock, SqlServerDatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
@@ -287,6 +288,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
                             dispatcher
                                     .dispatchDataChangeEvent(
+                                            partition,
                                             tableId,
                                             new SqlServerChangeRecordEmitter(
                                                     partition,

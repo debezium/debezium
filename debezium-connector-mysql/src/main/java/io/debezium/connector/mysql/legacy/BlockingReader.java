@@ -7,12 +7,14 @@ package io.debezium.connector.mysql.legacy;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -24,7 +26,8 @@ import io.debezium.util.Metronome;
 public class BlockingReader implements Reader {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<Consumer<MySqlPartition>> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<MySqlPartition> partition = new AtomicReference<>();
     private final AtomicReference<State> state = new AtomicReference<>();
     private final Metronome metronome;
 
@@ -59,13 +62,13 @@ public class BlockingReader implements Reader {
     }
 
     @Override
-    public void uponCompletion(Runnable handler) {
+    public void uponCompletion(Consumer<MySqlPartition> handler) {
         assert this.uponCompletion.get() == null;
         this.uponCompletion.set(handler);
     }
 
     @Override
-    public void start() {
+    public void start(MySqlPartition partition) {
         state.set(State.RUNNING);
         logger.info(runningLogMessage);
     }
@@ -76,9 +79,9 @@ public class BlockingReader implements Reader {
             state.set(State.STOPPED);
 
             // Cleanup Resources
-            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            Consumer<MySqlPartition> completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
             if (completionHandler != null) {
-                completionHandler.run();
+                completionHandler.accept(partition.get());
             }
 
         }

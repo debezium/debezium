@@ -31,7 +31,7 @@ public interface ChangeEventSourceFactory<P extends Partition, O extends OffsetC
      *
      * @return A snapshot change event source
      */
-    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener);
+    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener<P> snapshotProgressListener);
 
     /**
      * Returns a streaming change event source that starts streaming at the given offset.
@@ -49,9 +49,9 @@ public interface ChangeEventSourceFactory<P extends Partition, O extends OffsetC
      *
      * @return An incremental snapshot change event source
      */
-    default Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(O offsetContext,
-                                                                                                                               SnapshotProgressListener snapshotProgressListener,
-                                                                                                                               DataChangeEventListener dataChangeEventListener) {
+    default Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(O offsetContext,
+                                                                                                                                  SnapshotProgressListener<P> snapshotProgressListener,
+                                                                                                                                  DataChangeEventListener<P> dataChangeEventListener) {
         return Optional.empty();
     }
 }

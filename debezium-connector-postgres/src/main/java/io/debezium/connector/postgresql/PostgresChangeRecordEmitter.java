@@ -29,7 +29,6 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.function.Predicates;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
@@ -46,7 +45,7 @@ import io.debezium.util.Strings;
  *
  * @author Horia Chiorean (hchiorea@redhat.com), Jiri Pechanec
  */
-public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
+public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<PostgresPartition> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresChangeRecordEmitter.class);
 
@@ -59,7 +58,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final boolean nullToastedValuesMissingFromOld;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
-    public PostgresChangeRecordEmitter(Partition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
+    public PostgresChangeRecordEmitter(PostgresPartition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
                                        PostgresConnection connection, TableId tableId,
                                        ReplicationMessage message) {
         super(partition, offset, clock);
@@ -92,7 +91,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     @Override
-    public void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
+    public void emitChangeRecords(DataCollectionSchema schema, Receiver<PostgresPartition> receiver) throws InterruptedException {
         schema = synchronizeTableSchema(schema);
         super.emitChangeRecords(schema, receiver);
     }
@@ -257,7 +256,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         }
     }
 
-    static Optional<DataCollectionSchema> updateSchema(TableId tableId, ChangeRecordEmitter changeRecordEmitter) {
+    static Optional<DataCollectionSchema> updateSchema(PostgresPartition partition, TableId tableId, ChangeRecordEmitter<PostgresPartition> changeRecordEmitter) {
         return ((PostgresChangeRecordEmitter) changeRecordEmitter).newTable(tableId);
     }
 

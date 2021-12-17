@@ -28,7 +28,8 @@ import io.debezium.util.Clock;
  * 
  * @author Chris Cranford
  */
-public class PostgresSignalBasedIncrementalSnapshotChangeEventSource extends SignalBasedIncrementalSnapshotChangeEventSource<TableId> {
+public class PostgresSignalBasedIncrementalSnapshotChangeEventSource
+        extends SignalBasedIncrementalSnapshotChangeEventSource<PostgresPartition, TableId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresSignalBasedIncrementalSnapshotChangeEventSource.class);
 
@@ -37,11 +38,11 @@ public class PostgresSignalBasedIncrementalSnapshotChangeEventSource extends Sig
 
     public PostgresSignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                                    JdbcConnection jdbcConnection,
-                                                                   EventDispatcher<TableId> dispatcher,
+                                                                   EventDispatcher<PostgresPartition, TableId> dispatcher,
                                                                    DatabaseSchema<?> databaseSchema,
                                                                    Clock clock,
-                                                                   SnapshotProgressListener progressListener,
-                                                                   DataChangeEventListener dataChangeEventListener) {
+                                                                   SnapshotProgressListener<PostgresPartition> progressListener,
+                                                                   DataChangeEventListener<PostgresPartition> dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
         this.jdbcConnection = (PostgresConnection) jdbcConnection;
         this.schema = (PostgresSchema) databaseSchema;

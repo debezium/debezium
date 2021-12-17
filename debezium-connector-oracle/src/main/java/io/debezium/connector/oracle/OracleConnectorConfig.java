@@ -1000,7 +1000,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
                                                           OracleConnectorConfig connectorConfig,
                                                           OracleConnection connection,
-                                                          EventDispatcher<TableId> dispatcher,
+                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
                                                           OraclePartition partition,
                                                           OracleOffsetContext offsetContext,
                                                           OracleDatabaseSchema schema,
@@ -1019,7 +1019,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
                                                           OracleConnectorConfig connectorConfig,
                                                           OracleConnection connection,
-                                                          EventDispatcher<TableId> dispatcher,
+                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
                                                           OraclePartition partition,
                                                           OracleOffsetContext offsetContext,
                                                           OracleDatabaseSchema schema,
@@ -1034,7 +1034,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
                                                           OracleConnectorConfig connectorConfig,
                                                           OracleConnection connection,
-                                                          EventDispatcher<TableId> dispatcher,
+                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
                                                           OraclePartition partition,
                                                           OracleOffsetContext offsetContext,
                                                           OracleDatabaseSchema schema,
@@ -1049,7 +1049,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
                                                           OracleConnectorConfig connectorConfig,
                                                           OracleConnection connection,
-                                                          EventDispatcher<TableId> dispatcher,
+                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
                                                           OraclePartition partition,
                                                           OracleOffsetContext offsetContext,
                                                           OracleDatabaseSchema schema,
@@ -1065,7 +1065,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * Creates the buffer type's specific processor implementation
          */
         public abstract LogMinerEventProcessor createProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
-                                                               OracleConnection connection, EventDispatcher<TableId> dispatcher, OraclePartition partition,
+                                                               OracleConnection connection, EventDispatcher<OraclePartition, TableId> dispatcher,
+                                                               OraclePartition partition,
                                                                OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
                                                                OracleStreamingChangeEventSourceMetrics metrics);
 

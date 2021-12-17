@@ -32,7 +32,8 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
  * The metrics implementation for Oracle connector streaming phase.
  */
 @ThreadSafe
-public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics implements OracleStreamingChangeEventSourceMetricsMXBean {
+public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics<OraclePartition>
+        implements OracleStreamingChangeEventSourceMetricsMXBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSourceMetrics.class);
 

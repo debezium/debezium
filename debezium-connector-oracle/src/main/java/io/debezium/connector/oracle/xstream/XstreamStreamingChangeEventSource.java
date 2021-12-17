@@ -46,7 +46,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
@@ -64,7 +64,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
 
     public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
-                                             EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler,
+                                             EventDispatcher<OraclePartition, TableId> dispatcher, ErrorHandler errorHandler,
                                              Clock clock, OracleDatabaseSchema schema,
                                              OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
