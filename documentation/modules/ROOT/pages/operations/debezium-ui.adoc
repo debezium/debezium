@@ -40,14 +40,14 @@ The following table shows the environment variables for the https://hub.docker.c
  +
 For example, in some environments it might not be possible to reach the underlying backend, Kafka Connect REST interface or databases, then the link:#DEPLOYMENT_MODE[deployment mode] can be switched to match the underlying infrastructure. +
  +
-`default` The default deployment mode. It uses the Debezium UI backend with the configured Kafka Connect clusters via the Kafka Connect REST interface (see link:#KAFKA_CONNECT_URI[KAFKA_CONNECT_URI] how they are configured). +
+`default` The default deployment mode. It uses the Debezium UI backend with the configured Kafka Connect clusters via the Kafka Connect REST interface (see link:#KAFKA_CONNECT_URIS[KAFKA_CONNECT_URIS] how they are configured). +
  +
  +
 `validation.disabled` When set to validation.disabled the UI frontend will not call the backend to validate the user input nor check the availability and proper configuration of database connections. That mode is used to only generate the Debezium connector JSON configuration without the UI backend validation. +
  +
 |2
-|KAFKA_CONNECT_URI[[KAFKA_CONNECT_URI]]
-|`kafka.connect.uri`
+|KAFKA_CONNECT_URIS[[KAFKA_CONNECT_URIS]]
+|`kafka.connect.uris`
 |http://connect:8083
 |A comma-separated list to one or more URLs of Kafka Connect REST interfaces to specify the Kafka Connect clusters that should be managed by the Debezium UI.
 
@@ -55,10 +55,10 @@ For example, in some environments it might not be possible to reach the underlyi
 
 === Debezium UI container image
 
-The Debezium UI https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URI supplies the comma-separated list of available URI(s)):
+The Debezium UI https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URIS supplies the comma-separated list of available URI(s)):
 
 ----
-$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URI=http://connect:8083 debezium/debezium-ui:{debezium-version}
+$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URIS=http://connect:8083 debezium/debezium-ui:{debezium-version}
 ----
 
 The UI connects to Kafka Connect via REST, so you need to make sure that the latter is reachable, e.g. by running both components on the same Docker network.
