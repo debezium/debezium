@@ -56,7 +56,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
 
     @Override
     public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
-                                                                                      EventDispatcher<TableId> dispatcher,
+                                                                                      EventDispatcher<OraclePartition, TableId> dispatcher,
                                                                                       ErrorHandler errorHandler,
                                                                                       Clock clock,
                                                                                       OracleDatabaseSchema schema,

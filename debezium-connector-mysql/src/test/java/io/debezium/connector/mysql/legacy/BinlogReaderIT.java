@@ -38,6 +38,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.connector.mysql.legacy.AbstractReader.AcceptAllPredicate;
@@ -157,7 +158,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -219,7 +221,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -307,7 +310,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Lets wait for at least 35 events to be filtered.
         final int expectedFilterCount = 35;
@@ -347,7 +351,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Lets wait for at least 35 events to be filtered.
         final int expectedFilterCount = 35;
@@ -386,7 +391,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         int expectedChanges = 1; // only 1 insert
 
@@ -429,7 +435,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, null);
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         int expectedChanges = 1; // only 1 insert
 
@@ -533,7 +540,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, null);
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
     }
 
     @Test
@@ -556,7 +564,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, null);
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         String acceptedTlsVersion = context.getConnectionContext().getSessionVariableForSslVersion();
         assertEquals("TLSv1.2", acceptedTlsVersion);
     }
@@ -579,7 +588,8 @@ public class BinlogReaderIT {
         reader = new BinlogReader("binlog", context, null);
 
         // Start reading the binlog ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -588,7 +598,7 @@ public class BinlogReaderIT {
         assertThat(consumed).isGreaterThanOrEqualTo(expected);
 
         reader.stop();
-        reader.start();
+        reader.start(partition);
         reader.context.dbSchema().applyDdl(context.source(), DATABASE.getDatabaseName(), "DROP TABLE customers", null);
         try (
                 final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());

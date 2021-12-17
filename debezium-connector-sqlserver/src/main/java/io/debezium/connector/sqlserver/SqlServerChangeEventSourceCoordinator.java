@@ -45,7 +45,8 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                                                  Class<? extends SourceConnector> connectorType,
                                                  CommonConnectorConfig connectorConfig,
                                                  ChangeEventSourceFactory<SqlServerPartition, SqlServerOffsetContext> changeEventSourceFactory,
-                                                 ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<?> eventDispatcher,
+                                                 ChangeEventSourceMetricsFactory<SqlServerPartition> changeEventSourceMetricsFactory,
+                                                 EventDispatcher<SqlServerPartition, ?> eventDispatcher,
                                                  DatabaseSchema<?> schema,
                                                  Clock clock) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
@@ -81,9 +82,7 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
             throws InterruptedException {
 
         // TODO: Determine how to do incremental snapshots with multiple partitions but for now just use the first offset
-        SqlServerOffsetContext offsetContext = streamingOffsets.getOffsets().values().stream().findFirst().get();
-
-        initStreamEvents(offsetContext);
+        initStreamEvents(streamingOffsets.getTheOnlyPartition(), streamingOffsets.getTheOnlyOffset());
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
 
         LOGGER.info("Starting streaming");

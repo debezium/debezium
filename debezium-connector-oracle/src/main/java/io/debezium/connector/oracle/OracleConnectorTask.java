@@ -86,7 +86,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
 
-        EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        EventDispatcher<OraclePartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,

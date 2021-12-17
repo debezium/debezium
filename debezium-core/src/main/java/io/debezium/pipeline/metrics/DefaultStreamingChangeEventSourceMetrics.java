@@ -22,6 +22,7 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -30,8 +31,8 @@ import io.debezium.schema.DataCollectionId;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public class DefaultStreamingChangeEventSourceMetrics extends PipelineMetrics
-        implements StreamingChangeEventSourceMetrics, StreamingChangeEventSourceMetricsMXBean {
+public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> extends PipelineMetrics<P>
+        implements StreamingChangeEventSourceMetrics<P>, StreamingChangeEventSourceMetricsMXBean {
 
     private final AtomicBoolean connected = new AtomicBoolean();
     private final AtomicReference<Duration> lagBehindSource = new AtomicReference<>();
@@ -85,8 +86,8 @@ public class DefaultStreamingChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
-        super.onEvent(source, offset, key, value, operation);
+    public void onEvent(P partition, DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
+        super.onEvent(partition, source, offset, key, value, operation);
 
         final Instant eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
         if (eventTimestamp != null) {
@@ -108,7 +109,7 @@ public class DefaultStreamingChangeEventSourceMetrics extends PipelineMetrics
     }
 
     @Override
-    public void onConnectorEvent(ConnectorEvent event) {
+    public void onConnectorEvent(P partition, ConnectorEvent event) {
     }
 
     @Override

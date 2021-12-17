@@ -21,6 +21,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
 import org.junit.Test;
 
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.legacy.ParallelSnapshotReader.ParallelHaltingPredicate;
 
 /**
@@ -30,23 +31,25 @@ public class ParallelSnapshotReaderTest {
 
     @Test
     public void startStartsBothReaders() {
+        MySqlPartition partition = mock(MySqlPartition.class);
         BinlogReader mockOldBinlogReader = mock(BinlogReader.class);
         SnapshotReader mockNewSnapshotReader = mock(SnapshotReader.class);
         BinlogReader mockNewBinlogReader = mock(BinlogReader.class);
 
         ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(mockOldBinlogReader, mockNewSnapshotReader, mockNewBinlogReader);
 
-        parallelSnapshotReader.start();
+        parallelSnapshotReader.start(partition);
 
         Assert.assertSame(parallelSnapshotReader.state(), Reader.State.RUNNING);
 
-        verify(mockOldBinlogReader).start();
-        verify(mockNewSnapshotReader).start();
+        verify(mockOldBinlogReader).start(partition);
+        verify(mockNewSnapshotReader).start(partition);
         // chained reader will only start the snapshot reader
     }
 
     @Test
     public void pollCombinesBothReadersPolls() throws InterruptedException {
+        MySqlPartition partition = mock(MySqlPartition.class);
         BinlogReader mockOldBinlogReader = mock(BinlogReader.class);
         SnapshotReader mockNewSnapshotReader = mock(SnapshotReader.class);
         BinlogReader mockNewBinlogReader = mock(BinlogReader.class);
@@ -66,7 +69,7 @@ public class ParallelSnapshotReaderTest {
         when(mockNewSnapshotReader.poll()).thenReturn(newSnapshotRecords);
 
         // this needs to happen so that the chained reader can be polled.
-        parallelSnapshotReader.start();
+        parallelSnapshotReader.start(partition);
 
         List<SourceRecord> parallelRecords = parallelSnapshotReader.poll();
 
@@ -77,6 +80,7 @@ public class ParallelSnapshotReaderTest {
 
     @Test
     public void pollReturnsNewIfOldReaderIsStopped() throws InterruptedException {
+        MySqlPartition partition = mock(MySqlPartition.class);
         BinlogReader mockOldBinlogReader = mock(BinlogReader.class);
         SnapshotReader mockNewSnapshotReader = mock(SnapshotReader.class);
         BinlogReader mockNewBinlogReader = mock(BinlogReader.class);
@@ -94,7 +98,7 @@ public class ParallelSnapshotReaderTest {
         when(mockNewSnapshotReader.poll()).thenReturn(newSnapshotRecords);
 
         // this needs to happen so that the chained reader runs correctly.
-        parallelSnapshotReader.start();
+        parallelSnapshotReader.start(partition);
 
         List<SourceRecord> parallelRecords = parallelSnapshotReader.poll();
 
@@ -105,6 +109,7 @@ public class ParallelSnapshotReaderTest {
     // this test and the next don't appear to be halting. Something with the chained reader maybe.
     @Test
     public void pollReturnsOldIfNewReaderIsStopped() throws InterruptedException {
+        MySqlPartition partition = mock(MySqlPartition.class);
         BinlogReader mockOldBinlogReader = mock(BinlogReader.class);
         SnapshotReader mockNewSnapshotReader = mock(SnapshotReader.class);
         BinlogReader mockNewBinlogReader = mock(BinlogReader.class);
@@ -128,6 +133,7 @@ public class ParallelSnapshotReaderTest {
 
     @Test
     public void pollReturnsNullIfBothReadersAreStopped() throws InterruptedException {
+        MySqlPartition partition = mock(MySqlPartition.class);
         BinlogReader mockOldBinlogReader = mock(BinlogReader.class);
         SnapshotReader mockNewSnapshotReader = mock(SnapshotReader.class);
         BinlogReader mockNewBinlogReader = mock(BinlogReader.class);
@@ -148,13 +154,14 @@ public class ParallelSnapshotReaderTest {
 
     @Test
     public void testStopStopsBothReaders() {
+        MySqlPartition partition = mock(MySqlPartition.class);
         BinlogReader mockOldBinlogReader = mock(BinlogReader.class);
         SnapshotReader mockNewSnapshotReader = mock(SnapshotReader.class);
         BinlogReader mockNewBinlogReader = mock(BinlogReader.class);
 
         ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(mockOldBinlogReader, mockNewSnapshotReader, mockNewBinlogReader);
 
-        parallelSnapshotReader.start();
+        parallelSnapshotReader.start(partition);
         parallelSnapshotReader.stop();
 
         Assert.assertTrue(parallelSnapshotReader.state() == Reader.State.STOPPED);
@@ -227,7 +234,7 @@ public class ParallelSnapshotReaderTest {
      * Create an "offset" containing a single timestamp element with the given value.
      * Needed because {@link ParallelSnapshotReader.ParallelHaltingPredicate} halts based on how
      * close the record's timestamp is to the present time.
-     * @param tsSec the timestamp in the resulting offset.
+     * @param ts the timestamp in the resulting offset.
      * @return an "offset" containing the given timestamp.
      */
     private SourceRecord createSourceRecordWithTimestamp(Instant ts) {

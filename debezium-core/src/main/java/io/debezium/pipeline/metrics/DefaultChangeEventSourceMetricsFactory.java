@@ -9,22 +9,23 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * @author Chris Cranford
  */
-public class DefaultChangeEventSourceMetricsFactory implements ChangeEventSourceMetricsFactory {
+public class DefaultChangeEventSourceMetricsFactory<P extends Partition> implements ChangeEventSourceMetricsFactory<P> {
     @Override
-    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics getSnapshotMetrics(T taskContext,
-                                                                                                ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                EventMetadataProvider eventMetadataProvider) {
-        return new DefaultSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<P> getSnapshotMetrics(T taskContext,
+                                                                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                                   EventMetadataProvider eventMetadataProvider) {
+        return new DefaultSnapshotChangeEventSourceMetrics<>(taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 
     @Override
-    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics getStreamingMetrics(T taskContext,
-                                                                                                  ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                  EventMetadataProvider eventMetadataProvider) {
-        return new DefaultStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<P> getStreamingMetrics(T taskContext,
+                                                                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                                     EventMetadataProvider eventMetadataProvider) {
+        return new DefaultStreamingChangeEventSourceMetrics<>(taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 }

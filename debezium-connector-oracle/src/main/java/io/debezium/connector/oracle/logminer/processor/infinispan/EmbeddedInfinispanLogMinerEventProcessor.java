@@ -63,7 +63,7 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
     public EmbeddedInfinispanLogMinerEventProcessor(ChangeEventSourceContext context,
                                                     OracleConnectorConfig connectorConfig,
                                                     OracleConnection jdbcConnection,
-                                                    EventDispatcher<TableId> dispatcher,
+                                                    EventDispatcher<OraclePartition, TableId> dispatcher,
                                                     OraclePartition partition,
                                                     OracleOffsetContext offsetContext,
                                                     OracleDatabaseSchema schema,

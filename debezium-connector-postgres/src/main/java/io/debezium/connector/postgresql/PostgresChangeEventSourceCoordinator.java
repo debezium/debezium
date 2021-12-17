@@ -41,8 +41,8 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
                                                 Class<? extends SourceConnector> connectorType,
                                                 CommonConnectorConfig connectorConfig,
                                                 PostgresChangeEventSourceFactory changeEventSourceFactory,
-                                                ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory,
-                                                EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema,
+                                                ChangeEventSourceMetricsFactory<PostgresPartition> changeEventSourceMetricsFactory,
+                                                EventDispatcher<PostgresPartition, ?> eventDispatcher, DatabaseSchema<?> schema,
                                                 Snapshotter snapshotter, SlotState slotInfo) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
                 changeEventSourceMetricsFactory, eventDispatcher, schema);

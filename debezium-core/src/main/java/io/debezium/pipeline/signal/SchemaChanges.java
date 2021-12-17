@@ -12,6 +12,7 @@ import io.debezium.DebeziumException;
 import io.debezium.document.Array;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.JsonTableChangeSerializer;
@@ -21,7 +22,7 @@ import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 
-public class SchemaChanges implements Signal.Action {
+public class SchemaChanges<P extends Partition> implements Signal.Action<P> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaChanges.class);
 
@@ -33,17 +34,17 @@ public class SchemaChanges implements Signal.Action {
 
     private final JsonTableChangeSerializer serializer;
     private final boolean useCatalogBeforeSchema;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<P, TableId> dispatcher;
 
     @SuppressWarnings("unchecked")
-    public SchemaChanges(EventDispatcher<? extends DataCollectionId> dispatcher, boolean useCatalogBeforeSchema) {
+    public SchemaChanges(EventDispatcher<P, ? extends DataCollectionId> dispatcher, boolean useCatalogBeforeSchema) {
         serializer = new JsonTableChangeSerializer();
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
-        this.dispatcher = (EventDispatcher<TableId>) dispatcher;
+        this.dispatcher = (EventDispatcher<P, TableId>) dispatcher;
     }
 
     @Override
-    public boolean arrived(Payload signalPayload) throws InterruptedException {
+    public boolean arrived(Payload<P> signalPayload) throws InterruptedException {
         final Array changes = signalPayload.data.getArray(FIELD_CHANGES);
         final String database = signalPayload.data.getString(FIELD_DATABASE);
         final String schema = signalPayload.data.getString(FIELD_SCHEMA);

@@ -28,14 +28,15 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
 
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<CollectionId> dispatcher;
+    private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
     private final MongoDbSchema schema;
 
-    public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler, EventDispatcher<CollectionId> dispatcher,
-                                           Clock clock, ReplicaSets replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema) {
+    public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
+                                           EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
+                                           ReplicaSets replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -46,7 +47,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener) {
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
@@ -69,11 +70,11 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
-                                                                                                                              MongoDbOffsetContext offsetContext,
-                                                                                                                              SnapshotProgressListener snapshotProgressListener,
-                                                                                                                              DataChangeEventListener dataChangeEventListener) {
-        final MongoDbIncrementalSnapshotChangeEventSource<CollectionId> incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource<CollectionId>(
+    public Optional<IncrementalSnapshotChangeEventSource<MongoDbPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                                                MongoDbOffsetContext offsetContext,
+                                                                                                                                                SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
+                                                                                                                                                DataChangeEventListener<MongoDbPartition> dataChangeEventListener) {
+        final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource(
                 configuration,
                 taskContext,
                 replicaSets,

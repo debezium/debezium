@@ -8,10 +8,9 @@ package io.debezium.connector.mongodb;
 import java.util.Map;
 import java.util.Objects;
 
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 
-public class ReplicaSetPartition implements Partition {
+public class ReplicaSetPartition extends MongoDbPartition {
     private static final String SERVER_ID_KEY = "server_id";
     private static final String REPLICA_SET_NAME = "rs";
 

@@ -48,7 +48,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryLogMinerEventProcessor.class);
 
     private final OracleConnection jdbcConnection;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final OracleStreamingChangeEventSourceMetrics metrics;
@@ -67,7 +67,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     public MemoryLogMinerEventProcessor(ChangeEventSourceContext context,
                                         OracleConnectorConfig connectorConfig,
                                         OracleConnection jdbcConnection,
-                                        EventDispatcher<TableId> dispatcher,
+                                        EventDispatcher<OraclePartition, TableId> dispatcher,
                                         OraclePartition partition,
                                         OracleOffsetContext offsetContext,
                                         OracleDatabaseSchema schema,

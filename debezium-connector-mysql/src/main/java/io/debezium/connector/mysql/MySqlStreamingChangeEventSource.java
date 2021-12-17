@@ -113,7 +113,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final MySqlTaskContext taskContext;
     private final MySqlConnectorConfig connectorConfig;
     private final MySqlConnection connection;
-    private final EventDispatcher<TableId> eventDispatcher;
+    private final EventDispatcher<MySqlPartition, TableId> eventDispatcher;
     private final ErrorHandler errorHandler;
 
     @SingleThreadAccess("binlog client thread")
@@ -180,7 +180,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlConnection connection,
-                                           EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                           EventDispatcher<MySqlPartition, TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                            MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics) {
 
         this.taskContext = taskContext;
@@ -417,9 +417,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      *
      * @param event the server stopped event to be processed; may not be null
      */
-    protected void handleServerIncident(MySqlOffsetContext offsetContext, Event event) {
+    protected void handleServerIncident(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) {
         if (event.getData() instanceof EventDataDeserializationExceptionData) {
-            metrics.onErroneousEvent("source = " + event);
+            metrics.onErroneousEvent(partition, "source = " + event);
             EventDataDeserializationExceptionData data = event.getData();
 
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
@@ -643,7 +643,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                                                    Operation operation)
             throws InterruptedException {
         if (tableId != null && connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-            metrics.onErroneousEvent("source = " + tableId + ", event " + event, operation);
+            metrics.onErroneousEvent(partition, "source = " + tableId + ", event " + event, operation);
             EventHeaderV4 eventHeader = event.getHeader();
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
@@ -674,7 +674,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
         else {
             LOGGER.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
-            metrics.onFilteredEvent("source = " + tableId, operation);
+            metrics.onFilteredEvent(partition, "source = " + tableId, operation);
             eventDispatcher.dispatchFilteredEvent(partition, offsetContext);
         }
     }
@@ -694,7 +694,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     protected void handleInsert(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Operation.CREATE, WriteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 WriteRowsEventData::getRows,
-                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId,
+                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.CREATE, null, row)));
     }
 
@@ -708,7 +708,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     protected void handleUpdate(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Operation.UPDATE, UpdateRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 UpdateRowsEventData::getRows,
-                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId,
+                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue())));
     }
 
@@ -722,7 +722,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     protected void handleDelete(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Operation.DELETE, DeleteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 DeleteRowsEventData::getRows,
-                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId,
+                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.DELETE, row, null)));
     }
 
@@ -833,7 +833,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, (event) -> handleServerStop(effectiveOffsetContext, event));
         eventHandlers.put(EventType.HEARTBEAT, (event) -> handleServerHeartbeat(partition, effectiveOffsetContext, event));
-        eventHandlers.put(EventType.INCIDENT, (event) -> handleServerIncident(effectiveOffsetContext, event));
+        eventHandlers.put(EventType.INCIDENT, (event) -> handleServerIncident(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.ROTATE, (event) -> handleRotateLogsEvent(effectiveOffsetContext, event));
         eventHandlers.put(EventType.TABLE_MAP, (event) -> handleUpdateTableMetadata(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.QUERY, (event) -> handleQueryEvent(partition, effectiveOffsetContext, event));

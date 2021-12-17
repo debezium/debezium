@@ -46,8 +46,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleDatabaseSchema databaseSchema;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
-                                           OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
-                                           SnapshotProgressListener snapshotProgressListener) {
+                                           OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
+                                           SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
         super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
 
         this.connectorConfig = connectorConfig;
@@ -56,7 +56,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OracleOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 

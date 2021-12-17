@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.HaltingPredicate;
+import io.debezium.connector.mysql.MySqlPartition;
 
 /**
  * A reader that runs a {@link ChainedReader} consisting of a {@link SnapshotReader} and a {@link BinlogReader}
@@ -31,9 +33,10 @@ public class ParallelSnapshotReader implements Reader {
     private final BinlogReader newTablesBinlogReader;
     private final ChainedReader newTablesReader;
 
+    private final AtomicReference<MySqlPartition> partition = new AtomicReference<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean completed = new AtomicBoolean(false);
-    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<Consumer<MySqlPartition>> uponCompletion = new AtomicReference<>();
 
     private final MySqlConnectorTask.ServerIdGenerator serverIdGenerator;
 
@@ -70,7 +73,10 @@ public class ParallelSnapshotReader implements Reader {
                 newTablesContext,
                 newTablesReaderHaltingPredicate,
                 serverIdGenerator.getNextServerId());
-        this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
+        this.newTablesReader = new ChainedReader.Builder()
+                .addReader(newTablesSnapshotReader)
+                .addReader(newTablesBinlogReader)
+                .build();
     }
 
     // for testing purposes
@@ -79,7 +85,10 @@ public class ParallelSnapshotReader implements Reader {
                                                  BinlogReader newTablesBinlogReader) {
         this.oldTablesReader = oldTablesBinlogReader;
         this.newTablesBinlogReader = newTablesBinlogReader;
-        this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
+        this.newTablesReader = new ChainedReader.Builder()
+                .addReader(newTablesSnapshotReader)
+                .addReader(newTablesBinlogReader)
+                .build();
         this.serverIdGenerator = null;
     }
 
@@ -96,7 +105,7 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     @Override
-    public void uponCompletion(Runnable handler) {
+    public void uponCompletion(Consumer<MySqlPartition> handler) {
         uponCompletion.set(handler);
     }
 
@@ -107,10 +116,11 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     @Override
-    public void start() {
+    public void start(MySqlPartition partition) {
         if (running.compareAndSet(false, true)) {
-            oldTablesReader.start();
-            newTablesReader.start();
+            this.partition.set(partition);
+            oldTablesReader.start(partition);
+            newTablesReader.start(partition);
         }
     }
 
@@ -162,18 +172,18 @@ public class ParallelSnapshotReader implements Reader {
             // else newTableRecords == null
             if (allRecords == null) {
                 // if both readers have stopped, we need to stop.
-                completeSuccessfully();
+                completeSuccessfully(partition.get());
             }
         }
         return allRecords;
     }
 
-    private void completeSuccessfully() {
+    private void completeSuccessfully(MySqlPartition partition) {
         if (completed.compareAndSet(false, true)) {
             stop();
-            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            Consumer<MySqlPartition> completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
             if (completionHandler != null) {
-                completionHandler.run();
+                completionHandler.accept(partition);
             }
         }
     }

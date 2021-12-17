@@ -15,7 +15,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 /**
  * @author Jiri Pechanec
  */
-public class MySqlChangeEventSourceMetricsFactory extends DefaultChangeEventSourceMetricsFactory {
+public class MySqlChangeEventSourceMetricsFactory extends DefaultChangeEventSourceMetricsFactory<MySqlPartition> {
 
     final MySqlStreamingChangeEventSourceMetrics streamingMetrics;
 
@@ -24,16 +24,16 @@ public class MySqlChangeEventSourceMetricsFactory extends DefaultChangeEventSour
     }
 
     @Override
-    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics getSnapshotMetrics(T taskContext,
-                                                                                                ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                EventMetadataProvider eventMetadataProvider) {
+    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<MySqlPartition> getSnapshotMetrics(T taskContext,
+                                                                                                                ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                                                EventMetadataProvider eventMetadataProvider) {
         return new MySqlSnapshotChangeEventSourceMetrics((MySqlTaskContext) taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 
     @Override
-    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics getStreamingMetrics(T taskContext,
-                                                                                                  ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                  EventMetadataProvider eventMetadataProvider) {
+    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<MySqlPartition> getStreamingMetrics(T taskContext,
+                                                                                                                  ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                                                  EventMetadataProvider eventMetadataProvider) {
         return streamingMetrics;
     }
 

@@ -52,7 +52,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private final OracleConnectorConfig connectorConfig;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final OraclePartition partition;
@@ -63,7 +63,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
-    public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock,
+    public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
+                           EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                            OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
                            boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
                            OracleStreamingChangeEventSourceMetrics streamingMetrics) {
@@ -217,6 +218,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
 
         dispatcher.dispatchDataChangeEvent(
+                partition,
                 tableId,
                 new XStreamChangeRecordEmitter(partition, offsetContext, lcr, oldChunkValues, chunkValues,
                         schema.tableFor(tableId), clock));

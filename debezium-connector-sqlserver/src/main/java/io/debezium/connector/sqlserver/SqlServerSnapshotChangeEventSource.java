@@ -45,8 +45,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     private Map<TableId, SqlServerChangeTable> changeTables;
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection jdbcConnection,
-                                              SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
-                                              SnapshotProgressListener snapshotProgressListener) {
+                                              SqlServerDatabaseSchema schema, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
+                                              SnapshotProgressListener<SqlServerPartition> snapshotProgressListener) {
         super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -54,7 +54,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(SqlServerOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(SqlServerPartition partition, SqlServerOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 

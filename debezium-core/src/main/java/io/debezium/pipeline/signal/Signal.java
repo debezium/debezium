@@ -42,23 +42,23 @@ import io.debezium.schema.DataCollectionId;
  *
  */
 @NotThreadSafe
-public class Signal {
+public class Signal<P extends Partition> {
 
     @FunctionalInterface
-    public static interface Action {
+    public interface Action<P extends Partition> {
 
         /**
          * @param signalPayload the content of the signal
          * @return true if the signal was processed
          */
-        boolean arrived(Payload signalPayload) throws InterruptedException;
+        boolean arrived(Payload<P> signalPayload) throws InterruptedException;
     }
 
-    public static class Payload {
+    public static class Payload<P extends Partition> {
         public final String id;
         public final String type;
         public final Document data;
-        public final Partition partition;
+        public final P partition;
         public final OffsetContext offsetContext;
         public final Struct source;
 
@@ -70,7 +70,7 @@ public class Signal {
          * @param offsetContext offset at what the signal was sent
          * @param source source info about position at what the signal was sent
          */
-        public Payload(Partition partition, String id, String type, Document data, OffsetContext offsetContext, Struct source) {
+        public Payload(P partition, String id, String type, Document data, OffsetContext offsetContext, Struct source) {
             super();
             this.partition = partition;
             this.id = id;
@@ -90,25 +90,23 @@ public class Signal {
     private static final Logger LOGGER = LoggerFactory.getLogger(Signal.class);
 
     private final CommonConnectorConfig connectorConfig;
-    private final EventDispatcher<? extends DataCollectionId> dispatcher;
 
-    private final Map<String, Action> signalActions = new HashMap<>();
+    private final Map<String, Action<P>> signalActions = new HashMap<>();
 
-    public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<? extends DataCollectionId> eventDispatcher) {
+    public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<P, ? extends DataCollectionId> eventDispatcher) {
         this.connectorConfig = connectorConfig;
-        this.dispatcher = eventDispatcher;
-        registerSignalAction(Log.NAME, new Log());
+        registerSignalAction(Log.NAME, new Log<>());
         if (connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig) {
             registerSignalAction(SchemaChanges.NAME,
-                    new SchemaChanges(dispatcher, ((HistorizedRelationalDatabaseConnectorConfig) connectorConfig).useCatalogBeforeSchema()));
+                    new SchemaChanges<>(eventDispatcher, ((HistorizedRelationalDatabaseConnectorConfig) connectorConfig).useCatalogBeforeSchema()));
         }
         else {
-            registerSignalAction(SchemaChanges.NAME, new SchemaChanges(dispatcher, false));
+            registerSignalAction(SchemaChanges.NAME, new SchemaChanges<>(eventDispatcher, false));
         }
 
-        registerSignalAction(ExecuteSnapshot.NAME, new ExecuteSnapshot(dispatcher));
-        registerSignalAction(OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow());
-        registerSignalAction(CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow(dispatcher));
+        registerSignalAction(ExecuteSnapshot.NAME, new ExecuteSnapshot<>(eventDispatcher));
+        registerSignalAction(OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow<>());
+        registerSignalAction(CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow<>(eventDispatcher));
     }
 
     Signal(CommonConnectorConfig connectorConfig) {
@@ -119,14 +117,14 @@ public class Signal {
         return connectorConfig.isSignalDataCollection(dataCollectionId);
     }
 
-    public void registerSignalAction(String id, Action signal) {
+    public void registerSignalAction(String id, Action<P> signal) {
         LOGGER.debug("Registering signal '{}' using class '{}'", id, signal.getClass().getName());
         signalActions.put(id, signal);
     }
 
-    public boolean process(Partition partition, String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
+    public boolean process(P partition, String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
         LOGGER.debug("Received signal id = '{}', type = '{}', data = '{}'", id, type, data);
-        final Action action = signalActions.get(type);
+        final Action<P> action = signalActions.get(type);
         if (action == null) {
             LOGGER.warn("Signal '{}' has been received but the type '{}' is not recognized", id, type);
             return false;
@@ -134,7 +132,7 @@ public class Signal {
         try {
             final Document jsonData = (data == null || data.isEmpty()) ? Document.create()
                     : DocumentReader.defaultReader().read(data);
-            return action.arrived(new Payload(partition, id, type, jsonData, offset, source));
+            return action.arrived(new Payload<>(partition, id, type, jsonData, offset, source));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has been received but the data '{}' cannot be parsed", id, data, e);
@@ -142,7 +140,7 @@ public class Signal {
         }
     }
 
-    public boolean process(Partition partition, String id, String type, String data) throws InterruptedException {
+    public boolean process(P partition, String id, String type, String data) throws InterruptedException {
         return process(partition, id, type, data, null, null);
     }
 
@@ -152,7 +150,7 @@ public class Signal {
      * @param offset offset of the incoming signal
      * @return true if the signal was processed
      */
-    public boolean process(Partition partition, Struct value, OffsetContext offset) throws InterruptedException {
+    public boolean process(P partition, Struct value, OffsetContext offset) throws InterruptedException {
         String id = null;
         String type = null;
         String data = null;

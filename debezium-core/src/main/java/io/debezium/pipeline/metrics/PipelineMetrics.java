@@ -18,6 +18,7 @@ import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -27,7 +28,8 @@ import io.debezium.util.Clock;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public abstract class PipelineMetrics extends Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
+public abstract class PipelineMetrics<P extends Partition> extends Metrics
+        implements DataChangeEventListener<P>, ChangeEventSourceMetricsMXBean {
 
     protected final EventMetadataProvider metadataProvider;
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
@@ -53,7 +55,7 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
+    public void onEvent(P partition, DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
         updateCommonEventMetrics(operation);
         lastEvent = metadataProvider.toSummaryString(source, offset, key, value);
     }
@@ -84,31 +86,31 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     }
 
     @Override
-    public void onFilteredEvent(String event) {
+    public void onFilteredEvent(P partition, String event) {
         numberOfEventsFiltered.incrementAndGet();
         updateCommonEventMetrics();
     }
 
     @Override
-    public void onFilteredEvent(String event, Operation operation) {
+    public void onFilteredEvent(P partition, String event, Operation operation) {
         numberOfEventsFiltered.incrementAndGet();
         updateCommonEventMetrics(operation);
     }
 
     @Override
-    public void onErroneousEvent(String event) {
+    public void onErroneousEvent(P partition, String event) {
         numberOfErroneousEvents.incrementAndGet();
         updateCommonEventMetrics();
     }
 
     @Override
-    public void onErroneousEvent(String event, Operation operation) {
+    public void onErroneousEvent(P partition, String event, Operation operation) {
         numberOfErroneousEvents.incrementAndGet();
         updateCommonEventMetrics(operation);
     }
 
     @Override
-    public void onConnectorEvent(ConnectorEvent event) {
+    public void onConnectorEvent(P partition, ConnectorEvent event) {
     }
 
     @Override

@@ -14,7 +14,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 /**
  * @author Chris Cranford
  */
-public class OracleChangeEventSourceMetricsFactory extends DefaultChangeEventSourceMetricsFactory {
+public class OracleChangeEventSourceMetricsFactory extends DefaultChangeEventSourceMetricsFactory<OraclePartition> {
 
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
@@ -23,9 +23,9 @@ public class OracleChangeEventSourceMetricsFactory extends DefaultChangeEventSou
     }
 
     @Override
-    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics getStreamingMetrics(T taskContext,
-                                                                                                  ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                                  EventMetadataProvider eventMetadataProvider) {
+    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<OraclePartition> getStreamingMetrics(T taskContext,
+                                                                                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                                                   EventMetadataProvider eventMetadataProvider) {
         return streamingMetrics;
     }
 }

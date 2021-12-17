@@ -21,7 +21,8 @@ import io.debezium.util.Collect;
 /**
  * @author Randall Hauch
  */
-public class MySqlStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics implements MySqlStreamingChangeEventSourceMetricsMXBean {
+public class MySqlStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics<MySqlPartition>
+        implements MySqlStreamingChangeEventSourceMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
