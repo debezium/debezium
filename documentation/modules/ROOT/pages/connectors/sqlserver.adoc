@@ -2071,6 +2071,7 @@ incompatible with the default configuration with no upgrade or downgrade path:
 * The connector will use different keys for its committed offset messages.
 * The SQL statements used in `snapshot.select.statement.overrides` will have to use the database name
   as part of the fully-qualified table name.
+* The structure of the exposed connector metrics will be different.
 
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |No default

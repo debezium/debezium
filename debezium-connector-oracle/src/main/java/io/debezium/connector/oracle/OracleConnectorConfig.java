@@ -536,8 +536,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int logMiningLogFileQueryMaxRetries;
 
     public OracleConnectorConfig(Configuration config) {
-        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
-                ColumnFilterMode.SCHEMA);
+        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config),
+                x -> x.schema() + "." + x.table(), true, ColumnFilterMode.SCHEMA, false);
 
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
         this.pdbName = toUpperCase(config.getString(PDB_NAME));

@@ -326,6 +326,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     @FixFor("DBZ-3347")
     public void shouldContainPartitionInSchemaChangeEventInSinglePartitionMode() throws Exception {
         shouldContainPartitionInSchemaChangeEvent(TestHelper.defaultConfig(),
+                TestHelper::waitForStreamingStarted,
                 Collections.singletonMap("server", "server1"));
     }
 
@@ -333,10 +334,12 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     @FixFor({ "DBZ-3347", "DBZ-2975" })
     public void shouldContainPartitionInSchemaChangeEventInMultiPartitionMode() throws Exception {
         shouldContainPartitionInSchemaChangeEvent(TestHelper.defaultMultiPartitionConfig(),
+                () -> TestHelper.waitForTaskStreamingStarted("0"),
                 Collect.hashMapOf("server", "server1", "database", "testDB"));
     }
 
     private void shouldContainPartitionInSchemaChangeEvent(Configuration.Builder configBuilder,
+                                                           Runnable waitForStreamingStarted,
                                                            Map<String, String> expectedPartition)
             throws Exception {
         connection.execute("create table dbz3347 (id int primary key, data varchar(50))");
@@ -350,7 +353,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        TestHelper.waitForStreamingStarted();
+        waitForStreamingStarted.run();
 
         SourceRecords schemaChanges = consumeRecordsByTopic(1);
         SourceRecord change = schemaChanges.recordsForTopic("server1").get(0);

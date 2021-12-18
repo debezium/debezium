@@ -42,7 +42,7 @@ public class SqlServerPartition implements Partition {
     /**
      * Returns the SQL Server database name corresponding to the partition.
      */
-    String getDatabaseName() {
+    public String getDatabaseName() {
         return databaseName;
     }
 

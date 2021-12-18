@@ -5,13 +5,15 @@
  */
 package io.debezium.connector.mysql.legacy;
 
+import io.debezium.pipeline.metrics.traits.SchemaMetricsMXBean;
+
 /**
  * Metrics that are common for both snapshot and binlog readers
  *
  * @author Jiri Pechanec
  *
  */
-public interface ReaderMetricsMXBean {
+public interface ReaderMetricsMXBean extends SchemaMetricsMXBean {
 
     /**
      * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
@@ -19,7 +21,4 @@ public interface ReaderMetricsMXBean {
      */
     @Deprecated
     String[] getMonitoredTables();
-
-    String[] getCapturedTables();
-
 }
