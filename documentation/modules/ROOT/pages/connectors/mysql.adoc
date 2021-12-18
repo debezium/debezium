@@ -207,7 +207,7 @@ The message contains a logical representation of the table schema.
   ...
   },
   "payload": {
-        "source": {  # (1)
+        "source": {  // (1)
         "version": "{debezium-version}",
         "connector": "mysql",
         "name": "dbserver1",
@@ -224,19 +224,19 @@ The message contains a logical representation of the table schema.
         "thread": null,
         "query": null
     },
-    "databaseName": "inventory", # (2)
+    "databaseName": "inventory", // (2)
     "schemaName": null,
-    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)", #(3)
-    "tableChanges": [ # (4)
+    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)", // (3)
+    "tableChanges": [ // (4)
         {
-        "type": "ALTER", # (5)
-        "id": "\"inventory\".\"customers\"",  # (6)
-        "table": { # (7)
+        "type": "ALTER", // (5)
+        "id": "\"inventory\".\"customers\"",  // (6)
+        "table": { // (7)
             "defaultCharsetName": "latin1",
-            "primaryKeyColumnNames": [  # (8)
+            "primaryKeyColumnNames": [  // (8)
                 "id"
             ],
-            "columns": [ # (9)
+            "columns": [ // (9)
                 {
                 "name": "id",
                 "jdbcType": 4,
@@ -482,21 +482,21 @@ a|Records the completed snapshot in the connector offsets.
 
 |===
 
-// Type: concept
-// ModuleID: debezium-mysql-ad-hoc-snapshots
+ifdef::community[]
+
+// ADD annotation onlyu after supported downstream: Type: concept
+// ADD annotation onlyu after supported downstream: ModuleID: debezium-mysql-ad-hoc-snapshots
 [id="mysql-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
-// Type: concept
-// ModuleID: debezium-mysql-incremental-snapshots
+// ADD annotation only after supported downstream: Type: concept
+// ADD annotation only after supported downstream: ModuleID: debezium-mysql-incremental-snapshots
 [id="mysql-incremental-snapshots"]
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
-
-// Type: concept
-// ModuleID: debezium-mysql-read-only-incremental-snapshots
 [id="mysql-read-only-incremental-snapshots"]
+
 ==== Read-only incremental snapshots
 
 The MySQL connector allows for running incremental snapshots with a read-only connection to the database.
@@ -549,8 +549,6 @@ Key = `test_connector`
 
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
 ----
-
-ifdef::community[]
 
 // Type: continue
 [id="mysql-snapshot-events"]
@@ -2802,7 +2800,7 @@ Use the following format to specify the collection name: +
 `_<databaseName>_._<tableName>_`
 
 ifdef::product[]
-xref:{link-signalling}#sending-signals-to-a-debezium-connector[Signaling] is a Technology Preview feature.
+Signaling is a Technology Preview feature.
 endif::product[]
 
 |[[mysql-property-incremental-snapshot-allow-schema-changes]]<<mysql-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
@@ -2813,14 +2811,13 @@ Note that changes to a primary key are not supported and can cause incorrect res
 
 |[[mysql-property-incremental-snapshot-chunk-size]]<<mysql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-|The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
-The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
 ifdef::product[]
-xref:debezium-mysql-incremental-snapshots[Incremental snapshots] is a Technology Preview feature.
+Incremental snapshots is a Technology Preview feature.
 endif::product[]
 
 |[[mysql-property-read-only]]<<mysql-property-read-only, `+read.only+`>>

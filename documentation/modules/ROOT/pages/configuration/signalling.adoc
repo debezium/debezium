@@ -38,6 +38,9 @@ When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-
 Signaling is available for use with the following {prodname} connectors:
 
 * Db2
+ifdef::community[]
+* MongoDB
+endif::community[]
 * MySQL
 ifdef::community[]
 * Oracle
@@ -75,6 +78,9 @@ endif::community[]
 ifdef::product[]
 Db2 or PostgreSQL:: `_<schemaName>_._<tableName>_`
 endif::product[]
+ifdef::community[]
+MongoDB:: `_<databaseName>_._<collectionName>_`
+endif::community[]
 MySQL:: `_<databaseName>_._<tableName>_`
 SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_` +
  +
@@ -93,7 +99,7 @@ For more information about the `table.include.list` property, see the table of c
 A signaling data collection, or signaling table, stores signals that you send to a connector to trigger a specified operation.
 The structure of the signaling table must conform to the following standard format.
 
-* Contain three fields (columns).
+* Contains three fields (columns).
 * Fields are arranged in a specific order, as shown in xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[Table 1].
 
 .Structure of a signaling data collection
@@ -101,7 +107,7 @@ The structure of the signaling table must conform to the following standard form
 .Required structure of a signaling data collection
 [cols="1,1,9",options="header"]
 |===
-|Column | Type | Description
+|Field | Type | Description
 
 |`id` +
 (required)
@@ -111,7 +117,8 @@ The structure of the signaling table must conform to the following standard form
 You assign an `id` to each signal that you submit to the signaling table. +
 Typically the ID is a UUID string. +
 You can use signal instances for logging, debugging, or de-duplication. +
-// When {prodname} runs the requested operation, it generates a signal message with an arbitrary `id` string that is unrelated to the string in the submitted signal.
+When a signal triggers {prodname} to perform an incremental snapshot, it generates a signal message with an arbitrary `id` string.
+The `id` string that the generated message contains is unrelated to the `id` string in the submitted signal.
 
 |`type` +
 (required)
@@ -129,9 +136,9 @@ Each signal type requires a specific set of data.
 
 |===
 
-NOTE: The column names in a data collection are arbitrary.
-The column names in the preceding table are suggestions.
-If you use a different naming scheme, ensure that the values in each field are consistent with the intended content.
+NOTE: The field names in a data collection are arbitrary.
+The preceding table provides suggested names.
+If you use a different naming convention, ensure that the values in each field are consistent with the expected content.
 
 // Type: procedure
 // Title: Creating a {prodname} signaling data collection
@@ -216,6 +223,9 @@ You can initiate ad hoc snapshots at any time.
 Ad hoc snapshots are available for the following {prodname} connectors:
 
 * Db2
+ifdef::community[]
+* MongoDB
+endif::community[]
 * MySQL
 ifdef::community[]
 * Oracle
@@ -247,6 +257,9 @@ For more information about ad hoc snapshots, see the _Snapshots_ topic in the do
 .Additional resources
 
 * xref:{link-db2-connector}#db2-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
+ifdef::community[]
+* xref:{link-mongodb-connector}#mongodb-ad-hoc-snapshot[MongoDB connector ad hoc snapshots]
+endif::community[]
 * xref:{link-mysql-connector}#mysql-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
 ifdef::community[]
 * xref:{link-oracle-connector}#oracle-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
@@ -269,20 +282,15 @@ By capturing the initial state of the specified tables in chunks rather than in 
 * If the incremental snapshot process is interrupted, it can be resumed from the point at which it stopped.
 * You can initiate an incremental snapshot at any time.
 
-During the incremental snapshot process, the connector simultaneously captures two types of records from a data-collection.
-It captures snapshot records directly from the table as `READ` operations.
-Meanwhile, as users continue to update records in the data collection, the connector captures change event records based on these updates from the transaction log.
-These connector emits the records for these events as `UPDATE` or `DELETE` operations.
-For each data collection, the connector emits the records for these two types of events to a single destination Kafka topic.
-
-As {prodname} processes a snapshot chunk, it buffers the two sets of records in memory, comparing records that share the same primary key.
-When the connector detects records with the same primary key, it writes only the most recent version of a record to the destination topic.
 
 For more information about incremental snapshots, see the _Snapshots_ topic in the documentation for your connector.
 
 .Additional resources
 
 * xref:{link-db2-connector}#db2-incremental-snapshots[Db2 connector incremental snapshots]
+ifdef::community[]
+* xref:{link-mongodb-connector}#mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
+endif::community[]
 * xref:{link-mysql-connector}#mysql-incremental-snapshots[MySQL connector incremental snapshots]
 ifdef::community[]
 * xref:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
