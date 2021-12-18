@@ -69,7 +69,8 @@ The snapshot process reads the first and last primary key values and uses those 
 Based on the number of entries in the {data-collection}, and the configured chunk size, {prodname} divides the {data-collection} into chunks, and proceeds to snapshot each chunk, in succession, one at a time.
 
 Currently, the `execute-snapshot` action type triggers xref:{link-signalling}#debezium-signaling-incremental-snapshots[incremental snapshots] only.
-
+For more information, see xref:{link-{context}-connector}#{context}-incremental-snapshots[Incremental snapshots].
+////
 .Prerequisites
 
 * xref:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled].
@@ -89,5 +90,4 @@ For example:
 ----
 INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema2.table2"]}')
 ----
-
-//For more information, see xref:{context}-incremental-snapshots[Incremental snapshots].
+////

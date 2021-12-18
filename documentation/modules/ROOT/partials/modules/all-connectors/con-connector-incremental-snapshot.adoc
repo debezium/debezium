@@ -47,25 +47,24 @@ As a snapshot proceeds, it’s likely that other processes continue to access th
 To reflect such changes, `INSERT`, `UPDATE`, or `DELETE` operations are committed to the transaction log as per usual.
 Similarly, the ongoing {prodname} streaming process continues to detect these change events and emits corresponding change event records to Kafka.
 
-.How {prodname} resolves conflicts among records with the same primary key
+.How {prodname} resolves collisions among records with the same primary key
 In some cases, the `UPDATE` or `DELETE` events that the streaming process emits are received out of sequence.
 That is, the streaming process might emit an event that modifies a {data-collection} row before the snapshot captures the chunk that contains the `READ` event for that row.
 When the snapshot eventually emits the corresponding `READ` event for the row, its value is already superseded.
-To ensure that incremental snapshot events that arrive out of sequence are processed in the correct logical order, {prodname} employs a buffering scheme for resolving conflicts.
-Only after conflicts between the snapshot events and the streamed events are resolved does {prodname} emit an event record to Kafka.
+To ensure that incremental snapshot events that arrive out of sequence are processed in the correct logical order, {prodname} employs a buffering scheme for resolving collisions.
+Only after collisions between the snapshot events and the streamed events are resolved does {prodname} emit an event record to Kafka.
 
 .Snapshot window
-To assist in resolving conflicts between late-arriving `READ` events and streamed events that modify the same {data-collection} row, {prodname} employs a so-called _snapshot window_.
+To assist in resolving collisions between late-arriving `READ` events and streamed events that modify the same {data-collection} row, {prodname} employs a so-called _snapshot window_.
 The snapshot windows demarcates the interval during which an incremental snapshot captures data for a specified {data-collection} chunk.
 Before the snapshot window for a chunk opens, {prodname} follows its usual behavior and emits events from the transaction log directly downstream to the target Kafka topic.
-But from the moment that the snapshot for a particular chunk opens, until it closes, {prodname} performs a de-duplication step to resolve potential conflicts among events.
+But from the moment that the snapshot for a particular chunk opens, until it closes, {prodname} performs a de-duplication step to resolve collisions between events that have the same primary key..
 
-During the snapshot window for a {data-collection} chunk, the incremental snapshot sends the `READ` events that it captures from a {data-collection} to a memory buffer.
-Next, it examines the events that the streaming process emits from the transaction log.
-Events that are not related to records that already exist in the {data-collection} are sent to Kafka.
-But for events that modify existing records in the {data-collection}, {prodname} searches the buffer for a `READ` event that has a matching primary key.
-Any matching `READ` events in the buffer are dropped, because the corresponding transaction log events logically supersede them.
-The transaction log event for the record is then emitted to Kafka.
+As {prodname} processes a snapshot chunk, it delivers `READ` events that the incremental snapshot process captures to a memory buffer.
+Meanwhile, as users commit changes for ongoing database operations to the transaction log, the {prodname} streaming process continues to emit change events for these operations.
+As {prodname} processes each event, it compares its primary key to the keys of the events in the buffer.
+If no match is found, the streamed event is sent directly to Kafka.
+If the key of a streamed event matches the key of a buffered event, {prodname} drops the `READ` event in the buffer, because the streamed transaction log events logically supersede it.
 After the snapshot window for the chunk closes, the buffer contains only `READ` events for which no related transaction log events exist.
 {prodname} emits these remaining `READ` events to the {data-collection}'s Kafka topic.
 
