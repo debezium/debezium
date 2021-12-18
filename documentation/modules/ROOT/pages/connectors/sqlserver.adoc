@@ -2403,7 +2403,10 @@ Note that changes to a primary key are not supported and can cause incorrect res
 
 |[[sqlserver-property-incremental-snapshot-chunk-size]]<<sqlserver-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-| The number of rows fetched from the database for each incremental snapshot iteration.
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
 
 |[[sqlserver-property-max-iteration-transactions]]<<sqlserver-property-max-iteration-transactions, `+max.iteration.transactions+`>>
 |0
