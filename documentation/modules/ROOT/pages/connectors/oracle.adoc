@@ -126,7 +126,6 @@ After the snapshot completes, the connector begins to stream event records for s
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
 // Type: concept
-// ModuleID: debezium-oracle-incremental-snapshots
 [id="oracle-incremental-snapshots"]
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
@@ -2074,7 +2073,7 @@ You can set the following values:
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
 
-This property does not affect the behavior of xref:oracle-incremental-snapshots[incremental snapshots].
+This property does not affect the behavior of incremental snapshots.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default

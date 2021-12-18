@@ -254,6 +254,7 @@ Currently, the `execute-snapshot` action triggers xref:debezium-signaling-increm
 
 For more information about ad hoc snapshots, see the _Snapshots_ topic in the documentation for your connector.
 
+
 .Additional resources
 
 * xref:{link-db2-connector}#db2-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
@@ -267,9 +268,10 @@ endif::community[]
 * xref:{link-postgresql-connector}#postgresql-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
 * xref:{link-sqlserver-connector}#sqlserver-ad-hoc-snapshots[SQL Server connector ad hoc snapshots]
 
+
 // Type: concept
 [id="debezium-signaling-incremental-snapshots"]
-==== Incremental snapshots
+=== Incremental snapshots
 
 Incremental snapshots are a specific type of ad hoc snapshot.
 In an incremental snapshot, the connector captures the baseline state of the tables that you specify, similar to an initial snapshot.
@@ -281,7 +283,6 @@ By capturing the initial state of the specified tables in chunks rather than in 
 * While the connector captures the baseline state of the specified tables, streaming of near real-time events from the transaction log continues uninterrupted.
 * If the incremental snapshot process is interrupted, it can be resumed from the point at which it stopped.
 * You can initiate an incremental snapshot at any time.
-
 
 For more information about incremental snapshots, see the _Snapshots_ topic in the documentation for your connector.
 
