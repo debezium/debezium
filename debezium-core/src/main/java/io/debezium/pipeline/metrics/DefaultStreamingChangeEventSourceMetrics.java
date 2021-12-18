@@ -14,8 +14,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -34,8 +32,6 @@ import io.debezium.schema.DataCollectionId;
 @ThreadSafe
 public class DefaultStreamingChangeEventSourceMetrics extends PipelineMetrics
         implements StreamingChangeEventSourceMetrics, StreamingChangeEventSourceMetricsMXBean {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultStreamingChangeEventSourceMetrics.class);
 
     private final AtomicBoolean connected = new AtomicBoolean();
     private final AtomicReference<Duration> lagBehindSource = new AtomicReference<>();
@@ -70,7 +66,6 @@ public class DefaultStreamingChangeEventSourceMetrics extends PipelineMetrics
 
     public void connected(boolean connected) {
         this.connected.set(connected);
-        LOGGER.info("Connected metrics set to '{}'", this.connected.get());
     }
 
     @Override

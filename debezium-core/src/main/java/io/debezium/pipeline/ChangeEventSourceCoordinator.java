@@ -229,6 +229,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected void streamingConnected(boolean status) {
         if (changeEventSourceMetricsFactory.connectionMetricHandledByCoordinator()) {
             streamingMetrics.connected(status);
+            LOGGER.info("Connected metrics set to '{}'", status);
         }
     }
 
