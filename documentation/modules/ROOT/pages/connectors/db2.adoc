@@ -128,12 +128,13 @@ The level of the lock is determined by the `snapshot.isolation.mode` connector  
 // ModuleID: debezium-db2-ad-hoc-snapshots
 [id="db2-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
+
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
 // Type: concept
-// ModuleID: debezium-db2-incremental-snapshots
 [id="db2-incremental-snapshots"]
 ==== Incremental snapshots
+
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
@@ -2248,7 +2249,7 @@ However, larger chunk sizes also require more memory to buffer the snapshot data
 Adjust the chunk size to a value that provides the best performance in your environment.
 
 ifdef::product[]
-xref:{link-db2-connector}#debezium-db2-incremental-snapshots[Incremental snapshots] is a Technology Preview feature.
+Incremental snapshots is a Technology Preview feature.
 endif::product[]
 
 |===
