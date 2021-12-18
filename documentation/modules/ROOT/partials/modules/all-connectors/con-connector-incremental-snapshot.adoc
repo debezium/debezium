@@ -16,6 +16,7 @@ This Technology Preview feature provides early access to upcoming product innova
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
+
 To provide flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
 Incremental snapshots rely on the {prodname} mechanism for xref:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
 ifdef::community[]
@@ -60,11 +61,14 @@ The snapshot windows demarcates the interval during which an incremental snapsho
 Before the snapshot window for a chunk opens, {prodname} follows its usual behavior and emits events from the transaction log directly downstream to the target Kafka topic.
 But from the moment that the snapshot for a particular chunk opens, until it closes, {prodname} performs a de-duplication step to resolve collisions between events that have the same primary key..
 
-As {prodname} processes a snapshot chunk, it delivers `READ` events that the incremental snapshot process captures to a memory buffer.
-Meanwhile, as users commit changes for ongoing database operations to the transaction log, the {prodname} streaming process continues to emit change events for these operations.
-As {prodname} processes each event, it compares its primary key to the keys of the events in the buffer.
-If no match is found, the streamed event is sent directly to Kafka.
-If the key of a streamed event matches the key of a buffered event, {prodname} drops the `READ` event in the buffer, because the streamed transaction log events logically supersede it.
+For each data collection, the {prodname} emits two types of events, and stores the records for them both in a single destination Kafka topic.
+The snapshot records that it  captures directly from a table are emitted as `READ` operations.
+Meanwhile, as users continue to update records in the data collection, and the transaction log is updated to reflect each commit, {prodname} emits `UPDATE` or `DELETE` operations for each change.
+
+As the snapshot window opens, and {prodname} begins processing a snapshot chunk, it delivers snapshot records to a memory buffer.
+During the snapshot windows, the primary keys of the `READ` events in the buffer are compared to the primary keys of the incoming streamed events.
+If no match is found, the streamed event record is sent directly to Kafka.
+If {prodname} detects a match, it discards the buffered `READ` event, and writes the streamed record to the destination topic, because the streamed event logically supersede the static snapshot event.
 After the snapshot window for the chunk closes, the buffer contains only `READ` events for which no related transaction log events exist.
 {prodname} emits these remaining `READ` events to the {data-collection}'s Kafka topic.
 
@@ -83,7 +87,7 @@ To specify the {data-collection}s to include in the snapshot, provide a `data-co
 `{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}` +
 
 The `data-collections` array for an incremental snapshot signal has no default value.
-If the `data-collections` array  is empty, {prodname} detects that no action is required and does not perform a snapshot.
+If the `data-collections` array is empty, {prodname} detects that no action is required and does not perform a snapshot.
 
 .Prerequisites
 

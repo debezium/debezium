@@ -152,7 +152,7 @@ When the connector restarts after having crashed or been stopped gracefully, the
 The connector rebuilds the table structures that existed at this point in time by reading the database history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
 
 This database history topic is for connector use only.
-The connector can optionally {link-prefix}:{link-mysql-connector}#mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+The connector can optionally xref:mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied, there are helper tables created during the migration process.
 The connector needs to be configured to capture change to these helper tables.
@@ -489,21 +489,22 @@ a|Records the completed snapshot in the connector offsets.
 
 |===
 
-ifdef::community[]
-
-// ADD annotation onlyu after supported downstream: Type: concept
-// ADD annotation onlyu after supported downstream: ModuleID: debezium-mysql-ad-hoc-snapshots
+// Type: concept
+// ModuleID: debezium-mysql-ad-hoc-snapshots
 [id="mysql-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
-// ADD annotation only after supported downstream: Type: concept
-// ADD annotation only after supported downstream: ModuleID: debezium-mysql-incremental-snapshots
+
+
+// Type: concept
 [id="mysql-incremental-snapshots"]
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
-[id="mysql-read-only-incremental-snapshots"]
 
+
+ifdef::community[]
+[id="mysql-read-only-incremental-snapshots"]
 ==== Read-only incremental snapshots
 
 The MySQL connector allows for running incremental snapshots with a read-only connection to the database.
@@ -2699,7 +2700,7 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:mysql-property-table-include-list[`table.include.list`] property.
 This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
-This property does not affect the behavior of xref:mysql-incremental-snapshots[incremental snapshots].
+This property does not affect the behavior of incremental snapshots.
 
 |[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
