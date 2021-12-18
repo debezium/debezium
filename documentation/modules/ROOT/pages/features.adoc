@@ -32,7 +32,7 @@ ifdef::community[]
 endif::community[]
 ifdef::product[]
 * Ready-to-use *single message transformations (SMTs)* for message routing, filtering, event flattening, and more.
-  For more an overview of the SMTs that {prodname} provides, see xref:applying-transformations-to-modify-messages-exchanged-with-kafka[Applying transformations to modify messages exchanged with Apache Kafka].
+  For more information about the SMTs that {prodname} provides, see xref:applying-transformations-to-modify-messages-exchanged-with-kafka[Applying transformations to modify messages exchanged with Apache Kafka].
 
 The documentation for each connector provides details about the connectors features and configuration options.
 endif::product[]

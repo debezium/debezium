@@ -2244,14 +2244,13 @@ endif::product[]
 
 |[[db2-property-incremental-snapshot-chunk-size]]<<db2-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-||The maximum size, in bytes, of each chunk that the connector queries and reads into memory during an incremental snapshot.
-The value determines the number of rows that the snapshot collects during each fetch operation on the database.
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
 ifdef::product[]
-xref:debezium-db2-incremental-snapshots[Incremental snapshots] is a Technology Preview feature.
+xref:{link-db2-connector}#debezium-db2-incremental-snapshots[Incremental snapshots] is a Technology Preview feature.
 endif::product[]
 
 |===
