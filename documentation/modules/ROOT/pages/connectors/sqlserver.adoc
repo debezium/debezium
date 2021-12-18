@@ -139,7 +139,6 @@ From this baseline state, the connector captures subsequent changes as they occu
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
 // Type: concept
-// ModuleID: debezium-sqlserver-incremental-snapshots
 [id="sqlserver-incremental-snapshots"]
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
@@ -2238,7 +2237,8 @@ The following values are supported:
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<dbName>_._<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
-This property does not affect the behavior of xref:{link-sqlserver-connector}#sqlserver-incremental-snapshots[incremental snapshots].
+
+This property does not affect the behavior of incremental snapshots.
 
 |[[sqlserver-property-snapshot-isolation-mode]]<<sqlserver-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
 |_repeatable_read_
