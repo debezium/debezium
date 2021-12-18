@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.metrics.Metrics;
 import io.debezium.schema.DatabaseSchema;
 
@@ -46,12 +45,8 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     private HistoryRecord lastAppliedChange;
     private HistoryRecord lastRecoveredChange;
 
-    protected <T extends CdcSourceTaskContext> DatabaseHistoryMetrics(T taskContext, String contextName) {
-        super(taskContext, contextName);
-    }
-
-    public DatabaseHistoryMetrics(CommonConnectorConfig connectorConfig) {
-        super(connectorConfig, CONTEXT_NAME);
+    public DatabaseHistoryMetrics(CommonConnectorConfig connectorConfig, boolean multiPartitionMode) {
+        super(connectorConfig, CONTEXT_NAME, multiPartitionMode);
     }
 
     @Override

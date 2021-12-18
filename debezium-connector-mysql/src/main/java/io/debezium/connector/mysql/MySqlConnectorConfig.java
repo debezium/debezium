@@ -1048,7 +1048,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
-                ColumnFilterMode.CATALOG);
+                ColumnFilterMode.CATALOG,
+                false);
 
         this.config = config;
         this.legacy = MySqlConnector.isLegacy(config.getString(io.debezium.connector.mysql.MySqlConnector.IMPLEMENTATION_PROP));

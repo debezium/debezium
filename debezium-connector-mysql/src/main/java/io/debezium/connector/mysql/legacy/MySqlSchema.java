@@ -151,7 +151,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 return SourceInfo.isPositionAtOrBefore(recorded, desired, gtidFilter);
             }
         };
-        this.dbHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(configuration), true); // validates
+        this.dbHistory.configure(dbHistoryConfig, historyComparator,
+                new DatabaseHistoryMetrics(configuration, false), true); // validates
     }
 
     private static MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {

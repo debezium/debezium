@@ -2528,7 +2528,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE);
 
         final SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB.dbo.tablea");

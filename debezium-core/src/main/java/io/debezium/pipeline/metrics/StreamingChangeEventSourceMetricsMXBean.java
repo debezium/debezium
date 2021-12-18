@@ -5,22 +5,14 @@
  */
 package io.debezium.pipeline.metrics;
 
-import java.util.Map;
+import io.debezium.pipeline.metrics.traits.ConnectionMetricsMXBean;
+import io.debezium.pipeline.metrics.traits.StreamingMetricsMXBean;
 
 /**
  * Metrics specific to streaming change event sources
  *
  * @author Randall Hauch, Jiri Pechanec
  */
-public interface StreamingChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean {
-
-    boolean isConnected();
-
-    long getMilliSecondsBehindSource();
-
-    long getNumberOfCommittedTransactions();
-
-    Map<String, String> getSourceEventPosition();
-
-    String getLastTransactionId();
+public interface StreamingChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean,
+        ConnectionMetricsMXBean, StreamingMetricsMXBean {
 }

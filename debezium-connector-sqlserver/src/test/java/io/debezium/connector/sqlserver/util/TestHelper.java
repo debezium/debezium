@@ -13,14 +13,17 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.apache.kafka.common.utils.Sanitizer;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.slf4j.Logger;
@@ -39,6 +42,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -381,11 +385,19 @@ public class TestHelper {
     }
 
     public static void waitForSnapshotToBeCompleted() {
+        waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1"));
+    }
+
+    public static void waitForDatabaseSnapshotToBeCompleted(String databaseName) {
+        waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1", databaseName));
+    }
+
+    private static void waitForSnapshotToBeCompleted(ObjectName objectName) {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
             Awaitility.await("Snapshot not completed").atMost(Duration.ofSeconds(60)).until(() -> {
                 try {
-                    return (boolean) mbeanServer.getAttribute(getObjectName("snapshot", "server1"), "SnapshotCompleted");
+                    return (boolean) mbeanServer.getAttribute(objectName, "SnapshotCompleted");
                 }
                 catch (InstanceNotFoundException e) {
                     // Metrics has not started yet
@@ -398,12 +410,25 @@ public class TestHelper {
         }
     }
 
+    public static void waitForTaskStreamingStarted(String taskId) {
+        waitForStreamingStarted(getObjectName(Collect.linkMapOf(
+                "server", "server1",
+                "task", taskId,
+                "context", "streaming")));
+    }
+
     public static void waitForStreamingStarted() {
+        waitForStreamingStarted(getObjectName(Collect.linkMapOf(
+                "context", "streaming",
+                "server", "server1")));
+    }
+
+    public static void waitForStreamingStarted(ObjectName objectName) {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
             Awaitility.await("Streaming never started").atMost(Duration.ofSeconds(60)).until(() -> {
                 try {
-                    return (boolean) mbeanServer.getAttribute(getObjectName("streaming", "server1"), "Connected");
+                    return (boolean) mbeanServer.getAttribute(objectName, "Connected");
                 }
                 catch (InstanceNotFoundException e) {
                     // Metrics has not started yet
@@ -433,8 +458,31 @@ public class TestHelper {
         }
     }
 
-    private static ObjectName getObjectName(String context, String serverName) throws MalformedObjectNameException {
-        return new ObjectName("debezium.sql_server:type=connector-metrics,context=" + context + ",server=" + serverName);
+    private static ObjectName getObjectName(String context, String serverName) {
+        return getObjectName(Collect.linkMapOf(
+                "context", context,
+                "server", serverName));
+    }
+
+    private static ObjectName getObjectName(String context, String serverName, String databaseName) {
+        return getObjectName(Collect.linkMapOf(
+                "server", serverName,
+                "task", "0",
+                "context", context,
+                "database", databaseName));
+    }
+
+    private static ObjectName getObjectName(Map<String, String> tags) {
+        final String metricName = "debezium.sql_server:type=connector-metrics,"
+                + tags.entrySet().stream()
+                        .map(e -> e.getKey() + "=" + Sanitizer.jmxSanitize(e.getValue()))
+                        .collect(Collectors.joining(","));
+        try {
+            return new ObjectName(metricName);
+        }
+        catch (MalformedObjectNameException e) {
+            throw new IllegalArgumentException("Unable to build object name", e);
+        }
     }
 
     public static int waitTimeForRecords() {

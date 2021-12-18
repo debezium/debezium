@@ -3,12 +3,10 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.metrics;
+package io.debezium.connector.sqlserver.metrics;
 
 import io.debezium.pipeline.metrics.traits.SnapshotMetricsMXBean;
 
-/**
- * @author Randall Hauch, Jiri Pechanec
- */
-public interface SnapshotChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean, SnapshotMetricsMXBean {
+public interface SqlServerSnapshotPartitionMetricsMXBean extends SnapshotMetricsMXBean,
+        SqlServerPartitionMetricsMXBean {
 }
