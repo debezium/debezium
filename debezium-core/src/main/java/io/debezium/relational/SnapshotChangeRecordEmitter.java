@@ -26,7 +26,7 @@ public class SnapshotChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         return Operation.READ;
     }
 

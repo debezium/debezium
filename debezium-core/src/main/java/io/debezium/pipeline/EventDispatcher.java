@@ -169,7 +169,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                                      OffsetContext offset,
                                      ConnectHeaders headers)
                     throws InterruptedException {
-                eventListener.onEvent(dataCollectionSchema.id(), offset, key, value);
+                eventListener.onEvent(dataCollectionSchema.id(), offset, key, value, operation);
                 receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
             }
         });
@@ -197,7 +197,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             boolean handled = false;
             if (!filter.isIncluded(dataCollectionId)) {
                 LOGGER.trace("Filtered data change event for {}", dataCollectionId);
-                eventListener.onFilteredEvent("source = " + dataCollectionId);
+                eventListener.onFilteredEvent("source = " + dataCollectionId, changeRecordEmitter.getOperation());
                 dispatchFilteredEvent(changeRecordEmitter.getPartition(), changeRecordEmitter.getOffset());
             }
             else {
@@ -228,7 +228,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
                         if (neverSkip || !skippedOperations.contains(operation)) {
                             transactionMonitor.dataEvent(partition, dataCollectionId, offset, key, value);
-                            eventListener.onEvent(dataCollectionId, offset, key, value);
+                            eventListener.onEvent(dataCollectionId, offset, key, value, operation);
                             if (incrementalSnapshotChangeEventSource != null) {
                                 incrementalSnapshotChangeEventSource.processMessage(partition, dataCollectionId, key, offset);
                             }
@@ -290,7 +290,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     public Optional<DataCollectionSchema> errorOnMissingSchema(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) {
-        eventListener.onErroneousEvent("source = " + dataCollectionId);
+        eventListener.onErroneousEvent("source = " + dataCollectionId, changeRecordEmitter.getOperation());
         throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
     }
 
@@ -510,7 +510,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,
                     null, headers);
-            dataListener.onEvent(dataCollectionSchema.id(), offsetContext, keySchema, value);
+            dataListener.onEvent(dataCollectionSchema.id(), offsetContext, keySchema, value, operation);
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
         }
 

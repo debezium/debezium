@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -23,7 +24,7 @@ public interface DataChangeEventListener {
     /**
      * Invoked if an event is processed for a captured table.
      */
-    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) throws InterruptedException;
+    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) throws InterruptedException;
 
     /**
      * Invoked for events pertaining to non-captured tables.
@@ -31,18 +32,32 @@ public interface DataChangeEventListener {
     void onFilteredEvent(String event);
 
     /**
+     * Invoked for events pertaining to non-captured tables.
+     */
+    void onFilteredEvent(String event, Operation operation);
+
+    /**
      * Invoked for events that cannot be processed.
      */
     void onErroneousEvent(String event);
+
+    /**
+     * Invoked for events that cannot be processed.
+     */
+    void onErroneousEvent(String event, Operation operation);
 
     /**
      * Invoked for events that represent a connector event.
      */
     void onConnectorEvent(ConnectorEvent event);
 
-    static DataChangeEventListener NO_OP = new DataChangeEventListener() {
+    DataChangeEventListener NO_OP = new DataChangeEventListener() {
         @Override
         public void onFilteredEvent(String event) {
+        }
+
+        @Override
+        public void onFilteredEvent(String event, Operation operation) {
         }
 
         @Override
@@ -50,11 +65,15 @@ public interface DataChangeEventListener {
         }
 
         @Override
+        public void onErroneousEvent(String event, Operation operation) {
+        }
+
+        @Override
         public void onConnectorEvent(ConnectorEvent event) {
         }
 
         @Override
-        public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
+        public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
         }
     };
 }

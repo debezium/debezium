@@ -69,11 +69,6 @@ public abstract class AbstractChangeRecordEmitter<T extends DataCollectionSchema
     }
 
     /**
-     * Returns the operation associated with the change.
-     */
-    protected abstract Operation getOperation();
-
-    /**
      * Emits change record(s) associated with a snapshot.
      *
      * @param receiver the handler for which the emitted record should be dispatched

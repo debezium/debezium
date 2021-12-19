@@ -76,7 +76,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         switch (message.getOperation()) {
             case INSERT:
                 return Operation.CREATE;
