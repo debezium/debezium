@@ -36,7 +36,7 @@ public class SqlServerChangeRecordEmitter extends RelationalChangeRecordEmitter 
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         if (operation == OP_DELETE) {
             return Operation.DELETE;
         }

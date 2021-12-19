@@ -38,7 +38,7 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         switch (lcr.getCommandType()) {
             case RowLCR.INSERT:
                 return Operation.CREATE;

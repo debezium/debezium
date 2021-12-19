@@ -54,7 +54,7 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         if (isSnapshot || oplogEvent.getString("op") == null) {
             return Operation.READ;
         }

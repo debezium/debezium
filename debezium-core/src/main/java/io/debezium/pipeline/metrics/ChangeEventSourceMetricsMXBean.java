@@ -18,6 +18,12 @@ public interface ChangeEventSourceMetricsMXBean {
 
     long getTotalNumberOfEventsSeen();
 
+    long getTotalNumberOfCreateEventsSeen();
+
+    long getTotalNumberOfUpdateEventsSeen();
+
+    long getTotalNumberOfDeleteEventsSeen();
+
     long getNumberOfEventsFiltered();
 
     long getNumberOfErroneousEvents();

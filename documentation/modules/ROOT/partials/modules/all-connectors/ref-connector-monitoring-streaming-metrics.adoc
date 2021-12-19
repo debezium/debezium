@@ -18,6 +18,18 @@ The following table lists the streaming metrics that are available.
 |`long`
 |The total number of events that this connector has seen since last started or reset.
 
+|[[connectors-strm-metric-totalnumberofcreateeventsseen_{context}]]<<connectors-strm-metric-totalnumberofcreateeventsseen_{context}, `TotalNumberOfCreateEventsSeen`>>
+|`long`
+|The total number of create events that this connector has seen since last started or reset.
+
+|[[connectors-strm-metric-totalnumberofupdateeventsseen_{context}]]<<connectors-strm-metric-totalnumberofupdateeventsseen_{context}, `TotalNumberOfUpdateEventsSeen`>>
+|`long`
+|The total number of update events that this connector has seen since last started or reset.
+
+|[[connectors-strm-metric-totalnumberofdeleteeventsseen_{context}]]<<connectors-strm-metric-totalnumberofdeleteeventsseen_{context}, `TotalNumberOfDeleteEventsSeen`>>
+|`long`
+|The total number of delete events that this connector has seen since last started or reset.
+
 |[[connectors-strm-metric-numberofeventsfiltered_{context}]]<<connectors-strm-metric-numberofeventsfiltered_{context}, `NumberOfEventsFiltered`>>
 |`long`
 |The number of events that have been filtered by include/exclude list filtering rules configured on the connector.

@@ -51,7 +51,7 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object>
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         return operation;
     }
 

@@ -36,6 +36,11 @@ public interface ChangeRecordEmitter {
     OffsetContext getOffset();
 
     /**
+     * Returns the operation done by the represented change.
+     */
+    Operation getOperation();
+
+    /**
      * Callback passed to {@link ChangeRecordEmitter}s, allowing them to produce one
      * or more change records.
      */

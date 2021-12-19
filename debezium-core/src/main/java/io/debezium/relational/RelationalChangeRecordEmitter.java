@@ -147,12 +147,6 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
     }
 
     /**
-     * Returns the operation done by the represented change.
-     */
-    @Override
-    protected abstract Operation getOperation();
-
-    /**
      * Returns the old row state in case of an UPDATE or DELETE.
      */
     protected abstract Object[] getOldColumnValues();
