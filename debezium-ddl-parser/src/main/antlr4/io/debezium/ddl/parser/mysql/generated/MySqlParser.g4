@@ -2165,7 +2165,7 @@ convertedDataType
       | typeName=(DATE | DATETIME | TIME | JSON | INT | INTEGER)
       | typeName=DECIMAL lengthTwoOptionalDimension?
       | (SIGNED | UNSIGNED) INTEGER?
-    ) (ARRAY)?
+    ) ARRAY?
     ;
 
 lengthOneDimension
