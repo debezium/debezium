@@ -63,6 +63,11 @@ public class SqlServerPartition implements Partition {
         return hashCode;
     }
 
+    @Override
+    public String toString() {
+        return "SqlServerPartition [sourcePartition=" + getSourcePartition() + "]";
+    }
+
     static class Provider implements Partition.Provider<SqlServerPartition> {
         private final SqlServerConnectorConfig connectorConfig;
 
