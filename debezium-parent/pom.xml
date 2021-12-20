@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>1.8.0-SNAPSHOT</version>
+    <version>1.9.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -31,11 +31,11 @@
         <version.staging.plugin>1.6.8</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.1.1</version.javadoc.plugin>
-        <version.code.formatter>2.15.0</version.code.formatter>
+        <version.code.formatter>2.16.0</version.code.formatter>
         <version.surefire.plugin>3.0.0-M4</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
-        <version.impsort>1.6.0</version.impsort>
+        <version.impsort>1.6.2</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>8.32</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
@@ -146,7 +146,12 @@
                         <removeUnused>true</removeUnused>
                     </configuration>
                 </plugin>
-               <plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.0.0</version>
+                </plugin>
+                <plugin>
                     <groupId>org.jboss.jandex</groupId>
                     <artifactId>jandex-maven-plugin</artifactId>
                     <version>${version.jandex}</version>

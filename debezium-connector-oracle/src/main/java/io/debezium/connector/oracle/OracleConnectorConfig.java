@@ -53,6 +53,7 @@ import io.debezium.util.Strings;
 public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
     protected static final int DEFAULT_PORT = 1528;
+    protected static final int DEFAULT_LOG_FILE_QUERY_MAX_RETRIES = 5;
 
     protected static final int DEFAULT_VIEW_FETCH_SIZE = 10_000;
 
@@ -92,6 +93,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withValidation(OracleConnectorConfig::validateOutServerName)
             .withDescription("Name of the XStream Out server to connect to.");
+
+    public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
+            .withDisplayName("Interval Handling")
+            .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
+                    + "'string' represents values as an exact ISO formatted string"
+                    + "'numeric' (default) represents values using the inexact conversion into microseconds");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
@@ -386,6 +396,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
                     " this value, consider it a SCN gap.");
 
+    public static final Field LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES = Field.createInternal("log.mining.log.file.query.max.retries")
+            .withDisplayName("Maximum number of retries to get logs before throwing an exception")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDefault(DEFAULT_LOG_FILE_QUERY_MAX_RETRIES)
+            .withDescription("Specifies the number of extra attempts the connector will use to resolve available logs " +
+                    "from Oracle before throwing an exception if a log with the offset SCN cannot be located.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -413,6 +433,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     SNAPSHOT_ENHANCEMENT_TOKEN,
                     SNAPSHOT_LOCKING_MODE,
                     RAC_NODES,
+                    INTERVAL_HANDLING_MODE,
                     LOG_MINING_ARCHIVE_LOG_HOURS,
                     LOG_MINING_BATCH_SIZE_DEFAULT,
                     LOG_MINING_BATCH_SIZE_MIN,
@@ -436,7 +457,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
                     LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS,
-                    UNAVAILABLE_VALUE_PLACEHOLDER)
+                    UNAVAILABLE_VALUE_PLACEHOLDER,
+                    BINARY_HANDLING_MODE,
+                    LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES)
             .create();
 
     /**
@@ -457,6 +480,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String databaseName;
     private final String pdbName;
     private final String xoutServerName;
+    private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
 
     private final String oracleVersion;
@@ -488,6 +512,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningBufferDropOnStop;
     private final int logMiningScnGapDetectionGapSizeMin;
     private final int logMiningScnGapDetectionTimeIntervalMaxMs;
+    private final int logMiningLogFileQueryMaxRetries;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
@@ -496,6 +521,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
+        this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.oracleVersion = config.getString(ORACLE_VERSION);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
@@ -530,6 +556,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
         this.logMiningScnGapDetectionTimeIntervalMaxMs = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS);
+        this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES);
     }
 
     private static String toUpperCase(String property) {
@@ -552,6 +579,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return xoutServerName;
     }
 
+    public IntervalHandlingMode getIntervalHandlingMode() {
+        return intervalHandlingMode;
+    }
+
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
     }
@@ -567,6 +598,67 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
         return getAdapter().getHistoryRecordComparator();
+    }
+
+    /**
+     * Defines modes of representation of {@code interval} datatype
+     */
+    public enum IntervalHandlingMode implements EnumeratedValue {
+
+        /**
+         * Represents interval as inexact microseconds count
+         */
+        NUMERIC("numeric"),
+
+        /**
+         * Represents interval as ISO 8601 time interval
+         */
+        STRING("string");
+
+        private final String value;
+
+        IntervalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static IntervalHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (IntervalHandlingMode option : IntervalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @param defaultValue the default value ; may be null
+         * @return the matching option or null if the match is not found and non-null default is invalid
+         */
+        public static IntervalHandlingMode parse(String value, String defaultValue) {
+            IntervalHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
     }
 
     /**
@@ -1200,6 +1292,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public int getLogMiningBatchSizeDefault() {
         return logMiningBatchSizeDefault;
+    }
+
+    /**
+     * @return the maximum number of retries that should be used to resolve log filenames for mining
+     */
+    public int getDefaultLogFileQueryMaxRetries() {
+        return logMiningLogFileQueryMaxRetries;
     }
 
     @Override

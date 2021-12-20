@@ -34,10 +34,13 @@ import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
+import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
+import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -368,15 +371,31 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 final DmlEvent dmlEvent = (DmlEvent) event;
                 if (!skipExcludedUserName) {
-                    dispatcher.dispatchDataChangeEvent(event.getTableId(),
-                            new LogMinerChangeRecordEmitter(
-                                    partition,
-                                    offsetContext,
-                                    dmlEvent.getEventType(),
-                                    dmlEvent.getDmlEntry().getOldValues(),
-                                    dmlEvent.getDmlEntry().getNewValues(),
-                                    getSchema().tableFor(event.getTableId()),
-                                    Clock.system()));
+                    LogMinerChangeRecordEmitter logMinerChangeRecordEmitter;
+                    if (dmlEvent instanceof TruncateEvent) {
+                        // a truncate event is seen by logminer as a DDL event type.
+                        // So force this here to be a Truncate Operation.
+                        logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                                partition,
+                                offsetContext,
+                                Envelope.Operation.TRUNCATE,
+                                dmlEvent.getDmlEntry().getOldValues(),
+                                dmlEvent.getDmlEntry().getNewValues(),
+                                getSchema().tableFor(event.getTableId()),
+                                Clock.system());
+                    }
+                    else {
+                        logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                                partition,
+                                offsetContext,
+                                dmlEvent.getEventType(),
+                                dmlEvent.getDmlEntry().getOldValues(),
+                                dmlEvent.getDmlEntry().getNewValues(),
+                                getSchema().tableFor(event.getTableId()),
+                                Clock.system());
+                    }
+                    dispatcher.dispatchDataChangeEvent(event.getTableId(), logMinerChangeRecordEmitter);
+
                 }
             }
         };
@@ -535,8 +554,19 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                             row.getRedoSql(),
                             getSchema(),
                             row.getChangeTime(),
-                            metrics));
+                            metrics,
+                            () -> processTruncateEvent(row)));
         }
+    }
+
+    private void processTruncateEvent(LogMinerEventRow row) {
+        LOGGER.debug("Handling truncate event");
+        addToTransaction(row.getTransactionId(), row, () -> {
+            final LogMinerDmlEntry dmlEntry = LogMinerDmlEntryImpl.forValuelessDdl();
+            dmlEntry.setObjectName(row.getTableName());
+            dmlEntry.setObjectOwner(row.getTablespaceName());
+            return new TruncateEvent(row, dmlEntry);
+        });
     }
 
     /**
@@ -810,7 +840,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         getTableMetadataDdl(tableId),
                         getSchema(),
                         Instant.now(),
-                        metrics));
+                        metrics,
+                        null));
 
         return getSchema().tableFor(tableId);
     }

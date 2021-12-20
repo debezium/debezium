@@ -125,4 +125,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     protected String pkFieldName() {
         return "PK";
     }
+
+    @Override
+    protected String alterTableAddColumnStatement(String tableName) {
+        return "ALTER TABLE " + tableName + " ADD col3 INTEGER DEFAULT 0";
+    }
 }

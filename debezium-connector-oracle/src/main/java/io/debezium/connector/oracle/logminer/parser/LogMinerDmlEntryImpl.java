@@ -50,6 +50,10 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
         return new LogMinerDmlEntryImpl(EventType.DELETE, new Object[0], oldColumnValues);
     }
 
+    public static LogMinerDmlEntry forValuelessDdl() {
+        return new LogMinerDmlEntryImpl(EventType.DDL, new Object[0], new Object[0]);
+    }
+
     public static LogMinerDmlEntry forLobLocator(Object[] newColumnValues) {
         // TODO: can that copy be avoided?
         final Object[] oldColumnValues = Arrays.copyOf(newColumnValues, newColumnValues.length);

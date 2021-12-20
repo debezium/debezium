@@ -27,7 +27,7 @@ else if (DRY_RUN instanceof String) {
 echo "Dry run: ${DRY_RUN}"
 
 GIT_CREDENTIALS_ID = 'debezium-github'
-JIRA_CREDENTIALS_ID = 'debezium-jira'
+JIRA_CREDENTIALS_ID = 'debezium-jira-pat'
 HOME_DIR = '/home/centos'
 GPG_DIR = 'gpg'
 
@@ -81,9 +81,8 @@ STAGING_REPO_ID = null
 ADDITIONAL_STAGING_REPO_ID = [:]
 LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
 
-withCredentials([usernamePassword(credentialsId: JIRA_CREDENTIALS_ID, passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
-    JIRA_USERNAME = USERNAME
-    JIRA_PASSWORD = PASSWORD
+withCredentials([string(credentialsId: JIRA_CREDENTIALS_ID, variable: 'PAT')]) {
+    JIRA_PAT = PAT
     JIRA_BASE_URL = "https://issues.redhat.com/rest/api/2"
 }
 
@@ -155,7 +154,7 @@ def jiraGET(path, params = [:]) {
         doOutput = true
         requestMethod = 'GET'
         setRequestProperty('Content-Type', 'application/json')
-        setRequestProperty('Authorization', 'Basic ' + "$JIRA_USERNAME:$JIRA_PASSWORD".bytes.encodeBase64().toString())
+        setRequestProperty('Authorization', "Bearer $JIRA_PAT")
         new JsonSlurper().parse(new StringReader(content.text))
     }
 }
@@ -166,7 +165,7 @@ def jiraUpdate(path, payload, method = 'POST') {
         doOutput = true
         requestMethod = method
         setRequestProperty('Content-Type', 'application/json')
-        setRequestProperty('Authorization', 'Basic ' + "$JIRA_USERNAME:$JIRA_PASSWORD".bytes.encodeBase64().toString())
+        setRequestProperty('Authorization', "Bearer $JIRA_PAT")
         outputStream.withWriter { writer ->
             writer << payload
         }
@@ -204,8 +203,13 @@ def closeJiraIssues() {
 }
 
 @NonCPS
+def findVersion() {
+    jiraGET('project/DBZ/versions').find { it.name == JIRA_VERSION }
+}
+
+@NonCPS
 def closeJiraRelease() {
-    jiraUpdate(jiraGET('project/DBZ/versions').find { it.name == JIRA_VERSION }.self, JIRA_CLOSE_RELEASE, 'PUT')
+    jiraUpdate(findVersion().self, JIRA_CLOSE_RELEASE, 'PUT')
 }
 
 @NonCPS
@@ -335,6 +339,9 @@ node('Slave') {
 
         stage('Check Jira') {
             if (!DRY_RUN) {
+                if (findVersion() == null) {
+                    error "Requested release does not exist"
+                }
                 unresolvedIssues = unresolvedIssuesFromJira()
                 issuesWithoutComponents = issuesWithoutComponentsFromJira()
                 if (!resolvedIssuesFromJira()) {

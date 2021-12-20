@@ -199,6 +199,12 @@ public class DebeziumOutboxConfig {
          */
         @ConfigItem
         public Optional<String> converter;
+
+        /**
+         * The column's type definition class
+         */
+        @ConfigItem
+        public Optional<String> type;
     }
 
     @ConfigGroup

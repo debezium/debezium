@@ -24,6 +24,9 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
@@ -33,6 +36,7 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.util.Strings;
@@ -43,6 +47,8 @@ import io.debezium.util.Strings;
  * @author Gunnar Morling
  */
 public abstract class CommonConnectorConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -774,6 +780,7 @@ public abstract class CommonConnectorConfig {
                 case "c":
                 case "u":
                 case "d":
+                case "t":
                     continue;
                 default:
                     problems.accept(field, operation, "Invalid operation");
@@ -815,5 +822,27 @@ public abstract class CommonConnectorConfig {
 
     public String getSignalingDataCollectionId() {
         return signalingDataCollection;
+    }
+
+    public Optional<String[]> parseSignallingMessage(Struct value) {
+        final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+        if (after == null) {
+            LOGGER.warn("After part of signal '{}' is missing", value);
+            return Optional.empty();
+        }
+        List<org.apache.kafka.connect.data.Field> fields = after.schema().fields();
+        if (fields.size() != 3) {
+            LOGGER.warn("The signal event '{}' should have 3 fields but has {}", after, fields.size());
+            return Optional.empty();
+        }
+        return Optional.of(new String[]{
+                after.getString(fields.get(0).name()),
+                after.getString(fields.get(1).name()),
+                after.getString(fields.get(2).name())
+        });
+    }
+
+    public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
+        return signalingDataCollection != null && signalingDataCollection.equals(dataCollectionId.identifier());
     }
 }

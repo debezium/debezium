@@ -5,6 +5,7 @@
 = {prodname} connector for SQL Server
 
 :context: sqlserver
+:data-collection: table
 :mbean-name: sql_server
 ifdef::community[]
 
@@ -132,6 +133,11 @@ The resulting initial snapshot captures the current state of each row in the tab
 From this baseline state, the connector captures subsequent changes as they occur.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
+[WARNING]
+====
+The {prodname} connector for SQL Server does not support schema changes while an incremental snapshot is running.
+====
 
 // Type: concept
 // ModuleID: how-the-debezium-sql-server-connector-reads-change-data-tables
@@ -2376,6 +2382,10 @@ The name format is _database_name.schema-name.table-name_.
 | Allow schema changes during an incremental snapshot. When enabled the connector will detect schema change during an incremental snapshot and re-select a current chunk to avoid locking DDLs. +
  +
 Note that changes to a primary key are not supported and can cause incorrect results if performed during an incremental snapshot. Another limitation is that if a schema change affects only columns' default values, then the change won't be detected until the DDL is processed from the binlog stream. This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.
+
+|[[sqlserver-property-incremental-snapshot-chunk-size]]<<sqlserver-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|`1024`
+| The number of rows fetched from the database for each incremental snapshot iteration.
 
 |[[sqlserver-property-max-iteration-transactions]]<<sqlserver-property-max-iteration-transactions, `+max.iteration.transactions+`>>
 |0

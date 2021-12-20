@@ -134,8 +134,10 @@ pipeline {
                     env.MVN_IMAGE_CONNECT_RHEL = params.IMAGE_CONNECT_RHEL ? "-Ddocker.image.kc=${params.IMAGE_CONNECT_RHEL}" : ""
                     env.MVN_IMAGE_DBZ_AS = params.IMAGE_DBZ_AS ? "-Dimage.as=${params.IMAGE_DBZ_AS}" : ""
 
-                    env.MVN_TAGS = params.TEST_TAGS ? "-Dgroups=${params.TEST_TAGS}" : ""
-                    env.MVN_TAGS_EXCLUDE = params.TEST_TAGS_EXCLUDE ? "-DexcludedGroups=${params.TEST_TAGS_EXCLUDE }" : ""
+                    env.TEST_TAG_EXPRESSION = params.TEST_TAGS
+                    if (!params.TEST_APICURIO_REGISTRY) {
+                        env.TEST_TAG_EXPRESSION = [env.TEST_TAG_EXPRESSION, "!avro"].findAll().join(" & ")
+                    }
 
                     env.MVN_VERSION_KAFKA = params.TEST_VERSION_KAFKA ? "-Dversion.kafka=${params.TEST_VERSION_KAFKA}" : ""
                     env.MVN_VERSION_AS_DEBEZIUM = params.AS_VERSION_DEBEZIUM ? "-Das.debezium.version=${params.AS_VERSION_DEBEZIUM}" : ""
@@ -269,6 +271,7 @@ pipeline {
                     mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \\
                     ${MVN_PROFILE_PROD} \\
                     -Docp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \\
+                    -Docp.project.registry="${OCP_PROJECT_REGISTRY}" \\
                     -Docp.project.mysql="${OCP_PROJECT_MYSQL}"  \\
                     -Docp.project.postgresql="${OCP_PROJECT_POSTGRESQL}" \\
                     -Docp.project.sqlserver="${OCP_PROJECT_SQLSERVER}"  \\
@@ -288,8 +291,7 @@ pipeline {
                     ${MVN_VERSION_KAFKA} \\
                     ${MVN_VERSION_AS_DEBEZIUM} \\
                     ${MVN_VERSION_AS_APICURIO} \\
-                    ${MVN_TAGS} \\
-                    ${MVN_TAGS_EXCLUDE}
+                    -Dgroups="${TEST_TAG_EXPRESSION}" 
                     '''
                 }
             }
@@ -307,8 +309,10 @@ OpenShift interoperability test run ${BUILD_URL} finished with result: ${current
         }
         success {
             sh '''
-            for project in $(oc projects | grep -Po "debezium-${BUILD_NUMBER}.*"); do
-                oc delete project "${project}"
+            oc projects | grep -Po "debezium-${BUILD_NUMBER}.*"
+            
+            for project in $(oc projects | grep -Po "debezium-${BUILD_NUMBER}[\\w-]*$"); do
+                oc delete project "${project}" --ignore-not-found
             done
             '''
         }

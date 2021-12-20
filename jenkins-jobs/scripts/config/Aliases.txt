@@ -104,3 +104,6 @@ lujiefsi,陆杰
 ahodavdekar,Abhishek Hodavdekar
 josetesan,Jose Luis
 yw,Yang Wu
+narcsfz,Yang Wu
+TomBillietKlarrio,Tom Billiet
+wndemon,魏南

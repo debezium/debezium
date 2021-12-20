@@ -404,7 +404,10 @@ public class TableSchemaBuilder {
             }
 
             // if the default value is provided
-            if (column.hasDefaultValue()) {
+            if (column.hasDefaultValue() && defaultValue != null) {
+                // if the resolution of the default value resulted in null; there is no need to set it
+                // if the column isn't optional, the schema won't be set as such and therefore trying
+                // to set a null default value on a non-optional field schema will assert.
                 fieldBuilder
                         .defaultValue(customConverterRegistry.getValueConverter(table.id(), column)
                                 .orElse(ValueConverter.passthrough()).convert(defaultValue));

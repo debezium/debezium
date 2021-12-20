@@ -103,6 +103,16 @@ CREATE TABLE CustomerTable (
     Address varchar(60),
     Phone varchar(24)
  ) ENGINE = CONNECT TABLE_TYPE = ODBC;
+
+CREATE TABLE `daily_intelligences`(
+`id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '',
+`partner_code` varchar(32) DEFAULT NULL COMMENT '',
+`text` LONGTEXT DEFAULT NULL COMMENT '',
+`monitor_time` TIMESTAMP DEFAULT NULL COMMENT '',
+`gmt_modify` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '',
+`gmt_create` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '',
+PRIMARY KEY (`id`)
+) ENGINE=innodb DEFAULT CHAR SET=utf8 COMMENT '';
 #end
 #begin
 -- Rename table

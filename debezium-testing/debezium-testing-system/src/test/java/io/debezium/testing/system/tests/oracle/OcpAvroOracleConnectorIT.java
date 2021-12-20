@@ -11,17 +11,20 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.system.fixtures.connectors.OracleConnector;
-import io.debezium.testing.system.fixtures.databases.DockerOracle;
-import io.debezium.testing.system.fixtures.kafka.DockerKafka;
-import io.debezium.testing.system.tests.DockerConnectorTest;
+import io.debezium.testing.system.fixtures.databases.OcpOracle;
+import io.debezium.testing.system.fixtures.kafka.OcpKafka;
+import io.debezium.testing.system.fixtures.registry.ApicurioAvroConnectorDecorator;
+import io.debezium.testing.system.fixtures.registry.OcpApicurio;
+import io.debezium.testing.system.tests.OcpConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Tag("acceptance")
-@Tag("oracle ")
-@Tag("docker")
+@Tag("oracle")
+@Tag("openshift")
+@Tag("avro")
+@Tag("apicurio")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DockerOracleConnectorIT
-        extends DockerConnectorTest<SqlDatabaseController>
-        implements DockerKafka, DockerOracle, OracleConnector, OracleTestCases {
+public class OcpAvroOracleConnectorIT
+        extends OcpConnectorTest<SqlDatabaseController>
+        implements OcpKafka, OcpOracle, OracleConnector, OcpApicurio, ApicurioAvroConnectorDecorator, OracleTestCases {
 }

@@ -11,6 +11,7 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -29,6 +30,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
@@ -57,14 +59,10 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     private EventRouterConfigDefinition.InvalidOperationBehavior invalidOperationBehavior;
     private final ActivateTracingSpan<R> tracingSmt = new ActivateTracingSpan<>();
 
-    private String fieldEventId;
-    private String fieldEventKey;
-    private String fieldEventTimestamp;
-    private String fieldPayload;
-    private String fieldPayloadId;
-    private String fieldSchemaVersion;
+    private final Map<String, EventRouterConfigurationProvider> configurationProviders = new HashMap<>();
+    private final DefaultConfigurationProvider defaultConfigurationProvider = new DefaultConfigurationProvider();
 
-    private String routeByField;
+    private String fieldSchemaVersion;
     private boolean routeTombstoneOnEmptyPayload;
 
     private List<EventRouterConfigDefinition.AdditionalField> additionalFields;
@@ -117,13 +115,25 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         Struct eventStruct = requireStruct(afterRecord.value(), "Read Outbox Event");
         Schema eventValueSchema = afterRecord.valueSchema();
 
+        // Get the connector-specific or default configuration provider based on the record
+        Struct record = requireStruct(r.value(), "Outbox converter");
+        final EventRouterConfigurationProvider configProvider = lookupConfigurationProvider(record);
+
+        // Get the configuration values needed from the provider
+        final String fieldEventId = configProvider.getFieldEventId();
+        final String fieldEventKey = configProvider.getFieldEventKey();
+        final String fieldPayload = configProvider.getFieldPayload();
+        final String fieldPayloadId = configProvider.getFieldPayloadId();
+        final String fieldEventTimestamp = configProvider.getFieldEventTimestamp();
+        final String routeByField = configProvider.getRouteByField();
+
         final Field payloadField = eventValueSchema.field(fieldPayload);
         if (payloadField == null) {
             throw new ConnectException(String.format("Unable to find payload field %s in event", fieldPayload));
         }
         Schema payloadSchema = payloadField.schema();
 
-        Long timestamp = getEventTimestampMs(debeziumEventValue, eventStruct);
+        Long timestamp = getEventTimestampMs(fieldEventTimestamp, debeziumEventValue, eventStruct);
         Object eventId = eventStruct.get(fieldEventId);
         Object payload = eventStruct.get(fieldPayload);
         final Field fallbackPayloadIdField = eventValueSchema.field(fieldPayloadId);
@@ -160,8 +170,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         final Schema structValueSchema = onlyHeadersInOutputMessage ? null
                 : (fieldSchemaVersion == null)
-                        ? getValueSchema(eventValueSchema, eventStruct.getString(routeByField))
-                        : getValueSchema(eventValueSchema, eventStruct.getInt32(fieldSchemaVersion), eventStruct.getString(routeByField));
+                        ? getValueSchema(fieldPayload, eventValueSchema, eventStruct.getString(routeByField))
+                        : getValueSchema(fieldPayload, eventValueSchema, eventStruct.getInt32(fieldSchemaVersion), eventStruct.getString(routeByField));
 
         final Struct structValue = onlyHeadersInOutputMessage ? null : new Struct(structValueSchema).put(ENVELOPE_PAYLOAD, payload);
 
@@ -202,8 +212,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField),
                 null,
-                defineRecordKeySchema(eventValueSchema, fallbackPayloadIdField),
-                defineRecordKey(eventStruct, payloadId),
+                defineRecordKeySchema(fieldEventKey, eventValueSchema, fallbackPayloadIdField),
+                defineRecordKey(fieldEventKey, eventStruct, payloadId),
                 updatedSchema,
                 updatedValue,
                 timestamp,
@@ -216,7 +226,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
      * Returns the Kafka record timestamp for the outgoing record.
      * Either obtained from the configured field or the timestamp when Debezium processed the event.
      */
-    private Long getEventTimestampMs(Struct debeziumEventValue, Struct eventStruct) {
+    private Long getEventTimestampMs(String fieldEventTimestamp, Struct debeziumEventValue, Struct eventStruct) {
         if (fieldEventTimestamp == null) {
             return debeziumEventValue.getInt64("ts_ms");
         }
@@ -250,7 +260,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         }
     }
 
-    private Schema defineRecordKeySchema(Schema eventStruct, Field fallbackKeyField) {
+    private Schema defineRecordKeySchema(String fieldEventKey, Schema eventStruct, Field fallbackKeyField) {
         Field eventKeySchema = null;
         if (fieldEventKey != null) {
             eventKeySchema = eventStruct.field(fieldEventKey);
@@ -263,7 +273,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         return (fallbackKeyField != null) ? fallbackKeyField.schema() : Schema.STRING_SCHEMA;
     }
 
-    private Object defineRecordKey(Struct eventStruct, Object fallbackKey) {
+    private Object defineRecordKey(String fieldEventKey, Struct eventStruct, Object fallbackKey) {
         Object eventKey = null;
         if (fieldEventKey != null) {
             eventKey = eventStruct.get(fieldEventKey);
@@ -324,13 +334,16 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             objectMapper = new ObjectMapper();
         }
 
-        fieldEventId = config.getString(EventRouterConfigDefinition.FIELD_EVENT_ID);
-        fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
-        fieldEventTimestamp = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP);
-        fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
-        fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
+        // Configure the default configuration provider
+        defaultConfigurationProvider.configure(configMap);
+
+        // Allow each connector to load and supply its EventRouter configuration if applicable
+        for (EventRouterConfigurationProvider provider : ServiceLoader.load(EventRouterConfigurationProvider.class)) {
+            configurationProviders.put(provider.getName(), provider);
+            provider.configure(configMap);
+        }
+
         fieldSchemaVersion = config.getString(EventRouterConfigDefinition.FIELD_SCHEMA_VERSION);
-        routeByField = config.getString(EventRouterConfigDefinition.ROUTE_BY_FIELD);
         routeTombstoneOnEmptyPayload = config.getBoolean(EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD);
 
         final Map<String, String> regexRouterConfig = new HashMap<>();
@@ -348,17 +361,17 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         onlyHeadersInOutputMessage = !additionalFields.stream().anyMatch(field -> field.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE);
     }
 
-    private Schema getValueSchema(Schema debeziumEventSchema, String routedTopic) {
+    private Schema getValueSchema(String fieldPayload, Schema debeziumEventSchema, String routedTopic) {
         if (defaultValueSchema == null) {
-            defaultValueSchema = getSchemaBuilder(debeziumEventSchema, routedTopic).build();
+            defaultValueSchema = getSchemaBuilder(fieldPayload, debeziumEventSchema, routedTopic).build();
         }
 
         return defaultValueSchema;
     }
 
-    private Schema getValueSchema(Schema debeziumEventSchema, Integer version, String routedTopic) {
+    private Schema getValueSchema(String fieldPayload, Schema debeziumEventSchema, Integer version, String routedTopic) {
         if (!versionedValueSchema.containsKey(version)) {
-            final Schema schema = getSchemaBuilder(debeziumEventSchema, routedTopic)
+            final Schema schema = getSchemaBuilder(fieldPayload, debeziumEventSchema, routedTopic)
                     .version(version)
                     .build();
             versionedValueSchema.put(version, schema);
@@ -367,7 +380,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         return versionedValueSchema.get(version);
     }
 
-    private SchemaBuilder getSchemaBuilder(Schema debeziumEventSchema, String routedTopic) {
+    private SchemaBuilder getSchemaBuilder(String fieldPayload, Schema debeziumEventSchema, String routedTopic) {
         SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(getSchemaName(debeziumEventSchema, routedTopic));
 
         // Add payload field
@@ -402,5 +415,76 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             schemaName = routedTopic;
         }
         return schemaName;
+    }
+
+    /**
+     * Lookup the configuration provider for the source connector or use the default if not found.
+     */
+    private EventRouterConfigurationProvider lookupConfigurationProvider(Struct record) {
+        if (!configurationProviders.isEmpty()) {
+            final Struct source = record.getStruct(Envelope.FieldName.SOURCE);
+            final String connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
+            final EventRouterConfigurationProvider provider = configurationProviders.get(connectorType);
+            if (provider != null) {
+                return provider;
+            }
+        }
+        return defaultConfigurationProvider;
+    }
+
+    private static class DefaultConfigurationProvider implements EventRouterConfigurationProvider {
+
+        private String fieldEventId;
+        private String fieldEventKey;
+        private String fieldEventTimestamp;
+        private String fieldPayload;
+        private String fieldPayloadId;
+        private String routeByField;
+
+        @Override
+        public String getName() {
+            return "default";
+        }
+
+        @Override
+        public void configure(Map<String, ?> configMap) {
+            Configuration config = Configuration.from(configMap);
+            this.fieldEventId = config.getString(EventRouterConfigDefinition.FIELD_EVENT_ID);
+            this.fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
+            this.fieldEventTimestamp = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP);
+            this.fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
+            this.fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
+            this.routeByField = config.getString(EventRouterConfigDefinition.ROUTE_BY_FIELD);
+        }
+
+        @Override
+        public String getFieldEventId() {
+            return fieldEventId;
+        }
+
+        @Override
+        public String getFieldEventKey() {
+            return fieldEventKey;
+        }
+
+        @Override
+        public String getFieldEventTimestamp() {
+            return fieldEventTimestamp;
+        }
+
+        @Override
+        public String getFieldPayload() {
+            return fieldPayload;
+        }
+
+        @Override
+        public String getFieldPayloadId() {
+            return fieldPayloadId;
+        }
+
+        @Override
+        public String getRouteByField() {
+            return routeByField;
+        }
     }
 }

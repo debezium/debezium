@@ -9,6 +9,7 @@ import java.util.Collections;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.schema.TopicSelector;
 
 /**
@@ -22,6 +23,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     private final String serverName;
     private final ConnectionContext connectionContext;
     private final MongoDbConnectorConfig connectorConfig;
+    private CaptureMode captureMode;
 
     /**
      * @param config the configuration
@@ -36,6 +38,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, connectorConfig.getHeartbeatTopicsPrefix());
         this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.connectionContext = new ConnectionContext(config);
+        this.overrideCaptureMode(connectorConfig.getCaptureMode());
     }
 
     public TopicSelector<CollectionId> topicSelector() {
@@ -60,5 +63,20 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     public MongoDbConnectorConfig getConnectorConfig() {
         return this.connectorConfig;
+    }
+
+    /**
+     * Provides the capture mode used by connector runtime. This value can differ from requested
+     * configured value as the offets stored might be created by a different capture mode.
+     * In this case the configured value is overriden and the mode previously used is restored.
+     *
+     * @return effectively used capture mode
+     */
+    public CaptureMode getCaptureMode() {
+        return captureMode;
+    }
+
+    public void overrideCaptureMode(CaptureMode captureModeUsed) {
+        this.captureMode = captureModeUsed;
     }
 }

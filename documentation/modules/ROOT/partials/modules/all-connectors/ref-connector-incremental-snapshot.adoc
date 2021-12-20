@@ -10,14 +10,14 @@ Please let us know if you encounter any problems while using this extension.
 
 When the initial snapshot is completed then it is not executed again as further data are acquired via streaming.
 
-Sometimes it would be really useful to re-execute a snapshot, either completely, or for only a subset of tables.
+Sometimes it would be really useful to re-execute a snapshot, either completely, or for only a subset of {data-collection}s.
 Examples for such use cases include:
 
-* a new table was added into the list of captured tables
+* a new {data-collection} was added into the list of captured {data-collection}s
 * some of the topics were deleted and their content needs to be rebuilt
 * the data were corrupted due to a configuration error
 
-Debezium can be requested via the {link-prefix}:{link-signalling}[signalling table] mechanism to execute a new snapshot of a defined list of tables.
+Debezium can be requested via the {link-prefix}:{link-signalling}[signalling {data-collection}] mechanism to execute a new snapshot of a defined list of {data-collection}s.
 The signal is named `execute-snapshot` and accepts messages in the following format:
 
 .Example of a signal record
@@ -32,17 +32,26 @@ See the next section for more details.
 
 |`data-collections`
 |_N/A_
-| An array of qualified names of table to be snapshotted. +
+| An array of qualified names of {data-collection}s to be snapshotted. +
 The format of the names is the same as for {link-prefix}:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
 |===
 
 An example of the signal to be triggered is this:
 
+ifeval::["{data-collection}" == "table"]
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema1.table2"]}')
+INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema2.table2"]}')
 ----
+endif::[]
+
+ifeval::["{context}" == "mongodb"]
+[source,indent=0,subs="+attributes"]
+----
+db.debeziumsignal.insert({"type": "execute-snapshot", "payload": "{\"data-collections\": [\"db1.collection1\", \"db2.collection2\"]}"})
+----
+endif::[]
 
 [[{context}-incremental-snapshot]]
 
@@ -61,7 +70,7 @@ But there are also some downsides to this approach, though:
 * The snapshot must be completed before the start of streaming
 * Snapshots are not resumable
 If a snapshot hasn't been completed when the connector gets stopped or restarted, the snapshot must be restarted from scratch
-* New tables that are added among the captured ones later are not snapshotted.
+* New {data-collection}s that are added among the captured ones later are not snapshotted.
 
 To mitigate these issues, a new mechanism called _incremental snapshotting_ has been introduced.
 
@@ -76,7 +85,7 @@ Configuration option {link-prefix}:#{context}-property-signal-data-collection[si
 ====
 
 Incremental snapshot is based on link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
-In this case the table is snapshotted in chunks and streaming and snapshot events are blended together.
+In this case the {data-collection} is snapshotted in chunks and streaming and snapshot events are blended together.
 The snaphot events are still denoted using operation `r` and the `snapshot` field in `source` info block is set to `incremental`.
 
 .Example

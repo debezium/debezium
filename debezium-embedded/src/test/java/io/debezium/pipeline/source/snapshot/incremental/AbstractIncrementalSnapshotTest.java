@@ -28,9 +28,13 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenConnectorUnderTest;
+import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
@@ -52,6 +56,14 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected abstract String signalTableName();
 
     protected abstract Configuration.Builder config();
+
+    protected String alterTableAddColumnStatement(String tableName) {
+        return "ALTER TABLE " + tableName + " add col3 int default 0";
+    }
+
+    protected String alterTableDropColumnStatement(String tableName) {
+        return "ALTER TABLE " + tableName + " drop column col3";
+    }
 
     protected String tableDataCollectionId() {
         return tableName();
@@ -399,6 +411,50 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                         restarted.set(true);
                     }
                 });
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4272")
+    // Disabled due to DBZ-4350
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = Connector.SQL_SERVER)
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = Connector.DB2)
+    public void snapshotPreceededBySchemaChange() throws Exception {
+        Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+        waitForConnectorToStart();
+
+        // Initiate a schema change to the table immediately before the adhoc-snapshot
+        // Adds a new column to the table; this column will be dropped later in this test.
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute(alterTableAddColumnStatement(tableName()));
+        }
+
+        // Some connectors, such as PostgreSQL won't be notified of the previous schema change
+        // until a DML event occurs, but regardless the incremental snapshot should succeed.
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+
+        // Initiate a schema change to the table immediately before the adhoc-snapshot
+        // This schema change will drop the previously added column from above.
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute(alterTableDropColumnStatement(tableName()));
+        }
+
+        // Some connectors, such as PostgreSQL won't be notified of the previous schema change
+        // until a DML event occurs, but regardless the incremental snapshot should succeed.
+        sendAdHocSnapshotSignal();
+
+        dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }

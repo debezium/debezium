@@ -134,7 +134,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
 
         logger.info("Execute Postgres shutdown...");
         Container.ExecResult result = postgresContainer
-                .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/11/bin/pg_ctl -m fast -D /var/lib/postgresql/data stop");
+                .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/*/bin/pg_ctl -m fast -D /var/lib/postgresql/data stop");
         logger.info(result.toString());
 
         logger.info("Waiting for Postgres to shut down...");

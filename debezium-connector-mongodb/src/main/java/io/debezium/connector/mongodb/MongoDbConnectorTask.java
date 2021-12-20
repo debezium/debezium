@@ -98,22 +98,18 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     oplogBasedOffsets.add(offset);
                 }
             });
-            // TODO Add test
             if (!oplogBasedOffsets.isEmpty() && !changeStreamBasedOffsets.isEmpty()) {
                 LOGGER.error(
                         "Replica set offests are partially from oplog and partially from change streams. This is not supported situation and can lead to unpredicable behaviour.");
             }
-            else if (!oplogBasedOffsets.isEmpty() && connectorConfig.getCaptureMode().isChangeStreams()) {
-                LOGGER.warn("Stored offsets were created using oplog capturing. Connector configuration expects change streams capturing.");
-                LOGGER.warn("Switching configuration to '{}'", CaptureMode.OPLOG);
-                LOGGER.warn("Either reconfigure the connector or remove the old offsets");
-                connectorConfig.setCaptureMode(CaptureMode.OPLOG);
+            else if (!oplogBasedOffsets.isEmpty() && taskContext.getCaptureMode().isChangeStreams()) {
+                LOGGER.info("Stored offsets were created using oplog capturing, trying to switch to change streams.");
             }
-            else if (!changeStreamBasedOffsets.isEmpty() && !connectorConfig.getCaptureMode().isChangeStreams()) {
+            else if (!changeStreamBasedOffsets.isEmpty() && !taskContext.getCaptureMode().isChangeStreams()) {
                 LOGGER.warn("Stored offsets were created using change streams capturing. Connector configuration expects oplog capturing.");
                 LOGGER.warn("Switching configuration to '{}'", CaptureMode.CHANGE_STREAMS_UPDATE_FULL);
                 LOGGER.warn("Either reconfigure the connector or remove the old offsets");
-                connectorConfig.setCaptureMode(CaptureMode.CHANGE_STREAMS_UPDATE_FULL);
+                taskContext.overrideCaptureMode(CaptureMode.CHANGE_STREAMS_UPDATE_FULL);
             }
         }
 
@@ -155,7 +151,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             dispatcher,
                             clock,
                             replicaSets,
-                            taskContext),
+                            taskContext,
+                            schema),
                     new MongoDbChangeEventSourceMetricsFactory(),
                     dispatcher,
                     schema);

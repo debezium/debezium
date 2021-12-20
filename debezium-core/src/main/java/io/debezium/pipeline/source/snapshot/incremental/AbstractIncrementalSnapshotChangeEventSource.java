@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -269,6 +270,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                 }
                 final TableId currentTableId = (TableId) context.currentDataCollectionId();
                 if (!context.maximumKey().isPresent()) {
+                    currentTable = refreshTableSchema(currentTable);
                     context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
                         if (!rs.next()) {
                             return null;
@@ -412,7 +414,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
      */
     private boolean createDataEventsForTable() {
         long exportStart = clock.currentTimeInMillis();
-        LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.tablesToBeSnapshottedCount());
+        LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.dataCollectionsToBeSnapshottedCount());
 
         final String selectStatement = buildChunkQuery(currentTable);
         LOGGER.debug("\t For table '{}' using select statement: '{}', key: '{}', maximum key: '{}'", currentTable.id(),
@@ -545,6 +547,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         return Threads.timer(clock, RelationalSnapshotChangeEventSource.LOG_INTERVAL);
     }
 
+    @SuppressWarnings("unchecked")
     private Object[] keyFromRow(Object[] row) {
         if (row == null) {
             return null;
@@ -552,7 +555,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         final List<Column> keyColumns = getKeyMapper().getKeyKolumns(currentTable);
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
-            key[i] = row[keyColumns.get(i).position() - 1];
+            final Object fieldValue = row[keyColumns.get(i).position() - 1];
+            key[i] = fieldValue instanceof ValueWrapper<?> ? ((ValueWrapper<Object>) fieldValue).getWrappedValue()
+                    : fieldValue;
         }
         return key;
     }
@@ -578,6 +583,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     protected void postIncrementalSnapshotCompleted() {
         // no-op
+    }
+
+    protected Table refreshTableSchema(Table table) throws SQLException {
+        // default behavior is to simply return the existing table with no refresh
+        // this allows connectors that may require a schema refresh to trigger it, such as PostgreSQL
+        // since schema changes are not emitted as change events in the same way that they are for
+        // connectors like MySQL or Oracle
+        return table;
     }
 
     private KeyMapper getKeyMapper() {

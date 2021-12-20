@@ -948,6 +948,326 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor({ "DBZ-4385" })
+    public void shouldTruncate() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.truncate_ddl");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.truncate_ddl (" +
+                    "id NUMERIC(6), " +
+                    "name VARCHAR(100), " +
+                    "primary key(id))";
+
+            // create table
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.truncate_ddl");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (1, 'Acme')");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+            assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL")).hasSize(1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // truncate statement
+            connection.execute("TRUNCATE TABLE debezium.truncate_ddl");
+
+            SourceRecords streamingRecords = consumeRecordsByTopic(1);
+            List<SourceRecord> records = streamingRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL");
+            assertThat(records).hasSize(1);
+            String op = ((Struct) records.get(0).value()).getString("op");
+            assertThat(op).isEqualTo("t");
+
+            // verify record after truncate
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (2, 'Roadrunner')");
+            connection.commit();
+
+            streamingRecords = consumeRecordsByTopic(1);
+            records = streamingRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL");
+            assertThat(records).hasSize(1);
+            op = ((Struct) records.get(0).value()).getString("op");
+            assertThat(op).isEqualTo("c");
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.truncate_ddl");
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-4385" })
+    public void shouldNotTruncateWhenSkipped() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.truncate_ddl");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.truncate_ddl (" +
+                    "id NUMERIC(6), " +
+                    "name VARCHAR(100), " +
+                    "primary key(id))";
+
+            // create table
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.truncate_ddl");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (1, 'Acme')");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
+                    .with(OracleConnectorConfig.SKIPPED_OPERATIONS, "t") // Filter out truncate operations.
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+            assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL")).hasSize(1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // truncate statement
+            connection.execute("TRUNCATE TABLE debezium.truncate_ddl");
+            // Nothing happens, so nothing to verify either.
+
+            // verify record after truncate
+            connection.execute("INSERT INTO debezium.truncate_ddl (id, name) values (2, 'Roadrunner')");
+            connection.commit();
+
+            SourceRecords streamingRecords = consumeRecordsByTopic(1);
+            List<SourceRecord> records = streamingRecords.recordsForTopic("server1.DEBEZIUM.TRUNCATE_DDL");
+            assertThat(records).hasSize(1);
+            String op = ((Struct) records.get(0).value()).getString("op");
+            assertThat(op).isEqualTo("c");
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.truncate_ddl");
+        }
+    }
+
+    @FixFor("DBZ-1539")
+    public void shouldHandleIntervalTypesAsInt64() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.interval");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.interval (" +
+                    " id numeric(6) constraint interval_id_nn not null, " +
+                    " intYM interval year to month," +
+                    " intYM2 interval year(9) to month," + // max precision
+                    " intDS interval day to second, " +
+                    " intDS2 interval day(9) to second(9), " + // max precision
+                    " constraint interval_pk primary key(id)" +
+                    ")";
+
+            // create table
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.interval");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (1, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (2, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.INTERVAL")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Verify record generated during snapshot
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+            assertThat(snapshotRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(snapshotRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
+
+            List<SourceRecord> records = snapshotRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            Struct after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.getInt64("INTYM")).isEqualTo(0L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (3, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (4, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            // Verify record generated during streaming
+            final SourceRecords streamingRecords = consumeRecordsByTopic(2);
+            assertThat(streamingRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(streamingRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
+
+            records = streamingRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(4);
+            assertThat(after.getInt64("INTYM")).isEqualTo(0L);
+            assertThat(after.getInt64("INTYM2")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS")).isEqualTo(0L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(0L);
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.interval");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1539")
+    public void shouldHandleIntervalTypesAsString() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.interval");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.interval (" +
+                    " id numeric(6) constraint interval_id_nn not null, " +
+                    " intYM interval year to month," +
+                    " intYM2 interval year(9) to month," + // max precision
+                    " intDS interval day to second, " +
+                    " intDS2 interval day(9) to second(9), " + // max precision
+                    " constraint interval_pk primary key(id)" +
+                    ")";
+
+            // create table
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.interval");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (1, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (2, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.INTERVAL")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .with(OracleConnectorConfig.INTERVAL_HANDLING_MODE,
+                            OracleConnectorConfig.IntervalHandlingMode.STRING.getValue())
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Verify record generated during snapshot
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+            assertThat(snapshotRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(snapshotRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
+
+            List<SourceRecord> records = snapshotRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            Struct after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (3, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (4, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            connection.commit();
+
+            // Verify record generated during streaming
+            final SourceRecords streamingRecords = consumeRecordsByTopic(2);
+            assertThat(streamingRecords.allRecordsInOrder()).hasSize(2);
+            assertThat(streamingRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
+
+            records = streamingRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
+            assertThat(records).hasSize(2);
+
+            after = ((Struct) records.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+
+            after = ((Struct) records.get(1).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(4);
+            assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.interval");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-2624")
     public void shouldSnapshotAndStreamChangesFromTableWithNumericDefaultValues() throws Exception {
         // Drop table if it exists
@@ -2606,6 +2926,23 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz3611");
         }
+    }
+
+    @Test
+    @FixFor("DBZ-4376")
+    public void shouldNotRaiseNullPointerExceptionWithNonUppercaseDatabaseName() throws Exception {
+        // the snapshot process would throw a NPE due to a lowercase PDB or DBNAME setup
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.PDB_NAME, TestHelper.getDatabaseName().toLowerCase())
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .build();
+        connection.execute("INSERT INTO debezium.customer (id,name) values (1, 'Bugs Bunny')");
+        start(OracleConnector.class, config);
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(((Struct) records.get(0).value()).getStruct(AFTER).get("ID")).isEqualTo(1);
     }
 
     @FixFor("DBZ-3986")

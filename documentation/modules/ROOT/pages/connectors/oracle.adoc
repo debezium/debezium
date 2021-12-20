@@ -4,6 +4,7 @@
 = {prodname} Connector for Oracle
 
 :context: oracle
+:data-collection: table
 :mbean-name: {context}
 ifdef::community[]
 :toc:
@@ -119,6 +120,11 @@ Note this mode is only safe to be used when it is guaranteed that no schema chan
 |===
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
+[WARNING]
+====
+The {prodname} connector for Oracle does not support schema changes while an incremental snapshot is running.
+====
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
@@ -1003,6 +1009,80 @@ The message value must be set to `null` to instruct Kafka to remove _all message
 To make this possible, by default, {prodname}'s Oracle connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 You can change the default behavior by setting the connector property xref:oracle-property-tombstones-on-delete[`tombstones.on.delete`].
 
+// Type: continue
+[[oracle-truncate-events]]
+=== _truncate_ events
+
+A  _truncate_ change event signals that a table has been truncated.
+The message key is `null` in this case, the message value looks like this:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "schema": { ... },
+    "payload": {
+        "before": null,
+        "after": null,
+        "source": { // <1>
+            "version": "{debezium-version}",
+            "connector": "oracle",
+            "name": "oracle_server",
+            "ts_ms": 1638974535000,
+            "snapshot": "false",
+            "db": "ORCLPDB1",
+            "sequence": null,
+            "schema": "DEBEZIUM",
+            "table": "TEST_TABLE",
+            "txId": "02000a0037030000",
+            "scn": "13234397",
+            "commit_scn": "13271102",
+            "lcr_position": null
+        },
+        "op": "t", // <2>
+        "ts_ms": 1638974558961, // <3>
+        "transaction": null
+    }
+}
+----
+
+.Descriptions of _truncate_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table, provides this metadata:
+
+* {prodname} version
+* Connector type and name
+* Database and table that contains the new row
+* Schema name
+* If the event was part of a snapshot (always `false` for _truncate_ events)
+* ID of the transaction in which the operation was performed
+* SCN of the operation
+* Timestamp for when the change was made in the database
+
+|2
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
+
+|3
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
++
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|===
+
+Note that since _truncate_ events represent a change made to an entire table and don't have a message key,
+unless you're working with topics with a single partition,
+there are no ordering guarantees for the change events pertaining to a table (_create_, _update_, etc.) and _truncate_ events for that table.
+For instance a consumer may receive an _update_ event only after a _truncate_ event for that table,
+when those events are read from different partitions.
+
+If _truncate_ events are not desired, they can be filtered out with the xref:oracle-property-skipped-operations[`skipped.operations`] option.
+
 // Type: reference
 // ModuleID: how-debezium-oracle-connectors-map-data-types
 // Title: How {prodname} Oracle connectors map data types
@@ -1087,7 +1167,7 @@ The following table describes how the connector maps binary and character large 
 
 |`BLOB`
 |`BYTES`
-|The raw bytes.
+|Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:#oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`CLOB`
 |`STRING`
@@ -1258,13 +1338,21 @@ Represents the number of milliseconds past epoch, and does not include timezone 
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`INTERVAL YEAR[(M)] TO MONTH`
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`TIMESTAMP(0 - 3)`
 |`INT64`
@@ -1316,13 +1404,21 @@ Represents the number of days since the epoch.
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`INTERVAL YEAR[(M)] TO MONTH`
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average. +
+ +
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`TIMESTAMP(0 - 3)`
 |`INT64`
@@ -2243,6 +2339,10 @@ Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data 
  +
 Hashing strategy version 2 should be used to ensure fidelity if the value is being hashed in different places or systems.
 
+|[[oracle-property-binary-handling-mode]]<<oracle-property-binary-handling-mode, `+binary.handling.mode+`>>
+|bytes
+|Specifies how binary (`blob`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
+
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
 | Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns.
@@ -2254,6 +2354,14 @@ You can set one of the following options:
 `string`:: Encodes values as formatted strings.
   Using the `string` option is easier to consume, but results in a loss of semantic information about the real type.
   For more information, see <<oracle-decimal-types>>.
+
+|[[oracle-property-interval-handling-mode]]<<oracle-property-interval-handling-mode, `+interval.handling.mode+`>>
+|`numeric`
+| Specifies how the connector should handle values for `interval` columns: +
+ +
+`numeric` represents intervals using approximate number of microseconds. +
+ +
+`string` represents intervals exactly by using the string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`. For example: `P1Y2M3DT4H5M6.78S`.
 
 |[[oracle-property-event-processing-failure-handling-mode]]<<oracle-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
@@ -2303,7 +2411,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-   `_<fullyQualifiedTableName>_`:``_<keyColumn>_``,``_<keyColumn>``_ +
+   `_<fullyQualifiedTableName>_`:``_<keyColumn>_``,``_<keyColumn>_`` +
  +
 To base a table key on multiple column names, insert commas between the column names. +
 Each fully-qualified table name is a regular expression in the following format: +
@@ -2587,8 +2695,18 @@ You can configure the connector to skip the following types of operations:
 * `c` (insert/create)
 * `u` (update)
 * `d` (delete)
+* `t` (truncate)
 
 By default, no operations are skipped.
+
+|[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection, `+signal.data.collection+`>>
+|No default
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
+The name format is _database_name.schema-name.table-name_.
+
+|[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|`1024`
+| The number of rows fetched from the database for each incremental snapshot iteration.
 
 |===
 
@@ -2842,19 +2960,19 @@ Under optimal operations, this should always be or remain close to `0`.
 |The number of DDL records that have been detected but could not be parsed by the DDL parser.
 This should always be `0`; however when allowing unparsable DDL to be skipped, this metric can be used to determine if any warnings have been written to the connector logs.
 
-|[[oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes, `+MiningSessionUserGlobalAreaMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-memory-in-bytes, `+MiningSessionUserGlobalAreaMemoryInBytes+`>>
 |`long`
 |The current mining session's user global area (UGA) memory consumption in bytes.
 
-|[[oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes, `+MiningSessionUserGlobalAreaMaxMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-user-global-area-max-memory-in-bytes, `+MiningSessionUserGlobalAreaMaxMemoryInBytes+`>>
 |`long`
 |The maximum mining session's user global area (UGA) memory consumption in bytes across all mining sessions.
 
-|[[oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes, `+MiningSessionProcessGlobalAreaMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-memory-in-bytes, `+MiningSessionProcessGlobalAreaMemoryInBytes+`>>
 |`long`
 |The current mining session's process global area (PGA) memory consumption in bytes.
 
-|[[oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes, `+MiningSessionProcessGlobalAreaMaxMemoryInBytes`>>
+|[[oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes]]<<oracle-streaming-metrics-mining-session-process-global-area-max-memory-in-bytes, `+MiningSessionProcessGlobalAreaMaxMemoryInBytes+`>>
 |`long`
 |The maximum mining session's process global area (PGA) memory consumption in bytes across all mining sessions.
 

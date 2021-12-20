@@ -2,68 +2,239 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.8.0.Final
+December 16th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377386)
+
+### New features since 1.8.0.CR1
+
+* Allow to configure custom Hibernate user types for Quarkus outbox extension [DBZ-3552](https://issues.redhat.com/browse/DBZ-3552)
+* Create a Debezium schema generator for Debezium connectors (initial work) [DBZ-4393](https://issues.redhat.com/browse/DBZ-4393)
+
+### Breaking changes since 1.8.0.CR1
+
+* MongoDB ExtractNewDocumentState SMT overwrites existing document ID field  [DBZ-4413](https://issues.redhat.com/browse/DBZ-4413)
+
+
+### Fixes since 1.8.0.CR1
+
+* Outbox Event Router not working in Oracle Connector [DBZ-3940](https://issues.redhat.com/browse/DBZ-3940)
+* some data type is not working for sending signals to a Debezium connector [DBZ-4298](https://issues.redhat.com/browse/DBZ-4298)
+* Debezium UI - Connector create fails if topic group defaults not specified [DBZ-4378](https://issues.redhat.com/browse/DBZ-4378)
+
+
+### Other changes since 1.8.0.CR1
+
+* Intermittent test failure: SqlServerChangeTableSetIT#readHistoryAfterRestart() [DBZ-3306](https://issues.redhat.com/browse/DBZ-3306)
+* Upgrade to Apicurio Registry 2.0 (QE, docs) [DBZ-3629](https://issues.redhat.com/browse/DBZ-3629)
+* Oracle upstream tests in internal CI  [DBZ-4185](https://issues.redhat.com/browse/DBZ-4185)
+* Document MongoDB source format [DBZ-4420](https://issues.redhat.com/browse/DBZ-4420)
+* Missing log message for snapshot.locking.mode = none [DBZ-4426](https://issues.redhat.com/browse/DBZ-4426)
+* Caching not working in formatting job [DBZ-4429](https://issues.redhat.com/browse/DBZ-4429)
+* Optionally assemble Oracle connector distribution without Infinispan [DBZ-4446](https://issues.redhat.com/browse/DBZ-4446)
+* Simplify the implementation of method duration in debezium/util/Strings.java [DBZ-4423](https://issues.redhat.com/browse/DBZ-4423)
+* Exclude log4j from Debezium Server distribution in 1.8 [DBZ-4452](https://issues.redhat.com/browse/DBZ-4452)
+
+
+## 1.8.0.CR1
+December 9th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377385)
+
+### New features since 1.8.0.Beta1
+
+* Implement incremental snapshotting for MongoDB [DBZ-3342](https://issues.redhat.com/browse/DBZ-3342)
+* Add schema descriptors for the UI JSON Schema for SQL Server Connector [DBZ-3697](https://issues.redhat.com/browse/DBZ-3697)
+* Optionally add OPTION(RECOMPILE) to incremental snapshot queries [DBZ-4249](https://issues.redhat.com/browse/DBZ-4249)
+* Log count of changed records sent [DBZ-4341](https://issues.redhat.com/browse/DBZ-4341)
+* Add support for truncate in oracle connector [DBZ-4385](https://issues.redhat.com/browse/DBZ-4385)
+* Support binary_handling_mode for Oracle connector [DBZ-4400](https://issues.redhat.com/browse/DBZ-4400)
+* Enforce consistent vgtid representation in vitess connector [DBZ-4409](https://issues.redhat.com/browse/DBZ-4409)
+
+
+### Breaking changes since 1.8.0.Beta1
+
+* Fix source fields and keyspace field in vitess connector [DBZ-4412](https://issues.redhat.com/browse/DBZ-4412)
+* Fix issues with blob and uint64 types in Vitess connector [DBZ-4403](https://issues.redhat.com/browse/DBZ-4403)
+* Clean up "source" strucure for Vitess connector [DBZ-4428](https://issues.redhat.com/browse/DBZ-4428)
+
+
+### Fixes since 1.8.0.Beta1
+
+* Parallel write can be lost during catch-up phase [DBZ-2792](https://issues.redhat.com/browse/DBZ-2792)
+* None of log files contains offset SCN (SCN offset is no longer available in the online redo logs) [DBZ-3635](https://issues.redhat.com/browse/DBZ-3635)
+* [Debezium Server] Event Hubs exporter slow/Event data was too large [DBZ-4277](https://issues.redhat.com/browse/DBZ-4277)
+* NullPointer exception on Final stage of snapshot for Oracle connector [DBZ-4376](https://issues.redhat.com/browse/DBZ-4376)
+* Oracle pipeline matrix docker conflict [DBZ-4377](https://issues.redhat.com/browse/DBZ-4377)
+* System testsuite unable to pull apicurio operator from quay [DBZ-4382](https://issues.redhat.com/browse/DBZ-4382)
+* Oracle DDL Parser Error [DBZ-4388](https://issues.redhat.com/browse/DBZ-4388)
+* DDL couldn't be parsed: 'analyze table schema.table estimate statistics sample 5 percent;' [DBZ-4396](https://issues.redhat.com/browse/DBZ-4396)
+* MySQL: DDL Statement could not be parsed 'GRANT' [DBZ-4397](https://issues.redhat.com/browse/DBZ-4397)
+* Support keyword CHAR SET for defining charset options [DBZ-4402](https://issues.redhat.com/browse/DBZ-4402)
+* Xstream support with LOB unavailable value placeholder support is inconsistent [DBZ-4422](https://issues.redhat.com/browse/DBZ-4422)
+* Oracle Infinispan buffer fails to serialize unavailable value placeholders [DBZ-4425](https://issues.redhat.com/browse/DBZ-4425)
+* VStream gRPC connection closed after being idle for a few minutes [DBZ-4389](https://issues.redhat.com/browse/DBZ-4389)
+
+
+### Other changes since 1.8.0.Beta1
+
+* Oracle testing in system-level testsuite [DBZ-3963](https://issues.redhat.com/browse/DBZ-3963)
+* Upgrade to Quarkus 2.5.0.Final [DBZ-4035](https://issues.redhat.com/browse/DBZ-4035)
+* Document incremental chunk size setting [DBZ-4127](https://issues.redhat.com/browse/DBZ-4127)
+* Complete CDC implementation based on MongoDB Change Streams [DBZ-4205](https://issues.redhat.com/browse/DBZ-4205)
+* Record video demo showing Kafka topics creation and transformation UIs [DBZ-4260](https://issues.redhat.com/browse/DBZ-4260)
+* Add Oracle 12.2.0.1 to internal CI Oracle job [DBZ-4322](https://issues.redhat.com/browse/DBZ-4322)
+* OracleClobDataTypeIT shouldNotStreamAnyChangesWhenLobEraseIsDetected may fail randomly [DBZ-4384](https://issues.redhat.com/browse/DBZ-4384)
+* Upgrade impsort-maven-plugin from 1.6.0 to 1.6.2 [DBZ-4386](https://issues.redhat.com/browse/DBZ-4386)
+* Upgrade formatter-maven-plugin from 2.15.0 to 2.16.0 [DBZ-4387](https://issues.redhat.com/browse/DBZ-4387)
+* Unstable test for online DDL changes [DBZ-4391](https://issues.redhat.com/browse/DBZ-4391)
+* Create Debezium Kafka Connect REST Extension [DBZ-4028](https://issues.redhat.com/browse/DBZ-4028)
+
+
+
+## 1.8.0.Beta1
+November 30th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12375780)
+
+### New features since 1.8.0.Alpha2
+
+* Support pg_logical_emit_message [DBZ-2363](https://issues.redhat.com/browse/DBZ-2363)
+* Outbox Event Router for MongoDB [DBZ-3528](https://issues.redhat.com/browse/DBZ-3528)
+* Improve interval type support in Oracle [DBZ-1539](https://issues.redhat.com/browse/DBZ-1539)
+* money data type should be controlled by decimal.handling.mode [DBZ-1931](https://issues.redhat.com/browse/DBZ-1931)
+* Support for Multiple Databases per SQL Server Connector [DBZ-2975](https://issues.redhat.com/browse/DBZ-2975)
+* Debezium server stops with wrong exit code (0) [DBZ-3570](https://issues.redhat.com/browse/DBZ-3570)
+* Change Debezium UI configurations property names [DBZ-4066](https://issues.redhat.com/browse/DBZ-4066)
+* Extend configuration support for Infinispan caches [DBZ-4169](https://issues.redhat.com/browse/DBZ-4169)
+* Support schema changes during incremental snapshot [DBZ-4196](https://issues.redhat.com/browse/DBZ-4196)
+* Handle login failure during instance upgrade as retriable [DBZ-4285](https://issues.redhat.com/browse/DBZ-4285)
+* Modify the type of aggregateid in MongoDB Outbox Event Router [DBZ-4318](https://issues.redhat.com/browse/DBZ-4318)
+* Explicit the MS SQL Materialized view limitation  [DBZ-4330](https://issues.redhat.com/browse/DBZ-4330)
+
+
+### Breaking changes since 1.8.0.Alpha2
+
+* Support passing an unavailable placeholder value for CLOB/BLOB column types [DBZ-4276](https://issues.redhat.com/browse/DBZ-4276)
+* Remove vtctld dependency in Vitess connector [DBZ-4324](https://issues.redhat.com/browse/DBZ-4324)
+
+
+### Fixes since 1.8.0.Alpha2
+
+* PostgresConnector does not allow a numeric slot name [DBZ-1042](https://issues.redhat.com/browse/DBZ-1042)
+* False empty schema warning for snapshot mode never [DBZ-1344](https://issues.redhat.com/browse/DBZ-1344)
+* Tutorial shows incorrectly shows "op": "c" for initial change events [DBZ-3786](https://issues.redhat.com/browse/DBZ-3786)
+* SQL Server fails to read CDC events if there is a schema change ahead [DBZ-3992](https://issues.redhat.com/browse/DBZ-3992)
+* Once user click on "Review and finish" button that step in link in not enabled in wizard side menu. [DBZ-4119](https://issues.redhat.com/browse/DBZ-4119)
+* DDL statement couldn't be parsed [DBZ-4224](https://issues.redhat.com/browse/DBZ-4224)
+* The lastOffset variable in MySqlStreamingChangeEventSource is always null [DBZ-4225](https://issues.redhat.com/browse/DBZ-4225)
+* Unknown entity: io.debezium.outbox.quarkus.internal.OutboxEvent [DBZ-4232](https://issues.redhat.com/browse/DBZ-4232)
+* Signal based incremental snapshot is failing when launched right after a schema change [DBZ-4272](https://issues.redhat.com/browse/DBZ-4272)
+* SQL Server connector doesn't handle multiple capture instances for the same table with equal start LSN [DBZ-4273](https://issues.redhat.com/browse/DBZ-4273)
+* Debezium UI - some issues with browser support for replaceAll [DBZ-4274](https://issues.redhat.com/browse/DBZ-4274)
+* AbstractDatabaseHistory.java has typo [DBZ-4275](https://issues.redhat.com/browse/DBZ-4275)
+* OracleConnectorIT - two tests fail when using Xstream [DBZ-4279](https://issues.redhat.com/browse/DBZ-4279)
+* ParsingException: DDL statement couldn't be parsed [DBZ-4280](https://issues.redhat.com/browse/DBZ-4280)
+* Topic Group UI step does not refresh correctly after setting properties [DBZ-4293](https://issues.redhat.com/browse/DBZ-4293)
+* Add MariaDB specific username for MySQL parser [DBZ-4304](https://issues.redhat.com/browse/DBZ-4304)
+* NullPointerException may be thrown when validating table and column lengths [DBZ-4308](https://issues.redhat.com/browse/DBZ-4308)
+* RelationalChangeRecordEmitter calls "LoggerFactory.getLogger(getClass())" for each instance of the emitter [DBZ-4309](https://issues.redhat.com/browse/DBZ-4309)
+*  support for JSON function in MySQL index [DBZ-4320](https://issues.redhat.com/browse/DBZ-4320)
+* Avoid holding table metadata lock in read-only incremental snapshots [DBZ-4331](https://issues.redhat.com/browse/DBZ-4331)
+* Convert mysql time type default value error [DBZ-4334](https://issues.redhat.com/browse/DBZ-4334)
+* Wrong configuration option name for MongoDB Outbox SMT [DBZ-4337](https://issues.redhat.com/browse/DBZ-4337)
+* Incremental Snapshot does not pick up table [DBZ-4343](https://issues.redhat.com/browse/DBZ-4343)
+* Oracle connector - Cannot parse column default value 'NULL ' to type '2' [DBZ-4360](https://issues.redhat.com/browse/DBZ-4360)
+
+
+### Other changes since 1.8.0.Alpha2
+
+* Add canonical URL links to older doc versions [DBZ-3897](https://issues.redhat.com/browse/DBZ-3897)
+* Set up testing job for MongoDB 5.0 [DBZ-3938](https://issues.redhat.com/browse/DBZ-3938)
+* Misc. documentation changes for the Debezium MySQL connector [DBZ-3974](https://issues.redhat.com/browse/DBZ-3974)
+* Promote Outbox SMT to GA [DBZ-4012](https://issues.redhat.com/browse/DBZ-4012)
+* Test failure: SchemaHistoryTopicIT::schemaChangeAfterSnapshot() [DBZ-4082](https://issues.redhat.com/browse/DBZ-4082)
+* Jenkins job for creating image snapshot used by new Jenkins nodes [DBZ-4122](https://issues.redhat.com/browse/DBZ-4122)
+* Use SMT/Transformation UI backend endpoint [DBZ-4146](https://issues.redhat.com/browse/DBZ-4146)
+* Create GH Action for tearing down abandoned website preview environments [DBZ-4214](https://issues.redhat.com/browse/DBZ-4214)
+* Unify Memory and Infinispan event processor implementations [DBZ-4236](https://issues.redhat.com/browse/DBZ-4236)
+* Update system-level testsuite CI job [DBZ-4267](https://issues.redhat.com/browse/DBZ-4267)
+* Upgrade MySQL JDBC driver to 8.0.27 [DBZ-4286](https://issues.redhat.com/browse/DBZ-4286)
+* Only build debezium-core and dependences in cross-repo builds [DBZ-4289](https://issues.redhat.com/browse/DBZ-4289)
+* Reduce log verbosity [DBZ-4291](https://issues.redhat.com/browse/DBZ-4291)
+* Vitess connector should expose vstream flags [DBZ-4295](https://issues.redhat.com/browse/DBZ-4295)
+* Vitess connector should allow client to config starting VGTID [DBZ-4297](https://issues.redhat.com/browse/DBZ-4297)
+* Layout glitch on docs landing page [DBZ-4299](https://issues.redhat.com/browse/DBZ-4299)
+* Provide outbox routing example for MongoDB [DBZ-4302](https://issues.redhat.com/browse/DBZ-4302)
+* Fix wrong option names in examples [DBZ-4311](https://issues.redhat.com/browse/DBZ-4311)
+* Update functional test CI to work with downstream source archive [DBZ-4316](https://issues.redhat.com/browse/DBZ-4316)
+* Provide example showing usage of remote Infinispan cache [DBZ-4326](https://issues.redhat.com/browse/DBZ-4326)
+* Provide CI for MongoDB 4.4 [DBZ-4327](https://issues.redhat.com/browse/DBZ-4327)
+* Test case for schema migration in Vitess connector [DBZ-4353](https://issues.redhat.com/browse/DBZ-4353)
+* Enable transaction metadata for vitess connector [DBZ-4355](https://issues.redhat.com/browse/DBZ-4355)
+* io.debezium.data.VerifyRecord.isValid(SourceRecord) is a no-op [DBZ-4364](https://issues.redhat.com/browse/DBZ-4364)
+* SignalsIT times out after 6h on CI [DBZ-4370](https://issues.redhat.com/browse/DBZ-4370)
+* Document incremental chunk size setting [DBZ-4127](https://issues.redhat.com/browse/DBZ-4127)
+
+
+
 ## 1.8.0.Alpha2
 November 11th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12377154)
 
 ### New features since 1.8.0.Alpha1
 
-* TableChangesSerializer ignored defaultValue and enumValues [DBZ-3966](https://issues.jboss.org/browse/DBZ-3966)
-* Support for heartbeat action queries for MySQL [DBZ-4029](https://issues.jboss.org/browse/DBZ-4029)
-* Expose the transaction topicname as a config [DBZ-4077](https://issues.jboss.org/browse/DBZ-4077)
-* Improvement to the topic creation step [DBZ-4172](https://issues.jboss.org/browse/DBZ-4172)
-* Process transaction started/committed in MySQL read-only incremental snapshot [DBZ-4197](https://issues.jboss.org/browse/DBZ-4197)
-* Ability to use base image from authenticated registry with KC build mechanism [DBZ-4227](https://issues.jboss.org/browse/DBZ-4227)
-* Remove SqlServerConnector database.user Required Validator [DBZ-4231](https://issues.jboss.org/browse/DBZ-4231)
-* Specify database hot name as 0.0.0.0 for Oracle connector tests CI [DBZ-4242](https://issues.jboss.org/browse/DBZ-4242)
-* Suport all charsets in MySQL parser [DBZ-4261](https://issues.jboss.org/browse/DBZ-4261)
+* TableChangesSerializer ignored defaultValue and enumValues [DBZ-3966](https://issues.redhat.com/browse/DBZ-3966)
+* Support for heartbeat action queries for MySQL [DBZ-4029](https://issues.redhat.com/browse/DBZ-4029)
+* Expose the transaction topicname as a config [DBZ-4077](https://issues.redhat.com/browse/DBZ-4077)
+* Improvement to the topic creation step [DBZ-4172](https://issues.redhat.com/browse/DBZ-4172)
+* Process transaction started/committed in MySQL read-only incremental snapshot [DBZ-4197](https://issues.redhat.com/browse/DBZ-4197)
+* Ability to use base image from authenticated registry with KC build mechanism [DBZ-4227](https://issues.redhat.com/browse/DBZ-4227)
+* Remove SqlServerConnector database.user Required Validator [DBZ-4231](https://issues.redhat.com/browse/DBZ-4231)
+* Specify database hot name as 0.0.0.0 for Oracle connector tests CI [DBZ-4242](https://issues.redhat.com/browse/DBZ-4242)
+* Suport all charsets in MySQL parser [DBZ-4261](https://issues.redhat.com/browse/DBZ-4261)
 
 
 ### Breaking changes since 1.8.0.Alpha1
 
-* Store buffered events in separate Infinispan cache [DBZ-4159](https://issues.jboss.org/browse/DBZ-4159)
+* Store buffered events in separate Infinispan cache [DBZ-4159](https://issues.redhat.com/browse/DBZ-4159)
 
 
-### Fixes since 1.7.0.Final
+### Fixes since 1.7.0.Alpha1
 
-* "table" is null for table.include.list and column.include.list [DBZ-3611](https://issues.jboss.org/browse/DBZ-3611)
-* Debezium server crashes when deleting a record from a SQLServer table (redis sink) [DBZ-3708](https://issues.jboss.org/browse/DBZ-3708)
-* Invalid default value error on captured table DDL with default value [DBZ-3710](https://issues.jboss.org/browse/DBZ-3710)
-* Incremental snapshot doesn't work without primary key [DBZ-4107](https://issues.jboss.org/browse/DBZ-4107)
-* Error: PostgresDefaultValueConverter - Cannot parse column default value 'NULL::numeric' to type 'numeric'. Expression evaluation is not supported. [DBZ-4137](https://issues.jboss.org/browse/DBZ-4137)
-* Container images for Apache Kafka and ZooKeeper fail to start up [DBZ-4160](https://issues.jboss.org/browse/DBZ-4160)
-* Debezium 1.7 image disables unsecure algorithms. Breaks unpatched databases [DBZ-4167](https://issues.jboss.org/browse/DBZ-4167)
-* DDL statement couldn't be parsed - Modify Column [DBZ-4174](https://issues.jboss.org/browse/DBZ-4174)
-* DML statement couldn't be parsed [DBZ-4194](https://issues.jboss.org/browse/DBZ-4194)
-* Debezium log miner processes get terminated with ORA-04030 error in idle database environment. [DBZ-4204](https://issues.jboss.org/browse/DBZ-4204)
-* DDL with Oracle SDO_GEOMETRY cannot be parsed [DBZ-4206](https://issues.jboss.org/browse/DBZ-4206)
-* DDL with Oracle sequence as default for primary key fails schema generation [DBZ-4208](https://issues.jboss.org/browse/DBZ-4208)
-* io.debezium.text.ParsingException: DDL statement couldn't be parsed. Please open a Jira issue with the statement 'DROP TABLE IF EXISTS condition' [DBZ-4210](https://issues.jboss.org/browse/DBZ-4210)
-* Support MySQL Dual Passwords in DDL Parser [DBZ-4215](https://issues.jboss.org/browse/DBZ-4215)
-* Debezium Metrics not being set correctly [DBZ-4222](https://issues.jboss.org/browse/DBZ-4222)
-* CREATE PROCEDURE DDL throws ParsingException [DBZ-4229](https://issues.jboss.org/browse/DBZ-4229)
-* Exception ORA-00310 is not gracefully handled during streaming [DBZ-4230](https://issues.jboss.org/browse/DBZ-4230)
-* CHAR / NCHAR precision is not correctly derived from DDL statements [DBZ-4233](https://issues.jboss.org/browse/DBZ-4233)
-* Oracle connector parses NUMBER(*,0) as NUMBER(0,0) in DDL [DBZ-4240](https://issues.jboss.org/browse/DBZ-4240)
-* Signal based incremental snapshot is failing if database name contains dash  [DBZ-4244](https://issues.jboss.org/browse/DBZ-4244)
-* SQL Server connector doesn't handle retriable errors during database state transitions [DBZ-4245](https://issues.jboss.org/browse/DBZ-4245)
-* Does Debezium support database using charset GB18030? [DBZ-4246](https://issues.jboss.org/browse/DBZ-4246)
-* Broken anchors in Debezium Documentation [DBZ-4254](https://issues.jboss.org/browse/DBZ-4254)
-* Reduce verbosity of logging Oracle memory metrics [DBZ-4255](https://issues.jboss.org/browse/DBZ-4255)
-* When Debezium executes `select *` in the snapshot phase, it does not catch the sql exception, resulting in confusing exceptions and logs [DBZ-4257](https://issues.jboss.org/browse/DBZ-4257)
+* "table" is null for table.include.list and column.include.list [DBZ-3611](https://issues.redhat.com/browse/DBZ-3611)
+* Debezium server crashes when deleting a record from a SQLServer table (redis sink) [DBZ-3708](https://issues.redhat.com/browse/DBZ-3708)
+* Invalid default value error on captured table DDL with default value [DBZ-3710](https://issues.redhat.com/browse/DBZ-3710)
+* Incremental snapshot doesn't work without primary key [DBZ-4107](https://issues.redhat.com/browse/DBZ-4107)
+* Error: PostgresDefaultValueConverter - Cannot parse column default value 'NULL::numeric' to type 'numeric'. Expression evaluation is not supported. [DBZ-4137](https://issues.redhat.com/browse/DBZ-4137)
+* Container images for Apache Kafka and ZooKeeper fail to start up [DBZ-4160](https://issues.redhat.com/browse/DBZ-4160)
+* Debezium 1.7 image disables unsecure algorithms. Breaks unpatched databases [DBZ-4167](https://issues.redhat.com/browse/DBZ-4167)
+* DDL statement couldn't be parsed - Modify Column [DBZ-4174](https://issues.redhat.com/browse/DBZ-4174)
+* DML statement couldn't be parsed [DBZ-4194](https://issues.redhat.com/browse/DBZ-4194)
+* Debezium log miner processes get terminated with ORA-04030 error in idle database environment. [DBZ-4204](https://issues.redhat.com/browse/DBZ-4204)
+* DDL with Oracle SDO_GEOMETRY cannot be parsed [DBZ-4206](https://issues.redhat.com/browse/DBZ-4206)
+* DDL with Oracle sequence as default for primary key fails schema generation [DBZ-4208](https://issues.redhat.com/browse/DBZ-4208)
+* io.debezium.text.ParsingException: DDL statement couldn't be parsed. Please open a Jira issue with the statement 'DROP TABLE IF EXISTS condition' [DBZ-4210](https://issues.redhat.com/browse/DBZ-4210)
+* Support MySQL Dual Passwords in DDL Parser [DBZ-4215](https://issues.redhat.com/browse/DBZ-4215)
+* Debezium Metrics not being set correctly [DBZ-4222](https://issues.redhat.com/browse/DBZ-4222)
+* CREATE PROCEDURE DDL throws ParsingException [DBZ-4229](https://issues.redhat.com/browse/DBZ-4229)
+* Exception ORA-00310 is not gracefully handled during streaming [DBZ-4230](https://issues.redhat.com/browse/DBZ-4230)
+* CHAR / NCHAR precision is not correctly derived from DDL statements [DBZ-4233](https://issues.redhat.com/browse/DBZ-4233)
+* Oracle connector parses NUMBER(*,0) as NUMBER(0,0) in DDL [DBZ-4240](https://issues.redhat.com/browse/DBZ-4240)
+* Signal based incremental snapshot is failing if database name contains dash  [DBZ-4244](https://issues.redhat.com/browse/DBZ-4244)
+* SQL Server connector doesn't handle retriable errors during database state transitions [DBZ-4245](https://issues.redhat.com/browse/DBZ-4245)
+* Does Debezium support database using charset GB18030? [DBZ-4246](https://issues.redhat.com/browse/DBZ-4246)
+* Broken anchors in Debezium Documentation [DBZ-4254](https://issues.redhat.com/browse/DBZ-4254)
+* Reduce verbosity of logging Oracle memory metrics [DBZ-4255](https://issues.redhat.com/browse/DBZ-4255)
+* When Debezium executes `select *` in the snapshot phase, it does not catch the sql exception, resulting in confusing exceptions and logs [DBZ-4257](https://issues.redhat.com/browse/DBZ-4257)
 
 
 ### Other changes since 1.8.0.Alpha1
 
-* Rename "master" branches to "main" for remaining repos [DBZ-3626](https://issues.jboss.org/browse/DBZ-3626)
-* Support Oracle Logminer docker image in system level test-suite [DBZ-3929](https://issues.jboss.org/browse/DBZ-3929)
-* Missing documentation for max.iteration.transactions option [DBZ-4129](https://issues.jboss.org/browse/DBZ-4129)
-* Use topic auto-creation UI backend endpoint [DBZ-4148](https://issues.jboss.org/browse/DBZ-4148)
-* Remove superfluous build triggers [DBZ-4200](https://issues.jboss.org/browse/DBZ-4200)
-* Tag debezium/tooling:1.2 version [DBZ-4238](https://issues.jboss.org/browse/DBZ-4238)
-* Rework MySqlTimestampColumnIT test [DBZ-4241](https://issues.jboss.org/browse/DBZ-4241)
-* Remove unused code [DBZ-4252](https://issues.jboss.org/browse/DBZ-4252)
-* Optimize tooling image [DBZ-4258](https://issues.jboss.org/browse/DBZ-4258)
-* Change DB2 image in testsuite to use private registry [DBZ-4268](https://issues.jboss.org/browse/DBZ-4268)
+* Rename "master" branches to "main" for remaining repos [DBZ-3626](https://issues.redhat.com/browse/DBZ-3626)
+* Support Oracle Logminer docker image in system level test-suite [DBZ-3929](https://issues.redhat.com/browse/DBZ-3929)
+* Missing documentation for max.iteration.transactions option [DBZ-4129](https://issues.redhat.com/browse/DBZ-4129)
+* Use topic auto-creation UI backend endpoint [DBZ-4148](https://issues.redhat.com/browse/DBZ-4148)
+* Remove superfluous build triggers [DBZ-4200](https://issues.redhat.com/browse/DBZ-4200)
+* Tag debezium/tooling:1.2 version [DBZ-4238](https://issues.redhat.com/browse/DBZ-4238)
+* Rework MySqlTimestampColumnIT test [DBZ-4241](https://issues.redhat.com/browse/DBZ-4241)
+* Remove unused code [DBZ-4252](https://issues.redhat.com/browse/DBZ-4252)
+* Optimize tooling image [DBZ-4258](https://issues.redhat.com/browse/DBZ-4258)
+* Change DB2 image in testsuite to use private registry [DBZ-4268](https://issues.redhat.com/browse/DBZ-4268)
 
 
 

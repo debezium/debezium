@@ -91,6 +91,7 @@ GRANT VERSION_TOKEN_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT XA_RECOVER_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT reader TO 'mysqluser'@'localhost'
 GRANT reader TO topreader
+GRANT 'db_old_ro'@'%' TO 'oghalawinji'@'%'
 REVOKE reader FROM 'mysqluser'@'localhost'
 REVOKE reader FROM topreader
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'retool'@

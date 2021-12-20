@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -55,11 +54,6 @@ import io.debezium.util.Threads.Timer;
 public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O extends OffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
-
-    /**
-     * Interval for showing a log statement with the progress while scanning a single table.
-     */
-    public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
     public static final Pattern SELECT_ALL_PATTERN = Pattern.compile("\\*");
 

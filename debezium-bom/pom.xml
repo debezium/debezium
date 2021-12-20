@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-build-parent</artifactId>
-        <version>1.8.0-SNAPSHOT</version>
+        <version>1.9.0-SNAPSHOT</version>
 	<relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -15,6 +15,7 @@
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>6.0.2</version.confluent.platform>
         <version.apicurio>2.0.2.Final</version.apicurio>
+        <rest-assured.version>4.3.3</rest-assured.version>
 
         <!-- Connectors -->
         <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
@@ -461,6 +462,11 @@
                 <version>${version.junit}</version>
             </dependency>
             <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>${rest-assured.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.easytesting</groupId>
                 <artifactId>fest-assert</artifactId>
                 <version>${version.fest}</version>
@@ -511,6 +517,13 @@
               <groupId>com.squareup.okhttp3</groupId>
               <artifactId>logging-interceptor</artifactId>
               <version>${version.okhttp}</version>
+            </dependency>
+
+            <!-- Code generators -->
+            <dependency>
+              <groupId>io.smallrye</groupId>
+              <artifactId>smallrye-open-api-core</artifactId>
+              <version>2.1.2</version>
             </dependency>
 
             <!-- Debezium artifacts -->
@@ -587,6 +600,16 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-testing-testcontainers</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-schema-generator</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

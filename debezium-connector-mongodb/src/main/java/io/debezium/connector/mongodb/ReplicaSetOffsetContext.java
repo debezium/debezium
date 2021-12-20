@@ -17,6 +17,7 @@ import org.bson.Document;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.DataCollectionId;
@@ -36,18 +37,22 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     private final MongoDbOffsetContext offsetContext;
     private final String replicaSetName;
     private final SourceInfo sourceInfo;
+    private final IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext;
 
-    public ReplicaSetOffsetContext(MongoDbOffsetContext offsetContext, ReplicaSet replicaSet, SourceInfo sourceInfo) {
+    public ReplicaSetOffsetContext(MongoDbOffsetContext offsetContext, ReplicaSet replicaSet, SourceInfo sourceInfo,
+                                   IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext) {
         this.offsetContext = offsetContext;
         this.replicaSetName = replicaSet.replicaSetName();
         this.sourceInfo = sourceInfo;
+        this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
 
     @Override
     public Map<String, ?> getOffset() {
         @SuppressWarnings("unchecked")
         Map<String, Object> offsets = (Map<String, Object>) sourceInfo.lastOffset(replicaSetName);
-        return isSnapshotOngoing() ? offsets : offsetContext.getTransactionContext().store(offsets);
+        return isSnapshotOngoing() ? offsets
+                : incrementalSnapshotContext.store(offsetContext.getTransactionContext().store(offsets));
     }
 
     @Override
@@ -134,10 +139,22 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     }
 
     public boolean isFromOplog() {
-        return sourceInfo != null && sourceInfo.position() != null && sourceInfo.position().getOperationId() != null;
+        return sourceInfo != null && sourceInfo.lastPosition(replicaSetName) != null
+                && sourceInfo.lastPosition(replicaSetName).getOperationId() != null
+                && sourceInfo.lastResumeToken(replicaSetName) == null;
     }
 
     public boolean isFromChangeStream() {
         return sourceInfo != null && sourceInfo.lastResumeToken(replicaSetName) != null;
+    }
+
+    @Override
+    public void incrementalSnapshotEvents() {
+        offsetContext.incrementalSnapshotEvents();
+    }
+
+    @Override
+    public IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
+        return offsetContext.getIncrementalSnapshotContext();
     }
 }

@@ -34,6 +34,7 @@ Arik Cohen
 Arkoprabho Chakraborti
 artiship
 Ashhar Hasan
+Ashique Ansari
 Ashmeet Lamba
 Attila Szucs
 Aykut Farsak
@@ -43,6 +44,7 @@ Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
 Ben Williams
+Biel Garau Estarellas
 Bin Li
 Bingqin Zhou
 Björn Häuser
@@ -72,6 +74,7 @@ Collin Van Dyck
 Cory Harper
 Cyril Scetbon
 Daan Roosen
+Daniel Petisme
 Dave Cramer
 Dave Cumberland
 David Chen
@@ -124,6 +127,7 @@ Gurnaaz Randhawa
 Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
+Jacob Gminder
 Jan Hendrik Dolling
 Jiabao Sun
 Juan Fiallo
@@ -191,6 +195,7 @@ Kevin Pullin
 Kewei Shang
 Krizhan Mariampillai
 Kyley Jex
+Lairen Hightower
 Laurent Broudoux
 Leo Mei
 Lev Zemlyanov
@@ -291,6 +296,7 @@ Sergei Morozov
 Shane Paul
 Sherafudheen PM
 Sheldon Fuchs
+Shichao An
 Shivam Sharma
 Shubham Rawat
 Shuguang Xiang
@@ -317,6 +323,7 @@ Thomas Prelle
 Thomas Thornton
 Tin Nguyen
 Tom Bentley
+Tom Billiet
 Tomaz Lemos Fernandes
 Tommy Karlsson
 Tony Rizko
@@ -330,6 +337,7 @@ Victar Malinouski
 Victor Xiang
 Vivek Wassan
 Vladimir Osin
+Vojtech Juranek
 Wang-Yu-Chao
 WenChao Ke
 Wei Wu
@@ -358,3 +366,4 @@ Zoran Regvart
 李宗文
 陆杰
 Ünal Sürmeli
+魏南

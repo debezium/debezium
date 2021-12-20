@@ -24,7 +24,7 @@ matrixJob('connector-debezium-mysql-matrix-test') {
     }
 
     triggers {
-        cron('H 04 * * 1-5')
+        cron('H 04 * * *')
     }
 
     wrappers {

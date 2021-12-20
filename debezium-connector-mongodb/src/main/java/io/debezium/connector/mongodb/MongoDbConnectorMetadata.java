@@ -5,37 +5,20 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.Arrays;
-import java.util.List;
-
-import org.apache.kafka.connect.source.SourceConnector;
-
 import io.debezium.config.Field;
-import io.debezium.metadata.AbstractConnectorMetadata;
 import io.debezium.metadata.ConnectorDescriptor;
+import io.debezium.metadata.ConnectorMetadata;
 
-public class MongoDbConnectorMetadata extends AbstractConnectorMetadata {
+public class MongoDbConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("mongodb", "Debezium MongoDB Connector", getConnector().version());
+        return new ConnectorDescriptor("mongodb", "Debezium MongoDB Connector", MongoDbConnector.class.getName(), Module.version());
     }
 
     @Override
-    public Field.Set getAllConnectorFields() {
-        return MongoDbConnectorConfig.ALL_FIELDS;
+    public Field.Set getConnectorFields() {
+        return MongoDbConnectorConfig.ALL_FIELDS
+                .filtered(f -> f != MongoDbConnectorConfig.POLL_INTERVAL_SEC && f != MongoDbConnectorConfig.MAX_COPY_THREADS);
     }
-
-    @Override
-    public SourceConnector getConnector() {
-        return new MongoDbConnector();
-    }
-
-    @Override
-    public List<String> deprecatedFieldNames() {
-        return Arrays.asList(
-                MongoDbConnectorConfig.POLL_INTERVAL_SEC.name(),
-                MongoDbConnectorConfig.MAX_COPY_THREADS.name());
-    }
-
 }

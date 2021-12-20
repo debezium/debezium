@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.DataCollectionId;
@@ -31,14 +32,18 @@ public class MongoDbOffsetContext implements OffsetContext {
     private final TransactionContext transactionContext;
     private final Map<ReplicaSet, ReplicaSetPartition> replicaSetPartitions = new ConcurrentHashMap<>();
     private final Map<ReplicaSet, ReplicaSetOffsetContext> replicaSetOffsetContexts = new ConcurrentHashMap<>();
+    private final IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext;
 
-    public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext) {
+    public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext,
+                                IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext) {
         this.sourceInfo = sourceInfo;
         this.transactionContext = transactionContext;
+        this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
 
-    public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext, Map<ReplicaSet, Document> offsets) {
-        this(sourceInfo, transactionContext);
+    public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext,
+                                IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext, Map<ReplicaSet, Document> offsets) {
+        this(sourceInfo, transactionContext, incrementalSnapshotContext);
         offsets.forEach((replicaSet, document) -> sourceInfo.opLogEvent(replicaSet.replicaSetName(), document, document, 0));
     }
 
@@ -96,6 +101,16 @@ public class MongoDbOffsetContext implements OffsetContext {
     }
 
     @Override
+    public void incrementalSnapshotEvents() {
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
+    }
+
+    @Override
+    public IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
+        return incrementalSnapshotContext;
+    }
+
+    @Override
     public void event(DataCollectionId collectionId, Instant timestamp) {
         // Not used by the mongodb connector
         // see ReplicaSetOffsetContext readEvent and oplogEvent methods
@@ -119,7 +134,7 @@ public class MongoDbOffsetContext implements OffsetContext {
      * @return a replica set offset context; never null.
      */
     public ReplicaSetOffsetContext getReplicaSetOffsetContext(ReplicaSet replicaSet) {
-        return replicaSetOffsetContexts.computeIfAbsent(replicaSet, rs -> new ReplicaSetOffsetContext(this, rs, sourceInfo));
+        return replicaSetOffsetContexts.computeIfAbsent(replicaSet, rs -> new ReplicaSetOffsetContext(this, rs, sourceInfo, incrementalSnapshotContext));
     }
 
     public static class Loader {
@@ -148,7 +163,8 @@ public class MongoDbOffsetContext implements OffsetContext {
         public MongoDbOffsetContext loadOffsets(Map<Map<String, String>, Map<String, Object>> offsets) {
             // todo: DBZ-1726 - follow-up by removing offset management from SourceInfo
             offsets.forEach(sourceInfo::setOffsetFor);
-            return new MongoDbOffsetContext(sourceInfo, new TransactionContext());
+            return new MongoDbOffsetContext(sourceInfo, new TransactionContext(),
+                    MongoDbIncrementalSnapshotContext.load(offsets.values().iterator().next(), false));
         }
     }
 

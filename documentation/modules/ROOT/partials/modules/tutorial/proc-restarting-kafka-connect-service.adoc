@@ -77,19 +77,18 @@ Here are the last few lines from this restarted service:
 [source,shell,options="nowrap"]
 ----
 ...
-2017-09-21 07:38:48,385 INFO   MySQL|dbserver1|task  Kafka version : 0.11.0.0   [org.apache.kafka.common.utils.AppInfoParser]
-2017-09-21 07:38:48,386 INFO   MySQL|dbserver1|task  Kafka commitId : cb8625948210849f   [org.apache.kafka.common.utils.AppInfoParser]
-2017-09-21 07:38:48,390 INFO   MySQL|dbserver1|task  Discovered coordinator 172.17.0.4:9092 (id: 2147483646 rack: null) for group inventory-connector-dbhistory.   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
-2017-09-21 07:38:48,390 INFO   MySQL|dbserver1|task  Revoking previously assigned partitions [] for group inventory-connector-dbhistory   [org.apache.kafka.clients.consumer.internals.ConsumerCoordinator]
-2017-09-21 07:38:48,391 INFO   MySQL|dbserver1|task  (Re-)joining group inventory-connector-dbhistory   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
-2017-09-21 07:38:48,402 INFO   MySQL|dbserver1|task  Successfully joined group inventory-connector-dbhistory with generation 1   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
-2017-09-21 07:38:48,403 INFO   MySQL|dbserver1|task  Setting newly assigned partitions [dbhistory.inventory-0] for group inventory-connector-dbhistory   [org.apache.kafka.clients.consumer.internals.ConsumerCoordinator]
-2017-09-21 07:38:48,888 INFO   MySQL|dbserver1|task  Step 0: Get all known binlogs from MySQL   [io.debezium.connector.mysql.MySqlConnectorTask]
-2017-09-21 07:38:48,903 INFO   MySQL|dbserver1|task  MySQL has the binlog file 'mysql-bin.000003' required by the connector   [io.debezium.connector.mysql.MySqlConnectorTask]
-Sep 21, 2017 7:38:49 AM com.github.shyiko.mysql.binlog.BinaryLogClient connect
-INFO: Connected to mysql:3306 at mysql-bin.000003/154 (sid:184054, cid:10)
-2017-09-21 07:38:49,045 INFO   MySQL|dbserver1|binlog  Connected to MySQL binlog at mysql:3306, starting at binlog file 'mysql-bin.000003', pos=154, skipping 0 events plus 0 rows   [io.debezium.connector.mysql.BinlogReader]
-2017-09-21 07:38:49,046 INFO   ||  Source task WorkerSourceTask{id=inventory-connector-0} finished initialization and start   [org.apache.kafka.connect.runtime.WorkerSourceTask]
+2021-11-30 01:49:07,938 INFO   ||  Get all known binlogs from MySQL   [io.debezium.connector.mysql.MySqlConnection]
+2021-11-30 01:49:07,941 INFO   ||  MySQL has the binlog file 'mysql-bin.000003' required by the connector   [io.debezium.connector.mysql.MySqlConnectorTask]
+2021-11-30 01:49:07,967 INFO   ||  Requested thread factory for connector MySqlConnector, id = dbserver1 named = change-event-source-coordinator   [io.debezium.util.Threads]
+2021-11-30 01:49:07,968 INFO   ||  Creating thread debezium-mysqlconnector-dbserver1-change-event-source-coordinator   [io.debezium.util.Threads]
+2021-11-30 01:49:07,968 INFO   ||  WorkerSourceTask{id=inventory-connector-0} Source task finished initialization and start   [org.apache.kafka.connect.runtime.WorkerSourceTask]
+2021-11-30 01:49:07,971 INFO   MySQL|dbserver1|snapshot  Metrics registered   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+2021-11-30 01:49:07,971 INFO   MySQL|dbserver1|snapshot  Context created   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+2021-11-30 01:49:07,976 INFO   MySQL|dbserver1|snapshot  A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:49:07,977 INFO   MySQL|dbserver1|snapshot  Snapshot ended with SnapshotResult [status=SKIPPED, offset=MySqlOffsetContext [sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=SourceInfo [currentGtid=null, currentBinlogFilename=mysql-bin.000003, currentBinlogPosition=156, currentRowNumber=0, serverId=0, sourceTime=null, threadId=-1, currentQuery=null, tableIds=[], databaseName=null], snapshotCompleted=false, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet=null, currentGtidSet=null, restartBinlogFilename=mysql-bin.000003, restartBinlogPosition=156, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId=null, incrementalSnapshotContext =IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]]]   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+2021-11-30 01:49:07,981 INFO   MySQL|dbserver1|streaming  Requested thread factory for connector MySqlConnector, id = dbserver1 named = binlog-client   [io.debezium.util.Threads]
+2021-11-30 01:49:07,983 INFO   MySQL|dbserver1|streaming  Starting streaming   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+...
 ----
 
 These lines show that the service found the offsets previously recorded by the last task before it was shut down,

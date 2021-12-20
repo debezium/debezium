@@ -177,14 +177,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     protected void updateLowWatermark() {
-        try {
-            getExecutedGtidSet(getContext()::setLowWatermark);
-            // it is required that the chunk selection sees the changes that are committed before its execution
-            jdbcConnection.commit();
-        }
-        catch (SQLException e) {
-            throw new DebeziumException(e);
-        }
+        getExecutedGtidSet(getContext()::setLowWatermark);
     }
 
     protected void updateHighWatermark() {
@@ -205,6 +198,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                     }
                 }
             });
+            jdbcConnection.commit();
         }
         catch (SQLException e) {
             throw new DebeziumException(e);

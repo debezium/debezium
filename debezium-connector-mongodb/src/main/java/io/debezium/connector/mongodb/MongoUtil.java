@@ -15,7 +15,6 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.types.Binary;
 
@@ -252,14 +251,13 @@ public class MongoUtil {
      * @param event the Change Stream event
      * @return the session transaction id from the event
      */
-    public static String getChangeStreamSessionTransactionId(ChangeStreamDocument<Document> event) {
+    public static SourceInfo.SessionTransactionId getChangeStreamSessionTransactionId(ChangeStreamDocument<Document> event) {
         if (event.getLsid() == null || event.getTxnNumber() == null) {
             return null;
         }
-        BsonDocument txDoc = new BsonDocument();
-        txDoc.append("lsid", event.getLsid());
-        txDoc.append("txnNumber", event.getTxnNumber());
-        return txDoc.toJson();
+
+        return new SourceInfo.SessionTransactionId(event.getLsid() == null ? null : event.getLsid().toJson(JsonSerialization.COMPACT_JSON_SETTINGS),
+                event.getTxnNumber() == null ? null : event.getTxnNumber().longValue());
     }
 
     /**

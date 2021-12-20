@@ -16,6 +16,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.data.Struct;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +29,8 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.data.Envelope;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * The configuration properties.
@@ -521,9 +525,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("The method used to capture changes from MongoDB server. "
                     + "Options include: "
-                    + "'oplog' to capture changes from oplog, this is the original method; "
-                    + "'change_streams' to capture  via MongoDB Change Streams mechanism, update message do not contain full message; "
-                    + "'change_streams_update_full' (the default) to capture  via MongoDB Change Streams mechanism, update message do not contain full message ");
+                    + "'oplog' to capture changes from the oplog; "
+                    + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
+                    + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
 
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
@@ -730,6 +734,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return snapshotMode;
     }
 
+    /**
+     * Provides statically configured capture mode. The configured value can be overrided upon
+     * connector start if offsets stored were created by a different capture mode.
+     *
+     * See {@link MongoDbTaskContext#getCaptureMode()}
+     *
+     * @return capture mode requested by configuration
+     */
     public CaptureMode getCaptureMode() {
         return captureMode;
     }
@@ -805,7 +817,30 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
-    public void setCaptureMode(CaptureMode captureMode) {
-        this.captureMode = captureMode;
+    @Override
+    public Optional<String[]> parseSignallingMessage(Struct value) {
+        final String after = value.getString(Envelope.FieldName.AFTER);
+        if (after == null) {
+            LOGGER.warn("After part of signal '{}' is missing", value);
+            return Optional.empty();
+        }
+        final Document fields = Document.parse(after);
+        if (fields.size() != 3) {
+            LOGGER.warn("The signal event '{}' should have 3 fields but has {}", after, fields.size());
+            return Optional.empty();
+        }
+        final String[] result = new String[3];
+        int idx = 0;
+        for (Object fieldValue : fields.values()) {
+            result[idx++] = fieldValue.toString();
+        }
+        return Optional.of(result);
+    }
+
+    @Override
+    public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
+        final CollectionId id = (CollectionId) dataCollectionId;
+        return getSignalingDataCollectionId() != null
+                && getSignalingDataCollectionId().equals(id.dbName() + "." + id.name());
     }
 }

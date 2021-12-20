@@ -200,7 +200,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return dataCollectionsToSnapshot.peek();
     }
 
-    public int tablesToBeSnapshottedCount() {
+    public int dataCollectionsToBeSnapshottedCount() {
         return dataCollectionsToSnapshot.size();
     }
 

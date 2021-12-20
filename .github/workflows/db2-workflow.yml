@@ -6,23 +6,36 @@ on:
       - main
       - 1.*
     paths:
-      - 'debezium-core/**'
-      - 'debezium-api/**'
-      - 'debezium-parent/pom.xml'
-      - 'debezium-bom/pom.xml'
-      - 'pom.xml'
       - '.github/workflows/db2-workflow.yml'
+      - 'pom.xml'
+      - 'debezium-api/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-bom/pom.xml'
+      - 'debezium-checkstyle/**'
+      - 'debezium-core/**'
+      - 'assembly-descriptors/**'
+      - 'debezium-embedded/**'
+      - 'debezium-ide-configs/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-revapi/**'
+
   pull_request:
     branches:
       - main
       - 1.*
     paths:
-      - 'debezium-core/**'
-      - 'debezium-api/**'
-      - 'debezium-parent/pom.xml'
-      - 'debezium-bom/pom.xml'
-      - 'pom.xml'
       - '.github/workflows/db2-workflow.yml'
+      - 'pom.xml'
+      - 'debezium-api/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-bom/pom.xml'
+      - 'debezium-checkstyle/**'
+      - 'debezium-core/**'
+      - 'assembly-descriptors/**'
+      - 'debezium-embedded/**'
+      - 'debezium-ide-configs/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-revapi/**'
 
 jobs:
   build:
@@ -50,6 +63,6 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Build Debezium Core
-        run: mvn clean install -f core/pom.xml -pl debezium-core -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: mvn clean install -f core/pom.xml -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,debezium-assembly-descriptors,:debezium-revapi -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Db2
         run: mvn clean install -f db2/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

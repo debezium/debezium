@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
@@ -210,14 +211,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     @Override
-    public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
-        return builder.withSlotOption("proto_version", 1)
-                .withSlotOption("publication_names", decoderContext.getConfig().publicationName())
-                .withSlotOption("messages", true);
+    public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
+        builder = builder.withSlotOption("proto_version", 1)
+                .withSlotOption("publication_names", decoderContext.getConfig().publicationName());
+
+        // DBZ-4374 Use enum once the driver got updated
+        if (hasMinimumServerVersion.apply(140000)) {
+            builder = builder.withSlotOption("messages", true);
+        }
+
+        return builder;
     }
 
     @Override
-    public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
+    public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
         return builder;
     }
 

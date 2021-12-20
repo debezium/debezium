@@ -205,6 +205,37 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     }
 
     /**
+     * Updates documents in a collection based on a specified filter within a transaction.
+     *
+     * @param dbName the database name
+     * @param collectionName the collection name
+     * @param filter the document filter
+     * @param document the document fields to be updated
+     */
+    protected void updateDocumentsInTx(String dbName, String collectionName, Document filter, Document document) {
+        assertThat(TestHelper.transactionsSupported(primary(), dbName)).isTrue();
+
+        primary().execute("update documents in tx", mongo -> {
+            Testing.debug("Updating document with filter '" + filter + "' in '" + dbName + "." + collectionName + "'");
+
+            final MongoDatabase db = mongo.getDatabase(dbName);
+            final MongoCollection<Document> collection = db.getCollection(collectionName);
+
+            final ClientSession session = mongo.startSession();
+            try {
+                session.startTransaction();
+
+                collection.updateMany(filter, document);
+
+                session.commitTransaction();
+            }
+            finally {
+                session.close();
+            }
+        });
+    }
+
+    /**
      * Deletes a document in a collection based on a specified filter.
      *
      * @param dbName the database name

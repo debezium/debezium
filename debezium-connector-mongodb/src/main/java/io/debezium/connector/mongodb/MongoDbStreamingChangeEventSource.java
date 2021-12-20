@@ -119,7 +119,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             if (primaryClient != null) {
                 final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
                 primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
-                    if (connectorConfig.getCaptureMode().isChangeStreams()) {
+                    if (taskContext.getCaptureMode().isChangeStreams()) {
                         readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext);
                     }
                     else {
@@ -309,7 +309,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
         final ChangeStreamIterable<Document> rsChangeStream = primary.watch(
                 Arrays.asList(Aggregates.match(filters)));
-        if (connectorConfig.getCaptureMode().isFullUpdate()) {
+        if (taskContext.getCaptureMode().isFullUpdate()) {
             rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
         }
         if (rsOffsetContext.lastResumeToken() != null) {
@@ -581,7 +581,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         });
 
-        return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(), positions);
+        return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
+                new MongoDbIncrementalSnapshotContext<>(false), positions);
     }
 
     private static String getTransactionId(Document event) {

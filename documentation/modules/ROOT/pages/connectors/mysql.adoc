@@ -4,6 +4,7 @@
 = {prodname} connector for MySQL
 
 :context: mysql
+:data-collection: table
 :mbean-name: {context}
 ifdef::community[]
 :toc:
@@ -2780,6 +2781,10 @@ The name format is _database-name.table-name_.
 | Allow schema changes during an incremental snapshot. When enabled the connector will detect schema change during an incremental snapshot and re-select a current chunk to avoid locking DDLs. +
  +
 Note that changes to a primary key are not supported and can cause incorrect results if performed during an incremental snapshot. Another limitation is that if a schema change affects only columns' default values, then the change won't be detected until the DDL is processed from the binlog stream. This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.
+
+|[[mysql-property-incremental-snapshot-chunk-size]]<<mysql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|`1024`
+| The number of rows fetched from the database for each incremental snapshot iteration.
 
 |[[mysql-property-read-only]]<<mysql-property-read-only, `+read.only+`>>
 |`false`

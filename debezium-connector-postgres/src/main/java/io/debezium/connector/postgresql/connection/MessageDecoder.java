@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.util.function.Function;
 
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 
@@ -40,7 +41,7 @@ public interface MessageDecoder {
      * @param builder
      * @return the builder instance
      */
-    ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder);
+    ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion);
 
     /**
      * Allows MessageDecoder to configure options with which the replication stream is started.
@@ -50,7 +51,7 @@ public interface MessageDecoder {
      * @param builder
      * @return the builder instance
      */
-    ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder);
+    ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion);
 
     /**
      * Signals to this decoder whether messages contain type metadata or not.

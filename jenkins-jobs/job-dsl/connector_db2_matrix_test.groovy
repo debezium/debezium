@@ -22,7 +22,7 @@ matrixJob('connector-debezium-db2-matrix-test') {
     }
 
     triggers {
-        cron('H 04 * * 1-5')
+        cron('H 04 * * *')
     }
 
     wrappers {
