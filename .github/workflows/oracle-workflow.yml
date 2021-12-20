@@ -1,22 +1,6 @@
 name: Build Oracle Connector
 
 on:
-  push:
-    branches:
-      - main
-      - 1.*
-    paths:
-      - 'support/checkstyle/**'
-      - 'debezium-api/**'
-      - 'debezium-ddl-parser/**'
-      - 'debezium-assembly-descriptors/**'
-      - 'debezium-core/**'
-      - 'debezium-embedded/**'
-      - 'debezium-connector-oracle/**'
-      - 'debezium-parent/pom.xml'
-      - 'debezium-bom/pom.xml'
-      - 'pom.xml'
-      - '.github/workflows/oracle-workflow.yml'
   pull_request:
     branches:
       - main
@@ -33,6 +17,7 @@ on:
       - 'debezium-bom/pom.xml'
       - 'pom.xml'
       - '.github/workflows/oracle-workflow.yml'
+      - '.github/workflows/oracle-workflow-test.yml'
 
 jobs:
   build:
