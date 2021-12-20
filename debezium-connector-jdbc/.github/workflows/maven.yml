@@ -1,0 +1,47 @@
+#
+# Copyright Debezium Authors
+#
+# Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+#
+name: Maven CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+        - '*.md'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '*.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout core repository
+        uses: actions/checkout@v2
+        with:
+          repository: debezium/debezium
+          path: core
+      - name: Checkout Debezium Jdbc Sink connector
+        uses: actions/checkout@v2
+        with:
+          path: jdbc
+      - name: Set up JDK 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: 17
+      - name: Cache Maven packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Maven build core
+        run: mvn clean install -f core/pom.xml -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Jdbc Sink Connector Hibernate
+        run: mvn clean install -f jdbc/pom.xml -am -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
