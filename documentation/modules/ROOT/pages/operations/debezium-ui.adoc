@@ -47,7 +47,7 @@ For example, in some environments it might not be possible to reach the underlyi
  +
 |2
 |KAFKA_CONNECT_URI[[KAFKA_CONNECT_URI]]
-|`kafka.connect.uri`
+|`kafka.connect.uris`
 |http://connect:8083
 |A comma-separated list to one or more URLs of Kafka Connect REST interfaces to specify the Kafka Connect clusters that should be managed by the Debezium UI.
 
