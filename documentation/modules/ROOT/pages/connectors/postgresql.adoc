@@ -3169,7 +3169,7 @@ Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_` +
 
 ifdef::product[]
-xref:{link-signalling}#sending-signals-to-a-debezium-connector[Signaling] is a Technology Preview feature.
+Signaling is a Technology Preview feature.
 endif::product[]
 
 |[[postgresql-property-incremental-snapshot-chunk-size]]<<postgresql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
