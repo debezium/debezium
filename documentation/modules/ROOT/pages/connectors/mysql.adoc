@@ -2786,7 +2786,7 @@ endif::community[]
 
 |[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector. +
+|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<tableName>_`
 
