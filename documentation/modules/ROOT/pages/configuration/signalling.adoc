@@ -72,16 +72,15 @@ For example, `signal.data.collection = inventory.debezium_signals`. +
 The format for the fully-qualified name of the signaling collection depends on the connector. +
 The following example shows the naming formats to use for each connector:
 
-ifdef::community[]
-Db2, Oracle, or PostgreSQL:: `_<schemaName>_._<tableName>_`
-endif::community[]
-ifdef::product[]
-Db2 or PostgreSQL:: `_<schemaName>_._<tableName>_`
-endif::product[]
+Db2:: `_<schemaName>_._<tableName>_`
 ifdef::community[]
 MongoDB:: `_<databaseName>_._<collectionName>_`
 endif::community[]
 MySQL:: `_<databaseName>_._<tableName>_`
+ifdef::community[]
+Oracle:: `_<databaseName>_._<schemaName>_._<tableName>_`
+endif::community[]
+PostgreSQL:: `_<schemaName>_._<tableName>_`
 SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_` +
  +
 For more information about setting the `signal.data.collection` property, see the table of configuration properties for your connector.

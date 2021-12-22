@@ -2233,12 +2233,12 @@ By default, no operations are skipped.
 
 |[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
 Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_`
 
 ifdef::product[]
-xref:{link-signalling}#sending-signals-to-a-debezium-connector[Signaling] is a Technology Preview feature.
+Signaling is a Technology Preview feature.
 endif::product[]
 
 |[[db2-property-incremental-snapshot-chunk-size]]<<db2-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
