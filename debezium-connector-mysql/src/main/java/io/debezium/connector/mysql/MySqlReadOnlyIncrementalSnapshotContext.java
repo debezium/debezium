@@ -25,8 +25,10 @@ import io.debezium.pipeline.spi.OffsetContext;
 public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncrementalSnapshotContext<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotContext.class);
-    private GtidSet lowWatermark = null;
-    private GtidSet highWatermark = null;
+    private GtidSet previousLowWatermark;
+    private GtidSet previousHighWatermark;
+    private GtidSet lowWatermark;
+    private GtidSet highWatermark;
     private Long signalOffset;
     private final Queue<ExecuteSnapshotKafkaSignal> executeSnapshotSignals = new ConcurrentLinkedQueue<>();
     public static final String SIGNAL_OFFSET = INCREMENTAL_SNAPSHOT_KEY + "_signal_offset";
@@ -65,29 +67,26 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
     }
 
     public boolean updateWindowState(OffsetContext offsetContext) {
-        String currentGtid = offsetContext.getSourceInfo().getString(SourceInfo.GTID_KEY);
+        String currentGtid = getCurrentGtid(offsetContext);
         if (!windowOpened && lowWatermark != null) {
             boolean pastLowWatermark = !lowWatermark.contains(currentGtid);
             if (pastLowWatermark) {
                 LOGGER.debug("Current gtid {}, low watermark {}", currentGtid, lowWatermark);
                 windowOpened = true;
-                lowWatermark = null;
             }
         }
         if (windowOpened && highWatermark != null) {
             boolean pastHighWatermark = !highWatermark.contains(currentGtid);
             if (pastHighWatermark) {
                 LOGGER.debug("Current gtid {}, high watermark {}", currentGtid, highWatermark);
-                windowOpened = false;
-                highWatermark = null;
+                closeWindow();
                 return true;
             }
         }
         return false;
     }
 
-    public boolean reachedHighWatermark(OffsetContext offsetContext) {
-        String currentGtid = offsetContext.getSourceInfo().getString(SourceInfo.GTID_KEY);
+    public boolean reachedHighWatermark(String currentGtid) {
         if (highWatermark == null) {
             return false;
         }
@@ -102,14 +101,23 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
                     .max()
                     .getAsLong();
             if (maxTransactionId <= Long.parseLong(gtid[1])) {
-                LOGGER.debug("Heartbeat {} reached high watermark {}", currentGtid, highWatermark);
-                windowOpened = false;
-                highWatermark = null;
-                lowWatermark = null;
+                LOGGER.debug("Gtid {} reached high watermark {}", currentGtid, highWatermark);
                 return true;
             }
         }
         return false;
+    }
+
+    public String getCurrentGtid(OffsetContext offsetContext) {
+        return offsetContext.getSourceInfo().getString(SourceInfo.GTID_KEY);
+    }
+
+    public void closeWindow() {
+        windowOpened = false;
+        previousHighWatermark = highWatermark;
+        highWatermark = null;
+        previousLowWatermark = lowWatermark;
+        lowWatermark = null;
     }
 
     private GtidSet.UUIDSet getUuidSet(String serverId) {
@@ -144,5 +152,9 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
 
     public boolean hasExecuteSnapshotSignals() {
         return !executeSnapshotSignals.isEmpty();
+    }
+
+    public boolean watermarksChanged() {
+        return !previousLowWatermark.equals(lowWatermark) || !previousHighWatermark.equals(highWatermark);
     }
 }
