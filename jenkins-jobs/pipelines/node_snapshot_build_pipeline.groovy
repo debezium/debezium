@@ -33,24 +33,26 @@ pipeline {
         stage('Build image snapshot') {
             steps {
                 withCredentials([
-                        usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD'),
-                        file(credentialsId: "${OPENSTACK_CREDENTIALS}",variable: 'CLOUDS_YAML')
+                        string(credentialsId: "${ANSIBLE_VAULT_PASSWORD}", variable: 'ANSIBLE_PASSWORD')
                 ]) {
                     sh '''
-                    set -x
-                    cp "${CLOUDS_YAML}" "${WORKSPACE}/ci-jenkins-node/clouds.yaml"
+                    set -x  
                     cd "${WORKSPACE}/ci-jenkins-node"
+                    echo ${ANSIBLE_PASSWORD} > password.txt
+                    ansible-vault decrypt --vault-password-file ./password.txt clouds.yaml
+                    sudo cp roles/os_snapshot/files/CA-RH-NEW.crt /etc/pki/ca-trust/source/anchors/CA-RH-NEW.crt
+                    sudo update-ca-trust
                     ansible-galaxy collection install -r requirements.yml
                     ansible-galaxy install -r requirements.yml
                     export ANSIBLE_HOST_KEY_CHECKING=false
-                    ansible-playbook create_jenkins_node_snapshot.yml --extra-vars \\
+                    ansible-playbook create_jenkins_node_snapshot.yml --vault-password-file ./password.txt \\
+                        --extra-vars \\
                         "snapshot_name="${SNAPSHOT_NAME}" \\
                          os_base_image="${BASE_IMAGE}" \\
                          os_name="${INSTANCE_NAME}" \\
                          slave_user="${INSTANCE_USER}" os_keypair="${KEYPAIR}" \\
                          ssh_keypair_path="~/.ssh/id_rsa" \\
                          git_repo="${ANS_GIT_REPOSITORY}" \\
-                         dockerhub_login_name="${DOCKERHUB_USERNAME}" dockerhub_login_pass="${DOCKERHUB_PASSWORD}" \\
                          os_cloud="${CLOUD_NAME}" \\
                          git_branch="${ANS_GIT_BRANCH}""
                     '''
