@@ -127,9 +127,18 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             return;
         }
         checkEnqueuedSnapshotSignals(offsetContext);
-        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(offsetContext)) {
+        readUntilGtidChange(partition, offsetContext);
+    }
+
+    private void readUntilGtidChange(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+        String currentGtid = getContext().getCurrentGtid(offsetContext);
+        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
+            getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk();
+            if (currentGtid == null && getContext().watermarksChanged()) {
+                return;
+            }
         }
     }
 
@@ -170,10 +179,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(offsetContext)) {
-            sendWindowEvents(partition, offsetContext);
-            readChunk();
-        }
+        readUntilGtidChange(partition, offsetContext);
     }
 
     protected void updateLowWatermark() {
