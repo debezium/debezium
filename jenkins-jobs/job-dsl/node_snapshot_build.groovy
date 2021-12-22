@@ -8,9 +8,8 @@ pipelineJob('node-snapshot-build') {
 
     parameters {
 //      CREDENTIALS
-        stringParam('DOCKERHUB_CREDENTIALS', 'debezium-dockerhub', 'Dockerhub credentials id')
         stringParam('GITLAB_CREDENTIALS', 'gitlab-debeziumci-ssh', 'QE gitlab credentials id')
-        stringParam('OPENSTACK_CREDENTIALS', 'psi-clouds-yaml', 'Clouds.yaml file (used to connect to openstack) id')
+        stringParam('ANSIBLE_VAULT_PASSWORD', 'ansible-vault-password', 'Password for ansible vault in used ansible playbook')
 //      OPENSTACK INSTANCE AND SNAPSHOT CONFIG
         stringParam('CLOUD_NAME', 'openstack', 'Name of openstack cloud')
         stringParam('SNAPSHOT_NAME', 'debezium-jenkins-node-centos8', 'Name of created snapshot')
