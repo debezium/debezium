@@ -6,6 +6,7 @@
 package io.debezium.metrics;
 
 import java.lang.management.ManagementFactory;
+import java.util.Map;
 
 import javax.management.JMException;
 import javax.management.MBeanServer;
@@ -31,11 +32,11 @@ public abstract class Metrics {
     private volatile boolean registered = false;
 
     protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
-        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName);
+        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName, taskContext.getConnectorProperties());
     }
 
     protected Metrics(CommonConnectorConfig connectorConfig, String contextName) {
-        this.name = metricName(connectorConfig.getContextName(), connectorConfig.getLogicalName(), contextName);
+        this.name = metricName(connectorConfig.getContextName(), connectorConfig.getLogicalName(), contextName, CdcSourceTaskContext.EMPTY_CONNECTOR_PROPERTIES);
     }
 
     /**
@@ -83,13 +84,26 @@ public abstract class Metrics {
      * @return the JMX metric name
      * @throws MalformedObjectNameException if the name is invalid
      */
-    public ObjectName metricName(String connectorType, String connectorName, String contextName) {
-        final String metricName = "debezium." + connectorType.toLowerCase() + ":type=connector-metrics,context=" + contextName + ",server=" + connectorName;
+    public ObjectName metricName(String connectorType, String connectorName, String contextName, Map<String, String> connectorProperties) {
+        final String metricName = "debezium." + connectorType.toLowerCase() + ":type=connector-metrics,context=" + contextName + ",server=" + connectorName
+                + extraKeyProperties(connectorProperties);
         try {
             return new ObjectName(metricName);
         }
         catch (MalformedObjectNameException e) {
             throw new ConnectException("Invalid metric name '" + metricName + "'");
         }
+    }
+
+    /**
+     * Build extra key properties string as part of MBean's object name.
+     * The output format is like "key1=val1,key2=val2".
+     */
+    private String extraKeyProperties(Map<String, String> properties) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> entry : properties.entrySet()) {
+            sb.append(",").append(entry.getKey()).append("=").append(entry.getValue());
+        }
+        return sb.toString();
     }
 }

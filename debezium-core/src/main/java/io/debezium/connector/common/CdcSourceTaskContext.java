@@ -7,6 +7,7 @@ package io.debezium.connector.common;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceTask;
@@ -31,6 +32,8 @@ public class CdcSourceTaskContext {
      * Obtains the data collections captured at the point of invocation.
      */
     private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
+
+    public static final Map<String, String> EMPTY_CONNECTOR_PROPERTIES = Collections.emptyMap();
 
     public CdcSourceTaskContext(String connectorType, String connectorName, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = connectorType;
@@ -84,5 +87,12 @@ public class CdcSourceTaskContext {
 
     public String getConnectorName() {
         return connectorName;
+    }
+
+    /**
+     * Return a map of connector properties as additional key properties in JMX metric name.
+     */
+    public Map<String, String> getConnectorProperties() {
+        return EMPTY_CONNECTOR_PROPERTIES;
     }
 }
