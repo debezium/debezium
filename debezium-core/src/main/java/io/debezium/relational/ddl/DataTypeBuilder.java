@@ -7,6 +7,8 @@
 package io.debezium.relational.ddl;
 
 import java.sql.Types;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
@@ -20,6 +22,7 @@ public class DataTypeBuilder {
     private int scale = -1;
     private int arrayDimsLength = 0;
     private final int[] arrayDims = new int[40];
+    private static final Pattern SIGNED_UNSIGNED_PATTERN = Pattern.compile("(.*)SIGNED UNSIGNED(.*)", Pattern.CASE_INSENSITIVE);
 
     public void addToName(String str) {
         if (length == -1) {
@@ -102,6 +105,19 @@ public class DataTypeBuilder {
             name.append(' ');
             name.append(suffix);
         }
-        return new DataType(expression.toString(), name.toString(), jdbcType, length, scale, arrayDims, arrayDimsLength);
+        return new DataType(cleanSignedUnsigned(expression), cleanSignedUnsigned(name), jdbcType, length, scale, arrayDims, arrayDimsLength);
+    }
+
+    /**
+     * Replace "signed unsigned" to "unsigned" when ddl statements contain multiple signed/unsigned keywords
+     */
+    private String cleanSignedUnsigned(StringBuilder origin) {
+        Matcher matcher = SIGNED_UNSIGNED_PATTERN.matcher(origin.toString());
+        if (matcher.matches()) {
+            return matcher.replaceFirst("$1UNSIGNED$2");
+        }
+        else {
+            return origin.toString();
+        }
     }
 }
