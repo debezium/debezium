@@ -114,7 +114,7 @@ You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, f
 
     $ mvn clean verify -Dquick
 
-This provides the fastes way for solely producing the output artifacts, without running any of the QA related Maven plug-ins.
+This provides the fastest way for solely producing the output artifacts, without running any of the QA related Maven plug-ins.
 This comes in handy for producing connector JARs and/or archives as quickly as possible, e.g. for manual testing in Kafka Connect.
 
 ### Running tests of the Postgres connector using the wal2json or pgoutput logical decoding plug-ins

@@ -66,18 +66,18 @@ Debezium有很多非常有价值的使用场景，我们在这儿仅仅列出几
 
 ### 为什么选用 Docker?
 
-许多开源软件项目使用Git、Java和Maven，但需要Docker的情况不太常见。Debezium被设计用来与许多外部系统进行通信，比如各种数据库和服务，我们的集成测试验证了Debezium成功地做到了这一点。但Debezium的构建系统使用Docker自动下载或创建必要的映像，并为每个系统启动容器，而不是期望您在本地安装所有这些软件系统。然后，集成测试可以使用这些服务并验证Debezium的行为是否符合预期，当集成测试完成时，Debezium将自动停止它启动的所有容器.
+许多开源软件项目使用Git、Java和Maven，但需要Docker的情况不太常见。Debezium被设计用来与许多外部系统进行通信，比如各种数据库和服务，我们的集成测试验证了Debezium成功地做到了这一点。但Debezium的构建系统使用Docker自动下载或创建必要的镜像，并为每个系统启动容器，而不是期望您在本地安装所有这些软件系统。然后，集成测试可以使用这些服务并验证Debezium的行为是否符合预期，当集成测试完成时，Debezium将自动停止它启动的所有容器.
 
-Debezium还有一些不是用Java编写的模块，因此它们必须在目标操作系统上使用。Docker让我们的构建使用目标操作系统的映像和所有必要的开发工具来完成。
+Debezium还有一些不是用Java编写的模块，而且这些模块在目标操作系统上是必须的。通过Docker，我们可以使用带有目标操作系统以及所有必要开发工具的镜像来构建它们。
 
 使用Docker有几个优点：
 
 
 1. 不需要在本地计算机上安装、配置和运行每个所依赖的外部服务的特定版本，也不必在本地网络上访问它们。即使配置了，Debezium也不会用到它们。
-1. 我们可以测试外部服务的多个版本。每个模块可以启动它需要的任何容器，因此不同的模块可以轻松地使用不同版本的服务。
-1. 每个人都可以在本地运行完整的构建。 不必依赖远程持续集成服务器在设置了所有必需服务的环境中运行构建。
-1. 所有构建都是一致的。当多个开发人员各自构建相同的代码库时，他们应该看到完全相同的结果——只要他们使用相同或等效的JDK、Maven和Docker版本。这是因为容器将在相同的操作系统上运行相同版本的服务。另外，所有的测试都是为了连接到运行在容器中的系统而设计的，因此没有人需要修改连接属性或特定于其本地环境的自定义配置。
-1. 不需要清理服务, 即使这些服务在本地修改和存储数据. Docker *images* 被缓存, 所以 reusing 服务可以快速的启动容器并保持一致性, 但是Docker *containers* 永远不会被重用：它们总是在原始的初始状态下启动，在关闭时被丢弃。集成测试依赖于容器，因此清理是自动处理的
+2. 我们可以测试外部服务的多个版本。每个模块可以启动它需要的任何容器，因此不同的模块可以轻松地使用不同版本的服务。
+3. 每个人都可以在本地运行完整的构建。 不必依赖安装了所有必需服务的远程CI服务器来运行构建。
+4. 所有构建都是一致的。当多个开发人员各自构建相同的代码库时，他们应该看到完全相同的结果——只要他们使用相同或等效的JDK、Maven和Docker版本。 这是因为容器将在相同的操作系统上运行相同版本的服务。另外，所有的测试都被设计为连接运行在容器中的系统，因此没有人需要修改连接属性或特定于其本地环境的自定义配置。
+5. 不需要清理服务, 即使这些服务在本地修改和存储数据. Docker *镜像* 是可缓存的, 重用镜像可以快速启动容器并保持一致性, 但是Docker *容器* 永远不会被重用：它们总是在初始状态下启动，在关闭时丢弃。集成测试依赖容器，因此会自动清理容器。
 
 ### 配置Docker环境
 
@@ -87,52 +87,91 @@ Docker Maven插件通过检查以下环境变量来解析Docker主机：
     export DOCKER_CERT_PATH=/path/to/cdk/.vagrant/machines/default/virtualbox/.docker
     export DOCKER_TLS_VERIFY=1
 
-Docker类似的容器可以自动配置这些参数。
+使用Docker Machine或类似软件时会自动设置这些环境变量。
 ### 项目编译
 
-首先从Git存储库获取代码：
+首先从Git仓库获取代码：
 
     $ git clone https://github.com/debezium/debezium.git
     $ cd debezium
 
-用maven构建项目
+然后用maven构建项目
+
     $ mvn clean install
 
-为不同的dbms使用不同的容器构建。请注意，如果Docker未运行或未配置，则可能会出现一个神秘的错误——如果是这种情况，请始终验证Docker是否正在运行，也许可以使用Docker ps列出正在运行的容器。
+这行命令会启动构建，并为不同的dbms使用不同的Docker容器。注意，如果未运行或未配置Docker，可能会出现奇怪的错误——如果遇到这种情况，一定要检查Docker是否正在运行，比如可以使用`Docker ps`列出运行中的容器。
 
 ### 本地没有Docker?
 
-您可以使用以下命令跳过集成测试和docker来构建项目：
+可以使用以下命令跳过集成测试和docker的构建：
 
     $ mvn clean install -DskipITs
 
+### 仅构建工件（artifacts），不运行测试、代码风格检查等其他插件
+
+可以使用“quick“构建选项来跳过所有非必须的插件，例如测试、集成测试、代码风格检查、格式化、API兼容性检查等：
+
+    $ mvn clean verify -Dquick
+
+这行命令是构建工件（artifacts）最快的方法，但它不会运行任何与质量保证（QA）相关的Maven插件。这在需要尽快构建connector jar包、归档时可以派上用场，比如需要在Kafka Connect中进行手动测试。
+
 ### 使用wal2json或 pgoutput logical decoding plug-ins 运行Postgres connector的测试
 
-Postgres连接器支持三个逻辑解码插件，用于从DB服务器到连接器的流式更改：decoderbufs（默认）、wal2json和pgoutput。要使用wal2json运行PG connector的集成测试，请启用“wal2json decoder”构建配置文件：
-
+Postgres connector支持三个用于从数据库服务器捕获流式数据更改的逻辑解码插件：decoderbufs（默认）、wal2json以及pgoutput。运行PG connector的集成测试时，如果要使用wal2json，需要启用“wal2json decoder”构建配置：
 
     $ mvn clean install -pl :debezium-connector-postgres -Pwal2json-decoder
     
-要使用pgoutput运行PG connector的集成测试，请启用“pgoutput decoder”和“postgres-10”构建配置文件：
+要使用pgoutput，需要启用“pgoutput decoder”和“postgres-10”构建配置：
 
     $ mvn clean install -pl :debezium-connector-postgres -Ppgoutput-decoder,postgres-10
 
-在使用wal2json插件时，一些测试目前无法通过。
+在使用wal2json插件时，一些测试目前无法通过。 通过查找`io.debezium.connector.postgresql.DecoderDifferences`中定义的类型的引用，可以找到这些测试。
 
-查找对`io.debezium.connector.postgresql.DecoderDifferences`中定义的类型的引用以找到这些测试。
+### 使用指定Apicurio版本运行Postgres connector测试
 
-### 对外部数据库运行Postgres连接器的测试, 例如：Amazon RDS
-如果您要针对非RDS集群进行测试，请注意<your user>须是超级用户，不仅要具有复制权限，而且还要有登录pg_hba.conf中所有数据库的权限。它还要求目标服务器上必须有 *postgis* 包，才能通过某些测试。
+如果要使用带有指定版本Apicurio的wal2json或pgoutput逻辑解码插件运行PG connector测试，可以像这样传递测试参数：
+
+    $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder -Ddebezium.test.apicurio.version=1.3.1.Final
+
+如果没有设置该参数，将自动获取并设置该参数为Apicurio的稳定版本。
+
+### 对外部数据库运行Postgres connector测试, 例如：Amazon RDS
+如果要对非RDS集群进行测试，请注意`<your user>`必须是超级用户，不仅要具有`复制`权限，还要有登录`pg_hba.conf`中`所有`数据库的权限。还要求目标服务器上必须有`postgis`包，才能通过某些测试。
 
     $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder \
          -Ddocker.skip.build=true -Ddocker.skip.run=true -Dpostgres.host=<your PG host> \
          -Dpostgres.user=<your user> -Dpostgres.password=<your password> \
          -Ddebezium.test.records.waittime=10
 
-根据需要调整超时值。
+超时时间可以根据需要进行调整。
 
 有关在RDS上设置要测试的数据库的详细信息，请参阅 [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) 
 
+### 使用Oracle XStream运行Oracle connector测试
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle,xstream -Dinstantclient.dir=<path-to-instantclient>
+
+### 使用非CDB数据库运行Oracle connector测试
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
+
+### 使用IDE中的oplog捕获运行MongoDB测试
+
+不使用maven运行测试时，需要确保传递了正确的执行参数。可以在`.github/workflows/mongodb-oplog-workflow.yml`中查正确参数，添加`debezium.test`前缀后，再将这些参数添加到JVM执行参数之后。由于测试运行在Maven生命周期之外，还需要手动启动MongoDB connector目录下的MongoDB镜像:
+
+    $ mvn docker:start -B -am -Passembly -Dcheckstyle.skip=true -Dformat.skip=true -Drevapi.skip -Dcapture.mode=oplog -Dversion.mongo.server=3.6 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dcapture.mode=oplog -Dmongo.server=3.6
+
+执行测试命令行的相关部分应该如下：
+
+    java -ea -Ddebezium.test.capture.mode=oplog -Ddebezium.test.version.mongo.server=3.6 -Djava.awt.headless=true -Dconnector.mongodb.members.auto.discover=false -Dconnector.mongodb.name=mongo1 -DskipLongRunningTests=true [...]
+
+
 ## 贡献源码(Contributing)
 
-Debezium社区欢迎任何愿意以任何方式提供帮助的人，无论是报告问题、帮助文档，还是提供代码更改以修复错误、添加测试或实现新功能。有关详细信息，请参阅本[文档](CONTRIBUTE.md)。
+Debezium社区欢迎所有愿意提供帮助的人，无论是报告问题，帮助撰写文档，还是提供代码用于修复错误、添加测试或实现新功能。有关详细信息，请参阅本[文档](CONTRIBUTE.md)。
+
+非常感谢所有Debezium贡献者！
+
+<a href="https://github.com/debezium/debezium/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=debezium/debezium" />
+</a>
