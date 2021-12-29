@@ -2119,13 +2119,13 @@ dataType
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
         | MIDDLEINT | INT1 | INT2 | INT3 | INT4 | INT8
       )
-      lengthOneDimension? (SIGNED | UNSIGNED)? ZEROFILL?            #dimensionDataType
+      lengthOneDimension? (SIGNED | UNSIGNED | ZEROFILL)*           #dimensionDataType
     | typeName=REAL
-      lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?            #dimensionDataType
+      lengthTwoDimension? (SIGNED | UNSIGNED | ZEROFILL)*           #dimensionDataType
     | typeName=DOUBLE PRECISION?
-          lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?            #dimensionDataType
+      lengthTwoDimension? (SIGNED | UNSIGNED | ZEROFILL)*           #dimensionDataType
     | typeName=(DECIMAL | DEC | FIXED | NUMERIC | FLOAT | FLOAT4 | FLOAT8)
-      lengthTwoOptionalDimension? (SIGNED | UNSIGNED)? ZEROFILL?    #dimensionDataType
+      lengthTwoOptionalDimension? (SIGNED | UNSIGNED | ZEROFILL)*   #dimensionDataType
     | typeName=(
         DATE | TINYBLOB |  MEDIUMBLOB | LONGBLOB
         | BOOL | BOOLEAN | SERIAL
