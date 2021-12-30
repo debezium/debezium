@@ -324,7 +324,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         // contains only *seconds* precision ...
         // HEARTBEAT events have no timestamp; only set the timestamp if the event is not a HEARTBEAT
         eventTimestamp = !eventHeader.getEventType().equals(EventType.HEARTBEAT) ? Instant.ofEpochMilli(eventHeader.getTimestamp()) : null;
-        offsetContext.setBinlogThread(eventHeader.getServerId());
+        offsetContext.setBinlogServerId(eventHeader.getServerId());
 
         final EventType eventType = eventHeader.getEventType();
         if (eventType == EventType.ROTATE) {
