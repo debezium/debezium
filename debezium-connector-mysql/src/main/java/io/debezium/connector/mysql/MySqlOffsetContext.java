@@ -428,8 +428,12 @@ public class MySqlOffsetContext implements OffsetContext {
         }
     }
 
+    public void setBinlogServerId(long serverId) {
+        sourceInfo.setBinlogServerId(serverId);
+    }
+
     public void setBinlogThread(long threadId) {
-        sourceInfo.setBinlogServerId(threadId);
+        sourceInfo.setBinlogThread(threadId);
     }
 
     @Override
