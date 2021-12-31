@@ -78,6 +78,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 .with(MySqlConnectorConfig.READ_ONLY_CONNECTION, true)
                 .with(KafkaSignalThread.SIGNAL_TOPIC, getSignalsTopic())
                 .with(KafkaSignalThread.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
     }
 

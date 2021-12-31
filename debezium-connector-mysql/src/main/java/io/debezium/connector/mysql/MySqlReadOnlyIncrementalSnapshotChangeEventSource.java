@@ -218,6 +218,15 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         }
     }
 
+    @Override
+    protected void sendEvent(Partition partition, EventDispatcher<T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
+        SourceInfo sourceInfo = ((MySqlOffsetContext) offsetContext).getSource();
+        String query = sourceInfo.getQuery();
+        sourceInfo.setQuery(null);
+        super.sendEvent(partition, dispatcher, offsetContext, row);
+        sourceInfo.setQuery(query);
+    }
+
     public void rereadChunk() throws InterruptedException {
         if (context == null) {
             return;
