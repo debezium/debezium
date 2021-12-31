@@ -6,10 +6,18 @@
 
 package io.debezium.connector.mysql;
 
-import java.sql.SQLException;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
+import java.sql.SQLException;
+import java.util.Map;
+
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
@@ -43,6 +51,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
 
     protected Configuration.Builder config() {
         return DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
@@ -120,5 +129,45 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Override
     protected String createTableStatement(String newTable, String copyTable) {
         return String.format("CREATE TABLE %s LIKE %s", newTable, copyTable);
+    }
+
+    @Test
+    public void updates() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        final int batchSize = 10;
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            connection.execute("SET binlog_rows_query_log_events=ON");
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(
+                        String.format("UPDATE %s SET aa = aa + 2000 WHERE pk > %s AND pk <= %s", tableName(),
+                                i * batchSize, (i + 1) * batchSize));
+                connection.commit();
+            }
+        }
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount,
+                x -> ((Struct) x.getValue().value()).getStruct("after").getInt32(valueFieldName()) >= 2000, null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            SourceRecord record = dbChanges.get(i + 1);
+            final int value = ((Struct) record.value()).getStruct("after").getInt32(valueFieldName());
+            assertEquals(i + 2000, value);
+            Object query = ((Struct) record.value()).getStruct("source").get("query");
+            String snapshot = ((Struct) record.value()).getStruct("source").get("snapshot").toString();
+            if (snapshot.equals("false")) {
+                assertNotNull(query);
+            }
+            else {
+                assertNull(query);
+                assertEquals("incremental", snapshot);
+            }
+        }
     }
 }
