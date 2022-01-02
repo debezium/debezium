@@ -313,7 +313,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                         }
                         tableEditor.addColumn(ce.create());
                     }
-                    return columnName;
+                    return column != null ? column.name() : columnName;
                 })
                 .collect(Collectors.toList());
 

@@ -164,7 +164,7 @@ class TableEditorImpl implements TableEditor {
             updatePositions();
         }
         assert positionsAreValid();
-        pkColumnNames.remove(columnName);
+        pkColumnNames.remove(existing.name());
         return this;
     }
 

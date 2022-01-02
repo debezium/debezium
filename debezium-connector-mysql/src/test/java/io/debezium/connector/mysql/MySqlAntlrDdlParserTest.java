@@ -1886,7 +1886,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-169")
+    @FixFor({ "DBZ-169", "DBZ-4503" })
     public void shouldParseCreateAndAlterWithOnUpdate() {
         String ddl = "CREATE TABLE customers ( "
                 + "id INT PRIMARY KEY NOT NULL, "
@@ -1900,7 +1900,7 @@ public class MySqlAntlrDdlParserTest {
                 + "ADD action tinyint(3) unsigned NOT NULL FIRST,"
                 + "ADD revision int(10) unsigned NOT NULL AFTER action,"
                 + "ADD changed_on DATETIME NOT NULL DEFAULT NOW() AFTER revision,"
-                + "ADD PRIMARY KEY (id, revision);";
+                + "ADD PRIMARY KEY (ID, revision);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(2);
         assertThat(listener.total()).isEqualTo(3);
@@ -1929,6 +1929,11 @@ public class MySqlAntlrDdlParserTest {
         assertThat(t.columnWithName("changed_on").position()).isEqualTo(3);
         assertThat(t.columnWithName("id").position()).isEqualTo(4);
         assertThat(t.columnWithName("name").position()).isEqualTo(5);
+
+        parser.parse("ALTER TABLE `CUSTOMERS_HISTORY` DROP COLUMN ID", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        t = tables.forTable(new TableId(null, null, "CUSTOMERS_HISTORY"));
+        assertThat(t.primaryKeyColumnNames().size()).isEqualTo(1);
     }
 
     @Test
