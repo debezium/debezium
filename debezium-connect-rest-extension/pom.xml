@@ -44,6 +44,10 @@
       <artifactId>rest-assured</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-core</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
@@ -75,10 +79,21 @@
         <filtering>true</filtering>
         <directory>src/main/resources</directory>
         <includes>
-          <include>**/META-INF/services/*</include>
+          <include>*</include>
+          <include>**/*</include>
         </includes>
       </resource>
     </resources>
+    <testResources>
+      <testResource>
+        <directory>src/test/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>*</include>
+          <include>**/*</include>
+        </includes>
+      </testResource>
+    </testResources>
   </build>
 
   <profiles>
