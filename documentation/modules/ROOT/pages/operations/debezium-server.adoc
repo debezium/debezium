@@ -400,6 +400,59 @@ This feature can be disabled.
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pub/Sub so a surrogate key must be used.
 
+|[[batch-delay-threshold-ms]]<<pubsub-null-key, `debezium.sink.pubsub.batch.delay.threshold.ms`>>
+|`100`
+|The maximum amount of time to wait to reach element count or request bytes threshold before publishing outstanding messages to Pub/Sub.
+
+|[[batch-element-count-threshold]]<<batch-element-count-threshold, `debezium.sink.pubsub.batch.element.count.threshold`>>
+|`100L`
+|Once this many messages are queued, send all of the messages in a single call, even if the delay threshold hasn't elapsed yet.
+
+|[[batch-request-byte-threshold]]<<batch-request-byte-threshold, `debezium.sink.pubsub.batch.request.byte.threshold`>>
+|`10000000L`
+|Once the number of bytes in the batched request reaches this threshold, send all of the messages in a single call, even if neither the delay or message count thresholds have been exceeded yet.
+
+|[[flowControl-enabled]]<<flowControl-enabled, `debezium.sink.pubsub.flowControl.enabled`>>
+|`false`
+|When enabled, configures your publisher client with flow control to limit the rate of publish requests. 
+
+|[[flowControl-max-outstanding-messages]]<<flowControl-max-outstanding-messages, `debezium.sink.pubsub.flowControl.max.outstanding.messages`>>
+|`Long.MAX_VALUE`
+|(Optional) If flow control enabled, the maxmium number of messages before messages are blocked from being published
+
+|[[flowControl-max-outstanding-bytes]]<<flowControl-max-outstanding-bytes, `debezium.sink.pubsub.flowControl.max.outstanding.bytes`>>
+|`Long.MAX_VALUE`
+|(Optional) If flow control enabled, the maxmium number of bytes before messages are blocked from being published
+
+|[[retry-total-timeout-ms]]<<retry-total-timeout-ms, `debezium.sink.pubsub.retry.total.timeout.ms`>>
+|`60000`
+|The total timeout for a call to publish (including retries) to Pub/Sub.
+
+|[[retry-initial-delay-ms]]<<retry-initial-delay-ms, `debezium.sink.pubsub.retry.initial.delay.ms`>>
+|`5`
+|The initial amount of time to wait before retrying the request.
+
+|[[retry-delay-multiplier]]<<retry-delay-multiplier, `debezium.sink.pubsub.retry.delay.multiplier`>>
+|`2.0`
+|The previous wait time is multiplied by this multiplier to come up with the next wait time, until the max is reached.
+
+|[[retry-max-delay-ms]]<<retry-max-delay-ms, `debezium.sink.pubsub.retry.max.delay.ms`>>
+|`Long.MAX_VALUE`
+|The maximum amount of time to wait before retrying. 
+i.e. after this value is reached, the wait time will not increase further by the multiplier.
+
+|[[retry-initial-rpc-timeout-ms]]<<retry-initial-rpc-timeout-ms, `debezium.sink.pubsub.retry.initial.rpc.timeout.ms`>>
+|`10000`
+|Controls the timeout for the initial Remote Procedure Call
+
+|[[retry-rpc-timeout-multiplier]]<<retry-initial-rpc-timeout-ms, `debezium.sink.pubsub.retry.rpc.timeout.multiplier`>>
+|`2.0`
+|The previous RPC timeout is multiplied by this multipler to come up with the next RPC timeout value, until the max is reached
+
+|[[retry-max-rpc-timeout-ms]]<<retry-max-rpc-timeout-ms, `debezium.sink.pubsub.retry.max.rpc.timeout.ms`>>
+|`10000`
+|The max timeout for individual publish requests to Cloud Pub/Sub.
+
 |===
 
 
