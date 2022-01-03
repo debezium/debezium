@@ -20,12 +20,12 @@ import org.slf4j.LoggerFactory;
  */
 public class DebeziumResourceNoTopicCreationIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumResourceNoTopicCreationIT.class);
-    private static final String DEBEZIUM_VERSION = "1.2";
+    private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION = "1.2";
 
     @BeforeEach
     public void start() {
         TestHelper.stopContainers();
-        TestHelper.setupDebeziumContainer(DEBEZIUM_VERSION);
+        TestHelper.setupDebeziumContainer(DEBEZIUM_CONTAINER_IMAGE_VERSION);
         TestHelper.startContainers();
     }
 
