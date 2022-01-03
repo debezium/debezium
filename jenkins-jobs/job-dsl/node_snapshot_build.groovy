@@ -6,6 +6,10 @@ pipelineJob('node-snapshot-build') {
         githubProjectUrl('https://github.com/debezium/debezium')
     }
 
+    logRotator {
+        numToKeep(10)
+    }
+
     parameters {
 //      CREDENTIALS
         stringParam('GITLAB_CREDENTIALS', 'gitlab-debeziumci-ssh', 'QE gitlab credentials id')

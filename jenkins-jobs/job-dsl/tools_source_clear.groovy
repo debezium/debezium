@@ -12,6 +12,7 @@ freeStyleJob('tools-debezium-source-clear') {
 
     logRotator {
         daysToKeep(7)
+        numToKeep(10)
     }
 
     wrappers {

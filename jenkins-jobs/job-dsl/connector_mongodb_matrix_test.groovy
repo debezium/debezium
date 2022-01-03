@@ -48,6 +48,7 @@ matrixJob('connector-debezium-mongodb-matrix-test') {
 
     logRotator {
         daysToKeep(7)
+        numToKeep(10)
     }
 
     steps {
