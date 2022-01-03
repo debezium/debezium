@@ -6,6 +6,10 @@ pipelineJob('connector-debezium-oracle-matrix-test') {
         githubProjectUrl('https://github.com/debezium/debezium')
     }
 
+    logRotator {
+        numToKeep(10)
+    }
+
     parameters {
         stringParam('MAIL_TO', 'debezium-qe@redhat.com')
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')

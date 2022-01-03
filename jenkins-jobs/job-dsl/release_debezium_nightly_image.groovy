@@ -12,6 +12,7 @@ freeStyleJob('release-debezium-nightly-image') {
 
     logRotator {
         daysToKeep(7)
+        numToKeep(10)
     }
 
     wrappers {
