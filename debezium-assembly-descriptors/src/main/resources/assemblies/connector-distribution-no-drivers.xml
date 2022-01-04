@@ -29,6 +29,9 @@
 	      <exclude>${assembly.exclude.1}</exclude>
 	      <exclude>${assembly.exclude.2}</exclude>
 	      <exclude>${assembly.exclude.3}</exclude>
+
+              <!-- Exclude dependencies with incorrect scope -->
+              <exclude>org.checkerframework:checker-qual:*</exclude>
           </excludes>
       </dependencySet>
       <dependencySet>
