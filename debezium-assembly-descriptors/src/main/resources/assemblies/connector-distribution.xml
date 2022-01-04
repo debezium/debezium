@@ -24,6 +24,9 @@
 
               <!-- Exclude guava dependencies -->
               <exclude>com.google.guava:listenablefuture:*</exclude>
+
+              <!-- Exclude dependencies with incorrect scope -->
+              <exclude>org.checkerframework:checker-qual:*</exclude>
           </excludes>
       </dependencySet>
       <dependencySet>
