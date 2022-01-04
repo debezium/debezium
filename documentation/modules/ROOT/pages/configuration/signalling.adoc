@@ -42,9 +42,7 @@ ifdef::community[]
 * MongoDB
 endif::community[]
 * MySQL
-ifdef::community[]
 * Oracle
-endif::community[]
 * PostgreSQL
 * SQL Server
 
