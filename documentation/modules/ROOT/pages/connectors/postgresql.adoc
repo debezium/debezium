@@ -1421,9 +1421,9 @@ The string representation of the interval value that follows the pattern `P<year
 |`BYTES` or `STRING`
 |n/a +
  +
-Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[binary handling mode] setting. +
+Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's xref:postgresql-property-binary-handling-mode[binary handling mode] setting. +
  +
-Debezium only supports Postgres `bytea_output` configuration of value `hex`.
+Debezium only supports Postgres `bytea_output` configuration of value `hex`. See this link:https://www.postgresql.org/docs/current/datatype-binary.html[documentation on Postgres binary data types].
 
 |`JSON`, `JSONB`
 |`STRING`
