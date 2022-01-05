@@ -108,6 +108,9 @@ If the connector stops again for any reason, after it restarts, it resumes strea
 |The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
+|`initial_only`
+|The connector performs a database snapshot and stops before streaming any change event records, not allowing any subsequent change events to be captured.
+
 |`schema_only`
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 6).
 
@@ -2206,8 +2209,11 @@ You can set the following values:
 |Specifies the mode that the connector uses to take snapshots of a captured table.
 You can set the following values:
 
-`initial`:: The snapshot includes the structure and data of captured tables.
+`initial`:: The snapshot includes the structure and data of a captured table.
 Specify this value to populate topics with a complete representation of the data from the captured tables.
+
+`initial_only`:: The snapshot includes the structure and data of captured tables.
+The connector performs an initial snapshot and then stops, without processing any subsequent changes.
 
 `schema_only`:: The snapshot includes only the structure of captured tables.
 Specify this value if you want the connector to capture data only for changes that occur after the snapshot.
@@ -2218,7 +2224,7 @@ You might set it periodically to "clean up" a database history topic that has be
 Database history topics require infinite retention.
 Note this mode is only safe to be used when it is guaranteed that no schema changes happened since the point in time the connector was shut down before and the point in time the snapshot is taken.
 
-After the snapshot is complete, the connector continues to read change events from the database's redo logs.
+After the snapshot is complete, the connector continues to read change events from the database's redo logs except in case of initial_only snapshot mode.
 
 |[[oracle-property-snapshot-locking-mode]]<<oracle-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_shared_
