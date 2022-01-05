@@ -6,23 +6,35 @@ on:
       - main
       - 1.*
     paths:
-      - 'debezium-core/**'
-      - 'debezium-api/**'
-      - 'debezium-parent/pom.xml'
-      - 'debezium-bom/pom.xml'
-      - 'pom.xml'
       - '.github/workflows/cassandra-workflow.yml'
+      - 'pom.xml'
+      - 'debezium-api/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-bom/pom.xml'
+      - 'debezium-checkstyle/**'
+      - 'debezium-core/**'
+      - 'assembly-descriptors/**'
+      - 'debezium-embedded/**'
+      - 'debezium-ide-configs/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-revapi/**'
   pull_request:
     branches:
       - main
       - 1.*
     paths:
-      - 'debezium-core/**'
-      - 'debezium-api/**'
-      - 'debezium-parent/pom.xml'
-      - 'debezium-bom/pom.xml'
-      - 'pom.xml'
       - '.github/workflows/cassandra-workflow.yml'
+      - 'pom.xml'
+      - 'debezium-api/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-bom/pom.xml'
+      - 'debezium-checkstyle/**'
+      - 'debezium-core/**'
+      - 'assembly-descriptors/**'
+      - 'debezium-embedded/**'
+      - 'debezium-ide-configs/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-revapi/**'
 
 jobs:
   build:
@@ -59,7 +71,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
       - name: Build Debezium Core
-        run: mvn clean install -f core/pom.xml -pl debezium-core -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: mvn clean install -f core/pom.xml -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Set up Java 8
         uses: actions/setup-java@v2
         with:
