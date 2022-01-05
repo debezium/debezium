@@ -674,12 +674,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
          */
-        INITIAL_ONLY("initial_only", true, false,false),
+        INITIAL_ONLY("initial_only", true, false, false),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false, true,false),
+        SCHEMA_ONLY("schema_only", false, true, false),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
