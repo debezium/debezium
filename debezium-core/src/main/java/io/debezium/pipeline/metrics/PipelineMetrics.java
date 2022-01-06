@@ -59,13 +59,13 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     }
 
     private void updateCommonEventMetrics() {
-        totalNumberOfEventsSeen.incrementAndGet();
-        lastEventTimestamp.set(clock.currentTimeInMillis());
+        updateCommonEventMetrics(null);
     }
 
     private void updateCommonEventMetrics(Operation operation) {
         totalNumberOfEventsSeen.incrementAndGet();
         lastEventTimestamp.set(clock.currentTimeInMillis());
+
         if (operation != null) {
             switch (operation) {
                 case CREATE:
