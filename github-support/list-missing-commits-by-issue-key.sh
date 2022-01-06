@@ -9,6 +9,7 @@ if [ $# -eq 0 ]; then
   echo "  fix-version    : The Jira version for which issues will be compared against the Git history"
   echo "  since-tag-name : The starting tag to begin inspecting Git history from"
   echo "  to-tag-name    : The ending tag to stop inspecting Git history to"
+  echo "  jira-token     : Your Jira access token for authentication"
   echo ""
   echo "An example of comparing the issues in Jira for 1.8.0.CR1 with Git history would be:"
   echo "  ./list-missing-commits-by-issue-key.sh 1.8.0.CR1 v1.8.0.Beta1 v1.8.0.CR1"
@@ -19,6 +20,7 @@ fi
 FIX_VERSION=$1
 SINCE_TAG_NAME=$2
 TO_TAG_NAME=$3
+JIRA_TOKEN=$4
 
 DIR="$HOME/debezium-issues"
 
@@ -42,7 +44,7 @@ declare -a DEBEZIUM_REPOS=("debezium" "debezium-connector-db2" "debezium-connect
 echo "Getting issues from Jira for project $PROJECT_NAME and version $FIX_VERSION"
 echo "  components excluded: $EXCLUDED_JIRA_COMPONENTS"
 echo ""
-curl --silent -X "GET" "$JIRA_URL/rest/api/2/search?jql=project=$PROJECT_NAME%20and%20fixVersion=$FIX_VERSION%20and%20component%20not%20in%20($EXCLUDED_JIRA_COMPONENTS)" | jq -r '.issues[].key' > "$ISSUE_KEYS" 2> /dev/null
+curl --silent -X "GET" -H "Authorization: Bearer ${JIRA_TOKEN}" "$JIRA_URL/rest/api/2/search?jql=project=$PROJECT_NAME%20and%20fixVersion=$FIX_VERSION%20and%20component%20not%20in%20($EXCLUDED_JIRA_COMPONENTS)" | jq -r '.issues[].key' > "$ISSUE_KEYS" 2> /dev/null
 
 # Obtain all history between tags for each repository
 for REPO in "${DEBEZIUM_REPOS[@]}";
