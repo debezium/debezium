@@ -38,7 +38,7 @@ pipeline {
                     sh '''
                     set -x  
                     cd "${WORKSPACE}/ci-jenkins-node"
-                    echo ${ANSIBLE_PASSWORD} > password.txt
+                    echo "${ANSIBLE_PASSWORD}" > password.txt
                     ansible-vault decrypt --vault-password-file ./password.txt clouds.yaml
                     sudo cp roles/os_snapshot/files/CA-RH-NEW.crt /etc/pki/ca-trust/source/anchors/CA-RH-NEW.crt
                     sudo update-ca-trust
