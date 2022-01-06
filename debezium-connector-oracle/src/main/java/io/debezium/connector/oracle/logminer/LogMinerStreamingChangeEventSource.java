@@ -720,6 +720,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     @Override
     public void commitOffset(Map<String, ?> offset) {
-        //do nothing
+        // nothing to do
     }
 }
