@@ -2220,6 +2220,7 @@ userVariables
 
 defaultValue
     : NULL_LITERAL
+    | CAST '(' expression AS convertedDataType ')'
     | unaryOperator? constant
     | currentTimestamp (ON UPDATE currentTimestamp)?
     | '(' expression ')'
@@ -2230,7 +2231,7 @@ defaultValue
 currentTimestamp
     :
     (
-      (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP) ('(' decimalLiteral? ')')?
+      (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP | CURDATE | CURTIME) ('(' decimalLiteral? ')')?  // MariaDB-specific
       | NOW '(' decimalLiteral? ')'
     )
     ;
@@ -2259,7 +2260,7 @@ functionCall
 
 specificFunction
     : (
-      CURRENT_DATE | CURRENT_TIME | CURRENT_TIMESTAMP
+      CURRENT_DATE | CURRENT_TIME | CURRENT_TIMESTAMP | CURDATE | CURTIME   // MariaDB-specific
       | CURRENT_USER | LOCALTIME | UTC_TIMESTAMP | SCHEMA
       ) ('(' ')')?                                                  #simpleFunctionCall
     | CONVERT '(' expression separator=',' convertedDataType ')'    #dataTypeFunctionCall
