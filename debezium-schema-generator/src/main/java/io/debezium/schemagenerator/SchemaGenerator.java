@@ -24,17 +24,17 @@ import io.debezium.metadata.ConnectorMetadataProvider;
 import io.debezium.schemagenerator.formats.ApiFormat;
 import io.debezium.schemagenerator.formats.ApiFormatName;
 
-public class OpenApiGenerator {
+public class SchemaGenerator {
 
     public static void main(String[] args) {
         if (args.length != 2) {
-            throw new IllegalArgumentException("Usage: OpenApiGenerator <format-name> <output-directory>");
+            throw new IllegalArgumentException("Usage: SchemaGenerator <format-name> <output-directory>");
         }
 
         String formatName = args[0].trim();
         Path outputDirectory = new File(args[1]).toPath();
 
-        new OpenApiGenerator().run(formatName, outputDirectory);
+        new SchemaGenerator().run(formatName, outputDirectory);
     }
 
     private void run(String formatName, Path outputDirectory) {
