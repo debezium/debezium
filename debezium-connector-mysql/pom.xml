@@ -432,7 +432,7 @@
                     <execution>
                         <id>generate-connector-metadata</id>
                         <goals>
-                            <goal>generate-openapi-spec</goal>
+                            <goal>generate-api-spec</goal>
                         </goals>
                         <phase>prepare-package</phase>
                     </execution>
