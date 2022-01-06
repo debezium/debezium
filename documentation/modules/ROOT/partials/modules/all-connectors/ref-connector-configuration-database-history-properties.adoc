@@ -18,6 +18,10 @@ The following table describes the `database.history` properties for configuring 
 |`100`
 |An integer value that specifies the maximum number of milliseconds the connector should wait during startup/recovery while polling for persisted data. The default is 100ms.
 
+|[[{context}-property-database-history-kafka-query-timeout-ms]]<<{context}-property-database-history-kafka-query-timeout-ms, `+database.history.kafka.query.timeout.ms+`>>
+|`3000`
+|An integer value that specifies the maximum number of milliseconds the connector should wait while fetching cluster information using Kafka admin client.
+
 |[[{context}-property-database-history-kafka-recovery-attempts]]<<{context}-property-database-history-kafka-recovery-attempts, `+database.history.kafka.recovery.attempts+`>>
 |`4`
 |The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` x `recovery.poll.interval.ms`.
