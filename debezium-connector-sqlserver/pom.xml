@@ -200,10 +200,6 @@
                             <goal>generate-openapi-spec</goal>
                         </goals>
                         <phase>prepare-package</phase>
-                        <configuration>
-                            <format>openapi</format>
-                            <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

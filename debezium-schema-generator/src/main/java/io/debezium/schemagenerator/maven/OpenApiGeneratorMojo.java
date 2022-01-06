@@ -42,10 +42,10 @@ import io.smallrye.openapi.runtime.io.Format;
 @Mojo(name = "generate-openapi-spec", defaultPhase = LifecyclePhase.PREPARE_PACKAGE)
 public class OpenApiGeneratorMojo extends AbstractMojo {
 
-    @Parameter(property = "openapi.generator.format")
+    @Parameter(defaultValue = "openapi", property = "openapi.generator.format")
     private String format;
 
-    @Parameter(defaultValue = "${project.build.outputDirectory}", required = true)
+    @Parameter(defaultValue = "${project.build.directory}/generated-sources", required = true)
     private File outputDirectory;
 
     /**
