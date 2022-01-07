@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -30,10 +31,12 @@ import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.DecoderDifferences;
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Clock;
@@ -86,6 +89,28 @@ public class ReplicationConnectionIT {
             }
             catch (Exception e) {
                 assertTrue(interceptor.containsWarnMessage("and retrying, attempt number 2 over 2"));
+                throw e;
+            }
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    @FixFor("DBZ-4517")
+    public void shouldNotAllowRetryWhenConfigured() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        // create a replication connection which should be dropped once it's closed
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
+            conn1.startStreaming(new WalPositionLocator());
+            try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false,
+                    new PostgresConnectorConfig(TestHelper.defaultConfig()
+                            .with(PostgresConnectorConfig.MAX_RETRIES, 0)
+                            .build()))) {
+                conn2.startStreaming(new WalPositionLocator());
+                fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
+            }
+            catch (Exception e) {
+                assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
+                assertTrue(e.getCause().getMessage().contains("ERROR: replication slot \"test1\" is active"));
                 throw e;
             }
         }
