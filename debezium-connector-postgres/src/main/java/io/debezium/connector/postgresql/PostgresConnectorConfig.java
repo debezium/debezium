@@ -1137,11 +1137,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(STREAM_PARAMS);
     }
 
-    protected int maxRetries() {
+    public int maxRetries() {
         return getConfig().getInteger(MAX_RETRIES);
     }
 
-    protected Duration retryDelay() {
+    public Duration retryDelay() {
         return Duration.ofMillis(getConfig().getInteger(RETRY_DELAY_MS));
     }
 
