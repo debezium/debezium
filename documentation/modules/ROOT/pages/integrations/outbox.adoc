@@ -235,13 +235,13 @@ for example, `com.company.TheAttributeConverter`
 |string
 |
 
-|[[quarkus-debezium-outbox-tracingspancontext-name]]<<quarkus-debezium-outbox-tracingspancontext-name,`+quarkus.debezium-outbox.tracingspancontext.name+`>>::
+|[[quarkus-debezium-outbox-tracingspan-name]]<<quarkus-debezium-outbox-tracingspan-name,`+quarkus.debezium-outbox.tracing-span.name+`>>::
 The column name for the tracing span context column.
 |string
-|`tracingspancontext`
+|`tracingspan`
 
-|[[quarkus-debezium-outbox-tracingspancontext-column-definition]]<<quarkus-debezium-outbox-tracingspancontext-column-definition,`+quarkus.debezium-outbox.tracingspancontext.column-definition+`>>::
-The database-specific column definition for the tracingspancontext. +
+|[[quarkus-debezium-outbox-tracingspan-column-definition]]<<quarkus-debezium-outbox-tracingspan-column-definition,`+quarkus.debezium-outbox.tracing-span.column-definition+`>>::
+The database-specific column definition for the tracing span context column. +
 for example, `text not null`
 |string
 |`VARCHAR(256)`
