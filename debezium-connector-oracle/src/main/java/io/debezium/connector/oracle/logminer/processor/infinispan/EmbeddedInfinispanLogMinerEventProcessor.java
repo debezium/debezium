@@ -10,17 +10,22 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
 
+import java.util.Map;
 import java.util.Objects;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.api.BasicCache;
 import org.infinispan.commons.util.CloseableIterator;
+import org.infinispan.configuration.cache.Configuration;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
 import org.infinispan.configuration.parsing.ParserRegistry;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -142,12 +147,33 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         Objects.requireNonNull(cacheConfiguration);
 
         // define the cache, parsing the supplied XML configuration
-        cacheManager.defineConfiguration(cacheName,
-                new ParserRegistry().parse(cacheConfiguration)
-                        .getNamedConfigurationBuilders()
-                        .get(cacheName)
-                        .build());
-
+        cacheManager.defineConfiguration(cacheName, parseAndGetConfiguration(cacheName, cacheConfiguration));
         return cacheManager.getCache(cacheName);
+    }
+
+    private Configuration parseAndGetConfiguration(String cacheName, String configuration) {
+        // We should only be parsing a single cache configuration; however since we have no control over the
+        // contents of the provided XML, we validate there is at least 1 and only 1 valid configuration that
+        // is provided, and we use the configuration as is.
+        //
+        // The purpose of these checks is to allow the user to supply a cache configuration with any valid
+        // Infinispan name, and we automatically map that configuration to the cache names used by Debezium.
+        // So for example, a user could supply a cache config named "processed_transactions" and we would
+        // allow that being mapped to our internal cache name of "processed-transactions". Using iterators
+        // avoids a NullPointerException in the event the user supplies a name that doesn't match to our
+        // internal names exactly.
+        final ConfigurationBuilderHolder builderHolder = new ParserRegistry().parse(configuration);
+        final Map<String, ConfigurationBuilder> builders = builderHolder.getNamedConfigurationBuilders();
+        if (builders.size() > 1) {
+            throw new DebeziumException("Infinispan cache configuration for '" + cacheName +
+                    "' contains multiple cache configurations and should only contain one.");
+        }
+        else if (builders.size() == 0) {
+            throw new DebeziumException("Infinispan cache configuration for '" + cacheName +
+                    "' contained no valid cache configuration. Please check your connector configuration");
+        }
+        else {
+            return builders.values().iterator().next().build();
+        }
     }
 }
