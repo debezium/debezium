@@ -2,6 +2,25 @@
 
 set -ouo > /dev/null 2>&1
 
+# Recursive method to check if commit message keys exist in Jira issue list
+function handleGitHistoryCommitMessageIssueKeys {
+  REGEX='(DBZ-[0-9]+)+'
+  ARG=$1
+  if [[ $ARG =~ $REGEX ]] ; then
+    REGEX_KEY="${BASH_REMATCH[1]}"
+    cat "$ISSUE_KEYS" | grep "$REGEX_KEY" > "$ISSUE_CHECK"
+    if [ -s "$ISSUE_CHECK" ]; then
+      # The commit message key does not exist in Jira; add it to the not-found file
+      cat "$SCRIPT_OUTPUT_BAD" | grep "$REGEX_KEY" > "$ISSUE_CHECK"
+      if [ -s "$ISSUE_CHECK" ]; then
+        echo "$REGEX_KEY - $JIRA_URL/browse/$REGEX_KEY" >> "$SCRIPT_OUTPUT_BAD"
+      fi
+    fi
+    # Call method recursively to handle multiple issue keys per commit message
+    handleGitHistoryCommitMessageIssueKeys "${ARG/${BASH_REMATCH[0]}/}"
+  fi
+}
+
 if [ $# -eq 0 ]; then
   echo "No parameters provided."
   echo "Syntax: ./list-missing-commits-by-issue-key.sh <fix-version> <since-tag-name> <to-tag-name>"
@@ -54,11 +73,9 @@ do
   curl --silent -X "GET" "${GITHUB_REPO_URL}/$REPO/compare/$SINCE_TAG_NAME...$TO_TAG_NAME" | jq ".commits[] | .commit.message" > "$GIT_HISTORY_FILE"
 done
 
-echo ""
-echo "Fix Version : $FIX_VERSION"
-echo "Comparing   : $SINCE_TAG_NAME ... $TO_TAG_NAME"
-
 # Read each issue key and verify that at least one commit in one repository exists for the key
+echo ""
+echo "Comparing Jira issue list with all ${#DEBEZIUM_REPOS[@]} repository git histories"
 while IFS=" " read -r ISSUE_KEY
 do
   # Iterate each repository history file
@@ -82,6 +99,24 @@ do
   fi
 
 done < $ISSUE_KEYS
+
+# For each repository, read the commit message history and verify that each commit message's issue
+# keys are in the Jira issue key list. Any that are not will automatically be added to the missing
+# list.
+echo ""
+for REPO in "${DEBEZIUM_REPOS[@]}";
+do
+  echo "Comparing git history $REPO with Jira issue list"
+  GIT_HISTORY_FILE="$GIT_HISTORY_PREFIX-$REPO.txt"
+  while IFS=" " read -r COMMIT_MSG
+  do
+    handleGitHistoryCommitMessageIssueKeys $COMMIT_MSG
+  done < $GIT_HISTORY_FILE
+done
+
+echo ""
+echo "Fix Version : $FIX_VERSION"
+echo "Comparing   : $SINCE_TAG_NAME ... $TO_TAG_NAME"
 
 echo ""
 echo "Issues found: "
