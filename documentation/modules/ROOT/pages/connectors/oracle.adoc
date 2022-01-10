@@ -3424,8 +3424,29 @@ SELECT IOT_NAME
 
 The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
 
+[id="oracle-pga-aggregate-limit"]
+=== ORA-04036: PGA memory used by the instance exceeds PGA_AGGREGATE_LIMIT
+
+Oracle may issue this error if you're connecting to a database that changes very infrequent.
+The {prodname} connector starts an Oracle LogMiner session and reuses this session until a log switch is detected.
+The reuse is both a performance and resource utilization optimization; however, a long-running mining session can cause high PGA memory usage.
+
+If your redo log switch frequency is low, you can avoid the ORA-04036 error by configuring Oracle to automatically switch logs on a defined frequency.
+A log switch causes the connector to restart the mining session, therefore avoiding high PGA memory usage.
+The following configuration forces Oracle to switch log files every 20 minutes if a log switch hasn't occurred within that window:
+
+[source,sql]
+----
+ALTER SYSTEM SET archive_log_target=1200 scope=both;
+----
+
+This change will likely require SYSDBA permissions, so coordinate with your database administrator.
+
 [id="oracle-sys-system-change-not-emitted"]
 === LogMiner adapter does not capture changes made by SYS or SYSTEM
 
 Oracle uses the `SYS` and `SYSTEM` accounts for lots of internal changes and therefore the connector automatically filters changes made by these users when fetching changes from LogMiner.
 Never use the `SYS` or `SYSTEM` user accounts for changes to be emitted by the {prodname} Oracle connector.
+
+
+
