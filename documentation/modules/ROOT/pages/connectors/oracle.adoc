@@ -1588,34 +1588,114 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
     QUOTA UNLIMITED ON logminer_tbs
     CONTAINER=ALL;
 
-  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
-  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL;
-  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ANY TABLE TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
-  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ANY TRANSACTION TO c##dbzuser CONTAINER=ALL;
-  GRANT LOGMINING TO c##dbzuser CONTAINER=ALL;
+  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL; <1>
+  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL; <2>
+  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL; <3>
+  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL; <4>
+  GRANT SELECT ANY TABLE TO c##dbzuser CONTAINER=ALL; <5>
+  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL; <6>
+  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL; <7>
+  GRANT SELECT ANY TRANSACTION TO c##dbzuser CONTAINER=ALL; <8>
+  GRANT LOGMINING TO c##dbzuser CONTAINER=ALL; <9>
 
-  GRANT CREATE TABLE TO c##dbzuser CONTAINER=ALL;
-  GRANT LOCK ANY TABLE TO c##dbzuser CONTAINER=ALL;
-  GRANT CREATE SEQUENCE TO c##dbzuser CONTAINER=ALL;
+  GRANT CREATE TABLE TO c##dbzuser CONTAINER=ALL; <10>
+  GRANT LOCK ANY TABLE TO c##dbzuser CONTAINER=ALL; <11>
+  GRANT CREATE SEQUENCE TO c##dbzuser CONTAINER=ALL; <12>
 
-  GRANT EXECUTE ON DBMS_LOGMNR TO c##dbzuser CONTAINER=ALL;
-  GRANT EXECUTE ON DBMS_LOGMNR_D TO c##dbzuser CONTAINER=ALL;
+  GRANT EXECUTE ON DBMS_LOGMNR TO c##dbzuser CONTAINER=ALL; <13>
+  GRANT EXECUTE ON DBMS_LOGMNR_D TO c##dbzuser CONTAINER=ALL; <14>
 
-  GRANT SELECT ON V_$LOG TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$LOG_HISTORY TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGMNR_LOGS TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGMNR_CONTENTS TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGMNR_PARAMETERS TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGFILE TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$ARCHIVED_LOG TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$LOG TO c##dbzuser CONTAINER=ALL; <15>
+  GRANT SELECT ON V_$LOG_HISTORY TO c##dbzuser CONTAINER=ALL; <16>
+  GRANT SELECT ON V_$LOGMNR_LOGS TO c##dbzuser CONTAINER=ALL; <17>
+  GRANT SELECT ON V_$LOGMNR_CONTENTS TO c##dbzuser CONTAINER=ALL; <18>
+  GRANT SELECT ON V_$LOGMNR_PARAMETERS TO c##dbzuser CONTAINER=ALL; <19>
+  GRANT SELECT ON V_$LOGFILE TO c##dbzuser CONTAINER=ALL; <20>
+  GRANT SELECT ON V_$ARCHIVED_LOG TO c##dbzuser CONTAINER=ALL; <21>
+  GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL; <22>
 
   exit;
 ----
+
+.Descriptions of permissions / grants
+[cols="1,4,5",options="header"]
+|===
+|Item |Role name |Description
+
+|1
+|CREATE SESSION
+|Enables the connector to connect to Oracle.
+
+|2
+|SET CONTAINER
+|Enables the connector to switch between pluggable databases.
+This is only required when the Oracle installation has container database support (CDB) enabled.
+
+|3
+|SELECT ON V_$DATABASE
+|Enables the connector to read the `V$DATABASE` table.
+
+|4
+|FLASHBACK ANY TABLE
+|Enables the connector to perform Flashback queries, which is how the connector performs the initial snapshot of data.
+
+|5
+|SELECT ANY TABLE
+|Enables the connector to read any table.
+
+|6
+|SELECT_CATALOG_ROLE
+|Enables the connector to read the data dictionary, which is needed by Oracle LogMiner sessions.
+
+|7
+|EXECUTE_CATALOG_ROLE
+|Enables the connector to write the data dictionary into the Oracle redo logs, which is needed to track schema changes.
+
+|8
+|SELECT ANY TRANSACTION
+|Enables the snapshot process to perform a Flashback snapshot query against any transaction.
+When `FLASHBACK ANY TABLE` is granted, this should also be granted.
+
+|9
+|LOGMINING
+|This role was added in newer versions of Oracle as a way to grant full access to Oracle LogMiner and its
+packages.  On older versions of Oracle that don't have this role, you can ignore this grant.
+
+|10
+|CREATE TABLE
+|Enables the connector to create its flush table in its default tablespace.
+The flush table allows the connector to explicitly control flushing of the LGWR internal buffers to disk.
+
+|11
+|LOCK ANY TABLE
+|Enables the connector to lock tables during schema snapshot.
+If snapshot locks are explicitly disabled via configuration, this grant can be safely ignored.
+
+|12
+|CREATE ANY SEQUENCE
+|Enables the connector to create a sequence in its default tablespace.
+
+|13
+|EXECUTE ON DBMS_LOGMNR
+|Enables the connector to run methods in the `DBMS_LOGMNR` package.
+This is required to interact with Oracle LogMiner.
+On newer versions of Oracle this is granted via the `LOGMINING` role but on older versions, this must be explicitly granted.
+
+|14
+|EXECUTE ON DBMS_LOGMNR_D
+|Enables the connector to run methods in the `DBMS_LOGMNR_D` package.
+This is required to interact with Oracle LogMiner.
+On newer versions of Oracle this is granted via the `LOGMINING` role but on older versions, this must be explicitly granted.
+
+|15 to 22
+|SELECT ON V_$....
+|Enables the connector to read these tables.
+The connector must be able to read information about the Oracle redo and archive logs to prepare the Oracle LogMiner session.
+Without these grants, the connector cannot operate.
+
+|===
+
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
 // Title: Deployment of {prodname} Oracle connectors
