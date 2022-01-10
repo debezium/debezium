@@ -2231,7 +2231,9 @@ defaultValue
 currentTimestamp
     :
     (
-      (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP | CURDATE | CURTIME) ('(' decimalLiteral? ')')?  // MariaDB-specific
+      (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP
+      | CURDATE | CURTIME) // MariaDB-specific
+      ('(' decimalLiteral? ')')?
       | NOW '(' decimalLiteral? ')'
     )
     ;
@@ -2260,7 +2262,8 @@ functionCall
 
 specificFunction
     : (
-      CURRENT_DATE | CURRENT_TIME | CURRENT_TIMESTAMP | CURDATE | CURTIME   // MariaDB-specific
+      CURRENT_DATE | CURRENT_TIME | CURRENT_TIMESTAMP
+      | CURDATE | CURTIME   // MariaDB-specific
       | CURRENT_USER | LOCALTIME | UTC_TIMESTAMP | SCHEMA
       ) ('(' ')')?                                                  #simpleFunctionCall
     | CONVERT '(' expression separator=',' convertedDataType ')'    #dataTypeFunctionCall
