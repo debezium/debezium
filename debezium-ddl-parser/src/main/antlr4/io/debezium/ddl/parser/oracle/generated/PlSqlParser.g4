@@ -104,6 +104,8 @@ unit_statement
     | grant_statement
 
     | procedure_call
+
+    | flashback_table
     ;
 
 // DDL -> SQL Statements for Stored PL/SQL Units
@@ -3321,6 +3323,34 @@ pipe_row_statement
 
 body
     : BEGIN seq_of_statements (EXCEPTION exception_handler+)? END label_name?
+    ;
+
+flashback_table
+    : FLASHBACK TABLE (tableview_name (',' tableview_name)*) TO (
+        flashback_scn_clause |
+        flashback_timestamp_clause |
+        flashback_restore_point_clause |
+        flashback_before_drop_clause)
+    ;
+
+flashback_scn_clause
+    : SCN expression flashback_triggers_clause?
+    ;
+
+flashback_timestamp_clause
+    : TIMESTAMP expression flashback_triggers_clause?
+    ;
+
+flashback_restore_point_clause
+    : RESTORE POINT expression flashback_triggers_clause?
+    ;
+
+flashback_before_drop_clause
+    : BEFORE DROP (RENAME TO tableview_name)?
+    ;
+
+flashback_triggers_clause
+    : (ENABLE | DISABLE)? TRIGGERS
     ;
 
 // Body Specific Clause
