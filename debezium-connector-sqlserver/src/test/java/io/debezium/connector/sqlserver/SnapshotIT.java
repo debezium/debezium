@@ -41,6 +41,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.time.Timestamp;
 import io.debezium.util.Testing;
@@ -164,7 +165,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1280")
     public void testDeadlockDetection() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
         final Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 1_000)
                 .build();

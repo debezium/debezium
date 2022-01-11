@@ -26,6 +26,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -1081,7 +1082,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 .with(OracleConnectorConfig.LOB_ENABLED, true)
                 .build();
 
-        LogInterceptor logInterceptor = new LogInterceptor();
+        LogInterceptor logminerLogInterceptor = new LogInterceptor(TransactionCommitConsumer.class);
+        final LogInterceptor xstreamLogInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -1108,7 +1110,10 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 "dbms_lob.erase(loc_c, amount, 1); end;");
 
         // Wait until the log has recorded the message.
-        Awaitility.await().atMost(Duration.ofMinutes(1)).until(() -> logInterceptor.containsWarnMessage("LOB_ERASE for table"));
+        // Wait until the log has recorded the message.
+        Awaitility.await().atMost(Duration.ofMinutes(1))
+                .until(() -> logminerLogInterceptor.containsWarnMessage("LOB_ERASE for table")
+                        || xstreamLogInterceptor.containsWarnMessage("LOB_ERASE for table"));
         assertNoRecordsToConsume();
     }
 

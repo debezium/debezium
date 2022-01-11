@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.antlr.listener.RenameTableParserListener;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.DatabaseHistory;
@@ -94,7 +95,7 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
     @Test
     public void shouldProcessAndWarnOnNonWhitelistedMigrateTable() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RenameTableParserListener.class);
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
@@ -144,7 +145,7 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
     @Test
     public void shouldWarnOnInvalidMigrateTable() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RenameTableParserListener.class);
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)

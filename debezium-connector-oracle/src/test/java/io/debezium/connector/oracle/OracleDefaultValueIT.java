@@ -305,7 +305,7 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @FixFor("DBZ-4208")
     public void shouldHandleDefaultValueFromSequencesAsNoDefault() throws Exception {
         // Used to track the number of default value parser exceptions
-        LogInterceptor logInterceptor = new LogInterceptor();
+        LogInterceptor logInterceptor = new LogInterceptor(OracleDefaultValueConverter.class);
 
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_id", "number(18,0)",
@@ -320,7 +320,7 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-4360")
     public void shouldHandleDefaultValuesWhereSqlMayContainsTrailingSpaces() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor();
+        LogInterceptor logInterceptor = new LogInterceptor(OracleDefaultValueConverter.class);
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_num", "number(15)",
                         "null ", "null ",

@@ -53,6 +53,8 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
@@ -175,7 +177,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1642")
     public void readOnlyApplicationIntent() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(SqlServerSnapshotChangeEventSource.class);
         final String appId = "readOnlyApplicationIntent-" + UUID.randomUUID();
 
         final int RECORDS_PER_TABLE = 5;
@@ -1233,7 +1235,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.COLUMN_INCLUDE_LIST, ".^")
                 .build();
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -1901,7 +1903,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningAfterApplyingFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -1919,7 +1921,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1242")
     public void testNoEmptySchemaWarningAfterApplyingFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -2112,7 +2114,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(SqlServerConnectorIT.class);
         start(SqlServerConnector.class, config);
         assertConnectorNotRunning();
         assertThat(logInterceptor.containsStacktraceElement(
@@ -2397,7 +2399,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .build();
 
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(SqlServerStreamingChangeEventSource.class);
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 

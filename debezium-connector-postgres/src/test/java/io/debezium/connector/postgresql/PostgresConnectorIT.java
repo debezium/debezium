@@ -68,10 +68,12 @@ import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -88,6 +90,8 @@ import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -1721,7 +1725,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1437")
     public void shouldPeformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(InitialOnlySnapshotter.class);
 
         TestHelper.dropDefaultReplicationSlot();
 
@@ -1832,7 +1836,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-2094")
     @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "Fails due to DBZ-3158")
     public void customSnapshotterSkipsTablesOnRestart() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
 
         TestHelper.execute(SETUP_TABLES_STMT);
         // Perform an regular snapshot using the always snapshotter
@@ -1897,7 +1901,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-2094")
     @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "Unstable with WAL2JSON plugin, leads to long build time and fails after 6h")
     public void customSnapshotterSkipsTablesOnRestartWithConcurrentTx() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
 
         Testing.Print.enable();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -2091,7 +2095,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningAfterApplyingFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -2111,7 +2115,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1242")
     public void testNoEmptySchemaWarningAfterApplyingFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -2131,7 +2135,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void testCustomPublicationNameUsed() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
 
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
@@ -2180,7 +2184,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1519")
     public void shouldNotIssueWarningForNoMonitoredTablesAfterApplyingFilters() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.execute(INSERT_STMT);
@@ -2203,7 +2207,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-2865")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.DECODERBUFS, reason = "Expected warning message is emitted by protobuf decoder")
     public void shouldClearDatabaseWarnings() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
 
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.execute(INSERT_STMT);
@@ -2246,7 +2250,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.dropPublication();
 
         // Create log interceptor and restart the connector, should observe publication gets re-created
-        final LogInterceptor interceptor = new LogInterceptor();
+        final LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
         start(PostgresConnector.class, config);
         waitForStreamingRunning();
 
@@ -2513,7 +2517,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldConfigureSubscriptionsForAllTablesByDefault() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
 
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
@@ -2537,7 +2541,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldConfigureSubscriptionsFromTableFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
 
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
@@ -2630,7 +2634,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-2885")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldThrowWhenTableFiltersIsEmpty() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnectorIT.class);
 
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");

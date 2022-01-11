@@ -59,6 +59,7 @@ import io.debezium.connector.oracle.junit.RequireDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -2289,7 +2290,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3616")
     public void shouldNotLogWarningsAboutCommittedTransactionsWhileStreamingNormally() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
         TestHelper.dropTables(connection, "dbz3616", "dbz3616");
         try {
             connection.execute("CREATE TABLE dbz3616 (id number(9,0), data varchar2(50))");
@@ -2336,9 +2336,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ3616");
             assertThat(((Struct) tableRecords.get(0).value()).getStruct("after").get("ID")).isEqualTo(2);
             assertThat(((Struct) tableRecords.get(1).value()).getStruct("after").get("ID")).isEqualTo(1);
-
-            // Now check that we didn't get the unnecessary warning messages.
-            assertThat(logInterceptor.containsWarnMessage("was already processed, ignore.")).isFalse();
         }
         finally {
             TestHelper.dropTables(connection, "dbz3616", "dbz3616");
@@ -2768,7 +2765,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4161_WITH_A_NAME_THAT_IS_GREATER_THAN_30")
                     .build();
 
-            LogInterceptor logInterceptor = new LogInterceptor();
+            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
@@ -2811,7 +2808,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4161")
                     .build();
 
-            LogInterceptor logInterceptor = new LogInterceptor();
+            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 

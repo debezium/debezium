@@ -25,6 +25,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -97,7 +98,7 @@ public class FlushStrategyIT extends AbstractConnectorTest {
             // Insert a second row into flush table
             insertFlushTable("12345");
 
-            LogInterceptor logInterceptor = new LogInterceptor();
+            LogInterceptor logInterceptor = new LogInterceptor(CommitLogWriterFlushStrategy.class);
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();

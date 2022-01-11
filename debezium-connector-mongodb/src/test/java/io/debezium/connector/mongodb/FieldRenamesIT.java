@@ -1720,7 +1720,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         dropAndInsertDocuments(database, collection, document);
 
-        logInterceptor = new LogInterceptor();
+        logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
@@ -1741,7 +1741,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         insertDocuments(database, collection, document);
 
-        logInterceptor = new LogInterceptor();
+        logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
@@ -1790,7 +1790,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         dropAndInsertDocuments(DATABASE_NAME, COLLECTION_NAME, snapshot);
 
-        logInterceptor = new LogInterceptor();
+        logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", SERVER_NAME);
 
@@ -1804,7 +1804,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         TestHelper.cleanDatabase(primary(), DATABASE_NAME);
 
-        logInterceptor = new LogInterceptor();
+        logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", SERVER_NAME);
 
@@ -1827,7 +1827,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(renamesList, DATABASE_NAME, COLLECTION_NAME);
         context = new MongoDbTaskContext(config);
 
-        logInterceptor = new LogInterceptor();
+        logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", SERVER_NAME);
 
