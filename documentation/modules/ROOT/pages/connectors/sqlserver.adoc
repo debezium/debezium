@@ -25,6 +25,13 @@ endif::community[]
 
 The {prodname} SQL Server connector captures row-level changes that occur in the schemas of a SQL Server database.
 
+ifdef::community[]
+For information about the SQL Server versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the SQL Server versions that are compatible with this connector, see the link:{NameDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
 ifdef::product[]
 
 For details about the {prodname} SQL Server connector and its use, see following topics:
