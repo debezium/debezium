@@ -36,7 +36,7 @@ public class KeepCaptureModeAfterRestartIT extends AbstractMongoConnectorIT {
     public void changeStreamsToOplog() throws Exception {
         // Testing.Print.enable();
 
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
         testSwitch(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, CaptureMode.OPLOG);
 
@@ -51,7 +51,7 @@ public class KeepCaptureModeAfterRestartIT extends AbstractMongoConnectorIT {
     public void oplogToChangeStreams() throws Exception {
         // Testing.Print.enable();
 
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
         testSwitch(CaptureMode.OPLOG, CaptureMode.CHANGE_STREAMS);
 

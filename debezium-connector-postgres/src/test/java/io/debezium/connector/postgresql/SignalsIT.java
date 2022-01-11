@@ -20,6 +20,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.signal.Signal;
 
 public class SignalsIT extends AbstractConnectorTest {
 
@@ -47,7 +48,7 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void signalLog() throws InterruptedException {
         // Testing.Print.enable();
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(Signal.class);
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -78,7 +79,7 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void signalingDisabled() throws InterruptedException {
         // Testing.Print.enable();
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(Signal.class);
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);

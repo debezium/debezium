@@ -71,14 +71,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <scope>test</scope>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>
@@ -94,6 +89,12 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-test-common</artifactId>
       <version>${quarkus.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.jboss.slf4j</groupId>
+          <artifactId>slf4j-jboss-logmanager</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 </project>

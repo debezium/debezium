@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb;
 import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -711,7 +710,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-865 and DBZ-1242")
     public void shouldConsumeEventsFromCollectionWithReplacedTopicName() throws InterruptedException, IOException {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbSchema.class);
 
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
@@ -765,7 +764,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningAfterApplyingCollectionFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbSchema.class);
 
         // Use the DB configuration to define the connector's configuration...
         config = TestHelper.getConfiguration().edit()

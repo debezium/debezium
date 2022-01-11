@@ -1385,7 +1385,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1565")
     public void shouldWarnOnMissingHeartbeatForFilteredEvents() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
         startConnector(config -> config
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.b")

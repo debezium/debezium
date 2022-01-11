@@ -20,6 +20,8 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.EventDispatcher;
 import io.debezium.util.Testing;
 
 /**
@@ -63,7 +65,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.WARN)
                 .build();
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(EventDispatcher.class);
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -129,7 +131,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -148,7 +150,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         Awaitility.await()
-                .alias("Found warning message in logs")
+                .alias("Found error message in logs")
                 .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
                     boolean foundErrorMessageInLogs = logInterceptor.containsStacktraceElement("Error while processing event at offset {");
                     return foundErrorMessageInLogs && !engine.isRunning();

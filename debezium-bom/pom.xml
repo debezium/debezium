@@ -56,6 +56,7 @@
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>
         <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
+        <version.logback>1.2.10</version.logback>
     </properties>
 
     <dependencyManagement>
@@ -231,14 +232,9 @@
                 <version>${version.org.slf4j}</version>
             </dependency>
             <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>${version.org.slf4j}</version>
-            </dependency>
-            <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
-                <version>${version.log4j}</version>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${version.logback}</version>
             </dependency>
 
             <!-- Scripting -->

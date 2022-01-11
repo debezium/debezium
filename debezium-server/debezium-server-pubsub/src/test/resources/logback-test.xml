@@ -1,0 +1,39 @@
+<configuration>
+
+    <appender name="CONSOLE"
+        class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="warn">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+    <!-- Set up the default logging to be INFO level, then override specific 
+        units -->
+    <logger name="io.debezium" level="info" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+        name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
+        level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+        name="io.debezium.converters.CloudEventsConverterConfig"
+        level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+        name="org.apache.kafka.connect.json.JsonConverterConfig"
+        level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+        name="io.confluent"
+        level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+</configuration>

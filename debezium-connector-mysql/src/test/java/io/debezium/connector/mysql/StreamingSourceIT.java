@@ -573,7 +573,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     }
 
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
-        final LogInterceptor logInterceptor = new LogInterceptor();
+        final LogInterceptor logInterceptor = new LogInterceptor(MySqlStreamingChangeEventSource.class);
         Configuration.Builder builder = simpleConfig()
                 .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("orders"));
