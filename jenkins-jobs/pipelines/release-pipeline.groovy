@@ -337,6 +337,17 @@ node('Slave') {
             }
         }
 
+        stage('Check missing backports') {
+            if (!DRY_RUN) {
+                dir(DEBEZIUM_DIR) {
+                    def rc = sh(script: "github-support/list-missing-commits-by-issue-key.sh", returnStatus: true)
+                    if (rc != 0) {
+                        error "Error, there are some missing backport commits."
+                    }
+                }
+            }
+        }
+
         stage('Check Jira') {
             if (!DRY_RUN) {
                 if (findVersion() == null) {

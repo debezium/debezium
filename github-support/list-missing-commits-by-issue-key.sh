@@ -2,25 +2,6 @@
 
 set -ouo > /dev/null 2>&1
 
-# Recursive method to check if commit message keys exist in Jira issue list
-function handleGitHistoryCommitMessageIssueKeys {
-  REGEX='(DBZ-[0-9]+)+'
-  ARG=$1
-  if [[ $ARG =~ $REGEX ]] ; then
-    REGEX_KEY="${BASH_REMATCH[1]}"
-    cat "$ISSUE_KEYS" | grep "$REGEX_KEY" > "$ISSUE_CHECK"
-    if [ -s "$ISSUE_CHECK" ]; then
-      # The commit message key does not exist in Jira; add it to the not-found file
-      cat "$SCRIPT_OUTPUT_BAD" | grep "$REGEX_KEY" > "$ISSUE_CHECK"
-      if [ -s "$ISSUE_CHECK" ]; then
-        echo "$REGEX_KEY - $JIRA_URL/browse/$REGEX_KEY" >> "$SCRIPT_OUTPUT_BAD"
-      fi
-    fi
-    # Call method recursively to handle multiple issue keys per commit message
-    handleGitHistoryCommitMessageIssueKeys "${ARG/${BASH_REMATCH[0]}/}"
-  fi
-}
-
 if [ $# -eq 0 ]; then
   echo "No parameters provided."
   echo "Syntax: ./list-missing-commits-by-issue-key.sh <fix-version> <since-tag-name> <to-tag-name>"
@@ -55,6 +36,28 @@ GIT_HISTORY_PREFIX="$DIR/git-history"
 ISSUE_CHECK="$DIR/issue-check.txt"
 SCRIPT_OUTPUT_BAD="$DIR/debezium-backport-results-not-exists.txt"
 SCRIPT_OUTPUT_OK="$DIR/debezium-backport-results-found.txt"
+
+rc=0
+
+# Recursive method to check if commit message keys exist in Jira issue list
+function handleGitHistoryCommitMessageIssueKeys {
+  REGEX='(DBZ-[0-9]+)+'
+  ARG=$1
+  if [[ $ARG =~ $REGEX ]] ; then
+    REGEX_KEY="${BASH_REMATCH[1]}"
+    cat "$ISSUE_KEYS" | grep "$REGEX_KEY" > "$ISSUE_CHECK"
+    if [ -s "$ISSUE_CHECK" ]; then
+      # The commit message key does not exist in Jira; add it to the not-found file
+      cat "$SCRIPT_OUTPUT_BAD" | grep "$REGEX_KEY" > "$ISSUE_CHECK"
+      if [ -s "$ISSUE_CHECK" ]; then
+        echo "$REGEX_KEY - $JIRA_URL/browse/$REGEX_KEY" >> "$SCRIPT_OUTPUT_BAD"
+        rc=1
+      fi
+    fi
+    # Call method recursively to handle multiple issue keys per commit message
+    handleGitHistoryCommitMessageIssueKeys "${ARG/${BASH_REMATCH[0]}/}"
+  fi
+}
 
 # Repositories to check for existence of commits
 declare -a DEBEZIUM_REPOS=("debezium" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "docker-images")
@@ -93,6 +96,7 @@ do
   if [ $ISSUE_KEY_FOUND -eq 0 ]; then
     # Issue key was not found
     echo "$ISSUE_KEY - $JIRA_URL/browse/$ISSUE_KEY" >> "$SCRIPT_OUTPUT_BAD"
+    rc=1
   else
     # Issue key was found
     echo "$ISSUE_KEY - $JIRA_URL/browse/$ISSUE_KEY" >> "$SCRIPT_OUTPUT_OK"
@@ -133,3 +137,5 @@ if [ -s "$SCRIPT_OUTPUT_BAD" ]; then
 fi
 
 rm -rf $DIR
+
+exit $rc;
