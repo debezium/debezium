@@ -64,4 +64,9 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
     protected abstract Object readDateField(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException;
 
     protected abstract Object readTimestampField(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException;
+
+    protected void logInvalidValue(ResultSet resultSet, int columnIndex, Object value) throws SQLException {
+        final String columnName = resultSet.getMetaData().getColumnName(columnIndex);
+        logger.trace("Column '" + columnName + "', detected an invalid value of '" + value + "'");
+    }
 }
