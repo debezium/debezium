@@ -74,11 +74,11 @@ site and should be updated when dependencies were updated with the new release.
 
 Now either proceed at [Manual release](#manual-release) or [Automated release](#automated-release).
 
-# Manual Release
+## Manual release
 
 You can skip to [Automated release](#automated-release) when using the Jenkins CI/CD Release pipeline for the rest of the release process.
 
-## Start with the correct branch
+### Start with the correct branch
 
 Make sure that you are on the correct branch that is to be released, and that your local Git repository has all of the most recent commits. For example, to release from the `main` branch on the remote repository named `upstream`:
 
@@ -97,7 +97,7 @@ This should report:
 
 Only if this is the case can you proceed with the release.
 
-## Update versions and tag
+### Update versions and tag
 
 Once the codebase is in a state that is ready to be released, use the following command to automatically update the POM to use the release number, commit the changes to your local Git repository, tag that commit, and then update the POM to use snapshot versions and commit to your local Git repository:
 
@@ -137,7 +137,7 @@ Also point the `development_docs` branch to the release tag:
     $ git checkout development_docs
     $ git merge <release tag>
 
-## Push to GitHub
+### Push to GitHub
 
 If the release was successfully prepared, the next step is to push the commits and the tag to the Debezium upstream repository.
 
@@ -147,7 +147,7 @@ Note that if you check for local changes using `git status`, you will see a hand
 
 At this point, the code on the branch in the [official Debezium repository](https://github.com/debezium/debezium) has been modified and a tag has been created for the release, and we know that the code on the tag successfully builds. Now we're ready to actually perform the release.
 
-## Perform the release
+### Perform the release
 
 Now that the [official Debezium repository](https://github.com/debezium/debezium) has a tag with the code that we want to release, the next step is to actually build and release what we tagged:
 
@@ -164,7 +164,7 @@ At this point, the staging repository contains all the artifacts for the release
 
 Before we _release_ the staging repository, we first need to review and verify the artifacts.
 
-### Reviewing the staged artifacts
+#### Reviewing the staged artifacts
 
 Go to Sonatype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the staging repository, which should be _closed_ but not _released_.
 
@@ -175,7 +175,7 @@ Before continuing, using this lower frame of the window to collect the following
 * In the "Summary" tab, locate the URL of the staging repository, which might look something like this: `https://oss.sonatype.org/content/repositories/iodebezium-1002`
 * In the "Content" tab, navigate to, select, and obtain the MD5 hash of the `...-plugin.tar.gz` file for each connector. (Do _not_ select the `...-plugin.tar.gz.md5` file, since the Repository Manager does not show the contents of the file.)
 
-### Validating the staged artifacts
+#### Validating the staged artifacts
 
 At this time, the best way to verify the staged artifacts are valid is to locally update the [Debezium Docker images](https://github.com/debezium/docker-images) used in the [Debezium tutorial](https://debezium.io/docs/tutorial) to use the latest connector plugins, and then to run through the tutorial using those locally-built Docker images.
 
@@ -223,7 +223,7 @@ If you need to update the base Docker image for the JDK to use a different JDK v
 5. re-run the `./build-debezium.sh <version>` command to make sure everything builds,
 6. commit the changes locally and add to your still-unmerged pull request.
 
-## Releasing the artifacts
+### Releasing the artifacts
 
 Once you have verified that the artifacts in the staging repository are acceptable, the next step is to _release_ the staging repository so that its artfacts are then pushed into the Maven Central repository.
 
@@ -233,7 +233,7 @@ Select the staging repository (by checking the box) and press the "Release" butt
 
 It may take some time for the artifacts to actually be [visible in Maven Central search](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22) or [directly in Maven Central](https://repo1.maven.org/maven2/io/debezium/debezium-core/).
 
-## Merge your pull request to update the Docker images
+### Merge your pull request to update the Docker images
 
 Only after the artifacts are available on Maven Central can you merge the pull request for the Debezium Docker images. As soon as your changes are merged, Docker Hub will automatically build and deploy the Docker images that were previously configured. If you've just released a patch release and only updated existing Docker images, then you can proceed to [updating the documentation and blog](#update-the-documentation-and-blog).
 
@@ -247,7 +247,8 @@ First create a tag in the [postgres-decoderbufs](https://github.com/debezium/pos
 Then update the Debezium version referenced in the [Postgres Docker file](https://github.com/debezium/docker-images/blob/main/postgres/9.6/Dockerfile#L22)
 and push that commit which will cause the image to be re-published on Docker Hub automatically.
 
-## Reconfigure Docker Hub builds
+### Reconfigure Docker Hub builds
+
 If a new version of Docker images is going to be added it is necessary in Docker Hub build settings to
 
 * add a new build for each image with new version
@@ -255,18 +256,19 @@ If a new version of Docker images is going to be added it is necessary in Docker
 * update `nightly` and `latest` build tags
 * update rules the creates micro tags
 
-## Close Jira issues
+### Close Jira issues
+
 Close all issues relesed with this version. The affected issues can be found using JQL query
 ```
 project=DBZ AND fixVersion=<VERSION> AND status='Resolved'
 ```
 Then mark release in Jira as *Released* using `Release` action.
 
-## Documentation post-release changes
+### Documentation post-release changes
 
 After the release, the `antora.yml` file should be changed so that the `version` attribute references `master` once more.
 
-## Update the documentation and blog
+### Update the documentation and blog
 
 Update the documentation on the [Debezium website](https://debezium.io) by following the [instructions for changing the website](https://debezium.io/docs/contribute/#website).
 This typically involves updating the documentation (look for pending pull requests tagged as "Merge after next release") and writing a blog post to announce the release.
@@ -274,8 +276,7 @@ Then, create a pull request with your changes and wait for a committer to approv
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
 
-
-# Automated release
+## Automated release
 
 There are few manual steps to be completed before the execution:
 
