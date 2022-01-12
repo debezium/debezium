@@ -22,7 +22,7 @@ ifdef::community[]
 For information about the PostgreSQL versions that are compatible with the connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
 ifdef::product[]
-For information about the PostgreSQL versions that are compatible with the connector, see the link:{NameDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+For information about the PostgreSQL versions that are compatible with the connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
 The first time it connects to a PostgreSQL server or cluster, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a PostgreSQL database. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
