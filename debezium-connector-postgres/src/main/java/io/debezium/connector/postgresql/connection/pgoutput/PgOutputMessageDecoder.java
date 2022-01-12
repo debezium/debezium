@@ -47,6 +47,7 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.connector.postgresql.connection.WalPositionLocator;
+import io.debezium.data.Envelope;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -197,7 +198,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 decodeDelete(buffer, typeRegistry, processor);
                 break;
             case TRUNCATE:
-                if (decoderContext.getConfig().truncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
+                if (isTruncateEventsIncluded()) {
                     decodeTruncate(buffer, typeRegistry, processor);
                 }
                 else {
@@ -226,6 +227,13 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     @Override
     public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
         return builder;
+    }
+
+    private boolean isTruncateEventsIncluded() {
+        if (decoderContext.getConfig().truncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
+            return true;
+        }
+        return !decoderContext.getConfig().getSkippedOperations().contains(Envelope.Operation.TRUNCATE);
     }
 
     /**
