@@ -51,6 +51,8 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
 
         conn = TestHelper.defaultConnection();
         conn.resetSessionToCdb();
+
+        TestHelper.forceFlushOfRedoLogsToArchiveLogs();
     }
 
     @AfterClass
