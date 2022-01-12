@@ -22,7 +22,7 @@ ifdef::community[]
 For information about the Db2 Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
 ifdef::product[]
-For information about the Db2 Database versions that are compatible with this connector, see the link:{NameDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+For information about the Db2 Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
 This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode". When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
