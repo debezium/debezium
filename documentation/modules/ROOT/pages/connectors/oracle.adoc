@@ -25,7 +25,7 @@ ifdef::community[]
 For information about the Oracle Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
 ifdef::product[]
-For information about the Oracle Database versions that are compatible with this connector, see the link:{NameDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+For information about the Oracle Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
 {prodname} ingests change events from Oracle by using the native LogMiner database package
