@@ -20,6 +20,7 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -573,7 +574,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     /**
      * The set of predefined TruncateHandlingMode options or aliases
+     *
+     * @deprecated use skipped operations instead.
      */
+    @Deprecated
     public enum TruncateHandlingMode implements EnumeratedValue {
 
         /**
@@ -953,6 +957,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "A comma-separated list of regular expressions that match the logical decoding message prefixes to be monitored. All prefixes are monitored by default.");
 
+    /**
+     * @deprecated use skipped operations instead
+     */
+    @Deprecated
     public static final Field TRUNCATE_HANDLING_MODE = Field.create("truncate.handling.mode")
             .withDisplayName("Truncate handling mode")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 23))
@@ -960,9 +968,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation(PostgresConnectorConfig::validateTruncateHandlingMode)
-            .withDescription("Specify how TRUNCATE operations are handled for change events (supported only on pg11+ pgoutput plugin), including: " +
+            .withDescription("(Deprecated) Specify how TRUNCATE operations are handled for change events (supported only on pg11+ pgoutput plugin), including: " +
                     "'skip' to skip / ignore TRUNCATE events (default), " +
-                    "'include' to handle and include TRUNCATE events");
+                    "'include' to handle and include TRUNCATE events. " +
+                    "Use 'skipped.operations' instead.");
 
     public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
             .withDisplayName("HStore Handling")
@@ -1071,6 +1080,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withDefault(2)
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
+
+    public static final Field SKIPPED_OPERATIONS = CommonConnectorConfig.SKIPPED_OPERATIONS
+            .withValidation(CommonConnectorConfig::validateSkippedOperation, PostgresConnectorConfig::validateSkippedOperations);
 
     private final TruncateHandlingMode truncateHandlingMode;
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
@@ -1214,6 +1226,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Postgres")
+            .excluding(CommonConnectorConfig.SKIPPED_OPERATIONS)
             .type(
                     HOSTNAME,
                     PORT,
@@ -1237,7 +1250,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SSL_SOCKET_FACTORY,
                     STATUS_UPDATE_INTERVAL_MS,
                     TCP_KEEPALIVE,
-                    XMIN_FETCH_INTERVAL)
+                    XMIN_FETCH_INTERVAL,
+                    // Use this connector's implementation rather than common connector's flavor
+                    SKIPPED_OPERATIONS)
             .events(
                     INCLUDE_UNKNOWN_DATATYPES,
                     TOASTED_VALUE_PLACEHOLDER)
@@ -1291,17 +1306,41 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return errors;
             }
             if (truncateHandlingMode == TruncateHandlingMode.INCLUDE) {
-                final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
-                if (!logicalDecoder.supportsTruncate()) {
-                    String message = String.format(
-                            "%s '%s' is not supported with configuration %s '%s'",
-                            field.name(), truncateHandlingMode.getValue(), PLUGIN_NAME.name(), logicalDecoder.getValue());
-                    problems.accept(field, value, message);
-                    errors++;
+                errors += validateTruncateAllowed(config, field, problems, value, truncateHandlingMode.getValue());
+            }
+            if (errors == 0) {
+                LOGGER.warn("Configuration property '{}' is deprecated and will be removed in future versions. Please use '{}' instead.",
+                        TRUNCATE_HANDLING_MODE.name(),
+                        SKIPPED_OPERATIONS.name());
+            }
+        }
+        return errors;
+    }
+
+    private static int validateSkippedOperations(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String value = config.getString(field);
+        int errors = 0;
+        if (value != null) {
+            String[] operations = value.split(",");
+            for (String operation : operations) {
+                if ("t".equals(operation)) {
+                    errors += validateTruncateAllowed(config, field, problems, value, "t");
                 }
             }
         }
         return errors;
+    }
+
+    private static int validateTruncateAllowed(Configuration config, Field field, Field.ValidationOutput problems, Object value, Object resolvedValue) {
+        final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
+        if (!logicalDecoder.supportsTruncate()) {
+            String message = String.format(
+                    "%s '%s' is not supported with configuration %s '%s'",
+                    field.name(), resolvedValue, PLUGIN_NAME.name(), logicalDecoder.getValue());
+            problems.accept(field, value, message);
+            return 1;
+        }
+        return 0;
     }
 
     private static int validateToastedValuePlaceholder(Configuration config, Field field, Field.ValidationOutput problems) {

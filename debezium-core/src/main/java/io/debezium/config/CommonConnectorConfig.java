@@ -778,7 +778,7 @@ public abstract class CommonConnectorConfig {
         return count;
     }
 
-    private static int validateSkippedOperation(Configuration config, Field field, ValidationOutput problems) {
+    protected static int validateSkippedOperation(Configuration config, Field field, ValidationOutput problems) {
         String operations = config.getString(field);
 
         if (operations == null) {
