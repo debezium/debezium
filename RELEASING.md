@@ -5,12 +5,16 @@ The Debezium project uses Maven for its build system, relying up on the _release
 The release process is automated by means of a parameterized [Jenkins job](https://github.com/debezium/debezium/blob/main/jenkins-jobs/release.yaml),
 that takes the required information as an input (release version etc.)
 and performs most of the required tasks.
-Refer to [Automated Release](#automated-release) below for the details.
+Refer to [Automated release](#automated-release) below for the details.
 
 The following describes the individual steps of the release process,
 which may be useful for updating the automated pipeline or in case a manual release is necessary.
 
-## Configure Debezium versions in Jira
+## Preparations
+
+These steps must be executed for both manual and automated releases.
+
+### Configure Debezium versions in Jira
 
 Start off from the [__Releases__](https://issues.redhat.com/projects/DBZ?selectedItem=com.atlassian.jira.jira-projects-plugin%3Arelease-page&status=released-unreleased)
 page of the Debezium Jira project.
@@ -20,7 +24,7 @@ will be released (e.g. `1.7.0.Beta1`). All issues previously assigned to the old
 _next_ version are now set to the version of the release.  
 Then create a new `next` version, e.g. `1.7-next`.
 
-## Verify Jira issues
+### Verify Jira issues
 
 All issues planned for this release must be resolved.
 If not, they have to either be re-planned to another release or rejected.
@@ -34,7 +38,7 @@ page.
 
 Also make sure that each issue is assigned to a component ("mysql-connector" etc.).
 
-## Update the changelog and breaking changes
+### Update the changelog and breaking changes
 
 Create two branches for pull requests to add changelogs (and release announcement) for this
 main repository and the [`debezium.github.io` repository](https://github.com/debezium/debezium.github.io).
@@ -50,7 +54,7 @@ JIRA issues that break backwards compatability for existing consumers, should be
 Search for them using [this query](https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the
 implications and required steps for upgrading in the changelog on the website.
 
-## Update antora.yml and series.yml
+### Update antora.yml and series.yml
 
 The `antora.yml` file in the `main` branch always used the version _main_.
 During the release process, this file's `version` attribute should be changed to reference the correct major/minor version number.
@@ -68,11 +72,11 @@ version: '2.1'
 `series.yml` holds metadata for the `Tested Versions` section on the Debezium [Releases](https://debezium.io/releases/)
 site and should be updated when dependencies were updated with the new release.
 
+Now either proceed at [Manual release](#manual-release) or [Automated release](#automated-release).
 
 # Manual Release
 
-You can skip this section to [__Automated Release__](#automated-release) when
-using the Jenkins CI/CD Release pipeline for the rest of the release process.
+You can skip to [Automated release](#automated-release) when using the Jenkins CI/CD Release pipeline for the rest of the release process.
 
 ## Start with the correct branch
 
@@ -133,7 +137,7 @@ Also point the `development_docs` branch to the release tag:
     $ git checkout development_docs
     $ git merge <release tag>
 
-## Push to Git
+## Push to GitHub
 
 If the release was successfully prepared, the next step is to push the commits and the tag to the Debezium upstream repository.
 
@@ -271,7 +275,7 @@ Then, create a pull request with your changes and wait for a committer to approv
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
 
 
-# Automated Release
+# Automated release
 
 There are few manual steps to be completed before the execution:
 
