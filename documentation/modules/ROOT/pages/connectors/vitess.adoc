@@ -1270,6 +1270,39 @@ By default, no operations are skipped.
 |`Long.MAX_VALUE`
 |Control the interval between periodic gPRC keepalive pings for VStream. Defaults to `Long.MAX_VALUE` (disabled).
 
+|[[vitess-property-grpc-headers]]<<vitess-property-grpc-headers, `+vitess.grpc.headers+`>>
+|
+|Specify a comma-separated list of gRPC headers. Defaults to empty. The format is: +
+ +
+_key1:value1,key2:value2_,... +
+ +
+For example, +
+ +
+`x-envoy-upstream-rq-timeout-ms:0,x-envoy-max-retries:2`
+
+|[[vitess-property-column-propagate-source-type]]<<vitess-property-column-propagate-source-type, `+column.propagate.source.type+`>>
+|_n/a_
+a|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records. These schema parameters:
+
+`pass:[_]pass:[_]debezium.source.column.type`
+
+are used to propagate the original type name and length for variable-width types, respectively. This is useful to properly size corresponding columns in sink databases. Fully-qualified names for columns are of the following form:
+
+_keyspaceName_._tableName_._columnName_
+
+|[[vitess-property-datatype-propagate-source-type]]<<vitess-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
+|_n/a_
+a|An optional, comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records. These schema parameters:
+
+`pass:[_]pass:[_]debezium.source.column.type`
+
+are used to propagate the original type name and length for variable-width types, respectively. This is useful to properly size corresponding columns in sink databases. Fully-qualified names for columns are of the following form:
+
+_keyspaceName_._tableName_._columnName_
+
+See {link-prefix}:{link-vitess-connector}#vitess-data-types[how Vitess connectors map data types] for the list of Vitess-specific data type names.
+
+
 |===
 
 [id="vitess-pass-through-properties"]
