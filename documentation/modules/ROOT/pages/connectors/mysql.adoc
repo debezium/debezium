@@ -55,6 +55,13 @@ The {prodname} MySQL connector reads the binlog, produces change events for row-
 
 As MySQL is typically set up to purge binlogs after a specified period of time, the MySQL connector performs an initial _consistent snapshot_ of each of your databases. The MySQL connector reads the binlog from the point at which the snapshot was made.
 
+ifdef::community[]
+For information about the MySQL Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the MySQL Database versions that are compatible with this connector, see the link:{NameDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
 ifdef::product[]
 Information and procedures for using a {prodname} MySQL connector are organized as follows:
 

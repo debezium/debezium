@@ -19,6 +19,13 @@ endif::community[]
 {prodname}'s MongoDB connector tracks a MongoDB replica set or a MongoDB sharded cluster for document changes in databases and collections, recording those changes as events in Kafka topics.
 The connector automatically handles the addition or removal of shards in a sharded cluster, changes in membership of each replica set, elections within each replica set, and awaiting the resolution of communications problems.
 
+ifdef::community[]
+For information about the MongoDB versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the MongoDB versions that are compatible with this connector, see the link:{NameDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
 ifdef::product[]
 
 Information and procedures for using a {prodname} MongoDB connector is organized as follows:

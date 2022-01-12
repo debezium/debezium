@@ -21,6 +21,13 @@ endif::community[]
 including tables that are added while the connector is running.
 You can configure the connector to emit change events for specific subsets of schemas and tables, or to ignore, mask, or truncate values in specific columns.
 
+ifdef::community[]
+For information about the Oracle Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the Oracle Database versions that are compatible with this connector, see the link:{NameDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
 {prodname} ingests change events from Oracle by using the native LogMiner database package
 ifdef::community[]
  or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].

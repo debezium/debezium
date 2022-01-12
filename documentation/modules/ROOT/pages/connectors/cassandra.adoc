@@ -17,6 +17,8 @@ This connector is currently in incubating state, i.e. exact semantics, configura
 
 The Cassanadra connector can monitor a Cassandra cluster and record all row-level changes. The connector must be deployed locally on each node in the Cassandra cluster. The first time the connector connects to a Cassandra node, it performs a snapshot of all CDC-enabled tables in all keyspaces. The connector will also read the changes that are written to Cassandra commit logs and generates corresponding insert, update, and delete events. All events for each table are recorded in a separate kafka topic, where they can be consumed easily by applications and services.
 
+For information about the Cassandra versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+
 
 [[cassandra-overview]]
 == Overview
