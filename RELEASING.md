@@ -56,18 +56,45 @@ implications and required steps for upgrading in the changelog on the website.
 
 ### Update antora.yml and series.yml
 
-The `antora.yml` file in the `main` branch always used the version _main_.
-During the release process, this file's `version` attribute should be changed to reference the correct major/minor version number.
-There are other Asciidoc variables defined here that should be reviewed and modified as needed.
+The `antora.yml` file in the `main` branch always has the following values:
 
-As an example, when releasing version `2.1`, the `antora.yml` file should change from:
+```yaml
+version: 'master'
+display_version: 'nightly'
+prerelease: true
 ```
-version: 'main'
-```
-to
-```
+
+During the release process, the `antora.yml` file needs to be updated depending on what type of release is being done.
+
+#### New release series
+
+If the release is the first of a new release series, i.e. 2.1.0.Alpha1, then a new branch of `2.1` is being created.
+In this scenario, the `antora.yml` file on the `2.1` branch must reflect the correct major/minor version numbers.
+This means that the above contents from `main` should now read as follows.  
+
+```yaml
 version: '2.1'
+display_version: '2.1'
+prerelease: true
 ```
+
+Please note that in this case, the `prerelease` designation should be left as `true`.
+This designator is important as it controls what version of the documentation is the canonical URL reference for searches as well as the order of the versions in the documentation version drop-down list.
+
+#### First "Final" release of a series
+
+If the release is the first final version of a series, i.e. 2.1.0.Final, then the `antora.yml` file on the `2.1` branch will require one additional update.
+During this special release, the `prerelease` designator needs to be changed from `true` to `false`.
+As an example, the 2.1 release Alpha1 YAML file would look like this upon the first Final release:
+
+```yaml
+version: '2.1'
+display_version: '2.1'
+prerelease: false
+```
+
+When a release moves from being a _prerelease_ to not being one, this advances what version is considered the "stable" canonical URL for documentation.
+So following our example, the first 2.1.0.Final release transitions the canonical URL reference, "/stable", from pointing to the 2.0.x documentation to that of the 2.1.0.Final documentation.
 
 `series.yml` holds metadata for the `Tested Versions` section on the Debezium [Releases](https://debezium.io/releases/)
 site and should be updated when dependencies were updated with the new release.
