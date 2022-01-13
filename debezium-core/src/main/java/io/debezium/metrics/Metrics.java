@@ -49,14 +49,14 @@ public abstract class Metrics {
         try {
             final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
             if (mBeanServer == null) {
-                LOGGER.info("JMX not supported, bean '{}' not registered");
+                LOGGER.info("JMX not supported, bean '{}' not registered", name);
                 return;
             }
             mBeanServer.registerMBean(this, name);
             registered = true;
         }
         catch (JMException e) {
-            logger.warn("Unable to register the MBean '{}': {}", name, e.getMessage());
+            throw new RuntimeException("Unable to register the MBean '" + name + "'", e);
         }
     }
 
@@ -69,13 +69,14 @@ public abstract class Metrics {
             try {
                 final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
                 if (mBeanServer == null) {
-                    LOGGER.debug("JMX not supported, bean '{}' not registered");
+                    LOGGER.debug("JMX not supported, bean '{}' not registered", name);
                     return;
                 }
                 mBeanServer.unregisterMBean(name);
+                registered = false;
             }
             catch (JMException e) {
-                logger.warn("Unable to unregister the MBean '{}': {}", name, e.getMessage());
+                throw new RuntimeException("Unable to unregister the MBean '" + name + "'", e);
             }
         }
     }

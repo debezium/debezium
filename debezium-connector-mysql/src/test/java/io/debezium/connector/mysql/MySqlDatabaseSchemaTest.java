@@ -97,6 +97,7 @@ public class MySqlDatabaseSchemaTest {
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         // Check that we have tables ...
         assertTableIncluded("connector_test.products");
@@ -126,6 +127,7 @@ public class MySqlDatabaseSchemaTest {
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         // Check that we have tables ...
         assertTableIncluded("connector_test.products");
@@ -174,6 +176,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 1000);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         // Check that we have tables ...
         assertTableIncluded("connector_test.products");
@@ -207,6 +210,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 1000);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         // Check that we have tables ...
         assertTableIncluded("connector_test.products");
@@ -233,6 +237,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-decimal-issue.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         assertTableIncluded("connector_test.business_order");
         assertTableIncluded("connector_test.business_order_detail");
@@ -256,6 +261,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         assertTableIncluded("captured.ct");
         assertTableIncluded("captured.nct");
@@ -288,6 +294,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         assertTableIncluded("captured.ct");
         assertTableIncluded("captured.nct");
@@ -319,6 +326,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         assertTableIncluded("captured.ct");
         assertTableExcluded("captured.nct");
@@ -351,6 +359,7 @@ public class MySqlDatabaseSchemaTest {
         offset.setBinlogStartPoint("binlog-001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
 
         assertTableIncluded("captured.ct");
         assertTableExcluded("captured.nct");
@@ -387,29 +396,30 @@ public class MySqlDatabaseSchemaTest {
     }
 
     protected void assertHistoryRecorded(Configuration config, MySqlPartition partition, OffsetContext offset) {
-        MySqlDatabaseSchema duplicate = getSchema(config);
-        duplicate.recover(Offsets.of(partition, offset));
+        try (MySqlDatabaseSchema duplicate = getSchema(config)) {
+            duplicate.recover(Offsets.of(partition, offset));
 
-        // Make sure table is defined in each ...
-        assertThat(duplicate.tableIds()).isEqualTo(mysql.tableIds());
-        for (int i = 0; i != 2; ++i) {
-            duplicate.tableIds().forEach(tableId -> {
-                TableSchema dupSchema = duplicate.schemaFor(tableId);
-                TableSchema schema = mysql.schemaFor(tableId);
-                assertThat(schema).isEqualTo(dupSchema);
-                Table dupTable = duplicate.tableFor(tableId);
-                Table table = mysql.tableFor(tableId);
-                assertThat(table).isEqualTo(dupTable);
-            });
-            mysql.tableIds().forEach(tableId -> {
-                TableSchema dupSchema = duplicate.schemaFor(tableId);
-                TableSchema schema = mysql.schemaFor(tableId);
-                assertThat(schema).isEqualTo(dupSchema);
-                Table dupTable = duplicate.tableFor(tableId);
-                Table table = mysql.tableFor(tableId);
-                assertThat(table).isEqualTo(dupTable);
-            });
-            duplicate.refreshSchemas();
+            // Make sure table is defined in each ...
+            assertThat(duplicate.tableIds()).isEqualTo(mysql.tableIds());
+            for (int i = 0; i != 2; ++i) {
+                duplicate.tableIds().forEach(tableId -> {
+                    TableSchema dupSchema = duplicate.schemaFor(tableId);
+                    TableSchema schema = mysql.schemaFor(tableId);
+                    assertThat(schema).isEqualTo(dupSchema);
+                    Table dupTable = duplicate.tableFor(tableId);
+                    Table table = mysql.tableFor(tableId);
+                    assertThat(table).isEqualTo(dupTable);
+                });
+                mysql.tableIds().forEach(tableId -> {
+                    TableSchema dupSchema = duplicate.schemaFor(tableId);
+                    TableSchema schema = mysql.schemaFor(tableId);
+                    assertThat(schema).isEqualTo(dupSchema);
+                    Table dupTable = duplicate.tableFor(tableId);
+                    Table table = mysql.tableFor(tableId);
+                    assertThat(table).isEqualTo(dupTable);
+                });
+                duplicate.refreshSchemas();
+            }
         }
     }
 

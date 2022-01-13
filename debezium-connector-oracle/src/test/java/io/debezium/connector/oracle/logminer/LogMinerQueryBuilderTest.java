@@ -15,6 +15,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Iterator;
 
+import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -51,6 +52,8 @@ public class LogMinerQueryBuilderTest {
 
     private static final String OPERATION_CODES_LOB_ENABLED = "(1,2,3,9,10,11,29)";
     private static final String OPERATION_CODES_LOB_DISABLED = "(1,2,3)";
+
+    private OracleDatabaseSchema schema;
 
     /**
      * A template that defines the expected SQL output when the configuration specifies
@@ -92,12 +95,24 @@ public class LogMinerQueryBuilderTest {
             "${tablePredicate}" +
             "))";
 
+    @After
+    public void after() {
+        if (schema != null) {
+            try {
+                schema.close();
+            }
+            finally {
+                schema = null;
+            }
+        }
+    }
+
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithNoFilters() {
         Configuration config = TestHelper.defaultConfig().build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        OracleDatabaseSchema schema = createSchema(connectorConfig);
+        schema = createSchema(connectorConfig);
 
         String result = LogMinerQueryBuilder.build(connectorConfig, schema);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, null, null));
@@ -181,7 +196,7 @@ public class LogMinerQueryBuilderTest {
     private void assertQueryWithConfig(Field field, Object fieldValue, String schemaValue, String tableValue) {
         Configuration config = TestHelper.defaultConfig().with(field, fieldValue).build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        OracleDatabaseSchema schema = createSchema(connectorConfig);
+        schema = createSchema(connectorConfig);
 
         String result = LogMinerQueryBuilder.build(connectorConfig, schema);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue));
@@ -208,7 +223,7 @@ public class LogMinerQueryBuilderTest {
     private void assertQueryWithConfig(Field field1, Object fieldValue1, Field field2, Object fieldValue2, String schemaValue, String tableValue) {
         Configuration config = TestHelper.defaultConfig().with(field1, fieldValue1).with(field2, fieldValue2).build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        OracleDatabaseSchema schema = createSchema(connectorConfig);
+        schema = createSchema(connectorConfig);
 
         String result = LogMinerQueryBuilder.build(connectorConfig, schema);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig, schema, schemaValue, tableValue));
