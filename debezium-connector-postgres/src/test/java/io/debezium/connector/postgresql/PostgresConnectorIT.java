@@ -2905,7 +2905,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(key.importance).isEqualTo(expected.importance());
         assertThat(key.documentation).isEqualTo(expected.description());
         assertThat(key.type).isEqualTo(expected.type());
-        assertThat(key.defaultValue).isEqualTo(expected.defaultValue());
+        assertThat(key.defaultValue).isEqualTo(ConfigDef.parseType(expected.name(), expected.defaultValue(), expected.type()));
         assertThat(key.dependents).isEqualTo(expected.dependents());
         assertThat(key.width).isNotNull();
         assertThat(key.group).isNotNull();
