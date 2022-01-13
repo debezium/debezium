@@ -8,6 +8,7 @@ pipelineJob('release-deploy-snapshots') {
 
     logRotator {
         daysToKeep(7)
+        numToKeep(10)
     }
 
     triggers {

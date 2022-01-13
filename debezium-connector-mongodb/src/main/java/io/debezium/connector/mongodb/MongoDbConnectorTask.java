@@ -100,7 +100,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             });
             if (!oplogBasedOffsets.isEmpty() && !changeStreamBasedOffsets.isEmpty()) {
                 LOGGER.error(
-                        "Replica set offests are partially from oplog and partially from change streams. This is not supported situation and can lead to unpredicable behaviour.");
+                        "Replica set offsets are partially from oplog and partially from change streams. This is not supported situation and can lead to unpredicable behaviour.");
             }
             else if (!oplogBasedOffsets.isEmpty() && taskContext.getCaptureMode().isChangeStreams()) {
                 LOGGER.info("Stored offsets were created using oplog capturing, trying to switch to change streams.");

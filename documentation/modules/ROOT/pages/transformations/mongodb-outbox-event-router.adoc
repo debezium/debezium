@@ -297,13 +297,14 @@ being deduced from the JSON document itself. That way the result in Kafka messag
 }
 ----
 
-To enable this transformation, you have to set the `collection.expand.json.payload` to true like below:
+To enable this transformation, you have to set the `collection.expand.json.payload` to true and use the `StringConverter` like below:
 
 [source]
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
 transforms.outbox.collection.expand.json.payload=true
+value.converter=org.apache.kafka.connect.storage.StringConverter
 ----
 
 // Type: reference
@@ -358,7 +359,9 @@ This ID will be stored in the emitted event's headers under the `id` key.
 |[[mongodb-outbox-event-router-property-collection-expand-json-payload]]<<mongodb-outbox-event-router-property-collection-expand-json-payload, `collection.expand.json.payload`>>
 |`false`
 |Collection
-a|Specifies whether the JSON expansion of a String payload should be done. If no content found or in case of parsing error, the content is kept "as is".
+a|Specifies whether the JSON expansion of a String payload should be done. If no content found or in case of parsing error, the content is kept "as is". +
+ +
+Fore more details, please see the xref:expanding-escaped-json-string-as-json[expanding escaped json] section.
 
 |[[mongodb-outbox-event-router-property-collection-fields-additional-placement]]<<mongodb-outbox-event-router-property-collection-fields-additional-placement, `collection.fields.additional.placement`>>
 |

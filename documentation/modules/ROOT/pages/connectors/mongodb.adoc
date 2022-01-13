@@ -20,6 +20,13 @@ endif::community[]
 {prodname}'s MongoDB connector tracks a MongoDB replica set or a MongoDB sharded cluster for document changes in databases and collections, recording those changes as events in Kafka topics.
 The connector automatically handles the addition or removal of shards in a sharded cluster, changes in membership of each replica set, elections within each replica set, and awaiting the resolution of communications problems.
 
+ifdef::community[]
+For information about the MongoDB versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the MongoDB versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
 ifdef::product[]
 
 Information and procedures for using a {prodname} MongoDB connector is organized as follows:
@@ -222,13 +229,27 @@ If the connector is stopped before the tasks' snapshots are completed, upon rest
 Try to avoid task reassignment and reconfiguration while the connector is performing a snapshot of any replica sets. The connector does log messages with the progress of the snapshot. For utmost control, run a separate cluster of Kafka Connect for each connector.
 ====
 
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+ifdef::community[]
+// Type: concept
+// ModuleID: debezium-mongodb-ad-hoc-snapshots
+[id="mongodb-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
+// ModuleID: debezium-mongodb-incremental-snapshots
+[id="mongodb-incremental-snapshots"]
+==== Incremental snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
+
 
 [NOTE]
 ====
 Incremental snapshots are currently supported for single replica set deployments only.
 This limitation will be removed in the next version.
 ====
+
+endif::community[]
 
 // Type: concept
 // ModuleID: how-the-debezium-mongodb-connector-streams-change-event-records

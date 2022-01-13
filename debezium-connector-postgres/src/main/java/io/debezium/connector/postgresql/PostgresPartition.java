@@ -44,6 +44,11 @@ public class PostgresPartition implements Partition {
         return serverName.hashCode();
     }
 
+    @Override
+    public String toString() {
+        return "PostgresPartition [sourcePartition=" + getSourcePartition() + "]";
+    }
+
     static class Provider implements Partition.Provider<PostgresPartition> {
         private final PostgresConnectorConfig connectorConfig;
 

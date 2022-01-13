@@ -17,7 +17,15 @@ ifdef::community[]
 toc::[]
 endif::community[]
 
-{prodname}'s Db2 connector can capture row-level changes in the tables of a Db2 database. This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode". When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
+{prodname}'s Db2 connector can capture row-level changes in the tables of a Db2 database.
+ifdef::community[]
+For information about the Db2 Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the Db2 Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
+This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode". When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
 
 A table that is in capture mode has an associated change-data table, which Db2 creates. For each change to a table that is in capture mode, Db2 adds data about that change to the table's associated change-data table. A change-data table contains an entry for each state of a row. It also has special entries for deletions. The {prodname} Db2 connector reads change events from change-data tables and emits the events to Kafka topics.
 
@@ -124,7 +132,18 @@ The level of the lock is determined by the `snapshot.isolation.mode` connector  
 .. Emits each _read_ event to the Kafka topic that has the same name as the table.
 . Records the successful completion of the snapshot in the connector offsets.
 
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+// Type: concept
+// ModuleID: debezium-db2-ad-hoc-snapshots
+[id="db2-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
+[id="db2-incremental-snapshots"]
+==== Incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
 ====
@@ -2222,12 +2241,24 @@ By default, no operations are skipped.
 
 |[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
-The name format is _schema-name.table-name_.
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+Use the following format to specify the collection name: +
+`_<schemaName>_._<tableName>_`
+
+ifdef::product[]
+Signaling is a Technology Preview feature.
+endif::product[]
 
 |[[db2-property-incremental-snapshot-chunk-size]]<<db2-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-| The number of rows fetched from the database for each incremental snapshot iteration.
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
+ifdef::product[]
+Incremental snapshots is a Technology Preview feature.
+endif::product[]
 
 |===
 

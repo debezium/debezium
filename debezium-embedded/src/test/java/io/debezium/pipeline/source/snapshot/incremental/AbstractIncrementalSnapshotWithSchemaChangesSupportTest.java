@@ -46,7 +46,7 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
     @Test
     public void schemaChanges() throws Exception {
-        Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector();
@@ -87,7 +87,7 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
     @Test
     public void renameTable() throws Exception {
-        Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         final String newTable = "new_table";
@@ -141,7 +141,7 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
     @Test
     public void columnNullabilityChanges() throws Exception {
-        Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         final Configuration config = config().build();
@@ -186,7 +186,7 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
     @Test
     public void columnDefaultChanges() throws Exception {
-        Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         final Configuration config = config().build();

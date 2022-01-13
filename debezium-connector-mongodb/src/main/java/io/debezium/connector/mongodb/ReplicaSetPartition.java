@@ -44,4 +44,9 @@ public class ReplicaSetPartition implements Partition {
     public int hashCode() {
         return Objects.hash(serverId, replicaSetName);
     }
+
+    @Override
+    public String toString() {
+        return "ReplicaSetPartition [sourcePartition=" + getSourcePartition() + "]";
+    }
 }

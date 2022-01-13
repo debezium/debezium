@@ -14,7 +14,7 @@ pipeline {
                 }
 
                 agent {
-                    label 'Slave'
+                    label 'NodeXL'
                 }
 
                 stages {

@@ -9,7 +9,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
 /**
- * A class invoked by {@link SnapshotChangeEventSource} whenever an important event or change of state happens.
+ * Invoked whenever an important event or change of state happens during the snapshot phase.
  *
  * @author Jiri Pechanec
  */

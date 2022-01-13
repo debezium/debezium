@@ -324,7 +324,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         // contains only *seconds* precision ...
         // HEARTBEAT events have no timestamp; only set the timestamp if the event is not a HEARTBEAT
         eventTimestamp = !eventHeader.getEventType().equals(EventType.HEARTBEAT) ? Instant.ofEpochMilli(eventHeader.getTimestamp()) : null;
-        offsetContext.setBinlogThread(eventHeader.getServerId());
+        offsetContext.setBinlogServerId(eventHeader.getServerId());
 
         final EventType eventType = eventHeader.getEventType();
         if (eventType == EventType.ROTATE) {
@@ -419,7 +419,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      */
     protected void handleServerIncident(MySqlOffsetContext offsetContext, Event event) {
         if (event.getData() instanceof EventDataDeserializationExceptionData) {
-            metrics.onErroneousEvent("source = " + event.toString());
+            metrics.onErroneousEvent("source = " + event);
             EventDataDeserializationExceptionData data = event.getData();
 
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
@@ -639,10 +639,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * don't know, either ignore that event or raise a warning or error as per the
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
      */
-    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog)
+    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog,
+                                                   Operation operation)
             throws InterruptedException {
         if (tableId != null && connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-            metrics.onErroneousEvent("source = " + tableId + ", event " + event);
+            metrics.onErroneousEvent("source = " + tableId + ", event " + event, operation);
             EventHeaderV4 eventHeader = event.getHeader();
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
@@ -673,9 +674,14 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
         else {
             LOGGER.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
-            metrics.onFilteredEvent("source = " + tableId);
+            metrics.onFilteredEvent("source = " + tableId, operation);
             eventDispatcher.dispatchFilteredEvent(partition, offsetContext);
         }
+    }
+
+    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog)
+            throws InterruptedException {
+        informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, typeToLog, null);
     }
 
     /**
@@ -686,7 +692,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleInsert(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
-        handleChange(partition, offsetContext, event, "insert", WriteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
+        handleChange(partition, offsetContext, event, Operation.CREATE, WriteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 WriteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.CREATE, null, row)));
@@ -700,7 +706,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleUpdate(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
-        handleChange(partition, offsetContext, event, "update", UpdateRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
+        handleChange(partition, offsetContext, event, Operation.UPDATE, UpdateRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 UpdateRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue())));
@@ -714,13 +720,13 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleDelete(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
-        handleChange(partition, offsetContext, event, "delete", DeleteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
+        handleChange(partition, offsetContext, event, Operation.DELETE, DeleteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 DeleteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.DELETE, row, null)));
     }
 
-    private <T extends EventData, U> void handleChange(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, String changeType,
+    private <T extends EventData, U> void handleChange(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, Operation operation,
                                                        Class<T> eventDataClass,
                                                        TableIdProvider<T> tableIdProvider,
                                                        RowsProvider<T, U> rowsProvider, BinlogChangeEmitter<U> changeEmitter)
@@ -737,6 +743,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         final T data = unwrapData(event);
         final TableId tableId = tableIdProvider.getTableId(data);
         final List<U> rows = rowsProvider.getRows(data);
+        String changeType = operation.name();
 
         if (tableId != null && taskContext.getSchema().schemaFor(tableId) != null) {
             int count = 0;
@@ -765,7 +772,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
         }
         else {
-            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, changeType + " row");
+            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, changeType + " row", operation);
         }
         startingRowNumber = 0;
     }

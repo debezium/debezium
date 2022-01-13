@@ -36,18 +36,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup java 17
+      - name: Checkout Action
+        uses: actions/checkout@v2
+      - name: Get Date
+        id: get-date
+        run: |
+          echo "::set-output name=date::$(/bin/date -u "+%Y-%m")"
+        shell: bash
+      - name: Set up Java 17
         uses: actions/setup-java@v2
         with:
           distribution: 'temurin'
           java-version: 17
-      - name: Cache local Maven repository
+      - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          # refresh cache every month to avoid unlimited growth
+          key: maven-server-${{ steps.get-date.outputs.date }}
           restore-keys: |
-            ${{ runner.os }}-maven-
-      - name: Check changes in Debezium Server
+            maven-server-${{ steps.get-date.outputs.date }}
+      - name: Run Formatting and Import Order Checks
+        run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Server
         run: mvn clean install -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

@@ -52,7 +52,7 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         return OPERATION_LITERALS.get(changeStreamEvent.getOperationType());
     }
 

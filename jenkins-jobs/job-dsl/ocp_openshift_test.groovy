@@ -6,6 +6,10 @@ pipelineJob('ocp-debezium-testing-system') {
         githubProjectUrl('https://github.com/debezium/debezium')
     }
 
+    logRotator {
+        numToKeep(10)
+    }
+
     parameters {
         stringParam('MAIL_TO', 'jcechace@redhat.com')
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')

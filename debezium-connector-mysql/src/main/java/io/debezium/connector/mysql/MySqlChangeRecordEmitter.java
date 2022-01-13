@@ -40,7 +40,7 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     @Override
-    protected Operation getOperation() {
+    public Operation getOperation() {
         return operation;
     }
 

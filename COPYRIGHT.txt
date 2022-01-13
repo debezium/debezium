@@ -131,6 +131,7 @@ Jacob Gminder
 Jan Hendrik Dolling
 Jiabao Sun
 Juan Fiallo
+Hady Willi
 Hans-Peter Grahsl
 Harvey Yue
 Henryk Konsek
@@ -234,6 +235,7 @@ Mincong Huang
 Mohamed Pudukulathan
 Moira Tagle
 Muhammad Sufyian
+Nansen
 Nathan Mills
 Navdeep Agarwal
 Naveen Kumar KR
@@ -250,6 +252,7 @@ Olivier Lemasle
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
+Oscar Romero
 Patrick Chu
 Pavel Strashkin
 Paul Mellor
@@ -260,10 +263,12 @@ Peter Larsson
 Peter Urbanetz
 Philip Sanetra
 Plugaru Tudor
+Poonam Meghnani
 Pradeep Mamillapalli
 Prannoy Mittal
 Preethi Sadagopan
 pushpavanthar
+Qishang Zhong
 Raf Liwoch
 Raghava Ponnam
 Ram Satish
@@ -279,6 +284,7 @@ Sagar Rao
 Sahan Dilshan
 René Kerner
 Rich O'Connell
+Richard Kolkovich
 Robert Coup
 Robert Roldan
 Ruslan Gibaiev
@@ -367,3 +373,4 @@ Zoran Regvart
 陆杰
 Ünal Sürmeli
 魏南
+胡琴

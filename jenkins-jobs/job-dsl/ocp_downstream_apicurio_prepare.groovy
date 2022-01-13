@@ -6,6 +6,10 @@ pipelineJob('ocp-downstream-apicurio-prepare-job') {
         githubProjectUrl('https://github.com/debezium/debezium')
     }
 
+    logRotator {
+        numToKeep(10)
+    }
+
     parameters {
         stringParam('MAIL_TO', 'debezium-qe@redhat.com')
 //        QUAY CONFIG

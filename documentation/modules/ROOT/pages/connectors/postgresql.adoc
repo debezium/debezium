@@ -16,10 +16,13 @@ ifdef::community[]
 
 toc::[]
 
-{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6 - 14 are supported.
+endif::community[]
+The {prodname} PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database.
+ifdef::community[]
+For information about the PostgreSQL versions that are compatible with the connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
 ifdef::product[]
-{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 10, 11, 12 and 13 are supported.
+For information about the PostgreSQL versions that are compatible with the connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
 The first time it connects to a PostgreSQL server or cluster, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a PostgreSQL database. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
@@ -164,7 +167,16 @@ endif::community[]
 
 |===
 
-include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+// Type: concept
+// ModuleID: debezium-postgresql-ad-hoc-snapshots
+[id="postgresql-ad-hoc-snapshots"]
+==== Ad hoc snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
+[id="postgresql-incremental-snapshots"]
+==== Incremental snapshots
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
 
 [WARNING]
 ====
@@ -1421,7 +1433,9 @@ The string representation of the interval value that follows the pattern `P<year
 |`BYTES` or `STRING`
 |n/a +
  +
-Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[binary handling mode] setting.
+Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's xref:postgresql-property-binary-handling-mode[binary handling mode] setting. +
+ +
+Debezium only supports Postgres `bytea_output` configuration of value `hex`. See this link:https://www.postgresql.org/docs/current/datatype-binary.html[documentation on Postgres binary data types].
 
 |`JSON`, `JSONB`
 |`STRING`
@@ -2963,9 +2977,15 @@ ifdef::community[]
 |No default
 | A full Java class name that is an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Required when the `snapshot.mode` property is set to `custom`. See {link-prefix}:{link-postgresql-connector}#postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
+
 |[[postgresql-property-snapshot-include-collection-list]]<<postgresql-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match names of schemas specified in `table.include.list` for which you *want* to take the snapshot when the `snapshot.mode` is not `never`
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+
+This property does not affect the behavior of incremental snapshots.
+
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails. {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[How the connector performs snapshots] provides details.
@@ -3144,14 +3164,26 @@ If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix 
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 
-|[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection, `+signal.data.collection+`>>
-|No default
-|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
-The name format is _schema-name.table-name_.
+|[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
+|No default value
+|Fully-qualified name of the data collection that is used to send signals to the connector. +
+Use the following format to specify the collection name: +
+`_<schemaName>_._<tableName>_` +
+
+ifdef::product[]
+Signaling is a Technology Preview feature.
+endif::product[]
 
 |[[postgresql-property-incremental-snapshot-chunk-size]]<<postgresql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
-|`1024`
-| The number of rows fetched from the database for each incremental snapshot iteration.
+|1024
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
+ifdef::product[]
+Incremental snapshots is a Technology Preview feature.
+endif::product[]
 
 |===
 

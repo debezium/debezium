@@ -396,16 +396,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
                     " this value, consider it a SCN gap.");
 
-    public static final Field LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES = Field.createInternal("log.mining.log.file.query.max.retries")
-            .withDisplayName("Maximum number of retries to get logs before throwing an exception")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isNonNegativeInteger)
-            .withDefault(DEFAULT_LOG_FILE_QUERY_MAX_RETRIES)
-            .withDescription("Specifies the number of extra attempts the connector will use to resolve available logs " +
-                    "from Oracle before throwing an exception if a log with the offset SCN cannot be located.");
-
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -458,8 +448,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
                     LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
-                    BINARY_HANDLING_MODE,
-                    LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES)
+                    BINARY_HANDLING_MODE)
             .create();
 
     /**
@@ -556,7 +545,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
         this.logMiningScnGapDetectionTimeIntervalMaxMs = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS);
-        this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_FILE_QUERY_MAX_RETRIES);
+        this.logMiningLogFileQueryMaxRetries = DEFAULT_LOG_FILE_QUERY_MAX_RETRIES;
     }
 
     private static String toUpperCase(String property) {
@@ -669,12 +658,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL("initial", true, false),
+        INITIAL("initial", true, true, false),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
+         */
+        INITIAL_ONLY("initial_only", true, false, false),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false, false),
+        SCHEMA_ONLY("schema_only", false, true, false),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
@@ -682,15 +676,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery", false, true);
+        SCHEMA_ONLY_RECOVERY("schema_only_recovery", false, true, true);
 
         private final String value;
         private final boolean includeData;
+        private final boolean shouldStream;
         private final boolean shouldSnapshotOnSchemaError;
 
-        private SnapshotMode(String value, boolean includeData, boolean shouldSnapshotOnSchemaError) {
+        private SnapshotMode(String value, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError) {
             this.value = value;
             this.includeData = includeData;
+            this.shouldStream = shouldStream;
             this.shouldSnapshotOnSchemaError = shouldSnapshotOnSchemaError;
         }
 
@@ -705,6 +701,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          */
         public boolean includeData() {
             return includeData;
+        }
+
+        /**
+         * Whether the snapshot mode is followed by streaming.
+         */
+        public boolean shouldStream() {
+            return shouldStream;
         }
 
         /**

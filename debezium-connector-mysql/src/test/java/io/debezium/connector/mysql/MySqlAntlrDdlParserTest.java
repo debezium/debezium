@@ -82,6 +82,39 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4497")
+    public void shouldProcessMultipleSignedUnsignedForTable() {
+        String ddl = "create table if not exists tbl_signed_unsigned(\n"
+                + "`id` bigint(20) ZEROFILL signed UNSIGNED signed ZEROFILL unsigned ZEROFILL NOT NULL AUTO_INCREMENT COMMENT 'ID',\n"
+                + "c1 int signed unsigned,\n"
+                + "c2 decimal(10, 2) SIGNED UNSIGNED ZEROFILL,\n"
+                + "c3 float SIGNED ZEROFILL,\n"
+                + "c4 double precision(18, 4) UNSIGNED SIGNED ZEROFILL,\n"
+                + "PRIMARY KEY (`id`)\n"
+                + ")";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "tbl_signed_unsigned");
+
+        assertThat(table.columnWithName("id").typeName()).isEqualTo("BIGINT UNSIGNED ZEROFILL");
+        assertThat(table.columnWithName("c1").typeName()).isEqualTo("INT UNSIGNED");
+
+        Column c2 = table.columnWithName("c2");
+        assertThat(c2.typeName()).isEqualTo("DECIMAL UNSIGNED ZEROFILL");
+        assertThat(c2.length()).isEqualTo(10);
+        assertThat(c2.scale().get()).isEqualTo(2);
+
+        assertThat(table.columnWithName("c3").typeName()).isEqualTo("FLOAT SIGNED ZEROFILL");
+
+        Column c4 = table.columnWithName("c4");
+        assertThat(c4.typeName()).isEqualTo("DOUBLE PRECISION UNSIGNED ZEROFILL");
+        assertThat(c4.length()).isEqualTo(18);
+        assertThat(c4.scale().get()).isEqualTo(4);
+    }
+
+    @Test
     @FixFor("DBZ-3023")
     public void shouldProcessDefaultCharsetForTable() {
         parser.parse("SET character_set_server='latin2'", tables);
@@ -1853,7 +1886,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-169")
+    @FixFor({ "DBZ-169", "DBZ-4503" })
     public void shouldParseCreateAndAlterWithOnUpdate() {
         String ddl = "CREATE TABLE customers ( "
                 + "id INT PRIMARY KEY NOT NULL, "
@@ -1867,7 +1900,7 @@ public class MySqlAntlrDdlParserTest {
                 + "ADD action tinyint(3) unsigned NOT NULL FIRST,"
                 + "ADD revision int(10) unsigned NOT NULL AFTER action,"
                 + "ADD changed_on DATETIME NOT NULL DEFAULT NOW() AFTER revision,"
-                + "ADD PRIMARY KEY (id, revision);";
+                + "ADD PRIMARY KEY (ID, revision);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(2);
         assertThat(listener.total()).isEqualTo(3);
@@ -1896,6 +1929,11 @@ public class MySqlAntlrDdlParserTest {
         assertThat(t.columnWithName("changed_on").position()).isEqualTo(3);
         assertThat(t.columnWithName("id").position()).isEqualTo(4);
         assertThat(t.columnWithName("name").position()).isEqualTo(5);
+
+        parser.parse("ALTER TABLE `CUSTOMERS_HISTORY` DROP COLUMN ID", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        t = tables.forTable(new TableId(null, null, "CUSTOMERS_HISTORY"));
+        assertThat(t.primaryKeyColumnNames().size()).isEqualTo(1);
     }
 
     @Test

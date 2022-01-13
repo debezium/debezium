@@ -25,4 +25,9 @@ public class MongoDbPartition implements Partition {
     public int hashCode() {
         throw new UnsupportedOperationException("Currently unsupported by the MongoDB connector");
     }
+
+    @Override
+    public String toString() {
+        throw new UnsupportedOperationException("Currently unsupported by the MongoDB connector");
+    }
 }

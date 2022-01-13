@@ -24,6 +24,7 @@ public class TestHelper {
     private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     private static final String KAFKA_HOSTNAME = "kafka-dbz-ui";
+    private static final String DEBEZIUM_VERSION = Module.version();
 
     public static final String API_PREFIX = "/debezium";
     public static final String TRANSFORMS_ENDPOINT = "/transforms";
@@ -41,15 +42,15 @@ public class TestHelper {
         return DEBEZIUM_CONTAINER;
     }
 
-    public static void setupDebeziumContainer(String debeziumVersion) {
-        DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse("debezium/connect:" + debeziumVersion))
+    public static void setupDebeziumContainer(String debeziumContainerImageVersion) {
+        DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse("debezium/connect:" + debeziumContainerImageVersion))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withEnv("CONNECT_REST_EXTENSION_CLASSES", "io.debezium.kcrestextension.DebeziumConnectRestExtension")
                 .withNetwork(NETWORK)
                 .withCopyFileToContainer(
                         MountableFile.forHostPath(
-                                "target/debezium-connect-rest-extension-1.9.0-SNAPSHOT.jar"),
-                        "/kafka/libs/debezium-kcd-rest-extension-1.9.0.jar")
+                                "target/debezium-connect-rest-extension-" + DEBEZIUM_VERSION + ".jar"),
+                        "/kafka/libs/debezium-kcd-rest-extension-" + DEBEZIUM_VERSION + ".jar")
                 .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .withStartupTimeout(Duration.ofSeconds(90))

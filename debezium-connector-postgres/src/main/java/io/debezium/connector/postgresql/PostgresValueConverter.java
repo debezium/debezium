@@ -334,20 +334,38 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
 
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
+
                 if (resolvedType.isEnumType()) {
                     return io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
                 }
-                else if (resolvedType.isArrayType() && resolvedType.getElementType().isEnumType()) {
-                    List<String> enumValues = resolvedType.getElementType().getEnumValues();
-                    return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
-                }
+                else if (resolvedType.isArrayType()) {
+                    if (resolvedType.getElementType().isEnumType()) {
+                        List<String> enumValues = resolvedType.getElementType().getEnumValues();
+                        return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
+                    }
+                    else {
+                        // unfortunately, this does not work for array columns of domain types; the element type will have a
+                        // non-matching JDBC id, resulting in no schema builder to be returned for those; the only way to export
+                        // them right now is via 'includeUnknownDatatypes'
+                        final SchemaBuilder jdbcSchemaBuilder = arrayElementSchema(column);
 
-                final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
-                if (jdbcSchemaBuilder == null) {
-                    return includeUnknownDatatypes ? binaryMode.getSchema() : null;
+                        if (jdbcSchemaBuilder != null) {
+                            return SchemaBuilder.array(jdbcSchemaBuilder);
+                        }
+                        else {
+                            return includeUnknownDatatypes ? SchemaBuilder.array(binaryMode.getSchema()) : null;
+                        }
+                    }
                 }
                 else {
-                    return jdbcSchemaBuilder;
+                    SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
+
+                    if (jdbcSchemaBuilder != null) {
+                        return jdbcSchemaBuilder;
+                    }
+                    else {
+                        return includeUnknownDatatypes ? binaryMode.getSchema() : null;
+                    }
                 }
         }
     }
@@ -382,6 +400,24 @@ public class PostgresValueConverter extends JdbcValueConverters {
             default:
                 throw new IllegalArgumentException("Unknown decimalMode");
         }
+    }
+
+    private SchemaBuilder arrayElementSchema(Column column) {
+        PostgresType arrayType = typeRegistry.get(column.nativeType());
+        PostgresType elementType = arrayType.getElementType();
+        final String elementTypeName = elementType.getName();
+        final String elementColumnName = column.name() + "-element";
+        final Column elementColumn = Column.editor()
+                .name(elementColumnName)
+                .jdbcType(elementType.getJdbcId())
+                .nativeType(elementType.getOid())
+                .type(elementTypeName)
+                .optional(true)
+                .scale(column.scale().orElse(null))
+                .length(column.length())
+                .create();
+
+        return schemaBuilder(elementColumn);
     }
 
     @Override
@@ -525,7 +561,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 .length(column.length())
                 .create();
 
-        Schema elementSchema = schemaBuilder(elementColumn)
+        SchemaBuilder elementSchemaBuilder = schemaBuilder(elementColumn);
+        if (elementSchemaBuilder == null) {
+            return null;
+        }
+        Schema elementSchema = elementSchemaBuilder
                 .optional()
                 .build();
 

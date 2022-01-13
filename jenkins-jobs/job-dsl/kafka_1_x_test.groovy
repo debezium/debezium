@@ -37,6 +37,7 @@ freeStyleJob('debezium-kafka-1.x-test') {
 
     logRotator {
         daysToKeep(7)
+        numToKeep(10)
     }
 
     steps {

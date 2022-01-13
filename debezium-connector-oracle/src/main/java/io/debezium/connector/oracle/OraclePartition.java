@@ -44,6 +44,11 @@ public class OraclePartition implements Partition {
         return serverName.hashCode();
     }
 
+    @Override
+    public String toString() {
+        return "OraclePartition [sourcePartition=" + getSourcePartition() + "]";
+    }
+
     static class Provider implements Partition.Provider<OraclePartition> {
         private final OracleConnectorConfig connectorConfig;
 

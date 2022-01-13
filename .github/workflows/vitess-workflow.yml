@@ -6,25 +6,35 @@ on:
       - main
       - 1.*
     paths:
-      - 'debezium-core/**'
-      - 'debezium-embedded/**'
-      - 'debezium-api/**'
-      - 'debezium-parent/pom.xml'
-      - 'debezium-bom/pom.xml'
-      - 'pom.xml'
       - '.github/workflows/vitess-workflow.yml'
+      - 'pom.xml'
+      - 'debezium-api/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-bom/pom.xml'
+      - 'debezium-checkstyle/**'
+      - 'debezium-core/**'
+      - 'assembly-descriptors/**'
+      - 'debezium-embedded/**'
+      - 'debezium-ide-configs/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-revapi/**'
   pull_request:
     branches:
       - main
       - 1.*
     paths:
-      - 'debezium-core/**'
-      - 'debezium-embedded/**'
-      - 'debezium-api/**'
-      - 'debezium-parent/pom.xml'
-      - 'debezium-bom/pom.xml'
-      - 'pom.xml'
       - '.github/workflows/vitess-workflow.yml'
+      - 'pom.xml'
+      - 'debezium-api/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-bom/pom.xml'
+      - 'debezium-checkstyle/**'
+      - 'debezium-core/**'
+      - 'assembly-descriptors/**'
+      - 'debezium-embedded/**'
+      - 'debezium-ide-configs/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-revapi/**'
 
 jobs:
   build:
@@ -45,13 +55,22 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
-      - name: Cache Maven Packages
+      - name: Get Date
+        id: get-date
+        run: |
+          echo "::set-output name=date::$(/bin/date -u "+%Y-%m")"
+        shell: bash
+      - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          path: ~/.m2/repository
+          # refresh cache every month to avoid unlimited growth
+          key: maven-vitess-${{ steps.get-date.outputs.date }}
+          restore-keys: |
+            maven-vitess-${{ steps.get-date.outputs.date }}
+      - name: Run Formatting and Import Order Checks
+        run: mvn clean install -f core/pom.xml -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Core
-        run: mvn clean install -f core/pom.xml -pl debezium-bom,debezium-embedded -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: mvn clean install -f core/pom.xml -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Vitess
         run: mvn clean install -f vitess/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

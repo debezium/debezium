@@ -33,19 +33,19 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.base.Charsets;
 
 import io.debezium.DebeziumException;
-import io.debezium.schemagenerator.OpenApiGenerator;
+import io.debezium.schemagenerator.SchemaGenerator;
 import io.smallrye.openapi.runtime.io.Format;
 
 /**
- * Generates the OpenAPI spec for the connector(s) in a project.
+ * Generates the API spec for the connector(s) in a project.
  */
-@Mojo(name = "generate-openapi-spec", defaultPhase = LifecyclePhase.PREPARE_PACKAGE)
-public class OpenApiGeneratorMojo extends AbstractMojo {
+@Mojo(name = "generate-api-spec", defaultPhase = LifecyclePhase.PREPARE_PACKAGE)
+public class SchemaGeneratorMojo extends AbstractMojo {
 
-    @Parameter(property = "openapi.generator.format")
+    @Parameter(defaultValue = "openapi", property = "schema.format")
     private String format;
 
-    @Parameter(defaultValue = "${project.build.outputDirectory}", required = true)
+    @Parameter(defaultValue = "${project.build.directory}/generated-sources", required = true)
     private File outputDirectory;
 
     /**
@@ -59,15 +59,15 @@ public class OpenApiGeneratorMojo extends AbstractMojo {
         String classPath = getClassPath();
 
         try {
-            int result = exec(OpenApiGenerator.class.getName(), classPath, Collections.emptyList(), Arrays.<String> asList(format, outputDirectory.getAbsolutePath()));
+            int result = exec(SchemaGenerator.class.getName(), classPath, Collections.emptyList(), Arrays.<String> asList(format, outputDirectory.getAbsolutePath()));
 
             if (result != 0) {
-                throw new MojoExecutionException("Couldn't generate OpenAPI spec; please see the logs for more details");
+                throw new MojoExecutionException("Couldn't generate API spec; please see the logs for more details");
             }
-            getLog().info("Generated OpenAPI spec at " + outputDirectory.getAbsolutePath());
+            getLog().info("Generated API spec at " + outputDirectory.getAbsolutePath());
         }
         catch (IOException | InterruptedException e) {
-            throw new MojoExecutionException("Couldn't generate OpenAPI spec", e);
+            throw new MojoExecutionException("Couldn't generate API spec", e);
         }
     }
 

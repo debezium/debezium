@@ -113,6 +113,18 @@ CREATE TABLE `daily_intelligences`(
 `gmt_create` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '',
 PRIMARY KEY (`id`)
 ) ENGINE=innodb DEFAULT CHAR SET=utf8 COMMENT '';
+
+CREATE TABLE `t_test_curdate` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`c1` datetime NOT NULL DEFAULT CAST(CURRENT_TIMESTAMP() as DATE) COMMENT 'error test',
+PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `t_test_curdate` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`c1` datetime NOT NULL DEFAULT CURDATE() COMMENT 'error test',
+PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 #end
 #begin
 -- Rename table
