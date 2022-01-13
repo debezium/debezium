@@ -320,12 +320,12 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doInitialize() {
-        metrics.register(logger);
+        metrics.register();
     }
 
     @Override
     public void doDestroy() {
-        metrics.unregister(logger);
+        metrics.unregister();
     }
 
     @Override
