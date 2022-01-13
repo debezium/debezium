@@ -25,9 +25,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +67,7 @@ public class ApicurioRegistryTest {
             .enableApicurioConverters()
             .dependsOn(kafkaContainer);
 
-    @BeforeClass
+    @BeforeAll
     public static void startContainers() {
         Startables.deepStart(Stream.of(
                 apicurioContainer, kafkaContainer, postgresContainer, debeziumContainer)).join();
@@ -257,7 +257,7 @@ public class ApicurioRegistryTest {
         return apicurioUrl;
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopContainers() {
         try {
             if (postgresContainer != null) {
