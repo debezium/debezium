@@ -30,17 +30,7 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-core</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.google.api</groupId>
-            <artifactId>gax</artifactId>
-            <version>1.56.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.threeten</groupId>
-            <artifactId>threetenbp</artifactId>
-            <version>1.4.3</version>
-        </dependency>
-		
+
         <!-- Testing -->
         <dependency>
             <groupId>io.quarkus</groupId>
