@@ -1081,7 +1081,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(2)
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
 
+    // With the deprecation of TruncateHandlingMode and an attempt to fold that into skipped operations,
+    // the PostgreSQL flavor of skipped operations will skip TRUNCATE by default to align with legacy
+    // behavior of TruncateHandlingMode. This way we can emit boot-up warnings in preparation of the
+    // overall behavior change in a future release.
     public static final Field SKIPPED_OPERATIONS = CommonConnectorConfig.SKIPPED_OPERATIONS
+            .withDefault("t")
             .withValidation(CommonConnectorConfig::validateSkippedOperation, PostgresConnectorConfig::validateSkippedOperations);
 
     private final TruncateHandlingMode truncateHandlingMode;
@@ -1306,7 +1311,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return errors;
             }
             if (truncateHandlingMode == TruncateHandlingMode.INCLUDE) {
-                errors += validateTruncateAllowed(config, field, problems, value, truncateHandlingMode.getValue());
+                final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
+                if (!logicalDecoder.supportsTruncate()) {
+                    String message = String.format(
+                            "%s '%s' is not supported with configuration %s '%s'",
+                            field.name(), truncateHandlingMode.getValue(), PLUGIN_NAME.name(), logicalDecoder.getValue());
+                    problems.accept(field, value, message);
+                    errors++;
+                }
             }
             if (errors == 0) {
                 LOGGER.warn("Configuration property '{}' is deprecated and will be removed in future versions. Please use '{}' instead.",
@@ -1318,27 +1330,41 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     private static int validateSkippedOperations(Configuration config, Field field, Field.ValidationOutput problems) {
-        final String value = config.getString(field);
-        int errors = 0;
+        // We explicitly use this syntax to get the raw user-supplied value without defaults.
+        // We need to know whether the value is actually supplied without having the default value being enforced.
+        final String value = config.getString(field.name(), (String) null);
+
+        boolean isTruncateSkipped = false;
         if (value != null) {
-            String[] operations = value.split(",");
+            // A value is provided, verify whether "t" (truncate) is part of the user-supplied value
+            final String[] operations = value.split(",");
             for (String operation : operations) {
                 if ("t".equals(operation)) {
-                    errors += validateTruncateAllowed(config, field, problems, value, "t");
+                    isTruncateSkipped = true;
+                    break;
                 }
             }
         }
-        return errors;
-    }
 
-    private static int validateTruncateAllowed(Configuration config, Field field, Field.ValidationOutput problems, Object value, Object resolvedValue) {
-        final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
-        if (!logicalDecoder.supportsTruncate()) {
-            String message = String.format(
-                    "%s '%s' is not supported with configuration %s '%s'",
-                    field.name(), resolvedValue, PLUGIN_NAME.name(), logicalDecoder.getValue());
-            problems.accept(field, value, message);
-            return 1;
+        if (!isTruncateSkipped) {
+            // The user did not explicitly configure skipped.operations, or it is configured but the user did
+            // not include the "t" in their explicit configuration value.
+            final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
+            if (!logicalDecoder.supportsTruncate()) {
+                // if the decoder doesn't support truncate, there is nothing to warn about
+                return 0;
+            }
+            final TruncateHandlingMode truncateHandlingMode = TruncateHandlingMode.parse(config.getString(TRUNCATE_HANDLING_MODE));
+            if (truncateHandlingMode == TruncateHandlingMode.SKIP) {
+                // the user is allowing the legacy configuration option's skip default to be used.
+                // We want to warn about this configuration pair being changed in a future version, urging the user
+                // to explicitly configure skipped.operations if they want to maintain skipped TRUNCATEs.
+                LOGGER.warn("Configuration property '{}' is deprecated and will be removed soon. " +
+                        "If you wish to retain skipped truncate functionality, please configure '{}' with \"{}\".",
+                        TRUNCATE_HANDLING_MODE.name(),
+                        SKIPPED_OPERATIONS.name(),
+                        "t");
+            }
         }
         return 0;
     }
