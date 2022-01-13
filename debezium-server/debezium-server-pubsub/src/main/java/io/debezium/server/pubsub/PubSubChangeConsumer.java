@@ -24,9 +24,14 @@ import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.threeten.bp.Duration;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
+import com.google.api.gax.batching.BatchingSettings;
+import com.google.api.gax.batching.FlowControlSettings;
+import com.google.api.gax.batching.FlowController;
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.protobuf.ByteString;
@@ -70,6 +75,45 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
     @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
     String nullKey;
 
+    @ConfigProperty(name = PROP_PREFIX + "batch.delay.threshold.ms", defaultValue = "100")
+    Integer maxDelayThresholdMs;
+
+    @ConfigProperty(name = PROP_PREFIX + "batch.element.count.threshold", defaultValue = "100")
+    Long maxBufferSize;
+
+    @ConfigProperty(name = PROP_PREFIX + "batch.request.byte.threshold", defaultValue = "10000000")
+    Long maxBufferBytes;
+
+    @ConfigProperty(name = PROP_PREFIX + "flowcontrol.enabled", defaultValue = "false")
+    boolean flowControlEnabled;
+
+    @ConfigProperty(name = PROP_PREFIX + "flowcontrol.max.outstanding.messages", defaultValue = "9223372036854775807")
+    Long maxOutstandingMessages;
+
+    @ConfigProperty(name = PROP_PREFIX + "flowcontrol.max.outstanding.bytes", defaultValue = "9223372036854775807")
+    Long maxOutstandingRequestBytes;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.total.timeout.ms", defaultValue = "60000")
+    Integer maxTotalTimeoutMs;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.max.rpc.timeout.ms", defaultValue = "10000")
+    Integer maxRequestTimeoutMs;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.initial.delay.ms", defaultValue = "5")
+    Integer initialRetryDelay;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.delay.multiplier", defaultValue = "2.0")
+    Double retryDelayMultiplier;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.max.delay.ms", defaultValue = "9223372036854775807")
+    Long maxRetryDelay;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.initial.rpc.timeout.ms", defaultValue = "10000")
+    Integer initialRpcTimeout;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.rpc.timeout.multiplier", defaultValue = "2.0")
+    Double rpcTimeoutMultiplier;
+
     @Inject
     @CustomConsumerBuilder
     Instance<PublisherBuilder> customPublisherBuilder;
@@ -85,10 +129,34 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
             return;
         }
 
+        BatchingSettings.Builder batchingSettings = BatchingSettings.newBuilder()
+                .setDelayThreshold(Duration.ofMillis(maxDelayThresholdMs))
+                .setElementCountThreshold(maxBufferSize)
+                .setRequestByteThreshold(maxBufferBytes);
+
+        if (flowControlEnabled) {
+            batchingSettings.setFlowControlSettings(FlowControlSettings.newBuilder()
+                    .setMaxOutstandingRequestBytes(maxOutstandingRequestBytes)
+                    .setMaxOutstandingElementCount(maxOutstandingMessages)
+                    .setLimitExceededBehavior(FlowController.LimitExceededBehavior.Block)
+                    .build());
+        }
+
         publisherBuilder = (t) -> {
             try {
                 return Publisher.newBuilder(t)
                         .setEnableMessageOrdering(orderingEnabled)
+                        .setBatchingSettings(batchingSettings.build())
+                        .setRetrySettings(
+                                RetrySettings.newBuilder()
+                                        .setTotalTimeout(Duration.ofMillis(maxTotalTimeoutMs))
+                                        .setMaxRpcTimeout(Duration.ofMillis(maxRequestTimeoutMs))
+                                        .setInitialRetryDelay(Duration.ofMillis(initialRetryDelay))
+                                        .setRetryDelayMultiplier(retryDelayMultiplier)
+                                        .setMaxRetryDelay(Duration.ofMillis(maxRetryDelay))
+                                        .setInitialRpcTimeout(Duration.ofMillis(initialRpcTimeout))
+                                        .setRpcTimeoutMultiplier(rpcTimeoutMultiplier)
+                                        .build())
                         .build();
             }
             catch (IOException e) {
