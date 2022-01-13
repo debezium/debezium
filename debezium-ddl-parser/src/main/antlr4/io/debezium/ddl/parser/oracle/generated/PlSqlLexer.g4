@@ -243,6 +243,7 @@ COALESCE:                     'COALESCE';
 COALESCE_SQ:                  'COALESCE_SQ';
 COARSE:                       'COARSE';
 CO_AUTH_IND:                  'CO_AUTH_IND';
+COLLATE:                      'COLLATE';
 COLD:                         'COLD';
 COLLECT:                      'COLLECT';
 COLUMNAR:                     'COLUMNAR';
