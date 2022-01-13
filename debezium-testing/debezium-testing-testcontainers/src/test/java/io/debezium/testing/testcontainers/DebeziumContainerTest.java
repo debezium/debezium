@@ -25,9 +25,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,7 @@ public class DebeziumContainerTest {
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
             .dependsOn(kafkaContainer);
 
-    @BeforeClass
+    @BeforeAll
     public static void startContainers() {
         Startables.deepStart(Stream.of(
                 kafkaContainer, postgresContainer, debeziumContainer)).join();
@@ -171,7 +171,7 @@ public class DebeziumContainerTest {
         }
     }
 
-    @AfterClass
+    @AfterAll
     public static void stopContainers() {
         try {
             if (postgresContainer != null) {
