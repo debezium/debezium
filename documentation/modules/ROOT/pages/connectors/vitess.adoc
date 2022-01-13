@@ -1300,7 +1300,7 @@ are used to propagate the original type name and length for variable-width types
 
 _keyspaceName_._tableName_._columnName_
 
-See {link-prefix}:{link-vitess-connector}#vitess-data-types[how Vitess connectors map data types] for the list of Vitess-specific data type names.
+See xref:vitess-data-types[how Vitess connectors map data types] for the list of Vitess-specific data type names.
 
 
 |===
