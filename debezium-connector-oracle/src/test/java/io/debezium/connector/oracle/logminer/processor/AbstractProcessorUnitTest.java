@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -85,6 +86,18 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         this.connection = createOracleConnection();
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);
+    }
+
+    @After
+    public void after() {
+        if (schema != null) {
+            try {
+                schema.close();
+            }
+            finally {
+                schema = null;
+            }
+        }
     }
 
     protected abstract Configuration.Builder getConfig();
