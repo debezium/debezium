@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.mysql.signal.ExecuteSnapshotKafkaSignal;
+import io.debezium.pipeline.signal.ExecuteSnapshotExternalSignal;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -30,7 +30,7 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
     private GtidSet lowWatermark;
     private GtidSet highWatermark;
     private Long signalOffset;
-    private final Queue<ExecuteSnapshotKafkaSignal> executeSnapshotSignals = new ConcurrentLinkedQueue<>();
+    private final Queue<ExecuteSnapshotExternalSignal> executeSnapshotSignals = new ConcurrentLinkedQueue<>();
     public static final String SIGNAL_OFFSET = INCREMENTAL_SNAPSHOT_KEY + "_signal_offset";
 
     public MySqlReadOnlyIncrementalSnapshotContext() {
@@ -143,10 +143,10 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
     }
 
     public void enqueueDataCollectionsToSnapshot(List<String> dataCollectionIds, long signalOffset) {
-        executeSnapshotSignals.add(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset));
+        executeSnapshotSignals.add(new ExecuteSnapshotExternalSignal(dataCollectionIds, signalOffset));
     }
 
-    public ExecuteSnapshotKafkaSignal getExecuteSnapshotSignals() {
+    public ExecuteSnapshotExternalSignal getExecuteSnapshotSignals() {
         return executeSnapshotSignals.poll();
     }
 

@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
@@ -487,6 +488,14 @@ public abstract class CommonConnectorConfig {
                     + " matched against this regular expression. If matched the error is changed to retriable.")
             .withDefault(false);
 
+    public static final Field CONNECTOR_CLASS = Field.create("connector.class")
+            .withDisplayName("Debezium connector class")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("The class of the Debezium database connector")
+            .withNoValidation();
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -621,6 +630,10 @@ public abstract class CommonConnectorConfig {
     public abstract String getContextName();
 
     public abstract String getConnectorName();
+
+    public Class<RelationalBaseSourceConnector> getConnectorClass() throws ClassNotFoundException {
+        return (Class<RelationalBaseSourceConnector>) getClass().getClassLoader().loadClass(config.getString(CONNECTOR_CLASS));
+    }
 
     public String getHeartbeatTopicsPrefix() {
         return heartbeatTopicsPrefix;

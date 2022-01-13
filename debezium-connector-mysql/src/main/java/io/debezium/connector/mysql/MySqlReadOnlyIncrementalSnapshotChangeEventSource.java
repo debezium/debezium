@@ -13,11 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.mysql.signal.ExecuteSnapshotKafkaSignal;
-import io.debezium.connector.mysql.signal.KafkaSignalThread;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.signal.ExecuteSnapshotExternalSignal;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractReadOnlyIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -75,11 +74,10 @@ import io.debezium.util.Clock;
  * <b>No updates for included tables</b>
  * <p>It’s important to receive binlog events for the incremental snapshot to make progress. All binlog events are checked against the low and high watermarks, including the events from the tables that aren’t included in the connector. This guarantees that the window processing mode gets updated even when none of the tables included in the connector are getting binlog events.</p>
  */
-public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCollectionId> extends AbstractIncrementalSnapshotChangeEventSource<T> {
+public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCollectionId> extends AbstractReadOnlyIncrementalSnapshotChangeEventSource<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotChangeEventSource.class);
     private final String showMasterStmt = "SHOW MASTER STATUS";
-    private final KafkaSignalThread<T> kafkaSignal;
 
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                              JdbcConnection jdbcConnection,
@@ -89,7 +87,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                                                              SnapshotProgressListener progressListener,
                                                              DataChangeEventListener dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
-        kafkaSignal = new KafkaSignalThread<>(MySqlConnector.class, config, this);
     }
 
     @Override
@@ -97,9 +94,9 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         super.init(offsetContext);
         Long signalOffset = getContext().getSignalOffset();
         if (signalOffset != null) {
-            kafkaSignal.seek(signalOffset);
+            externalSignal.seek(signalOffset);
         }
-        kafkaSignal.start();
+        externalSignal.start();
     }
 
     @Override
@@ -156,6 +153,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         }
     }
 
+    @Override
     public void enqueueDataCollectionNamesToSnapshot(List<String> dataCollectionIds, long signalOffset) {
         getContext().enqueueDataCollectionsToSnapshot(dataCollectionIds, signalOffset);
     }
@@ -251,7 +249,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         }
     }
 
-    private void addDataCollectionNamesToSnapshot(ExecuteSnapshotKafkaSignal executeSnapshotSignal, OffsetContext offsetContext) throws InterruptedException {
+    private void addDataCollectionNamesToSnapshot(ExecuteSnapshotExternalSignal executeSnapshotSignal, OffsetContext offsetContext) throws InterruptedException {
         super.addDataCollectionNamesToSnapshot(executeSnapshotSignal.getDataCollections(), offsetContext);
         getContext().setSignalOffset(executeSnapshotSignal.getSignalOffset());
     }

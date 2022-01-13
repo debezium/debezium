@@ -3,13 +3,11 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql.signal;
+package io.debezium.pipeline.signal;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -18,20 +16,16 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.mysql.MySqlReadOnlyIncrementalSnapshotChangeEventSource;
 import io.debezium.document.Document;
-import io.debezium.document.DocumentReader;
-import io.debezium.pipeline.signal.ExecuteSnapshot;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractReadOnlyIncrementalSnapshotChangeEventSource;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
-import io.debezium.util.Threads;
 
 /**
  * The class responsible for processing of signals delivered to Debezium via a dedicated Kafka topic.
@@ -42,15 +36,12 @@ import io.debezium.util.Threads;
  * <li>{@code data STRING} - the data in JSON format that are passed to the signal code
  * </ul>
  */
-public class KafkaSignalThread<T extends DataCollectionId> {
+public class KafkaSignalThread<T extends DataCollectionId> extends AbstractExternalSignalThread<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaSignalThread.class);
 
-    private final ExecutorService signalTopicListenerExecutor;
     private final String topicName;
-    private final String connectorName;
     private final Duration pollTimeoutMs;
-    private final MySqlReadOnlyIncrementalSnapshotChangeEventSource<T> eventSource;
     private final KafkaConsumer<String, String> signalsConsumer;
 
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "signal.";
@@ -84,23 +75,20 @@ public class KafkaSignalThread<T extends DataCollectionId> {
             .withDefault(100)
             .withValidation(Field::isNonNegativeInteger);
 
-    public KafkaSignalThread(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
-                             MySqlReadOnlyIncrementalSnapshotChangeEventSource<T> eventSource) {
-        String signalName = "kafka-signal";
-        connectorName = connectorConfig.getLogicalName();
-        signalTopicListenerExecutor = Threads.newSingleThreadExecutor(connectorType, connectorName, signalName, true);
+    public KafkaSignalThread(CommonConnectorConfig connectorConfig,
+                             AbstractReadOnlyIncrementalSnapshotChangeEventSource<T> eventSource) {
+        super(connectorConfig, eventSource);
         Configuration signalConfig = connectorConfig.getConfig().subset(CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
                 .withDefault(KafkaSignalThread.SIGNAL_TOPIC, connectorName + "-signal")
                 .build();
-        this.eventSource = eventSource;
         this.topicName = signalConfig.getString(SIGNAL_TOPIC);
         this.pollTimeoutMs = Duration.ofMillis(signalConfig.getInteger(SIGNAL_POLL_TIMEOUT_MS));
         String bootstrapServers = signalConfig.getString(BOOTSTRAP_SERVERS);
         Configuration consumerConfig = signalConfig.subset(CONSUMER_PREFIX, true).edit()
                 .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                 .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString())
-                .withDefault(ConsumerConfig.GROUP_ID_CONFIG, signalName)
+                .withDefault(ConsumerConfig.GROUP_ID_CONFIG, signalName())
                 .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
                 .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
                 .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) // readjusted since 0.10.1.0
@@ -112,11 +100,7 @@ public class KafkaSignalThread<T extends DataCollectionId> {
         signalsConsumer.assign(Collect.arrayListOf(new TopicPartition(topicName, 0)));
     }
 
-    public void start() {
-        signalTopicListenerExecutor.submit(this::monitorSignals);
-    }
-
-    private void monitorSignals() {
+    protected void monitorSignals() {
         while (true) {
             // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
             ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs.toMillis());
@@ -136,36 +120,32 @@ public class KafkaSignalThread<T extends DataCollectionId> {
         }
     }
 
-    private void processSignal(ConsumerRecord<String, String> record) throws IOException, InterruptedException {
+    /**
+     * 
+     * @param record An example of the execute-snapshot Kafka record is:
+     *               Key = `test_connector`
+     *               Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    protected void processSignal(ConsumerRecord<String, String> record) throws IOException, InterruptedException {
         if (!connectorName.equals(record.key())) {
             LOGGER.info("Signal key '{}' doesn't match the connector's name '{}'", record.key(), connectorName);
             return;
         }
         String value = record.value();
         LOGGER.trace("Processing signal: {}", value);
-        final Document jsonData = (value == null || value.isEmpty()) ? Document.create()
-                : DocumentReader.defaultReader().read(value);
-        String type = jsonData.getString("type");
-        Document data = jsonData.getDocument("data");
-        if (ExecuteSnapshot.NAME.equals(type)) {
-            executeSnapshot(data, record.offset());
-        }
-        else {
-            LOGGER.warn("Unknown signal type {}", type);
-        }
+        final Document jsonData = (value == null || value.isEmpty()) ? Document.create() : reader.read(value);
+        processSignal(jsonData, record.offset());
     }
 
-    private void executeSnapshot(Document data, long signalOffset) {
-        final List<String> dataCollections = ExecuteSnapshot.getDataCollections(data);
-        if (dataCollections != null) {
-            ExecuteSnapshot.SnapshotType snapshotType = ExecuteSnapshot.getSnapshotType(data);
-            LOGGER.info("Requested '{}' snapshot of data collections '{}'", snapshotType, dataCollections);
-            if (snapshotType == ExecuteSnapshot.SnapshotType.INCREMENTAL) {
-                eventSource.enqueueDataCollectionNamesToSnapshot(dataCollections, signalOffset);
-            }
-        }
-    }
-
+    /**
+     * 
+     * Overrides the fetch offsets that the consumer will use on the next poll(timeout). 
+     * If this API is invoked for the same partition more than once, the latest offset will be used on the next poll(). 
+     * 
+     * @param signalOffset
+     */
     public void seek(long signalOffset) {
         signalsConsumer.seek(new TopicPartition(topicName, 0), signalOffset + 1);
     }
