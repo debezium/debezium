@@ -14,6 +14,7 @@ import javax.management.ObjectName;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
@@ -26,6 +27,8 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  */
 @ThreadSafe
 public abstract class Metrics {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Metrics.class);
 
     private final ObjectName name;
     private volatile boolean registered = false;
@@ -42,11 +45,11 @@ public abstract class Metrics {
      * Registers a metrics MBean into the platform MBean server.
      * The method is intentionally synchronized to prevent preemption between registration and unregistration.
      */
-    public synchronized void register(Logger logger) {
+    public synchronized void register() {
         try {
             final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
             if (mBeanServer == null) {
-                logger.info("JMX not supported, bean '{}' not registered");
+                LOGGER.info("JMX not supported, bean '{}' not registered");
                 return;
             }
             mBeanServer.registerMBean(this, name);
@@ -61,12 +64,12 @@ public abstract class Metrics {
      * Unregisters a metrics MBean from the platform MBean server.
      * The method is intentionally synchronized to prevent preemption between registration and unregistration.
      */
-    public final void unregister(Logger logger) {
+    public final void unregister() {
         if (this.name != null && registered) {
             try {
                 final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
                 if (mBeanServer == null) {
-                    logger.debug("JMX not supported, bean '{}' not registered");
+                    LOGGER.debug("JMX not supported, bean '{}' not registered");
                     return;
                 }
                 mBeanServer.unregisterMBean(name);

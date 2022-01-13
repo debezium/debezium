@@ -97,8 +97,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             executor.submit(() -> {
                 try {
                     previousLogContext.set(taskContext.configureLoggingContext("snapshot"));
-                    snapshotMetrics.register(LOGGER);
-                    streamingMetrics.register(LOGGER);
+                    snapshotMetrics.register();
+                    streamingMetrics.register();
                     LOGGER.info("Metrics registered");
 
                     ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
@@ -213,8 +213,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             }
         }
         finally {
-            snapshotMetrics.unregister(LOGGER);
-            streamingMetrics.unregister(LOGGER);
+            snapshotMetrics.unregister();
+            streamingMetrics.unregister();
         }
     }
 

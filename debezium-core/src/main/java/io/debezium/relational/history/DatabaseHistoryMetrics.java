@@ -97,13 +97,13 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     @Override
     public void started() {
         status = DatabaseHistoryStatus.RUNNING;
-        register(LOGGER);
+        register();
     }
 
     @Override
     public void stopped() {
         status = DatabaseHistoryStatus.STOPPED;
-        unregister(LOGGER);
+        unregister();
     }
 
     @Override

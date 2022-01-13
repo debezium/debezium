@@ -5,8 +5,6 @@
  */
 package io.debezium.pipeline.metrics;
 
-import org.slf4j.Logger;
-
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 
 /**
@@ -14,7 +12,7 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
  */
 interface ChangeEventSourceMetrics extends DataChangeEventListener {
 
-    void register(Logger logger);
+    void register();
 
-    void unregister(Logger logger);
+    void unregister();
 }
