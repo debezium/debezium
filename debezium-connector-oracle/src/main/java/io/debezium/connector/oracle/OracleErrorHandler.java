@@ -13,8 +13,6 @@ import java.util.List;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
 
-import oracle.net.ns.NetException;
-
 /**
  * Error handle for Oracle.
  *
@@ -22,10 +20,11 @@ import oracle.net.ns.NetException;
  */
 public class OracleErrorHandler extends ErrorHandler {
 
-    private static final String NO_MORE_DATA_TO_READ_FROM_SOCKET = "NO MORE DATA TO READ FROM SOCKET";
-
     private static final List<String> retryOracleErrors = new ArrayList<>();
+    private static final List<String> retryOracleMessageContainsTexts = new ArrayList<>();
     static {
+        // Contents of this list should only be ORA-xxxxx errors
+        // The error check uses starts-with semantics
         retryOracleErrors.add("ORA-03135"); // connection lost
         retryOracleErrors.add("ORA-12543"); // TNS:destination host unreachable
         retryOracleErrors.add("ORA-00604"); // error occurred at recursive SQL level 1
@@ -36,6 +35,10 @@ public class OracleErrorHandler extends ErrorHandler {
         retryOracleErrors.add("ORA-01291"); // missing logfile
         retryOracleErrors.add("ORA-01327"); // failed to exclusively lock system dictionary as required BUILD
         retryOracleErrors.add("ORA-04030"); // out of process memory
+
+        // Contents of this list should be any type of error message text
+        // The error check uses case-insensitive contains semantics
+        retryOracleMessageContainsTexts.add("No more data to read from socket");
     }
 
     public OracleErrorHandler(String logicalName, ChangeEventQueue<?> queue) {
@@ -44,50 +47,38 @@ public class OracleErrorHandler extends ErrorHandler {
 
     @Override
     protected boolean isRetriable(Throwable throwable) {
-        // Always retry any recoverable error
-        if (throwable instanceof SQLRecoverableException) {
-            return true;
-        }
-
-        // If message is provided, check if it starts with a given Oracle error that's considered flagged for retry
-        if (isRetriableByMessageContents(throwable.getMessage())) {
-            return true;
-        }
-
-        // If there is a cause, inspect the cause, and its message details
-        if (throwable.getCause() != null) {
-            final Throwable cause = throwable.getCause();
-            if (cause instanceof IOException || cause instanceof SQLRecoverableException) {
-                return true;
-            }
-
-            if (isRetriableByMessageContents(cause.getMessage())) {
-                return true;
-            }
-        }
-
-        return isNestedNetException(throwable);
-    }
-
-    private boolean isRetriableByMessageContents(String message) {
-        if (message == null || message.length() == 0) {
-            return false;
-        }
-        // Check Oracle error codes
-        for (String errorCode : retryOracleErrors) {
-            if (message.startsWith(errorCode)) {
-                return true;
-            }
-        }
-        // Check specific Oracle message texts
-        return message.toUpperCase().contains(NO_MORE_DATA_TO_READ_FROM_SOCKET);
-    }
-
-    private boolean isNestedNetException(Throwable throwable) {
         while (throwable != null) {
-            if (throwable.getCause() != null && throwable.getCause() instanceof NetException) {
+            // Always retry any recoverable error
+            if (throwable instanceof SQLRecoverableException) {
                 return true;
             }
+
+            // If message is provided, run checks against it
+            final String message = throwable.getMessage();
+            if (message != null && message.length() > 0) {
+                // Check Oracle error codes
+                for (String errorCode : retryOracleErrors) {
+                    if (message.startsWith(errorCode)) {
+                        return true;
+                    }
+                }
+                // Check Oracle error message texts
+                for (String messageText : retryOracleMessageContainsTexts) {
+                    if (message.toUpperCase().contains(messageText.toUpperCase())) {
+                        return true;
+                    }
+                }
+            }
+
+            if (throwable.getCause() != null) {
+                // We explicitly check this below the top-level error as we only want
+                // certain nested exceptions to be retried, not if they're at the top
+                final Throwable cause = throwable.getCause();
+                if (cause instanceof IOException) {
+                    return true;
+                }
+            }
+
             throwable = throwable.getCause();
         }
         return false;
