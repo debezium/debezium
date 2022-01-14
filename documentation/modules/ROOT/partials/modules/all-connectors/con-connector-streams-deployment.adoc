@@ -1,4 +1,4 @@
-Beginning with {prodname} 1.6, the preferred method for deploying a {prodname} connector is to use {StreamsName} to build a Kafka Connect container image that includes the connector plug-in.
+Beginning with {prodname} 1.7, the preferred method for deploying a {prodname} connector is to use {StreamsName} to build a Kafka Connect container image that includes the connector plug-in.
 
 During the deployment process, you create and use the following custom resources (CRs):
 
