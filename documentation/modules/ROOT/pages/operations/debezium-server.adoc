@@ -179,7 +179,7 @@ __  ____  __  _____   ___  __ ____  ______
 
 The source configuration uses the same configuration properties that are described on the specific connector documentation pages (just with `debezium.source` prefix), together with few more specific ones, necessary for running outside of Kafka Connect:
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -218,7 +218,7 @@ There are also other options available
 The message output format can be configured for both key and value separately.
 By default the output is in JSON format but an arbitrary implementation of Kafka Connect's `Converter` can be used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -249,7 +249,7 @@ Before the messages are delivered to the sink, they can run through a sequence o
 The server supports https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transformations] defined by Kafka Connect.
 The configuration will need to contain the list of transformations, implementation class for each transformation and configuration options for each of the transformations.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -280,7 +280,7 @@ Debezium Server runs on top Quarkus framework.
 All configuration options exposed by Quarkus are available in Debezium Server too.
 The most frequent used are:
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -318,7 +318,7 @@ The sink is selected by configuration property `debezium.sink.type`.
 Amazon Kinesis is an implementation of data streaming system with support for stream sharding and other techniques for high scalability.
 Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -353,7 +353,7 @@ So this string will be used as message key for messages from tables without prim
 The Kinesis sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Interface
 |CDI classifier
@@ -376,7 +376,7 @@ By default the same name is used.
 Google Cloud Pub/Sub is an implementation of messaging/eventing system designed for scalable batch and stream processing applications.
 Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -461,7 +461,7 @@ i.e. after this value is reached, the wait time will not increase further by the
 The Pub/Sub sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Interface
 |CDI classifier
@@ -516,7 +516,7 @@ This is not supported by Pulsar so a surrogate key must be used.
 The Pulsar sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Interface
 |CDI classifier
@@ -570,7 +570,7 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 The default sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Interface
 |CDI classifier
@@ -587,7 +587,7 @@ When the alternative implementations are not available then the default ones are
 Redis is an open source (BSD licensed) in-memory data structure store, used as a database, cache and message broker.
 The Stream is a data type which models a _log data structure_ in a more abstract way. It implements powerful operations to overcome the limitations of a log file.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -627,7 +627,7 @@ So this string will be used as value for records without a payload.
 The Redis sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Interface
 |CDI classifier
@@ -648,7 +648,7 @@ By default the same name is used.
 
 https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data streaming system powered by NATS, and written in the Go programming language. 
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
 |Default
@@ -678,7 +678,7 @@ https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data str
 The NATS Streaming sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Interface
 |CDI classifier
@@ -752,7 +752,7 @@ The Pravega sink expects destination scope and streams to already be created.
 Pravega sink behavior can be modified by custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 |Interface
 |CDI classifier
