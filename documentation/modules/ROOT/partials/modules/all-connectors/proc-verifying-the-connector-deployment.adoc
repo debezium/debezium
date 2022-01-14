@@ -48,33 +48,9 @@ Labels:       strimzi.io/cluster=debezium-kafka-connect-cluster
 Annotations:  <none>
 API Version:  kafka.strimzi.io/v1beta2
 Kind:         KafkaConnector
-Metadata:
-  Creation Timestamp:  2021-12-08T16:20:30Z
-  Generation:          1
-  Managed Fields:
-    API Version:  kafka.strimzi.io/v1beta2
-    Fields Type:  FieldsV1
-    fieldsV1:
-      f:status:
-        f:conditions:
-        f:topics:
-    Manager:         okhttp
-    Operation:       Update
-    Time:            2021-12-08T17:41:34Z
-  Resource Version:  996714
-  Self Link:         /apis/kafka.strimzi.io/v1beta2/namespaces/debezium/kafkaconnectors/inventory-connector-{context}
-  UID:               53390480-9e04-4415-8999-43bc9d072d54
-Spec:
-  Class:  io.debezium.connector.{context}.{connector-class}Connector
-  Config:
-    database.history.kafka.bootstrap.servers:  debezium-kafka-cluster-kafka-bootstrap.debezium.svc.cluster.local:9092
-    database.history.kafka.topic:              schema-changes.inventory
-    database.hostname:                         {context}.debezium-{context}.svc.cluster.local
-    database.password:                         xxx
-    database.port:                             3306
-    database.server.name:                      inventory_connector_{context}
-    database.user:                             debezium
-  Tasks Max:                                   1
+
+...
+
 Status:
   Conditions:
     Last Transition Time:  2021-12-08T17:41:34.897153Z
