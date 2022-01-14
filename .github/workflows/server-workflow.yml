@@ -59,4 +59,6 @@ jobs:
       - name: Run Formatting and Import Order Checks
         run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Server
-        run: mvn clean install -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: mvn clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Test Debezium Server
+        run: mvn install -B -pl debezium-server -Pserver-ci -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
