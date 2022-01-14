@@ -2377,7 +2377,7 @@ By default, no operations are skipped.
 
 |[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}debezium-signaling-enabling-signaling[signals] to the connector. +
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
