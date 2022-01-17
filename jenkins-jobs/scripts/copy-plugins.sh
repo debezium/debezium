@@ -30,7 +30,7 @@ while true; do
   esac
 done
 
-if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = false ]; then
+if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = "false" ]; then
   echo "Cannot push image without tag." >&2 ; exit 1 ;
 fi
 
@@ -83,7 +83,7 @@ echo "[Build] Building $target"
 docker build . -t "$target"
 popd || exit
 
-if [ "${AUTO_TAG}" ] ; then
+if [ "${AUTO_TAG}" = "true" ] ; then
   echo "[Build] Pushing image ${target}"
   docker push ${target}
   [[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo $target >> ${IMAGE_OUTPUT_FILE}

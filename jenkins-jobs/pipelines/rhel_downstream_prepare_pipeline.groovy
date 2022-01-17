@@ -50,8 +50,8 @@ pipeline {
     post {
         always {
             mail to: MAIL_TO, subject: "Rhel downstream preparation #${BUILD_NUMBER} finished", body: """
-${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
-"""
+            ${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
+            """
         }
         success {
             archiveArtifacts "**/published_image*.txt"
