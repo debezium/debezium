@@ -26,6 +26,10 @@ public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MysqlTextProtocolFieldReader.class);
 
+    public MysqlTextProtocolFieldReader(MySqlConnectorConfig config) {
+        super(config);
+    }
+
     /**
      * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
      *

@@ -75,7 +75,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param connectionConfig {@link MySqlConnectionConfiguration} instance, may not be null.
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig) {
-        this(connectionConfig, new MysqlTextProtocolFieldReader());
+        this(connectionConfig, new MysqlTextProtocolFieldReader(null));
     }
 
     @Override

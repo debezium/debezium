@@ -5,15 +5,18 @@
  */
 package io.debezium.connector.mysql;
 
+import java.io.UnsupportedEncodingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
+import io.debezium.util.Collect;
 
 /**
  * Abstract class for decode MySQL return value according to different protocols.
@@ -23,6 +26,14 @@ import io.debezium.relational.Table;
 public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private static final Set<String> TEXT_DATATYPES = Collect.unmodifiableSet("CHAR", "VARCHAR", "TEXT");
+
+    private final MySqlConnectorConfig connectorConfig;
+
+    protected AbstractMysqlFieldReader(MySqlConnectorConfig connectorConfig) {
+        this.connectorConfig = connectorConfig;
+    }
 
     @Override
     public Object readField(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
@@ -49,10 +60,14 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
         // DBZ-2673
         // It is necessary to check the type names as types like ENUM and SET are
         // also reported as JDBC type char
-        else if ("CHAR".equals(column.typeName()) ||
-                "VARCHAR".equals(column.typeName()) ||
-                "TEXT".equals(column.typeName())) {
-            return rs.getBytes(columnIndex);
+        else if (!connectorConfig.customConverterRegistry().isEmpty() && TEXT_DATATYPES.contains(column.typeName())) {
+            try {
+                return rs.getString(columnIndex).getBytes(column.charsetName());
+            }
+            catch (UnsupportedEncodingException e) {
+                logger.warn("Unsupported encoding '{}' for column '{}', sending value as String");
+                return rs.getObject(columnIndex);
+            }
         }
         else {
             return rs.getObject(columnIndex);
