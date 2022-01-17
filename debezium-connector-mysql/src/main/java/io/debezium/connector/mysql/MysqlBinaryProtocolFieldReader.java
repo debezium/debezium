@@ -29,6 +29,10 @@ public class MysqlBinaryProtocolFieldReader extends AbstractMysqlFieldReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MysqlBinaryProtocolFieldReader.class);
 
+    public MysqlBinaryProtocolFieldReader(MySqlConnectorConfig config) {
+        super(config);
+    }
+
     /**
      * @see <a href="https://dev.mysql.com/doc/internals/en/binary-protocol-value.html#packet-ProtocolBinary::MYSQL_TYPE_TIME">ProtocolBinary::MYSQL_TYPE_TIME</a>
      */

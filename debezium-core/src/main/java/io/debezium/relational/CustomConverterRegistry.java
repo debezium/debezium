@@ -150,6 +150,13 @@ public class CustomConverterRegistry {
         return Optional.of(x -> converterDefinition.converter.convert(x));
     }
 
+    /**
+     * @return true if no custom converters will be used by the connector
+     */
+    public boolean isEmpty() {
+        return conversionFunctionMap.isEmpty();
+    }
+
     private String fullColumnName(TableId table, Column column) {
         return table + "." + column.name();
     }
