@@ -1535,7 +1535,6 @@ SEMI_TO_INNER:                'SEMI_TO_INNER';
 SEQUENCED:                    'SEQUENCED';
 SEQUENCE:                     'SEQUENCE';
 SEQUENTIAL:                   'SEQUENTIAL';
-SEQ:                          'SEQ';
 SERIALIZABLE:                 'SERIALIZABLE';
 SERIALLY_REUSABLE:            'SERIALLY_REUSABLE';
 SERIAL:                       'SERIAL';
