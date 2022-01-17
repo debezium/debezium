@@ -29,8 +29,7 @@ while true; do
     * ) break ;;
   esac
 done
-
-if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = false ]; then
+if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = "false" ]; then
   echo "Cannot push image without tag." >&2 ; exit 1 ;
 fi
 
@@ -80,7 +79,7 @@ echo "[Build] Building ${image_dbz} from ${IMAGE}"
 docker build . -t "$target" --build-arg IMAGE="${IMAGE}" --build-arg KAFKA_SOURCE_PATH="${KAFKA_URL}" --build-arg DEBEZIUM_CONNECTORS="${PLUGIN_DIR_BUILDARG}" || exit
 popd || exit
 
-if [ "${AUTO_TAG}" ] ; then
+if [ "${AUTO_TAG}" = "true" ] ; then
   echo "[Build] Pushing image ${target}"
   docker push ${target}
   [[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo $target >> ${IMAGE_OUTPUT_FILE}
