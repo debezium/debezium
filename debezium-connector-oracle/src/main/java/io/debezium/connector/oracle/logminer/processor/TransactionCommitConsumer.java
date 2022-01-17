@@ -74,22 +74,12 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private final BlockingConsumer<LogMinerEvent> delegate;
     private final OracleConnectorConfig connectorConfig;
     private final OracleDatabaseSchema schema;
-
-    private class RowState {
-        final DmlEvent event;
-        final int transactionIndex;
-
-        RowState(final DmlEvent event, final int transactionIndex) {
-            this.event = event;
-            this.transactionIndex = transactionIndex;
-        }
-    }
-
     private final Map<String, RowState> rows = new HashMap<>();
 
     private String currentLobRowId;
     private String currentLobColumnName;
     private int currentLobColumnPosition = -1;
+    private int transactionIndex = 0;
 
     public TransactionCommitConsumer(BlockingConsumer<LogMinerEvent> delegate, OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
         this.delegate = delegate;
@@ -100,7 +90,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     @Override
     public void close() throws InterruptedException {
         // dispatch the remaining events in the order we received them from LogMiner
-        List<RowState> pending = new ArrayList<RowState>(rows.values());
+        List<RowState> pending = new ArrayList<>(rows.values());
         Collections.sort(pending, (a, b) -> a.transactionIndex - b.transactionIndex);
         for (final RowState rowState : pending) {
             prepareAndDispatch(rowState.event);
@@ -122,8 +112,6 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             acceptLobManipulationEvent(event);
         }
     }
-
-    private int transactionIndex = 0;
 
     private void acceptDmlEvent(DmlEvent event) throws InterruptedException {
         transactionIndex++;
@@ -316,7 +304,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         }
 
         private void initializeFromData(String data) {
-            this.binary = data.startsWith("HEXTORAW('") && data.endsWith("')");
+            this.binary = data.startsWith(OracleValueConverters.HEXTORAW_FUNCTION_START)
+                    && data.endsWith(OracleValueConverters.HEXTORAW_FUNCTION_END);
             if (this.binary) {
                 try {
                     this.bytes = RAW.hexString2Bytes(data.substring(10, data.length() - 2));
@@ -406,9 +395,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
         static String spaces(int length) {
             char[] backing = new char[length];
-            for (int i = 0; i < backing.length; i++) {
-                backing[i] = ' ';
-            }
+            Arrays.fill(backing, ' ');
             return new String(backing);
         }
     }
@@ -527,11 +514,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             if (isNull) {
                 return null;
             }
-            if (end == 0 && binary) {
-                return "EMPTY_BLOB()";
-            }
-            if (end == 0 && !binary) {
-                return "EMPTY_CLOB()";
+            if (end == 0) {
+                if (binary) {
+                    return OracleValueConverters.EMPTY_BLOB_FUNCTION;
+                }
+                return OracleValueConverters.EMPTY_CLOB_FUNCTION;
             }
 
             if (binary) {
@@ -583,11 +570,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             if (value instanceof String) {
                 String strval = (String) value;
                 LobUnderConstruction lob = new LobUnderConstruction();
-                if (strval.equals("EMPTY_BLOB()")) {
+                if (OracleValueConverters.EMPTY_BLOB_FUNCTION.equals(strval)) {
                     lob.binary = true;
                     lob.isNull = false; // lob must be emitted
                 }
-                else if (strval.equals("EMPTY_CLOB()")) {
+                else if (OracleValueConverters.EMPTY_CLOB_FUNCTION.equals(strval)) {
                     lob.binary = false;
                     lob.isNull = false; // lob must be emitted
                 }
@@ -599,6 +586,16 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
             LOGGER.trace("Don't know how to construct an initial LOB value from {}.", value);
             return new LobUnderConstruction();
+        }
+    }
+
+    private static class RowState {
+        final DmlEvent event;
+        final int transactionIndex;
+
+        RowState(final DmlEvent event, final int transactionIndex) {
+            this.event = event;
+            this.transactionIndex = transactionIndex;
         }
     }
 }

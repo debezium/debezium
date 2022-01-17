@@ -62,6 +62,10 @@ public class OracleValueConverters extends JdbcValueConverters {
      * Marker value indicating an unavilable column value.
      */
     public static final Object UNAVAILABLE_VALUE = new Object();
+    public static final String EMPTY_BLOB_FUNCTION = "EMPTY_BLOB()";
+    public static final String EMPTY_CLOB_FUNCTION = "EMPTY_CLOB()";
+    public static final String HEXTORAW_FUNCTION_START = "HEXTORAW('";
+    public static final String HEXTORAW_FUNCTION_END = "')";
 
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
 
@@ -98,11 +102,6 @@ public class OracleValueConverters extends JdbcValueConverters {
             .optionalEnd()
             .appendOffset("+HH:MM", "")
             .toFormatter();
-
-    private static final String EMPTY_BLOB_FUNCTION = "EMPTY_BLOB()";
-    private static final String EMPTY_CLOB_FUNCTION = "EMPTY_CLOB()";
-    private static final String HEXTORAW_FUNCTION_START = "HEXTORAW('";
-    private static final String HEXTORAW_FUNCTION_END = "')";
 
     private static final Pattern TO_TIMESTAMP = Pattern.compile("TO_TIMESTAMP\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
