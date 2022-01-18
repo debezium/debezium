@@ -58,7 +58,7 @@ MongoDB replication works by having the primary record the changes in its _oplog
 When a new server is added to a replica set, that server first performs an https://docs.mongodb.com/manual/core/replica-set-sync/[snapshot] of all of the databases and collections on the primary, and then reads the primary's oplog to apply all changes that might have been made since it began the snapshot.
 This new server becomes a secondary (and able to handle queries) when it catches up to the tail of the primary's oplog.
 
-MongoDB connector supports two distinct modes of capturing the changes controlled by xref:mongodb-property-capture-mode[[`capture.mode`] option:
+MongoDB connector supports two distinct modes of capturing the changes controlled by the xref:mongodb-property-capture-mode[`capture.mode`] option:
 
 * oplog based
 * change streams based
