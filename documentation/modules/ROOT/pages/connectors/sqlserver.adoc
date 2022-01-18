@@ -9,6 +9,7 @@
 :connector-file: {context}
 :connector-class: SqlServer
 :connector-name: SQL Server
+:data-collection: table
 ifdef::community[]
 
 :toc:
