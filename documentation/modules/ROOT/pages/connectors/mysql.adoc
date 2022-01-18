@@ -2310,7 +2310,7 @@ ifdef::product[]
 === Verifying that the {prodname} MySQL connector is running
 
 include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc
-endif::[product]
+endif::product[]
 
 // Type: reference
 // Title: Description of {prodname} MySQL connector configuration properties
