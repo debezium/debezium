@@ -8,6 +8,7 @@
 :connector-file: postgres
 :connector-class: Postgres
 :connector-name: PostgreSQL
+:data-collection: table
 ifdef::community[]
 
 :toc:
