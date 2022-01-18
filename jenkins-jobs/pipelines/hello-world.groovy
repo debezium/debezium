@@ -4,16 +4,11 @@ pipeline {
     }
 
     stages {
-        stage('CleanWorkspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
         stage('Hello') {
             echo 'Hello World'
             sh 'echo Hello World'
         }
+    }
 
     post {
         always {
