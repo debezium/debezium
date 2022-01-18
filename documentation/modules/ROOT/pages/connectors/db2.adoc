@@ -8,6 +8,7 @@
 :connector-file: {context}
 :connector-class: Db2Connector
 :connector-name: Db2
+:data-collection: table
 ifdef::community[]
 
 :toc:
