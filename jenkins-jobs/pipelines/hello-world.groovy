@@ -12,7 +12,7 @@ pipeline {
 
     post {
         always {
-            mail to: 'mmedek@redhat.com', subject: "Jenkins Hello World #${BUILD_NUMBER} finished", body: ''
+            mail to: 'mmedek@redhat.com', subject: "Jenkins Hello World #${BUILD_NUMBER} finished", body: 'Hello World'
         }
     }
 }
