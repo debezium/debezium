@@ -1,48 +1,48 @@
 pipeline {
-    // job1
-    matrix {
-        agent any
-        axes {
-            axis {
-                name 'PLATFORM'
-                values 'linux', 'windows'
-            }
-            axis {
-                name 'BROWSER'
-                values 'firefox', 'chrome'
-            }
-        }
+    agent none
+    stages {
+        stage('Execute') {
+            parallel {
 
-        stages {
-            stage('Build') {
-                steps {
-                    echo "Do Build M1 for ${PLATFORM} - ${BROWSER}"
+                stage('DB type 1') {
+                    matrix {
+                        agent any
+                        axes {
+                            axis {
+                                name 'VERSION'
+                                values '1.0', '2.0'
+                            }
+                        }
+                        stages {
+                            stage('Build DB 1') {
+                                steps {
+                                    echo "Do DB type 1 for ${VERSION}"
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-        }
-    }
 
-    // job2
-    matrix {
-        agent any
-        axes {
-            axis {
-                name 'PLATFORM'
-                values 'alinux', 'bwindows'
-            }
-            axis {
-                name 'VERSION'
-                values 'V1', 'V2'
-            }
-        }
-
-        stages {
-            stage('Build') {
-                steps {
-                    echo "Do Build M2 for ${PLATFORM} - ${BROWSER}"
+                stage('DB type 2') {
+                    matrix {
+                        agent any
+                        axes {
+                            axis {
+                                name 'VERSION'
+                                values '23.0', '23.1'
+                            }
+                        }
+                        stages {
+                            stage('Build DB 2') {
+                                steps {
+                                    echo "Do DB type 2 for ${VERSION}"
+                                }
+                            }
+                        }
+                    }
                 }
+
             }
         }
     }
 }
-
