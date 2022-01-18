@@ -243,7 +243,7 @@ public class MongoDbConnector extends SourceConnector {
                                     if (majorVersion >= 5
                                             && captureMode == CaptureMode.OPLOG) {
                                         captureModeValue.addErrorMessage(
-                                                "The 'oplog' capture mode is not supported for MongoDB 5 and newer");
+                                                "The 'oplog' capture mode is not supported for MongoDB 5 and newer; Please use 'change_streams'  or 'change_streams_update_full' instead");
                                     }
                                 }
                                 catch (NumberFormatException e) {
