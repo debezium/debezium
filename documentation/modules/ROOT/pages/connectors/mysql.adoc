@@ -8,6 +8,8 @@
 :connector-file: {context}
 :connector-class: MySql
 :connector-name: MySQL
+:data-collection: table
+
 ifdef::community[]
 :toc:
 :toc-placement: macro
