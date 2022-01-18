@@ -8,6 +8,7 @@
 :connector-file: {context}
 :connector-class: MongoDb
 :connector-name: MongoDB
+:data-collection: collection
 ifdef::community[]
 
 :toc:
