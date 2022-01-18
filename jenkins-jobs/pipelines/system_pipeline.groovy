@@ -84,6 +84,73 @@ pipeline {
             }
         }
 
+        stage('Configure') {
+            steps {
+                script {
+                    env.OCP_ENV_FILE = "${WORKSPACE}/debezium-${BUILD_NUMBER}.ocp.env"
+                    env.MVN_PROFILE_PROD = params.PRODUCT_BUILD ? "-Pproduct" : ""
+
+//                    Use strimzi build mechanism unless pre-built KC image is provided
+                    env.TEST_CONNECT_STRZ_BUILD = params.TEST_CONNECT_STRZ_IMAGE ? false : true
+
+//                    Configure images if provided
+                    env.IMAGE_TAG_SUFFIX="${BUILD_NUMBER}"
+                    env.MVN_IMAGE_CONNECT_STRZ = params.IMAGE_CONNECT_STRZ ? "-Dimage.kc=${params.IMAGE_CONNECT_STRZ}" : ""
+                    env.MVN_IMAGE_CONNECT_RHEL = params.IMAGE_CONNECT_RHEL ? "-Ddocker.image.kc=${params.IMAGE_CONNECT_RHEL}" : ""
+                    env.MVN_IMAGE_DBZ_AS = params.IMAGE_DBZ_AS ? "-Dimage.as=${params.IMAGE_DBZ_AS}" : ""
+
+//                    Test tag configuration
+                    env.TEST_TAG_EXPRESSION = params.TEST_TAGS
+                    if (!params.TEST_APICURIO_REGISTRY) {
+                        env.TEST_TAG_EXPRESSION = [env.TEST_TAG_EXPRESSION, "!avro"].findAll().join(" & ")
+                    }
+
+//                    Version configuration
+                    env.MVN_VERSION_KAFKA = params.TEST_VERSION_KAFKA ? "-Dversion.kafka=${params.TEST_VERSION_KAFKA}" : ""
+                    env.MVN_VERSION_AS_DEBEZIUM = params.AS_VERSION_DEBEZIUM ? "-Das.debezium.version=${params.AS_VERSION_DEBEZIUM}" : ""
+                    env.MVN_VERSION_AS_APICURIO = params.AS_VERSION_APICURIO ? "-Das.apicurio.version=${params.AS_VERSION_APICURIO}" : ""
+
+//                    Oracle Configuration
+                    env.ORACLE_ARTIFACT_VERSION='21.1.0.0'
+                    env.ORACLE_ARTIFACT_DIR = "${env.HOME}/oracle-libs/21.1.0.0.0"
+                }
+                withCredentials([
+                        usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
+                        usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
+
+                ]) {
+                    sh '''
+                    set -x            
+                    docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
+                    oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
+                    '''
+
+                    sh '''
+                    set -x            
+                    cd "${WORKSPACE}/debezium"
+                    ./jenkins-jobs/scripts/ocp-projects.sh --create -t "${BUILD_NUMBER}" --envfile "${OCP_ENV_FILE}"
+                    source "${OCP_ENV_FILE}"
+                    '''
+
+                    sh '''
+                    set -x
+                    cd ${ORACLE_ARTIFACT_DIR}
+                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar
+                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar
+                    '''
+
+                    sh '''
+                    set -x
+                    source "${OCP_ENV_FILE}"
+                    sed -i "s/namespace: .*/namespace: ${OCP_PROJECT_DEBEZIUM}/" strimzi/install/cluster-operator/*RoleBinding*.yaml
+                    oc delete -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM} --ignore-not-found
+                    oc create -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM}
+                    '''
+                }
+            }
+        }
+
+
         stage('Configure - Apicurio') {
             when {
                 expression { params.TEST_APICURIO_REGISTRY }
@@ -100,10 +167,10 @@ pipeline {
                     sh '''
                     set -x            
                     oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
-                    oc new-project ${OCP_PROJECT_REGISTRY}
                     '''
                     sh '''
                     set -x
+                    source "${OCP_ENV_FILE}"
                     cat ${APIC_RESOURCES}/install.yaml | grep "namespace: apicurio-registry-operator-namespace" -A5 -B5
                     sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${OCP_PROJECT_REGISTRY}/" ${APIC_RESOURCES}/install.yaml
                     cat ${APIC_RESOURCES}/install.yaml | grep "namespace: ${OCP_PROJECT_REGISTRY}" -A5 -B5
@@ -114,91 +181,11 @@ pipeline {
             }
         }
 
-        stage('Configure') {
-            steps {
-                script {
-                    env.OCP_PROJECT_DEBEZIUM = "debezium-${BUILD_NUMBER}"
-                    env.OCP_PROJECT_MYSQL = "debezium-${BUILD_NUMBER}-mysql"
-                    env.OCP_PROJECT_POSTGRESQL = "debezium-${BUILD_NUMBER}-postgresql"
-                    env.OCP_PROJECT_SQLSERVER = "debezium-${BUILD_NUMBER}-sqlserver"
-                    env.OCP_PROJECT_MONGO = "debezium-${BUILD_NUMBER}-mongo"
-                    env.OCP_PROJECT_DB2 = "debezium-${BUILD_NUMBER}-db2"
-                    env.OCP_PROJECT_ORACLE = "debezium-${BUILD_NUMBER}-oracle"
-
-                    env.MVN_PROFILE_PROD = params.PRODUCT_BUILD ? "-Pproduct" : ""
-
-                    env.TEST_CONNECT_STRZ_BUILD = params.TEST_CONNECT_STRZ_IMAGE ? false : true
-
-                    env.IMAGE_TAG_SUFFIX="${BUILD_NUMBER}"
-                    env.MVN_IMAGE_CONNECT_STRZ = params.IMAGE_CONNECT_STRZ ? "-Dimage.kc=${params.IMAGE_CONNECT_STRZ}" : ""
-                    env.MVN_IMAGE_CONNECT_RHEL = params.IMAGE_CONNECT_RHEL ? "-Ddocker.image.kc=${params.IMAGE_CONNECT_RHEL}" : ""
-                    env.MVN_IMAGE_DBZ_AS = params.IMAGE_DBZ_AS ? "-Dimage.as=${params.IMAGE_DBZ_AS}" : ""
-
-                    env.TEST_TAG_EXPRESSION = params.TEST_TAGS
-                    if (!params.TEST_APICURIO_REGISTRY) {
-                        env.TEST_TAG_EXPRESSION = [env.TEST_TAG_EXPRESSION, "!avro"].findAll().join(" & ")
-                    }
-
-                    env.MVN_VERSION_KAFKA = params.TEST_VERSION_KAFKA ? "-Dversion.kafka=${params.TEST_VERSION_KAFKA}" : ""
-                    env.MVN_VERSION_AS_DEBEZIUM = params.AS_VERSION_DEBEZIUM ? "-Das.debezium.version=${params.AS_VERSION_DEBEZIUM}" : ""
-                    env.MVN_VERSION_AS_APICURIO = params.AS_VERSION_APICURIO ? "-Das.apicurio.version=${params.AS_VERSION_APICURIO}" : ""
-
-                    env.ORACLE_ARTIFACT_VERSION='21.1.0.0'
-                    env.ORACLE_ARTIFACT_DIR = "${env.HOME}/oracle-libs/21.1.0.0.0"
-                }
-                withCredentials([
-                        usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
-                        usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
-
-                ]) {
-                    sh '''
-                    set -x
-                    cd ${ORACLE_ARTIFACT_DIR}
-                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar
-                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar
-                    '''
-                    sh '''
-                    set -x            
-                    oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
-                    oc new-project ${OCP_PROJECT_DEBEZIUM}
-                    oc new-project ${OCP_PROJECT_MYSQL}
-                    oc new-project ${OCP_PROJECT_POSTGRESQL}
-                    oc new-project ${OCP_PROJECT_SQLSERVER}
-                    oc new-project ${OCP_PROJECT_MONGO}
-                    oc new-project ${OCP_PROJECT_DB2}
-                    oc new-project ${OCP_PROJECT_ORACLE}
-                    '''
-                    sh '''
-                    set -x
-                    sed -i "s/namespace: .*/namespace: ${OCP_PROJECT_DEBEZIUM}/" strimzi/install/cluster-operator/*RoleBinding*.yaml
-                    oc delete -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM} --ignore-not-found
-                    oc create -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM}
-                    '''
-                    sh '''
-                    set -x
-                    oc project ${OCP_PROJECT_SQLSERVER}
-                    oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_SQLSERVER}:default
-                    oc project ${OCP_PROJECT_MONGO}
-                    oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_MONGO}:default
-                    oc project ${OCP_PROJECT_DB2}
-                    oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_DB2}:default
-                    oc adm policy add-scc-to-user privileged system:serviceaccount:${OCP_PROJECT_DB2}:default
-                    oc project ${OCP_PROJECT_ORACLE}
-                    oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_ORACLE}:default
-                    '''
-                    sh '''
-                    set -x
-                    docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
-                    '''
-                }
-            }
-        }
-
         stage('Build') {
             steps {
                 sh '''
                 set -x
-                cd ${WORKSPACE}/debezium
+                cd "${WORKSPACE}/debezium"
                 mvn clean install -DskipTests -DskipITs
                 '''
             }
@@ -268,6 +255,8 @@ pipeline {
                     sh '''
                     set -x
                     cd ${WORKSPACE}/debezium
+                    source "${OCP_ENV_FILE}"
+               
                     mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \\
                     ${MVN_PROFILE_PROD} \\
                     -Docp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \\
@@ -300,21 +289,16 @@ pipeline {
 
     post {
         always {
+            sh '''
+            cd ${WORKSPACE}/debezium
+            ./jenkins-jobs/scripts/ocp-projects.sh --delete -t ${BUILD_NUMBER}
+            '''
             archiveArtifacts '**/target/failsafe-reports/*.xml'
             junit '**/target/failsafe-reports/*.xml'
 
             mail to: MAIL_TO, subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
 OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
-        }
-        success {
-            sh '''
-            oc projects | grep -Po "debezium-${BUILD_NUMBER}.*"
-            
-            for project in $(oc projects | grep -Po "debezium-${BUILD_NUMBER}[\\w-]*$"); do
-                oc delete project "${project}" --ignore-not-found
-            done
-            '''
         }
     }
 }

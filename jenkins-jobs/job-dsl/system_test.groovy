@@ -47,7 +47,7 @@ pipelineJob('ocp-debezium-testing-system') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/openshift_pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/system_pipeline.groovy'))
         }
     }
 }
