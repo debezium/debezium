@@ -17,8 +17,7 @@ pipelineJob('test-milti-matrix-job') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/matrix1.groovy'))
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/matrix2.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/multiple-matrixes-test.groovy'))
         }
     }
 }
