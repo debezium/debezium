@@ -243,7 +243,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 ResultSet rs = statement.executeQuery(txQuery.toString())) {
             while (rs.next()) {
                 byte[] txid = rs.getBytes(1);
-                Long scn = rs.getLong(2);
+                String scn = rs.getString(2);
                 transactions.put(HexConverter.convertToHexString(txid), Scn.valueOf(scn));
             }
         }

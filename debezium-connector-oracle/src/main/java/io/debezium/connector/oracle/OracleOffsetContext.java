@@ -6,9 +6,11 @@
 package io.debezium.connector.oracle;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -23,7 +25,7 @@ import io.debezium.schema.DataCollectionId;
 public class OracleOffsetContext implements OffsetContext {
 
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
-    public static final String SNAPSHOT_PENDING_TRANSACTIONS_PREFIX = "snapshot_pending_tx_";
+    public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
     public static final String SNAPSHOT_SCN_KEY = "snapshot_scn";
 
     private final Schema sourceInfoSchema;
@@ -162,8 +164,10 @@ public class OracleOffsetContext implements OffsetContext {
             offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
             if (snapshotPendingTransactions != null) {
-                snapshotPendingTransactions.entrySet().stream()
-                        .forEach(e -> offset.put(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX + e.getKey(), e.getValue().longValue()));
+                String encoded = snapshotPendingTransactions.entrySet().stream()
+                        .map(e -> e.getKey() + ":" + e.getValue().toString())
+                        .collect(Collectors.joining(","));
+                offset.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encoded);
             }
             offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.toString() : null);
 
@@ -181,8 +185,10 @@ public class OracleOffsetContext implements OffsetContext {
                 offset.put(SourceInfo.COMMIT_SCN_KEY, commitScn != null ? commitScn.toString() : null);
             }
             if (snapshotPendingTransactions != null) {
-                snapshotPendingTransactions.entrySet().stream()
-                        .forEach(e -> offset.put(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX + e.getKey(), e.getValue().longValue()));
+                String encoded = snapshotPendingTransactions.entrySet().stream()
+                        .map(e -> e.getKey() + ":" + e.getValue().toString())
+                        .collect(Collectors.joining(","));
+                offset.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encoded);
             }
             offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.toString() : null);
 
@@ -345,10 +351,18 @@ public class OracleOffsetContext implements OffsetContext {
      */
     public static Map<String, Scn> loadSnapshotPendingTransactions(Map<String, ?> offset) {
         Map<String, Scn> snapshotPendingTransactions = new HashMap<>();
-        offset.keySet().stream()
-                .filter(key -> key.startsWith(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX))
-                .forEach(key -> snapshotPendingTransactions.put(
-                        key.substring(SNAPSHOT_PENDING_TRANSACTIONS_PREFIX.length()), getScnFromOffsetMapByKey(offset, key)));
+        String encoded = (String) offset.get(SNAPSHOT_PENDING_TRANSACTIONS_KEY);
+        if (encoded != null) {
+            Arrays.stream(encoded.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(e -> {
+                        String[] parts = e.split(":", 2);
+                        String txid = parts[0];
+                        Scn startScn = Scn.valueOf(parts[1]);
+                        snapshotPendingTransactions.put(txid, startScn);
+                    });
+        }
         return snapshotPendingTransactions;
     }
 
