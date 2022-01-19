@@ -607,7 +607,7 @@ _schemaName_:: The name of the schema in which the operation occurred.
 
 _tableName_:: The name of the table in which the operation occurred.
 
-The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-mysql-connector-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database history topics, xref:mysql-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
