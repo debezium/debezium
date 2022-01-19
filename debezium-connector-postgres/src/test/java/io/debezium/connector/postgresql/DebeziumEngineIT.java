@@ -147,7 +147,7 @@ public class DebeziumEngineIT {
                     @Override
                     public void handle(boolean success, String message, Throwable error) {
                         Assertions.assertThat(success).isFalse();
-                        Assertions.assertThat(message).contains("Failed to serialize Avro data from topic debezium");
+                        Assertions.assertThat(message).contains("Failed to serialize Avro data from topic test_server.engine.test");
                         allLatch.countDown();
                     }
                 })

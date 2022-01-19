@@ -164,8 +164,12 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
             keyConverter = createConverter(formatKey, true);
             valueConverter = createConverter(formatValue, false);
             toFormat = (record) -> {
-                final byte[] key = keyConverter.fromConnectData(TOPIC_NAME, record.keySchema(), record.key());
-                final byte[] value = valueConverter.fromConnectData(TOPIC_NAME, record.valueSchema(), record.value());
+                String topicName = record.topic();
+                if (topicName == null) {
+                    topicName = TOPIC_NAME;
+                }
+                final byte[] key = keyConverter.fromConnectData(topicName, record.keySchema(), record.key());
+                final byte[] value = valueConverter.fromConnectData(topicName, record.valueSchema(), record.value());
                 return isFormat(formatKey, Json.class) && isFormat(formatValue, Json.class)
                         || isFormat(formatValue, CloudEvents.class)
                                 ? (R) new EmbeddedEngineChangeEvent<String, String>(
