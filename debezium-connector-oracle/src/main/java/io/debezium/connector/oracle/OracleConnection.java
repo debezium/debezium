@@ -454,12 +454,23 @@ public class OracleConnection extends JdbcConnection {
                     .append(" WHERE ")
                     .append(condition.get());
         }
-        sql
-                .append(" ORDER BY ")
-                .append(orderBy)
-                .append(" FETCH NEXT ")
-                .append(limit)
-                .append(" ROWS ONLY");
+        if (getOracleVersion().getMajor() < 12) {
+            sql
+                    .insert(0, " SELECT * FROM (")
+                    .append(" ORDER BY ")
+                    .append(orderBy)
+                    .append(")")
+                    .append(" WHERE ROWNUM <=")
+                    .append(limit);
+        }
+        else {
+            sql
+                    .append(" ORDER BY ")
+                    .append(orderBy)
+                    .append(" FETCH NEXT ")
+                    .append(limit)
+                    .append(" ROWS ONLY");
+        }
         return sql.toString();
     }
 
