@@ -46,7 +46,6 @@ Technology Preview features are not supported with Red Hat production service le
 Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
 For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
 ====
-====
 
 Information and procedures for using a {prodname} Oracle connector are organized as follows:
 
@@ -56,8 +55,6 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:setting-up-oracle-to-work-with-debezium[]
   * xref:deployment-of-debezium-oracle-connectors[]
   * xref:monitoring-debezium-oracle-connector-performance[]
-// * surrogate-schema-evolution
-// * xstreams-support
   * xref:how-debezium-oracle-connectors-handle-faults-and-problems[]
 endif::product[]
 

@@ -2254,7 +2254,7 @@ In the resulting snapshot, the connector includes only the records for which `de
 
 |[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
-|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See  {link-prefix}:{link-db2-connector}#db2-transaction-metadata[Transaction metadata] for details.
+|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-db2-connector}#db2-transaction-metadata[Transaction metadata] for details.
 
 |[[db2-property-transaction-topic]]<<db2-property-transaction-topic, `transaction.topic`>>
 |`${database.server.name}.transaction`

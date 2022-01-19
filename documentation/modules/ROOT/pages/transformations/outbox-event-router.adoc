@@ -25,8 +25,16 @@ A {prodname} connector that is configured to apply the outbox SMT should capture
 For more information, see xref:options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
 
 A connector can capture changes in more than one outbox table only if each outbox table has the same structure.
-
-
+ifdef::product[]
+[IMPORTANT]
+====
+The outbox event router SMT is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
 See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works.
 
 ifdef::community[]
@@ -45,8 +53,11 @@ The following topics provide details:
 * xref:example-of-a-debezium-outbox-message[]
 * xref:outbox-table-structure-expected-by-debezium-outbox-event-router-smt[]
 * xref:basic-debezium-outbox-event-router-smt-configuration[]
+* xref:options-for-applying-the-outbox-event-router-transformation-selectively[]
 * xref:using-avro-as-the-payload-format-in-debezium-outbox-messages[]
 * xref:emitting-additional-fields-in-debezium-outbox-messages[]
+* xref:emitting-additional-fields-in-debezium-outbox-messages[]
+* xref:expanding-escaped-json-string-as-json[]
 * xref:options-for-configuring-outbox-event-router-transformation[]
 endif::product[]
 
@@ -165,7 +176,7 @@ For more information, see xref:emitting-messages-with-additional-fields[Emitting
 To obtain the event payload from a different outbox table column, set the xref:outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
 
 |Additional custom columns
-|Any additional columns from the outbox table can be xref:outbox-event-router-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. +
+|Any additional columns from the outbox table can be xref:emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. +
  +
 One example could be a column `eventType` which conveys a user-defined value that helps to categorize or organize events.
 
@@ -198,7 +209,6 @@ You can use one of the following methods to configure the connector to apply the
 * {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:outbox-event-router-property-route-topic-regex[route.topic.regex] configuration option for the SMT.
 
-ifdef::community[]
 // Type: concept
 // Title: Using Avro as the payload format in {prodname} outbox messages
 // ModuleID: using-avro-as-the-payload-format-in-debezium-outbox-messages
@@ -207,6 +217,10 @@ ifdef::community[]
 
 The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. An alternative to working with JSON is to use Avro.
 This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
+
+ifdef::product[]
+NOTE: The use of Avro to format the message payload is a Technology Preview feature.
+endif::product[]
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
 One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances.
@@ -238,7 +252,7 @@ value.converter.delegate.converter.type.schemas.enable=false
 
 The delegate `Converter` implementation is specified by the `delegate.converter.type` option.
 If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
-endif::community[]
+
 
 // Type: concept
 // Title: Emitting additional fields in {prodname} outbox messages
