@@ -14,8 +14,6 @@
     <properties>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>6.0.2</version.confluent.platform>
-        <version.apicurio>2.0.2.Final</version.apicurio>
-        <rest-assured.version>4.3.3</rest-assured.version>
 
         <!-- Connectors -->
         <version.com.google.protobuf>3.19.2</version.com.google.protobuf>
@@ -56,6 +54,7 @@
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>
         <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
+        <version.rest-assured>4.3.3</version.rest-assured>
         <version.logback>1.2.10</version.logback>
     </properties>
 
@@ -460,7 +459,7 @@
             <dependency>
                 <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
-                <version>${rest-assured.version}</version>
+                <version>${version.rest-assured}</version>
             </dependency>
             <dependency>
                 <groupId>org.easytesting</groupId>
