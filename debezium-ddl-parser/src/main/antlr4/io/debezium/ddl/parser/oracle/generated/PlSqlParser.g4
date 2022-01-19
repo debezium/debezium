@@ -1558,7 +1558,12 @@ build_clause
 
 parallel_clause
     : NOPARALLEL
-    | PARALLEL parallel_count=UNSIGNED_INTEGER?
+    // Oracle still supports a very legacy syntax of "(DEGREE x)" where x is an unsigned number.
+    // This syntax appears to be a legacy syntax that isn't documented but a reference is made in
+    // the CREATE TABLE parallel_clause text indicating that some older, legacy syntax variants
+    // are supported.  This specific variant isn't in the syntax diagrams and looking all the way
+    // back to Oracle 10, I couldn't find a reference to this syntax.
+    | PARALLEL (parallel_count=UNSIGNED_INTEGER | '(' DEGREE parallel_degree=UNSIGNED_INTEGER ')')?
     ;
 
 alter_materialized_view
