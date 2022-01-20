@@ -22,8 +22,8 @@ public class MySqlErrorHandler extends ErrorHandler {
 
     private static final String SQL_CODE_TOO_MANY_CONNECTIONS = "08004";
 
-    public MySqlErrorHandler(String logicalName, ChangeEventQueue<?> queue) {
-        super(MySqlConnector.class, logicalName, queue);
+    public MySqlErrorHandler(MySqlConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
+        super(MySqlConnector.class, connectorConfig, queue);
     }
 
     @Override

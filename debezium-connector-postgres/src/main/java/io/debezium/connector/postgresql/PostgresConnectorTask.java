@@ -163,7 +163,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            ErrorHandler errorHandler = new PostgresErrorHandler(connectorConfig.getLogicalName(), queue);
+            ErrorHandler errorHandler = new PostgresErrorHandler(connectorConfig, queue);
 
             final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 

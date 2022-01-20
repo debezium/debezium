@@ -17,8 +17,8 @@ import io.debezium.pipeline.ErrorHandler;
  */
 public class PostgresErrorHandler extends ErrorHandler {
 
-    public PostgresErrorHandler(String logicalName, ChangeEventQueue<?> queue) {
-        super(PostgresConnector.class, logicalName, queue);
+    public PostgresErrorHandler(PostgresConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
+        super(PostgresConnector.class, connectorConfig, queue);
     }
 
     @Override

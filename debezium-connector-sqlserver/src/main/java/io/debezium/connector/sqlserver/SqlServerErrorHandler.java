@@ -17,8 +17,8 @@ import io.debezium.pipeline.ErrorHandler;
  */
 public class SqlServerErrorHandler extends ErrorHandler {
 
-    public SqlServerErrorHandler(String logicalName, ChangeEventQueue<?> queue) {
-        super(SqlServerConnector.class, logicalName, queue);
+    public SqlServerErrorHandler(SqlServerConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
+        super(SqlServerConnector.class, connectorConfig, queue);
     }
 
     @Override

@@ -125,7 +125,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            errorHandler = new MongoDbErrorHandler(connectorConfig.getLogicalName(), queue);
+            errorHandler = new MongoDbErrorHandler(connectorConfig, queue);
 
             final MongoDbEventMetadataProvider metadataProvider = new MongoDbEventMetadataProvider();
 
