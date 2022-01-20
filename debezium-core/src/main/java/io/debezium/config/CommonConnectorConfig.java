@@ -475,6 +475,17 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "The name of the transaction metadata topic. The placeholder ${database.server.name} can be used for referring to the connector's logical name; defaults to ${database.server.name}.transaction.");
 
+    public static final Field CUSTOM_RETRIABLE_EXCEPTION = Field.createInternal("custom.retriable.exception")
+            .withDisplayName("Regular expression to match the exception message.")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 999))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Provide a temporary workaround for an error that should be retriable."
+                    + " If set a stacktrace of non-retriable exception is traversed and messages are"
+                    + " matched against this regular expression. If matched the error is changed to retriable.")
+            .withDefault(false);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -844,5 +855,9 @@ public abstract class CommonConnectorConfig {
 
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
         return signalingDataCollection != null && signalingDataCollection.equals(dataCollectionId.identifier());
+    }
+
+    public Optional<String> customRetriableException() {
+        return Optional.ofNullable(config.getString(CUSTOM_RETRIABLE_EXCEPTION));
     }
 }

@@ -82,7 +82,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new OracleErrorHandler(connectorConfig.getLogicalName(), queue);
+        errorHandler = new OracleErrorHandler(connectorConfig, queue);
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
 

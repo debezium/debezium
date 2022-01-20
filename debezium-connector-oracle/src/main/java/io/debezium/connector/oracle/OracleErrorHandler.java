@@ -41,8 +41,8 @@ public class OracleErrorHandler extends ErrorHandler {
         retryOracleMessageContainsTexts.add("No more data to read from socket");
     }
 
-    public OracleErrorHandler(String logicalName, ChangeEventQueue<?> queue) {
-        super(OracleConnector.class, logicalName, queue);
+    public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
+        super(OracleConnector.class, connectorConfig, queue);
     }
 
     @Override

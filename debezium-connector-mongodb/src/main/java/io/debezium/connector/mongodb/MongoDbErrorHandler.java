@@ -15,8 +15,8 @@ import io.debezium.pipeline.ErrorHandler;
  */
 public class MongoDbErrorHandler extends ErrorHandler {
 
-    public MongoDbErrorHandler(String logicalName, ChangeEventQueue<?> queue) {
-        super(MongoDbConnector.class, logicalName, queue);
+    public MongoDbErrorHandler(MongoDbConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
+        super(MongoDbConnector.class, connectorConfig, queue);
     }
 
     @Override

@@ -13,6 +13,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 
 public class ErrorHandler {
@@ -21,8 +22,11 @@ public class ErrorHandler {
 
     private final ChangeEventQueue<?> queue;
     private final AtomicReference<Throwable> producerThrowable;
+    private final CommonConnectorConfig connectorConfig;
 
-    public ErrorHandler(Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventQueue<?> queue) {
+    public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
+                        ChangeEventQueue<?> queue) {
+        this.connectorConfig = connectorConfig;
         this.queue = queue;
         this.producerThrowable = new AtomicReference<>();
     }
@@ -32,6 +36,10 @@ public class ErrorHandler {
 
         boolean first = this.producerThrowable.compareAndSet(null, producerThrowable);
         boolean retriable = isRetriable(producerThrowable);
+
+        if (!retriable) {
+            retriable = isCustomRetriable(producerThrowable);
+        }
 
         if (first) {
             if (retriable) {
@@ -53,6 +61,25 @@ public class ErrorHandler {
      * connection loss) or not.
      */
     protected boolean isRetriable(Throwable throwable) {
+        return false;
+    }
+
+    /**
+     * Whether the given non-retriable matches a custom retriable setting.
+     *
+     * @return true if non-retriable is converted to retriable
+     */
+    protected boolean isCustomRetriable(Throwable throwable) {
+        if (!connectorConfig.customRetriableException().isPresent()) {
+            return false;
+        }
+        while (throwable != null) {
+            if (throwable.getMessage() != null
+                    && throwable.getMessage().matches(connectorConfig.customRetriableException().get())) {
+                return true;
+            }
+            throwable = throwable.getCause();
+        }
         return false;
     }
 }
