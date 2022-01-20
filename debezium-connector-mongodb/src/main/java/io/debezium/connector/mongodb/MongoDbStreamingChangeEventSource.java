@@ -340,26 +340,31 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
 
-                    oplogContext.getOffset().changeStreamEvent(event, txOrder);
-                    oplogContext.getOffset().getOffset();
-                    CollectionId collectionId = new CollectionId(
-                            replicaSet.replicaSetName(),
-                            event.getNamespace().getDatabaseName(),
-                            event.getNamespace().getCollectionName());
+                    if (!taskContext.filters().databaseFilter().test(event.getDatabaseName())) {
+                        LOGGER.debug("Skipping the event for database '{}' based on database include/exclude list", event.getDatabaseName());
+                    }
+                    else {
+                        oplogContext.getOffset().changeStreamEvent(event, txOrder);
+                        oplogContext.getOffset().getOffset();
+                        CollectionId collectionId = new CollectionId(
+                                replicaSet.replicaSetName(),
+                                event.getNamespace().getDatabaseName(),
+                                event.getNamespace().getCollectionName());
 
-                    if (taskContext.filters().collectionFilter().test(collectionId)) {
-                        try {
-                            dispatcher.dispatchDataChangeEvent(
-                                    collectionId,
-                                    new MongoDbChangeStreamChangeRecordEmitter(
-                                            oplogContext.getPartition(),
-                                            oplogContext.getOffset(),
-                                            clock,
-                                            event));
-                        }
-                        catch (Exception e) {
-                            errorHandler.setProducerThrowable(e);
-                            return;
+                        if (taskContext.filters().collectionFilter().test(collectionId)) {
+                            try {
+                                dispatcher.dispatchDataChangeEvent(
+                                        collectionId,
+                                        new MongoDbChangeStreamChangeRecordEmitter(
+                                                oplogContext.getPartition(),
+                                                oplogContext.getOffset(),
+                                                clock,
+                                                event));
+                            }
+                            catch (Exception e) {
+                                errorHandler.setProducerThrowable(e);
+                                return;
+                            }
                         }
                     }
 
@@ -523,7 +528,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
             // Otherwise it is an event on a document in a collection
             if (!taskContext.filters().databaseFilter().test(dbName)) {
-                LOGGER.debug("Skipping the event for database {} based on database.whitelist", dbName);
+                LOGGER.debug("Skipping the event for database '{}' based on database include/exclude list", dbName);
                 return true;
             }
 
