@@ -43,8 +43,11 @@ endif::community[]
 
 [NOTE]
 ====
-This SMT does *not* support the MongoDB connector;
-please use the xref:transformations/mongodb-outbox-event-router.adoc[MongoDB outbox event router] SMT with that connector.
+The outbox event router SMT is not compatible with the MongoDB connector.
+
+ifdef::community[]
+As an alternative, MongoDB users can run the xref:transformations/mongodb-outbox-event-router.adoc[MongoDB outbox event router SMT].
+endif::community[]
 ====
 
 ifdef::product[]
