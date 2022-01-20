@@ -86,7 +86,7 @@ Typically, the redo logs on an Oracle server are configured to not retain the co
 As a result, the {prodname} Oracle connector cannot retrieve the entire history of the database from the logs.
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
 
-You can customize the way that the connector creates snapshots by setting the value of the xref:oracle-connector-snapshot-mode-configuration-property[`snapshot.mode`] connector configuration property.
+You can customize the way that the connector creates snapshots by setting the value of the xref:oracle-property-snapshot-mode[`snapshot.mode`] connector configuration property.
 By default, the connector's snapshot mode is set to `initial`.
 
 [[default-workflow-for-performing-an-initial-snapshot]]
@@ -105,7 +105,7 @@ After the snapshot process begins, if the process is interrupted due to connecto
 After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 3 so that it does not miss any updates.
 If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
 
-[id="oracle-connector-snapshot-mode-configuration-property"]
+[id="oracle-connector-snapshot-mode-options"]
 .Settings for `snapshot.mode` connector configuration property
 [cols="30%a,70%a",options="header"]
 |===
@@ -2238,6 +2238,8 @@ Database history topics require infinite retention.
 Note this mode is only safe to be used when it is guaranteed that no schema changes happened since the point in time the connector was shut down before and the point in time the snapshot is taken.
 
 After the snapshot is complete, the connector continues to read change events from the database's redo logs.
+
+For more information, see the xref:#oracle-connector-snapshot-mode-options[table of `snapshot.mode` options].
 
 |[[oracle-property-snapshot-locking-mode]]<<oracle-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_shared_
