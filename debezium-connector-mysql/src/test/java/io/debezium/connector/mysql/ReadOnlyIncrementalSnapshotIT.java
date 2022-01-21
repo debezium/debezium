@@ -109,7 +109,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     @Test
     public void emptyHighWatermark() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector();
@@ -125,7 +125,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     @Test
     public void filteredEvents() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
         startConnector();
@@ -164,7 +164,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     @Test
     public void inserts4Pks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populate4PkTable();
         startConnector();
@@ -186,7 +186,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     @Test
     public void insertsWithoutPks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populate4WithoutPkTable();
         startConnector();
@@ -209,7 +209,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     @Test(expected = ConnectException.class)
     @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Read only connection requires GTID_MODE to be ON")
     public void shouldFailIfGtidModeIsOff() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         populateTable();
         AtomicReference<Throwable> exception = new AtomicReference<>();
         startConnector((success, message, error) -> exception.set(error));

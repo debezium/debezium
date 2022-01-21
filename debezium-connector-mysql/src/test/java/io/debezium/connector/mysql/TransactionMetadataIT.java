@@ -73,7 +73,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         start(MySqlConnector.class, config);
 
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
