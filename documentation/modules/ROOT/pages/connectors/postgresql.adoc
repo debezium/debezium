@@ -18,6 +18,7 @@ ifdef::community[]
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 The {prodname} PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database.
 ifdef::community[]
