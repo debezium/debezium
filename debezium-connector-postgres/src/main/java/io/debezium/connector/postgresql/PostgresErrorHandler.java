@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.postgresql;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 import org.postgresql.util.PSQLException;
@@ -14,6 +12,7 @@ import org.postgresql.util.PSQLException;
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.util.Collect;
 
 /**
  * Error handler for Postgres.
@@ -23,17 +22,11 @@ import io.debezium.pipeline.ErrorHandler;
 public class PostgresErrorHandler extends ErrorHandler {
 
     @Immutable
-    private static final Set<String> RETRIABLE_EXCEPTION_MESSSAGES;
-
-    static {
-        Set<String> tmp = new HashSet<>();
-        tmp.add("Database connection failed when writing to copy");
-        tmp.add("Database connection failed when reading from copy");
-        tmp.add("FATAL: terminating connection due to administrator command");
-        tmp.add("An I/O error occurred while sending to the backend");
-
-        RETRIABLE_EXCEPTION_MESSSAGES = Collections.unmodifiableSet(tmp);
-    }
+    private static final Set<String> RETRIABLE_EXCEPTION_MESSSAGES = Collect.unmodifiableSet(
+            "Database connection failed when writing to copy",
+            "Database connection failed when reading from copy",
+            "FATAL: terminating connection due to administrator command",
+            "An I/O error occurred while sending to the backend");
 
     public PostgresErrorHandler(PostgresConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
         super(PostgresConnector.class, connectorConfig, queue);
