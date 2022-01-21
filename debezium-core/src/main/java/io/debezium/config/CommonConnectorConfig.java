@@ -423,8 +423,9 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(CommonConnectorConfig::validateSkippedOperation)
-            .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'c' for inserts/create; 'u' for updates; 'd' for deletes. "
-                    + "By default, no operations will be skipped.");
+            .withDescription(
+                    "The comma-separated list of operations to skip during streaming, defined as: 'c' for inserts/create; 'u' for updates; 'd' for deletes, 't' for truncates, and 'none' to indicate nothing skipped. "
+                            + "By default, no operations will be skipped.");
 
     public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
             .withDisplayName("Binary Handling")
@@ -559,6 +560,9 @@ public abstract class CommonConnectorConfig {
         String operations = config.getString(SKIPPED_OPERATIONS);
 
         if (operations != null) {
+            if (operations.trim().equalsIgnoreCase("none")) {
+                return EnumSet.noneOf(Envelope.Operation.class);
+            }
             return EnumSet.copyOf(Arrays.stream(operations.split(","))
                     .map(String::trim)
                     .map(Operation::forCode)
@@ -770,22 +774,33 @@ public abstract class CommonConnectorConfig {
     protected static int validateSkippedOperation(Configuration config, Field field, ValidationOutput problems) {
         String operations = config.getString(field);
 
-        if (operations == null) {
+        if (operations == null || "none".equals(operations)) {
             return 0;
         }
 
+        boolean noneSpecified = false;
+        boolean operationsSpecified = false;
         for (String operation : operations.split(",")) {
             switch (operation.trim()) {
+                case "none":
+                    noneSpecified = true;
+                    continue;
                 case "r":
                 case "c":
                 case "u":
                 case "d":
                 case "t":
+                    operationsSpecified = true;
                     continue;
                 default:
                     problems.accept(field, operation, "Invalid operation");
                     return 1;
             }
+        }
+
+        if (noneSpecified && operationsSpecified) {
+            problems.accept(field, "none", "'none' cannot be specified with other skipped operation types");
+            return 1;
         }
 
         return 0;
