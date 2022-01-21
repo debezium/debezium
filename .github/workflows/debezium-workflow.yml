@@ -1,0 +1,786 @@
+name: Build Debezium
+
+on:
+  push:
+    branches:
+      - main
+      - 1.*
+  pull_request:
+    branches:
+      - main
+      - 1.*
+
+env:
+  MAVEN_FULL_BUILD_PROFILES: "oracle,oracle-ci,-xstream-dependency"
+  MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
+
+jobs:
+  build_cache:
+    name: "Dependency Cache"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        id: maven-cache-check
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      # This step is responsible for pulling down artifacts
+      # Unfortunately due to the nature of how some of the maven workflows work, the only reliable way
+      # to guarantee fully seeding the maven cache is to run a full build. This step does not execute
+      # tests, formatting, checkstyle, nor import sorts.
+      #
+      # This check is conditioned so that if the cache-key was not found, we will execute this step.
+      # If the cache-key was found, this means we cannot update the cache and therefore we should
+      # not need to explicitly run this step. This should improve response of format/checkstyle
+      # errors to users faster.
+      #
+      # This job also explicitly excludes the "debezium-microbenchmark-oracle" module temporarily.
+      # There is a dependency on xstream.jar for this module that should be fixed and made to not
+      # be required so that the module can be built on GitHub Actions.
+      - name: Download dependencies
+        if: steps.maven-cache-check.outputs.cache-hit != 'true'
+        run: >
+          mvn -B -ntp clean install -P${{ env.MAVEN_FULL_BUILD_PROFILES }} 
+          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }} 
+          -Dformat.skip=true 
+          -Dcheckstyle.skip=true
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-DD HH:mm:ss,SSS"
+          -DskipTests=true
+          -DskipITs=true
+
+  check_style:
+    name: "Checkstyle and Formatting"
+    needs: [build_cache]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        id: maven-cache-check
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      # Since we do a complete build conditionally above, we should always either be abel to rely on the
+      # build step to have installed all needed artifacts or the artifacts that exist from a prior run
+      # in order to satisfy dependencies for the format, checkstyle, and import sort checks.  If the
+      # dependencies change, a new cache should be generated and a full build step executed, so this
+      # should always work successfully.
+      - name: Checkstyle, Formatting, and Import Order Checks
+        run: >
+          mvn -B -ntp process-sources checkstyle:checkstyle 
+          -P${{ env.MAVEN_FULL_BUILD_PROFILES }} 
+          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
+          -Dformat.formatter.goal=validate 
+          -Dformat.imports.goal=check
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-DD HH:mm:ss,SSS"          
+
+  # This job is responsible for inspecting the changes in the repository and setting specific output variables
+  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
+  file_changes:
+    name: "Detect repository changes"
+    needs: [build_cache]
+    runs-on: ubuntu-latest
+    outputs:
+      common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
+      mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
+      mysql-changed: ${{ steps.changed-files-mysql.outputs.any_changed }}
+      postgresql-changed: ${{ steps.changed-files-postgresql.outputs.any_changed }}
+      oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
+      sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
+      debezium-server-changed: ${{ steps.changed-files-debezium-server.outputs.any_changed }}
+      outbox-changed: ${{ steps.changed-files-outbox.outputs.any_changed }}
+      rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
+      schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
+      debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
+      ddl-parser-changed: ${{ steps.changed-files-ddl-parser.outputs.any_changed }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Get modified files (Common)
+        id: changed-files-common
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            support/checkstyle/**
+            debezium-api/**
+            debezium-assembly-descriptors/**
+            debezium-core/**
+            debezium-embedded/**
+            debezium-revapi/**
+            debezium-ide-configs/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            pom.xml
+            .github/workflows/debezium-workflow.yml
+
+      - name: Get modified files (MongoDB)
+        id: changed-files-mongodb
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-connector-mongodb/**
+
+      - name: Get modified files (MySQL)
+        id: changed-files-mysql
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-connector-mysql/**                   
+
+      - name: Get modified files (PostgreSQL)
+        id: changed-files-postgresql
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-connector-postgres/**             
+
+      - name: Get modified files (Oracle)
+        id: changed-files-oracle
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-connector-oracle/**  
+
+      - name: Get modified files (SQL Server)
+        id: changed-files-sqlserver
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-connector-sqlserver/**  
+
+      - name: Get modified files (Debezium Server)
+        id: changed-files-debezium-server
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-connector-server/**              
+
+      - name: Get modified files (Quarkus Outbox)
+        id: changed-files-outbox
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-quarkus-outbox/**
+
+      - name: Get modified files (REST Extension)
+        id: changed-files-rest-extension
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-connect-rest-extension/**
+            support/checkstyle/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            pom.xml
+            .github/workflows/debezium-workflow.yml
+
+      - name: Get modified files (Schema Generator)
+        id: changed-files-schema-generator
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-schema-generator/**
+            support/checkstyle/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            pom.xml
+            .github/workflows/debezium-workflow.yml
+
+      - name: Get modified files (Debezium Testing)
+        id: changed-files-debezium-testing
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-testing/**
+
+      - name: Get modified files (DDL parser)
+        id: changed-files-ddl-parser
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            debezium-ddl-parser/**
+
+  build_mongodb:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' }}
+    name: "MongoDB"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # This matrix creates a cross product across versions and capture modes
+        # There are certain combinations we want to exclude from the cross product, see exclude below
+        version-mongo-server: ["3.6", "4.0", "4.4", "5.0"]
+        capture-mode: ["oplog", "changestreams"]
+        exclude:
+          # Do not perform change streams capture mode with server 3.6
+          - capture-mode: "changestreams"
+            version-mongo-server: "3.6"
+          # Do not perform oplog capture mode with server 4.4 and 5.0
+          - capture-mode: "oplog"
+            version-mongo-server: "4.4"
+          - capture-mode: "oplog"
+            version-mongo-server: "5.0"
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Connector MongoDB (Mode ${{ matrix.capture-mode }})
+        run: >
+          mvn clean install -B -pl debezium-connector-mongodb -am -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dcapture.mode=${{ matrix.capture-mode }}
+          -Dversion.mongo.server=${{ matrix.version-mongo-server }}
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn        
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+            
+  build_mysql:
+    needs: [check_style, file_changes]
+    if: |
+      ${{ needs.file_changes.outputs.common-changed == 'true' || 
+      needs.file_changes.outputs.mysql-changed == 'true' ||
+      needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    name: "MySQL"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        implementation: ["default", "legacy"]
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Connector MySQL (default)
+        if: ${{ matrix.implementation == 'default' }}
+        run: >
+          mvn clean install -B -pl debezium-connector-mysql -am -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn    
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      - name: Build Debezium Connector MySQL (legacy)
+        if: ${{ matrix.implementation == 'legacy' }}
+        run: >
+          mvn clean install -B -pl debezium-connector-mysql -am -Passembly 
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn     
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -Dtest.argline="-Dinternal.implementation=legacy -Dtest.streaming.metrics.namespace=binlog"
+
+  build_postgresql:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' }}
+    name: "PostgreSQL"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        postgres-plugin: ["assembly", "assembly,wal2json-decoder", "assembly,postgres-14,pgoutput-decoder"]
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Connector PostgreSQL (${{ matrix.postgres-plugin }})
+        run: >
+          mvn clean install -B -pl debezium-connector-postgres -am -P${{ matrix.postgres-plugin }}
+          -Ddebezium.test.records.waittime=5
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn       
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+  build_oracle:
+    needs: [check_style, file_changes]
+    if: |
+      ${{ needs.file_changes.outputs.common-changed == 'true' || 
+      needs.file_changes.outputs.oracle-changed == 'true' ||
+      needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    name: "Oracle"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      # We explicitly do not run the integration tests in this step as it's designed for pull requests only
+      # Integration tests can only be run against pushes to the repository for secret access
+      - name: Build Debezium Connector Oracle (PR)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: >
+          mvn clean install -B -pl debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency 
+          -DskipITs=true 
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120          
+
+  build_sqlserver:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' }}
+    name: "SQL Server"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Connector SQL Server
+        run: >
+          mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -Ddebezium.test.records.waittime=10
+
+  build_debezium_server:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-server-changed == 'true' }}
+    name: "Debezium Server"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Server
+        run: >
+          mvn clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dhttp.keepAlive=false
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DskipITs=true
+          -DskipTests=true
+
+      - name: Test Debezium Server
+        run: >
+          mvn install -B -pl debezium-server -Pserver-ci -amd 
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+  build_outbox:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.outbox-changed == 'true' }}
+    name: "Quarkus Outbox"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Quarkus Outbox
+        run: >
+          mvn clean install -B -pl :debezium-quarkus-outbox -am -amd -Passembly 
+          -Dcheckstyle.skip=true 
+          -Dformat.skip=true 
+          -Drevapi.skip 
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn  
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+  build_rest_extension:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.rest-extension-changed == 'true' }}
+    name: "REST Extension"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Connect REST Extension
+        run: >
+          mvn clean install -B -pl debezium-connect-rest-extension -am 
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn  
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+  build_schema_generator:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    name: "Schema Generator"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Schema Generator
+        run: >
+          mvn clean install -B -pl debezium-schema-generator -am 
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn       
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+  build_debezium_testing:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+    name: "Debezium Testing"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Testing
+        run: >
+          mvn clean install -B -pl debezium-testing,debezium-testing/debezium-testing-testcontainers -am -Passembly 
+          -Dcheckstyle.skip=true 
+          -Dformat.skip=true 
+          -Drevapi.skip 
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn     
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+  build_cassandra:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    name: "Cassandra"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v2
+        with:
+          path: core
+
+      - name: Checkout Action (Cassandra)
+        uses: actions/checkout@v2
+        with:
+          repository: debezium/debezium-connector-cassandra
+          path: cassandra
+
+      # We explicitly use only the hash of the POM files from the core repository by default
+      # For this build, we do not care if there are or are not changes in the sibling repository since this
+      # job will only ever fire if there are changes in the common paths identified in the files_changed job.
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Build Debezium (Core)
+        run: >
+          mvn clean install -f core/pom.xml 
+          -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+          -am
+          -DskipTests=true
+          -DskipITs=true
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn   
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      # Cassandra currently requires JDK8, so we build this connector with that JDK version after we have
+      # built core using JDK11.
+      - name: Set up Java 8
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 8
+
+      - name: Build Debezium Connector Cassandra
+        run: >
+          mvn clean install -f cassandra/pom.xml -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true          
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn   
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          
+  build_db2:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    name: "Db2"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v2
+        with:
+          path: core
+
+      - name: Checkout Action (Db2)
+        uses: actions/checkout@v2
+        with:
+          repository: debezium/debezium-connector-db2
+          path: db2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      # We explicitly use only the hash of the POM files from the core repository by default
+      # For this build, we do not care if there are or are not changes in the sibling repository since this
+      # job will only ever fire if there are changes in the common paths identified in the files_changed job.
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium (Core)
+        run: >
+           mvn clean install -f core/pom.xml 
+           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+           -am
+           -DskipTests=true
+           -DskipITs=true
+           -Dcheckstyle.skip=true
+           -Dformat.skip=true
+           -Drevapi.skip
+           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+           -Dmaven.wagon.http.pool=false 
+           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      - name: Build Debezium Connector Db2
+        run: >
+          mvn clean install -f db2/pom.xml -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true          
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          
+  build_vitess:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    name: "Vitess"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v2
+        with:
+          path: core
+
+      - name: Checkout Action (Vitess)
+        uses: actions/checkout@v2
+        with:
+          repository: debezium/debezium-connector-vitess
+          path: vitess
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      # We explicitly use only the hash of the POM files from the core repository by default
+      # For this build, we do not care if there are or are not changes in the sibling repository since this
+      # job will only ever fire if there are changes in the common paths identified in the files_changed job.
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium (Core)
+        run: >
+           mvn clean install -f core/pom.xml 
+           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+           -am
+           -DskipTests=true
+           -DskipITs=true
+           -Dcheckstyle.skip=true
+           -Dformat.skip=true
+           -Drevapi.skip
+           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
+           -Dmaven.wagon.http.pool=false 
+           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      - name: Build Debezium Connector Vitess
+        run: >
+          mvn clean install -f vitess/pom.xml -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true          
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn         
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120          
