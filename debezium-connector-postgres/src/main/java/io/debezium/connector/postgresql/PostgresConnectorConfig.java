@@ -396,6 +396,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return false;
             }
         },
+        @Deprecated
         WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderContext config) {
@@ -427,6 +428,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return false;
             }
         },
+        @Deprecated
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderContext config) {
@@ -463,6 +465,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return false;
             }
         },
+        @Deprecated
         WAL2JSON("wal2json") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderContext config) {
@@ -494,6 +497,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return true;
             }
         },
+        @Deprecated
         WAL2JSON_RDS("wal2json_rds") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderContext config) {
@@ -672,13 +676,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
+            .withValidation(PostgresConnectorConfig::validatePluginName)
             .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
                     "Supported values are '" + LogicalDecoder.DECODERBUFS.getValue()
-                    + "', '" + LogicalDecoder.WAL2JSON.getValue()
-                    + "', '" + LogicalDecoder.PGOUTPUT.getValue()
-                    + "', '" + LogicalDecoder.WAL2JSON_STREAMING.getValue()
-                    + "', '" + LogicalDecoder.WAL2JSON_RDS.getValue()
-                    + "' and '" + LogicalDecoder.WAL2JSON_RDS_STREAMING.getValue()
+                    + "' and '" + LogicalDecoder.PGOUTPUT.getValue()
                     + "'. " +
                     "Defaults to '" + LogicalDecoder.DECODERBUFS.getValue() + "'.");
 
@@ -1309,6 +1310,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             LOGGER.warn("Configuration property '{}' is deprecated and will be removed in future versions. Please use '{}' instead.",
                     TOASTED_VALUE_PLACEHOLDER.name(),
                     UNAVAILABLE_VALUE_PLACEHOLDER.name());
+        }
+        return 0;
+    }
+
+    private static int validatePluginName(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String pluginName = config.getString(PLUGIN_NAME);
+        if (!Strings.isNullOrEmpty(pluginName) && pluginName.startsWith("wal2json")) {
+            LOGGER.warn("Logical decoder '{}' is deprecated and will be removed in future versions",
+                    pluginName);
         }
         return 0;
     }
