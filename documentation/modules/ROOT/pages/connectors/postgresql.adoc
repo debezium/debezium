@@ -3161,10 +3161,10 @@ If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix 
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
 
 |[[postgresql-property-skipped-operations]]<<postgresql-property-skipped-operations, `+skipped.operations+`>>
-|No default
+|`t`
 |A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, and `t` for truncates.
-By default, no operations are skipped.
+The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
+By default, truncate operations are skipped.
 
 |[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
