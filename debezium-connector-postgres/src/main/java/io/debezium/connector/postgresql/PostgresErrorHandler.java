@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.postgresql.util.PSQLException;
 
 import io.debezium.connector.base.ChangeEventQueue;
@@ -17,20 +20,28 @@ import io.debezium.pipeline.ErrorHandler;
  */
 public class PostgresErrorHandler extends ErrorHandler {
 
+    private static final List<String> retryPostgresMessageContainsTexts = new ArrayList<>();
+
+    static {
+        retryPostgresMessageContainsTexts.add("Database connection failed when writing to copy");
+        retryPostgresMessageContainsTexts.add("Database connection failed when reading from copy");
+        retryPostgresMessageContainsTexts.add("FATAL: terminating connection due to administrator command");
+        retryPostgresMessageContainsTexts.add("An I/O error occurred while sending to the backend");
+    }
+
     public PostgresErrorHandler(PostgresConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
         super(PostgresConnector.class, connectorConfig, queue);
     }
 
     @Override
     protected boolean isRetriable(Throwable throwable) {
-        if (throwable instanceof PSQLException
-                && throwable.getMessage() != null
-                && (throwable.getMessage().contains("Database connection failed when writing to copy")
-                        || throwable.getMessage().contains("Database connection failed when reading from copy")
-                        || throwable.getMessage().contains("FATAL: terminating connection due to administrator command"))) {
-            return true;
+        if (throwable instanceof PSQLException && throwable.getMessage() != null) {
+            for (String messageText : retryPostgresMessageContainsTexts) {
+                if (throwable.getMessage().contains(messageText)) {
+                    return true;
+                }
+            }
         }
-
         return false;
     }
 }
