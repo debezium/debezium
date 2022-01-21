@@ -22,7 +22,6 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
 
@@ -97,7 +96,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     @Test
     public void inserts4Pks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populate4PkTable();
         startConnector();
@@ -139,7 +138,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     @Test
     public void insertsWithoutPks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populate4WithoutPkTable();
         startConnector();

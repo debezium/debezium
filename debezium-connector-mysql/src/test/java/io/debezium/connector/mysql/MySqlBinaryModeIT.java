@@ -71,7 +71,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         int createDatabaseCount = 1;
         int createTableCount = 1;
         int insertCount = 1;
@@ -111,7 +111,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         int createDatabaseCount = 1;
         int createTableCount = 1;
         int insertCount = 1;
@@ -151,7 +151,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         int createDatabaseCount = 1;
         int createTableCount = 1;
         int insertCount = 1;

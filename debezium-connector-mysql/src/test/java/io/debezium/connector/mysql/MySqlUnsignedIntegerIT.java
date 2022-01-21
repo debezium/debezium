@@ -71,7 +71,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 7;
         int numDataRecords = numCreateTables * 3; // Total data records
@@ -137,7 +137,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 7;
         int numDataRecords = numCreateTables * 3; // Total data records

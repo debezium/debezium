@@ -68,7 +68,7 @@ public class MySqlYearIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         final int numDatabase = 2;
         final int numTables = 2;
         final int numOthers = 2;
@@ -118,7 +118,7 @@ public class MySqlYearIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        Testing.Debug.enable();
+        // Testing.Debug.enable();
         final int numDatabase = 2;
         final int numTables = 2;
         final int numOthers = 2;
