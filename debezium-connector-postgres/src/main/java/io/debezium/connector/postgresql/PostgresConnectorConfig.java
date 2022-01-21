@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -39,6 +40,7 @@ import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
 import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -1146,6 +1148,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(PUBLICATION_NAME);
     }
 
+    @Override
+    public EnumSet<Envelope.Operation> getSkippedOperations() {
+        EnumSet<Envelope.Operation> skippedOperations = super.getSkippedOperations();
+        // If user specified TruncateHandlingMode.SKIP we merge that with the existing skipped operations
+        if (TruncateHandlingMode.SKIP.equals(truncateHandlingMode)) {
+            skippedOperations.add(Envelope.Operation.TRUNCATE);
+        }
+        return skippedOperations;
+    }
+
     protected AutoCreateMode publicationAutocreateMode() {
         return AutoCreateMode.parse(getConfig().getString(PUBLICATION_AUTOCREATE_MODE));
     }
@@ -1164,10 +1176,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected Duration statusUpdateInterval() {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS));
-    }
-
-    public TruncateHandlingMode truncateHandlingMode() {
-        return truncateHandlingMode;
     }
 
     public LogicalDecodingMessageFilter getMessageFilter() {
