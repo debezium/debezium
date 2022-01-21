@@ -58,7 +58,7 @@ The PostgreSQL connector contains two main parts that work together to read and 
 ifdef::community[]
 * A logical decoding output plug-in. You might need to install the output plug-in that you choose to use. You must configure a replication slot that uses your chosen output plug-in before running the PostgreSQL server. The plug-in can be one of the following:
 ** link:https://github.com/debezium/postgres-decoderbufs[`decoderbufs`] is based on Protobuf and maintained by the {prodname} community.
-** link:https://github.com/eulerto/wal2json[`wal2json`] is based on JSON and maintained by the wal2json community (deprecated, scheduled for removal).
+** link:https://github.com/eulerto/wal2json[`wal2json`] is based on JSON and maintained by the wal2json community (deprecated, scheduled for removal in Debezium 2.0).
 ** `pgoutput` is the standard logical decoding output plug-in in PostgreSQL 10+. It is maintained by the PostgreSQL community, and used by PostgreSQL itself for link:https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication]. This plug-in is always present so no additional libraries need to be installed. The {prodname} connector interprets the raw replication event stream directly into change events.
 
 * Java code (the actual Kafka Connect connector) that reads the changes produced by the chosen logical decoding output plug-in. It uses PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_], by means of the PostgreSQL link:https://github.com/pgjdbc/pgjdbc[_JDBC driver_]
@@ -2044,9 +2044,9 @@ See {link-prefix}:{link-postgresql-plugins}[Logical Decoding Output Plug-in Inst
 
 As of PostgreSQL 9.4, the only way to read changes to the write-ahead-log is to install a logical decoding output plug-in. Plug-ins are written in C, compiled, and installed on the machine that runs the PostgreSQL server. Plug-ins use  a number of PostgreSQL specific APIs, as described by the link:https://www.postgresql.org/docs/current/static/logicaldecoding-output-plugin.html[PostgreSQL documentation].
 
-The PostgreSQL connector works with one of {prodname}'s supported logical decoding plug-ins to encode the changes in either link:https://github.com/google/protobuf[Protobuf format] or link:https://github.com/postgres/postgres/blob/master/src/backend/replication/pgoutput/pgoutput.c[pgoutput] format.
-`pgoutput` plugin comes out-of-the-box with PostgreSQL server.
-For more details Protobuf plug-in see the link:https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[`documentation`] to learn more about the plug-in's requirements, limitations, and how to compile it.
+The PostgreSQL connector works with one of {prodname}'s supported logical decoding plug-ins to receive change events from the database in either the link:https://github.com/google/protobuf[Protobuf format] or the link:https://github.com/postgres/postgres/blob/master/src/backend/replication/pgoutput/pgoutput.c[pgoutput] format.
+The `pgoutput` plugin comes out-of-the-box with the PostgreSQL database.
+For more details on using Protobuf via the `decoderbufs` plug-in, see the plug-in link:https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[`documentation`] which discusses its requirements, limitations, and how to compile it.
 
 For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/docker-images/tree/main/postgres/13[use this image] as an example of the detailed steps required for the installation.
 
@@ -2077,7 +2077,7 @@ If you are using a {link-prefix}:{link-postgresql-connector}#postgresql-output-p
 # MODULES
 shared_preload_libraries = 'decoderbufs' // <1>
 ----
-<1> Instructs the server to load the `decoderbufs` logical decoding plug-ins at startup. The names of the plug-ins are set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v0.3.0/Makefile[`Protobuf`] make file.
+<1> Instructs the server to load the `decoderbufs` logical decoding plug-ins at startup (the name of the plug-in is set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v{debezium-version}/Makefile[`Protobuf`] make file).
 
 . To configure the replication slot regardless of the decoder being used, specify the following in the `postgresql.conf` file:
 +
