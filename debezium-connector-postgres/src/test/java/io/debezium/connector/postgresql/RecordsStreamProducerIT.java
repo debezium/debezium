@@ -2034,7 +2034,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT Plugin")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handles TRUNCATE messages")
     public void shouldProcessTruncateMessagesWhenSkippedOperationsIsSuppliedWithoutTruncate() throws Exception {
-        startConnector(builder -> builder.with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "u"));
+        startConnector(builder -> builder
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "u")
+                .with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
