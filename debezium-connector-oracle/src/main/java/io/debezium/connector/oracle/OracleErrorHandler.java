@@ -7,11 +7,12 @@ package io.debezium.connector.oracle;
 
 import java.io.IOException;
 import java.sql.SQLRecoverableException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 
+import io.debezium.annotation.Immutable;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.util.Collect;
 
 /**
  * Error handle for Oracle.
@@ -20,26 +21,29 @@ import io.debezium.pipeline.ErrorHandler;
  */
 public class OracleErrorHandler extends ErrorHandler {
 
-    private static final List<String> retryOracleErrors = new ArrayList<>();
-    private static final List<String> retryOracleMessageContainsTexts = new ArrayList<>();
-    static {
-        // Contents of this list should only be ORA-xxxxx errors
-        // The error check uses starts-with semantics
-        retryOracleErrors.add("ORA-03135"); // connection lost
-        retryOracleErrors.add("ORA-12543"); // TNS:destination host unreachable
-        retryOracleErrors.add("ORA-00604"); // error occurred at recursive SQL level 1
-        retryOracleErrors.add("ORA-01089"); // Oracle immediate shutdown in progress
-        retryOracleErrors.add("ORA-01333"); // Failed to establish LogMiner dictionary
-        retryOracleErrors.add("ORA-01284"); // Redo/Archive log cannot be opened, likely locked
-        retryOracleErrors.add("ORA-26653"); // Apply DBZXOUT did not start properly and is currently in state INITIALI
-        retryOracleErrors.add("ORA-01291"); // missing logfile
-        retryOracleErrors.add("ORA-01327"); // failed to exclusively lock system dictionary as required BUILD
-        retryOracleErrors.add("ORA-04030"); // out of process memory
+    /**
+     * Contents of this set should only be ORA-xxxxx errors;
+     * The error check uses starts-with semantics
+     */
+    @Immutable
+    private static final Set<String> RETRIABLE_ERROR_CODES = Collect.unmodifiableSet(
+            "ORA-03135", // connection lost
+            "ORA-12543", // TNS:destination host unreachable
+            "ORA-00604", // error occurred at recursive SQL level 1
+            "ORA-01089", // Oracle immediate shutdown in progress
+            "ORA-01333", // Failed to establish LogMiner dictionary
+            "ORA-01284", // Redo/Archive log cannot be opened, likely locked
+            "ORA-26653", // Apply DBZXOUT did not start properly and is currently in state INITIALI
+            "ORA-01291", // missing logfile
+            "ORA-01327", // failed to exclusively lock system dictionary as required BUILD
+            "ORA-04030"); // out of process memory
 
-        // Contents of this list should be any type of error message text
-        // The error check uses case-insensitive contains semantics
-        retryOracleMessageContainsTexts.add("No more data to read from socket");
-    }
+    /**
+     * Contents of this set should be any type of error message text;
+     * The error check uses case-insensitive contains semantics
+     */
+    @Immutable
+    private static final Set<String> RETRIABLE_ERROR_MESSAGES = Collect.unmodifiableSet("No more data to read from socket");
 
     public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
         super(OracleConnector.class, connectorConfig, queue);
@@ -57,13 +61,13 @@ public class OracleErrorHandler extends ErrorHandler {
             final String message = throwable.getMessage();
             if (message != null && message.length() > 0) {
                 // Check Oracle error codes
-                for (String errorCode : retryOracleErrors) {
+                for (String errorCode : RETRIABLE_ERROR_CODES) {
                     if (message.startsWith(errorCode)) {
                         return true;
                     }
                 }
                 // Check Oracle error message texts
-                for (String messageText : retryOracleMessageContainsTexts) {
+                for (String messageText : RETRIABLE_ERROR_MESSAGES) {
                     if (message.toUpperCase().contains(messageText.toUpperCase())) {
                         return true;
                     }
