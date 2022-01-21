@@ -92,6 +92,15 @@
             <artifactId>debezium-connector-postgres</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Vitess/grpc dependency conflicts with version required by schema registry.
+             We thus change the version just for the sake of compatibility testing.
+        -->
+        <dependency>
+            <groupId>com.google.api.grpc</groupId>
+            <artifactId>proto-google-common-protos</artifactId>
+            <version>2.5.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

@@ -13,7 +13,7 @@
 
     <properties>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>6.0.2</version.confluent.platform>
+        <version.confluent.platform>7.0.1</version.confluent.platform>
 
         <!-- Connectors -->
         <version.com.google.protobuf>3.19.2</version.com.google.protobuf>
@@ -149,9 +149,9 @@
                 <version>${version.confluent.platform}</version>
             </dependency>
             <dependency>
-            <groupId>io.apicurio</groupId>
-            <artifactId>apicurio-registry-utils-converter</artifactId>
-            <version>${version.apicurio}</version>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-utils-converter</artifactId>
+                <version>${version.apicurio}</version>
             </dependency>
 
             <dependency>
