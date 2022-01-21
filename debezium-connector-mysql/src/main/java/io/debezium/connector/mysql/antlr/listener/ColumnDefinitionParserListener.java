@@ -13,6 +13,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
@@ -31,6 +33,8 @@ import io.debezium.util.Strings;
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ColumnDefinitionParserListener.class);
 
     private static final Pattern DOT = Pattern.compile("\\.");
     private final MySqlAntlrDdlParser parser;
@@ -147,7 +151,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             MySqlParser.StringDataTypeContext stringDataTypeContext = (MySqlParser.StringDataTypeContext) dataTypeContext;
 
             if (stringDataTypeContext.lengthOneDimension() != null) {
-                Integer length = Integer.valueOf(stringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
+                Integer length = parseLength(stringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
                 columnEditor.length(length);
             }
 
@@ -163,7 +167,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             MySqlParser.NationalStringDataTypeContext nationalStringDataTypeContext = (MySqlParser.NationalStringDataTypeContext) dataTypeContext;
 
             if (nationalStringDataTypeContext.lengthOneDimension() != null) {
-                Integer length = Integer.valueOf(nationalStringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
+                Integer length = parseLength(nationalStringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
                 columnEditor.length(length);
             }
         }
@@ -171,7 +175,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             MySqlParser.NationalVaryingStringDataTypeContext nationalVaryingStringDataTypeContext = (MySqlParser.NationalVaryingStringDataTypeContext) dataTypeContext;
 
             if (nationalVaryingStringDataTypeContext.lengthOneDimension() != null) {
-                Integer length = Integer.valueOf(nationalVaryingStringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
+                Integer length = parseLength(nationalVaryingStringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
                 columnEditor.length(length);
             }
         }
@@ -181,12 +185,12 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             Integer length = null;
             Integer scale = null;
             if (dimensionDataTypeContext.lengthOneDimension() != null) {
-                length = Integer.valueOf(dimensionDataTypeContext.lengthOneDimension().decimalLiteral().getText());
+                length = parseLength(dimensionDataTypeContext.lengthOneDimension().decimalLiteral().getText());
             }
 
             if (dimensionDataTypeContext.lengthTwoDimension() != null) {
                 List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoDimension().decimalLiteral();
-                length = Integer.valueOf(decimalLiterals.get(0).getText());
+                length = parseLength(decimalLiterals.get(0).getText());
                 scale = Integer.valueOf(decimalLiterals.get(1).getText());
             }
 
@@ -199,11 +203,11 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
                         length = 10;
                     }
                     else {
-                        length = Integer.valueOf(digits[0]);
+                        length = parseLength(digits[0]);
                     }
                 }
                 else {
-                    length = Integer.valueOf(decimalLiterals.get(0).getText());
+                    length = parseLength(decimalLiterals.get(0).getText());
                 }
 
                 if (decimalLiterals.size() > 1) {
@@ -271,6 +275,16 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         else {
             columnEditor.charsetName(charsetName);
         }
+    }
+
+    private Integer parseLength(String lengthStr) {
+        Long length = Long.parseLong(lengthStr);
+        if (length > Integer.MAX_VALUE) {
+            LOGGER.warn("The length '{}' of the column `{}`.`{}` is too large to be supported, truncating it to '{}'",
+                    length, tableEditor.tableId(), columnEditor.name(), Integer.MAX_VALUE);
+            length = (long) Integer.MAX_VALUE;
+        }
+        return length.intValue();
     }
 
     private void serialColumn() {
