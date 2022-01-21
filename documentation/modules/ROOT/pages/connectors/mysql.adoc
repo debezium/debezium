@@ -1443,11 +1443,13 @@ a|_n/a_
 |`BLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`TEXT`
 |`STRING`
-a|_n/a_
+a|_n/a_ +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`MEDIUMBLOB`
 |`BYTES` or `STRING`
@@ -1461,11 +1463,13 @@ a|_n/a_
 |`LONGBLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`LONGTEXT`
 |`STRING`
-a|_n/a_
+a|_n/a_ +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`JSON`
 |`STRING`

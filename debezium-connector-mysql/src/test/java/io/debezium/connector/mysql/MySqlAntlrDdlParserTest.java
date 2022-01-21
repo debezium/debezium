@@ -82,6 +82,24 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4583")
+    public void shouldProcessLargeColumn() {
+        String ddl = "create table if not exists tbl_large_col(\n"
+                + "`id` bigint(20) NOT NULL AUTO_INCREMENT,\n"
+                + "c1 blob(4294967295) NOT NULL,\n"
+                + "PRIMARY KEY (`id`)\n"
+                + ")";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "tbl_large_col");
+
+        assertThat(table.columnWithName("c1").typeName()).isEqualTo("BLOB");
+        assertThat(table.columnWithName("c1").length()).isEqualTo(Integer.MAX_VALUE);
+    }
+
+    @Test
     @FixFor("DBZ-4497")
     public void shouldProcessMultipleSignedUnsignedForTable() {
         String ddl = "create table if not exists tbl_signed_unsigned(\n"
