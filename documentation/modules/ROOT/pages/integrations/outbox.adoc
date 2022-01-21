@@ -132,9 +132,9 @@ To see a full end-to-end demo, the https://github.com/debezium/debezium-examples
 [id=additional-field-mappings]
 == Additional Field mappings
 
-The {prodname} Outbox SMT can be configured to read additional fields and emit those field values aa either part of the emitted event's header or envelope.
+The {prodname} Outbox SMT can be configured to read additional fields and emit those field values either as event headers, or as part of the event value.
 
-In order to pass additional field mappings to be saved the Quarkus Outbox extension,
+In order to pass additional field mappings to be saved by the Quarkus Outbox extension,
 the configuration property `quarkus.debezium-outbox.additional-fields` must be specified in the `application.properties`.
 This configuration property is a comma-separated list of additional field definitions that will be added to the Outbox entity mapping and passed by the application's implementation of the `ExportedEvent` interface.
 
@@ -147,7 +147,7 @@ Each entry in this comma-separated list must follow this format:
 The pattern indicates that the field's name and java-type are required while the column definition and JPA attribute converter are optional.
 However, please note that if you wish to specify a JPA attribute converter then the column definition must be specified.
 
-The following example shows how to define an additional field called `customer_name` that is represented in Java as a `String` type but stored in the Outbox table as a `VARCHAR(100)` field.
+The following example shows how to define an additional field called `customer_name` that is represented in Java as a `String` and which should be stored in the outbox table as a `VARCHAR(100)` column.
 This example also shows a JPA Attribute converter defined that forces the storage of the string to upper-case.
 
 .application.properties
@@ -156,11 +156,11 @@ This example also shows a JPA Attribute converter defined that forces the storag
 quarkus.debezium-outbox.additional-fields=customer_name:string:varchar(100):example.UpperCase
 ----
 
-Once the field(s) are configured in the application's `.properties` file, the application's code needs to pass these values to the extension.
+Once the field(s) are configured in the application's `.properties` file, the application's code needs to provide the corresponding values through its exported events.
 In order to do this, the application class that extends the `ExportedEvent` needs to override the method called `getAdditionalFieldValues()` and return a `Map` of the additional field names and values.
 
 In the following example, we show how to specify the `customer_name` field with a value of `Acme Goods`.
-Using our `OrderCreatedEvent` from the example section, we've extended the event:
+Using our `OrderCreatedEvent` from the example section above, we've extended the event:
 
 .OrderCreatedEvent.java
 [source,java,indent=0]
