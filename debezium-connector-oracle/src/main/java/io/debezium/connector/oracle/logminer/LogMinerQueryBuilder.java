@@ -66,6 +66,14 @@ public class LogMinerQueryBuilder {
             query.append("AND ").append("SRC_CON_NAME = '").append(pdbName.toUpperCase()).append("' ");
         }
 
+        // Excluded schemas, if defined
+        // This prevents things such as picking DDL for changes to LogMiner tables in SYSTEM tablespace
+        // or picking up DML changes inside the SYS and SYSTEM tablespaces.
+        final String excludedSchemas = resolveExcludedSchemaPredicate("SEG_OWNER");
+        if (excludedSchemas.length() > 0) {
+            query.append("AND ").append(excludedSchemas).append(' ');
+        }
+
         query.append("AND (");
 
         // Always include START, COMMIT, MISSING_SCN, and ROLLBACK operations
@@ -97,20 +105,6 @@ public class LogMinerQueryBuilder {
 
         // Always ignore the flush table
         query.append("AND TABLE_NAME != '").append(LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE).append("' ");
-
-        // There are some common schemas that we automatically ignore when building the runtime Filter
-        // predicates and we put that same list of schemas here and apply those in the generated SQL.
-        if (!OracleConnectorConfig.EXCLUDED_SCHEMAS.isEmpty()) {
-            query.append("AND SEG_OWNER NOT IN (");
-            for (Iterator<String> i = OracleConnectorConfig.EXCLUDED_SCHEMAS.iterator(); i.hasNext();) {
-                String excludedSchema = i.next();
-                query.append("'").append(excludedSchema.toUpperCase()).append("'");
-                if (i.hasNext()) {
-                    query.append(",");
-                }
-            }
-            query.append(") ");
-        }
 
         String schemaPredicate = buildSchemaPredicate(connectorConfig);
         if (!Strings.isNullOrEmpty(schemaPredicate)) {
@@ -229,5 +223,30 @@ public class LogMinerQueryBuilder {
             text += "$";
         }
         return text;
+    }
+
+    /**
+     * Resolve the built-in excluded schemas predicate.
+     *
+     * @param fieldName the query field name the predicate applies to, should never be {@code null}
+     * @return the predicate
+     */
+    private static String resolveExcludedSchemaPredicate(String fieldName) {
+        // There are some common schemas that we automatically ignore when building the runtime Filter
+        // predicates, and we put that same list of schemas here and apply those in the generated SQL.
+        if (!OracleConnectorConfig.EXCLUDED_SCHEMAS.isEmpty()) {
+            StringBuilder query = new StringBuilder();
+            query.append('(').append(fieldName).append(" IS NULL OR ");
+            query.append(fieldName).append(" NOT IN (");
+            for (Iterator<String> i = OracleConnectorConfig.EXCLUDED_SCHEMAS.iterator(); i.hasNext();) {
+                String excludedSchema = i.next();
+                query.append('\'').append(excludedSchema.toUpperCase()).append('\'');
+                if (i.hasNext()) {
+                    query.append(',');
+                }
+            }
+            return query.append(')').append(')').toString();
+        }
+        return "";
     }
 }
