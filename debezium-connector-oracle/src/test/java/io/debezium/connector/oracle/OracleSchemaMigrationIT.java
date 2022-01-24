@@ -1197,6 +1197,70 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4451")
+    public void shouldRestartSuccessfullyAfterTableRename() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz4451a");
+            TestHelper.dropTable(connection, "dbz4451b");
+
+            connection.execute("CREATE TABLE dbz4451a (id numeric(9,0) primary key, name varchar2(50))");
+            TestHelper.streamTable(connection, "dbz4451a");
+
+            connection.execute("INSERT INTO dbz4451a (id,name) values (1, 'Donald Duck')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4451[a|b]")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // The two records are: CREATE TABLE, INSERT (snapshot)
+            SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+            assertThat(snapshotRecords.allRecordsInOrder()).hasSize(2);
+
+            List<SourceRecord> records = snapshotRecords.recordsForTopic(TestHelper.SERVER_NAME);
+            assertThat(records).hasSize(1);
+
+            records = snapshotRecords.recordsForTopic(topicName("DEBEZIUM", "DBZ4451A"));
+            assertThat(records).hasSize(1);
+
+            // Rename table once streaming has started
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            connection.execute("ALTER TABLE DBZ4451A RENAME TO DBZ4451B");
+
+            // The one record is: ALTER TABLE
+            SourceRecords streamingRecords = consumeRecordsByTopic(1);
+            assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+            records = streamingRecords.recordsForTopic(TestHelper.SERVER_NAME);
+            assertThat(records).hasSize(1);
+
+            // Stop connector after processing rename
+            stopConnector();
+
+            // Restart the connector
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // Insert a new record during streaming into new table name
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            connection.execute("INSERT INTO DBZ4451B (id,name) values (2, 'Daffy Duck')");
+
+            streamingRecords = consumeRecordsByTopic(1);
+            assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+            records = streamingRecords.recordsForTopic(topicName("DEBEZIUM", "DBZ4451B"));
+            assertThat(records).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4451a");
+            TestHelper.dropTable(connection, "dbz4451b");
+        }
+    }
+
     private static String getTableIdString(String schemaName, String tableName) {
         return new TableId(TestHelper.getDatabaseName(), schemaName, tableName).toDoubleQuotedString();
     }
