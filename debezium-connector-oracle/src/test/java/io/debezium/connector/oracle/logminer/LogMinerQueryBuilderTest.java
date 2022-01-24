@@ -63,6 +63,7 @@ public class LogMinerQueryBuilderTest {
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
             "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
+            "${systemTablePredicate}" +
             "AND ((" +
             "OPERATION_CODE IN (6,7,34,36) OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM') " +
@@ -70,7 +71,6 @@ public class LogMinerQueryBuilderTest {
             "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')) ) " +
             "OR (OPERATION_CODE IN ${operationCodes} " +
             "AND TABLE_NAME != '" + LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE + "' " +
-            "${systemTablePredicate}" +
             "${schemaPredicate}" +
             "${tablePredicate}" +
             "))";
@@ -83,6 +83,7 @@ public class LogMinerQueryBuilderTest {
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
             "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
+            "${systemTablePredicate}" +
             "AND ((" +
             "OPERATION_CODE IN (6,7,34,36)) OR " +
             "((OPERATION_CODE IN ${operationCodes} OR " +
@@ -90,7 +91,6 @@ public class LogMinerQueryBuilderTest {
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
             "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%'))) " +
             "AND TABLE_NAME != '" + LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE + "' " +
-            "${systemTablePredicate}" +
             "${schemaPredicate}" +
             "${tablePredicate}" +
             "))";
@@ -261,7 +261,8 @@ public class LogMinerQueryBuilderTest {
 
         if (!OracleConnectorConfig.EXCLUDED_SCHEMAS.isEmpty()) {
             StringBuilder systemPredicate = new StringBuilder();
-            systemPredicate.append("AND SEG_OWNER NOT IN (");
+            systemPredicate.append("AND (SEG_OWNER IS NULL ");
+            systemPredicate.append("OR SEG_OWNER NOT IN (");
             for (Iterator<String> i = OracleConnectorConfig.EXCLUDED_SCHEMAS.iterator(); i.hasNext();) {
                 String excludedSchema = i.next();
                 systemPredicate.append("'").append(excludedSchema.toUpperCase()).append("'");
@@ -269,7 +270,7 @@ public class LogMinerQueryBuilderTest {
                     systemPredicate.append(",");
                 }
             }
-            systemPredicate.append(") ");
+            systemPredicate.append(")) ");
             query = query.replace("${systemTablePredicate}", systemPredicate.toString());
         }
         else {
