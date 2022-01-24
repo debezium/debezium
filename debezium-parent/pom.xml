@@ -18,7 +18,6 @@
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
         <version.resources.plugin>3.1.0</version.resources.plugin>
-        <version.filtering.plugin>3.1.1</version.filtering.plugin>
         <version.dependency.plugin>3.1.1</version.dependency.plugin>
         <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
 
