@@ -173,11 +173,23 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.joining(", "));
-        return jdbcConnection.buildSelectWithRowLimits(table.id(),
-                limit,
-                "*",
-                Optional.ofNullable(condition),
-                orderBy);
+        return buildSelectWithRowLimits(table.id(), limit, Optional.ofNullable(condition), orderBy);
+    }
+
+    protected String quotedTableIdString(TableId tableId) {
+        return jdbcConnection.quotedTableIdString(tableId);
+    }
+
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    private String buildSelectWithRowLimits(TableId tableId, int limit, Optional<String> conditions, String orderBy) {
+        String statement = jdbcConnection.buildSelectWithRowLimits();
+        statement = statement.replaceAll(TABLE, quotedTableIdString(tableId));
+        // To avoid needing to branch in the SQL construction by the JdbcConnection implementation(s) we will
+        // simply use a conjunction predicate here if the conditions string is not present
+        statement = statement.replaceAll(CONDITIONS, conditions.orElse("1=1"));
+        statement = statement.replaceAll(ORDER_BY, orderBy);
+        statement = statement.replaceAll(LIMIT, String.valueOf(limit));
+        return statement;
     }
 
     private void addLowerBound(Table table, StringBuilder sql) {
@@ -219,7 +231,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
-        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, "*", Optional.empty(), orderBy);
+        return buildSelectWithRowLimits(table.id(), 1, Optional.empty(), orderBy);
     }
 
     @Override

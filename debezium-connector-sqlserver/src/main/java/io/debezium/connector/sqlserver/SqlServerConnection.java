@@ -19,7 +19,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -542,28 +541,9 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
-    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
-                                           String orderBy) {
-        final StringBuilder sql = new StringBuilder("SELECT TOP ");
-        sql
-                .append(limit)
-                .append(' ')
-                .append(projection)
-                .append(" FROM ");
-        sql.append(quotedTableIdString(tableId));
-        if (condition.isPresent()) {
-            sql
-                    .append(" WHERE ")
-                    .append(condition.get());
-        }
-        sql
-                .append(" ORDER BY ")
-                .append(orderBy);
-        if (this.optionRecompile) {
-            sql
-                    .append(" OPTION(RECOMPILE)");
-        }
-        return sql.toString();
+    public String buildSelectWithRowLimits() {
+        return "SELECT TOP $dbzlimit$ * FROM $dbztable$ WHERE $dbzconditions$ ORDER BY $dbzorderby$" +
+                (optionRecompile ? " OPTION(RECOMPILE)" : "");
     }
 
     @Override

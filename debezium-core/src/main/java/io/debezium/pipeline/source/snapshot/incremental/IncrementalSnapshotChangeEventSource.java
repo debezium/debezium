@@ -20,6 +20,18 @@ import io.debezium.schema.DataCollectionId;
  */
 public interface IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
 
+    /* Placeholder for table name in chunk queries */
+    String TABLE = "\\$dbztable\\$";
+
+    /* Placeholder for where-clause predicates in chunk queries */
+    String CONDITIONS = "\\$dbzconditions\\$";
+
+    /* Placeholder for order-by clause in chunk queries */
+    String ORDER_BY = "\\$dbzorderby\\$";
+
+    /* Placeholder for limit in chunk queries */
+    String LIMIT = "\\$dbzlimit\\$";
+
     void closeWindow(Partition partition, String id, OffsetContext offsetContext) throws InterruptedException;
 
     void processMessage(Partition partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException;

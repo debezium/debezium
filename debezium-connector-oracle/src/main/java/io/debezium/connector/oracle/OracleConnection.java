@@ -438,40 +438,14 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public String buildSelectWithRowLimits(TableId tableId,
-                                           int limit,
-                                           String projection,
-                                           Optional<String> condition,
-                                           String orderBy) {
-        final TableId table = new TableId(null, tableId.schema(), tableId.table());
-        final StringBuilder sql = new StringBuilder("SELECT ");
-        sql
-                .append(projection)
-                .append(" FROM ");
-        sql.append(quotedTableIdString(table));
-        if (condition.isPresent()) {
-            sql
-                    .append(" WHERE ")
-                    .append(condition.get());
-        }
+    public String buildSelectWithRowLimits() {
         if (getOracleVersion().getMajor() < 12) {
-            sql
-                    .insert(0, " SELECT * FROM (")
-                    .append(" ORDER BY ")
-                    .append(orderBy)
-                    .append(")")
-                    .append(" WHERE ROWNUM <=")
-                    .append(limit);
+            return "SELECT * FROM (SELECT * FROM $dbztable$" +
+                    " WHERE $dbzconditions$ ORDER BY $dbzorderby$) WHERE ROWNUM <= $dbzlimit$";
         }
         else {
-            sql
-                    .append(" ORDER BY ")
-                    .append(orderBy)
-                    .append(" FETCH NEXT ")
-                    .append(limit)
-                    .append(" ROWS ONLY");
+            return "SELECT * FROM $dbztable$ WHERE $dbzconditions$ ORDER BY $dbzorderby$ FETCH NEXT $dbzlimit$ ROWS ONLY";
         }
-        return sql.toString();
     }
 
     public static String connectionString(Configuration config) {

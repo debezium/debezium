@@ -1444,23 +1444,8 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
-    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition, String orderBy) {
-        final StringBuilder sql = new StringBuilder("SELECT ");
-        sql
-                .append(projection)
-                .append(" FROM ");
-        sql.append(quotedTableIdString(tableId));
-        if (condition.isPresent()) {
-            sql
-                    .append(" WHERE ")
-                    .append(condition.get());
-        }
-        sql
-                .append(" ORDER BY ")
-                .append(orderBy)
-                .append(" LIMIT ")
-                .append(limit);
-        return sql.toString();
+    public String buildSelectWithRowLimits() {
+        return "SELECT * FROM $dbztable$ WHERE $dbzconditions$ ORDER BY $dbzorderby$ LIMIT $dbzlimit$";
     }
 
     /**
