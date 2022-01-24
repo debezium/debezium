@@ -1124,6 +1124,7 @@ Details are in the following sections:
 * xref:oracle-numeric-types[]
 * xref:oracle-decimal-types[]
 * xref:oracle-temporal-types[]
+* xref:oracle-rowid-types[]
 
 endif::product[]
 
@@ -1468,6 +1469,28 @@ A string representation of a timestamp with timezone information.
 |`io.debezium.time.ZonedTimestamp` +
  +
 A string representation of a timestamp in UTC.
+
+|===
+
+[id="oracle-rowid-types"]
+=== ROWID types
+
+The following table describes how the connector maps ROWID (row address) data types.
+
+.Mappings for Oracle ROWID data types
+[cols="20%a,15%a,55%a",options="header"]
+|===
+|Oracle Data Type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`ROWID`
+|`STRING`
+|n/a
+
+|`UROWID`
+|n/a
+|_This data type is not supported_.
 
 |===
 

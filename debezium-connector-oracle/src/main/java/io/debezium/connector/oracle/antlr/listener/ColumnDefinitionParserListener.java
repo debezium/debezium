@@ -287,6 +287,11 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .type("SDO_GEOMETRY")
                         .length(1);
             }
+            else if (ctx.native_datatype_element().ROWID() != null) {
+                columnEditor
+                        .jdbcType(Types.VARCHAR)
+                        .type("ROWID");
+            }
             else {
                 throw new IllegalArgumentException("Unsupported column type: " + ctx.native_datatype_element().getText());
             }
