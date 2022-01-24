@@ -150,6 +150,8 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case Types.STRUCT:
                 return SchemaBuilder.string();
+            case OracleTypes.ROWID:
+                return SchemaBuilder.string();
             default: {
                 SchemaBuilder builder = super.schemaBuilder(column);
                 logger.debug("JdbcValueConverters returned '{}' for column '{}'", builder != null ? builder.getClass().getName() : null, column.name());
@@ -204,6 +206,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.NVARCHAR:
             case Types.STRUCT:
             case Types.CLOB:
+            case OracleTypes.ROWID:
                 return data -> convertString(column, fieldDefn, data);
             case Types.BLOB:
                 return data -> convertBinary(column, fieldDefn, data, binaryMode);
