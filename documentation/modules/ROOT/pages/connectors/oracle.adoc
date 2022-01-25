@@ -3452,19 +3452,20 @@ When the {prodname} Oracle connector restarts, you may find that the connector r
 Online REDO LOG files or archive logs do not contain the offset scn xxxxxxx. Please perform a new snapshot.
 ----
 
-This error occurs when the connector examines the available redo and archive logs and was unable to locate a record that contains the SCN in the connector offsets.
-Since the connector automatically starts where it left off and if that SCN (position) is no longer available, then a re-snapshot will be necessary.
+After the connector examines the redo and archive logs, if it cannot find the SCN that is recorded in the connector offsets, it returns the preceding error.
+Because the connector uses the SCN to determine where to resume processing, if the expected SCN if not found, a new snapshot must be completed.
 
-It's worth noting that you may find a record in the `V$ARCHIVED_LOG` table that has a SCN range that matches the referenced SCN; however, that alone doesn't mean the record is available to be mined.
+You might find that the `V$ARCHIVED_LOG` table contains a record with an SCN that matches the expected range.
+However, the record might not be available for mining.
 The record must also have a filename in the `NAME` column, a value of `NO` in the `DELETED` column, and a value of `A` (available) in the `STATUS` column.
 If any of these criteria do not match, then the record is considered incomplete and cannot be mined.
 
-Archive logs must be retained up-to if not slightly longer than your longest downtime window of the connector.
+At a minimum, archive logs must be retained for as long as the longest downtime window of the connector.
 
 [NOTE]
 ====
-When a record has no value in the `NAME` column, this means the log has been removed the file system.
-In this situation, the record is accompanied with `DELETED` being set to `YES` and the `STATUS` column being set to `D` to represent the log has been deleted.
+Records that have no value in the `NAME` column no longer exist in the file system.
+In such records, the value of the `DELETED` field is set to `YES`, and the `STATUS` field is set to `D` to indicate that the log is deleted.
 ====
 
 [id="oracle-cannot-reference-overflow-table"]
