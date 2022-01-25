@@ -3531,7 +3531,7 @@ The rest of this section describes how {prodname} handles various kinds of fault
 [id="oracle-logs-do-not-contain-offset-perform-new-snapshot"]
 === Logs do not contain offset, perform a new snapshot
 
-When the {prodname} Oracle connector restarts, you may find that the connector reports the following error:
+In some cases, after the {prodname} Oracle connector restarts, it reports the following error:
 
 [source]
 ----
@@ -3543,8 +3543,8 @@ Because the connector uses the SCN to determine where to resume processing, if t
 
 You might find that the `V$ARCHIVED_LOG` table contains a record with an SCN that matches the expected range.
 However, the record might not be available for mining.
-The record must also have a filename in the `NAME` column, a value of `NO` in the `DELETED` column, and a value of `A` (available) in the `STATUS` column.
-If any of these criteria do not match, then the record is considered incomplete and cannot be mined.
+To be available for mining, a record must include a filename in the `NAME` column, a value of `NO` in the `DELETED` column, and a value of `A` (available) in the `STATUS` column.
+If a record does not match any of these criteria, it is considered incomplete and cannot be mined.
 
 At a minimum, archive logs must be retained for as long as the longest downtime window of the connector.
 
