@@ -908,7 +908,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             public synchronized void markProcessed(SourceRecord record) throws InterruptedException {
                 task.commitRecord(record);
                 recordsSinceLastCommit += 1;
-                offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
+                offsetWriter.offset((Map<String, Object>) record.sourcePartition(), (Map<String, Object>) record.sourceOffset());
             }
 
             @Override
