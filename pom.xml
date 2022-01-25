@@ -96,16 +96,16 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.0.0</version.kafka>
-        <version.zookeeper>3.5.9</version.zookeeper>
-        <version.jackson>2.10.5</version.jackson>
-        <version.jackson.databind>2.10.5.1</version.jackson.databind>
+        <version.kafka>3.1.0</version.kafka>
+        <version.zookeeper>3.6.3</version.zookeeper>
+        <version.jackson>2.12.3</version.jackson>
+        <version.jackson.databind>2.12.3</version.jackson.databind>
         <version.org.slf4j>1.7.30</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
-        <version.netty>4.1.51.Final</version.netty>
+        <version.netty>4.1.68.Final</version.netty>
 
         <!-- Scala version used to build Kafka -->
-        <version.kafka.scala>2.12</version.kafka.scala>
+        <version.kafka.scala>2.13</version.kafka.scala>
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
