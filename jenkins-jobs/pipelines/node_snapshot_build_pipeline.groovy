@@ -40,7 +40,7 @@ pipeline {
                     cd "${WORKSPACE}/ci-jenkins-node"
                     echo "${ANSIBLE_PASSWORD}" > password.txt
                     ansible-vault decrypt --vault-password-file ./password.txt clouds.yaml
-                    sudo cp roles/os_snapshot/files/CA-RH-NEW.crt /etc/pki/ca-trust/source/anchors/CA-RH-NEW.crt
+                    sudo cp roles/os_node_snapshot/files/CA-RH-NEW.crt /etc/pki/ca-trust/source/anchors/CA-RH-NEW.crt
                     sudo update-ca-trust
                     ansible-galaxy collection install -r requirements.yml
                     ansible-galaxy install -r requirements.yml
