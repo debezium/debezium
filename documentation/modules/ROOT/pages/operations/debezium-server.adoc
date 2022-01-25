@@ -260,8 +260,8 @@ The configuration will need to contain the list of transformations, implementati
 |
 |The comma separated list of symbolic names of transformations.
 
-[id="debezium-transforms-name-class"]
-|`debezium.transforms.<name>.class`
+[id="debezium-transforms-name-type"]
+|`debezium.transforms.<name>.type`
 |
 |The name of Java class implementing the transformation with name `<name>`.
 
