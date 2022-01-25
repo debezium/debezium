@@ -281,10 +281,7 @@ jobs:
             
   build_mysql:
     needs: [check_style, file_changes]
-    if: |
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.mysql-changed == 'true' ||
-      needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' }}
     name: "MySQL"
     runs-on: ubuntu-latest
     strategy:
@@ -367,10 +364,7 @@ jobs:
 
   build_oracle:
     needs: [check_style, file_changes]
-    if: |
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.oracle-changed == 'true' ||
-      needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' }}
     name: "Oracle"
     runs-on: ubuntu-latest
     steps:
