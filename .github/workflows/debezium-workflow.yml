@@ -518,11 +518,11 @@ jobs:
       - name: Checkout Action
         uses: actions/checkout@v2
 
-      - name: Set up Java 17
+      - name: Set up Java 11
         uses: actions/setup-java@v2
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 11
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
@@ -550,11 +550,11 @@ jobs:
       - name: Checkout Action
         uses: actions/checkout@v2
 
-      - name: Set up Java 17
+      - name: Set up Java 11
         uses: actions/setup-java@v2
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 11
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
