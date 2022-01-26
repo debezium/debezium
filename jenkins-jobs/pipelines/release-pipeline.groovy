@@ -26,6 +26,13 @@ else if (DRY_RUN instanceof String) {
 }
 echo "Dry run: ${DRY_RUN}"
 
+if (CHECK_BACKPORTS == null) {
+    CHECK_BACKPORTS = false
+}
+else if (CHECK_BACKPORTS instanceof String) {
+    CHECK_BACKPORTS = Boolean.valueOf(CHECK_BACKPORTS)
+}
+
 GIT_CREDENTIALS_ID = 'debezium-github'
 JIRA_CREDENTIALS_ID = 'debezium-jira-pat'
 HOME_DIR = '/home/centos'
@@ -339,9 +346,12 @@ node('Slave') {
         }
 
         stage('Check missing backports') {
-            if (!DRY_RUN) {
+            if (!DRY_RUN && CHECK_BACKPORTS) {
+                if (!BACKPORT_FROM_TAG || !BACKPORT_TO_TAG) {
+                    error "Backport from/to tags must be provided to perform backport checks"
+                }
                 dir(DEBEZIUM_DIR) {
-                    def rc = sh(script: "github-support/list-missing-commits-by-issue-key.sh", returnStatus: true)
+                    def rc = sh(script: "github-support/list-missing-commits-by-issue-key.sh $JIRA_VERSION $BACKPORT_FROM_TAG $BACKPORT_TO_TAG $JIRA_PAT", returnStatus: true)
                     if (rc != 0) {
                         error "Error, there are some missing backport commits."
                     }
