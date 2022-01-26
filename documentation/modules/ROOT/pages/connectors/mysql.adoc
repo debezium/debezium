@@ -530,7 +530,7 @@ you must set one of the following options:
 When the MySQL connection is read-only, the {link-prefix}:{link-signalling}[signaling table] mechanism can also run a snapshot by sending a message to the Kafka topic that is specified in
 the {link-prefix}:{link-mysql-connector}#mysql-property-signal-kafka-topic[signal.kafka.topic] property.
 
-The key of the Kafka message must match the name of the connector.
+The key of the Kafka message must match the value of the `database.server.name` connector configuration option.
 
 The value is a JSON object with `type` and `data` fields.
 
