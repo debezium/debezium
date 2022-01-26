@@ -204,13 +204,13 @@ def closeJiraIssues() {
 }
 
 @NonCPS
-def findVersion() {
-    jiraGET('project/DBZ/versions').find { it.name == JIRA_VERSION }
+def findVersion(jiraVersion) {
+    jiraGET('project/DBZ/versions').find { it.name == jiraVersion }
 }
 
 @NonCPS
 def closeJiraRelease() {
-    jiraUpdate(findVersion().self, JIRA_CLOSE_RELEASE, 'PUT')
+    jiraUpdate(findVersion(JIRA_VERSION).self, JIRA_CLOSE_RELEASE, 'PUT')
 }
 
 @NonCPS
@@ -351,9 +351,13 @@ node('Slave') {
 
         stage('Check Jira') {
             if (!DRY_RUN) {
-                if (findVersion() == null) {
+                if (findVersion(JIRA_VERSION) == null) {
                     error "Requested release does not exist"
                 }
+                if (findVersion(PRODUCT_RELEASE) == null) {
+                    error "Requested product release does not exist"
+                }
+
                 unresolvedIssues = unresolvedIssuesFromJira()
                 issuesWithoutComponents = issuesWithoutComponentsFromJira()
                 if (!resolvedIssuesFromJira()) {
