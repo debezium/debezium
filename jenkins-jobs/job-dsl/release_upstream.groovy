@@ -29,6 +29,9 @@ pipelineJob('release-debezium-upstream') {
         stringParam('UI_BRANCH', 'main', 'A branch from which Debezium UI is built')
         booleanParam('DRY_RUN', true, 'When checked the changes and artifacts are not pushed to repositories and registries')
         stringParam('MAVEN_CENTRAL_SYNC_TIMEOUT', '12', 'Timeout in hours to wait for artifacts being published in the Maven Central')
+        booleanParam('CHECK_BACKPORTS', false, 'When checked the back ports between the two provided versions will be compared')
+        stringParam('BACKPORT_FROM_TAG', 'vx.y.z.Final', 'Tag where back port checks begin - e.g. v1.8.0.Final')
+        stringParam('BACKPORT_TO_TAG', 'vx.y.z.Final', 'Tag where back port checks end - e.g. v1.8.1.Final')
     }
 
     definition {
