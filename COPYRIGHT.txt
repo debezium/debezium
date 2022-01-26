@@ -90,6 +90,7 @@ Dennis Campagna
 Dennis Persson
 Derek Moore
 Dhrubajyoti G
+Dominique Chanet
 Duncan Sands
 Dushyant M
 Echo Xu
@@ -299,6 +300,7 @@ Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sara Fonseca
 Sean Rooney
+Sebastian Bruckner
 Sergei Morozov
 Shane Paul
 Sherafudheen PM
