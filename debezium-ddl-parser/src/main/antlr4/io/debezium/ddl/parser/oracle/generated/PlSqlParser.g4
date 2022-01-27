@@ -2642,7 +2642,7 @@ add_table_partition
     ;
 
 drop_table_partition
-    : DROP PARTITION partition_name (UPDATE GLOBAL INDEXES)?
+    : DROP (partition_extended_names|subpartition_extended_names) (UPDATE GLOBAL INDEXES)?
     ;
 
 merge_table_partition
