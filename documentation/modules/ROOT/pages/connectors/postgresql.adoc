@@ -139,7 +139,7 @@ Most PostgreSQL servers are configured to not retain the complete history of the
 . Commit the transaction.
 . Record the successful completion of the snapshot in the connector offsets.
 
-If the connector fails, is rebalanced, or stops after Step 1 begins but before Step 5 completes, upon restart the connector begins a new snapshot. After the connector completes its initial snapshot, the PostgreSQL connector continues streaming from the position that it read in Step 3. This ensures that the connector does not miss any updates. If the connector stops again for any reason, upon restart, the connector continues streaming changes from where it previously left off.
+If the connector fails, is rebalanced, or stops after Step 1 begins but before Step 5 completes, upon restart the connector begins a new snapshot. After the connector completes its initial snapshot, the PostgreSQL connector continues streaming from the position that it read in Step 2. This ensures that the connector does not miss any updates. If the connector stops again for any reason, upon restart, the connector continues streaming changes from where it previously left off.
 
 [id="postgresql-connector-snapshot-mode-options"]
 .Options for the `snapshot.mode` connector configuration property
