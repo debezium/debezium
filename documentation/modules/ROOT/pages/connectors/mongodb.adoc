@@ -1241,6 +1241,7 @@ oc apply -f inventory-connector.yaml
 ----
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` collection as defined in the `KafkaConnector` CR.
+endif::product[]
 
 ifdef::community[]
 [[mongodb-example-configuration]]
