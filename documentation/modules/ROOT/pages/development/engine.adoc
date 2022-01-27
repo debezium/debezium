@@ -259,7 +259,7 @@ Allowed values are:
 
 * `Connect.class` - the output value is change event wrapping Kafka Connect's `SourceRecord`
 * `Json.class` - the output value is a pair of key and value encoded as `JSON` strings
-* `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records
+* `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records (see {link-prefix}:{link-avro-serialization}[Avro Serialization] for more details)
 * `CloudEvents.class` - the output value is a pair of key and value encoded as {link-prefix}:{link-cloud-events}[Cloud Events] messages
 
 Internally, the engine uses the apropriate Kafka Connect converter implementation to which the conversion is delegated.
