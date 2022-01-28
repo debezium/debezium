@@ -147,7 +147,6 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
             deliveries.add(publisher.publish(pubsubMessage.build()));
             committer.markProcessed(record);
         }
-        ;
         List<String> messageIds;
         try {
             messageIds = ApiFutures.allAsList(deliveries).get();
