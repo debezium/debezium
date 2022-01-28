@@ -13,6 +13,12 @@ ALTER TABLE sales split partition p5 into (Partition p6 values less than (1996),
 ALTER TABLE sales truncate partition p5;
 ALTER TABLE "SYSTEM". LOGMNR_ATTRCOL$ exchange partition P1023 with table LOGMNRT_1023_ATTRCOL$ including  indexes without validation;
 ALTER TABLE S.PRODUCTS DROP PARTITION FOR 101;
+ALTER TABLE S.PRODUCTS DROP PARTITION p0 UPDATE GLOBAL INDEXES;
+ALTER TABLE S.PRODUCTS DROP PARTITION p0 INVALIDATE GLOBAL INDEXES;
+ALTER TABLE S.PRODUCTS DROP PARTITION p0 UPDATE INDEXES;
+ALTER TABLE S.PRODUCTS DROP PARTITION p0 UPDATE GLOBAL INDEXES NOPARALLEL;
+ALTER TABLE S.PRODUCTS DROP PARTITION p0 INVALIDATE GLOBAL INDEXES NOPARALLEL;
+ALTER TABLE S.PRODUCTS DROP PARTITION p0 UPDATE INDEXES NOPARALLEL;
 -- Alter table add unique index
 alter table dbz1211 add constraint name unique (id,data) using index tablespace ts;
 alter table dbz1211_child add constraint name unique (id) using index tablespace ts;
