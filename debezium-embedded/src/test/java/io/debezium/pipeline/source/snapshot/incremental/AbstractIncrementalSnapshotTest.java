@@ -72,7 +72,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected void populateTable(JdbcConnection connection, String tableName) throws SQLException {
         connection.setAutoCommit(false);
         for (int i = 0; i < ROW_COUNT; i++) {
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName, i + 1, i));
+            connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                    tableName, connection.quotedColumnIdString(pkFieldName()), i + 1, i));
         }
         connection.commit();
     }
@@ -273,8 +274,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
             for (int i = 0; i < ROW_COUNT; i++) {
-                connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)",
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -302,8 +304,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             connection.setAutoCommit(false);
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(
-                        String.format("UPDATE %s SET aa = aa + 2000 WHERE pk > %s AND pk <= %s", tableName(),
-                                i * batchSize, (i + 1) * batchSize));
+                        String.format("UPDATE %s SET aa = aa + 2000 WHERE %s > %s AND %s <= %s",
+                                tableName(),
+                                connection.quotedColumnIdString(pkFieldName()),
+                                i * batchSize,
+                                connection.quotedColumnIdString(pkFieldName()),
+                                (i + 1) * batchSize));
                 connection.commit();
             }
         }
@@ -336,8 +342,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             connection.setAutoCommit(false);
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(
-                        String.format("UPDATE %s SET aa = aa + 2000 WHERE pk > %s AND pk <= %s", tableName(),
-                                i * batchSize, (i + 1) * batchSize));
+                        String.format("UPDATE %s SET aa = aa + 2000 WHERE %s > %s AND %s <= %s",
+                                tableName(),
+                                connection.quotedColumnIdString(pkFieldName()),
+                                i * batchSize,
+                                connection.quotedColumnIdString(pkFieldName()),
+                                (i + 1) * batchSize));
                 connection.commit();
             }
         }
