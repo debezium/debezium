@@ -171,7 +171,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             condition = sql.toString();
         }
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
-                .map(Column::name)
+                .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
                 limit,
@@ -199,7 +199,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             sql.append('(');
             for (int j = 0; j < i + 1; j++) {
                 final boolean isLastIterationForJ = (i == j);
-                sql.append(pkColumns.get(j).name());
+                sql.append(jdbcConnection.quotedColumnIdString(pkColumns.get(j).name()));
                 sql.append(isLastIterationForJ ? " > ?" : " = ?");
                 if (!isLastIterationForJ) {
                     sql.append(" AND ");
@@ -217,7 +217,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     protected String buildMaxPrimaryKeyQuery(Table table) {
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
-                .map(Column::name)
+                .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
         return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, "*", Optional.empty(), orderBy);
     }
@@ -402,7 +402,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     protected void addKeyColumnsToCondition(Table table, StringBuilder sql, String predicate) {
         for (Iterator<Column> i = getKeyMapper().getKeyKolumns(table).iterator(); i.hasNext();) {
             final Column key = i.next();
-            sql.append(key.name()).append(predicate);
+            sql.append(jdbcConnection.quotedColumnIdString(key.name())).append(predicate);
             if (i.hasNext()) {
                 sql.append(" AND ");
             }
