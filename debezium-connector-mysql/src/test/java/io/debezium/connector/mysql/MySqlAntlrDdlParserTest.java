@@ -824,7 +824,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor({ "DBZ-1150", "DBZ-4174" })
+    @FixFor({ "DBZ-1150", "DBZ-4174", "DBZ-4640" })
     public void shouldParseCheckTableKeywords() {
         String ddl = "CREATE TABLE my_table (\n" +
                 "  user_id varchar(64) NOT NULL,\n" +
@@ -839,6 +839,7 @@ public class MySqlAntlrDdlParserTest {
                 "  usa VARCHAR(100),\n" +
                 "  jis VARCHAR(100),\n" +
                 "  internal INT,\n" +
+                "  instant BIT,\n" +
                 "  UNIQUE KEY call_states_userid (user_id)\n" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8";
         parser.parse(ddl, tables);
@@ -851,6 +852,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("medium")).isNotNull();
         assertThat(table.columnWithName("extended")).isNotNull();
         assertThat(table.columnWithName("changed")).isNotNull();
+        assertThat(table.columnWithName("instant")).isNotNull();
     }
 
     @Test
