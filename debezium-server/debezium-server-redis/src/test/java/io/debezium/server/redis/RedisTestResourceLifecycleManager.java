@@ -49,6 +49,14 @@ public class RedisTestResourceLifecycleManager implements QuarkusTestResourceLif
         running.set(false);
     }
 
+    public static void pause() {
+        container.getDockerClient().pauseContainerCmd(container.getContainerId()).exec();
+    }
+
+    public static void unpause() {
+        container.getDockerClient().unpauseContainerCmd(container.getContainerId()).exec();
+    }
+
     public static String getRedisContainerAddress() {
         start(true);
 

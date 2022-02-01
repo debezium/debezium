@@ -31,6 +31,7 @@ import io.debezium.server.CustomConsumerBuilder;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 /**
  * Implementation of the consumer that delivers the messages into Redis (stream) destination.
@@ -52,6 +53,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private HostAndPort address;
     private Optional<String> user;
     private Optional<String> password;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.initial.delay.ms", defaultValue = "300")
+    Integer initialRetryDelay;
+
+    @ConfigProperty(name = PROP_PREFIX + "retry.max.delay.ms", defaultValue = "10000")
+    Integer maxRetryDelay;
 
     @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
     String nullKey;
@@ -115,21 +122,61 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             throws InterruptedException {
 
         for (ChangeEvent<Object, Object> record : records) {
-            try {
+            LOGGER.trace("Received event '{}'", record);
 
-                LOGGER.trace("Received event '{}'", record);
+            String destination = streamNameMapper.map(record.destination());
+            String key = (record.key() != null) ? getString(record.key()) : nullKey;
+            String value = (record.value() != null) ? getString(record.value()) : nullValue;
+            int currentRetryTime = initialRetryDelay;
+            boolean completedSuccessfully = false;
 
-                String destination = streamNameMapper.map(record.destination());
-                String key = (record.key() != null) ? getString(record.key()) : nullKey;
-                String value = (record.value() != null) ? getString(record.value()) : nullValue;
-                client.xadd(destination, null, Collections.singletonMap(key, value));
+            // As long as we failed to add the current record to the stream, we should retry if the reason was either a connection error or OOM in Redis.
+            while (!completedSuccessfully) {
+                try {
+                    // Add the record to the destination stream
+                    client.xadd(destination, null, Collections.singletonMap(key, value));
+                    completedSuccessfully = true;
+                }
+                catch (JedisConnectionException jce) {
+                    // Try to reconnect
+                    try {
+                        connect();
+                    }
+                    catch (Exception e) {
+                        LOGGER.error("Can't connect to Redis", e);
+                    }
+                }
+                catch (Exception e) {
+                    // When Redis reaches its max memory limitation, a JedisDataException will be thrown with this message.
+                    // In this case, we will retry adding this record to the stream, assuming some memory will be freed eventually as result
+                    // of evicting elements from the stream by the target DB.
+                    if (e.getMessage().equals("OOM command not allowed when used memory > 'maxmemory'.")) {
+                        LOGGER.error("Redis runs OOM", e);
+                    }
+                    // When Redis is starting, a JedisDataException will be thrown with this message.
+                    // We will retry communicating with the target DB as once of the Redis is available, this message will be gone.
+                    else if (e.getMessage().equals("LOADING Redis is loading the dataset in memory")) {
+                        LOGGER.error("Redis is starting", e);
+                    }
+                    // In case of unexpected runtime error, throw a DebeziumException which terminates the process
+                    else {
+                        throw new DebeziumException(e);
+                    }
+                }
 
-                committer.markProcessed(record);
+                // Failed to add the record to the stream, retry...
+                if (!completedSuccessfully) {
+                    LOGGER.info("Retrying in {} ms", currentRetryTime);
+                    Thread.sleep(currentRetryTime);
+
+                    // Exponential backoff: As long as the current retry time does not exceed the max retry time, double it
+                    currentRetryTime = Math.min(currentRetryTime *= 2, maxRetryDelay);
+                }
             }
-            catch (Exception e) {
-                throw new DebeziumException(e);
-            }
+
+            committer.markProcessed(record);
         }
+
         committer.markBatchFinished();
     }
 }
