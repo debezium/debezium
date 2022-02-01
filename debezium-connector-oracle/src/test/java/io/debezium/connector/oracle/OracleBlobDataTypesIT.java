@@ -31,6 +31,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -1445,6 +1446,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1495,6 +1497,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1556,6 +1559,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode2() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1616,6 +1620,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode3() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {

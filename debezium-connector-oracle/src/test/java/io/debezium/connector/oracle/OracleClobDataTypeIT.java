@@ -26,6 +26,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -1842,6 +1843,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamClobsWrittenInChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
