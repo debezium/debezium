@@ -2148,7 +2148,7 @@ segment_attributes_clause
     ;
 
 external_table_clause
-    : '('? (TYPE access_driver_type)? external_table_data_props? ')'? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
+    : '('? (TYPE access_driver_type)? external_table_data_props* ')'? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
     ;
 
 access_driver_type
@@ -2157,7 +2157,239 @@ access_driver_type
 
 external_table_data_props
     : DEFAULT DIRECTORY quoted_string
-    | LOCATION
+    | ACCESS PARAMETERS '(' (et_oracle_loader | et_oracle_datapump | et_oracle_hdfs_hive | USING CLOB subquery) ')'
+    | LOCATION '(' et_directory_spec? et_location_specifier (',' et_directory_spec? et_location_specifier )* ')'
+    ;
+
+et_oracle_loader
+    : comments_oracle_loader? record_format_info? field_definitions? column_transforms?
+    ;
+
+et_oracle_datapump
+    : ENCRYPTION (ENABLED | DISABLED)
+      | ( NOLOGFILE | LOGFILE et_directory_spec? et_file_spec )
+      | COMPRESSION ( ENABLED (BASIC |LOW | MEDIUM | HIGH)? | DISABLED)?
+      | HADOOP_TRAILERS (ENABLED | DISABLED) VERSION (COMPATIBLE | LATEST | quoted_string )
+      | comments_oracle_datapump
+    ;
+
+et_oracle_hdfs_hive
+    : COM_ORACLE_HDFS_HIVE_BIGDATA_COLMAP ( '=' | ':' ) (
+        colmap_entry | ('[' colmap_entry ( ',' colmap_entry)* ']')) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_ERROROPT ( '=' | ':' ) (
+        error_element | ('[' error_element ( ',' error_element)* ']' )) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_FIELDS ( '=' | ':' ) (
+        field_spec et_data_type
+        ( COMMENT col_comment )? (',' COMMENT col_comment )* ) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_FILEFORMAT ( '=' | ':' ) (
+        SEQUENCEFILE
+        | TEXTFILE
+        | RCFILE
+        | ORC
+        | PARQUET
+        | INPUTFORMAT quoted_string OUTPUTFORMAT quoted_string ) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_EXEC ( '=' | ':' ) (
+        et_directory_spec? et_file_spec ) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_QC ( '=' | ':' ) (
+        et_directory_spec? et_file_spec ) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_OVERFLOW ( '=' | ':' ) (
+        overflow_element | ('[' overflow_element ( ',' overflow_element)* ']')) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_ROWFORMAT ( '=' | ':' ) (
+        DELIMITED?
+        ( FIELDS TERMINATED BY CHARACTER ( ESCAPED BY CHARACTER )
+        | COLLECTION ITEMS TERMINATED BY CHARACTER
+        | MAP KEYS TERMINATED BY CHARACTER
+        | LINES TERMINATED BY CHARACTER
+        | NULL_ DEFINED AS CHARACTER
+        )
+        | SERDE quoted_string ( WITH SERDEPROPERTIES ( quoted_string '=' quoted_string ( ',' quoted_string '=' quoted_string)*))? ) et_oracle_hdfs_hive*
+    | COM_ORACLE_HDFS_HIVE_BIGDATA_TABLENAME ( '=' | ':' ) (
+        tableview_name ) et_oracle_hdfs_hive*
+    ;
+
+colmap_entry
+    : LEFT_CURLY_PAREN ET_COL BINDVAR ',' ET_FIELD BINDVAR RIGHT_CURLY_PAREN
+    ;
+
+error_element
+    : LEFT_CURLY_PAREN ET_ACTION ':' ( ET_REJECT | ET_SETNULL | ET_REPLACE) (',' ET_VALUE BINDVAR )
+      ( ',' ET_COL ':'? ( BINDVAR | '[' quoted_string ( ',' quoted_string )* ']' ))? RIGHT_CURLY_PAREN
+    ;
+
+col_comment
+    : quoted_string
+    ;
+
+overflow_element
+    : LEFT_CURLY_PAREN ET_ACTION ':' ( ET_TRUNCATE | ET_ERROR )
+      ( ',' ET_COL ':'? ( BINDVAR | '[' quoted_string ( ',' quoted_string )* ']' ))? RIGHT_CURLY_PAREN
+    ;
+
+et_data_type
+    : ( et_primitive_type
+        ARRAY '<' et_data_type '>'
+        MAP '<' et_primitive_type ',' et_data_type '>'
+        STRUCT '<' field_spec et_data_type ( COMMENT ) (',' COMMENT )* '>'
+        UNIONTYPE '<' et_data_type ( ',' et_data_type ) '>' )
+    ;
+
+et_primitive_type
+    : TINYINT
+    | SMALLINT
+    | INT
+    | BIGINT
+    | BOOLEAN
+    | FLOAT
+    | DOUBLE
+    | STRING
+    | BINARY
+    | TIMESTAMP
+    | DECIMAL
+    ;
+
+et_location_specifier
+    : quoted_string
+    ;
+
+comments_oracle_loader
+    : RECORDS DELIMITED BY NEWLINE_
+    ;
+
+comments_oracle_datapump
+    : NOLOG
+    ;
+record_format_info
+    : ( RECORDS ( FIXED UNSIGNED_INTEGER
+                | VARIABLE UNSIGNED_INTEGER
+                | DELIMITED BY ( (DETECTED) NEWLINE_ | quoted_string )
+                | XMLTAG '('? quoted_string ( ',' quoted_string )* ')'? ))?
+      et_record_spec_options*
+    ;
+
+et_record_spec_options
+    : CHARACTERSET quoted_string
+    | EXTERNAL VARIABLE DATA
+    | PREPROCESSOR et_directory_spec? et_file_spec
+    | DATA IS ( LITTLE | BIG ) ENDIAN
+    | BYTEORDERMARK ( CHECK | NOCHECK )
+    | STRING SIZES ARE IN ( BYTES | CHARACTERS )
+    | LOAD WHEN et_condition_spec
+    | et_output_files
+    | ( READSIZE '='? UNSIGNED_INTEGER | DISABLE_DIRECTORY_LINK_CHECK | DATE_CACHE UNSIGNED_INTEGER | SKIP_ UNSIGNED_INTEGER )
+    | IO_OPTIONS ( DIRECTIO | NODIRECTIO )
+    | ( DNFS_ENABLE | DNFS_DISABLE )
+    | DNFS_READBUFFERS UNSIGNED_INTEGER
+    ;
+
+et_directory_spec
+    : directory_name object_name? ':'
+    ;
+
+et_file_spec
+    : filename
+    ;
+
+et_condition_spec
+    : et_condition | et_condition_spec ( AND | OR ) et_condition_spec
+    ;
+
+et_condition
+    : ( field_spec |  ( '(' UNSIGNED_INTEGER BINDVAR ')' ))
+        relational_operator
+      ( quoted_string | HEX_STRING_LIT | BLANKS  )
+    ;
+
+
+et_output_files
+    : ( NOBADFILE |  BADFILE et_directory_spec? et_file_spec )
+    | ( NODISCARDFILE | DISCARDFILE et_directory_spec? et_file_spec )
+    | ( NOLOGFILE | LOGFILE et_directory_spec? et_file_spec )
+    ;
+
+field_definitions
+    : FIELDS
+        ( IGNORE_CHARS_AFTER_EOR )?
+        ( CSV ( WITH EMBEDDED | WITHOUT EMBEDDED ))?
+        et_delim_spec?
+        et_trim_spec?
+        ( ALL FIELDS OVERRIDE THESE FIELDS )?
+        ( MISSING FIELD VALUES ARE NULL_)?
+        ( REJECT ROWS WITH ALL NULL_ FIELDS)?
+        ( DATE_FORMAT ( DATE | TIMESTAMP ) MASK quoted_string )?
+        ( NULLIF ( EQUALS_OP | NOT_EQUAL_OP ) ( quoted_string | HEX_STRING_LIT | BLANKS ) | NONULLIF )?
+        '('? et_field_list? ')'?
+    ;
+
+et_field_list
+    : ( field_spec et_pos_spec? et_datatype_spec? et_init_spec? et_LLS_spec? ) ( ',' et_field_list )*
+    ;
+
+et_pos_spec
+    : POSITION? '(' (( UNSIGNED_INTEGER | '*' | ( '+' | '-' ) (UNSIGNED_INTEGER | '*' | '-' )) ( ':' | '-' ) ( UNSIGNED_INTEGER | UNSIGNED_INTEGER )) ')'
+    ;
+
+et_datatype_spec
+    : (
+      UNSIGNED? INTEGER EXTERNAL? UNSIGNED_INTEGER? et_delim_spec?
+      | ( DECIMAL| ZONED ) ( '(' UNSIGNED_INTEGER ( ',' UNSIGNED_INTEGER )? ')' | EXTERNAL ( '(' UNSIGNED_INTEGER ')' )? et_delim_spec? )?
+      | ORACLE_DATE
+      | ORACLE_NUMBER (COUNTED)?
+      | FLOAT EXTERNAL? UNSIGNED_INTEGER? et_delim_spec?
+      | DOUBLE
+      | BINARY_FLOAT EXTERNAL? UNSIGNED_INTEGER? et_delim_spec?
+      | BINARY_DOUBLE
+      | RAW UNSIGNED_INTEGER?
+      | CHAR EXTERNAL? UNSIGNED_INTEGER? et_delim_spec? et_trim_spec? et_date_format_spec?
+      | ( VARCHAR | VARRAW | VARCHARC | VARRAWC ) ('('( UNSIGNED_INTEGER ',')? UNSIGNED_INTEGER ')')
+      )
+    ;
+
+et_init_spec
+    : (( DEFAULTIF | NULLIF ) et_condition_spec )*
+    ;
+
+et_LLS_spec
+    : LLS et_directory_spec
+    ;
+
+et_date_format_spec
+    : (DATE_FORMAT)?
+      ( DATE
+      | TIMESTAMP (WITH (LOCAL)? TIME ZONE)? MASK quoted_string
+      | INTERVAL ( YEAR_TO_MONTH | DAY_TO_SECOND ))
+    ;
+
+et_delim_spec
+    : (
+       ENCLOSED BY quoted_string ( AND quoted_string )?
+       | TERMINATED BY ( quoted_string | WHITESPACE )
+       ( OPTIONALLY? ENCLOSED BY quoted_string ( AND quoted_string )? )?
+      )
+    ;
+
+et_trim_spec
+    : ( LRTRIM | NOTRIM | LTRIM | RTRIM | LDRTRIM )
+    ;
+
+column_transforms
+    :  COLUMN TRANSFORMS '(' et_transform (',' et_transform)* ')'
+    ;
+
+et_transform
+    : column_name FROM
+      ( NULL_
+        | CONSTANT quoted_string
+        | CONCAT ( field_spec | CONSTANT quoted_string )
+        | LOBFILE (field_spec | CONSTANT quoted_string )
+        | et_lobfile_attr
+        | STARTOF et_field_list '(' UNSIGNED_INTEGER ')'
+      )
+    ;
+et_lobfile_attr
+    : FROM '(' et_directory_spec (',' et_directory_spec)* ')'
+    | CLOB
+    | BLOB
+    | CHARACTERSET '=' char_set_name
     ;
 
 physical_properties
@@ -5608,6 +5840,7 @@ non_reserved_keywords_pre12c
     | EXCLUDE
     | EXCLUDING
     | EXECUTE
+    | EXECDIR
     | EXEMPT
     | EXISTSNODE
     | EXPAND_GSET_TO_UNION
