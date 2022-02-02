@@ -613,6 +613,35 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4661")
+    public void shouldSupportCreateTableWithEcrytion() {
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test1` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `ENCRYPTED`=YES COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test2` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=yes COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test3` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTED=yes COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=YES COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse("CREATE TABLE `t_test_encryption` " +
+                "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTION='Y' COMMENT 'Mysql encrypted table';", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-1349")
     public void shouldSupportUtfMb3Charset() {
         String ddl = " CREATE TABLE `engine_cost` (\n" +
