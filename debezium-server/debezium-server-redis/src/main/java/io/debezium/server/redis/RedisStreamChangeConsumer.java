@@ -145,7 +145,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                 }
                 catch (Exception e) {
                     // When Redis reaches its max memory limitation, a JedisDataException will be thrown with this message.
-                    // In this case, we will retry adding this record to the stream, assuming some memory will be freed eventually as result 
+                    // In this case, we will retry adding this record to the stream, assuming some memory will be freed eventually as result
                     // of evicting elements from the stream by the target DB.
                     if (e.getMessage().equals("OOM command not allowed when used memory > 'maxmemory'.")) {
                         LOGGER.error("Redis runs OOM", e);
@@ -167,7 +167,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     Thread.sleep(currentRetryTime);
 
                     // Exponential backoff: As long as the current retry time does not exceed the max retry time, double it
-                    Math.min(currentRetryTime *= 2, MAX_RETRY_TIME);
+                    currentRetryTime = Math.min(currentRetryTime *= 2, MAX_RETRY_TIME);
                 }
             }
 
