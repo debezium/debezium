@@ -203,7 +203,8 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                         + "\"1f3a2ea5bc1f60258df20521bee9ac636df69a3a\":{\"currency\":\"USD\"},"
                         + "\"4f4d99a438f334d7dbf83a1816015b361b848b3b\":{\"currency\":\"USD\"},"
                         + "\"9021162291be72f5a8025480f44bf44d5d81d07c\":\"test_field_for_remove_fields_behaviour_3_will_be_removed\","
-                        + "\"9b0ed11532efea688fdf12b28f142b9eb08a80c5\":{\"currency\":\"USD\"},\"e65ad0762c259b05b4866f7249eabecabadbe577\":\"test_field_for_remove_fields_behaviour_1_updated\","
+                        + "\"9b0ed11532efea688fdf12b28f142b9eb08a80c5\":{\"currency\":\"USD\"},"
+                        + "\"e65ad0762c259b05b4866f7249eabecabadbe577\":\"test_field_for_remove_fields_behaviour_1_updated\","
                         + "\"ff2c07edcaa3e987c23fb5cc4fe860bb52becf00\":{\"currency\":\"USD\"}"
                         + "}");
         stopConnector();
