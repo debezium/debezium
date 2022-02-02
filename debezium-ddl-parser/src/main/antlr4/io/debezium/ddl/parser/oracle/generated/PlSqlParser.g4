@@ -2183,6 +2183,7 @@ flashback_archive_clause
 
 log_grp
     : UNSIGNED_INTEGER
+    | identifier
     ;
 
 supplemental_table_logging
@@ -2193,7 +2194,7 @@ supplemental_table_logging
     ;
 
 supplemental_log_grp_clause
-    : GROUP log_grp '(' regular_id (NO LOG)? (',' regular_id (NO LOG)?)* ')' ALWAYS?
+    : GROUP log_grp '(' column_name (NO LOG)? (',' column_name (NO LOG)?)* ')' ALWAYS?
     ;
 
 supplemental_id_key_clause
