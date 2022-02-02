@@ -14,17 +14,20 @@ import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
 import java.util.stream.Collectors;
 
-import org.eclipse.microprofile.openapi.models.media.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.metadata.ConnectorMetadataProvider;
-import io.debezium.schemagenerator.formats.ApiFormat;
-import io.debezium.schemagenerator.formats.ApiFormatName;
+import io.debezium.schemagenerator.schema.Schema;
+import io.debezium.schemagenerator.schema.SchemaName;
 
 public class SchemaGenerator {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SchemaGenerator.class);
 
     public static void main(String[] args) {
         if (args.length != 2) {
@@ -34,21 +37,40 @@ public class SchemaGenerator {
         String formatName = args[0].trim();
         Path outputDirectory = new File(args[1]).toPath();
 
-        new SchemaGenerator().run(formatName, outputDirectory);
+        new SchemaGenerator().run(formatName, outputDirectory, false, null, null);
     }
 
-    private void run(String formatName, Path outputDirectory) {
+    public void run(String formatName, Path outputDirectory, Boolean groupDirectoryPerConnector, String filenamePrefix, String filenameSuffix) {
         List<ConnectorMetadata> allMetadata = getMetadata();
 
-        ApiFormat format = getApiFormat(formatName);
+        Schema format = getSchemaFormat(formatName);
+        LOGGER.info("Using schema format: {}", format.getDescriptor().getName());
 
+        if (allMetadata.isEmpty()) {
+            throw new RuntimeException("No connectors found in classpath. Exiting!");
+        }
         for (ConnectorMetadata connectorMetadata : allMetadata) {
+            LOGGER.info("Creating \"{}\" schema for connector: {}...", format.getDescriptor().getName(), connectorMetadata.getConnectorDescriptor().getName());
             JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, format.getFieldFilter());
-            Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
+            org.eclipse.microprofile.openapi.models.media.Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
             String spec = format.getSpec(buildConnectorSchema);
 
             try {
-                Files.write(spec.getBytes(Charsets.UTF_8), outputDirectory.resolve(connectorMetadata.getConnectorDescriptor().getId() + ".json").toFile());
+                String schemaFilename = "";
+                if (groupDirectoryPerConnector) {
+                    schemaFilename += connectorMetadata.getConnectorDescriptor().getId() + File.separator;
+                }
+                if (null != filenamePrefix && !filenamePrefix.isEmpty()) {
+                    schemaFilename += filenamePrefix;
+                }
+                schemaFilename += connectorMetadata.getConnectorDescriptor().getId();
+                if (null != filenameSuffix && !filenameSuffix.isEmpty()) {
+                    schemaFilename += filenameSuffix;
+                }
+                schemaFilename += ".json";
+                Path schemaFilePath = outputDirectory.resolve(schemaFilename);
+                schemaFilePath.getParent().toFile().mkdirs();
+                Files.write(spec.getBytes(Charsets.UTF_8), schemaFilePath.toFile());
             }
             catch (IOException e) {
                 throw new RuntimeException("Couldn't write file", e);
@@ -65,12 +87,20 @@ public class SchemaGenerator {
     }
 
     /**
-     * Returns the {@link ApiFormat} with the given name, specified via the {@link ApiFormatName} annotation.
+     * Returns the {@link Schema} with the given name, specified via the {@link SchemaName} annotation.
      */
-    private ApiFormat getApiFormat(String formatName) {
-        Optional<Provider<ApiFormat>> format = ServiceLoader.load(ApiFormat.class)
+    private Schema getSchemaFormat(String formatName) {
+        ServiceLoader<Schema> schemaFormats = ServiceLoader.load(Schema.class);
+
+        if (0 == schemaFormats.stream().count()) {
+            throw new RuntimeException("No schema formats found!");
+        }
+
+        LOGGER.info("Registered schemas: {}", schemaFormats.stream().map(schemaFormat -> schemaFormat.get().getDescriptor().getId()).collect(Collectors.joining(", ")));
+
+        Optional<Provider<Schema>> format = schemaFormats
                 .stream()
-                .filter(p -> p.type().getAnnotation(ApiFormatName.class).value().equals(formatName))
+                .filter(p -> p.type().getAnnotation(SchemaName.class).value().equals(formatName))
                 .findFirst();
 
         return format.orElseThrow().get();
