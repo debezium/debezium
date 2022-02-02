@@ -63,7 +63,13 @@ public class ExecuteSnapshot implements Signal.Action {
         final String typeStr = data.getString(FIELD_TYPE);
         SnapshotType type = SnapshotType.INCREMENTAL;
         if (typeStr != null) {
-            type = SnapshotType.valueOf(typeStr);
+            for (SnapshotType option : SnapshotType.values()) {
+                if (option.name().equalsIgnoreCase(typeStr)) {
+                    return option;
+                }
+            }
+            LOGGER.warn("Detected an unexpected snapshot type '{}'", typeStr);
+            return null;
         }
         return type;
     }
