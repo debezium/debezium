@@ -116,7 +116,7 @@
         <quarkus.version>2.5.0.Final</quarkus.version>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.2.24</version.postgresql.driver>
+        <version.postgresql.driver>42.3.2</version.postgresql.driver>
         <version.mysql.driver>8.0.27</version.mysql.driver>
         <version.mysql.binlog>0.25.4</version.mysql.binlog>
         <version.mongo.driver>4.3.3</version.mongo.driver>
