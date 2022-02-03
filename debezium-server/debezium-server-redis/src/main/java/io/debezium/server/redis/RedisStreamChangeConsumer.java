@@ -54,11 +54,11 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private Optional<String> user;
     private Optional<String> password;
 
-    @ConfigProperty(name = PROP_PREFIX + "retry.initial.time.ms", defaultValue = "300")
-    Integer initialRetryTimeMs;
+    @ConfigProperty(name = PROP_PREFIX + "retry.initial.delay.ms", defaultValue = "300")
+    Integer initialRetryDelay;
 
-    @ConfigProperty(name = PROP_PREFIX + "retry.max.time.ms", defaultValue = "10000")
-    Integer maxRetryTimeMs;
+    @ConfigProperty(name = PROP_PREFIX + "retry.max.delay.ms", defaultValue = "10000")
+    Integer maxRetryDelay;
 
     @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
     String nullKey;
@@ -127,8 +127,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             String destination = streamNameMapper.map(record.destination());
             String key = (record.key() != null) ? getString(record.key()) : nullKey;
             String value = (record.value() != null) ? getString(record.value()) : nullValue;
-
-            int currentRetryTime = initialRetryTimeMs;
+            int currentRetryTime = initialRetryDelay;
             boolean completedSuccessfully = false;
 
             // As long as we failed to add the current record to the stream, we should retry if the reason was either a connection error or OOM in Redis.
@@ -171,7 +170,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     Thread.sleep(currentRetryTime);
 
                     // Exponential backoff: As long as the current retry time does not exceed the max retry time, double it
-                    currentRetryTime = Math.min(currentRetryTime *= 2, maxRetryTimeMs);
+                    currentRetryTime = Math.min(currentRetryTime *= 2, maxRetryDelay);
                 }
             }
 
