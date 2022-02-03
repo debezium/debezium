@@ -9,7 +9,7 @@ pipeline {
                 axes {
                     axis {
                         name 'ORACLE_VERSION'
-                        values '19.3.0', '12.2.0.1'
+                        values '21.3.0', '19.3.0', '12.2.0.1'
                     }
                 }
 
