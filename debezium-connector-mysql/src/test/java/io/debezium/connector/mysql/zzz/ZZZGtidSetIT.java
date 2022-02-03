@@ -10,9 +10,13 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -120,10 +124,12 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         // Check that records have GTID that does not contain purged interval
         records.recordsForTopic(ro_database.topicForTable("customers")).forEach(record -> {
             final String gtids = (String) record.sourceOffset().get("gtids");
-            final Pattern p = Pattern.compile(".*(.*):(.*)-(.*).*");
+
+            // the format is <uuid:<start-tx>-<end-tx>; we don't expect any offsets with start tx = 1 due to the flush
+            final Pattern p = Pattern.compile(".*:(.*)-.*");
             final Matcher m = p.matcher(gtids);
             m.matches();
-            Assertions.assertThat(m.group(2)).isNotEqualTo("1");
+            Assertions.assertThat(m.group(1)).isNotEqualTo("1");
         });
 
         stopConnector();
@@ -132,19 +138,32 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
     private void purgeDatabaseLogs() throws SQLException {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute(
-                        "FLUSH LOGS");
-                final String lastBinlogName = connection.queryAndMap("SHOW BINARY LOGS", rs -> {
-                    String binlog = null;
-                    while (rs.next()) {
-                        binlog = rs.getString(1);
-                    }
-                    return binlog;
+                // make sure there's a new log file
+                connection.execute("FLUSH LOGS");
+
+                // purge all log files other than the last one
+                List<String> binlogs = getBinlogs(connection);
+                String lastBinlogName = binlogs.get(binlogs.size() - 1);
+                connection.execute("PURGE BINARY LOGS TO '" + lastBinlogName + "'");
+
+                // apparently, PURGE is async, as occasionally we saw the first log file still to be active
+                // after that call, causing the GTID 1 (which is in the first log file) to be part of offsets
+                // which is not what we expect
+                Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+                    return getBinlogs(connection).size() == 1;
                 });
-                connection.execute(
-                        "PURGE BINARY LOGS TO '" + lastBinlogName + "'");
             }
         }
+    }
+
+    private List<String> getBinlogs(JdbcConnection connection) throws SQLException {
+        return connection.queryAndMap("SHOW BINARY LOGS", rs -> {
+            List<String> binlogs = new ArrayList<>();
+            while (rs.next()) {
+                binlogs.add(rs.getString(1));
+            }
+            return binlogs;
+        });
     }
 
     @Test
