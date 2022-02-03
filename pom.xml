@@ -133,6 +133,8 @@
         <version.mongo.server>3.6</version.mongo.server>
         <version.cassandra>3.11.10</version.cassandra>
 
+        <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
+        <version.com.google.protobuf>3.19.2</version.com.google.protobuf>
     </properties>
 
     <modules>
