@@ -76,13 +76,12 @@ public class RedisStreamIT {
 
     private PostgresConnection getPostgresConnection() {
         return new PostgresConnection(Configuration.create()
-            .with("hostname", dbHostname)
-            .with("port", dbPort)
-            .with("user", dbUser)
-            .with("password", dbPassword)
-            .with("dbname", dbName)
-            .build()
-        );
+                .with("hostname", dbHostname)
+                .with("port", dbPort)
+                .with("user", dbUser)
+                .with("password", dbPassword)
+                .with("dbname", dbName)
+                .build());
     }
 
     @Test
@@ -101,16 +100,15 @@ public class RedisStreamIT {
         assertTrue("Redis Basic Stream Test Failed", entries.size() == MESSAGE_COUNT);
     }
 
-
     @Test
     @FixFor("DBZ-4510")
     public void testRedisConnectionRetry() throws Exception {
         /*
-            Test retry mechanism when encountering Redis connectivity issues:
-            1. Make Redis to be unavailable while the server is up
-            2. Create a new table named redis_test in PostgreSQL and insert 5 records to it 
-            3. Bring Redis up again and make sure these records have been streamed successfully
-        */
+         * Test retry mechanism when encountering Redis connectivity issues:
+         * 1. Make Redis to be unavailable while the server is up
+         * 2. Create a new table named redis_test in PostgreSQL and insert 5 records to it
+         * 3. Bring Redis up again and make sure these records have been streamed successfully
+         */
 
         final int MESSAGE_COUNT = 5;
         final String STREAM_NAME = "testc.inventory.redis_test";
@@ -131,7 +129,7 @@ public class RedisStreamIT {
         Thread.sleep(5000);
         Testing.print("Unpausing container");
         RedisTestResourceLifecycleManager.unpause();
-       
+
         final List<StreamEntry> entries = new ArrayList<>();
         Awaitility.await().atMost(Duration.ofSeconds(RedisTestConfigSource.waitForSeconds())).until(() -> {
             final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
@@ -147,13 +145,13 @@ public class RedisStreamIT {
     @FixFor("DBZ-4510")
     public void testRedisOOMRetry() throws Exception {
         /*
-            Test retry mechanism when encountering Redis Out of Memory:
-            1. Simulate a Redis OOM by setting its max memory to 1M.
-            2. Create a new table named redis_test2 in PostgreSQL and insert 1000 records to it.
-            3. As result, after inserting ~22 records, Redis runs OOM.
-            4. Sleep for additional 5 seconds to ensure the Sink is retrying.
-            5. Revert max memory setting so Redis is no longer in OOM and make sure all 100 records have been streamed successfully.
-        */
+         * Test retry mechanism when encountering Redis Out of Memory:
+         * 1. Simulate a Redis OOM by setting its max memory to 1M.
+         * 2. Create a new table named redis_test2 in PostgreSQL and insert 1000 records to it.
+         * 3. As result, after inserting ~22 records, Redis runs OOM.
+         * 4. Sleep for additional 5 seconds to ensure the Sink is retrying.
+         * 5. Revert max memory setting so Redis is no longer in OOM and make sure all 100 records have been streamed successfully.
+         */
 
         final int MESSAGE_COUNT = 100;
         final String STREAM_NAME = "testc.inventory.redis_test2";
@@ -179,7 +177,7 @@ public class RedisStreamIT {
             entries.addAll(response);
             return entries.size() >= MESSAGE_COUNT;
         });
-      
+
         Testing.print("Entries in " + STREAM_NAME + ":" + entries.size());
         assertTrue("Redis OOM Test Failed", entries.size() == MESSAGE_COUNT);
     }
