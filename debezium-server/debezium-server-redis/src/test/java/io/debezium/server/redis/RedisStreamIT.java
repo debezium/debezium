@@ -76,7 +76,7 @@ public class RedisStreamIT {
 
     @Test
     public void testRedisStream() throws Exception {
-        // Verifies that all the records of PosrgreSQL table are streamed to Redi
+        // Verifies that all the records of a PostgreSQL table are streamed to Redi
         final int MESSAGE_COUNT = 4;
         final String STREAM_NAME = "testc.inventory.customers";
 
