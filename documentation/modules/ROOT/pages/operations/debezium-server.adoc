@@ -619,6 +619,15 @@ So this string will be used as key for records without primary key.
 |Redis does not support the notion of null payloads, as is the case with tombstone events.
 So this string will be used as value for records without a payload.
 
+|[[redis-retry-initial-time-ms]]<<redis-retry-initial-time-ms, `debezium.sink.redis.retry.initial.time.ms`>>
+|`300`
+|Initial retry time when encountering Redis connection or OOM issues.
+This value will be doubled upon every retry but won't exceed `debezium.sink.redis.retry.max.time.ms`
+
+|[[redis-retry-max-time-ms]]<<redis-retry-max-time-ms, `debezium.sink.redis.retry.max.time.ms`>>
+|`10000`
+|Max time to wait when encountering Redis connection or OOM issues.
+
 |===
 
 
