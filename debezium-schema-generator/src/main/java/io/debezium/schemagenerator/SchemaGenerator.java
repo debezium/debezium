@@ -30,14 +30,17 @@ public class SchemaGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaGenerator.class);
 
     public static void main(String[] args) {
-        if (args.length != 2) {
-            throw new IllegalArgumentException("Usage: SchemaGenerator <format-name> <output-directory>");
+        if (args.length != 5) {
+            throw new IllegalArgumentException("Usage: SchemaGenerator <format-name> <output-directory> <groupDirectoryPerConnector> <filenamePrefix> <filenameSuffix>");
         }
 
         String formatName = args[0].trim();
         Path outputDirectory = new File(args[1]).toPath();
+        boolean groupDirectoryPerConnector = Boolean.parseBoolean(args[2]);
+        String filenamePrefix = args[3];
+        String filenameSuffix = args[4];
 
-        new SchemaGenerator().run(formatName, outputDirectory, false, null, null);
+        new SchemaGenerator().run(formatName, outputDirectory, groupDirectoryPerConnector, filenamePrefix, filenameSuffix);
     }
 
     public void run(String formatName, Path outputDirectory, Boolean groupDirectoryPerConnector, String filenamePrefix, String filenameSuffix) {
