@@ -7,15 +7,13 @@ package io.debezium.schemagenerator;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.System.Logger;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
 import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
@@ -27,7 +25,7 @@ import io.debezium.schemagenerator.schema.SchemaName;
 
 public class SchemaGenerator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SchemaGenerator.class);
+    private static final Logger LOGGER = System.getLogger(SchemaGenerator.class.getName());
 
     public static void main(String[] args) {
         if (args.length != 5) {
@@ -43,17 +41,19 @@ public class SchemaGenerator {
         new SchemaGenerator().run(formatName, outputDirectory, groupDirectoryPerConnector, filenamePrefix, filenameSuffix);
     }
 
-    public void run(String formatName, Path outputDirectory, Boolean groupDirectoryPerConnector, String filenamePrefix, String filenameSuffix) {
+    private void run(String formatName, Path outputDirectory, boolean groupDirectoryPerConnector, String filenamePrefix, String filenameSuffix) {
         List<ConnectorMetadata> allMetadata = getMetadata();
 
         Schema format = getSchemaFormat(formatName);
-        LOGGER.info("Using schema format: {}", format.getDescriptor().getName());
+        LOGGER.log(Logger.Level.INFO, "Using schema format: " + format.getDescriptor().getName());
 
         if (allMetadata.isEmpty()) {
             throw new RuntimeException("No connectors found in classpath. Exiting!");
         }
         for (ConnectorMetadata connectorMetadata : allMetadata) {
-            LOGGER.info("Creating \"{}\" schema for connector: {}...", format.getDescriptor().getName(), connectorMetadata.getConnectorDescriptor().getName());
+            LOGGER.log(Logger.Level.INFO, "Creating \"" + format.getDescriptor().getName()
+                    + "\" schema for connector: "
+                    + connectorMetadata.getConnectorDescriptor().getName() + "...");
             JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, format.getFieldFilter());
             org.eclipse.microprofile.openapi.models.media.Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
             String spec = format.getSpec(buildConnectorSchema);
@@ -99,7 +99,8 @@ public class SchemaGenerator {
             throw new RuntimeException("No schema formats found!");
         }
 
-        LOGGER.info("Registered schemas: {}", schemaFormats.stream().map(schemaFormat -> schemaFormat.get().getDescriptor().getId()).collect(Collectors.joining(", ")));
+        LOGGER.log(Logger.Level.INFO, "Registered schemas: " +
+                schemaFormats.stream().map(schemaFormat -> schemaFormat.get().getDescriptor().getId()).collect(Collectors.joining(", ")));
 
         Optional<Provider<Schema>> format = schemaFormats
                 .stream()

@@ -188,18 +188,6 @@
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-schema-generator</artifactId>
                 <version>${project.version}</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>${project.groupId}</groupId>
-                        <artifactId>${project.artifactId}</artifactId>
-                        <version>${project.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.apache.kafka</groupId>
-                        <artifactId>connect-api</artifactId>
-                        <version>${version.kafka}</version>
-                    </dependency>
-                </dependencies>
                 <executions>
                     <execution>
                         <id>generate-connector-metadata</id>
