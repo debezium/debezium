@@ -74,6 +74,17 @@ public class RedisStreamIT {
         }
     }
 
+    private PostgresConnection getPostgresConnection() {
+        final Configuration config = Configuration.create()
+            .with("hostname", dbHostname)
+            .with("port", dbPort)
+            .with("user", dbUser)
+            .with("password", dbPassword)
+            .with("dbname", dbName)
+            .build();
+        return new PostgresConnection(config);
+    }
+
     @Test
     public void testRedisStream() throws Exception {
         // Verifies that all the records of a PostgreSQL table are streamed to Redi
@@ -105,14 +116,7 @@ public class RedisStreamIT {
         final String STREAM_NAME = "testc.inventory.redis_test";
         Testing.print("Pausing container");
         RedisTestResourceLifecycleManager.pause();
-        final Configuration config = Configuration.create()
-            .with("hostname", dbHostname)
-            .with("port", dbPort)
-            .with("user", dbUser)
-            .with("password", dbPassword)
-            .with("dbname", dbName)
-            .build();
-        final PostgresConnection connection = new PostgresConnection(config);
+        final PostgresConnection connection = getPostgresConnection();
         Testing.print("Creating new redis_test table and inserting 5 records to it");
         connection.execute(
                 "CREATE TABLE inventory.redis_test (id INT PRIMARY KEY)",
@@ -155,14 +159,7 @@ public class RedisStreamIT {
         final String STREAM_NAME = "testc.inventory.redis_test2";
         Testing.print("Setting Redis' maxmemory to 1M");
         jedis.configSet("maxmemory", "1M");
-        final Configuration config = Configuration.create()
-            .with("hostname", dbHostname)
-            .with("port", dbPort)
-            .with("user", dbUser)
-            .with("password", dbPassword)
-            .with("dbname", dbName)
-            .build();
-        final PostgresConnection connection = new PostgresConnection(config);
+        final PostgresConnection connection = getPostgresConnection();
         Testing.print("Creating new table redis_test2 and inserting 100 records to it");
         connection.execute(
                 "CREATE TABLE inventory.redis_test2 (id varchar(100) PRIMARY KEY, first_name varchar(100), last_name varchar(100))",
