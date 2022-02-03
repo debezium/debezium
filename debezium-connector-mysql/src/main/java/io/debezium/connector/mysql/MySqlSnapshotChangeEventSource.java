@@ -321,7 +321,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         }
         if (databaseSchema.storeOnlyCapturedTables()) {
             capturedSchemaTables = snapshotContext.capturedTables;
-            LOGGER.info("Only monitored tables schema should be captured, capturing: {}", capturedSchemaTables);
+            LOGGER.info("Only captured tables schema should be captured, capturing: {}", capturedSchemaTables);
         }
         else {
             capturedSchemaTables = snapshotContext.capturedSchemaTables;
