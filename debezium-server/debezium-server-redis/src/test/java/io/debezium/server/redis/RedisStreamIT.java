@@ -144,8 +144,8 @@ public class RedisStreamIT {
     public void testRedisOOMRetry() throws Exception {
         /*
             Test retry mechanism when encountering Redis Out of Memory:
-            1. Simulate a Redis OOM by setting its max memory to 1M
-            2. Create a new table named redis_test2 in PostgreSQL and insert 1000 records to it .
+            1. Simulate a Redis OOM by setting its max memory to 1M.
+            2. Create a new table named redis_test2 in PostgreSQL and insert 1000 records to it.
             3. As result, after inserting ~22 records, Redis runs OOM.
             4. Sleep for additional 5 seconds to ensure the Sink is retrying.
             5. Revert max memory setting so Redis is no longer in OOM and make sure all 100 records have been streamed successfully.
