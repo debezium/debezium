@@ -25,7 +25,7 @@ public class RedisTestConfigSource extends TestConfigSource {
         redisTest.put("debezium.source.offset.flush.interval.ms", "0");
         redisTest.put("debezium.source.database.server.name", "testc");
         redisTest.put("debezium.source.schema.include.list", "inventory");
-        redisTest.put("debezium.source.table.include.list", "inventory.customers");
+        redisTest.put("debezium.source.table.include.list", "inventory.customers,inventory.redis_test,inventory.redis_test2");
 
         config = redisTest;
     }
