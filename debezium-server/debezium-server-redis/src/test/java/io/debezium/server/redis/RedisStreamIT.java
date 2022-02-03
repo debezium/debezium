@@ -87,7 +87,7 @@ public class RedisStreamIT {
             entries.addAll(response);
             return entries.size() >= MESSAGE_COUNT;
         });
-        assertTrue(entries.size() == MESSAGE_COUNT);
+        assertTrue("Redis Basic Stream Test Failed", entries.size() == MESSAGE_COUNT);
     }
 
 
@@ -136,7 +136,7 @@ public class RedisStreamIT {
             return entries.size() >= MESSAGE_COUNT;
         });
         Testing.print("Entries in " + STREAM_NAME + ":" + entries.size());
-        assertTrue(entries.size() == MESSAGE_COUNT);
+        assertTrue("Redis Connection Test Failed", entries.size() == MESSAGE_COUNT);
     }
 
     @Test
