@@ -75,14 +75,14 @@ public class RedisStreamIT {
     }
 
     private PostgresConnection getPostgresConnection() {
-        final Configuration config = Configuration.create()
+        return new PostgresConnection(Configuration.create()
             .with("hostname", dbHostname)
             .with("port", dbPort)
             .with("user", dbUser)
             .with("password", dbPassword)
             .with("dbname", dbName)
-            .build();
-        return new PostgresConnection(config);
+            .build()
+        );
     }
 
     @Test
