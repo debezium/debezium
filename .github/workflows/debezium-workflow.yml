@@ -33,6 +33,7 @@ jobs:
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
       ddl-parser-changed: ${{ steps.changed-files-ddl-parser.outputs.any_changed }}
+      documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v2
@@ -143,9 +144,17 @@ jobs:
           files: |
             debezium-ddl-parser/**
 
+      - name: Get modified files (Documentation)
+        id: changed-files-documentation
+        uses: tj-actions/changed-files@v13.1
+        with:
+          files: |
+            documentation/**
+
   build_cache:
     name: "Dependency Cache"
     needs: [file_changes]
+    if: ${{ needs.file_changes.outputs.documentation-only-changed == 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
