@@ -26,6 +26,13 @@ public class RelationalTableFilters implements DataCollectionFilters {
     private final Predicate<String> databaseFilter;
     private final String excludeColumns;
 
+    /**
+     * Evaluate whether the table is eligible for schema snapshotting or not.
+     * This closely relates to fact whether only captured tables schema should be stored in database
+     * history or all tables schema.
+     */
+    private final TableFilter schemaSnapshotFilter;
+
     public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         // Define the filter that provides the list of tables that could be captured if configured
         final TableSelectionPredicateBuilder eligibleTables = Selectors.tableSelector()
@@ -67,6 +74,10 @@ public class RelationalTableFilters implements DataCollectionFilters {
                         tableIdMapper)
                 .build();
 
+        this.schemaSnapshotFilter = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
+                ? systemTablesFilter::isIncluded
+                : x -> true;
+
         Predicate<TableId> finalTablePredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
                 ? tablePredicate.and(systemTablesFilter::isIncluded)
                 : tablePredicate;
@@ -95,6 +106,10 @@ public class RelationalTableFilters implements DataCollectionFilters {
 
     public TableFilter eligibleDataCollectionFilter() {
         return eligibleTableFilter;
+    }
+
+    public TableFilter eligibleForSchemaDataCollectionFilter() {
+        return schemaSnapshotFilter;
     }
 
     public Predicate<String> databaseFilter() {
