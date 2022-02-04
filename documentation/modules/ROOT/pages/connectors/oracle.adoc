@@ -1483,7 +1483,13 @@ The following table describes how the connector maps ROWID (row address) data ty
 
 |`ROWID`
 |`STRING`
-|n/a
+|
+ifdef::community[]
+_This data type is not supported when using Oracle XStream._
+endif::community[]
+ifdef::product[]
+n/a
+endif::product[]
 
 |`UROWID`
 |n/a
