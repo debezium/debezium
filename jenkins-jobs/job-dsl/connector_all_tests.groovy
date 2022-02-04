@@ -11,11 +11,10 @@ pipelineJob('connector-all-tests') {
         booleanParam('SQLSERVER_TEST', true, 'Run SQL Server Tests')
 
         stringParam('REPOSITORY_CORE', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('BRANCH_CORE', 'main', 'A branch/tag from which Debezium is built')
+        stringParam('BRANCH', 'main', 'A branch/tag from which Debezium is built')
 
         // db2 specific
         stringParam('REPOSITORY_DB2', 'https://github.com/debezium/debezium-connector-db2', 'Repository from which DB2 connector is built')
-        stringParam('BRANCH_DB2', 'main', 'A branch/tag from which Debezium is built for DB2 connector')
 
         stringParam('SOURCE_URL', "", "URL to productised sources")
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
@@ -30,7 +29,7 @@ pipelineJob('connector-all-tests') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/connector_tests_pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/connector_tests_trigger_pipeline.groovy'))
             sandbox()
         }
     }
