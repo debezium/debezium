@@ -541,14 +541,19 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         connection.connection().commit();
 
-        connection.setAutoCommit(true);
+        try {
+            connection.setAutoCommit(true);
 
-        Testing.print("=== Starting connector second time ===");
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
+            Testing.print("=== Starting connector second time ===");
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
 
-        assertTxBatch(config, expectedRecordCount, 100);
-        sendTxBatch(config, expectedRecordCount, 200);
+            assertTxBatch(config, expectedRecordCount, 100);
+            sendTxBatch(config, expectedRecordCount, 200);
+        }
+        finally {
+            connection.setAutoCommit(false);
+        }
     }
 
     @Test
