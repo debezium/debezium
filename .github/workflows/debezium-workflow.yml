@@ -97,7 +97,7 @@ jobs:
         uses: tj-actions/changed-files@v14.3
         with:
           files: |
-            debezium-connector-server/**              
+            debezium-server/**              
 
       - name: Get modified files (Quarkus Outbox)
         id: changed-files-outbox
