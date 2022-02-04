@@ -1403,6 +1403,9 @@ public class JdbcConnection implements AutoCloseable {
      */
     public JdbcConnection executeWithoutCommitting(String... statements) throws SQLException {
         Connection conn = connection();
+        if (conn.getAutoCommit()) {
+            throw new DebeziumException("Cannot execute without committing because auto-commit is enabled");
+        }
         try (Statement statement = conn.createStatement()) {
             for (String stmt : statements) {
                 if (LOGGER.isTraceEnabled()) {
