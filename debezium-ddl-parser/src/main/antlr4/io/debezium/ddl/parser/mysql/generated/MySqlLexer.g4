@@ -451,6 +451,8 @@ ENABLE:                              'ENABLE';
 ENCRYPTION:                          'ENCRYPTION';
 ENCRYPTED:                           'ENCRYPTED';
 ENCRYPTION_KEY_ID:                   'ENCRYPTION_KEY_ID';
+PAGE_COMPRESSED:                     'PAGE_COMPRESSED';
+PAGE_COMPRESSION_LEVEL:              'PAGE_COMPRESSION_LEVEL';
 END:                                 'END';
 ENDS:                                'ENDS';
 ENGINE:                              'ENGINE';
