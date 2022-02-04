@@ -240,7 +240,7 @@ jobs:
 
   build_mongodb:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "MongoDB"
     runs-on: ubuntu-latest
     strategy:
@@ -290,7 +290,7 @@ jobs:
             
   build_mysql:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "MySQL"
     runs-on: ubuntu-latest
     strategy:
@@ -337,7 +337,7 @@ jobs:
 
   build_postgresql:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "PostgreSQL"
     runs-on: ubuntu-latest
     strategy:
@@ -373,7 +373,7 @@ jobs:
 
   build_oracle:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "Oracle"
     runs-on: ubuntu-latest
     steps:
@@ -409,7 +409,7 @@ jobs:
 
   build_sqlserver:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "SQL Server"
     runs-on: ubuntu-latest
     steps:
