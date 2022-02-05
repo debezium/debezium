@@ -42,7 +42,7 @@ jobs:
 
       - name: Get modified files (Common)
         id: changed-files-common
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             support/checkstyle/**
@@ -59,56 +59,56 @@ jobs:
 
       - name: Get modified files (MongoDB)
         id: changed-files-mongodb
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-connector-mongodb/**
 
       - name: Get modified files (MySQL)
         id: changed-files-mysql
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-connector-mysql/**                   
 
       - name: Get modified files (PostgreSQL)
         id: changed-files-postgresql
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-connector-postgres/**             
 
       - name: Get modified files (Oracle)
         id: changed-files-oracle
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-connector-oracle/**  
 
       - name: Get modified files (SQL Server)
         id: changed-files-sqlserver
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-connector-sqlserver/**  
 
       - name: Get modified files (Debezium Server)
         id: changed-files-debezium-server
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-connector-server/**              
 
       - name: Get modified files (Quarkus Outbox)
         id: changed-files-outbox
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-quarkus-outbox/**
 
       - name: Get modified files (REST Extension)
         id: changed-files-rest-extension
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-connect-rest-extension/**
@@ -120,7 +120,7 @@ jobs:
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-schema-generator/**
@@ -132,21 +132,21 @@ jobs:
 
       - name: Get modified files (Debezium Testing)
         id: changed-files-debezium-testing
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-testing/**
 
       - name: Get modified files (DDL parser)
         id: changed-files-ddl-parser
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             debezium-ddl-parser/**
 
       - name: Get modified files (Documentation)
         id: changed-files-documentation
-        uses: tj-actions/changed-files@v13.1
+        uses: tj-actions/changed-files@v14.3
         with:
           files: |
             documentation/**
