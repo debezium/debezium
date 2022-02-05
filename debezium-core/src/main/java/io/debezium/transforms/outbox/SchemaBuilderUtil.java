@@ -49,7 +49,7 @@ public class SchemaBuilderUtil {
         final String fieldName = fieldEntry.getKey();
         final JsonNode fieldValue = fieldEntry.getValue();
         final Schema fieldSchema = jsonValueToSchema(fieldValue);
-        if (fieldSchema != null) {
+        if (fieldSchema != null && hasNotField(builder, fieldName)) {
             builder.field(fieldName, fieldSchema);
         }
     }
@@ -147,5 +147,9 @@ public class SchemaBuilderUtil {
             }
         }
         return builder.build();
+    }
+
+    private static boolean hasNotField(SchemaBuilder builder, String fieldName) {
+        return builder.field(fieldName) == null;
     }
 }
