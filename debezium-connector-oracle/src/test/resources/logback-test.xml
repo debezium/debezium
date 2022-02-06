@@ -36,6 +36,11 @@
         level="debug" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
+    <logger
+        name="io.debezium.connector.oracle.xstream.LcrEventHandler"
+        level="debug" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
 
     <!-- Avoid the fallback property spam -->
     <logger

@@ -58,7 +58,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC,
                     KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS)
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
+                    KafkaDatabaseHistory.KAFKA_QUERY_TIMEOUT_MS)
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
