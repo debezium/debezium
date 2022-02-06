@@ -161,7 +161,9 @@ public class RedisStreamIT {
         Testing.print("Creating new table redis_test2 and inserting 100 records to it");
         connection.execute(
                 "CREATE TABLE inventory.redis_test2 (id varchar(100) PRIMARY KEY, first_name varchar(100), last_name varchar(100))",
-                "insert into inventory.redis_test2 (id,first_name,last_name) select left(i::text, 10), random()::text, random()::text from generate_series(1,100) s(i)");
+                String.format(
+                        "insert into inventory.redis_test2 (id,first_name,last_name) select left(i::text, 10), random()::text, random()::text from generate_series(1,%d) s(i)",
+                        MESSAGE_COUNT));
         connection.close();
 
         Testing.print("Sleeping for 5 seconds to simulate no connection errors");
