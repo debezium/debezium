@@ -84,9 +84,11 @@ public class RedisStreamIT {
                 .build());
     }
 
+    /**
+    *  Verifies that all the records of a PostgreSQL table are streamed to Redis
+    */
     @Test
     public void testRedisStream() throws Exception {
-        // Verifies that all the records of a PostgreSQL table are streamed to Redi
         final int MESSAGE_COUNT = 4;
         final String STREAM_NAME = "testc.inventory.customers";
 
@@ -100,16 +102,15 @@ public class RedisStreamIT {
         assertTrue("Redis Basic Stream Test Failed", entries.size() == MESSAGE_COUNT);
     }
 
+    /**
+    * Test retry mechanism when encountering Redis connectivity issues:
+    * 1. Make Redis to be unavailable while the server is up
+    * 2. Create a new table named redis_test in PostgreSQL and insert 5 records to it
+    * 3. Bring Redis up again and make sure these records have been streamed successfully
+    */
     @Test
     @FixFor("DBZ-4510")
     public void testRedisConnectionRetry() throws Exception {
-        /*
-         * Test retry mechanism when encountering Redis connectivity issues:
-         * 1. Make Redis to be unavailable while the server is up
-         * 2. Create a new table named redis_test in PostgreSQL and insert 5 records to it
-         * 3. Bring Redis up again and make sure these records have been streamed successfully
-         */
-
         final int MESSAGE_COUNT = 5;
         final String STREAM_NAME = "testc.inventory.redis_test";
         Testing.print("Pausing container");
@@ -141,28 +142,29 @@ public class RedisStreamIT {
         assertTrue("Redis Connection Test Failed", entries.size() == MESSAGE_COUNT);
     }
 
+    /**
+    * Test retry mechanism when encountering Redis Out of Memory:
+    * 1. Simulate a Redis OOM by setting its max memory to 1M.
+    * 2. Create a new table named redis_test2 in PostgreSQL and insert 1000 records to it.
+    * 3. As result, after inserting ~22 records, Redis runs OOM.
+    * 4. Sleep for additional 5 seconds to ensure the Sink is retrying.
+    * 5. Revert max memory setting so Redis is no longer in OOM and make sure all 100 records have been streamed successfully.
+     */
     @Test
     @FixFor("DBZ-4510")
     public void testRedisOOMRetry() throws Exception {
-        /*
-         * Test retry mechanism when encountering Redis Out of Memory:
-         * 1. Simulate a Redis OOM by setting its max memory to 1M.
-         * 2. Create a new table named redis_test2 in PostgreSQL and insert 1000 records to it.
-         * 3. As result, after inserting ~22 records, Redis runs OOM.
-         * 4. Sleep for additional 5 seconds to ensure the Sink is retrying.
-         * 5. Revert max memory setting so Redis is no longer in OOM and make sure all 100 records have been streamed successfully.
-         */
-
         final int MESSAGE_COUNT = 100;
         final String STREAM_NAME = "testc.inventory.redis_test2";
         Testing.print("Setting Redis' maxmemory to 1M");
         jedis.configSet("maxmemory", "1M");
         final PostgresConnection connection = getPostgresConnection();
         Testing.print("Creating new table redis_test2 and inserting 100 records to it");
-        connection.execute(
-                "CREATE TABLE inventory.redis_test2 (id varchar(100) PRIMARY KEY, first_name varchar(100), last_name varchar(100))",
-                String.format(
-                        "insert into inventory.redis_test2 (id,first_name,last_name) select left(i::text, 10), random()::text, random()::text from generate_series(1,%d) s(i)",
+        connection.execute("CREATE TABLE inventory.redis_test2 " +
+                "(id VARCHAR(100) PRIMARY KEY, " +
+                "first_name VARCHAR(100), " +
+                "last_name VARCHAR(100))",
+                String.format("INSERT INTO inventory.redis_test2 (id,first_name,last_name) " +
+                        "SELECT LEFT(i::text, 10), RANDOM()::text, RANDOM()::text FROM generate_series(1,%d) s(i)",
                         MESSAGE_COUNT));
         connection.close();
 
