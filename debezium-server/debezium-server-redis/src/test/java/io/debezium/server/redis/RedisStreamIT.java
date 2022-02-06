@@ -84,6 +84,19 @@ public class RedisStreamIT {
                 .build());
     }
 
+    private List<StreamEntry> getStreamElements(String streamName, int messageCount) {
+        final List<StreamEntry> entries = new ArrayList<>();
+
+        Awaitility.await().atMost(Duration.ofSeconds(RedisTestConfigSource.waitForSeconds())).until(() -> {
+            final List<StreamEntry> response = jedis.xrange(streamName, null, null, messageCount);
+            entries.clear();
+            entries.addAll(response);
+            return entries.size() == messageCount;
+        });
+
+        return entries;
+    }
+
     /**
     *  Verifies that all the records of a PostgreSQL table are streamed to Redis
     */
@@ -92,13 +105,7 @@ public class RedisStreamIT {
         final int MESSAGE_COUNT = 4;
         final String STREAM_NAME = "testc.inventory.customers";
 
-        final List<StreamEntry> entries = new ArrayList<>();
-        Awaitility.await().atMost(Duration.ofSeconds(RedisTestConfigSource.waitForSeconds())).until(() -> {
-            final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
-            entries.clear();
-            entries.addAll(response);
-            return entries.size() == MESSAGE_COUNT;
-        });
+        final List<StreamEntry> entries = getStreamElements(STREAM_NAME, MESSAGE_COUNT);
         assertTrue("Redis Basic Stream Test Failed", entries.size() == MESSAGE_COUNT);
     }
 
@@ -131,13 +138,8 @@ public class RedisStreamIT {
         Testing.print("Unpausing container");
         RedisTestResourceLifecycleManager.unpause();
 
-        final List<StreamEntry> entries = new ArrayList<>();
-        Awaitility.await().atMost(Duration.ofSeconds(RedisTestConfigSource.waitForSeconds())).until(() -> {
-            final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
-            entries.clear();
-            entries.addAll(response);
-            return entries.size() == MESSAGE_COUNT;
-        });
+        final List<StreamEntry> entries = getStreamElements(STREAM_NAME, MESSAGE_COUNT);
+
         Testing.print("Entries in " + STREAM_NAME + ":" + entries.size());
         assertTrue("Redis Connection Test Failed", entries.size() == MESSAGE_COUNT);
     }
@@ -168,19 +170,13 @@ public class RedisStreamIT {
                         MESSAGE_COUNT));
         connection.close();
 
-        Testing.print("Sleeping for 5 seconds to simulate no connection errors");
-        Thread.sleep(5000);
-        Testing.print("Stream size in OOM:" + jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT).size());
+        final List<StreamEntry> entriesWhenOOM = getStreamElements(STREAM_NAME, 22);
+
+        Testing.print("Stream size in OOM:" + entriesWhenOOM.size());
         Testing.print("Reverting Redis' maxmemory");
         jedis.configSet("maxmemory", "0");
 
-        final List<StreamEntry> entries = new ArrayList<>();
-        Awaitility.await().atMost(Duration.ofSeconds(RedisTestConfigSource.waitForSeconds())).until(() -> {
-            final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
-            entries.clear();
-            entries.addAll(response);
-            return entries.size() == MESSAGE_COUNT;
-        });
+        final List<StreamEntry> entries = getStreamElements(STREAM_NAME, MESSAGE_COUNT);
 
         Testing.print("Entries in " + STREAM_NAME + ":" + entries.size());
         assertTrue("Redis OOM Test Failed", entries.size() == MESSAGE_COUNT);
