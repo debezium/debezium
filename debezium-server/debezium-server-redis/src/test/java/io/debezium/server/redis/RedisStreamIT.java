@@ -95,7 +95,7 @@ public class RedisStreamIT {
             final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
             entries.clear();
             entries.addAll(response);
-            return entries.size() >= MESSAGE_COUNT;
+            return entries.size() == MESSAGE_COUNT;
         });
         assertTrue("Redis Basic Stream Test Failed", entries.size() == MESSAGE_COUNT);
     }
@@ -135,7 +135,7 @@ public class RedisStreamIT {
             final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
             entries.clear();
             entries.addAll(response);
-            return entries.size() >= MESSAGE_COUNT;
+            return entries.size() == MESSAGE_COUNT;
         });
         Testing.print("Entries in " + STREAM_NAME + ":" + entries.size());
         assertTrue("Redis Connection Test Failed", entries.size() == MESSAGE_COUNT);
@@ -175,7 +175,7 @@ public class RedisStreamIT {
             final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
             entries.clear();
             entries.addAll(response);
-            return entries.size() >= MESSAGE_COUNT;
+            return entries.size() == MESSAGE_COUNT;
         });
 
         Testing.print("Entries in " + STREAM_NAME + ":" + entries.size());
