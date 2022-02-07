@@ -3,9 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.schemagenerator.formats;
+package io.debezium.schemagenerator.schema;
 
-public interface ApiFormatDescriptor {
+public interface SchemaDescriptor {
 
     String getId();
 
