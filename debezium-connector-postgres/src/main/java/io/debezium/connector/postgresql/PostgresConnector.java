@@ -118,12 +118,17 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                                 " FROM pg_catalog.pg_auth_members m" +
                                 " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
                                 " WHERE m.member = r.oid), 'rdsrepladmin') AS BOOL) IS TRUE AS aws_repladmin" +
+                                ", CAST(array_position(ARRAY(SELECT b.rolname" +
+                                " FROM pg_catalog.pg_auth_members m" +
+                                " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                                " WHERE m.member = r.oid), 'rds_replication') AS BOOL) IS TRUE AS aws_replication" +
                                 " FROM pg_roles r WHERE r.rolname = current_user",
                         connection.singleResultMapper(rs -> rs.getBoolean("rolcanlogin")
                                 && (rs.getBoolean("rolreplication")
                                         || rs.getBoolean("aws_superuser")
                                         || rs.getBoolean("aws_admin")
-                                        || rs.getBoolean("aws_repladmin")),
+                                        || rs.getBoolean("aws_repladmin")
+                                        || rs.getBoolean("aws_replication")),
                                 "Could not fetch roles"))) {
                     final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
                     LOGGER.error(errorMessage);
