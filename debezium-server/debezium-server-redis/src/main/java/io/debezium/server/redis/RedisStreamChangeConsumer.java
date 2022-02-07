@@ -28,6 +28,7 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
+import io.debezium.util.DelayStrategy;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
@@ -50,6 +51,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_USER = PROP_PREFIX + "user";
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
 
+    private DelayStrategy delayStrategy;
     private HostAndPort address;
     private Optional<String> user;
     private Optional<String> password;
@@ -74,6 +76,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
     @PostConstruct
     void connect() {
+        delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+
         if (customClient.isResolvable()) {
             client = customClient.get();
             try {
@@ -127,7 +131,6 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             String destination = streamNameMapper.map(record.destination());
             String key = (record.key() != null) ? getString(record.key()) : nullKey;
             String value = (record.value() != null) ? getString(record.value()) : nullValue;
-            int currentRetryTime = initialRetryDelay;
             boolean completedSuccessfully = false;
 
             // As long as we failed to add the current record to the stream, we should retry if the reason was either a connection error or OOM in Redis.
@@ -165,13 +168,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                 }
 
                 // Failed to add the record to the stream, retry...
-                if (!completedSuccessfully) {
-                    LOGGER.info("Retrying in {} ms", currentRetryTime);
-                    Thread.sleep(currentRetryTime);
-
-                    // Exponential backoff: As long as the current retry time does not exceed the max retry time, double it
-                    currentRetryTime = Math.min(currentRetryTime *= 2, maxRetryDelay);
-                }
+                delayStrategy.sleepWhen(!completedSuccessfully);
             }
 
             committer.markProcessed(record);
