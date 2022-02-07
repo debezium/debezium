@@ -805,24 +805,24 @@ a|_n/a_
 |`FLOAT64`
 a|_n/a_
 
-|`CHAR(M)]`
+|`CHAR[(M)]`
 |`STRING`
 a|_n/a_
 
-|`VARCHAR(M)]`
+|`VARCHAR[(M)]`
 |`STRING`
 a|_n/a_
 
-|`BINARY(M)]`
-|`STRING`
+|`BINARY[(M)]`
+|`BYTES`
 a|_n/a_
 
-|`VARBINARY(M)]`
-|`STRING`
+|`VARBINARY[(M)]`
+|`BYTES`
 a|_n/a_
 
 |`TINYBLOB`
-|`STRING`
+|`BYTES`
 a|_n/a_
 
 |`TINYTEXT`
@@ -830,7 +830,7 @@ a|_n/a_
 a|_n/a_
 
 |`BLOB`
-|`STRING`
+|`BYTES`
 a|_n/a_
 
 |`TEXT`
@@ -838,7 +838,7 @@ a|_n/a_
 a|_n/a_
 
 |`MEDIUMBLOB`
-|`STRING`
+|`BYTES`
 a|_n/a_
 
 |`MEDIUMTEXT`
@@ -846,7 +846,7 @@ a|_n/a_
 a|_n/a_
 
 |`LONGBLOB`
-|`STRING`
+|`BYTES`
 a|_n/a_
 
 |`LONGTEXT`
