@@ -51,7 +51,6 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_USER = PROP_PREFIX + "user";
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
 
-    private DelayStrategy delayStrategy;
     private HostAndPort address;
     private Optional<String> user;
     private Optional<String> password;
@@ -75,7 +74,6 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
     @PostConstruct
     void connect() {
-        delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
         final Config config = ConfigProvider.getConfig();
         address = HostAndPort.from(config.getValue(PROP_ADDRESS, String.class));
         user = config.getOptionalValue(PROP_USER, String.class);
@@ -93,7 +91,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             client.ping();
         }
 
-        LOGGER.info("Using default Jedis '{}'", client);
+        LOGGER.info("Using Jedis '{}'", client);
     }
 
     @PreDestroy
@@ -103,6 +101,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         }
         catch (Exception e) {
             LOGGER.warn("Exception while closing Jedis: {}", client, e);
+        }
+        finally {
+            client = null;
         }
     }
 
@@ -126,21 +127,22 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     public void handleBatch(List<ChangeEvent<Object, Object>> records,
                             RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
+        DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+
         LOGGER.info("Handling a batch of {} records", records.size());
         batches(records, batchSize).forEach(batch -> {
             boolean completedSuccessfully = false;
-            boolean hasConnection = true;
 
             // As long as we failed to execute the current batch to the stream, we should retry if the reason was either a connection error or OOM in Redis.
             while (!completedSuccessfully) {
-                if (!hasConnection) {
+                if (client == null) {
                     // Try to reconnect
                     try {
                         connect();
-                        hasConnection = true; // Managed to establish a new connection to Redis
-                        continue; // Avoid a redundant retry
+                        continue; // Managed to establish a new connection to Redis, avoid a redundant retry
                     }
                     catch (Exception e) {
+                        close();
                         LOGGER.error("Can't connect to Redis", e);
                     }
                 }
@@ -159,13 +161,14 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             transaction.xadd(destination, null, Collections.singletonMap(key, value));
                         }
                         transaction.exec();
+                        // Mark all the batch records as processed only when the transaction succeeds
                         for (ChangeEvent<Object, Object> record : batch) {
                             committer.markProcessed(record);
                         }
                         completedSuccessfully = true;
                     }
                     catch (JedisConnectionException jce) {
-                        hasConnection = false;
+                        close();
                     }
                     catch (JedisDataException jde) {
                         // When Redis reaches its max memory limitation, a JedisDataException will be thrown with one of the messages listed below.
@@ -196,6 +199,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             }
         });
 
+        // Mark the whole batch as finished once the sub batches completed
         committer.markBatchFinished();
     }
 }
