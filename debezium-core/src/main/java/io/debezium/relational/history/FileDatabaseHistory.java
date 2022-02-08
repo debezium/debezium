@@ -162,7 +162,19 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     public boolean exists() {
-        return storageExists();
+        boolean exists = false;
+        if (storageExists()) {
+            try {
+                // Checking if the history file is empty
+                if (Files.size(path) > 0) {
+                    exists = true;
+                }
+            }
+            catch (IOException e) {
+                logger.error("Unable to determine if history file empty " + path + ": " + e.getMessage(), e);
+            }
+        }
+        return exists;
     }
 
     @Override

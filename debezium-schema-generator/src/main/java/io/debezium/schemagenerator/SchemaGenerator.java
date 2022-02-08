@@ -7,6 +7,7 @@ package io.debezium.schemagenerator;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.System.Logger;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -14,41 +15,65 @@ import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
 import java.util.stream.Collectors;
 
-import org.eclipse.microprofile.openapi.models.media.Schema;
-
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.metadata.ConnectorMetadataProvider;
-import io.debezium.schemagenerator.formats.ApiFormat;
-import io.debezium.schemagenerator.formats.ApiFormatName;
+import io.debezium.schemagenerator.schema.Schema;
+import io.debezium.schemagenerator.schema.SchemaName;
 
 public class SchemaGenerator {
 
+    private static final Logger LOGGER = System.getLogger(SchemaGenerator.class.getName());
+
     public static void main(String[] args) {
-        if (args.length != 2) {
-            throw new IllegalArgumentException("Usage: SchemaGenerator <format-name> <output-directory>");
+        if (args.length != 5) {
+            throw new IllegalArgumentException("Usage: SchemaGenerator <format-name> <output-directory> <groupDirectoryPerConnector> <filenamePrefix> <filenameSuffix>");
         }
 
         String formatName = args[0].trim();
         Path outputDirectory = new File(args[1]).toPath();
+        boolean groupDirectoryPerConnector = Boolean.parseBoolean(args[2]);
+        String filenamePrefix = args[3];
+        String filenameSuffix = args[4];
 
-        new SchemaGenerator().run(formatName, outputDirectory);
+        new SchemaGenerator().run(formatName, outputDirectory, groupDirectoryPerConnector, filenamePrefix, filenameSuffix);
     }
 
-    private void run(String formatName, Path outputDirectory) {
+    private void run(String formatName, Path outputDirectory, boolean groupDirectoryPerConnector, String filenamePrefix, String filenameSuffix) {
         List<ConnectorMetadata> allMetadata = getMetadata();
 
-        ApiFormat format = getApiFormat(formatName);
+        Schema format = getSchemaFormat(formatName);
+        LOGGER.log(Logger.Level.INFO, "Using schema format: " + format.getDescriptor().getName());
 
+        if (allMetadata.isEmpty()) {
+            throw new RuntimeException("No connectors found in classpath. Exiting!");
+        }
         for (ConnectorMetadata connectorMetadata : allMetadata) {
+            LOGGER.log(Logger.Level.INFO, "Creating \"" + format.getDescriptor().getName()
+                    + "\" schema for connector: "
+                    + connectorMetadata.getConnectorDescriptor().getName() + "...");
             JsonSchemaCreatorService jsonSchemaCreatorService = new JsonSchemaCreatorService(connectorMetadata, format.getFieldFilter());
-            Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
+            org.eclipse.microprofile.openapi.models.media.Schema buildConnectorSchema = jsonSchemaCreatorService.buildConnectorSchema();
             String spec = format.getSpec(buildConnectorSchema);
 
             try {
-                Files.write(spec.getBytes(Charsets.UTF_8), outputDirectory.resolve(connectorMetadata.getConnectorDescriptor().getId() + ".json").toFile());
+                String schemaFilename = "";
+                if (groupDirectoryPerConnector) {
+                    schemaFilename += connectorMetadata.getConnectorDescriptor().getId() + File.separator;
+                }
+                if (null != filenamePrefix && !filenamePrefix.isEmpty()) {
+                    schemaFilename += filenamePrefix;
+                }
+                schemaFilename += connectorMetadata.getConnectorDescriptor().getId();
+                if (null != filenameSuffix && !filenameSuffix.isEmpty()) {
+                    schemaFilename += filenameSuffix;
+                }
+                schemaFilename += ".json";
+                Path schemaFilePath = outputDirectory.resolve(schemaFilename);
+                schemaFilePath.getParent().toFile().mkdirs();
+                Files.write(spec.getBytes(Charsets.UTF_8), schemaFilePath.toFile());
             }
             catch (IOException e) {
                 throw new RuntimeException("Couldn't write file", e);
@@ -65,12 +90,21 @@ public class SchemaGenerator {
     }
 
     /**
-     * Returns the {@link ApiFormat} with the given name, specified via the {@link ApiFormatName} annotation.
+     * Returns the {@link Schema} with the given name, specified via the {@link SchemaName} annotation.
      */
-    private ApiFormat getApiFormat(String formatName) {
-        Optional<Provider<ApiFormat>> format = ServiceLoader.load(ApiFormat.class)
+    private Schema getSchemaFormat(String formatName) {
+        ServiceLoader<Schema> schemaFormats = ServiceLoader.load(Schema.class);
+
+        if (0 == schemaFormats.stream().count()) {
+            throw new RuntimeException("No schema formats found!");
+        }
+
+        LOGGER.log(Logger.Level.INFO, "Registered schemas: " +
+                schemaFormats.stream().map(schemaFormat -> schemaFormat.get().getDescriptor().getId()).collect(Collectors.joining(", ")));
+
+        Optional<Provider<Schema>> format = schemaFormats
                 .stream()
-                .filter(p -> p.type().getAnnotation(ApiFormatName.class).value().equals(formatName))
+                .filter(p -> p.type().getAnnotation(SchemaName.class).value().equals(formatName))
                 .findFirst();
 
         return format.orElseThrow().get();

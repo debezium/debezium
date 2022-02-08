@@ -2183,6 +2183,7 @@ flashback_archive_clause
 
 log_grp
     : UNSIGNED_INTEGER
+    | identifier
     ;
 
 supplemental_table_logging
@@ -2193,7 +2194,7 @@ supplemental_table_logging
     ;
 
 supplemental_log_grp_clause
-    : GROUP log_grp '(' regular_id (NO LOG)? (',' regular_id (NO LOG)?)* ')' ALWAYS?
+    : GROUP log_grp '(' column_name (NO LOG)? (',' column_name (NO LOG)?)* ')' ALWAYS?
     ;
 
 supplemental_id_key_clause
@@ -2642,7 +2643,7 @@ add_table_partition
     ;
 
 drop_table_partition
-    : DROP PARTITION partition_name (UPDATE GLOBAL INDEXES)?
+    : DROP (partition_extended_names|subpartition_extended_names) (update_index_clauses parallel_clause?)?
     ;
 
 merge_table_partition
@@ -2650,7 +2651,7 @@ merge_table_partition
     ;
 
 modify_table_partition
-    : MODIFY PARTITION partition_name ((ADD | DROP) list_values_clause)? (REBUILD UNUSABLE LOCAL INDEXES)?
+    : MODIFY PARTITION partition_name ((ADD | DROP) list_values_clause)? (ADD range_subpartition_desc)? (REBUILD? UNUSABLE LOCAL INDEXES)?
     ;
 
 split_table_partition
@@ -2705,6 +2706,29 @@ add_overflow_clause
     : ADD OVERFLOW segment_attributes_clause? ('(' PARTITION segment_attributes_clause? (',' PARTITION segment_attributes_clause?)*  ')' )?
     ;
 
+update_index_clauses
+    : update_global_index_clause | update_all_indexes_clause
+    ;
+
+update_global_index_clause
+    : (UPDATE | INVALIDATE) GLOBAL INDEXES
+    ;
+
+update_all_indexes_clause
+    : UPDATE INDEXES ('(' update_all_indexes_index_clause ')')?
+    ;
+
+update_all_indexes_index_clause
+    : index_name '(' (update_index_partition | update_index_subpartition) ')' (',' update_all_indexes_clause)*
+    ;
+
+update_index_partition
+    : index_partition_description index_subpartition_clause? (',' update_index_partition)*
+    ;
+
+update_index_subpartition
+    : SUBPARTITION subpartition_name? (TABLESPACE tablespace)? (',' update_index_subpartition)*
+    ;
 
 enable_disable_clause
     : (ENABLE | DISABLE) (VALIDATE | NOVALIDATE)?

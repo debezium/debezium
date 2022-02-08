@@ -185,15 +185,15 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         for (TableId tableId : allTableIds) {
             if (connectorConfig.getTableFilters().eligibleDataCollectionFilter().isIncluded(tableId)) {
-                LOGGER.trace("Adding table {} to the list of capture schema tables", tableId);
+                LOGGER.trace("Adding table {} to the list of tables for which the schema will be snapshotted", tableId);
                 capturedSchemaTables.add(tableId);
             }
             if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                LOGGER.trace("Adding table {} to the list of captured tables", tableId);
+                LOGGER.trace("Adding table {} to the list of captured tables for which the data will be snapshotted", tableId);
                 capturedTables.add(tableId);
             }
             else {
-                LOGGER.trace("Ignoring table {} as it's not included in the filter configuration", tableId);
+                LOGGER.trace("Ignoring table {} for data snapshotting as it's not included in the filter configuration", tableId);
             }
         }
 

@@ -428,6 +428,10 @@ tableOption
     | DATA DIRECTORY '='? STRING_LITERAL                                            #tableOptionDataDirectory
     | DELAY_KEY_WRITE '='? boolValue=('0' | '1')                                    #tableOptionDelay
     | ENCRYPTION '='? STRING_LITERAL                                                #tableOptionEncryption
+    | encryptedLiteral '='? (YES | NO)                                              #tableOptionEncrypted
+    | (PAGE_COMPRESSED | STRING_LITERAL) '='? ('0' | '1')                           #tableOptionPageCompressed
+    | (PAGE_COMPRESSION_LEVEL | STRING_LITERAL) '='? decimalLiteral                 #tableOptionPageCompressionLevel
+    | ENCRYPTION_KEY_ID '='? decimalLiteral                                         #tableOptionEncryptionKeyId
     | INDEX DIRECTORY '='? STRING_LITERAL                                           #tableOptionIndexDirectory
     | INSERT_METHOD '='? insertMethod=(NO | FIRST | LAST)                           #tableOptionInsertMethod
     | KEY_BLOCK_SIZE '='? fileSizeLiteral                                           #tableOptionKeyBlockSize
@@ -2010,6 +2014,12 @@ engineName
     | CONNECT
     ;
 
+// MariaDB
+encryptedLiteral
+    : ENCRYPTED
+    | STRING_LITERAL
+    ;
+
 uuidSet
     : decimalLiteral '-' decimalLiteral '-' decimalLiteral
       '-' decimalLiteral '-' decimalLiteral
@@ -2586,7 +2596,7 @@ keywordsCanBeId
     | FOLLOWS | FOUND | FULL | FUNCTION | GENERAL | GLOBAL | GRANTS | GROUP | GROUP_CONCAT
     | GROUP_REPLICATION | GROUP_REPLICATION_ADMIN | HANDLER | HASH | HELP | HISTORY | HOST | HOSTS | IDENTIFIED
     | IGNORE_SERVER_IDS | IMPORT | INDEXES | INITIAL_SIZE | INNODB_REDO_LOG_ARCHIVE
-    | INPLACE | INSERT_METHOD | INSTALL | INSTANCE | INTERNAL | INVOKER | IO
+    | INPLACE | INSERT_METHOD | INSTALL | INSTANCE | INSTANT | INTERNAL | INVOKER | IO
     | IO_THREAD | IPC | ISO | ISOLATION | ISSUER | JIS | JSON | KEY_BLOCK_SIZE
     | LANGUAGE | LAST | LEAVES | LESS | LEVEL | LIST | LOCAL
     | LOGFILE | LOGS | MASTER | MASTER_AUTO_POSITION
@@ -2632,6 +2642,7 @@ keywordsCanBeId
     | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
     // MariaDB
     | VIA | LASTVAL | NEXTVAL | SETVAL | PREVIOUS | PERSISTENT | REPLICATION_MASTER_ADMIN | REPLICA | READ_ONLY_ADMIN | FEDERATED_ADMIN | BINLOG_MONITOR | BINLOG_REPLAY
+    | ENCRYPTED | ENCRYPTION_KEY_ID
     ;
 
 functionNameBase

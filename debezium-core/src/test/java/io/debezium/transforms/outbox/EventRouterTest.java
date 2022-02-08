@@ -11,6 +11,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigException;
@@ -911,7 +912,7 @@ public class EventRouterTest {
                 "UserCreated",
                 "10711fa5",
                 "User",
-                "{\"fullName\": \"John Doe\", \"enabled\": true, \"rating\": 4.9, \"age\": 42, \"pets\": [\"dog\", \"cat\"]}",
+                "{\"fullName\": \"John Doe\", \"enabled\": true, \"rating\": 4.9, \"age\": 42, \"pets\": [\"dog\", \"cat\"], \"petObjects\": [{\"type\": \"dog\"}, {\"type\": \"cat\"}]}",
                 new HashMap<>(),
                 new HashMap<>());
         final SourceRecord eventRouted = router.apply(eventRecord);
@@ -921,7 +922,7 @@ public class EventRouterTest {
         Schema valueSchema = eventRouted.valueSchema();
         assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
 
-        assertThat(valueSchema.fields().size()).isEqualTo(5);
+        assertThat(valueSchema.fields().size()).isEqualTo(6);
         assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
         assertThat(valueSchema.field("enabled").schema().type().getName()).isEqualTo("boolean");
         assertThat(valueSchema.field("rating").schema().type().getName()).isEqualTo("float64");
@@ -935,6 +936,11 @@ public class EventRouterTest {
         assertThat(valueStruct.get("age")).isEqualTo(42);
         assertThat(valueStruct.getArray("pets").size()).isEqualTo(2);
         assertThat(valueStruct.getArray("pets").get(1)).isEqualTo("cat");
+
+        List<Object> petObjects = valueStruct.getArray("petObjects");
+        assertThat(petObjects.size()).isEqualTo(2);
+        assertThat(asStruct(petObjects.get(0)).get("type")).isEqualTo("dog");
+        assertThat(asStruct(petObjects.get(1)).get("type")).isEqualTo("cat");
     }
 
     @Test
@@ -1044,5 +1050,10 @@ public class EventRouterTest {
 
         final Struct body = envelope.create(after, null, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), body);
+    }
+
+    private Struct asStruct(Object object) {
+        assertThat(object).isInstanceOf(Struct.class);
+        return (Struct) object;
     }
 }

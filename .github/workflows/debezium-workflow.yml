@@ -15,8 +15,146 @@ env:
   MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
 
 jobs:
+  # This job is responsible for inspecting the changes in the repository and setting specific output variables
+  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
+  file_changes:
+    name: "Detect repository changes"
+    runs-on: ubuntu-latest
+    outputs:
+      common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
+      mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
+      mysql-changed: ${{ steps.changed-files-mysql.outputs.any_changed }}
+      postgresql-changed: ${{ steps.changed-files-postgresql.outputs.any_changed }}
+      oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
+      sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
+      debezium-server-changed: ${{ steps.changed-files-debezium-server.outputs.any_changed }}
+      outbox-changed: ${{ steps.changed-files-outbox.outputs.any_changed }}
+      rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
+      schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
+      debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
+      ddl-parser-changed: ${{ steps.changed-files-ddl-parser.outputs.any_changed }}
+      documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Get modified files (Common)
+        id: changed-files-common
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            support/checkstyle/**
+            debezium-api/**
+            debezium-assembly-descriptors/**
+            debezium-core/**
+            debezium-embedded/**
+            debezium-revapi/**
+            debezium-ide-configs/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            pom.xml
+            .github/workflows/debezium-workflow.yml
+
+      - name: Get modified files (MongoDB)
+        id: changed-files-mongodb
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-connector-mongodb/**
+
+      - name: Get modified files (MySQL)
+        id: changed-files-mysql
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-connector-mysql/**                   
+
+      - name: Get modified files (PostgreSQL)
+        id: changed-files-postgresql
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-connector-postgres/**             
+
+      - name: Get modified files (Oracle)
+        id: changed-files-oracle
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-connector-oracle/**  
+
+      - name: Get modified files (SQL Server)
+        id: changed-files-sqlserver
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-connector-sqlserver/**  
+
+      - name: Get modified files (Debezium Server)
+        id: changed-files-debezium-server
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-server/**              
+
+      - name: Get modified files (Quarkus Outbox)
+        id: changed-files-outbox
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-quarkus-outbox/**
+
+      - name: Get modified files (REST Extension)
+        id: changed-files-rest-extension
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-connect-rest-extension/**
+            support/checkstyle/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            pom.xml
+            .github/workflows/debezium-workflow.yml
+
+      - name: Get modified files (Schema Generator)
+        id: changed-files-schema-generator
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-schema-generator/**
+            support/checkstyle/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            pom.xml
+            .github/workflows/debezium-workflow.yml
+
+      - name: Get modified files (Debezium Testing)
+        id: changed-files-debezium-testing
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-testing/**
+
+      - name: Get modified files (DDL parser)
+        id: changed-files-ddl-parser
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-ddl-parser/**
+
+      - name: Get modified files (Documentation)
+        id: changed-files-documentation
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            documentation/**
+
   build_cache:
     name: "Dependency Cache"
+    needs: [file_changes]
+    if: ${{ needs.file_changes.outputs.documentation-only-changed == 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -98,140 +236,11 @@ jobs:
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check
           -Dorg.slf4j.simpleLogger.showDateTime=true
-          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-DD HH:mm:ss,SSS"          
-
-  # This job is responsible for inspecting the changes in the repository and setting specific output variables
-  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
-  file_changes:
-    name: "Detect repository changes"
-    needs: [build_cache]
-    runs-on: ubuntu-latest
-    outputs:
-      common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
-      mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
-      mysql-changed: ${{ steps.changed-files-mysql.outputs.any_changed }}
-      postgresql-changed: ${{ steps.changed-files-postgresql.outputs.any_changed }}
-      oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
-      sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
-      debezium-server-changed: ${{ steps.changed-files-debezium-server.outputs.any_changed }}
-      outbox-changed: ${{ steps.changed-files-outbox.outputs.any_changed }}
-      rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
-      schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
-      debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
-      ddl-parser-changed: ${{ steps.changed-files-ddl-parser.outputs.any_changed }}
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Get modified files (Common)
-        id: changed-files-common
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            support/checkstyle/**
-            debezium-api/**
-            debezium-assembly-descriptors/**
-            debezium-core/**
-            debezium-embedded/**
-            debezium-revapi/**
-            debezium-ide-configs/**
-            debezium-parent/pom.xml
-            debezium-bom/pom.xml
-            pom.xml
-            .github/workflows/debezium-workflow.yml
-
-      - name: Get modified files (MongoDB)
-        id: changed-files-mongodb
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-connector-mongodb/**
-
-      - name: Get modified files (MySQL)
-        id: changed-files-mysql
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-connector-mysql/**                   
-
-      - name: Get modified files (PostgreSQL)
-        id: changed-files-postgresql
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-connector-postgres/**             
-
-      - name: Get modified files (Oracle)
-        id: changed-files-oracle
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-connector-oracle/**  
-
-      - name: Get modified files (SQL Server)
-        id: changed-files-sqlserver
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-connector-sqlserver/**  
-
-      - name: Get modified files (Debezium Server)
-        id: changed-files-debezium-server
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-server/**              
-
-      - name: Get modified files (Quarkus Outbox)
-        id: changed-files-outbox
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-quarkus-outbox/**
-
-      - name: Get modified files (REST Extension)
-        id: changed-files-rest-extension
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-connect-rest-extension/**
-            support/checkstyle/**
-            debezium-parent/pom.xml
-            debezium-bom/pom.xml
-            pom.xml
-            .github/workflows/debezium-workflow.yml
-
-      - name: Get modified files (Schema Generator)
-        id: changed-files-schema-generator
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-schema-generator/**
-            support/checkstyle/**
-            debezium-parent/pom.xml
-            debezium-bom/pom.xml
-            pom.xml
-            .github/workflows/debezium-workflow.yml
-
-      - name: Get modified files (Debezium Testing)
-        id: changed-files-debezium-testing
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-testing/**
-
-      - name: Get modified files (DDL parser)
-        id: changed-files-ddl-parser
-        uses: tj-actions/changed-files@v13.1
-        with:
-          files: |
-            debezium-ddl-parser/**
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-DD HH:mm:ss,SSS"
 
   build_mongodb:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "MongoDB"
     runs-on: ubuntu-latest
     strategy:
@@ -281,7 +290,7 @@ jobs:
             
   build_mysql:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "MySQL"
     runs-on: ubuntu-latest
     strategy:
@@ -328,7 +337,7 @@ jobs:
 
   build_postgresql:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "PostgreSQL"
     runs-on: ubuntu-latest
     strategy:
@@ -364,7 +373,7 @@ jobs:
 
   build_oracle:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "Oracle"
     runs-on: ubuntu-latest
     steps:
@@ -400,7 +409,7 @@ jobs:
 
   build_sqlserver:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "SQL Server"
     runs-on: ubuntu-latest
     steps:

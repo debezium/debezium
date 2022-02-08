@@ -19,7 +19,7 @@ import org.eclipse.microprofile.openapi.models.media.Schema;
 
 import io.debezium.config.Field;
 import io.debezium.metadata.ConnectorMetadata;
-import io.debezium.schemagenerator.formats.ApiFormat.FieldFilter;
+import io.debezium.schemagenerator.schema.Schema.FieldFilter;
 import io.smallrye.openapi.api.models.media.SchemaImpl;
 
 public class JsonSchemaCreatorService {

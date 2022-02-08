@@ -285,7 +285,7 @@ public final class TestHelper {
                 .stream()
                 .collect(Collectors.joining(System.lineSeparator()));
         try (PostgresConnection connection = create()) {
-            connection.executeWithoutCommitting(statements);
+            connection.execute(statements);
         }
     }
 
