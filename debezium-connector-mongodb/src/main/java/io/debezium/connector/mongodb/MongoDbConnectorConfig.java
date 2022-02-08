@@ -224,7 +224,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .required()
-            .withDescription("Unique name that identifies the MongoDB replica set or cluster and all recorded offsets, and"
+            .withDescription("Unique name that identifies the MongoDB replica set or cluster and all recorded offsets, and "
                     + "that is used as a prefix for all schemas and topics. "
                     + "Each distinct MongoDB installation should have a separate namespace and monitored by "
                     + "at most one Debezium connector.");
