@@ -20,7 +20,6 @@ pipelineJob('connector-all-tests') {
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
 
         //oracle specific
-        stringParam('MAIL_TO', 'debezim-qe@redhat.com')
         stringParam('QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id')
 
         stringParam('LABEL', "", 'Label/Debezium Version')
