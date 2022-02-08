@@ -6,7 +6,7 @@ name: Documentation Changes
 on:
   # Schedule job to run at midnight UTC every Saturday
   schedule:
-    - cron: "0 0 * * 6"
+    - cron: "0 0 * * *"
 
 jobs:
 
