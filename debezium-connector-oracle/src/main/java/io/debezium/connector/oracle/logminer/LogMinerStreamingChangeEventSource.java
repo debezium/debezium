@@ -113,6 +113,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             return;
         }
         try {
+            // We explicitly expect auto-commit to be disabled
+            jdbcConnection.setAutoCommit(false);
+
             startScn = offsetContext.getScn();
             snapshotScn = offsetContext.getSnapshotScn();
             Scn firstScn = getFirstScnInLogs(jdbcConnection);
