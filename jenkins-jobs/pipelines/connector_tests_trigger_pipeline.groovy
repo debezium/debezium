@@ -53,7 +53,6 @@ pipeline {
                     }
                     steps {
                         build job: 'connector-debezium-oracle-matrix-test', parameters: [
-                                string(name: 'MAIL_TO', value: params.MAIL_TO),
                                 string(name: 'QUAY_CREDENTIALS', value: params.QUAY_CREDENTIALS),
                                 string(name: 'REPOSITORY_CORE', value: params.REPOSITORY_CORE),
                                 string(name: 'BRANCH', value: params.BRANCH),
@@ -97,16 +96,13 @@ pipeline {
     post {
         always {
             script {
-                def databases = ['db2', 'mongodb', 'mysql', 'oracle', 'postgresql', 'sqlserver']
                 def label = params.LABEL
                 def current_build_label = label
-                for (db in databases) {
-                    def run_test_arg = db.toUpperCase() + "_TEST"
-                    def job_name = "connector-debezium-" + db + "-matrix-test"
-                    if (!params[run_test_arg]) {
+                for (db in ['db2', 'mongodb', 'mysql', 'oracle', 'postgresql', 'sqlserver']) {
+                    if (!params["${db.toUpperCase()}_TEST"]) {
                         continue
                     }
-                    def build = jenkins.model.Jenkins.instance.getItem(job_name).lastBuild
+                    def build = jenkins.model.Jenkins.instance.getItem("connector-debezium-${db}-matrix-test").lastBuild
 
                     // if label param is not set, try parsing label from source url/branch
                     if (!label && params.PRODUCT_BUILD) {
@@ -120,10 +116,10 @@ pipeline {
                             continue
                         }
                     }
+                    // if no label is set and not a product build, add branch name
                     else if (!label && !params.PRODUCT_BUILD) {
-                        def branch = params.BRANCH
-                        label = "#" + build.getNumber() + " " + branch
-                        current_build_label = "#" + currentBuild.getNumber() + " " + branch
+                        label = "#${build.number} ${params.BRANCH}"
+                        current_build_label = "#${currentBuild.number} ${params.BRANCH}"
                     }
 
                     // set label

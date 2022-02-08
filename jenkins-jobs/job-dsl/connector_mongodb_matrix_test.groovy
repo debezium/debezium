@@ -23,7 +23,6 @@ matrixJob('connector-debezium-mongodb-matrix-test') {
     }
 
     parameters {
-        stringParam('MAIL_TO', 'debezium-qe@redhat.com')
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
         stringParam('BRANCH', 'main', 'A branch/tag from which Debezium is built')
         stringParam('SOURCE_URL', "", "URL to productised sources")
@@ -44,7 +43,7 @@ matrixJob('connector-debezium-mongodb-matrix-test') {
     publishers {
         archiveJunit('**/target/surefire-reports/*.xml')
         archiveJunit('**/target/failsafe-reports/*.xml')
-        mailer('$MAIL_TO', false, true)
+        mailer('jpechane@redhat.com', false, true)
     }
 
     logRotator {
