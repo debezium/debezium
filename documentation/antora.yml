@@ -8,7 +8,7 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.8.0.Final'
+    debezium-version: '1.8.1.Final'
     debezium-dev-version: '1.9'
     debezium-kafka-version: '3.0.0'
     debezium-docker-label: '1.8'
