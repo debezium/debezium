@@ -8,7 +8,6 @@ package io.debezium.relational.history;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -21,7 +20,6 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -399,7 +397,13 @@ public class KafkaDatabaseHistoryTest {
         history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
         history.start();
 
-        ConnectException connectException = assertThrows(ConnectException.class, () -> history.initializeStorage());
-        assertEquals(TimeoutException.class, connectException.getCause().getClass());
+        try {
+            history.initializeStorage();
+        }
+        catch (Exception ex) {
+            assertEquals(TimeoutException.class, ex.getCause().getClass());
+        }
+
+        assertTrue(history.storageExists());
     }
 }
