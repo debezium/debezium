@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.0.Alpha2
+February 9th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379892)
+
+### New features since 1.9.0.Alpha1
+
+* Use main repo workflow for CI/CD checks in Debezium UI repository checks  [DBZ-3143](https://issues.redhat.com/browse/DBZ-3143)
+* Build and deploy Debezium OpenAPI / JSON Schema definitions with every Debezium release [DBZ-4394](https://issues.redhat.com/browse/DBZ-4394)
+* Redis sink - Retry in case of connection error/OOM [DBZ-4510](https://issues.redhat.com/browse/DBZ-4510)
+* Make KAFKA_QUERY_TIMEOUT configurable [DBZ-4518](https://issues.redhat.com/browse/DBZ-4518)
+* MySQL history topic creation needs DESCRIBE_CONFIGS at the Cluster level [DBZ-4547](https://issues.redhat.com/browse/DBZ-4547)
+* Redis Sink - change records should be streamed in batches [DBZ-4637](https://issues.redhat.com/browse/DBZ-4637)
+* Link for apicurio-registry-distro-connect-converter packege is broken [DBZ-4659](https://issues.redhat.com/browse/DBZ-4659)
+* Extend Debezium Schema Generator [DBZ-4665](https://issues.redhat.com/browse/DBZ-4665)
+
+
+### Breaking changes since 1.9.0.Alpha1
+
+* Add bytes support for blob and binary types in Vitess connector [DBZ-4705](https://issues.redhat.com/browse/DBZ-4705)
+
+
+### Fixes since 1.9.0.Alpha1
+
+* Database.include.list results in tables being returned twice [DBZ-3679](https://issues.redhat.com/browse/DBZ-3679)
+* Suspected inconsistent documentation for 'Ad-hoc read-only Incremental snapshot' [DBZ-4171](https://issues.redhat.com/browse/DBZ-4171)
+* CVE-2021-2471 mysql-connector-java: unauthorized access to critical [rhint-debezium-1] [DBZ-4283](https://issues.redhat.com/browse/DBZ-4283)
+* Rhel preparation jenkins job pushes extra image [DBZ-4296](https://issues.redhat.com/browse/DBZ-4296)
+* Oracle Logminer: snapshot->stream switch misses DB changes in ongoing transactions [DBZ-4367](https://issues.redhat.com/browse/DBZ-4367)
+* Incremental snapshots does not honor column case sensitivity [DBZ-4584](https://issues.redhat.com/browse/DBZ-4584)
+* JSON data corrupted in update events [DBZ-4605](https://issues.redhat.com/browse/DBZ-4605)
+* nCaused by: Multiple parsing errors\nio.debezium.text.ParsingException: DDL statement couldn't be parsed. Please open a Jira [DBZ-4609](https://issues.redhat.com/browse/DBZ-4609)
+* Jenkins job for creating image snapshot does not update gitlab certificate correctly [DBZ-4611](https://issues.redhat.com/browse/DBZ-4611)
+* Update the UI README node and npm requirements [DBZ-4630](https://issues.redhat.com/browse/DBZ-4630)
+* Parse including keyword column table ddl error [DBZ-4640](https://issues.redhat.com/browse/DBZ-4640)
+* Nightly installation links do not use snapshot repository download links [DBZ-4644](https://issues.redhat.com/browse/DBZ-4644)
+* schema_only_recovery mode not working for FileDatabaseHistory  [DBZ-4646](https://issues.redhat.com/browse/DBZ-4646)
+* SQL Server ad-hoc snapshot - SnapshotType is case sensitive [DBZ-4648](https://issues.redhat.com/browse/DBZ-4648)
+* DDL parsing issue: ALTER TABLE ... MODIFY PARTITION ... [DBZ-4649](https://issues.redhat.com/browse/DBZ-4649)
+* Mark incompatible Xstream tests as LogMiner only [DBZ-4650](https://issues.redhat.com/browse/DBZ-4650)
+* DDL statement couldn't be parsed  mismatched input '`encrypted` [DBZ-4661](https://issues.redhat.com/browse/DBZ-4661)
+* debezium-examples fail when using confluentinc/cp-schema-registry:7.0.0 [DBZ-4666](https://issues.redhat.com/browse/DBZ-4666)
+* DDL parsing exception [DBZ-4675](https://issues.redhat.com/browse/DBZ-4675)
+* JdbcConnection#executeWithoutCommitting commits when auto-commit is enabled [DBZ-4701](https://issues.redhat.com/browse/DBZ-4701)
+* OracleSchemaMigrationIT fails with Xstream adapter [DBZ-4703](https://issues.redhat.com/browse/DBZ-4703)
+* Cannot expand JSON payload with nested arrays of objects [DBZ-4704](https://issues.redhat.com/browse/DBZ-4704)
+
+
+### Other changes since 1.9.0.Alpha1
+
+* Possible performance issue after Debezium 1.6.1 upgrade (from 1.5) [DBZ-3872](https://issues.redhat.com/browse/DBZ-3872)
+* Upgrade Jenkins and Introduce JCasC to jnovotny [DBZ-3980](https://issues.redhat.com/browse/DBZ-3980)
+* Random test failure - ZZZGtidSetIT#shouldProcessPurgedGtidSet [DBZ-4294](https://issues.redhat.com/browse/DBZ-4294)
+* Verify compatibility with Oracle 21c (21.3.0.0.0) [DBZ-4305](https://issues.redhat.com/browse/DBZ-4305)
+* Add metadata to OracleConnectorConfig for Debezium UI [DBZ-4314](https://issues.redhat.com/browse/DBZ-4314)
+* Release pipeline should check existence of GA version [DBZ-4623](https://issues.redhat.com/browse/DBZ-4623)
+* Release pipeline - conditionalize and parameterize backport check [DBZ-4624](https://issues.redhat.com/browse/DBZ-4624)
+* Migrating UI from  webpack-dev-server v3 to v4 [DBZ-4642](https://issues.redhat.com/browse/DBZ-4642)
+* Don't run checkstyle/dependency check on documentation-only pull requests or commits [DBZ-4645](https://issues.redhat.com/browse/DBZ-4645)
+* Cron-based Github Action to notify documentation changes in last x days [DBZ-4653](https://issues.redhat.com/browse/DBZ-4653)
+* Oracle DDL parser failure with supplemental log group clause with a custom name [DBZ-4654](https://issues.redhat.com/browse/DBZ-4654)
+* Build MCS container images for Debezium 1.9.0.Alpha1 and deploy to RHOAS quay container registry [DBZ-4656](https://issues.redhat.com/browse/DBZ-4656)
+* Upgrade postgres driver to version 42.3.2 [DBZ-4658](https://issues.redhat.com/browse/DBZ-4658)
+* Make sure right protoc version is applied [DBZ-4668](https://issues.redhat.com/browse/DBZ-4668)
+* Build trigger issues [DBZ-4672](https://issues.redhat.com/browse/DBZ-4672)
+* MongoUtilIT test failure - unable to connect to primary [DBZ-4676](https://issues.redhat.com/browse/DBZ-4676)
+* Upgrade to Quarkus 2.7.0.Final [DBZ-4677](https://issues.redhat.com/browse/DBZ-4677)
+* Update shared UG deployment file for use with downstream OCP Install Guide [DBZ-4700](https://issues.redhat.com/browse/DBZ-4700)
+* Indicate ROWID is not supported by XStream [DBZ-4702](https://issues.redhat.com/browse/DBZ-4702)
+
+
+
 ## 1.9.0.Alpha1
 January 26th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12375781)
 

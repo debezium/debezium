@@ -114,3 +114,7 @@ Oscar,Oscar Romero
 nathan-smit-1,Nathan Smit
 snigdhasjg,Snigdhajyoti Ghosh
 isacandrei,Andrei Isac
+daha,David Haglund
+fuyar,Farid Uyar
+jmks,Jason Schweier
+pmalon,Paweł Malon
