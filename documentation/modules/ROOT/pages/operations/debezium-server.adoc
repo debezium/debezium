@@ -189,13 +189,31 @@ The source configuration uses the same configuration properties that are describ
 |
 |The name of the Java class implementing the source connector.
 
-|[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
+|[[debezium-source-offset-storage]]<<debezium-source-offset-storage, `debezium.source.offset.storage`>>
 |
-|The file in which connector offsets are stored for non-Kafka deployments.
+|Class to use for storing and retrieving offsets for non-Kafka deployments.
+|To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingStore`
+
+|[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
+|`org.apache.kafka.connect.storage.FileOffsetBackingStore`
+|If using a file offset store (default), the file in which connector offsets are stored for non-Kafka deployments.
 
 |[[debezium-source-offset-flush-interval-ms]]<<debezium-source-offset-flush-interval-ms, `debezium.source.offset.flush.interval.ms`>>
 |
 |Defines how frequently the offsets are flushed into the file.
+
+|[[redis-address]]<<redis-address, `debezium.source.offset.storage.redis.address`>>
+|
+|(Optional) If using Redis to store offsets, an address, formatted as `host:port`, at which the Redis target streams are provided.
+
+|[[redis-user]]<<redis-user, `debezium.source.offset.storage.redis.user`>>
+|
+|(Optional) If using Redis to store offsets, a user name used to communicate with Redis.
+
+|[[redis-password]]<<redis-password, `debezium.source.offset.storage.redis.password`>>
+|
+|(Optional)  If using Redis to store offsets, a password (of respective user) used to communicate with Redis. A password must be set if a user is set.
+
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
 |`io.debezium.relational.history.KafkaDatabaseHistory`

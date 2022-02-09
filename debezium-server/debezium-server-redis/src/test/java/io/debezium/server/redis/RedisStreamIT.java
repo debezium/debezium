@@ -9,21 +9,18 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 
-import javax.enterprise.event.Observes;
-
 import org.awaitility.Awaitility;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
-import io.debezium.server.events.ConnectorCompletedEvent;
-import io.debezium.server.events.ConnectorStartedEvent;
+import io.debezium.server.TestConfigSource;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
@@ -34,55 +31,24 @@ import redis.clients.jedis.Jedis;
  *
  * @author M Sazzadul Hoque
  */
-@QuarkusTest
+@QuarkusIntegrationTest
+@TestProfile(RedisStreamTestProfile.class)
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
 public class RedisStreamIT {
-    @ConfigProperty(name = "debezium.source.database.hostname")
-    String dbHostname;
-
-    @ConfigProperty(name = "debezium.source.database.port")
-    String dbPort;
-
-    @ConfigProperty(name = "debezium.source.database.user")
-    String dbUser;
-
-    @ConfigProperty(name = "debezium.source.database.password")
-    String dbPassword;
-
-    @ConfigProperty(name = "debezium.source.database.dbname")
-    String dbName;
-
-    protected static Jedis jedis;
-
-    {
-        Testing.Files.delete(RedisTestConfigSource.OFFSET_STORE_PATH);
-        Testing.Files.createTestingFile(RedisTestConfigSource.OFFSET_STORE_PATH);
-    }
-
-    void setupDependencies(@Observes ConnectorStartedEvent event) {
-        Testing.Print.enable();
-        jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
-    }
-
-    void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
-        if (!event.isSuccess()) {
-            throw (Exception) event.getError().get();
-        }
-    }
 
     private PostgresConnection getPostgresConnection() {
         return new PostgresConnection(Configuration.create()
-                .with("hostname", dbHostname)
-                .with("port", dbPort)
-                .with("user", dbUser)
-                .with("password", dbPassword)
-                .with("dbname", dbName)
+                .with("user", PostgresTestResourceLifecycleManager.POSTGRES_USER)
+                .with("password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD)
+                .with("dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME)
+                .with("hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST)
+                .with("port", PostgresTestResourceLifecycleManager.container.getMappedPort(PostgresTestResourceLifecycleManager.POSTGRES_PORT))
                 .build());
     }
 
-    private Long getStreamLength(String streamName, int expectedLength) {
-        Awaitility.await().atMost(Duration.ofSeconds(RedisTestConfigSource.waitForSeconds())).until(() -> {
+    private Long getStreamLength(Jedis jedis, String streamName, int expectedLength) {
+        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             return jedis.xlen(streamName) == expectedLength;
         });
 
@@ -94,11 +60,13 @@ public class RedisStreamIT {
     */
     @Test
     public void testRedisStream() throws Exception {
+        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         final int MESSAGE_COUNT = 4;
         final String STREAM_NAME = "testc.inventory.customers";
 
-        Long streamLength = getStreamLength(STREAM_NAME, MESSAGE_COUNT);
+        Long streamLength = getStreamLength(jedis, STREAM_NAME, MESSAGE_COUNT);
         assertTrue("Redis Basic Stream Test Failed", streamLength == MESSAGE_COUNT);
+        jedis.close();
     }
 
     /**
@@ -110,6 +78,7 @@ public class RedisStreamIT {
     @Test
     @FixFor("DBZ-4510")
     public void testRedisConnectionRetry() throws Exception {
+        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         final int MESSAGE_COUNT = 5;
         final String STREAM_NAME = "testc.inventory.redis_test";
         Testing.print("Pausing container");
@@ -131,9 +100,10 @@ public class RedisStreamIT {
         Testing.print("Unpausing container");
         RedisTestResourceLifecycleManager.unpause();
 
-        Long streamLength = getStreamLength(STREAM_NAME, MESSAGE_COUNT);
+        Long streamLength = getStreamLength(jedis, STREAM_NAME, MESSAGE_COUNT);
 
         Testing.print("Entries in " + STREAM_NAME + ":" + streamLength);
+        jedis.close();
         assertTrue("Redis Connection Test Failed", streamLength == MESSAGE_COUNT);
     }
 
@@ -149,6 +119,7 @@ public class RedisStreamIT {
     @Test
     @FixFor("DBZ-4510")
     public void testRedisOOMRetry() throws Exception {
+        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         final String STREAM_NAME = "testc.inventory.redis_test2";
         final int FIRST_BATCH_SIZE = 10;
         final int EXPECTED_STREAM_LENGTH_AFTER_DELETION = 30; // Every delete change record is followed by a tombstone event
@@ -163,14 +134,16 @@ public class RedisStreamIT {
         connection.execute("CREATE TABLE inventory.redis_test2 " +
                 "(id VARCHAR(100) PRIMARY KEY, " +
                 "first_name VARCHAR(100), " +
-                "last_name VARCHAR(100))",
+                "last_name VARCHAR(100))");
+        connection.execute(
                 String.format(INSERT_SQL, FIRST_BATCH_SIZE));
+        connection.commit();
 
-        Long streamLengthAfterInserts = getStreamLength(STREAM_NAME, FIRST_BATCH_SIZE);
+        Long streamLengthAfterInserts = getStreamLength(jedis, STREAM_NAME, FIRST_BATCH_SIZE);
         Testing.print("Entries in " + STREAM_NAME + ":" + streamLengthAfterInserts);
 
         connection.execute("DELETE FROM inventory.redis_test2");
-        Long streamLengthAfterDeletion = getStreamLength(STREAM_NAME, EXPECTED_STREAM_LENGTH_AFTER_DELETION);
+        Long streamLengthAfterDeletion = getStreamLength(jedis, STREAM_NAME, EXPECTED_STREAM_LENGTH_AFTER_DELETION);
         Testing.print("Entries in " + STREAM_NAME + ":" + streamLengthAfterDeletion);
 
         connection.execute(String.format(INSERT_SQL, SECOND_BATCH_SIZE));
@@ -181,10 +154,11 @@ public class RedisStreamIT {
         Testing.print("Deleting stream in order to free memory");
         jedis.del(STREAM_NAME);
 
-        Long streamLength = getStreamLength(STREAM_NAME, SECOND_BATCH_SIZE);
+        Long streamLength = getStreamLength(jedis, STREAM_NAME, SECOND_BATCH_SIZE);
 
         Testing.print("Entries in " + STREAM_NAME + ":" + streamLength);
         jedis.configSet("maxmemory", "0");
+        jedis.close();
 
         assertTrue("Redis OOM Test Failed", streamLength == SECOND_BATCH_SIZE);
     }
