@@ -1,6 +1,6 @@
 name: reference
 title: Debezium Documentation
-version: 'main'
+version: 'master'
 display_version: 'nightly'
 prerelease: true
 nav:
@@ -8,9 +8,9 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.9.0.Alpha1'
+    debezium-version: '1.9.0.Alpha2'
     debezium-dev-version: '1.9'
-    debezium-kafka-version: '3.0.0'
+    debezium-kafka-version: '3.1.0'
     debezium-docker-label: '1.9'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     install-version: '1.9'
@@ -18,7 +18,7 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.18.0'
-    apicurio-version: '2.0.2.Final'
+    apicurio-version: '2.1.5.Final'
     db2-version: '11.5.0.0'
     community: true
     registry: 'Apicurio Registry'

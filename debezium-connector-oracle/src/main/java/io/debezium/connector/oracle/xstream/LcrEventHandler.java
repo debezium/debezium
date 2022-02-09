@@ -282,6 +282,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
             }
+            connection.setAutoCommit(false);
             return connection.getTableMetadataDdl(tableId);
         }
         catch (SQLException e) {
