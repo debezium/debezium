@@ -79,6 +79,7 @@ Dave Cramer
 Dave Cumberland
 David Chen
 David Feinblum
+David Haglund
 David Jerome
 David Leibovic
 David Seapy
@@ -110,6 +111,7 @@ Fabian Martinez
 Fabio Cantarini
 Fahim Farook
 Faizan
+Farid Uyar
 Fatih Güçlü Akkaya
 Fándly Gergő
 Felix Eckhardt
@@ -130,6 +132,7 @@ Guy Pascarella
 Grzegorz Kołakowski
 Jacob Gminder
 Jan Hendrik Dolling
+Jason Schweier
 Jiabao Sun
 Juan Fiallo
 Hady Willi
@@ -258,6 +261,7 @@ Oscar Romero
 Patrick Chu
 Pavel Strashkin
 Paul Mellor
+Paweł Malon
 Peng Lyu
 Peter Goransson
 Peter Junos
