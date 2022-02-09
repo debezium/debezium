@@ -112,16 +112,13 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     * Split collection to batches by batch size using a stream
     */
     private <T> Stream<List<T>> batches(List<T> source, int length) {
-        if (length <= 0) {
-            throw new IllegalArgumentException("length = " + length);
-        }
-
-        int size = source.size();
-        if (size <= 0) {
+        if (source.isEmpty()) {
             return Stream.empty();
         }
 
+        int size = source.size();
         int fullChunks = (size - 1) / length;
+
         return IntStream.range(0, fullChunks + 1).mapToObj(
                 n -> source.subList(n * length, n == fullChunks ? size : (n + 1) * length));
     }
@@ -155,6 +152,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                         LOGGER.info("Preparing a Redis Transaction of {} records", batch.size());
                         transaction = client.multi();
 
+                        // Add the batch records to the stream(s) via Transaction
                         for (ChangeEvent<Object, Object> record : batch) {
                             String destination = streamNameMapper.map(record.destination());
                             String key = (record.key() != null) ? getString(record.key()) : nullKey;
@@ -163,7 +161,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             // Add the record to the destination stream
                             transaction.xadd(destination, null, Collections.singletonMap(key, value));
                         }
+
+                        // Execute the transaction in Redis
                         transaction.exec();
+
                         // Mark all the batch records as processed only when the transaction succeeds
                         for (ChangeEvent<Object, Object> record : batch) {
                             committer.markProcessed(record);
