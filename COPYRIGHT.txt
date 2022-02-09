@@ -3,6 +3,7 @@ Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
 Abhishek Hodavdekar
+AChangFeng
 Addison Higham
 Adham
 Adrian Kreuziger
@@ -90,6 +91,7 @@ Dennis Campagna
 Dennis Persson
 Derek Moore
 Dhrubajyoti G
+Dominique Chanet
 Duncan Sands
 Dushyant M
 Echo Xu
@@ -234,6 +236,7 @@ Mincong Huang
 Mohamed Pudukulathan
 Moira Tagle
 Muhammad Sufyian
+Nansen
 Nathan Mills
 Navdeep Agarwal
 Naveen Kumar KR
@@ -292,6 +295,7 @@ Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sara Fonseca
 Sean Rooney
+Sebastian Bruckner
 Sergei Morozov
 Shane Paul
 Sherafudheen PM
