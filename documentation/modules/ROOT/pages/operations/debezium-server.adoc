@@ -642,10 +642,6 @@ When the alternative implementations are not available then the default ones are
 |CDI classifier
 |Description
 
-|[[redis-client]]<<redis-client, `redis.clients.jedis.Jedis`>>
-|`@CustomConsumerBuilder`
-|Custom configured instance of a `Jedis` used to send messages to target streams.
-
 |[[redis-ext-stream-name-mapper]]<<redis-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
 |Custom implementation maps the planned destination (topic) name into a physical Redis stream name.
