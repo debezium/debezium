@@ -174,7 +174,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         try (PreparedStatement statement = createQueryStatement()) {
             LOGGER.debug("Fetching results for SCN [{}, {}]", startScn, endScn);
-            statement.setFetchSize(getConfig().getMaxQueueSize());
+            statement.setFetchSize(getConfig().getLogMiningViewFetchSize());
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, startScn.toString());
             statement.setString(2, endScn.toString());
@@ -872,6 +872,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // A separate connection must be used for this out-of-bands query while processing LogMiner results.
         // This should have negligible overhead since this use case should happen rarely.
         try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader())) {
+            connection.setAutoCommit(false);
             final String pdbName = getConfig().getPdbName();
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
