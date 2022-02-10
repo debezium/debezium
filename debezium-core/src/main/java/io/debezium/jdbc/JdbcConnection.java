@@ -1445,11 +1445,31 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition, String orderBy) {
+        /** This function is to keep backward compatibility */
+        return buildSelectWithRowLimits(tableId, limit, projection, condition, orderBy, Optional.empty());
+    }
+
+    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition, String orderBy, Optional<String> overriddenSelect) {
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
                 .append(projection)
                 .append(" FROM ");
-        sql.append(quotedTableIdString(tableId));
+        /**
+         * Check if the 'snapshot.select.statement.overrides' property is set for the current table.
+         * This will override the 'select *' default behaviour and allow custom incremental snapshot queries.
+         */
+        if (overriddenSelect.isPresent()) {
+            // Replace 'schema.table' with '"schema"."table"' in the overridenSelect query so non-alphanumeric characters and uppercase characters are properly handled.
+            String formattedOverridenSelect = overriddenSelect.get().replace(tableId.toString(), quotedTableIdString(tableId));
+            sql
+                    .append("( ")
+                    .append(formattedOverridenSelect)
+                    .append(" ) ")
+                    .append("as s ");
+        }
+        else {
+            sql.append(quotedTableIdString(tableId));
+        }
         if (condition.isPresent()) {
             sql
                     .append(" WHERE ")

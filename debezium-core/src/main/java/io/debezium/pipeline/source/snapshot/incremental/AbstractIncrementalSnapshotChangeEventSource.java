@@ -173,11 +173,23 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.joining(", "));
+        /**
+         * Get the 'snapshot.select.statement.overrides' query (if any) and use it for incremental snapshotting.
+         * The next 5 lines are identical to determineSnapshotSelect() function in RelationalSnapshotChangeEventSource.java file
+         * to keep the same logic as default snapshotting.
+         */
+        String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(table.id());
+        // try without catalog id, as this might or might not be populated based on the given connector
+        if (overriddenSelect == null) {
+            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, table.id().schema(), table.id().table()));
+        }
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
                 limit,
                 "*",
                 Optional.ofNullable(condition),
-                orderBy);
+                orderBy,
+                // Pass the overriden snapshot select query (if any) to the query builder function
+                Optional.ofNullable(overriddenSelect));
     }
 
     private void addLowerBound(Table table, StringBuilder sql) {
