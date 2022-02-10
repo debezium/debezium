@@ -86,7 +86,6 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
     private Jedis client = null;
 
-
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
