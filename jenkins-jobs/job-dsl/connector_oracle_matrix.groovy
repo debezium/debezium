@@ -9,6 +9,10 @@ pipelineJob('connector-debezium-oracle-matrix-test') {
     logRotator {
         numToKeep(10)
     }
+    
+    triggers {
+        cron('H 02 * * *')
+    }
 
     parameters {
         stringParam('MAIL_TO', 'debezium-qe@redhat.com')
