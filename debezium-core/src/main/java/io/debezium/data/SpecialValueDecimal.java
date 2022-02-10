@@ -105,7 +105,7 @@ public class SpecialValueDecimal implements Serializable, ValueWrapper<BigDecima
      */
     @Override
     public String toString() {
-        return decimalValue != null ? decimalValue.toString() : specialValue.name();
+        return decimalValue != null ? decimalValue.toPlainString() : specialValue.name();
     }
 
     @Override
@@ -174,7 +174,7 @@ public class SpecialValueDecimal implements Serializable, ValueWrapper<BigDecima
                 case PRECISE:
                     return value.getDecimalValue().get();
                 case STRING:
-                    return value.getDecimalValue().get().toString();
+                    return value.getDecimalValue().get().toPlainString();
             }
             throw new IllegalArgumentException("Unknown decimalMode");
         }
