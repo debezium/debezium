@@ -15,11 +15,11 @@ This service exposes a REST API to manage the {prodname} MySQL connector.
 . Open a new terminal, and use it to start the Kafka Connect service in a container.
 +
 --
-This command runs a new container using the {debezium-docker-label} version of the `debezium/connect` image:
+This command runs a new container using the {debezium-docker-label} version of the `quay.io/debezium/connect` image:
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:{debezium-docker-label}
+$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql quay.io/debezium/connect:{debezium-docker-label}
 ----
 
 `-it`:: The container is interactive,
@@ -38,7 +38,7 @@ ifdef::community[]
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman run -it --rm --name connect --pod dbz -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses debezium/connect:{debezium-docker-label}
+$ sudo podman run -it --rm --name connect --pod dbz -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses quay.io/debezium/connect:{debezium-docker-label}
 ----
 ====
 endif::community[]

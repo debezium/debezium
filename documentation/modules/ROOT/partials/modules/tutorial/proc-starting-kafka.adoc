@@ -30,11 +30,11 @@ endif::community[]
 . Open a new terminal and use it to start Kafka in a container.
 +
 --
-This command runs a new container using version {debezium-docker-label} of the `debezium/kafka` image:
+This command runs a new container using version {debezium-docker-label} of the `quay.io/debezium/kafka` image:
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name kafka -p 9092:9092 --link zookeeper:zookeeper debezium/kafka:{debezium-docker-label}
+$ docker run -it --rm --name kafka -p 9092:9092 --link zookeeper:zookeeper quay.io/debezium/kafka:{debezium-docker-label}
 ----
 
 `-it`:: The container is interactive,
@@ -51,7 +51,7 @@ ifdef::community[]
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman run -it --rm --name kafka --pod dbz debezium/kafka:{debezium-docker-label}
+$ sudo podman run -it --rm --name kafka --pod dbz quay.io/debezium/kafka:{debezium-docker-label}
 ----
 ====
 endif::community[]
