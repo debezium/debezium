@@ -34,6 +34,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
+import redis.clients.jedis.params.XAddParams;
 
 /**
  * Implementation of the consumer that delivers the messages into Redis (stream) destination.
@@ -51,10 +52,16 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_ADDRESS = PROP_PREFIX + "address";
     private static final String PROP_USER = PROP_PREFIX + "user";
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
+    private static final String PROP_MINID = PROP_PREFIX + "minid";
+    private static final String PROP_MAXLEN = PROP_PREFIX + "maxlen";
 
     private HostAndPort address;
     private Optional<String> user;
     private Optional<String> password;
+    private Optional<String> minIdTrim;
+    private Optional<Long> maxLenTrim;
+
+    private final XAddParams params = XAddParams.xAddParams();
 
     @ConfigProperty(name = PROP_PREFIX + "batch.size", defaultValue = "500")
     Integer batchSize;
@@ -71,7 +78,14 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @ConfigProperty(name = PROP_PREFIX + "null.value", defaultValue = "default")
     String nullValue;
 
+    @ConfigProperty(name = PROP_PREFIX + "exact.trimming", defaultValue = "false")
+    Boolean exactTrimming;
+
+    @ConfigProperty(name = PROP_PREFIX + "trim.limit", defaultValue = "null")
+    Long trimLimit;
+
     private Jedis client = null;
+
 
     @PostConstruct
     void connect() {
@@ -79,10 +93,24 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         address = HostAndPort.from(config.getValue(PROP_ADDRESS, String.class));
         user = config.getOptionalValue(PROP_USER, String.class);
         password = config.getOptionalValue(PROP_PASSWORD, String.class);
+        minIdTrim = config.getOptionalValue(PROP_MINID, String.class);
+        maxLenTrim = config.getOptionalValue(PROP_MAXLEN, Long.class);
+
+        if (minIdTrim.isPresent() || maxLenTrim.isPresent()) {
+            minIdTrim.ifPresent(params::minId);
+            maxLenTrim.ifPresent(params::maxLen);
+            if (exactTrimming) {
+                params.exactTrimming();
+            }
+            else {
+                params.approximateTrimming();
+                params.limit(trimLimit);
+            }
+        }
 
         client = new Jedis(address);
         if (user.isPresent()) {
-            client.auth(user.get(), password.get());
+            client.auth(user.get(), password.orElse(""));
         }
         else if (password.isPresent()) {
             client.auth(password.get());
@@ -159,7 +187,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
 
                             // Add the record to the destination stream
-                            transaction.xadd(destination, null, Collections.singletonMap(key, value));
+                            transaction.xadd(destination, Collections.singletonMap(key, value), params);
                         }
 
                         // Execute the transaction in Redis
