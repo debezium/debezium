@@ -14,7 +14,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,7 +95,7 @@ public class MySqlDecimalIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-730")
+    @FixFor({ "DBZ-730", "DBZ-4730" })
     public void testStringDecimalHandlingMode() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
@@ -127,41 +126,44 @@ public class MySqlDecimalIT extends AbstractConnectorTest {
     }
 
     private void assertBigDecimalChangeRecord(SourceRecord record) {
-        Assertions.assertThat(record).isNotNull();
+        assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
 
-        Assertions.assertThat(change.get("A")).isEqualTo(new BigDecimal("1.33"));
-        Assertions.assertThat(change.get("B")).isEqualTo(new BigDecimal("-2.111"));
-        Assertions.assertThat(change.get("C")).isEqualTo(new BigDecimal("3.44400"));
-        Assertions.assertThat(change.getWithoutDefault("D")).isNull();
+        assertThat(change.get("A")).isEqualTo(new BigDecimal("1.33"));
+        assertThat(change.get("B")).isEqualTo(new BigDecimal("-2.111"));
+        assertThat(change.get("C")).isEqualTo(new BigDecimal("3.44400"));
+        assertThat(change.getWithoutDefault("D")).isNull();
+        assertThat(change.get("E")).isEqualTo(new BigDecimal("0.000000000000000000"));
 
-        Assertions.assertThat(record.valueSchema().field("after").schema().field("D").schema().defaultValue())
+        assertThat(record.valueSchema().field("after").schema().field("D").schema().defaultValue())
                 .isEqualTo(new BigDecimal("15.28000"));
     }
 
     private void assertDoubleChangeRecord(SourceRecord record) {
-        Assertions.assertThat(record).isNotNull();
+        assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
 
-        Assertions.assertThat(change.getFloat64("A")).isEqualTo(1.33);
-        Assertions.assertThat(change.getFloat64("B")).isEqualTo(-2.111);
-        Assertions.assertThat(change.getFloat64("C")).isEqualTo(3.44400);
-        Assertions.assertThat(change.getFloat64("D")).isNull();
+        assertThat(change.getFloat64("A")).isEqualTo(1.33);
+        assertThat(change.getFloat64("B")).isEqualTo(-2.111);
+        assertThat(change.getFloat64("C")).isEqualTo(3.44400);
+        assertThat(change.getFloat64("D")).isNull();
+        assertThat(change.getFloat64("E")).isEqualTo(0.000000000000000000);
 
-        Assertions.assertThat(record.valueSchema().field("after").schema().field("D").schema().defaultValue())
+        assertThat(record.valueSchema().field("after").schema().field("D").schema().defaultValue())
                 .isEqualTo(15.28000);
     }
 
     private void assertStringChangeRecord(SourceRecord record) {
-        Assertions.assertThat(record).isNotNull();
+        assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
 
-        Assertions.assertThat(change.getString("A").trim()).isEqualTo("1.33");
-        Assertions.assertThat(change.getString("B").trim()).isEqualTo("-2.111");
-        Assertions.assertThat(change.getString("C").trim()).isEqualTo("3.44400");
-        Assertions.assertThat(change.getString("D")).isNull();
+        assertThat(change.getString("A").trim()).isEqualTo("1.33");
+        assertThat(change.getString("B").trim()).isEqualTo("-2.111");
+        assertThat(change.getString("C").trim()).isEqualTo("3.44400");
+        assertThat(change.getString("D")).isNull();
+        assertThat(change.getString("E")).isEqualTo("0.000000000000000000");
 
-        Assertions.assertThat(record.valueSchema().field("after").schema().field("D").schema().defaultValue())
+        assertThat(record.valueSchema().field("after").schema().field("D").schema().defaultValue())
                 .isEqualTo("15.28000");
     }
 }
