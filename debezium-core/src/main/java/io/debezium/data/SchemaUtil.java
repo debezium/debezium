@@ -148,6 +148,7 @@ public class SchemaUtil {
                     appendFirst("type", schema.type());
                 }
                 appendAdditional("optional", schema.isOptional());
+                appendAdditional("default", schema.defaultValue());
                 if (schema.doc() != null) {
                     appendAdditional("doc", schema.doc());
                 }
