@@ -25,6 +25,11 @@ public class Scn implements Comparable<Scn> {
      */
     public static final Scn NULL = new Scn(null);
 
+    /**
+     * Represents an Scn with value 1, useful for playing with inclusive/exclusive query boundaries.
+     */
+    public static final Scn ONE = new Scn(BigInteger.valueOf(1));
+
     private final BigInteger scn;
 
     public Scn(BigInteger scn) {
