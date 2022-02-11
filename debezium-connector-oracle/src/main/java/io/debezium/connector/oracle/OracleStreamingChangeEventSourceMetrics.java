@@ -694,6 +694,10 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
         LOGGER.trace("Current time {} ms, database difference {} ms", now.toEpochMilli(), timeDiffMillis);
     }
 
+    public long getDatabaseOffsetSeconds() {
+        return offsetSeconds.get();
+    }
+
     public void calculateLagMetrics(Instant changeTime) {
         if (changeTime != null) {
             final Instant correctedChangeTime = changeTime.plusMillis(timeDifference.longValue()).minusSeconds(offsetSeconds.longValue());

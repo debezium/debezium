@@ -359,6 +359,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         LOGGER.trace("Commit (smallest SCN {}) {}", smallestScn, row);
         LOGGER.trace("Transaction {} has {} events", transactionId, numEvents);
 
+        final long databaseOffsetSeconds = metrics.getDatabaseOffsetSeconds();
+
         final boolean skipExcludedUserName = isTransactionUserExcluded(transaction);
         BlockingConsumer<LogMinerEvent> delegate = new BlockingConsumer<LogMinerEvent>() {
             private int numEvents = getTransactionEventCount(transaction);
@@ -372,7 +374,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 }
 
                 offsetContext.setTransactionId(transactionId);
-                offsetContext.setSourceTime(event.getChangeTime());
+                offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffsetSeconds));
                 offsetContext.setTableId(event.getTableId());
                 if (--numEvents == 0) {
                     // reached the last event update the commit scn in the offsets
