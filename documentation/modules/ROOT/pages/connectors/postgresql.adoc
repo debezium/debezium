@@ -1929,7 +1929,7 @@ This behaviour may be unexpected, but it is still safe. Only the schema definiti
 // ModuleID: setting-up-postgresql-to-run-a-debezium-connector
 // Title: Setting up PostgreSQL to run a {prodname} connector
 [[setting-up-postgresql]]
-== Set up
+== Setting up Postgres
 
 ifdef::community[]
 Before using the PostgreSQL connector to monitor the changes committed on a PostgreSQL server, decide which logical decoding plug-in you intend to use.

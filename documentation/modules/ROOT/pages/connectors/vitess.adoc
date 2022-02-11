@@ -906,17 +906,9 @@ a|_n/a_
 // ModuleID: setting-up-vitess-to-run-a-debezium-connector
 // Title: Setting up Vitess to run a {prodname} connector
 [[setting-up-vitess]]
-== Set up
+== Seting up Vitess
 
-Vitess does not require special setup before you can install and run a {prodname} connector.
-
-// Type: procedure
-// ModuleID: vitess-setup
-// Title: Vitess Setup for {prodname}
-[[setup-vitess]]
-=== Setup Vitess
-
-You can follow the link:https://vitess.io/docs/get-started/local-docker/[Local Install via Docker] guide, or the link:https://vitess.io/docs/get-started/operator/[Vitess Operator for Kubernetes] guide to install Vitess. No special setup is needed to support Vitess connector.
+You can follow the link:https://vitess.io/docs/get-started/local-docker/[Local Install via Docker] guide, or the link:https://vitess.io/docs/get-started/operator/[Vitess Operator for Kubernetes] guide to install Vitess. No special set up is needed to use the {prodname} Vitess connector.
 
 .Checklist
 

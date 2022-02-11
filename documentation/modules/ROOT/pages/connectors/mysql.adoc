@@ -1679,7 +1679,7 @@ Contains a structure with two fields:
 // ModuleID: setting-up-mysql-to-run-a-debezium-connector
 // Title: Setting up MySQL to run a {prodname} connector
 [[setting-up-mysql]]
-== Set up
+== Setting up MySQL
 
 Some MySQL setup tasks are required before you can install and run a {prodname} connector.
 
