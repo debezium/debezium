@@ -75,7 +75,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final String archiveDestinationName;
     private final int logFileQueryMaxRetries;
 
-    private Scn startScn;
+    private Scn startScn; // startScn is the **exclusive** lower bound for mining
     private Scn endScn;
     private Scn snapshotScn;
     private List<BigInteger> currentRedoLogSequences;
@@ -128,7 +128,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
 
             try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
-                if (!isContinuousMining && startScn.compareTo(firstScn) < 0) {
+                if (!isContinuousMining && startScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
+                    // startScn is the exclusive lower bound, so must be >= (firstScn - 1)
                     throw new DebeziumException(
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
@@ -248,14 +249,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             Scn originalCommitScn = offsetContext.getCommitScn();
             if (originalCommitScn == null || originalCommitScn.compareTo(snapshotScn) < 0) {
                 LOGGER.info("Setting commit SCN to {} (snapshot SCN - 1) to ensure we don't double-emit events from pre-snapshot transactions.",
-                        snapshotScn.subtract(Scn.valueOf(1)));
-                offsetContext.setCommitScn(snapshotScn.subtract(Scn.valueOf(1)));
+                        snapshotScn.subtract(Scn.ONE));
+                offsetContext.setCommitScn(snapshotScn.subtract(Scn.ONE));
             }
 
             // set start SCN to minScn
             if (minScn.compareTo(startScn) < 0) {
                 LOGGER.info("Resetting start SCN from {} (snapshot SCN) to {} (start of oldest complete pending transaction)", startScn, minScn);
-                startScn = minScn.subtract(Scn.valueOf(1));
+                startScn = minScn.subtract(Scn.ONE);
             }
         }
         offsetContext.setScn(startScn);
@@ -470,7 +471,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * this call to prepare DDL tracking state for the upcoming LogMiner view query.
      *
      * @param connection database connection, should not be {@code null}
-     * @param startScn mining session's starting system change number (inclusive), should not be {@code null}
+     * @param startScn mining session's starting system change number (exclusive), should not be {@code null}
      * @param endScn mining session's ending system change number (inclusive), can be {@code null}
      * @throws SQLException if mining session failed to start
      */
@@ -479,7 +480,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 startScn, endScn, strategy, isContinuousMining);
         try {
             Instant start = Instant.now();
-            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining));
+            // NOTE: we treat startSCN as the _exclusive_ lower bound for mining,
+            // whereas START_LOGMNR takes an _inclusive_ lower bound. Hence the increment.
+            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn.add(Scn.ONE), endScn, strategy, isContinuousMining));
             streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
         }
         catch (SQLException e) {
