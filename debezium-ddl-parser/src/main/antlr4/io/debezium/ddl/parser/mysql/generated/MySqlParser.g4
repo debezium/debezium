@@ -1753,7 +1753,7 @@ showStatement
         (LIMIT
           (offset=decimalLiteral ',')?
           rowCount=decimalLiteral
-        )                                                           #showErrors
+        )?                                                          #showErrors
     | SHOW COUNT '(' '*' ')' errorFormat=(ERRORS | WARNINGS)        #showCountErrors
     | SHOW showSchemaEntity
         (schemaFormat=(FROM | IN) uid)? showFilter?                 #showSchemaFilter
