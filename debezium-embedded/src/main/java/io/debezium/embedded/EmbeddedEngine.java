@@ -724,7 +724,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
                 try {
                     // Start the connector with the given properties and get the task configurations ...
-                    connector.start(config.asMap());
+                    connector.start(workerConfig.originalsStrings());
                     connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
                     List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
                     Class<? extends Task> taskClass = connector.taskClass();
