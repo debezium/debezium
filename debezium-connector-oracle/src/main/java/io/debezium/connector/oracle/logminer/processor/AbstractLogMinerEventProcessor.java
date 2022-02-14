@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -359,7 +360,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         LOGGER.trace("Commit (smallest SCN {}) {}", smallestScn, row);
         LOGGER.trace("Transaction {} has {} events", transactionId, numEvents);
 
-        final long databaseOffsetSeconds = metrics.getDatabaseOffsetSeconds();
+        final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
 
         final boolean skipExcludedUserName = isTransactionUserExcluded(transaction);
         BlockingConsumer<LogMinerEvent> delegate = new BlockingConsumer<LogMinerEvent>() {
@@ -374,7 +375,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 }
 
                 offsetContext.setTransactionId(transactionId);
-                offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffsetSeconds));
+                offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 offsetContext.setTableId(event.getTableId());
                 if (--numEvents == 0) {
                     // reached the last event update the commit scn in the offsets

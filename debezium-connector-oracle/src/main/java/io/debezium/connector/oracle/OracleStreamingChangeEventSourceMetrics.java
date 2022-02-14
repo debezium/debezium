@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -85,7 +86,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     private final AtomicInteger warningCount = new AtomicInteger();
     private final AtomicInteger scnFreezeCount = new AtomicInteger();
     private final AtomicLong timeDifference = new AtomicLong();
-    private final AtomicInteger offsetSeconds = new AtomicInteger();
+    private final AtomicReference<ZoneOffset> zoneOffset = new AtomicReference<>();
     private final AtomicReference<Scn> oldestScn = new AtomicReference<>();
     private final AtomicReference<Scn> committedScn = new AtomicReference<>();
     private final AtomicReference<Scn> offsetScn = new AtomicReference<>();
@@ -129,7 +130,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
         this.clock = clock;
         startTime = clock.instant();
         timeDifference.set(0L);
-        offsetSeconds.set(0);
+        zoneOffset.set(ZoneOffset.UTC);
 
         currentScn.set(Scn.NULL);
         oldestScn.set(Scn.NULL);
@@ -684,9 +685,8 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
      * @param databaseSystemTime the system time (<code>SYSTIMESTAMP</code>) of the database
      */
     public void calculateTimeDifference(OffsetDateTime databaseSystemTime) {
-        int offsetSeconds = databaseSystemTime.getOffset().getTotalSeconds();
-        this.offsetSeconds.set(offsetSeconds);
-        LOGGER.trace("Timezone offset of database system time is {} seconds", offsetSeconds);
+        this.zoneOffset.set(databaseSystemTime.getOffset());
+        LOGGER.trace("Timezone offset of database system time is {} seconds", zoneOffset.get().getTotalSeconds());
 
         Instant now = clock.instant();
         long timeDiffMillis = Duration.between(databaseSystemTime.toInstant(), now).toMillis();
@@ -694,13 +694,13 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
         LOGGER.trace("Current time {} ms, database difference {} ms", now.toEpochMilli(), timeDiffMillis);
     }
 
-    public long getDatabaseOffsetSeconds() {
-        return offsetSeconds.get();
+    public ZoneOffset getDatabaseOffset() {
+        return zoneOffset.get();
     }
 
     public void calculateLagMetrics(Instant changeTime) {
         if (changeTime != null) {
-            final Instant correctedChangeTime = changeTime.plusMillis(timeDifference.longValue()).minusSeconds(offsetSeconds.longValue());
+            final Instant correctedChangeTime = changeTime.plusMillis(timeDifference.longValue()).minusSeconds(zoneOffset.get().getTotalSeconds());
             final Duration lag = Duration.between(correctedChangeTime, clock.instant()).abs();
             lagFromTheSourceDuration.set(lag);
 
