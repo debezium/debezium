@@ -1,7 +1,7 @@
 package io.debezium.server.redis;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 import io.quarkus.test.junit.QuarkusTestProfile;
 

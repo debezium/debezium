@@ -1,10 +1,10 @@
 package io.debezium.server.redis;
 
-import io.debezium.util.Testing;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
+import io.debezium.util.Testing;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 public class RedisStreamTestProfile implements QuarkusTestProfile {
