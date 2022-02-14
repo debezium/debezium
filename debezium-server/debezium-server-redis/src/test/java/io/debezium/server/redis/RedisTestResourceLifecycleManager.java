@@ -8,10 +8,10 @@ package io.debezium.server.redis;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import io.debezium.server.TestConfigSource;
 
 import org.testcontainers.containers.GenericContainer;
 
+import io.debezium.server.TestConfigSource;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
