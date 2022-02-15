@@ -2225,7 +2225,9 @@ deallocate_unused_clause
     ;
 
 shrink_clause
-    : SHRINK SPACE_KEYWORD COMPACT? CASCADE?
+    // CHECK is an internal Oracle option
+    // It is used to check for proper segment type and segment attributes to allow shrink
+    : SHRINK SPACE_KEYWORD (COMPACT|CASCADE|CHECK)?
     ;
 
 records_per_block_clause
