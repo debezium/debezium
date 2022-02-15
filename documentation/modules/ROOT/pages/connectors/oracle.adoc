@@ -899,7 +899,7 @@ Examining the `schema` portion of the preceding event's _value_, we can see how 
 [TIP]
 ====
 The names of the schemas for the `before` and `after` fields are of the form `_<logicalName>_._<schemaName>_._<tableName>_.Value`, and thus are entirely independent from the schemas for all other tables.
-This means that when using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Converter], the resulting Avro schems for _each table_ in each _logical source_ have their own evolution and history.
+This means that when using the xref:{link-avro-serialization}#avro-serialization[Avro Converter], the resulting Avro schems for _each table_ in each _logical source_ have their own evolution and history.
 ====
 
 The `payload` portion of this event's _value_, provides information about the event.
@@ -909,7 +909,7 @@ It describes that a row was created (`op=c`), and shows that the `after` field v
 ====
 By default, the JSON representations of events are much larger than the rows they describe.
 The increased size results from the JSON representation including both the schema and payload portions of a message.
-You can use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
+You can use the xref:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
 ====
 
 // Type: continue
