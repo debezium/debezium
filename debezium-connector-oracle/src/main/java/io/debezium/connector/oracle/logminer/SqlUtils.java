@@ -108,7 +108,7 @@ public class SqlUtils {
         // FROM V$LOGFILE F, V$LOG L
         // LEFT JOIN V$ARCHIVED_LOG A
         // ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE#
-        // WHERE A.FIRST_CHANGE# IS NULL
+        // WHERE (A.FIRST_CHANGE# IS NULL OR A.STATUS <> 'A')
         // AND F.GROUP# = L.GROUP#
         // GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#
         //
@@ -149,7 +149,7 @@ public class SqlUtils {
             sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ").append(LOG_VIEW).append(" L ");
             sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
             sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
-            sb.append("WHERE A.FIRST_CHANGE# IS NULL ");
+            sb.append("WHERE (A.STATUS <> 'A' OR A.FIRST_CHANGE# IS NULL) ");
             sb.append("AND F.GROUP# = L.GROUP# ");
             sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE# ");
             sb.append("UNION ");
