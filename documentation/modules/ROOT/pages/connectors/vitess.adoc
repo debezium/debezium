@@ -908,7 +908,7 @@ a|_n/a_
 [[setting-up-vitess]]
 == Seting up Vitess
 
-You can follow the link:https://vitess.io/docs/get-started/local-docker/[Local Install via Docker] guide, or the link:https://vitess.io/docs/get-started/operator/[Vitess Operator for Kubernetes] guide to install Vitess. No special set up is needed to use the {prodname} Vitess connector.
+{prodname} does not require any specific configuration for use with Vitess. Install Vitess according to the standard instructions in the link:https://vitess.io/docs/get-started/local-docker/[Local Install via Docker] guide, or the link:https://vitess.io/docs/get-started/operator/[Vitess Operator for Kubernetes] guide. 
 
 .Checklist
 

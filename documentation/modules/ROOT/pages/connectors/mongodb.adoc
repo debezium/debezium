@@ -1037,8 +1037,8 @@ ifdef::community[]
 [[mongodb-in-the-cloud]]
 === MongoDB in the Cloud
 
-The {prodname} connector for MongoDB can be used with https://www.mongodb.com/atlas/database[MongoDB Atlas].
-Please make sure to have one of the xref:mongodb-property-capture-mode[`capture modes`] based on change streams (rather than oplog) enabled when connecting to MongoDB Atlas.
+You can use the {prodname} connector for MongoDB with https://www.mongodb.com/atlas/database[MongoDB Atlas].
+When connecting {prodname} to MongoDB Atlas, enable one of the xref:mongodb-property-capture-mode[`capture modes`] to be based on change streams, rather than oplog.
 endif::community[]
 
 // Type: assembly
