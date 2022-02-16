@@ -52,16 +52,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_ADDRESS = PROP_PREFIX + "address";
     private static final String PROP_USER = PROP_PREFIX + "user";
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
-    private static final String PROP_MINID = PROP_PREFIX + "minid";
-    private static final String PROP_MAXLEN = PROP_PREFIX + "maxlen";
 
-    private HostAndPort address;
-    private Optional<String> user;
-    private Optional<String> password;
-    private Optional<String> minIdTrim;
-    private Optional<Long> maxLenTrim;
-
-    private final XAddParams params = XAddParams.xAddParams();
+    private final XAddParams addParams = XAddParams.xAddParams();
 
     @ConfigProperty(name = PROP_PREFIX + "batch.size", defaultValue = "500")
     Integer batchSize;
@@ -78,10 +70,16 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @ConfigProperty(name = PROP_PREFIX + "null.value", defaultValue = "default")
     String nullValue;
 
-    @ConfigProperty(name = PROP_PREFIX + "exact.trimming", defaultValue = "false")
+    @ConfigProperty(name = PROP_PREFIX + "trim.maxlen", defaultValue = "null")
+    Long maxLenTrim;
+
+    @ConfigProperty(name = PROP_PREFIX + "trim.relative.minid", defaultValue = "null")
+    Long relativeMinIdTrim;
+
+    @ConfigProperty(name = PROP_PREFIX + "trim.exact", defaultValue = "false")
     Boolean exactTrimming;
 
-    @ConfigProperty(name = PROP_PREFIX + "trim.limit", defaultValue = "null")
+    @ConfigProperty(name = PROP_PREFIX + "trim.limit", defaultValue = "-1")
     Long trimLimit;
 
     private Jedis client = null;
@@ -89,21 +87,24 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
-        address = HostAndPort.from(config.getValue(PROP_ADDRESS, String.class));
-        user = config.getOptionalValue(PROP_USER, String.class);
-        password = config.getOptionalValue(PROP_PASSWORD, String.class);
-        minIdTrim = config.getOptionalValue(PROP_MINID, String.class);
-        maxLenTrim = config.getOptionalValue(PROP_MAXLEN, Long.class);
+        HostAndPort address = HostAndPort.from(config.getValue(PROP_ADDRESS, String.class));
+        Optional<String> user = config.getOptionalValue(PROP_USER, String.class);
+        Optional<String> password = config.getOptionalValue(PROP_PASSWORD, String.class);
 
-        if (minIdTrim.isPresent() || maxLenTrim.isPresent()) {
-            minIdTrim.ifPresent(params::minId);
-            maxLenTrim.ifPresent(params::maxLen);
+        if (maxLenTrim != null) {
+            addParams.maxLen(maxLenTrim);
+        }
+
+        if (maxLenTrim != null || relativeMinIdTrim != null) {
             if (exactTrimming) {
-                params.exactTrimming();
+                addParams.exactTrimming();
             }
             else {
-                params.approximateTrimming();
-                params.limit(trimLimit);
+                addParams.approximateTrimming();
+                if (trimLimit > 0) {
+                    addParams.limit(trimLimit);
+                }
+
             }
         }
 
@@ -159,6 +160,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         LOGGER.info("Handling a batch of {} records", records.size());
         batches(records, batchSize).forEach(batch -> {
             boolean completedSuccessfully = false;
+            if (relativeMinIdTrim != null && maxLenTrim == null) {
+                long minIdTrim = System.currentTimeMillis() - relativeMinIdTrim;
+                addParams.minId(minIdTrim + "");
+            }
 
             // As long as we failed to execute the current batch to the stream, we should retry if the reason was either a connection error or OOM in Redis.
             while (!completedSuccessfully) {
@@ -186,7 +191,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
 
                             // Add the record to the destination stream
-                            transaction.xadd(destination, Collections.singletonMap(key, value), params);
+                            transaction.xadd(destination, Collections.singletonMap(key, value), addParams);
                         }
 
                         // Execute the transaction in Redis

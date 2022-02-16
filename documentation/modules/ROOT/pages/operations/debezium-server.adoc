@@ -632,6 +632,28 @@ This value will be doubled upon every retry but won't exceed `debezium.sink.redi
 |`10000`
 |Max delay when encountering Redis connection or OOM issues.
 
+|[[redis-trim-maxlen]]<<redis-trim-maxlen, `debezium.sink.redis.trim.maxlen`>>
+|
+|(Optional) Evicts entries as long as the stream's length exceeds the specified threshold.
+
+|[[redis-trim-relative-minid]]<<redis-trim-relative-minid, `debezium.sink.redis.trim.relative.minid`>>
+|
+|(Optional) Specify the milliseconds, relative to the current time,
+for trimming the stream. For example, if you want to continuously
+evict all items older than 1 hour on each; use `3600000`.
+
+|[[redis-trim-limit]]<<redis-trim-limit, `debezium.sink.redis.trim.limit`>>
+|
+|When `redis.trim.maxlen` or `redis.trim.relative.minid` is set and
+`redis.trim.exact` is set to `false`, this is the maximum
+count of events that will be evicted in one operation.
+
+|[[redis-trim-exact]]<<redis-trim-exact, `debezium.sink.redis.trim.exact`>>
+| `false`
+|Whether to trim exactly the amount specified (performance
+may be slower with this turned on).
+
+Read more here: https://redis.io/commands/xtrim#nearly-exact-trimming[Redis: XTRIM Exact]
 |===
 
 
