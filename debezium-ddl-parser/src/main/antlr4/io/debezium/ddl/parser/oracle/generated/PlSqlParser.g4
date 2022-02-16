@@ -2072,12 +2072,19 @@ table_compression
     ;
 
 inmemory_table_clause
-    : INMEMORY inmemory_attributes inmemory_columns_clause
+    : INMEMORY inmemory_attributes? inmemory_columns_clause
     | NO INMEMORY inmemory_columns_clause
     ;
 
+// This rule ignores the attribute order despite the Oracle grammar being explict about the order.
+// This is because Oracle LogMiner may return the generated SQL with out of order attributes such
+// as providing the priority clause prior to the memcompress clause.
+// See DBZ-4752 for more details
 inmemory_attributes
-    : inmemory_memcompress? inmemory_priority? inmemory_distribute? inmemory_duplicate?
+    : inmemory_memcompress inmemory_attributes*
+    | inmemory_priority inmemory_attributes*
+    | inmemory_distribute inmemory_attributes*
+    | inmemory_duplicate inmemory_attributes*
     ;
 
 inmemory_memcompress
