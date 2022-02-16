@@ -3518,6 +3518,18 @@ The following configuration properties are _required_ when using XStreams unless
 |Name of the XStream outbound server configured in the database.
 
 |===
+
+[[oracle-xstreams-dbms-lob-package]]
+=== XStream and DBMS_LOB
+
+Oracle provides a database package called `DBMS_LOB` that consists of a collection of programs to operate on BLOB, CLOB, and NCLOB columns.
+Most of these programs manipulate the LOB column in totality, however, one program, `WRITEAPPEND`, is capable of manipulating a subset of the LOB data buffer.
+
+When using XStream, `WRITEAPPEND` emits a logical change record (LCR) event for each invocation of the program.
+These LCR events are not combined into a single change event like they are when using the Oracle LogMiner adapter, and so consumers of the topic should be prepared to receive events with partial column values.
+This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[DBZ-4741] and will be addressed in a future release.
+
+
 endif::community[]
 
 // Type: concept
