@@ -251,9 +251,8 @@ The project currently builds its jobs in two environments:
 
 Here's a quick check list for a good pull request (PR):
 
-* Discussed and approved on IRC or the mailing list
+* Discussed and approved on Jira, chat or the mailing list
 * A JIRA associated with your PR (include the JIRA issue number in commit comment)
-* One commit per PR
 * One feature/change per PR
 * No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code, if you want to refactor/improve existing code that's a separate discussion and separate JIRA issue)
 * New/changed features have been documented
