@@ -178,9 +178,11 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                         // When Redis reaches its max memory limitation, a JedisDataException will be thrown with one of the messages listed below.
                         // In this case, we will retry execute the batch, assuming some memory will be freed eventually as result
                         // of evicting elements from the stream by the target DB.
-                        if (jde.getMessage().equals("EXECABORT Transaction discarded because of previous errors.") ||
-                                (jde.getMessage().equals("EXECABORT Transaction discarded because of: OOM command not allowed when used memory > 'maxmemory'."))) {
+                        if (jde.getMessage().equals("EXECABORT Transaction discarded because of: OOM command not allowed when used memory > 'maxmemory'.")) {
                             LOGGER.error("Redis runs OOM", jde);
+                        }
+                        else if (jde.getMessage().startsWith("EXECABORT")) {
+                            LOGGER.error("Redis transaction error", jde);
                         }
                         // When Redis is starting, a JedisDataException will be thrown with this message.
                         // We will retry communicating with the target DB as once of the Redis is available, this message will be gone.
