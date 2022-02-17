@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import javax.annotation.PostConstruct;
@@ -31,9 +32,15 @@ import com.google.api.core.ApiFutures;
 import com.google.api.gax.batching.BatchingSettings;
 import com.google.api.gax.batching.FlowControlSettings;
 import com.google.api.gax.batching.FlowController;
+import com.google.api.gax.core.CredentialsProvider;
+import com.google.api.gax.core.NoCredentialsProvider;
+import com.google.api.gax.grpc.GrpcTransportChannel;
 import com.google.api.gax.retrying.RetrySettings;
+import com.google.api.gax.rpc.FixedTransportChannelProvider;
+import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.pubsub.v1.Publisher.Builder;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.ProjectTopicName;
 import com.google.pubsub.v1.PubsubMessage;
@@ -44,6 +51,8 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 
 /**
  * Implementation of the consumer that delivers the messages into Google Pub/Sub destination.
@@ -113,10 +122,17 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
 
     @ConfigProperty(name = PROP_PREFIX + "retry.rpc.timeout.multiplier", defaultValue = "2.0")
     Double rpcTimeoutMultiplier;
+    
+    @ConfigProperty(name = PROP_PREFIX + "address", defaultValue = "")
+    Optional<String> address;
 
     @Inject
     @CustomConsumerBuilder
     Instance<PublisherBuilder> customPublisherBuilder;
+    
+    private ManagedChannel channel;
+    private TransportChannelProvider channelProvider;
+    private CredentialsProvider credentialsProvider;
 
     @PostConstruct
     void connect() {
@@ -141,10 +157,20 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
                     .setLimitExceededBehavior(FlowController.LimitExceededBehavior.Block)
                     .build());
         }
+        
+        if (address.isPresent()) {
+        	String hostport = address.get();
+        	channel = ManagedChannelBuilder
+        			.forTarget(hostport)
+        			.usePlaintext()
+        			.build();
+        	channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
+        	credentialsProvider = NoCredentialsProvider.create();        	
+        }
 
         publisherBuilder = (t) -> {
             try {
-                return Publisher.newBuilder(t)
+                Builder builder = Publisher.newBuilder(t)
                         .setEnableMessageOrdering(orderingEnabled)
                         .setBatchingSettings(batchingSettings.build())
                         .setRetrySettings(
@@ -156,8 +182,13 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
                                         .setMaxRetryDelay(Duration.ofMillis(maxRetryDelay))
                                         .setInitialRpcTimeout(Duration.ofMillis(initialRpcTimeout))
                                         .setRpcTimeoutMultiplier(rpcTimeoutMultiplier)
-                                        .build())
-                        .build();
+                                        .build());
+				
+                if (address.isPresent()) {                	
+                	builder.setChannelProvider(channelProvider).setCredentialsProvider(credentialsProvider);
+                }
+
+				return builder.build();
             }
             catch (IOException e) {
                 throw new DebeziumException(e);
@@ -177,6 +208,10 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
                 LOGGER.warn("Exception while closing publisher: {}", e);
             }
         });
+        
+        if (channel != null && !channel.isShutdown()) {		
+        	channel.shutdown();
+        }
     }
 
     @Override
