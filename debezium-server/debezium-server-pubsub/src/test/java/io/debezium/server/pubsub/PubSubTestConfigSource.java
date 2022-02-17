@@ -14,10 +14,13 @@ import io.debezium.server.TestConfigSource;
 
 public class PubSubTestConfigSource extends TestConfigSource {
 
+	public static final String PUB_SUB_ADDRESS = System.getenv("PUBSUB_EMULATOR_HOST");
+	
     public PubSubTestConfigSource() {
         Map<String, String> pubsubTest = new HashMap<>();
 
         pubsubTest.put("debezium.sink.type", "pubsub");
+        pubsubTest.put("debezium.sink.pubsub.address", PUB_SUB_ADDRESS);
         pubsubTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         pubsubTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
