@@ -129,7 +129,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             throws InterruptedException {
         DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
 
-        LOGGER.info("Handling a batch of {} records", records.size());
+        LOGGER.trace("Handling a batch of {} records", records.size());
         batches(records, batchSize).forEach(batch -> {
             boolean completedSuccessfully = false;
 
@@ -149,7 +149,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                 else {
                     Transaction transaction;
                     try {
-                        LOGGER.info("Preparing a Redis Transaction of {} records", batch.size());
+                        LOGGER.trace("Preparing a Redis Transaction of {} records", batch.size());
                         transaction = client.multi();
 
                         // Add the batch records to the stream(s) via Transaction
