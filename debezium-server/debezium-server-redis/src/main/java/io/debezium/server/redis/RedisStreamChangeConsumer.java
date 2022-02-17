@@ -16,6 +16,7 @@ import javax.annotation.PreDestroy;
 import javax.enterprise.context.Dependent;
 import javax.inject.Named;
 
+import io.debezium.util.Clock;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -70,10 +71,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @ConfigProperty(name = PROP_PREFIX + "null.value", defaultValue = "default")
     String nullValue;
 
-    @ConfigProperty(name = PROP_PREFIX + "trim.maxlen", defaultValue = "null")
+    @ConfigProperty(name = PROP_PREFIX + "trim.maxlen", defaultValue = "-1")
     Long maxLenTrim;
 
-    @ConfigProperty(name = PROP_PREFIX + "trim.relative.minid", defaultValue = "null")
+    @ConfigProperty(name = PROP_PREFIX + "trim.relative.minid.ms", defaultValue = "-1")
     Long relativeMinIdTrim;
 
     @ConfigProperty(name = PROP_PREFIX + "trim.exact", defaultValue = "false")
@@ -83,6 +84,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     Long trimLimit;
 
     private Jedis client = null;
+    private final Clock clock = Clock.system();
 
     @PostConstruct
     void connect() {
@@ -91,11 +93,11 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         Optional<String> user = config.getOptionalValue(PROP_USER, String.class);
         Optional<String> password = config.getOptionalValue(PROP_PASSWORD, String.class);
 
-        if (maxLenTrim != null) {
+        if (maxLenTrim < 0) {
             addParams.maxLen(maxLenTrim);
         }
 
-        if (maxLenTrim != null || relativeMinIdTrim != null) {
+        if (maxLenTrim < 0 || relativeMinIdTrim < 0) {
             if (exactTrimming) {
                 addParams.exactTrimming();
             }
@@ -160,9 +162,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         LOGGER.trace("Handling a batch of {} records", records.size());
         batches(records, batchSize).forEach(batch -> {
             boolean completedSuccessfully = false;
-            if (relativeMinIdTrim != null && maxLenTrim == null) {
-                long minIdTrim = System.currentTimeMillis() - relativeMinIdTrim;
-                addParams.minId(minIdTrim + "");
+            if (relativeMinIdTrim > 0 && maxLenTrim < 0) {
+                long minIdTrim = clock.currentTimeInMillis() - relativeMinIdTrim;
+                addParams.minId(String.valueOf(minIdTrim));
             }
 
             // As long as we failed to execute the current batch to the stream, we should retry if the reason was either a connection error or OOM in Redis.
