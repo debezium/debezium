@@ -43,7 +43,7 @@ public class RedisStreamIT {
                 .with("password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD)
                 .with("dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME)
                 .with("hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST)
-                .with("port", PostgresTestResourceLifecycleManager.container.getMappedPort(PostgresTestResourceLifecycleManager.POSTGRES_PORT))
+                .with("port", PostgresTestResourceLifecycleManager.getContainer().getMappedPort(PostgresTestResourceLifecycleManager.POSTGRES_PORT))
                 .build());
     }
 

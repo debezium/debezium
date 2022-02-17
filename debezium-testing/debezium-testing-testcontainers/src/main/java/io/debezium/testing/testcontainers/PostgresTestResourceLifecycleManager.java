@@ -26,7 +26,7 @@ public class PostgresTestResourceLifecycleManager implements QuarkusTestResource
     public static final String POSTGRES_HOST = "localhost";
     public static final Integer POSTGRES_PORT = 5432;
 
-    public static final GenericContainer<?> container = new GenericContainer<>(POSTGRES_IMAGE)
+    private final GenericContainer<?> container = new GenericContainer<>(POSTGRES_IMAGE)
             .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
             .withEnv("POSTGRES_USER", POSTGRES_USER)
             .withEnv("POSTGRES_PASSWORD", POSTGRES_PASSWORD)
@@ -35,6 +35,10 @@ public class PostgresTestResourceLifecycleManager implements QuarkusTestResource
             .withEnv("LANG", "en_US.utf8")
             .withExposedPorts(POSTGRES_PORT)
             .withStartupTimeout(Duration.ofSeconds(30));
+
+    public GenericContainer<?> getContainer() {
+        return this.container;
+    }
 
     @Override
     public Map<String, String> start() {
