@@ -54,7 +54,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_USER = PROP_PREFIX + "user";
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
 
-    private final XAddParams addParams = XAddParams.xAddParams();
+    private final XAddParams xAddParams = XAddParams.xAddParams();
 
     @ConfigProperty(name = PROP_PREFIX + "batch.size", defaultValue = "500")
     Integer batchSize;
@@ -94,17 +94,17 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         Optional<String> password = config.getOptionalValue(PROP_PASSWORD, String.class);
 
         if (maxLenTrim < 0) {
-            addParams.maxLen(maxLenTrim);
+            xAddParams.maxLen(maxLenTrim);
         }
 
         if (maxLenTrim < 0 || relativeMinIdTrim < 0) {
             if (exactTrimming) {
-                addParams.exactTrimming();
+                xAddParams.exactTrimming();
             }
             else {
-                addParams.approximateTrimming();
+                xAddParams.approximateTrimming();
                 if (trimLimit > 0) {
-                    addParams.limit(trimLimit);
+                    xAddParams.limit(trimLimit);
                 }
 
             }
@@ -164,7 +164,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             boolean completedSuccessfully = false;
             if (relativeMinIdTrim > 0 && maxLenTrim < 0) {
                 long minIdTrim = clock.currentTimeInMillis() - relativeMinIdTrim;
-                addParams.minId(String.valueOf(minIdTrim));
+                xAddParams.minId(String.valueOf(minIdTrim));
             }
 
             // As long as we failed to execute the current batch to the stream, we should retry if the reason was either a connection error or OOM in Redis.
@@ -193,7 +193,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
 
                             // Add the record to the destination stream
-                            transaction.xadd(destination, Collections.singletonMap(key, value), addParams);
+                            transaction.xadd(destination, Collections.singletonMap(key, value), xAddParams);
                         }
 
                         // Execute the transaction in Redis
