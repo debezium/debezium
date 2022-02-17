@@ -38,7 +38,7 @@ The documentation for each connector provides details about the connectors featu
 endif::product[]
 
 ifdef::community[]
-See the {link-prefix}:{link-connectors}[connector documentation] for a list of all supported databases and detailed information about the features and configuration options of each connector.
+See the xref:{link-connectors}[connector documentation] for a list of all supported databases and detailed information about the features and configuration options of each connector.
 
 {prodname} can also be used as xref:development/engine.adoc[library embedded] into your JVM-based applications;
 via xref:operations/debezium-server.adoc[Debezium Server], you can emit change events to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, etc.

@@ -161,7 +161,7 @@ In addition to the change event messages that a {prodname} connector emits when 
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
-* {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+* xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
 
 // Type: reference
@@ -171,7 +171,7 @@ You can use one of the following methods to configure the connector to apply the
 
 The way that you express filtering conditions depends on the scripting language that you use.
 
-For example, as shown in the {link-prefix}:{link-filtering}#example-basic-filter-configuration-example[basic configuration example], when you use `Groovy` as the expression language,
+For example, as shown in the xref:{link-filtering}#example-basic-filter-configuration-example[basic configuration example], when you use `Groovy` as the expression language,
 the following expression removes all messages, except for update records that have `id` values set to `2`:
 
 [source,groovy]
@@ -183,7 +183,7 @@ Other languages use different methods to express the same condition.
 [TIP]
 ====
 The {prodname} MongoDB connector emits the `after` and `patch` fields as serialized JSON documents rather than as structures.
-To use the filter SMT with the MongoDB connector, you must first unwind the fields by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
+To use the filter SMT with the MongoDB connector, you must first unwind the fields by applying the xref:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
 
 You could also take the approach of using a JSON parser within the expression.
 For example, if you use Groovy as the expression language, add the `groovy-json` artifact to the classpath, and then add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
