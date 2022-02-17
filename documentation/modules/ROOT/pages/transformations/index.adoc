@@ -1,6 +1,6 @@
 = Transformations
 
-Connectors can be configured with transformations to make lightweight per message modifications. {prodname} provides several link:{link-kafka-docs}/#connect_transforms[single message transformations] (SMTs) that you can use to either modify records before they are sent to Apache Kafka (by applying them to the {prodname} connectors), or when they are read from Kafka by a sink connector. Also {link-prefix}:{link-debezium-server}[{prodname} Server] supports the usage of SMTs.
+Connectors can be configured with transformations to make lightweight per message modifications. {prodname} provides several link:{link-kafka-docs}/#connect_transforms[single message transformations] (SMTs) that you can use to either modify records before they are sent to Apache Kafka (by applying them to the {prodname} connectors), or when they are read from Kafka by a sink connector. Also xref:{link-debezium-server}[{prodname} Server] supports the usage of SMTs.
 
 The following SMTs are provided by {prodname}:
 

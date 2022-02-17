@@ -16,7 +16,7 @@ When a row in the database changes,
 ====
 In a production environment, you would typically either use the Kafka tools to manually create the necessary topics,
 including specifying the number of replicas,
-or you'd use the Kafka Connect mechanism for customizing the settings of {link-prefix}:{link-topic-auto-creation}[auto-created] topics.
+or you'd use the Kafka Connect mechanism for customizing the settings of xref:{link-topic-auto-creation}[auto-created] topics.
 However, for this tutorial, Kafka is configured to automatically create the topics with just one replica.
 ====
 
@@ -67,7 +67,7 @@ This name will be used as the prefix for all Kafka topics.
 <7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
 Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
 
-For more information, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
+For more information, see xref:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
 --
 
 ifdef::community[]

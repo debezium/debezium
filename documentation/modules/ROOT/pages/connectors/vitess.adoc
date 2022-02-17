@@ -525,7 +525,7 @@ a|In the `schema` section, each `name` field specifies the schema for a field in
  +
 `Vitess_server.commerce.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. +
  +
-Names of schemas for `before` and `after` fields are of the form `_logicalName_._keyspaceName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the {link-prefix}:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._keyspaceName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the xref:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
 
 |3
 |`name`
@@ -540,7 +540,7 @@ a|`Vitess_server.commerce.customers.Envelope` is the schema for the overall stru
 |The value's actual data. This is the information that the change event is providing. +
  +
 It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
-However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+However, by using the xref:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
 |6
 |`before`
@@ -1019,7 +1019,7 @@ The {prodname} Vitess connector provides only one type of metrics that are in ad
 
 * xref:vitess-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
-{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
 // Type: reference
 // ModuleID: monitoring-debezium-vitess-connector-record-streaming
@@ -1243,7 +1243,7 @@ The following _advanced_ configuration properties have defaults that work in mos
 |[[vitess-property-sanitize-field-names]]<<vitess-property-sanitize-field-names, `+sanitize.field.names+`>>
 |`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. +
 `false` if not.
-|Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
+|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
 |

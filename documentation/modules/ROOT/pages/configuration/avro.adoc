@@ -23,7 +23,7 @@ For each change event record, the {prodname} connector completes the following a
 You can specify converters for each individual {prodname} connector instance.
 Kafka Connect provides a JSON converter that serializes the record keys and values into JSON documents.
 The default behavior is that the JSON converter includes the record's message schema, which makes each record very verbose.
-The {link-prefix}:{link-tutorial}[{name-tutorial}] shows what the records look like when both payload and schemas are included.
+The xref:{link-tutorial}[{name-tutorial}] shows what the records look like when both payload and schemas are included.
 If you want records to be serialized with JSON, consider setting the following connector configuration properties to `false`:
 
 * `key.converter.schemas.enable`

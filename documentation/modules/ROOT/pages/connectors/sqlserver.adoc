@@ -213,7 +213,7 @@ The connector applies similar naming conventions to label its internal database 
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
-For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
+For more information about using the logical topic routing SMT to customize topic naming, see xref:{link-topic-routing}#topic-routing[Topic routing].
 
 
 // Type: concept
@@ -250,7 +250,7 @@ The format of the messages that a connector emits to its schema change topic is 
 
 * You enable CDC for a table.
 * You disable CDC for a table.
-* You alter the structure of a table for which CDC is enabled by following the {link-prefix}:{link-sqlserver-connector}#sqlserver-schema-evolution[schema evolution procedure].
+* You alter the structure of a table for which CDC is enabled by following the xref:{link-sqlserver-connector}#sqlserver-schema-evolution[schema evolution procedure].
 
 .Example: Message emitted to the SQL Server connector schema change topic
 The following example shows a message in the schema change topic.
@@ -461,7 +461,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 |`schema`
 |The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
  +
-It is possible to override the table's primary key by setting the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+It is possible to override the table's primary key by setting the xref:{link-sqlserver-connector}#sqlserver-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
 
 |2
 |`payload`
@@ -477,7 +477,7 @@ It is possible to override the table's primary key by setting the {link-prefix}:
 
 |===
 
-By default, the connector streams change event records to topics with names that are the same as the event's originating table. See {link-prefix}:{link-sqlserver-connector}#sqlserver-topic-names[topic names].
+By default, the connector streams change event records to topics with names that are the same as the event's originating table. See xref:{link-sqlserver-connector}#sqlserver-topic-names[topic names].
 
 [WARNING]
 ====
@@ -949,7 +949,7 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 
 [NOTE]
 ====
-Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a _delete_ event and a {link-prefix}:{link-sqlserver-connector}#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by a _create_ event with the new key for the row.
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a _delete_ event and a xref:{link-sqlserver-connector}#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by a _create_ event with the new key for the row.
 ====
 
 [[sqlserver-delete-events]]
@@ -1094,7 +1094,7 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-Unless overridden via the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-transaction-topic[`transaction.topic`] option,
+Unless overridden via the xref:{link-sqlserver-connector}#sqlserver-property-transaction-topic[`transaction.topic`] option,
 transaction events are written to the topic named `_database.server.name_.transaction`.
 
 //Type: concept
@@ -1242,7 +1242,7 @@ If present, a column's default value is propagated to the corresponding field's 
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
 ifdef::community[]
-Passing the default value helps though with satisfying the compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when xref:{link-avro-serialization}[using Avro] as serialization format together with the Confluent schema registry.
 endif::community[]
 
 [[sql-server-temporal-values]]
@@ -1364,7 +1364,7 @@ Note that the timezone of the JVM running Kafka Connect and {prodname} does not 
 [id="sql-server-decimal-values"]
 ==== Decimal values
 
-{prodname} connectors handle decimals according to the setting of the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
+{prodname} connectors handle decimals according to the setting of the xref:{link-sqlserver-connector}#sqlserver-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
 
 decimal.handling.mode=precise::
 +
@@ -1683,13 +1683,13 @@ To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Serv
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* SQL Server is installed, is {link-prefix}:{link-sqlserver-connector}#setting-up-sqlserver[configured for CDC], and is ready to be used with the {prodname} connector.
+* SQL Server is installed, is xref:{link-sqlserver-connector}#setting-up-sqlserver[configured for CDC], and is ready to be used with the {prodname} connector.
 
 .Procedure
 . Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server connector plug-in archive]
 . Extract the files into your Kafka Connect environment.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
-. {link-prefix}:{link-sqlserver-connector}#sqlserver-example-configuration[Configure the connector] and {link-prefix}:{link-sqlserver-connector}#sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+. xref:{link-sqlserver-connector}#sqlserver-example-configuration[Configure the connector] and xref:{link-sqlserver-connector}#sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Åpache ZooKeeper, Apache Kafka, and Kafka Connect.
@@ -1968,7 +1968,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 
 endif::community[]
 
-For the complete list of the configuration properties that you can set for the {prodname} SQL Server connector, see {link-prefix}:{link-sqlserver-connector}#sqlserver-connector-properties[SQL Server connector properties].
+For the complete list of the configuration properties that you can set for the {prodname} SQL Server connector, see xref:{link-sqlserver-connector}#sqlserver-connector-properties[SQL Server connector properties].
 
 ifdef::community[]
 You can send this configuration with a `POST` command to a running Kafka Connect service.
@@ -1985,7 +1985,7 @@ To start running a {prodname} SQL Server connector, create a connector configura
 
 .Prerequisites
 
-* {link-prefix}:{link-sqlserver-connector}#setting-up-sqlserver[CDC is enabled on SQL Server].
+* xref:{link-sqlserver-connector}#setting-up-sqlserver[CDC is enabled on SQL Server].
 * The {prodname} SQL Server connector is installed.
 
 .Procedure
@@ -1997,7 +1997,7 @@ endif::community[]
 
 .Results
 
-When the connector starts, it {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshots[performs a consistent snapshot] of the SQL Server databases that the connector is configured for.
+When the connector starts, it xref:{link-sqlserver-connector}#sqlserver-snapshots[performs a consistent snapshot] of the SQL Server databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
 // Type: reference
@@ -2132,7 +2132,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See xref:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
 
 |[[sqlserver-property-decimal-handling-mode]]<<sqlserver-property-decimal-handling-mode,`+decimal.handling.mode+`>>
 |`precise`
@@ -2179,7 +2179,7 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _schemaName_._tableName_._typeName_.
-See {link-prefix}:{link-sqlserver-connector}#sqlserver-data-types[SQL Server data types] for the list of SQL Server-specific data type names.
+See xref:{link-sqlserver-connector}#sqlserver-data-types[SQL Server data types] for the list of SQL Server-specific data type names.
 
 |[[sqlserver-property-message-key-columns]]<<sqlserver-property-message-key-columns, `+message.key.columns+`>>
 |_n/a_
@@ -2322,7 +2322,7 @@ Defaults to the JDBC driver's default fetch size.
 
 |[[sqlserver-property-snapshot-lock-timeout-ms]]<<sqlserver-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`
-|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshots[snapshots]). +
+|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see xref:{link-sqlserver-connector}#sqlserver-snapshots[snapshots]). +
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
 |[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
@@ -2391,7 +2391,7 @@ By default, no operations are skipped.
 
 |[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
+| Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
@@ -2451,8 +2451,8 @@ As a {prodname} user, you must coordinate tasks with the SQL Server database ope
 
 You can use one of the following methods to update capture tables after a schema change:
 
-* {link-prefix}:{link-sqlserver-connector}#offline-schema-updates[Offline schema updates] require you to stop the {prodname} connector before you can update capture tables.
-* {link-prefix}:{link-sqlserver-connector}#online-schema-updates[Online schema updates] can update capture tables while the {prodname} connector is running.
+* xref:{link-sqlserver-connector}#offline-schema-updates[Offline schema updates] require you to stop the {prodname} connector before you can update capture tables.
+* xref:{link-sqlserver-connector}#online-schema-updates[Online schema updates] can update capture tables while the {prodname} connector is running.
 
 There are advantages and disadvantages to using each type of procedure.
 
@@ -2618,7 +2618,7 @@ The connector provides the following metrics:
 * xref:sqlserver-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
 * xref:sqlserver-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
 
-For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation].
+For information about how to expose the preceding metrics through JMX, see the xref:{link-debezium-monitoring}[{prodname} monitoring documentation].
 
 // Type: reference
 // ModuleID: debezium-sqlserver-connector-snapshot-metrics
