@@ -736,7 +736,7 @@ a|`dbserver1.inventory.customers.Envelope` is the schema for the overall structu
 |The value's actual data. This is the information that the change event is providing. +
  +
 It may appear that the JSON representations of the events are much larger than the documents they describe. This is because the JSON representation must include the schema and the payload portions of the message.
-However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+However, by using the xref:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
 |6
 |`after`
@@ -1077,7 +1077,8 @@ ifdef::product[]
 You can use either of the following methods to deploy a {prodname} MongoDB connector:
 
 * xref:openshift-streams-mongodb-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
-+ This is the preferred method.
++
+This is the preferred method.
 * xref:deploying-debezium-mongodb-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
 .Additional resources
