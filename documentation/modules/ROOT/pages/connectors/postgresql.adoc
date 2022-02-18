@@ -2086,12 +2086,12 @@ shared_preload_libraries = 'decoderbufs' // <1>
 ----
 # REPLICATION
 wal_level = logical             // <1>
-max_wal_senders = 1             // <2>
-max_replication_slots = 1       // <3>
 ----
-<1> instructs the server to use logical decoding with the write-ahead log.
-<2> instructs the server to use a maximum of `1` separate process for processing WAL changes.
-<3> instructs the server to allow a maximum of `1` replication slot to be created for streaming WAL changes.
+<1> Instructs the server to use logical decoding with the write-ahead log.
+
+Depending on your requirements, you can set other PostgreSQL streaming replication parameters to improve performance with {prodname}.
+For example, if you increase the number of connectors that access the sending server concurrently, you can set replication parameters to improve streaming performance for the additional connections.
+For more information about configuring streaming replication, see the link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[PostgreSQL documentation].
 
 {prodname} uses PostgreSQL's logical decoding, which uses replication slots.
 Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages. For this reason, it is important to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a replication slot stays unused for too long.
