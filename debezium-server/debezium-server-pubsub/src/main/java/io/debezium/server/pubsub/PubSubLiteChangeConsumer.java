@@ -26,7 +26,10 @@ import org.slf4j.LoggerFactory;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
-import com.google.cloud.pubsublite.*;
+import com.google.cloud.pubsublite.CloudRegionOrZone;
+import com.google.cloud.pubsublite.ProjectId;
+import com.google.cloud.pubsublite.TopicName;
+import com.google.cloud.pubsublite.TopicPath;
 import com.google.cloud.pubsublite.cloudpubsub.Publisher;
 import com.google.cloud.pubsublite.cloudpubsub.PublisherSettings;
 import com.google.protobuf.ByteString;
