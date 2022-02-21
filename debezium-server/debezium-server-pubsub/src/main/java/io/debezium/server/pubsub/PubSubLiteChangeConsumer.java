@@ -26,10 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
-import com.google.cloud.pubsublite.CloudRegionOrZone;
-import com.google.cloud.pubsublite.ProjectNumber;
-import com.google.cloud.pubsublite.TopicName;
-import com.google.cloud.pubsublite.TopicPath;
+import com.google.cloud.pubsublite.*;
 import com.google.cloud.pubsublite.cloudpubsub.Publisher;
 import com.google.cloud.pubsublite.cloudpubsub.PublisherSettings;
 import com.google.protobuf.ByteString;
@@ -52,8 +49,8 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
     private static final Logger LOGGER = LoggerFactory.getLogger(PubSubLiteChangeConsumer.class);
 
     private static final String PROP_PREFIX = "debezium.sink.pubsublite.";
-    private static final String PROP_PROJECT_ID = PROP_PREFIX + "default.project.id";
-    private static final String PROP_REGION = PROP_PREFIX + "default.region";
+    private static final String PROP_PROJECT_ID = PROP_PREFIX + "project.id";
+    private static final String PROP_REGION = PROP_PREFIX + "region";
 
     public static interface PublisherBuilder {
         Publisher get(String topicName);
@@ -75,7 +72,7 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
-        long projectId = config.getValue(PROP_PROJECT_ID, long.class);
+        String projectId = config.getValue(PROP_PROJECT_ID, String.class);
         String region = config.getValue(PROP_REGION, String.class);
 
         if (customPublisherBuilder.isResolvable()) {
@@ -87,7 +84,7 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
             TopicPath topicPath = TopicPath
                     .newBuilder()
                     .setName(TopicName.of(t))
-                    .setProject(ProjectNumber.of(projectId))
+                    .setProject(ProjectId.of(projectId))
                     .setLocation(CloudRegionOrZone.parse(region))
                     .build();
 

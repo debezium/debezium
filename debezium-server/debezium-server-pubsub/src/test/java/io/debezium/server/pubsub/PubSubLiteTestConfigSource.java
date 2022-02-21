@@ -1,10 +1,16 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.server.pubsub;
-
-import io.debezium.server.TestConfigSource;
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+
+import io.debezium.server.TestConfigSource;
 
 public class PubSubLiteTestConfigSource extends TestConfigSource {
 
