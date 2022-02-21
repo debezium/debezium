@@ -13,6 +13,7 @@ import java.util.Optional;
 
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +47,12 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     public static final Field PROP_KEY_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "key")
             .withDescription("The redis key that will be used to store the database history")
             .withDefault(DEFAULT_REDIS_KEY_NAME);
+
+    @ConfigProperty(name = CONFIGURATION_FIELD_PREFIX_STRING + "retry.initial.delay.ms", defaultValue = "300")
+    Integer initialRetryDelay;
+
+    @ConfigProperty(name = CONFIGURATION_FIELD_PREFIX_STRING + "retry.max.delay.ms", defaultValue = "10000")
+    Integer maxRetryDelay;
 
     private static final String SINK_PROP_PREFIX = "debezium.sink.redis.";
 
@@ -134,7 +141,7 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
                             this.connect();
                         })
                 // retry on failure with backoff
-                .onFailure().retry().withBackOff(Duration.ofSeconds(1), Duration.ofSeconds(2)).indefinitely()
+                .onFailure().retry().withBackOff(Duration.ofMillis(initialRetryDelay), Duration.ofMillis(maxRetryDelay)).indefinitely()
                 // write success trace message
                 .invoke(
                         item -> {
