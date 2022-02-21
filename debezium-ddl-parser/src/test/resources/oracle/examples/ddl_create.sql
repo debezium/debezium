@@ -94,6 +94,7 @@ CREATE TABLE CUSTOMER_TABLE (cust_num VARCHAR2(10), order_num VARCHAR2(20), orde
                                 com.oracle.bigdata.overflow:   {"action":"ERROR", "col":"DESCRIPTION"}
                                 com.oracle.bigdata.errorOpt:   [{"action":"replace", "value":"INV_NUM" , "col":["CUST_NUM","ORDER_NUM"]} , {"action":"reject", "col":"ORDER_TOTAL"}]
                           ));
+CREATE TABLE TT_BSTOFF_VERDICHT ( TrxKey NUMBER(12), BStoffPKey NUMBER(12), BStoffBOId VARCHAR2(40), BStoffBelegNr NUMBER(12), BStoffBetrag NUMBER(15,2), BStoffBetragWA NUMBER(15,2),  PRIMARY KEY (TrxKey, BStoffPKey)) ORGANIZATION INDEX;
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);
