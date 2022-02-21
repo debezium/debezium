@@ -31,5 +31,5 @@ public interface LogMinerEventProcessor extends AutoCloseable {
      *
      * @param retention the maximum duration in which long running transactions are allowed.
      */
-    void abandonTransactions(Duration retention);
+    void abandonTransactions(Duration retention) throws InterruptedException;
 }
