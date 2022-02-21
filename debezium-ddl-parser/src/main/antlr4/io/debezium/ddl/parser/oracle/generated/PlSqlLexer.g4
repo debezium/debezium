@@ -2471,26 +2471,3 @@ fragment SIMPLE_LETTER  : [A-Z];
 fragment FLOAT_FRAGMENT : UNSIGNED_INTEGER* '.'? UNSIGNED_INTEGER+;
 fragment NEWLINE        : '\r'? '\n';
 fragment SPACE          : [ \t];
-
-
-// ORACLE HDFS & HIVE rules
-
-COM_ORACLE_HDFS_HIVE_BIGDATA_COLMAP       :   'com.oracle.bigdata.colMap';
-COM_ORACLE_HDFS_HIVE_BIGDATA_ERROROPT     :   'com.oracle.bigdata.errorOpt';
-COM_ORACLE_HDFS_HIVE_BIGDATA_FIELDS       :   'com.oracle.bigdata.fields';
-COM_ORACLE_HDFS_HIVE_BIGDATA_FILEFORMAT   :   'com.oracle.bigdata.fileFormat';
-COM_ORACLE_HDFS_HIVE_BIGDATA_EXEC         :   'com.oracle.bigdata.exec';
-COM_ORACLE_HDFS_HIVE_BIGDATA_QC           :   'com.oracle.bigdata.qc';
-COM_ORACLE_HDFS_HIVE_BIGDATA_OVERFLOW     :   'com.oracle.bigdata.overflow';
-COM_ORACLE_HDFS_HIVE_BIGDATA_ROWFORMAT    :   'com.oracle.bigdata.rowFormat';
-COM_ORACLE_HDFS_HIVE_BIGDATA_TABLENAME    :   'com.oracle.bigdata.tableName';
-
-ET_COL      :   '"col"';
-ET_FIELD    :   '"fields"';
-ET_ACTION   :   '"action"';
-ET_REJECT   :   '"reject"';
-ET_SETNULL  :   '"setnull"';
-ET_REPLACE  :   '"replace"';
-ET_VALUE    :   '"value"';
-ET_TRUNCATE :   '"truncate"';
-ET_ERROR    :   '"error"';
