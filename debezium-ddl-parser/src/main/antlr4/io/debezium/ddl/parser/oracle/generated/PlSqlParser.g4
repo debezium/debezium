@@ -2183,55 +2183,53 @@ et_oracle_datapump
     ;
 
 et_oracle_hdfs_hive
-    : COM_ORACLE_HDFS_HIVE_BIGDATA_COLMAP ( '=' | ':' ) (
-        colmap_entry | ('[' colmap_entry ( ',' colmap_entry)* ']')) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_ERROROPT ( '=' | ':' ) (
-        error_element | ('[' error_element ( ',' error_element)* ']' )) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_FIELDS ( '=' | ':' ) (
-        field_spec et_data_type
-        ( COMMENT col_comment )? (',' COMMENT col_comment )* ) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_FILEFORMAT ( '=' | ':' ) (
-        SEQUENCEFILE
-        | TEXTFILE
-        | RCFILE
-        | ORC
-        | PARQUET
-        | INPUTFORMAT quoted_string OUTPUTFORMAT quoted_string ) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_EXEC ( '=' | ':' ) (
-        et_directory_spec? et_file_spec ) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_QC ( '=' | ':' ) (
-        et_directory_spec? et_file_spec ) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_OVERFLOW ( '=' | ':' ) (
-        overflow_element | ('[' overflow_element ( ',' overflow_element)* ']')) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_ROWFORMAT ( '=' | ':' ) (
-        DELIMITED?
-        ( FIELDS TERMINATED BY CHARACTER ( ESCAPED BY CHARACTER )
-        | COLLECTION ITEMS TERMINATED BY CHARACTER
-        | MAP KEYS TERMINATED BY CHARACTER
-        | LINES TERMINATED BY CHARACTER
-        | NULL_ DEFINED AS CHARACTER
+    : et_oracle_hdfs_hive_parameter_name ('=' | ':')
+        (
+            // com.oracle.bigdata.tablename
+            tableview_name
+            // com.oracle.bigdata.colmap
+            // com.oracle.bigdata.erroropt
+            // com.oracle.bigdata.overflow
+            | et_oracle_hdfs_hive_parameter_map
+            | '[' et_oracle_hdfs_hive_parameter_map (',' et_oracle_hdfs_hive_parameter_map)* ']'
+            // com.oracle.bigdata.fields
+            | field_spec et_data_type ( COMMENT col_comment )?(',' COMMENT col_comment)*
+            // com.oracle.bigdata.fileformat
+            | SEQUENCEFILE
+            | TEXTFILE
+            | RCFILE
+            | ORC
+            | PARQUET
+            | INPUTFORMAT quoted_string OUTPUTFORMAT quoted_string
+            // com.oracle.bigdata.exec
+            // co.oracle.bigdata.qc
+            | et_directory_spec? et_file_spec
+            // com.oracle.bigdata.rowformat
+            | DELIMITED?
+                (
+                    FIELDS TERMINATED BY CHARACTER ( ESCAPED BY CHARACTER )
+                    | COLLECTION ITEMS TERMINATED BY CHARACTER
+                    | MAP KEYS TERMINATED BY CHARACTER
+                    | LINES TERMINATED BY CHARACTER
+                    | NULL_ DEFINED AS CHARACTER
+                )
+                | SERDE quoted_string ( WITH SERDEPROPERTIES ( quoted_string '=' quoted_string ( ',' quoted_string '=' quoted_string )* ) )?
         )
-        | SERDE quoted_string ( WITH SERDEPROPERTIES ( quoted_string '=' quoted_string ( ',' quoted_string '=' quoted_string)*))? ) et_oracle_hdfs_hive*
-    | COM_ORACLE_HDFS_HIVE_BIGDATA_TABLENAME ( '=' | ':' ) (
-        tableview_name ) et_oracle_hdfs_hive*
+        et_oracle_hdfs_hive?
     ;
 
-colmap_entry
-    : LEFT_CURLY_PAREN ET_COL BINDVAR ',' ET_FIELD BINDVAR RIGHT_CURLY_PAREN
+et_oracle_hdfs_hive_parameter_map
+    : LEFT_CURLY_PAREN ( et_oracle_hdfs_hive_parameter_mapentry (',' et_oracle_hdfs_hive_parameter_mapentry)* ) RIGHT_CURLY_PAREN
     ;
 
-error_element
-    : LEFT_CURLY_PAREN ET_ACTION ':' ( ET_REJECT | ET_SETNULL | ET_REPLACE) (',' ET_VALUE BINDVAR )
-      ( ',' ET_COL ':'? ( BINDVAR | '[' quoted_string ( ',' quoted_string )* ']' ))? RIGHT_CURLY_PAREN
+et_oracle_hdfs_hive_parameter_mapentry
+    : quoted_string BINDVAR
+    | quoted_string ':' '[' quoted_string (',' quoted_string)* ']'
+    | '[' quoted_string (',' quoted_string)* ']'
     ;
 
 col_comment
     : quoted_string
-    ;
-
-overflow_element
-    : LEFT_CURLY_PAREN ET_ACTION ':' ( ET_TRUNCATE | ET_ERROR )
-      ( ',' ET_COL ':'? ( BINDVAR | '[' quoted_string ( ',' quoted_string )* ']' ))? RIGHT_CURLY_PAREN
     ;
 
 et_data_type
@@ -2330,11 +2328,15 @@ field_definitions
     ;
 
 et_field_list
-    : ( field_spec et_pos_spec? et_datatype_spec? et_init_spec? et_LLS_spec? ) ( ',' et_field_list )*
+    : field_spec (et_pos_spec? et_datatype_spec? et_init_spec? et_LLS_spec?) (',' et_field_list)*
     ;
 
 et_pos_spec
-    : POSITION? '(' (( UNSIGNED_INTEGER | '*' | ( '+' | '-' ) (UNSIGNED_INTEGER | '*' | '-' )) ( ':' | '-' ) ( UNSIGNED_INTEGER | UNSIGNED_INTEGER )) ')'
+    : POSITION?
+        '('
+            ( '*'? ('+'|'-')? UNSIGNED_INTEGER? )
+            ( BINDVAR | ( ':' ('+'|'-')? UNSIGNED_INTEGER ) )
+        ')'
     ;
 
 et_datatype_spec
@@ -2348,7 +2350,7 @@ et_datatype_spec
       | BINARY_FLOAT EXTERNAL? UNSIGNED_INTEGER? et_delim_spec?
       | BINARY_DOUBLE
       | RAW UNSIGNED_INTEGER?
-      | CHAR EXTERNAL? UNSIGNED_INTEGER? et_delim_spec? et_trim_spec? et_date_format_spec?
+      | CHAR EXTERNAL? ( '(' UNSIGNED_INTEGER ')' )? et_delim_spec? et_trim_spec? et_date_format_spec?
       | ( VARCHAR | VARRAW | VARCHARC | VARRAWC ) ('('( UNSIGNED_INTEGER ',')? UNSIGNED_INTEGER ')')
       )
     ;
@@ -4814,6 +4816,10 @@ column_list
 
 paren_column_list
     : LEFT_PAREN column_list RIGHT_PAREN
+    ;
+
+et_oracle_hdfs_hive_parameter_name
+    : id_expression ('.' id_expression)*
     ;
 
 // PL/SQL Specs

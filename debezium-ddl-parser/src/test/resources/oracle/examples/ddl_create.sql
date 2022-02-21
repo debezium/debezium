@@ -40,10 +40,10 @@ CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), resume CHAR(2000
                                                 FIELDS (first_name VARCHAR(2,12), last_name VARCHAR(2,20), resume VARCHAR(4,10000), picture VARRAW(4,100000)))
                             LOCATION ('info.dat'));
 
---CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth INT, phone CHAR(12), area_code CHAR(3), exchange CHAR(3), extension CHAR(4))
---    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
---                            ACCESS PARAMETERS ( FIELDS RTRIM (first_name (1:15) CHAR(15), last_name (*:+20), year_of_birth (36:39), phone (40:52), area_code (*-12: +3), exchange (*+1: +3), extension (*+1: +4)))
---                            LOCATION ('info.dat'));
+CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth INT, phone CHAR(12), area_code CHAR(3), exchange CHAR(3), extension CHAR(4))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
+                            ACCESS PARAMETERS ( FIELDS RTRIM (first_name (1:15) CHAR(15), last_name (*:+20), year_of_birth (36:39), phone (40:52), area_code (*-12: +3), exchange (*+1: +3), extension (*+1: +4)))
+                            LOCATION ('info.dat'));
 
 CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth CHAR(4))
     ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
@@ -86,14 +86,14 @@ CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth CH
                             ACCESS PARAMETERS (RECORDS FIXED 20 FIELDS (first_name CHAR(7), last_name CHAR(8), year_of_birth CHAR(4)))
                             LOCATION ('info.dat'));
 
---CREATE TABLE CUSTOMER_TABLE (cust_num VARCHAR2(10), order_num VARCHAR2(20), order_date DATE, item_cnt NUMBER, description VARCHAR2(100), order_total NUMBER(8,2))
---    ORGANIZATION EXTERNAL ( TYPE ORACLE_HIVE
---                            ACCESS PARAMETERS (
---                                com.oracle.bigdata.tableName:  order_db.order_summary
---                                com.oracle.bigdata.colMap:     {"col":"ITEM_CNT", "field":"order_line_item_count"}
---                                com.oracle.bigdata.overflow:   {"action":"ERROR", "col":"DESCRIPTION"}
---                                com.oracle.bigdata.errorOpt:   [{"action":"replace", "value":"INV_NUM" , "col":["CUST_NUM","ORDER_NUM"]} , {"action":"reject", "col":"ORDER_TOTAL"}]
---                          ));
+CREATE TABLE CUSTOMER_TABLE (cust_num VARCHAR2(10), order_num VARCHAR2(20), order_date DATE, item_cnt NUMBER, description VARCHAR2(100), order_total NUMBER(8,2))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_HIVE
+                            ACCESS PARAMETERS (
+                                com.oracle.bigdata.tableName:  order_db.order_summary
+                                com.oracle.bigdata.colMap:     {"col":"ITEM_CNT", "field":"order_line_item_count"}
+                                com.oracle.bigdata.overflow:   {"action":"ERROR", "col":"DESCRIPTION"}
+                                com.oracle.bigdata.errorOpt:   [{"action":"replace", "value":"INV_NUM" , "col":["CUST_NUM","ORDER_NUM"]} , {"action":"reject", "col":"ORDER_TOTAL"}]
+                          ));
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);
