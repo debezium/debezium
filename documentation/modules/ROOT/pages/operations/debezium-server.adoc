@@ -204,15 +204,15 @@ The source configuration uses the same configuration properties that are describ
 
 |[[redis-address]]<<redis-address, `debezium.source.offset.storage.redis.address`>>
 |
-|(Optional) If using Redis to store offsets, an address, formatted as `host:port`, at which the Redis target streams are provided.
+|(Optional) If using Redis to store offsets, an address, formatted as `host:port`, at which the Redis target streams are provided. If not supplied, will attempt to read `debezium.sink.redis.address`
 
 |[[redis-user]]<<redis-user, `debezium.source.offset.storage.redis.user`>>
 |
-|(Optional) If using Redis to store offsets, a user name used to communicate with Redis.
+|(Optional) If using Redis to store offsets, a user name used to communicate with Redis. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.user`
 
 |[[redis-password]]<<redis-password, `debezium.source.offset.storage.redis.password`>>
 |
-|(Optional)  If using Redis to store offsets, a password (of respective user) used to communicate with Redis. A password must be set if a user is set.
+|(Optional)  If using Redis to store offsets, a password (of respective user) used to communicate with Redis. A password must be set if a user is set. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.password`
 
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>

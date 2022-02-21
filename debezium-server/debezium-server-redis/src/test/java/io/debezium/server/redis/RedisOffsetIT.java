@@ -14,6 +14,8 @@ import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.server.TestConfigSource;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
@@ -43,6 +45,16 @@ public class RedisOffsetIT {
 
     protected static Jedis jedis;
 
+    private PostgresConnection getPostgresConnection() {
+        return new PostgresConnection(Configuration.create()
+                .with("user", PostgresTestResourceLifecycleManager.POSTGRES_USER)
+                .with("password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD)
+                .with("dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME)
+                .with("hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST)
+                .with("port", PostgresTestResourceLifecycleManager.getContainer().getMappedPort(PostgresTestResourceLifecycleManager.POSTGRES_PORT))
+                .build());
+    }
+
     @Test
     @FixFor("DBZ-4509")
     public void testRedisStream() throws Exception {
@@ -55,7 +67,58 @@ public class RedisOffsetIT {
             return entries.size() >= MESSAGE_COUNT;
         });
 
-        Map<String, String> redisOffsets = jedis.hgetAll("offsets");
+        Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
+        Assertions.assertThat(redisOffsets.size() > 0).isTrue();
+    }
+
+    /**
+    * Test retry mechanism when encountering Redis connectivity issues:
+    * 1. Make Redis to be unavailable while the server is up
+    * 2. Create a new table named redis_test in PostgreSQL and insert 5 records to it
+    * 3. Bring Redis up again and make sure the offsets have been written successfully
+    */
+    @Test
+    @FixFor("DBZ-4509")
+    public void testRedisConnectionRetry() throws Exception {
+        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
+        // wait until the offsets are written for the first time
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+            Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
+            return redisOffsets.size() > 0;
+        });
+
+        // clear the offsets key
+        jedis.del("metadata:debezium:offsets");
+
+        // pause container
+        Testing.print("Pausing container");
+        RedisTestResourceLifecycleManager.pause();
+
+        final PostgresConnection connection = getPostgresConnection();
+        Testing.print("Creating new redis_test table and inserting 5 records to it");
+        connection.execute(
+                "CREATE TABLE inventory.redis_test (id INT PRIMARY KEY)",
+                "INSERT INTO inventory.redis_test VALUES (1)",
+                "INSERT INTO inventory.redis_test VALUES (2)",
+                "INSERT INTO inventory.redis_test VALUES (3)",
+                "INSERT INTO inventory.redis_test VALUES (4)",
+                "INSERT INTO inventory.redis_test VALUES (5)");
+        connection.close();
+
+        Testing.print("Sleeping for 2 seconds to flush records");
+        Thread.sleep(2000);
+        Testing.print("Unpausing container");
+
+        RedisTestResourceLifecycleManager.unpause();
+        Testing.print("Sleeping for 2 seconds to reconnect to redis and write offset");
+
+        // wait until the offsets are re-written
+        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+            Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
+            return redisOffsets.size() > 0;
+        });
+        Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
+        jedis.close();
         Assertions.assertThat(redisOffsets.size() > 0).isTrue();
     }
 
