@@ -6,19 +6,22 @@
 package io.debezium.server.redis;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Field;
+import io.smallrye.mutiny.Uni;
+
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.exceptions.JedisException;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 /** 
  * Implementation of OffsetBackingStore that saves to Redis
@@ -29,58 +32,71 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisOffsetBackingStore.class);
 
-    private static final String PROP_PREFIX = "offset.storage.redis.";
-    private static final String PROP_ADDRESS = PROP_PREFIX + "address";
-    private static final String PROP_USER = PROP_PREFIX + "user";
-    private static final String PROP_PASSWORD = PROP_PREFIX + "password";
-    private static final String PROP_KEY_NAME = PROP_PREFIX + "key_name";
+    private static final String CONFIGURATION_FIELD_PREFIX_STRING = "offset.storage.redis.";
+    public static final Field PROP_ADDRESS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "address")
+            .withDescription("The redis url that will be used to access the database history");
 
-    private HostAndPort address;
-    private Optional<String> user;
-    private Optional<String> password;
-    private String keyName;
+    public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
+            .withDescription("The redis url that will be used to access the database history");
+
+    public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
+            .withDescription("The redis url that will be used to access the database history");
+
+    public static final String DEFAULT_REDIS_KEY_NAME = "metadata:debezium:offsets";
+    public static final Field PROP_KEY_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "key")
+            .withDescription("The redis key that will be used to store the database history")
+            .withDefault(DEFAULT_REDIS_KEY_NAME);
+
+    private static final String SINK_PROP_PREFIX = "debezium.sink.redis.";
+
+    private String redisKeyName;
+    private String address;
+    private String user;
+    private String password;
 
     private Jedis client = null;
+    private Map<String, String> config;
 
     public RedisOffsetBackingStore() {
 
     }
 
     void connect() {
-        if (this.client != null) {
-            try {
-                client.ping();
-                return;
-            }
-            catch (Exception e) {
-                LOGGER.warn("Invalid connection to redis. Reconnecting.");
-            }
-        }
+        HostAndPort address = HostAndPort.from(this.address);
 
         client = new Jedis(address);
-        // connect using only user or user/pass combination
-        if (user.isPresent()) {
-            client.auth(user.get(), password.get());
+        if (this.user != null) {
+            client.auth(this.user, this.password);
         }
-        else if (password.isPresent()) {
-            client.auth(password.get());
+        else if (this.password != null) {
+            client.auth(this.password);
         }
-        // make sure that client is connected
-        client.ping();
-
-        LOGGER.info("Using default Jedis '{}'", client);
+        else {
+            // make sure that client is connected
+            client.ping();
+        }
     }
-
-    private Map<String, String> config;
 
     @Override
     public void configure(WorkerConfig config) {
         super.configure(config);
         this.config = config.originalsStrings();
-        address = HostAndPort.from(this.config.getOrDefault(PROP_ADDRESS, "localhost:6379"));
-        user = Optional.ofNullable(this.config.get(PROP_USER));
-        password = Optional.ofNullable(this.config.get(PROP_PASSWORD));
-        keyName = this.config.getOrDefault(PROP_KEY_NAME, "offsets");
+        // fetch the properties. as a fallback, if we did not specify the redis address, we will take it and all the credentials from the sink
+        this.address = this.config.get(PROP_ADDRESS.name());
+        if (this.address == null) {
+            // try to take the connection details from the redis sink
+            this.address = this.config.get(SINK_PROP_PREFIX + "address");
+            this.user = this.config.get(SINK_PROP_PREFIX + "user");
+            this.password = this.config.get(SINK_PROP_PREFIX + "password");
+        }
+        else {
+            this.user = this.config.get(PROP_USER.name());
+            this.password = this.config.get(PROP_PASSWORD.name());
+        }
+
+        this.redisKeyName = Optional.ofNullable(
+                this.config.get(PROP_KEY_NAME.name())).orElse(DEFAULT_REDIS_KEY_NAME);
+
     }
 
     @Override
@@ -102,7 +118,29 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     * Load offsets from redis keys
     */
     private void load() {
-        Map<String, String> offsets = client.hgetAll(keyName);
+        // fetch the value from Redis
+        Map<String, String> offsets = Uni.createFrom().item(() -> {
+            return (Map<String, String>) client.hgetAll(this.redisKeyName);
+        })
+                // handle failures and retry
+                .onFailure().invoke(
+                        f -> {
+                            LOGGER.warn("Reading from offset store failed with " + f);
+                            LOGGER.warn("Will retry");
+                        })
+                .onFailure(JedisConnectionException.class).invoke(
+                        f -> {
+                            LOGGER.warn("Attempting to reconnect to redis ");
+                            this.connect();
+                        })
+                // retry on failure with backoff
+                .onFailure().retry().withBackOff(Duration.ofSeconds(1), Duration.ofSeconds(2)).indefinitely()
+                // write success trace message
+                .invoke(
+                        item -> {
+                            LOGGER.trace("Offsets fetched from redis: " + item);
+                        })
+                .await().indefinitely();
         this.data = new HashMap<>();
         for (Map.Entry<String, String> mapEntry : offsets.entrySet()) {
             ByteBuffer key = (mapEntry.getKey() != null) ? ByteBuffer.wrap(mapEntry.getKey().getBytes()) : null;
@@ -117,14 +155,31 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     @Override
     protected void save() {
         for (Map.Entry<ByteBuffer, ByteBuffer> mapEntry : data.entrySet()) {
-            try {
-                byte[] key = (mapEntry.getKey() != null) ? mapEntry.getKey().array() : null;
-                byte[] value = (mapEntry.getValue() != null) ? mapEntry.getValue().array() : null;
-                client.hset(keyName.getBytes(), key, value);
-            }
-            catch (JedisException e) {
-                throw new ConnectException(e);
-            }
+            byte[] key = (mapEntry.getKey() != null) ? mapEntry.getKey().array() : null;
+            byte[] value = (mapEntry.getValue() != null) ? mapEntry.getValue().array() : null;
+            // set the value in Redis
+            Uni.createFrom().item(() -> {
+                return (Long) client.hset(this.redisKeyName.getBytes(), key, value);
+            })
+                    // handle failures and retry
+                    .onFailure().invoke(
+                            f -> {
+                                LOGGER.warn("Writing to offset store failed with " + f);
+                                LOGGER.warn("Will retry");
+                            })
+                    .onFailure(JedisConnectionException.class).invoke(
+                            f -> {
+                                LOGGER.warn("Attempting to reconnect to redis ");
+                                this.connect();
+                            })
+                    // retry on failure with backoff
+                    .onFailure().retry().withBackOff(Duration.ofSeconds(1), Duration.ofSeconds(2)).indefinitely()
+                    // write success trace message
+                    .invoke(
+                            item -> {
+                                LOGGER.trace("Record written to offset store in redis: " + value);
+                            })
+                    .await().indefinitely();
         }
     }
 }
