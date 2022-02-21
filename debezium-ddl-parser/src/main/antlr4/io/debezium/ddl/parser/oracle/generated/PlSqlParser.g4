@@ -2407,8 +2407,8 @@ physical_properties
     : deferred_segment_creation? inmemory_table_clause? segment_attributes_clause table_compression?
     | deferred_segment_creation? (
         ORGANIZATION (
-            (HEAP segment_attributes_clause? heap_org_table_clause) |
-            (INDEX segment_attributes_clause? index_org_table_clause) |
+            (HEAP segment_attributes_clause? heap_org_table_clause?) |
+            (INDEX segment_attributes_clause? index_org_table_clause?) |
             (EXTERNAL external_table_clause)) |
         EXTERNAL PARTITION ATTRIBUTES external_table_clause (REJECT LIMIT)?
         )
