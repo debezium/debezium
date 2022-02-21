@@ -2089,8 +2089,8 @@ wal_level = logical             // <1>
 ----
 <1> Instructs the server to use logical decoding with the write-ahead log.
 
-Depending on your requirements, you can set other PostgreSQL streaming replication parameters to improve performance with {prodname}.
-For example, if you increase the number of connectors that access the sending server concurrently, you can set replication parameters to improve streaming performance for the additional connections.
+Depending on your requirements, you may have to set other PostgreSQL streaming replication parameters when using {prodname}.
+Examples include `max_wal_senders` and `max_replication_slots` for increasing the number of connectors that can access the sending server concurrently, and `wal_keep_size` for limiting the maximum WAL size which a replication slot will retain.
 For more information about configuring streaming replication, see the link:https://www.postgresql.org/docs/current/runtime-config-replication.html#RUNTIME-CONFIG-REPLICATION-SENDER[PostgreSQL documentation].
 
 {prodname} uses PostgreSQL's logical decoding, which uses replication slots.
