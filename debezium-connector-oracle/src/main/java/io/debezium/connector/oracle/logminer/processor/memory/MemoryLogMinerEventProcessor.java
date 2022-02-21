@@ -107,11 +107,12 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    public void abandonTransactions(Duration retention) {
+    public void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
             final Scn offsetScn = offsetContext.getScn();
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, offsetScn, retention);
-            lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
+            if (lastScnToAbandonTransactions.isPresent()) {
+                Scn thresholdScn = lastScnToAbandonTransactions.get();
                 LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
                 Scn smallestScn = getTransactionCacheMinimumScn();
                 if (!smallestScn.isNull()) {
@@ -138,7 +139,8 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 }
 
                 offsetContext.setScn(thresholdScn);
-            });
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+            }
         }
     }
 
@@ -241,6 +243,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
+                abandonTransactions(getConfig().getLogMiningTransactionRetention());
                 final Scn minStartScn = getTransactionCacheMinimumScn();
                 if (!minStartScn.isNull()) {
                     recentlyProcessedTransactionsCache.entrySet().removeIf(entry -> entry.getValue().compareTo(minStartScn) < 0);
@@ -263,6 +266,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
+                abandonTransactions(getConfig().getLogMiningTransactionRetention());
                 final Scn minStartScn = getTransactionCacheMinimumScn();
                 if (!minStartScn.isNull()) {
                     offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
