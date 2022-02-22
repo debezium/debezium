@@ -6,7 +6,6 @@
 package io.debezium.relational.history;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
@@ -46,7 +45,6 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.errors.UnsupportedVersionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -201,7 +199,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             return false;
         }
     }
-    
+
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
@@ -519,16 +517,16 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         super.initializeStorage();
 
         try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
-        	
+
             NewTopic topic = null;
-            
-			// if possible (underlying client and server are Kafka API 2.4+), we create the
-			// topic without explicitly specifying the replication factor, relying on the
-			// broker default setting
+
+            // if possible (underlying client and server are Kafka API 2.4+), we create the
+            // topic without explicitly specifying the replication factor, relying on the
+            // broker default setting
             try {
-            	if (USE_KAFKA_24_NEW_TOPIC_CONSTRUCTOR) {
-            		topic = new NewTopic(topicName, Optional.of(PARTITION_COUNT), Optional.empty());
-            	}
+                if (USE_KAFKA_24_NEW_TOPIC_CONSTRUCTOR) {
+                    topic = new NewTopic(topicName, Optional.of(PARTITION_COUNT), Optional.empty());
+                }
             }
             catch (Exception ex) {
                 if (!(ex.getCause() instanceof UnsupportedVersionException)) {
@@ -536,14 +534,14 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 }
             }
 
-			// falling back to querying and providing the replication factor explicitly;
-			// that's not the preferred choice, as querying ("DescribeConfigs") requires an
-			// additional ACL/privilege, which we otherwise don't need
+            // falling back to querying and providing the replication factor explicitly;
+            // that's not the preferred choice, as querying ("DescribeConfigs") requires an
+            // additional ACL/privilege, which we otherwise don't need
             if (topic == null) {
                 short replicationFactor = getDefaultTopicReplicationFactor(admin);
                 topic = new NewTopic(topicName, PARTITION_COUNT, replicationFactor);
             }
-            
+
             topic.configs(Collect.hashMapOf(CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE, RETENTION_MS_NAME, Long.toString(RETENTION_MS_MAX), RETENTION_BYTES_NAME,
                     Long.toString(UNLIMITED_VALUE)));
             admin.createTopics(Collections.singleton(topic));
