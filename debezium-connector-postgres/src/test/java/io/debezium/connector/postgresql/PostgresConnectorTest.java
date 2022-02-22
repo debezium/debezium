@@ -33,6 +33,7 @@ public class PostgresConnectorTest {
         config.put(PostgresConnectorConfig.DATABASE_NAME.name(), "postgres");
         config.put(PostgresConnectorConfig.USER.name(), "pikachu");
         config.put(PostgresConnectorConfig.PASSWORD.name(), "pika");
+        config.put(PostgresConnectorConfig.SERVER_NAME.name(), "naruto");
 
         Config validated = connector.validate(config);
         for (ConfigValue value : validated.configValues()) {

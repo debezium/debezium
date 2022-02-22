@@ -85,6 +85,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         final ConfigValue portValue = configValues.get(PostgresConnectorConfig.PORT.name());
         final ConfigValue userValue = configValues.get(PostgresConnectorConfig.USER.name());
         final ConfigValue passwordValue = configValues.get(PostgresConnectorConfig.PASSWORD.name());
+        final ConfigValue logicalValue = configValues.get(PostgresConnectorConfig.SERVER_NAME.name());
 
         // Try to connect to the database ...
         try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION)) {
@@ -145,6 +146,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 databaseValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                 userValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                 passwordValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
+                logicalValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
             }
         }
     }
