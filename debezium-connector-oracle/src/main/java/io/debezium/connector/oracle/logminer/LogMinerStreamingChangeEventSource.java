@@ -167,8 +167,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             endMiningSession(jdbcConnection, offsetContext);
                             initializeRedoLogsForMining(jdbcConnection, true, startScn);
 
-                            processor.abandonTransactions(connectorConfig.getLogMiningTransactionRetention());
-
                             // This needs to be re-calculated because building the data dictionary will force the
                             // current redo log sequence to be advanced due to a complete log switch of all logs.
                             currentRedoLogSequences = getCurrentRedoLogSequences();
@@ -177,10 +175,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         if (context.isRunning()) {
                             startMiningSession(jdbcConnection, startScn, endScn);
                             startScn = processor.process(startScn, endScn);
+                            streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
 
                             captureSessionMemoryStatistics(jdbcConnection);
 
-                            streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
                             pauseBetweenMiningSessions();
                         }
                     }
