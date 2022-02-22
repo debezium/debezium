@@ -91,7 +91,7 @@ pipeline {
                     env.MVN_PROFILE_PROD = params.PRODUCT_BUILD ? "-Pproduct" : ""
 
 //                    Use strimzi build mechanism unless pre-built KC image is provided
-                    env.TEST_CONNECT_STRZ_BUILD = params.TEST_CONNECT_STRZ_IMAGE ? false : true
+                    env.TEST_CONNECT_STRZ_BUILD = params.IMAGE_CONNECT_STRZ ? false : true
 
 //                    Configure images if provided
                     env.IMAGE_TAG_SUFFIX="${BUILD_NUMBER}"
@@ -208,30 +208,6 @@ pipeline {
                 cd ${WORKSPACE}/debezium
                 mvn install -Passembly,oracle -DskipTests -DskipITs 
                 '''
-            }
-        }
-
-
-        stage('Build & Deploy AS Image -- Upstream') {
-            when {
-                expression { !params.PRODUCT_BUILD && !params.IMAGE_CONNECT_STRZ && !params.IMAGE_DBZ_AS  }
-            }
-            steps {
-                withCredentials([
-                        usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
-                ]) {
-                    sh '''
-                    set -x 
-                    cd ${WORKSPACE}/debezium
-                    docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
-                    
-                    mvn install -pl debezium-testing/debezium-testing-system -Pimages,oracle-image,oracleITs \\
-                    -DskipTests \\
-                    -DskipITs \\
-                    -Dimage.build.kc.skip=true \\
-                    -Dimage.tag.suffix="${IMAGE_TAG_SUFFIX}"
-                    '''
-                }
             }
         }
 
