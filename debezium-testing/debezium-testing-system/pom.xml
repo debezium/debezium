@@ -23,8 +23,8 @@
 
     <!--KC image configuration-->
     <image.build.registry>quay.io</image.build.registry>
-    <image.kc>${image.build.registry}/debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}${image.tag.suffix}</image.kc>
-    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}${image.tag.suffix}</image.as>
+    <image.kc>${image.build.registry}/debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.kc>
+    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}</image.as>
 
     <!--Docker configuration-->
     <docker.image.mysql>quay.io/debezium/example-mysql:latest</docker.image.mysql>
