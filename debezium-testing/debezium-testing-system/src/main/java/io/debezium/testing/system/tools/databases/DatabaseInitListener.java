@@ -12,8 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import io.fabric8.kubernetes.client.dsl.ExecListener;
 
-import okhttp3.Response;
-
 /**
  *
  * @author Jakub Cechacek
@@ -30,14 +28,13 @@ public class DatabaseInitListener implements ExecListener {
     }
 
     @Override
-    public void onOpen(Response response) {
+    public void onOpen() {
         LOGGER.info("Initializing  database '" + name + "'");
     }
 
     @Override
     public void onFailure(Throwable t, Response response) {
         LOGGER.error("Error initializing database '" + name + "'");
-        LOGGER.error(response.message());
         latch.countDown();
     }
 
