@@ -181,7 +181,7 @@ public class MySqlConnection extends JdbcConnection {
     }
 
     protected void setSystemProperty(String property, Field field, boolean showValueInError) {
-        String value = connectionConfig.config().getString(field);
+        String value = connectionConfig.originalConfig().getString(field);
         if (value != null) {
             value = value.trim();
             String existingValue = System.getProperty(property);
@@ -540,6 +540,10 @@ public class MySqlConnection extends JdbcConnection {
 
         public JdbcConfiguration config() {
             return jdbcConfig;
+        }
+
+        public Configuration originalConfig() {
+            return config;
         }
 
         public ConnectionFactory factory() {

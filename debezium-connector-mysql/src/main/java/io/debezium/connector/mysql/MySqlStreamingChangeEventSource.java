@@ -9,6 +9,7 @@ import static io.debezium.util.Strings.isNullOrEmpty;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -34,6 +35,7 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
 import org.slf4j.Logger;
@@ -1009,64 +1011,84 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             // Keystore settings can be passed via system properties too so we need to read them
             final String password = System.getProperty("javax.net.ssl.keyStorePassword");
             final String keyFilename = System.getProperty("javax.net.ssl.keyStore");
+            final String trustPassword = System.getProperty("javax.net.ssl.trustStorePassword");
+            final String trustFilename = System.getProperty("javax.net.ssl.trustStore");
             KeyManager[] keyManagers = null;
             if (keyFilename != null) {
                 final char[] passwordArray = (password == null) ? null : password.toCharArray();
                 try {
-                    KeyStore ks = KeyStore.getInstance("JKS");
-                    ks.load(new FileInputStream(keyFilename), passwordArray);
+                    KeyStore ks = loadKeyStore(keyFilename, passwordArray);
 
                     KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
                     kmf.init(ks, passwordArray);
 
                     keyManagers = kmf.getKeyManagers();
                 }
-                catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
+                catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
                     throw new DebeziumException("Could not load keystore", e);
                 }
             }
+            TrustManager[] trustManagers;
+            try {
+                KeyStore ks = null;
+                if (trustFilename != null) {
+                    ks = loadKeyStore(trustFilename, (trustPassword == null) ? null : trustPassword.toCharArray());
+                }
 
+                if (ks == null && (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED)) {
+                    trustManagers = new TrustManager[]{
+                            new X509TrustManager() {
+
+                                @Override
+                                public void checkClientTrusted(X509Certificate[] x509Certificates, String s)
+                                        throws CertificateException {
+                                }
+
+                                @Override
+                                public void checkServerTrusted(X509Certificate[] x509Certificates, String s)
+                                        throws CertificateException {
+                                }
+
+                                @Override
+                                public X509Certificate[] getAcceptedIssuers() {
+                                    return new X509Certificate[0];
+                                }
+                            }
+                    };
+                }
+                else {
+                    TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    tmf.init(ks);
+                    trustManagers = tmf.getTrustManagers();
+                }
+            }
+            catch (KeyStoreException | NoSuchAlgorithmException e) {
+                throw new DebeziumException("Could not load truststore", e);
+            }
             // DBZ-1208 Resembles the logic from the upstream BinaryLogClient, only that
             // the accepted TLS version is passed to the constructed factory
-            if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
-                final KeyManager[] finalKMS = keyManagers;
-                return new DefaultSSLSocketFactory(acceptedTlsVersion) {
+            final KeyManager[] finalKMS = keyManagers;
+            return new DefaultSSLSocketFactory(acceptedTlsVersion) {
 
-                    @Override
-                    protected void initSSLContext(SSLContext sc)
-                            throws GeneralSecurityException {
-                        sc.init(finalKMS, new TrustManager[]{
-                                new X509TrustManager() {
-
-                                    @Override
-                                    public void checkClientTrusted(
-                                                                   X509Certificate[] x509Certificates,
-                                                                   String s)
-                                            throws CertificateException {
-                                    }
-
-                                    @Override
-                                    public void checkServerTrusted(
-                                                                   X509Certificate[] x509Certificates,
-                                                                   String s)
-                                            throws CertificateException {
-                                    }
-
-                                    @Override
-                                    public X509Certificate[] getAcceptedIssuers() {
-                                        return new X509Certificate[0];
-                                    }
-                                }
-                        }, null);
-                    }
-                };
-            }
-            else {
-                return new DefaultSSLSocketFactory(acceptedTlsVersion);
-            }
+                @Override
+                protected void initSSLContext(SSLContext sc) throws GeneralSecurityException {
+                    sc.init(finalKMS, trustManagers, null);
+                }
+            };
         }
 
         return null;
+    }
+
+    private KeyStore loadKeyStore(String filePath, char[] passwordArray) {
+        try (InputStream in = new FileInputStream(filePath)) {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            ks.load(in, passwordArray);
+            return ks;
+        }
+        catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
+            throw new DebeziumException("Error loading keystore", e);
+        }
     }
 
     private void logStreamingSourceState() {
