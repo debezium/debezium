@@ -13,7 +13,6 @@ import java.util.Optional;
 
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +47,15 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
             .withDescription("The redis key that will be used to store the database history")
             .withDefault(DEFAULT_REDIS_KEY_NAME);
 
-    @ConfigProperty(name = CONFIGURATION_FIELD_PREFIX_STRING + "retry.initial.delay.ms", defaultValue = "300")
-    Integer initialRetryDelay;
+    public static final Integer DEFAULT_RETRY_INITIAL_DELAY = 300;
+    public static final Field PROP_RETRY_INITIAL_DELAY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "retry.initial.delay.ms")
+            .withDescription("Initial retry delay (in ms)")
+            .withDefault(DEFAULT_RETRY_INITIAL_DELAY);
 
-    @ConfigProperty(name = CONFIGURATION_FIELD_PREFIX_STRING + "retry.max.delay.ms", defaultValue = "10000")
-    Integer maxRetryDelay;
+    public static final Integer DEFAULT_RETRY_MAX_DELAY = 10000;
+    public static final Field PROP_RETRY_MAX_DELAY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "retry.max.delay.ms")
+            .withDescription("Maximum retry delay (in ms)")
+            .withDefault(DEFAULT_RETRY_MAX_DELAY);
 
     private static final String SINK_PROP_PREFIX = "debezium.sink.redis.";
 
@@ -63,6 +66,9 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
 
     private Jedis client = null;
     private Map<String, String> config;
+
+    private Integer initialRetryDelay;
+    private Integer maxRetryDelay;
 
     public RedisOffsetBackingStore() {
 
@@ -103,6 +109,11 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
 
         this.redisKeyName = Optional.ofNullable(
                 this.config.get(PROP_KEY_NAME.name())).orElse(DEFAULT_REDIS_KEY_NAME);
+        // load retry settings
+        this.initialRetryDelay = Optional.ofNullable(
+                Integer.getInteger(this.config.get(PROP_RETRY_INITIAL_DELAY.name()))).orElse(DEFAULT_RETRY_INITIAL_DELAY);
+        this.maxRetryDelay = Optional.ofNullable(
+                Integer.getInteger(this.config.get(PROP_RETRY_INITIAL_DELAY.name()))).orElse(DEFAULT_RETRY_MAX_DELAY);
 
     }
 
