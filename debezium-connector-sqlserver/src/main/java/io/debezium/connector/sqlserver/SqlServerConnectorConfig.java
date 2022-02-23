@@ -533,8 +533,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 problems.accept(field, null, "Cannot be specified alongside " + DATABASE_NAME);
                 ++count;
             }
-            if (databaseNames.contains(",")) {
-                problems.accept(field, databaseNames, "Only a single database name is currently supported");
+            if (databaseNames.split(",").length == 0) {
+                problems.accept(field, databaseNames, "Cannot be empty");
                 ++count;
             }
         }

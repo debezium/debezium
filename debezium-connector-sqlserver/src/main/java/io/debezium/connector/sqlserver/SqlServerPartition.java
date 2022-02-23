@@ -5,11 +5,18 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAME;
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
+
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import io.debezium.config.Configuration;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 
@@ -70,17 +77,30 @@ public class SqlServerPartition implements Partition {
 
     static class Provider implements Partition.Provider<SqlServerPartition> {
         private final SqlServerConnectorConfig connectorConfig;
+        private final Configuration taskConfig;
 
-        Provider(SqlServerConnectorConfig connectorConfig) {
+        Provider(SqlServerConnectorConfig connectorConfig, Configuration taskConfig) {
             this.connectorConfig = connectorConfig;
+            this.taskConfig = taskConfig;
         }
 
         @Override
         public Set<SqlServerPartition> getPartitions() {
-            return Collections.singleton(new SqlServerPartition(
-                    connectorConfig.getLogicalName(),
-                    connectorConfig.getDatabaseName(),
-                    connectorConfig.isMultiPartitionModeEnabled()));
+            String serverName = connectorConfig.getLogicalName();
+            boolean multiPartitionMode = connectorConfig.isMultiPartitionModeEnabled();
+
+            List<String> databaseNames;
+
+            if (multiPartitionMode) {
+                databaseNames = Arrays.asList(taskConfig.getString(DATABASE_NAMES.name()).split(","));
+            }
+            else {
+                databaseNames = Collections.singletonList(taskConfig.getString(DATABASE_NAME.name()));
+            }
+
+            return databaseNames.stream()
+                    .map(databaseName -> new SqlServerPartition(serverName, databaseName, multiPartitionMode))
+                    .collect(Collectors.toSet());
         }
     }
 }
