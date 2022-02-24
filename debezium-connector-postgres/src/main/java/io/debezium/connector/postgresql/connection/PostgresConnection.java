@@ -84,7 +84,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
      */
     public PostgresConnection(Configuration config, PostgresValueConverterBuilder valueConverterBuilder) {
-        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings, "\"", "\"");
+        super(addDefaultSettings(config), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
 
         if (Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
@@ -104,7 +104,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param typeRegistry an existing/already-primed {@link TypeRegistry} instance
      */
     public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
-        super(config.getJdbcConfig(), FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings, "\"", "\"");
+        super(addDefaultSettings(config.getJdbcConfig()), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -124,6 +124,13 @@ public class PostgresConnection extends JdbcConnection {
      */
     public PostgresConnection(Configuration config) {
         this(config, null);
+    }
+
+    static Configuration addDefaultSettings(Configuration configuration) {
+        // we require Postgres 9.4 as the minimum server version since that's where logical replication was first introduced
+        return configuration.edit()
+                .with("assumeMinServerVersion", "9.4")
+                .build();
     }
 
     /**
@@ -477,11 +484,6 @@ public class PostgresConnection extends JdbcConnection {
         catch (SQLException e) {
             throw new DebeziumException("Couldn't get timestamp utils from underlying connection", e);
         }
-    }
-
-    protected static void defaultSettings(Configuration.Builder builder) {
-        // we require Postgres 9.4 as the minimum server version since that's where logical replication was first introduced
-        builder.with("assumeMinServerVersion", "9.4");
     }
 
     private static void validateServerVersion(Statement statement) throws SQLException {
