@@ -148,7 +148,7 @@ payload       | jsonb                  |
 |`id`
 |Contains the unique ID of the event. In an outbox message, this value is a header. You can use this ID, for example, to remove duplicate messages. +
  +
-To obtain the unique ID of the event from a different outbox table column, set the xref:outbox-event-router-property-table-field-event-id[`table.field.event.id` SMT option] in the connector configuration.
+To obtain the unique ID of the event from a different outbox table column, set the xref:outbox-event-router-property-table-field-event-id[`table.field.event.id`]  SMT option in the connector configuration.
 
 |[[route-by-field-example]]`aggregatetype`
 |Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
@@ -159,7 +159,7 @@ In the second record, the value in the `aggregatetype` column is `orders`.
 The connector emits the first record to the `outbox.event.customers` topic.
 The connector emits the second record to the `outbox.event.orders` topic. +
  +
-To obtain this value from a different outbox table column, set the xref:outbox-event-router-property-route-by-field[`route.by.field` SMT option] in the connector configuration.
+To obtain this value from a different outbox table column, set the xref:outbox-event-router-property-route-by-field[`route.by.field`] SMT option in the connector configuration.
 
 |`aggregateid`
 |Contains the event key, which provides an ID for the payload.
@@ -175,7 +175,7 @@ By default, the Kafka message value is solely comprised of the `payload` value.
 However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately.
 For more information, see xref:emitting-messages-with-additional-fields[Emitting messages with additional fields]. +
  +
-To obtain the event payload from a different outbox table column, set the xref:outbox-event-router-property-table-field-event-payload[`table.field.event.payload` SMT option] in the connector configuration.
+To obtain the event payload from a different outbox table column, set the xref:outbox-event-router-property-table-field-event-payload[`table.field.event.payload`] SMT option in the connector configuration.
 
 |Additional custom columns
 |Any additional columns from the outbox table can be xref:emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. +
@@ -209,7 +209,7 @@ Because the structure of these other messages differs from the structure of the 
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
 * xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
-* Use the xref:outbox-event-router-property-route-topic-regex[route.topic.regex] configuration option for the SMT.
+* Use the xref:outbox-event-router-property-route-topic-regex[`route.topic.regex`] configuration option for the SMT.
 
 // Type: concept
 // Title: Using Avro as the payload format in {prodname} outbox messages
