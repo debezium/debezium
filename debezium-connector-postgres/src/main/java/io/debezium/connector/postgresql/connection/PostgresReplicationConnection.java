@@ -105,7 +105,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
                                           PostgresSchema schema) {
-        super(config.getJdbcConfig(), PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings, "\"", "\"");
+        super(addDefaultSettings(config.getJdbcConfig()), PostgresConnection.FACTORY, null, null, "\"", "\"");
 
         this.connectorConfig = config;
         this.slotName = slotName;
@@ -120,6 +120,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
+    }
+
+    private static Configuration addDefaultSettings(Configuration configuration) {
+        // first copy the parent's default settings...
+        // then set some additional replication specific settings
+        return PostgresConnection.addDefaultSettings(configuration)
+                .edit()
+                .with("replication", "database")
+                .with("preferQueryMode", "simple") // replication protocol only supports simple query mode
+                .build();
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
@@ -644,14 +654,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         close(false);
         // Don't re-execute initial commands on reconnection
         connection(false);
-    }
-
-    protected static void defaultSettings(Configuration.Builder builder) {
-        // first copy the parent's default settings...
-        PostgresConnection.defaultSettings(builder);
-        // then set some additional replication specific settings
-        builder.with("replication", "database")
-                .with("preferQueryMode", "simple"); // replication protocol only supports simple query mode
     }
 
     protected static class ReplicationConnectionBuilder implements Builder {
