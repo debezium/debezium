@@ -7,6 +7,9 @@ package io.debezium.connector.sqlserver;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -372,7 +375,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return CONFIG_DEFINITION.configDef();
     }
 
-    private final String databaseName;
+    private final List<String> databaseNames;
     private final String instanceName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
@@ -391,16 +394,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         if (databaseName != null) {
             multiPartitionMode = false;
-            this.databaseName = databaseName;
+            this.databaseNames = Collections.singletonList(databaseName);
         }
         else if (databaseNames != null) {
             multiPartitionMode = true;
-            this.databaseName = databaseNames;
+            this.databaseNames = Arrays.asList(databaseNames.split(","));
             LOGGER.info("Multi-partition mode is enabled");
         }
         else {
             multiPartitionMode = false;
-            this.databaseName = null;
+            this.databaseNames = Collections.emptyList();
         }
 
         this.instanceName = config.getString(INSTANCE);
@@ -429,8 +432,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return getConfig().subset(DATABASE_CONFIG_PREFIX, true);
     }
 
-    public String getDatabaseName() {
-        return databaseName;
+    public List<String> getDatabaseNames() {
+        return databaseNames;
     }
 
     public String getInstanceName() {
