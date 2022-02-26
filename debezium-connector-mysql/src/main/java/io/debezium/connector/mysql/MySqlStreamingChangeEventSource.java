@@ -1007,6 +1007,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         String acceptedTlsVersion = connection.getSessionVariableForSslVersion();
         if (!isNullOrEmpty(acceptedTlsVersion)) {
             SSLMode sslMode = sslModeFor(connectorConfig.sslMode());
+            LOGGER.info("Enable ssl " + sslMode + " mode for connector " + connectorConfig.getLogicalName());
 
             // Keystore settings can be passed via system properties too so we need to read them
             final String password = System.getProperty("javax.net.ssl.keyStorePassword");
