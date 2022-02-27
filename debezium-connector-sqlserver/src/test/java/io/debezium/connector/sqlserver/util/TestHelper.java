@@ -56,6 +56,9 @@ public class TestHelper {
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testDB";
+    public static final String TEST_DATABASE_1 = "testDB1";
+    public static final String TEST_DATABASE_2 = "testDB2";
+    public static final String TEST_SERVER_NAME = "server1";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private static final String TEST_TASK_ID = "0";
@@ -98,15 +101,6 @@ public class TestHelper {
         }
     }
 
-    public static JdbcConfiguration adminJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX))
-                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
-                .withDefault(JdbcConfiguration.PORT, 1433)
-                .withDefault(JdbcConfiguration.USER, "sa")
-                .withDefault(JdbcConfiguration.PASSWORD, "Password!")
-                .build();
-    }
-
     public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
@@ -141,13 +135,23 @@ public class TestHelper {
     /**
      * Returns a default configuration for connectors in multi-partition mode.
      */
-    public static Configuration.Builder defaultMultiPartitionConfig() {
+    public static Configuration.Builder defaultMultiPartitionConfig(String... databaseNames) {
         return defaultConnectorConfig()
-                .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), TEST_DATABASE);
+                .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), String.join(",", databaseNames));
+    }
+
+    public static Configuration.Builder defaultMultiPartitionConfig() {
+        return defaultMultiPartitionConfig(TEST_DATABASE);
     }
 
     public static void createTestDatabase() {
         createTestDatabase(TEST_DATABASE);
+    }
+
+    public static void createTestDatabases(String... databaseNames) {
+        for (String databaseName : databaseNames) {
+            createTestDatabase(databaseName);
+        }
     }
 
     public static void createTestDatabase(String databaseName) {
@@ -229,7 +233,7 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(TestHelper.adminJdbcConfig(), SourceTimestampMode.getDefaultMode(),
+        return new SqlServerConnection(TestHelper.defaultJdbcConfig(), SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet(), true);
     }
@@ -238,12 +242,23 @@ public class TestHelper {
         return testConnection(TEST_DATABASE);
     }
 
+    /**
+     * Returns a database connection that isn't explicitly connected to any database.
+     */
+    public static SqlServerConnection multiPartitionTestConnection() {
+        return testConnection(defaultJdbcConfig());
+    }
+
     public static SqlServerConnection testConnection(String databaseName) {
         Configuration config = defaultJdbcConfig()
                 .edit()
                 .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
                 .build();
 
+        return testConnection(config);
+    }
+
+    private static SqlServerConnection testConnection(Configuration config) {
         return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet(), true);
@@ -393,6 +408,12 @@ public class TestHelper {
         waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1", databaseName));
     }
 
+    public static void waitForDatabaseSnapshotsToBeCompleted(String... databaseNames) {
+        for (String databaseName : databaseNames) {
+            waitForDatabaseSnapshotToBeCompleted(databaseName);
+        }
+    }
+
     private static void waitForSnapshotToBeCompleted(ObjectName objectName) {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
@@ -416,6 +437,10 @@ public class TestHelper {
                 "server", "server1",
                 "task", taskId,
                 "context", "streaming")));
+    }
+
+    public static void waitForTaskStreamingStarted() {
+        waitForTaskStreamingStarted(TEST_TASK_ID);
     }
 
     public static void waitForStreamingStarted() {
@@ -592,6 +617,10 @@ public class TestHelper {
         catch (ConditionTimeoutException e) {
             throw new IllegalStateException("Expected record never appeared in the CDC table", e);
         }
+    }
+
+    public static String topicName(String databaseName, String tableName) {
+        return String.join(".", TEST_SERVER_NAME, databaseName, "dbo", tableName);
     }
 
     @FunctionalInterface

@@ -334,7 +334,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     @FixFor({ "DBZ-3347", "DBZ-2975" })
     public void shouldContainPartitionInSchemaChangeEventInMultiPartitionMode() throws Exception {
         shouldContainPartitionInSchemaChangeEvent(TestHelper.defaultMultiPartitionConfig(),
-                () -> TestHelper.waitForTaskStreamingStarted("0"),
+                TestHelper::waitForTaskStreamingStarted,
                 Collect.hashMapOf("server", "server1", "database", "testDB"));
     }
 
