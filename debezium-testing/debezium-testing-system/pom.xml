@@ -20,6 +20,7 @@
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
+    <version.apicurio>2.2.0.Final</version.apicurio>
 
     <!--KC image configuration-->
     <image.build.registry>quay.io</image.build.registry>
@@ -58,6 +59,7 @@
     <strimzi.kc.log.level.dbz>DEBUG</strimzi.kc.log.level.dbz>
 
     <!--Apicurio configuration-->
+    <apicurio.crd.version>v1</apicurio.crd.version>
     <apicurio.log.level>INFO</apicurio.log.level>
 
     <!--MySQL configuration-->
@@ -116,7 +118,7 @@
     <!-- Artifact repository for KC build -->
     <as.url>http://debezium-artifact-server.${ocp.project.debezium}.svc.cluster.local:8080</as.url>
     <as.debezium.version>${version.debezium.connector}</as.debezium.version>
-    <as.apicurio.version>${version.apicurio.converter}</as.apicurio.version>
+    <as.apicurio.version>${version.apicurio}</as.apicurio.version>
     <as.apicurio.url>${as.url}/apicurio-registry-distro-connect-converter-${as.apicurio.version}.zip</as.apicurio.url>
   </properties>
 
@@ -182,13 +184,6 @@
     </dependencies>
   </dependencyManagement>
 
-  <repositories>
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-  </repositories>
-
   <dependencies>
     <dependency>
       <groupId>io.fabric8</groupId>
@@ -253,6 +248,12 @@
           <artifactId>jackson-annotations</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>io.apicurio</groupId>
+      <artifactId>apicurio-registry-operator-api-model</artifactId>
+      <version>2.2.0.Final</version>
     </dependency>
 
     <dependency>
@@ -397,50 +398,6 @@
           <artifactId>debezium-connector-oracle</artifactId>
           <classifier>plugin</classifier>
           <type>zip</type>
-        </dependency>
-      </dependencies>
-    </profile>
-
-    <profile>
-      <id>apicurioV1</id>
-      <activation>
-        <property>
-          <name>apicurioV1</name>
-        </property>
-      </activation>
-
-      <properties>
-        <version.apicurio.converter>1.3.2.Final</version.apicurio.converter>
-        <apicurio.crd.version>v1alpha1</apicurio.crd.version>
-      </properties>
-
-      <dependencies>
-        <dependency>
-          <groupId>com.github.jcechace.apicurio-model-generator</groupId>
-          <artifactId>kubernetes-apicurio-registry-model</artifactId>
-          <version>a5c02b71</version>
-        </dependency>
-      </dependencies>
-    </profile>
-
-    <profile>
-      <id>apicurioV2</id>
-      <activation>
-        <property>
-          <name>!apicurioV1</name>
-        </property>
-      </activation>
-
-      <properties>
-        <version.apicurio.converter>2.1.0.Final</version.apicurio.converter>
-        <apicurio.crd.version>v1</apicurio.crd.version>
-      </properties>
-
-      <dependencies>
-        <dependency>
-          <groupId>com.github.jcechace.apicurio-model-generator</groupId>
-          <artifactId>kubernetes-apicurio-registry-model</artifactId>
-          <version>6601010c</version>
         </dependency>
       </dependencies>
     </profile>
