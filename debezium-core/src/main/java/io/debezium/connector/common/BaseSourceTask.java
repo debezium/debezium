@@ -32,6 +32,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
@@ -143,6 +144,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
 
+    private final List<SourceRecord> pollRecords() throws InterruptedException {
+        final List<SourceRecord> records = doPoll();
+        logStatistics(records);
+        return records;
+    }
+
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
         boolean started = startIfNeededAndPossible();
@@ -157,14 +164,51 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
 
         try {
-            final List<SourceRecord> records = doPoll();
-            logStatistics(records);
-            return records;
+            return pollRecords();
         }
         catch (RetriableException e) {
             stop(true);
             throw e;
         }
+        catch (ConnectException connectException) {
+            // In case of Kafka's ConnectException, retry starting the connector with a backoff strategy
+            Configuration config = Configuration.from(props);
+            int maxRetries = config.getInteger(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRIES, 0);
+
+            if (maxRetries == 0) {
+                stop(true);
+                throw connectException;
+            }
+            else {
+                int initialRetryDelay = config.getInteger(CommonConnectorConfig.CONNECT_ERROR_INITIAL_RETRY_DELAY, 300);
+                int maxRetryDelay = config.getInteger(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRY_DELAY, 10000);
+                int totalRetries = 0;
+                DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+                boolean startedSuccessfully = false;
+                while (!startedSuccessfully) {
+                    try {
+                        totalRetries++;
+                        if (state.get() == State.RUNNING) {
+                            stop(true);
+                        }
+                        start(props);
+                        startedSuccessfully = true;
+                    }
+                    catch (Exception e) {
+                        LOGGER.error("Can't start the connector:", e);
+                        if (totalRetries == maxRetries) {
+                            LOGGER.info("Max retries to connect exceeded, stopping connector...");
+                            stop(true);
+                            throw e;
+                        }
+                    }
+
+                    delayStrategy.sleepWhen(!startedSuccessfully);
+                }
+            }
+        }
+
+        return pollRecords();
     }
 
     void logStatistics(final List<SourceRecord> records) {

@@ -487,6 +487,36 @@ public abstract class CommonConnectorConfig {
                     + " matched against this regular expression. If matched the error is changed to retriable.")
             .withDefault(false);
 
+    public static final Field CONNECT_ERROR_MAX_RETRIES = Field.create("connect.error.max.retries")
+            .withDisplayName("Max retries on connection errors")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 998))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(-1)
+            .withValidation(Field::isInteger)
+            .withDescription("The maximum number of times to retry on connection errors before failing the task. Defaults to -1 (no limit).");
+
+    public static final Field CONNECT_ERROR_INITIAL_RETRY_DELAY = Field.create("connect.error.retry.initial.delay.ms")
+            .withDisplayName("Initial retry delay when encountering connection errros (in ms)")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 997))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(300)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("This value will be doubled upon every retry but won't exceed connect.error.max.retry.delay.ms");
+
+    public static final Field CONNECT_ERROR_MAX_RETRY_DELAY = Field.create("connect.error.max.retry.delay.ms")
+            .withDisplayName("Max delay when encountering connection errros (in ms)")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 996))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(10000)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Backoff strategy - max delay when encountering connection errros");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
