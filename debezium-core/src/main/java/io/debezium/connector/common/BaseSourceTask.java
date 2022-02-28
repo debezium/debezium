@@ -188,9 +188,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 while (!startedSuccessfully) {
                     try {
                         totalRetries++;
-                        if (state.get() == State.RUNNING) {
-                            stop(true);
-                        }
+                        LOGGER.trace("Starting connector, attempt {}", totalRetries);
+                        stop(true);
                         start(props);
                         startedSuccessfully = true;
                     }
