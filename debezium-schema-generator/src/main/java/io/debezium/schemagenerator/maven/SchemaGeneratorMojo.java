@@ -7,6 +7,7 @@ package io.debezium.schemagenerator.maven;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,7 +50,7 @@ public class SchemaGeneratorMojo extends AbstractMojo {
     @Parameter(defaultValue = "openapi", property = "schema.format")
     private String format;
 
-    @Parameter(defaultValue = "${project.build.directory}/generated-sources", required = true)
+    @Parameter(defaultValue = "${project.build.directory}${file.separator}generated-sources", required = true)
     private File outputDirectory;
 
     @Parameter(defaultValue = "false")
@@ -97,6 +98,7 @@ public class SchemaGeneratorMojo extends AbstractMojo {
     }
 
     private int exec(String className, String classPath, List<String> jvmArgs, List<String> args) throws IOException, InterruptedException {
+        getLog().debug("Executing SchemaGenerator with classpath: " + classPath);
         String javaHome = System.getProperty("java.home");
         String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
 
@@ -152,7 +154,12 @@ public class SchemaGeneratorMojo extends AbstractMojo {
     }
 
     private String classPathEntryFor(Class<?> clazz) {
-        return File.pathSeparator + clazz.getProtectionDomain().getCodeSource().getLocation().toString();
+        try {
+            return new File(clazz.getProtectionDomain().getCodeSource().getLocation().toURI()).getAbsolutePath();
+        }
+        catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Set<org.eclipse.aether.artifact.Artifact> getDependencies(Artifact inputArtifact) throws MojoExecutionException {
