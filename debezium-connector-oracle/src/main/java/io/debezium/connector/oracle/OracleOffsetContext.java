@@ -71,7 +71,10 @@ public class OracleOffsetContext implements OffsetContext {
         sourceInfo.setLcrPosition(lcrPosition);
         sourceInfoSchema = sourceInfo.schema();
 
-        this.snapshotScn = snapshotScn;
+        // Snapshot SCN is a new field and may be null in cases where the offsets are being read from
+        // and older version of Debezium. In this case, we need to explicitly enforce Scn#NULL usage
+        // when the value is null.
+        this.snapshotScn = snapshotScn == null ? Scn.NULL : snapshotScn;
         this.snapshotPendingTransactions = snapshotPendingTransactions;
 
         this.transactionContext = transactionContext;
