@@ -1172,7 +1172,7 @@ The following table describes how the connector maps basic character types.
 ifdef::community[]
 [NOTE]
 ====
-Support for these data types is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
+Support for `BLOB`, `CLOB`, and `NCLOB` is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
 Please let us know if you encounter any problems while using these data types.
 ====
 endif::community[]
@@ -1184,6 +1184,10 @@ The following table describes how the connector maps binary and character large 
 |Oracle Data Type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
+
+|`BFILE`
+|n/a
+|_This data type is not supported_
 
 |`BLOB`
 |`BYTES`
@@ -1499,6 +1503,20 @@ endif::product[]
 |_This data type is not supported_.
 
 |===
+
+[id="oracle-user-defined-types"]
+=== User-defined types
+
+Oracle allows defining custom user types when the built-in types are insufficient.
+There are a several user-defined types such as Object types, REF data types, Varrays, and Nested Tables.
+At this time, none of these supplied user-defined types are supported by the {prodname} Oracle connector.
+
+[id="oracle-suppplied-types"]
+=== Oracle supplied types
+
+Oracle provides SQL-based interfaces to define new types when the built-in or ANSI-supported types are insufficient.
+Oracle offers several commonly used data types to serve a broad array of purposes such as *Any*, *XML*, or *Spatial* types.
+At this time, none of these are supported by the {prodname} Oracle connector.
 
 [[oracle-default-values]]
 === Default Values
