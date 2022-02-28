@@ -1555,6 +1555,11 @@ For details about setting up Oracle for use with the {prodname} connector, see t
 
 endif::product[]
 
+=== Installation
+
+An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
+The {prodname} Oracle connector is compatible with both installations.
+
 // Type: procedure
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
 // Title: Preparing Oracle databases for use with {prodname}
@@ -1750,6 +1755,22 @@ Without these grants, the connector cannot operate.
 
 |===
 
+=== Standby databases
+
+An Oracle database may have either a physical or a logical standby environment configured in the case of a production failure.
+At this time, the {prodname} Oracle connector cannot use a physical or logical standby database as the change event source.
+There is an open https://issues.redhat.com/browse/DBZ-3866[Jira issue] to investigate this support.
+
+=== Fail-over databases
+
+It is customary for a logical or physical standby to exist in the case of an Oracle production failure.
+When a failure occurs and the standby instance is promoted to production, the database must be opened for read/write transactions before the {prodname} Oracle connector can connect to the database.
+
+In the case of a physical standby, the standby will be an exact copy of production, which means the SCN values are identical.
+When using a physical standby, it is sufficient to reconfigure the {prodname} Oracle connector to use the hostname of the standby once the database is open.
+
+In the case of a logical standby, the standby is not an exact copy of production and therefore the SCN offsets will be different between production and the standby.
+When using a logical standby, it is recommended that, once the database is open, a new connector be used and to perform a new snapshot to guarantee that no change events are lost.
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
