@@ -168,7 +168,6 @@ public class SnapshotIT extends AbstractConnectorTest {
         final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
         final Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 1_000)
-                .with(RelationalDatabaseConnectorConfig.CONNECT_ERROR_MAX_RETRIES, 0)
                 .build();
 
         start(SqlServerConnector.class, config);

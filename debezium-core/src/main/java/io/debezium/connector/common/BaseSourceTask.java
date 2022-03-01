@@ -173,7 +173,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         catch (ConnectException connectException) {
             // In case of Kafka's ConnectException, retry starting the connector with a backoff strategy
             Configuration config = Configuration.from(props);
-            int maxRetries = config.getInteger(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRIES, -1);
+            int maxRetries = config.getInteger(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRIES, 0);
 
             if (maxRetries == 0) {
                 throw connectException;

@@ -493,9 +493,9 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 998))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(-1)
+            .withDefault(0)
             .withValidation(Field::isInteger)
-            .withDescription("The maximum number of times to retry on connection errors before failing the task. Defaults to -1 (no limit).");
+            .withDescription("The maximum number of times to retry on connection errors before failing the task (-1 - no limit). Defaults to 0 (no retries).");
 
     public static final Field CONNECT_ERROR_INITIAL_RETRY_DELAY = Field.create("connect.error.retry.initial.delay.ms")
             .withDisplayName("Initial retry delay when encountering connection errros (in ms)")
