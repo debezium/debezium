@@ -1507,16 +1507,16 @@ endif::product[]
 [id="oracle-user-defined-types"]
 === User-defined types
 
-Oracle allows defining custom user types when the built-in types are insufficient.
+Oracle enables you to define custom data types to provide flexibility when the built-in data types do not satisfy your requirements.
 There are a several user-defined types such as Object types, REF data types, Varrays, and Nested Tables.
-At this time, none of these supplied user-defined types are supported by the {prodname} Oracle connector.
+At this time, you cannot use the {prodname} Oracle connector with any of these user-defined types.
 
 [id="oracle-suppplied-types"]
-=== Oracle supplied types
+=== Oracle-supplied types
 
-Oracle provides SQL-based interfaces to define new types when the built-in or ANSI-supported types are insufficient.
+Oracle provides SQL-based interfaces that you can use to define new types when the built-in or ANSI-supported types are insufficient.
 Oracle offers several commonly used data types to serve a broad array of purposes such as *Any*, *XML*, or *Spatial* types.
-At this time, none of these are supported by the {prodname} Oracle connector.
+At this time, you cannot use the {prodname} Oracle connector with any of these data types.
 
 [[oracle-default-values]]
 === Default Values
@@ -1555,10 +1555,10 @@ For details about setting up Oracle for use with the {prodname} connector, see t
 
 endif::product[]
 
-=== Installation
+=== Compatibility with Oracle installation types
 
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
-The {prodname} Oracle connector is compatible with both installations.
+The {prodname} Oracle connector is compatible with both types of installation.
 
 // Type: procedure
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
@@ -1757,20 +1757,20 @@ Without these grants, the connector cannot operate.
 
 === Standby databases
 
-An Oracle database may have either a physical or a logical standby environment configured in the case of a production failure.
+An Oracle database can be configured with either a physical or a logical standby environment to provide for recovery after of a production failure.
 At this time, the {prodname} Oracle connector cannot use a physical or logical standby database as the change event source.
 There is an open https://issues.redhat.com/browse/DBZ-3866[Jira issue] to investigate this support.
 
-=== Fail-over databases
+=== Failover databases
 
 It is customary for a logical or physical standby to exist in the case of an Oracle production failure.
 When a failure occurs and the standby instance is promoted to production, the database must be opened for read/write transactions before the {prodname} Oracle connector can connect to the database.
 
-In the case of a physical standby, the standby will be an exact copy of production, which means the SCN values are identical.
+In the case of a physical standby, the standby is an exact copy of production, which implies that the SCN values are identical.
 When using a physical standby, it is sufficient to reconfigure the {prodname} Oracle connector to use the hostname of the standby once the database is open.
 
-In the case of a logical standby, the standby is not an exact copy of production and therefore the SCN offsets will be different between production and the standby.
-When using a logical standby, it is recommended that, once the database is open, a new connector be used and to perform a new snapshot to guarantee that no change events are lost.
+In the case of a logical standby, the standby is not an exact copy of the production database, so the SCN offsets in the standby differ from those in the production database.
+If you use a logical standby, to guarantee that no change events are lost, after the database is open, configure a new connector and perform a new database snapshot.
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
