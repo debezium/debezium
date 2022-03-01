@@ -176,7 +176,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             int maxRetries = config.getInteger(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRIES, -1);
 
             if (maxRetries == 0) {
-                stop(true);
                 throw connectException;
             }
             else {
@@ -198,7 +197,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                         LOGGER.error("Can't start the connector:", e);
                         if (totalRetries == maxRetries) {
                             LOGGER.info("Max retries to connect exceeded, stopping connector...");
-                            stop(true);
                             throw e;
                         }
                     }
