@@ -12,9 +12,9 @@ import java.time.Duration;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.server.TestConfigSource;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
@@ -38,7 +38,7 @@ import redis.clients.jedis.Jedis;
 public class RedisStreamIT {
 
     private PostgresConnection getPostgresConnection() {
-        return new PostgresConnection(Configuration.create()
+        return new PostgresConnection(JdbcConfiguration.create()
                 .with("user", PostgresTestResourceLifecycleManager.POSTGRES_USER)
                 .with("password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD)
                 .with("dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME)

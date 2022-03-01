@@ -83,7 +83,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
      */
-    public PostgresConnection(Configuration config, PostgresValueConverterBuilder valueConverterBuilder) {
+    public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder) {
         super(addDefaultSettings(config), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
 
         if (Objects.isNull(valueConverterBuilder)) {
@@ -122,15 +122,15 @@ public class PostgresConnection extends JdbcConnection {
      *
      * @param config {@link Configuration} instance, may not be null.
      */
-    public PostgresConnection(Configuration config) {
+    public PostgresConnection(JdbcConfiguration config) {
         this(config, null);
     }
 
-    static Configuration addDefaultSettings(Configuration configuration) {
+    static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
         // we require Postgres 9.4 as the minimum server version since that's where logical replication was first introduced
-        return configuration.edit()
+        return JdbcConfiguration.adapt(configuration.edit()
                 .with("assumeMinServerVersion", "9.4")
-                .build();
+                .build());
     }
 
     /**

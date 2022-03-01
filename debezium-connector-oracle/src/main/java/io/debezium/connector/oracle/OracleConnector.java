@@ -72,7 +72,8 @@ public class OracleConnector extends RelationalBaseSourceConnector {
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader())) {
-            LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(config), connection.username());
+            LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
+                    connection.username());
         }
         catch (SQLException | RuntimeException e) {
             LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);

@@ -46,7 +46,6 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -307,7 +306,7 @@ public class JdbcConnection implements AutoCloseable {
         return url;
     }
 
-    private final Configuration config;
+    private final JdbcConfiguration config;
     private final ConnectionFactory factory;
     private final Operations initialOps;
     private final String openingQuoteCharacter;
@@ -320,7 +319,7 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
+    public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
         this(config, connectionFactory, null, null, openingQuoteCharacter, closingQuoteCharacter);
     }
 
@@ -330,7 +329,7 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String openingQuoteCharacter,
+    public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String openingQuoteCharacter,
                           String closingQuoteCharacter) {
         this(config, connectionFactory, null, classLoaderSupplier, openingQuoteCharacter, closingQuoteCharacter);
     }
@@ -346,7 +345,7 @@ public class JdbcConnection implements AutoCloseable {
      * @param openingQuotingChar the opening quoting character
      * @param closingQuotingChar the closing quoting character
      */
-    protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
+    protected JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Operations initialOperations,
                              Supplier<ClassLoader> classLoaderSupplier, String openingQuotingChar, String closingQuotingChar) {
         this.config = config;
         this.factory = classLoaderSupplier == null ? connectionFactory : new ConnectionFactoryDecorator(connectionFactory, classLoaderSupplier);
@@ -362,7 +361,7 @@ public class JdbcConnection implements AutoCloseable {
      * @return the JDBC configuration; never null
      */
     public JdbcConfiguration config() {
-        return JdbcConfiguration.adapt(config);
+        return config;
     }
 
     public JdbcConnection setAutoCommit(boolean autoCommit) throws SQLException {

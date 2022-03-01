@@ -37,11 +37,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnectionException;
 import io.debezium.relational.RelationalTableFilters;
@@ -122,14 +122,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.hasInitedSlot = false;
     }
 
-    private static Configuration addDefaultSettings(Configuration configuration) {
+    private static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
         // first copy the parent's default settings...
         // then set some additional replication specific settings
-        return PostgresConnection.addDefaultSettings(configuration)
+        return JdbcConfiguration.adapt(PostgresConnection.addDefaultSettings(configuration)
                 .edit()
                 .with("replication", "database")
                 .with("preferQueryMode", "simple") // replication protocol only supports simple query mode
-                .build();
+                .build());
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {

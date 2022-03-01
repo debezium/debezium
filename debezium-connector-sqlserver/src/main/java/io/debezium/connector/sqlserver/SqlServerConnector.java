@@ -144,7 +144,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     }
 
     private SqlServerConnection connect(SqlServerConnectorConfig sqlServerConfig) {
-        return new SqlServerConnection(sqlServerConfig.jdbcConfig(),
+        return new SqlServerConnection(sqlServerConfig.getJdbcConfig(),
                 sqlServerConfig.getSourceTimestampMode(), null,
                 () -> getClass().getClassLoader(),
                 Collections.emptySet(),

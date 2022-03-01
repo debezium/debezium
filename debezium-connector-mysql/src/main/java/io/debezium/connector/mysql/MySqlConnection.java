@@ -28,6 +28,7 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -64,7 +65,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param fieldReader binary or text protocol based readers
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MysqlFieldReader fieldReader) {
-        super(connectionConfig.config(), connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
+        super(connectionConfig.jdbcConfig, connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = connectionConfig;
         this.mysqlFieldReader = fieldReader;
     }
@@ -481,7 +482,7 @@ public class MySqlConnection extends JdbcConnection {
         protected static final String JDBC_PROPERTY_CONNECTION_TIME_ZONE = "connectionTimeZone";
         protected static final String JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE = "serverTimezone";
 
-        private final Configuration jdbcConfig;
+        private final JdbcConfiguration jdbcConfig;
         private final ConnectionFactory factory;
         private final Configuration config;
 
@@ -513,7 +514,7 @@ public class MySqlConnection extends JdbcConnection {
 
             jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, determineConnectionTimeZone(dbConfig));
 
-            this.jdbcConfig = jdbcConfigBuilder.build();
+            this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
             String driverClassName = this.jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
             factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader());
         }
@@ -537,7 +538,7 @@ public class MySqlConnection extends JdbcConnection {
             return connectionTimeZone != null ? connectionTimeZone : "SERVER";
         }
 
-        public Configuration config() {
+        public JdbcConfiguration config() {
             return jdbcConfig;
         }
 

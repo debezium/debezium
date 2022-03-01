@@ -26,6 +26,7 @@ import org.postgresql.jdbc.PgConnection;
 
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
 import io.debezium.util.Testing;
@@ -232,7 +233,7 @@ public class PostgresConnectionIT {
 
     // "fake" a pg95 response by not returning confirmed_flushed_lsn
     private PostgresConnection buildPG95PGConn(String name) {
-        return new PostgresConnection(TestHelper.defaultJdbcConfig().edit().with("ApplicationName", name).build()) {
+        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig().edit().with("ApplicationName", name).build())) {
             @Override
             protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
                                                               ResultSetMapper<ServerInfo.ReplicationSlot> map)
