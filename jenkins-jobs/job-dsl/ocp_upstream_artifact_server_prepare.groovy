@@ -25,6 +25,9 @@ pipelineJob('ocp-upstream-artifact-server-prepare-job') {
         textParam('EXTRA_IMAGE_TAGS', 'latest', 'List of extra texts tags for multiple images')
 //        COMPONENT VERSIONS
         stringParam('APICURIO_VERSION', '2.1.0.Final', 'Service registry bits version')
+//        ORACLE INCLUSION
+        booleanParam('ORACLE_INCLUDED', false, 'Should Oracle connector be included in image')
+        stringParam('PRIVATE_QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id to private repo')
     }
 
     definition {
