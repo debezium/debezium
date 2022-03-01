@@ -81,6 +81,7 @@ public class ErrorHandlerTest {
     public void customRetriableMatch() throws Exception {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.CUSTOM_RETRIABLE_EXCEPTION, ".*my error.*")
+                .with(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRIES, 0)
                 .build();
         final ChangeEventQueue<Object> queue = queue();
 
@@ -100,6 +101,7 @@ public class ErrorHandlerTest {
     public void customRetriableNoMatch() throws Exception {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.CUSTOM_RETRIABLE_EXCEPTION, ".*not my error.*")
+                .with(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRIES, 0)
                 .build();
         final ChangeEventQueue<Object> queue = queue();
 
@@ -119,6 +121,7 @@ public class ErrorHandlerTest {
     public void customRetriableMatchNested() throws Exception {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.CUSTOM_RETRIABLE_EXCEPTION, ".*my error.*")
+                .with(CommonConnectorConfig.CONNECT_ERROR_MAX_RETRIES, 0)
                 .build();
         final ChangeEventQueue<Object> queue = queue();
 
