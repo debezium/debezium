@@ -102,13 +102,13 @@ public class MySqlTestConnection extends JdbcConnection {
         return comment.startsWith("Percona");
     }
 
-    private static Configuration addDefaultSettings(Configuration configuration) {
-        return configuration.edit()
+    private static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
+        return JdbcConfiguration.adapt(configuration.edit()
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 3306)
                 .withDefault(JdbcConfiguration.USER, "mysqluser")
                 .withDefault(JdbcConfiguration.PASSWORD, "mysqlpw")
-                .build();
+                .build());
 
     }
 
@@ -119,7 +119,7 @@ public class MySqlTestConnection extends JdbcConnection {
      *
      * @param config the configuration; may not be null
      */
-    public MySqlTestConnection(Configuration config) {
+    public MySqlTestConnection(JdbcConfiguration config) {
         super(addDefaultSettings(config), FACTORY, null, null, "`", "`");
     }
 

@@ -428,10 +428,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.optionRecompile = config.getBoolean(INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE);
     }
 
-    public Configuration jdbcConfig() {
-        return getConfig().subset(DATABASE_CONFIG_PREFIX, true);
-    }
-
     public List<String> getDatabaseNames() {
         return databaseNames;
     }

@@ -109,6 +109,10 @@ public interface JdbcConfiguration extends Configuration {
         };
     }
 
+    public static JdbcConfiguration empty() {
+        return JdbcConfiguration.adapt(Configuration.empty());
+    }
+
     /**
      * The JDBC-specific builder used to construct and/or alter JDBC configuration instances.
      *

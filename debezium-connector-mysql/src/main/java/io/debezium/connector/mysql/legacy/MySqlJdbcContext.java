@@ -85,7 +85,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
         jdbcConfig = jdbcConfigBuilder.build();
         String driverClassName = jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
-        this.jdbc = new JdbcConnection(jdbcConfig,
+        this.jdbc = new JdbcConnection(JdbcConfiguration.adapt(jdbcConfig),
                 JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()), "`", "`");
     }
 
