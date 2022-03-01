@@ -84,6 +84,22 @@ pipeline {
             }
         }
 
+        stage('Login to private Quay repository'){
+            when(){
+                expression { params.ORACLE_INCLUDED }
+            }
+            steps {
+                withCredentials([
+                        usernamePassword(credentialsId: "${PRIVATE_QUAY_CREDENTIALS}", usernameVariable: 'PRIVATE_QUAY_USERNAME', passwordVariable: 'PRIVATE_QUAY_PASSWORD'),
+                ]){
+                    sh '''
+                    set -x
+                    docker login -u ${PRIVATE_QUAY_USERNAME} -p     ${PRIVATE_QUAY_PASSWORD} quay.io
+                    '''
+                }
+            }
+        }
+
         stage('Build and push image') {
             steps {
                 withCredentials([
@@ -101,7 +117,8 @@ pipeline {
                         --dest-pass="${QUAY_PASSWORD}"                              \\
                         --kc-base-tag="${KC_BASE_TAG}"                              \\
                         --kafka-version="${KAFKA_VERSION}"                          \\
-                        --img-output="${WORKSPACE}/published_image_dbz.txt"
+                        --img-output="${WORKSPACE}/published_image_dbz.txt"         \\
+                        --oracle-included="${ORACLE_INCLUDED}"
                     '''
                 }
             }

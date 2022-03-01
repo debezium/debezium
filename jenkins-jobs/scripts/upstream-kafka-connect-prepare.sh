@@ -5,7 +5,7 @@ DOCKER_FILE=${DIR}/../docker/Dockerfile.AMQ
 PLUGIN_DIR="plugins"
 
 
-OPTS=$(getopt -o d:f:r:o:t:a: --long dir:,dockerfile:,registry:,organisation:,tags:,auto-tag:,kc-base-tag:,kafka-version:,dest-login:,dest-pass:,img-output: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o d:f:r:o:t:a: --long dir:,dockerfile:,registry:,organisation:,tags:,auto-tag:,kc-base-tag:,kafka-version:,dest-login:,dest-pass:,img-output:,oracle-included: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -23,6 +23,7 @@ while true; do
     --dest-login )              DEST_LOGIN=$2;                      shift; shift ;;
     --dest-pass )               DEST_PASS=$2;                       shift; shift ;;
     --img-output )              IMAGE_OUTPUT_FILE=$2;               shift; shift ;;
+    --oracle-included )         ORACLE=$2;                          shift; shift ;;
     -h | --help )               PRINT_HELP=true;                    shift ;;
     -- ) shift; break ;;
     * ) break ;;
@@ -33,7 +34,7 @@ if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = "false" ]; then
   echo "Cannot push image without tag." >&2 ; exit 1 ;
 fi
 
-if [ ! -z "${DEST_LOGIN}" ] ; then
+if [ ! -z "${DEST_LOGIN}" ] && [ "$ORACLE" = "false" ]; then
   docker login -u "${DEST_LOGIN}" -p "${DEST_PASS}" "${REGISTRY}" || { echo "Cannot login to docker image registry" ; exit 1 ; }
 fi
 
@@ -56,7 +57,15 @@ unzip -o apicurio-registry-*.zip -d debezium-connector-postgres/
 unzip -o apicurio-registry-*.zip -d debezium-connector-mongodb/
 unzip -o apicurio-registry-*.zip -d debezium-connector-sqlserver/
 unzip -o apicurio-registry-*.zip -d debezium-connector-db2/
+unzip -o apicurio-registry-*.zip -d debezium-connector-oracle/
 rm apicurio-registry-*.zip
+
+if [ "${ORACLE}" = "false" ] ; then
+  rm -rf debezium-connector-oracle
+else
+  echo "Changing quay organisation to private rh-integration since ORACLE connector is included"
+  ORGANISATION="rh_integration"
+fi
 
 popd || exit
 
