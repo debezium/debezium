@@ -1770,7 +1770,7 @@ In the case of a physical standby, the standby is an exact copy of production, w
 When using a physical standby, it is sufficient to reconfigure the {prodname} Oracle connector to use the hostname of the standby once the database is open.
 
 In the case of a logical standby, the standby is not an exact copy of the production database, so the SCN offsets in the standby differ from those in the production database.
-If you use a logical standby, to guarantee that no change events are lost, after the database is open, configure a new connector and perform a new database snapshot.
+If you use a logical standby, to help ensure that {prodname} does not miss any change events, after the database is open, configure a new connector and perform a new database snapshot.
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
