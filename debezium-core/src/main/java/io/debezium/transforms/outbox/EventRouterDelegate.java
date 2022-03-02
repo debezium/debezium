@@ -209,6 +209,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
                 timestamp,
                 headers);
 
+        LOGGER.info("Message emitted with event id: \"{}\", event key: \"{}\"", eventId, defineRecordKey(eventStruct, payloadId));
+
         return regexRouter.apply(newRecord);
     }
 
