@@ -39,14 +39,6 @@ endif::community[]
 ifdef::product[]
 .
 
-[IMPORTANT]
-====
-{prodname} Oracle connector is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
-====
-
 Information and procedures for using a {prodname} Oracle connector are organized as follows:
 
   * xref:how-debezium-oracle-connectors-work[]
@@ -731,7 +723,7 @@ The payload section of every change event value produced by the Oracle connector
 
 `after`:: An optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema used in `before`.
 `source`:: A mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting).
-
++
 [TIP]
 ====
 The `commit_scn` field is optional and describes the SCN of the transaction commit that the change event participates within.
@@ -1176,6 +1168,15 @@ Support for `BLOB`, `CLOB`, and `NCLOB` is currently in incubating state, that i
 Please let us know if you encounter any problems while using these data types.
 ====
 endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the `BLOB`, `CLOB`, and `NCLOB` with the {prodname} Oracle connector is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
 The following table describes how the connector maps binary and character large object (LOB) data types.
 
 .Mappings for Oracle binary and character LOB types
@@ -1754,9 +1755,11 @@ The connector must be able to read information about the Oracle redo and archive
 Without these grants, the connector cannot operate.
 
 |===
-
 === Standby databases
-
+ifdef::product[]
+The {prodname} Oracle connector cannot be used with Oracle physical or logical standby databases.
+endif::product[]
+ifdef::community[]
 An Oracle database can be configured with either a physical or a logical standby environment to provide for recovery after of a production failure.
 At this time, the {prodname} Oracle connector cannot use a physical or logical standby database as the change event source.
 There is an open https://issues.redhat.com/browse/DBZ-3866[Jira issue] to investigate this support.
@@ -1771,7 +1774,7 @@ When using a physical standby, it is sufficient to reconfigure the {prodname} Or
 
 In the case of a logical standby, the standby is not an exact copy of the production database, so the SCN offsets in the standby differ from those in the production database.
 If you use a logical standby, to help ensure that {prodname} does not miss any change events, after the database is open, configure a new connector and perform a new database snapshot.
-
+endif::community[]
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
 // Title: Deployment of {prodname} Oracle connectors
@@ -2845,6 +2848,8 @@ If the difference between the timestamps is less than the specified value, and t
 By default, change events have large object columns, but the columns contain no values.
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
+
+NOTE: Use of large object data types is a Technology Preview feature.
 
 |[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
