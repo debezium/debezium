@@ -85,7 +85,8 @@ public class SchemaGeneratorMojo extends AbstractMojo {
 
         try {
             int result = exec(SchemaGenerator.class.getName(), classPath, Collections.emptyList(),
-                    Arrays.<String> asList(format, outputDirectory.getAbsolutePath(), String.valueOf(groupDirectoryPerConnector), filenamePrefix, filenameSuffix));
+                    Arrays.<String> asList(format, outputDirectory.getAbsolutePath(), String.valueOf(groupDirectoryPerConnector),
+                            quoteIfNecessary(filenamePrefix), quoteIfNecessary(filenameSuffix)));
 
             if (result != 0) {
                 throw new MojoExecutionException("Couldn't generate API spec; please see the logs for more details");
@@ -204,5 +205,20 @@ public class SchemaGeneratorMojo extends AbstractMojo {
         catch (ArtifactResolutionException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
+    }
+
+    private static boolean isWindows() {
+        final String operatingSystemName = System.getProperty("os.name");
+        return operatingSystemName != null && operatingSystemName.startsWith("Windows");
+    }
+
+    private static String quoteIfNecessary(String value) {
+        if ((value == null || value.length() == 0) && isWindows()) {
+            // On Windows, if we do not explicitly double-quote an empty/null argument, it will be omitted by
+            // the operating system as an argument and the expected number of arguments in the generator will
+            // be out of sync from what it expects.
+            return "\"\"";
+        }
+        return value;
     }
 }
