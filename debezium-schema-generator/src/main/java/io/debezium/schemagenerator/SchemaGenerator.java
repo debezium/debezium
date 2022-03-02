@@ -29,6 +29,10 @@ public class SchemaGenerator {
 
     public static void main(String[] args) {
         if (args.length != 5) {
+            LOGGER.log(Logger.Level.INFO, "There were " + args.length + " arguments:");
+            for (int i = 0; i < args.length; ++i) {
+                LOGGER.log(Logger.Level.INFO, "  Argument #[" + i + "]: " + args[i]);
+            }
             throw new IllegalArgumentException("Usage: SchemaGenerator <format-name> <output-directory> <groupDirectoryPerConnector> <filenamePrefix> <filenameSuffix>");
         }
 
