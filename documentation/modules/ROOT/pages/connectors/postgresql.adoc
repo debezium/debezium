@@ -3123,20 +3123,12 @@ By default, truncate operations are skipped.
 Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_` +
 
-ifdef::product[]
-Signaling is a Technology Preview feature.
-endif::product[]
-
 |[[postgresql-property-incremental-snapshot-chunk-size]]<<postgresql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |1024
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
-
-ifdef::product[]
-Incremental snapshots is a Technology Preview feature.
-endif::product[]
 
 |===
 

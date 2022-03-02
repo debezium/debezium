@@ -21,7 +21,7 @@ toc::[]
 
 [NOTE]
 ====
-A new capturing implementation for the {prodname} MySQL connector has been created as of {prodname} 1.5,
+A new capturing implementation for the {prodname} MySQL connector was introduced in {prodname} 1.5,
 based on the common connector framework used by the other {prodname} Kafka Connect connectors.
 
 If you encounter any issues with the new MySQL connector implementation, please log a link:https://issues.redhat.com/browse/DBZ[Jira issue]; in this case, you can use the legacy implementation by setting the `internal.implementation=legacy` connector configuration option
@@ -2812,10 +2812,6 @@ endif::community[]
 Use the following format to specify the collection name: +
 `_<databaseName>_._<tableName>_`
 
-ifdef::product[]
-Signaling is a Technology Preview feature.
-endif::product[]
-
 |[[mysql-property-incremental-snapshot-allow-schema-changes]]<<mysql-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
 |`false`
 | Allow schema changes during an incremental snapshot. When enabled the connector will detect schema change during an incremental snapshot and re-select a current chunk to avoid locking DDLs. +
@@ -2828,10 +2824,6 @@ Note that changes to a primary key are not supported and can cause incorrect res
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
-
-ifdef::product[]
-Incremental snapshots is a Technology Preview feature.
-endif::product[]
 
 |[[mysql-property-read-only]]<<mysql-property-read-only, `+read.only+`>>
 |`false`
