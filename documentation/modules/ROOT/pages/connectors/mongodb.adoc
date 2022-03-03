@@ -1039,6 +1039,7 @@ ifdef::community[]
 
 You can use the {prodname} connector for MongoDB with https://www.mongodb.com/atlas/database[MongoDB Atlas].
 When connecting {prodname} to MongoDB Atlas, enable one of the xref:mongodb-property-capture-mode[`capture modes`] to be based on change streams, rather than oplog.
+Note that MongoDB Atlas only supports secure connections via SSL, i.e. the xref:mongodb-property-mongodb-ssl-enabled[`+mongodb.ssl.enabled`] connector option _must_ be set to `true`.
 endif::community[]
 
 // Type: assembly
