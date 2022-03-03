@@ -13,7 +13,7 @@ The Debezium documentation in [documentation](https://github.com/debezium/debezi
     - [Attributes](#attributes)
 - [Contributing to the Documentation](#contributing-to-the-documentation)
     - [Using AsciiDoc attributes](#using-asciidoc-attributes)
-    - [Cross references](#cross-references)
+    - [Adding cross references](#adding-cross-references-that-link-to-other-content)
     - [Adding images](#adding-images)
     - [Best practices](#best-practices)
 
@@ -194,7 +194,7 @@ For example,
 ```
 In the Antora-based documentation, the `{link-prefix}` attribute resolves to the `xref` macro, but when the content is reused in a downstream framework, it can contain a different value.
 
-Similarly, in the Antora-based documentation, the `<content-category-attribute>` corresponds to the path to the targeted file, but when the content is rendered in a downstream framework, it can contain a different value. To determine which category attribute to use when linking to a different file, see the `link-*` attributes that are listed in the `asciidoc` section of the [`documentation/antora.yml`](../documentation/antora.yml) file.
+Similarly, in the Antora-based documentation, the `<content-category-attribute>` corresponds to the path to the targeted file, but when the content is rendered in a downstream framework, it can contain a different value. To determine which category attribute to use when linking to a different file, see the `link-*` attributes that are listed in the `asciidoc` section of the [`documentation/antora.yml`](/documentation/antora.yml) file.
 
 Although the preceding format is not required for the Antora-based documentation, it is required to enable the Debezium documentation to be consumed in other downstream frameworks.
 
