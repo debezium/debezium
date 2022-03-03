@@ -382,8 +382,6 @@
                         <configuration>
                             <show>private</show>
                             <nohelp>true</nohelp>
-                            <!-- Exclude building JavaDoc for this module temporarily, requires access to java.net.http.* package -->
-                            <excludePackageNames>io.debezium.server.http</excludePackageNames>
                         </configuration>
                         <executions>
                             <execution>
