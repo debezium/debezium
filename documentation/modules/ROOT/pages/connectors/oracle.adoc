@@ -2360,7 +2360,12 @@ The following configuration properties are _required_ unless a default value is 
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
 |Specifies the raw database JDBC URL. Use this property to provide flexibility in defining that database connection.
+ifdef::community[]
 Valid values include raw TNS names and RAC connection strings.
+endif::community[]
+ifdef::product[]
+Valid values include raw TNS names connection strings.
+endif::product[]
 
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
 |No default
@@ -2860,6 +2865,7 @@ NOTE: Use of large object data types is a Technology Preview feature.
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is unchanged and not provided by the database.
 
+ifdef::community[]
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |No default
 |A comma-separated list of Oracle Real Application Clusters (RAC) node host names or addresses.
@@ -2886,6 +2892,7 @@ rac.nodes=192.168.1.100,192.168.1.101:1522
 ----
 
 If you supply a raw JDBC URL for the database by using the xref:oracle-property-database-url[`database.url`] property, instead of defining a value for `database.port`, each RAC node entry must explicitly specify a port value.
+endif::community[]
 
 |[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
 |No default
