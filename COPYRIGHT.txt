@@ -185,6 +185,7 @@ Jorn Argelo
 Jos Huiting
 Jose Luis
 Josh Arenberg
+Josh Ribera
 Josh Stanfield
 Joy Gao
 Juan Antonio Pedraza
@@ -221,6 +222,7 @@ Marc Zbyszynski
 Mario Mueller
 Mariusz Strzelecki
 Mark Drilling
+Martin Medek
 Martin Sillence
 Matt Beary
 Matteo Capitanio
@@ -256,6 +258,7 @@ Oliver Weiler
 Olivier Jacquemart
 Olivier Lemasle
 Omar Al-Safi
+Oren Elias
 Ori Popowski
 Orr Ganani
 Oscar Romero
@@ -368,6 +371,7 @@ Yang Yang
 yangsanity
 Yilong Chang
 Yiming Liu
+Yingying Tang
 Yoann Rodière
 Yossi Shirizli
 Yuan Zhang
