@@ -1,0 +1,370 @@
+[id="deploying-debezium-on-kubernates"]
+= Deploying {prodname} on Kubernates
+
+:linkattrs:
+:icons: font
+:toc:
+:toclevels: 3
+:toc-placement: macro
+
+toc::[]
+
+{prodname} can be easily deployed on https://kubernetes.io/[Kubernates], an open-source container management platform.
+The deployment leverages https://strimzi.io/[Strimzi] project, which aims to simplify Apache Kafka deployment on Kubernates.
+
+[NOTE]
+====
+For testing you deployment, you can use https://minikube.sigs.k8s.io/docs/[minikube] project, which starts Kubernates cluster on your local machine.
+See https://minikube.sigs.k8s.io/docs/start/[minikube documentation] how to install minikube on your machine.
+If you want to test {prodname} deployment as described in this doc completely on minikube, you need to set up unsecure Docker registry on minikube.
+To do so, you need start minikube with `--insecure-registry` flag:
+
+[source,subs="attributes",options="nowrap"]
+----
+minikube start --insecure-registry "10.0.0.0/24"
+----
+
+`10.0.0.1` is the default service cluster IP, so this setup allows pulling images inside whole cluster.
+See https://minikube.sigs.k8s.io/docs/handbook/registry/#enabling-insecure-registries[minikube documentation] for more details.
+You also need to enable `registry` minikube addon:
+
+[source,subs="attributes",options="nowrap"]
+----
+minikube addons enable registry
+----
+
+====
+
+== Prerequisites
+
+To keep containers seprated from rest fo the cluster, create dedicated namespace for {prodname}.
+In the rest of this doc, `debezium-example` will be used:
+
+[source,subs="attributes",options="nowrap"]
+----
+kubectl create ns debezium-example
+----
+
+As mentioned above, for the {prodname} deployment we will use Strimzi, which manages Kafka deployment on Kubernates.
+Please see https://strimzi.io/docs/operators/latest/deploying.html[Strimzi deployment documentation], for more details how to deploy Strimzi on your Kubernates cluster.
+
+For testing purposes, you can use following, simplified and unsecured,  approach.
+
+* First, https://strimzi.io/downloads/[download] recent Strimzi release and unpack it in your local directory.
+
+* Create dedicated namespace for Strimzi Kafka Cluster Operator:
+
+[source,subs="attributes",options="nowrap"]
+----
+kubectl create ns kafka
+----
+
+* Modify the downloaded source files to use `kafka` namespace for installation of Strimzi Kafka Cluster Operator:
+
+[source,subs="attributes",options="nowrap"]
+----
+sed -i 's/namespace: .*/namespace: kafka/' install/cluster-operator/*RoleBinding*.yaml
+----
+
+and set `STRIMZI_NAMESPACE` to `debezium-example` namespace in `install/cluster-operator/060-Deployment-strimzi-cluster-operator.yaml`:
+
+[source,subs="attributes",options="nowrap"]
+----
+env:
+  - name: STRIMZI_NAMESPACE
+    value: debezium-example
+----
+
+* Deploy Kafka cluster:
+
+[source,bash]
+----
+cat << EOF | kubectl create -n debezium-example -f -
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: debezium-cluster
+spec:
+  kafka:
+    replicas: 1
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: external
+        port: 9094
+        type: nodeport
+        tls: false
+    storage:
+      type: jbod
+      volumes:
+      - id: 0
+        type: persistent-claim
+        size: 100Gi
+        deleteClaim: false
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  zookeeper:
+    replicas: 1
+    storage:
+      type: persistent-claim
+      size: 100Gi
+      deleteClaim: false
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+EOF
+----
+
+* And wait until it's ready:
+
+[source,subs="attributes",options="nowrap"]
+----
+kubectl wait kafka/debezium-cluster --for=condition=Ready --timeout=300s -n debezium-example
+----
+
+In this doc, MySql will be used as an example.
+Besides running a pod with MySql, appropriate service which will point to the pod with DB itself is needed.
+It can be created e.g. as follows:
+
+[source,bash]
+----
+cat << EOF | kubectl create -n debezium-example -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - image: quay.io/debezium/example-mysql:1.9
+        name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: debezium
+        - name: MYSQL_USER
+          value: mysqluser
+        - name: MYSQL_PASSWORD
+          value: mysqlpw
+        ports:
+        - containerPort: 3306
+          name: mysql
+EOF
+----
+
+== Deploying {prodname} Connector
+
+To deploy {prodname} connector, one needs to deploy Kafka Connect cluster with proper plugin and create the connector itself.
+As the first step, Kafka Connect Docker image with the plugin has to be created.
+If you have already Docker image built and available in registry, you can skip this step.
+In this doc, MySql connector will be used as an example.
+
+=== Creating Kafka Connect Cluster
+
+Again, we will use Strimzi for creating Kafka Connect cluster.
+Strimzi is able to help with building Docker image as well and can built and push required Docker image for us.
+In fact both tasks can be merged together and instructions for building Docker image can be provided directly in connector object specification:
+
+[source,bash]
+----
+cat << EOF | kubectl create -n debezium-example -f -
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: debezium-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 3.1.0
+  replicas: 1
+  bootstrapServers: debezium-cluster-kafka-bootstrap:9092
+  config:
+    group.id: connect-cluster
+    offset.storage.topic: connect-cluster-offsets
+    config.storage.topic: connect-cluster-configs
+    status.storage.topic: connect-cluster-status
+    # -1 means it will use the default replication factor configured in the broker
+    config.storage.replication.factor: -1
+    offset.storage.replication.factor: -1
+    status.storage.replication.factor: -1
+  build:
+    output:
+      type: docker
+      image: 10.110.154.103/debezium-connect-mysql:latest
+    plugins:
+      - name: debezium-mysql-connector
+        artifacts:
+          - type: tgz
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.8.1.Final/debezium-connector-mysql-1.8.1.Final-plugin.tar.gz
+            sha512sum: dff3e1f973ab203490d19337fac65e7545fbd70e3f22555e6ca74b3c734160140cbef5905b9f138f8b56616e0af5a41a8b2b7f09497d9cc62f64863017bdc088
+EOF
+----
+
+[NOTE]
+====
+You have to replace IP address of the registry `10.110.154.103` with the registry where you can push images.
+In case you run it on minikube with registry addon, you can push the image into internal minikube registry.
+The IP address of the registry can by obtained e.g. by running
+
+[source,subs="attributes",options="nowrap"]
+----
+kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
+----
+
+====
+
+If you already have Docker image in Docker registry, you can used simplified version:
+
+[source,bash]
+----
+cat << EOF | kubectl create -n debezium-example -f -
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: debezium-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 3.1.0
+  image: 10.110.154.103/debezium-connect-mysql:latest
+  replicas: 1
+  bootstrapServers: debezium-cluster-kafka-bootstrap:9092
+  config:
+    group.id: connect-cluster
+    offset.storage.topic: connect-cluster-offsets
+    config.storage.topic: connect-cluster-configs
+    status.storage.topic: connect-cluster-status
+    # -1 means it will use the default replication factor configured in the broker
+    config.storage.replication.factor: -1
+    offset.storage.replication.factor: -1
+    status.storage.replication.factor: -1
+EOF
+----
+
+=== Creating {prodname} Connector
+
+To create {prodname} connector, you just need to create connector with appropriate configuration, MySql in this case:
+
+[source,bash]
+----
+cat << EOF | kubectl create -n debezium-example -f -
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: debezium-connector-mysql
+  labels:
+    strimzi.io/cluster: debezium-connect-cluster
+spec:
+  class: io.debezium.connector.mysql.MySqlConnector
+  tasksMax: 1
+  config:
+    tasks.max: 1
+    database.hostname: mysql
+    database.port: 3306
+    database.user: debezium
+    database.password: dbz
+    database.server.id: 184054
+    database.server.name: mysql
+    database.include.list: inventory
+    database.history.kafka.bootstrap.servers: debezium-cluster-kafka-bootstrap:9092
+    database.history.kafka.topic: schema-changes.inventory
+EOF
+----
+
+== Verifying the Deployment
+
+To verify the everything works fine, you can e.g. start watching `mysql.inventory.customers` Kafka topic:
+
+[source,subs="attributes",options="nowrap"]
+----
+kubectl run -n debezium-example -it --rm --image=quay.io/debezium/kafka:1.9  --restart=Never watcher -- watch-topic -a -k mysql.inventory.customers
+----
+
+connect to MySql database:
+
+[source,subs="attributes",options="nowrap"]
+----
+kubectl run -n debezium-example -it --rm --image=mysql:8.0 --restart=Never --env MYSQL_ROOT_PASSWORD=debezium mysqlterm -- mysql -hmysql -P3306 -uroot -pdebezium
+----
+
+do some changes in `customers` table:
+
+[source,subs="attributes",options="nowrap"]
+----
+update customers set first_name="Sally Marie" where id=1001;
+----
+
+and observer the change in Kafka topic watcher:
+
+[source,json]
+----
+{
+...
+  "payload": {
+    "before": {
+      "id": 1001,
+      "first_name": "Sally",
+      "last_name": "Thomas",
+      "email": "sally.thomas@acme.com"
+    },
+    "after": {
+      "id": 1001,
+      "first_name": "Sally Marie",
+      "last_name": "Thomas",
+      "email": "sally.thomas@acme.com"
+    },
+    "source": {
+      "version": "1.8.1.Final",
+      "connector": "mysql",
+      "name": "mysql",
+      "ts_ms": 1646300467000,
+      "snapshot": "false",
+      "db": "inventory",
+      "sequence": null,
+      "table": "customers",
+      "server_id": 223344,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 401,
+      "row": 0,
+      "thread": null,
+      "query": null
+    },
+    "op": "u",
+    "ts_ms": 1646300467746,
+    "transaction": null
+  }
+}
+----
+
