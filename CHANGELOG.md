@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.0.Beta1
+March 3rd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379893)
+
+### New features since 1.9.0.Alpha2
+
+* Support Knative Eventing [DBZ-2097](https://issues.redhat.com/browse/DBZ-2097)
+* Provide UI option to view the configuration of the registered Debezium connector  [DBZ-3137](https://issues.redhat.com/browse/DBZ-3137)
+* Handle out of order transaction start event [DBZ-4287](https://issues.redhat.com/browse/DBZ-4287)
+* Partition-scoped metrics for the SQL Server connector [DBZ-4478](https://issues.redhat.com/browse/DBZ-4478)
+* Save and load offsets in Redis [DBZ-4509](https://issues.redhat.com/browse/DBZ-4509)
+* Debezium Deploy Snapshots job is blocked for a long time [DBZ-4628](https://issues.redhat.com/browse/DBZ-4628)
+* Change DBZ UI Frontend to use new `data_shape` fields for Kafka message format [DBZ-4714](https://issues.redhat.com/browse/DBZ-4714)
+* Expect plain value instead of scientific exponential notation when using decimal string mode [DBZ-4730](https://issues.redhat.com/browse/DBZ-4730)
+
+
+### Breaking changes since 1.9.0.Alpha2
+
+None
+
+
+### Fixes since 1.9.0.Alpha2
+
+* Long running transaction in Debezium 1.2.0 (PostgreSQL) [DBZ-2306](https://issues.redhat.com/browse/DBZ-2306)
+* "snapshot.include.collection.list" doesn't work with the new MySQL connector implementation [DBZ-3952](https://issues.redhat.com/browse/DBZ-3952)
+* When running the NPM build I always end up with an updated/diverged package-lock.json [DBZ-4622](https://issues.redhat.com/browse/DBZ-4622)
+* Upgrade of Oracle connector causes NullPointerException [DBZ-4635](https://issues.redhat.com/browse/DBZ-4635)
+* Oracle-Connector fails parsing a DDL statement (external tables) [DBZ-4641](https://issues.redhat.com/browse/DBZ-4641)
+* oracle-connector DDL statement couldn't be parsed [DBZ-4662](https://issues.redhat.com/browse/DBZ-4662)
+* Oracle parsing error for ALTER TABLE EXT_SIX LOCATION [DBZ-4706](https://issues.redhat.com/browse/DBZ-4706)
+* MySQL unparseable DDL - CREATE PROCEDURE  [DBZ-4707](https://issues.redhat.com/browse/DBZ-4707)
+* Source timestamp timezone differs between snapshot and streaming records [DBZ-4715](https://issues.redhat.com/browse/DBZ-4715)
+* Document that Oracle Xstream emits DBMS_LOB method calls as separate events [DBZ-4716](https://issues.redhat.com/browse/DBZ-4716)
+* ORA-00308 raised due to offset SCN not being updated in a low traffic environment [DBZ-4718](https://issues.redhat.com/browse/DBZ-4718)
+* Property "log.mining.view.fetch.size" does not take effect [DBZ-4723](https://issues.redhat.com/browse/DBZ-4723)
+* Postgres debezium send wrong value of column has default NULL::::character varying in kafka message  [DBZ-4736](https://issues.redhat.com/browse/DBZ-4736)
+* Oracle Logminer: streaming start offset is off by one [DBZ-4737](https://issues.redhat.com/browse/DBZ-4737)
+* Apache Pulsar example doesn't work [DBZ-4739](https://issues.redhat.com/browse/DBZ-4739)
+* Oracle dbname/signal with dots parsed incorrectly  [DBZ-4744](https://issues.redhat.com/browse/DBZ-4744)
+* Oracle DDL statement couldn't be parsed [DBZ-4746](https://issues.redhat.com/browse/DBZ-4746)
+* Overly verbose Debezium Server Redis logs [DBZ-4751](https://issues.redhat.com/browse/DBZ-4751)
+* DDL statement couldn't be parsed [DBZ-4752](https://issues.redhat.com/browse/DBZ-4752)
+* Redis runs OOM log in wrong scenario [DBZ-4760](https://issues.redhat.com/browse/DBZ-4760)
+* Relax parsing of Heap and Index organized DDL clauses [DBZ-4763](https://issues.redhat.com/browse/DBZ-4763)
+* java.lang.NoSuchMethodError: org.apache.kafka.clients.admin.NewTopic [DBZ-4773](https://issues.redhat.com/browse/DBZ-4773)
+* Connection validation fails for Db2 [DBZ-4777](https://issues.redhat.com/browse/DBZ-4777)
+* Test suite unable to run due to jackson dependency overlaps  [DBZ-4781](https://issues.redhat.com/browse/DBZ-4781)
+
+
+### Other changes since 1.9.0.Alpha2
+
+* Improve rendering of linked option names [DBZ-4301](https://issues.redhat.com/browse/DBZ-4301)
+* Oracle connector downstream docs for 1.9 [DBZ-4325](https://issues.redhat.com/browse/DBZ-4325)
+* Use images from quay.io in docs and examples [DBZ-4440](https://issues.redhat.com/browse/DBZ-4440)
+* Create an internal FAQ for Oracle Connector [DBZ-4557](https://issues.redhat.com/browse/DBZ-4557)
+* Improve documentation about max_replication_slots [DBZ-4603](https://issues.redhat.com/browse/DBZ-4603)
+* Connector doc formatting and link fixes [DBZ-4606](https://issues.redhat.com/browse/DBZ-4606)
+* Add a backend service for UI to fetch the connector configuration  [DBZ-4627](https://issues.redhat.com/browse/DBZ-4627)
+* Update downstream Getting Started guide to describe revised deployment mechanism [DBZ-4632](https://issues.redhat.com/browse/DBZ-4632)
+* Update downstream OCP Installation guide to describe revised deployment mechanism [DBZ-4633](https://issues.redhat.com/browse/DBZ-4633)
+* Changes config for renovate bot to auto-merge only for non-major update [DBZ-4719](https://issues.redhat.com/browse/DBZ-4719)
+* Incorrect connector version in Debezium RHEL Installation Guide  [DBZ-4721](https://issues.redhat.com/browse/DBZ-4721)
+* Verify Debezium connector can be used with MongoDB Atlas [DBZ-4731](https://issues.redhat.com/browse/DBZ-4731)
+* Remove NATS example [DBZ-4738](https://issues.redhat.com/browse/DBZ-4738)
+* Upgrade to Quarkus 2.7.1.Final [DBZ-4743](https://issues.redhat.com/browse/DBZ-4743)
+* UI layout fixes [DBZ-4748](https://issues.redhat.com/browse/DBZ-4748)
+* Upgrade MySQL JDBC driver to 8.0.28 [DBZ-4759](https://issues.redhat.com/browse/DBZ-4759)
+* Nightly build artifacts not published [DBZ-4766](https://issues.redhat.com/browse/DBZ-4766)
+* Clarify need for link attributes in docs [DBZ-4776](https://issues.redhat.com/browse/DBZ-4776)
+
+
 ## 1.9.0.Alpha2
 February 9th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379892)
 
