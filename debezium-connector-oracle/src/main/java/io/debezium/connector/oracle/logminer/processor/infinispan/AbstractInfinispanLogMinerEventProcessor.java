@@ -115,7 +115,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     }
 
     @Override
-    public void abandonTransactions(Duration retention) {
+    public void abandonTransactions(Duration retention) throws InterruptedException {
         // no-op, transactions are never abandoned
     }
 

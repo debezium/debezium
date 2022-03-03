@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import java.math.BigInteger;
 import java.util.Objects;
 
 import io.debezium.connector.oracle.Scn;
@@ -24,7 +25,7 @@ public class LogFile {
     private final String fileName;
     private final Scn firstScn;
     private final Scn nextScn;
-    private final Long sequence;
+    private final BigInteger sequence;
     private final boolean current;
     private final Type type;
 
@@ -37,7 +38,7 @@ public class LogFile {
      * @param sequence the unique log sequence number
      * @param type the log type
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence, Type type) {
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, BigInteger sequence, Type type) {
         this(fileName, firstScn, nextScn, sequence, type, false);
     }
 
@@ -51,7 +52,7 @@ public class LogFile {
      * @param type the type of archive log
      * @param current whether the log file is the current one
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence, Type type, boolean current) {
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, BigInteger sequence, Type type, boolean current) {
         this.fileName = fileName;
         this.firstScn = firstScn;
         this.nextScn = nextScn;
@@ -72,7 +73,7 @@ public class LogFile {
         return isCurrent() ? Scn.MAX : nextScn;
     }
 
-    public Long getSequence() {
+    public BigInteger getSequence() {
         return sequence;
     }
 

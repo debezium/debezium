@@ -32,7 +32,7 @@ The Antora framework is opinionated about its directory structure, which is why 
             |
             └─── pages
                  |
-                 └─── (content)  
+                 └─── (content)
 ```
 
 ### Component descriptors
@@ -42,28 +42,6 @@ The Antora documentation system uses a concept called component descriptors.  De
 ### Page content
 
 All documentation content should be added under the `pages` directory and should use the extension `.adoc` for consistency.  The hierarchy used for pages under this point is mainly for organizational purposes for documentation writers.  If you wish to reference a specific `.adoc` from another file, the directory hierarchy will be used in the cross reference link however.
-
-### Linking to content
-
-In the Antora-based documentation, there are two styles of links, _External_ and _Internal_.
-
-#### External
-
-An external link is one that points to a resource that is not maintained in the Antora documentation.  In order to link to these resources, you should use the normal AsciiDoc `link` macro as shown below:
-
-```
-link:<scheme>://<host>/<path-to-resource>(<text-friendly-name>)
-```
-
-#### Internal
-
-An internal link is one that points to a resource _in_ the Antora documentation.  Antora comes with a special AsciiDoc macro called `xref` that should be used for this purpose.  This macro should be used as shown below:
-
-```
-xref:<version>@<component>:<module>:<path-to-file><#fragment>[<text-friendly-name>]
-```
-
-As an example, if you want to link to a file called `example.adoc` within the same component and for the same version of the documentation being rendered, you would write the link as `xref:example.adoc[This is my example]`.  More information on Antora's page-id structure and how to build links can be found [here](https://docs.antora.org/antora/2.1/page/page-id/#how-is-a-page-referenced-with-its-id).
 
 ### Navigation Pane
 
@@ -100,10 +78,10 @@ Should a documentation page need to reference attributes, e.g. version numbers, 
 
 The general rule is if an attribute changes frequently or is related to a specific version or subset of versions of Debezium, it likely belongs in the `antora.yml` file in this repository.  If the attribute changes infrequent or is not specific to a given version of Debezium, its easier to maintain that in the various playbook files in the Debezium website repository.
 
-Lets say we need to add an attribute that points to our JIRA issue for issue links, 
+Lets say we need to add an attribute that points to our JIRA issue for issue links,
 that would be an example of an attrbute that would be defined in the playbook.
-But if we needed to add an attribute that points to a specific version of a Maven artifact or reference a specific version of a dependency, 
-that's more appropriate for the `antora.yml` component descriptor located in this repository. 
+But if we needed to add an attribute that points to a specific version of a Maven artifact or reference a specific version of a dependency,
+that's more appropriate for the `antora.yml` component descriptor located in this repository.
 
 The current `antora.yml` component descriptor looks similar to the following:
 ```
@@ -117,11 +95,11 @@ asciidoc:
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-connector-plugin-download: 'https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.1.0.Final/debezium-connector-mysql-1.1.0.Final-plugin.tar.gz'
-    mysql-version: '8.0'    
+    mysql-version: '8.0'
     strimzi-version: '0.13.0'
 ```
 
-Attributes are defined by creating a nested yaml structure under `asciidoc.attributes` where the key-value attribute pairs are to be defined.  
+Attributes are defined by creating a nested yaml structure under `asciidoc.attributes` where the key-value attribute pairs are to be defined.
 
 The playbook files in the website repository use the same layout, shown here:
 ```
@@ -133,7 +111,7 @@ asciidoc:
     jira-url: 'https://issues.redhat.com'
     # because of how handlebars templates work with page.attributes, this must be prefixed with "page-"
     page-copyright-year: '2020'
-``` 
+```
 
 **NOTE**: Given that the Debezium documentation is consumed downstream by other processes, do not define attributes in the `_attributes.adoc` file and use it as an include nor should you define attributes locally in a given .adoc file.
 
@@ -153,27 +131,72 @@ We recommend that you use the following attributes when contributing content to 
 
 See the [Attributes](#attributes) section for more details.
 
-### Cross references
+### Adding cross-references that link to other content
 
-If you need to link to another section or location anywhere in the Debezium documentation, the recommended approach is to use anchor IDs in combination with the `xref:` cross-referencing macro.
+The Debezium Antora-based documentation uses two styles of links for creating cross-references to other content, _External_ and _Internal_.
 
-For example, if you want to link to a section called _Custom connector_, first of all define an anchor on the line preceding the heading, as follows:
+#### External links
+
+An external link is one that points to a resource that is not included within one of the Debezium AsciiDoc files.
+To link to an external resource, use the AsciiDoc `link` macro as in the following example:
+
+```
+link:<scheme>://<host>/<path-to-resource>[<link-text>]
+```
+
+For example:
+
+```
+link:https://docs.antora.org/antora/latest/navigation/xrefs-and-link-text/[Antora linking documentation]
+```
+
+#### Internal links
+
+An internal link is one that points to a resource that is included in one of the Debezium AsciiDoc files.
+The target of an internal link is the anchor ID that is defined for the element that you want to link to.
+For example, to link to a section header with the name _Custom connector_, the header must have an anchor ID defined on the line that precedes it, as in the following examples:
+
 ```
 [id="custom-connector"]
 == Custom connector
 ```
 
-You can then link to this section from anywhere in the documentation using this syntax:
 ```
-xref:custom-connector[]
+[[schema-change-topic]}
+== Schema change topic
 ```
 
-Note the following advantages of the `xref:` macro:
-* You do not need to specify or know the location of the file where the `custom-connector` ID is defined.
-AsciiDoc automatically figures this out at build time.
-* Consequently, if you move files around, you will not break any links.
-* When you build the documentation, AsciiDoc automatically converts the cross-reference into a link using the title text, _Custom connector_, in the link.
-If you change the title of the section, AsciiDoc will automatically update the link text to match.
+The method that you use to construct the link depends on whether the link targets content that is in the same AsciiDoc file or in a different file.
+
+##### Links that target content within the same file
+To link to content within the same file, use the AsciiDoc `xref` macro.
+To use the `xref` macro, construct the link as in the following example:
+
+```
+xref:<anchorID>[<link-text>]
+```
+For example,
+```
+xref:custom-connector[Custom connector]
+```
+Although the Antora framework that we use to publish the Debezium documentation can accept an empty `[<link-text>]` value, to enable the Debezium documentation to be consumed downstream in other frameworks, it's necessary to supply a `[<link-text>]` value.
+
+##### Links that target content in a different file
+To link to Debezium content that is in a different file, construct the link according to the following format:
+
+```
+{link-prefix}:<content-category-attribute>#<anchorID>
+```
+For example,
+
+```
+{link-prefix}:{link-outbox-event-router}#basic-outbox-configuration
+```
+In the Antora-based documentation, the `{link-prefix}` attribute resolves to the `xref` macro, but when the content is reused in a downstream framework, it can contain a different value.
+
+Similarly, in the Antora-based documentation, the `<content-category-attribute>` corresponds to the path to the targeted file, but when the content is rendered in a downstream framework, it can contain a different value. To determine which category attribute to use when linking to a different file, see the `link-*` attributes that are listed in the `asciidoc` section of the [`documentation/antora.yml`](../documentation/antora.yml) file.
+
+Although the preceding format is not required for the Antora-based documentation, it is required to enable the Debezium documentation to be consumed in other downstream frameworks.
 
 ### Adding images
 

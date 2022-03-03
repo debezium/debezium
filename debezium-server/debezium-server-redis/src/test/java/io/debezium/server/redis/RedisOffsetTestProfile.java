@@ -14,8 +14,6 @@ import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
-@QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
-
 public class RedisOffsetTestProfile implements QuarkusTestProfile {
 
     @Override

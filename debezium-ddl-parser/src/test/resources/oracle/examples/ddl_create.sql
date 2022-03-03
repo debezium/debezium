@@ -18,6 +18,83 @@ create table products (id NUMBER(4) NOT NULL PRIMARY KEY, name VARCHAR2(255) NOT
 CREATE TABLE T$BO_PATIENT_LMAP NOLOGGING TABLESPACE CMX_TEMP_TDE PARALLEL (DEGREE 1) AS SELECT DISTINCT XREF.ORIG_ROWID_OBJECT, XREF.ROWID_OBJECT FROM C_S_PATIENT STAGE INNER JOIN C_BO_PATIENT_XREF XREF ON XREF.ORIG_ROWID_OBJECT = STAGE.ROWID_OBJECT WHERE STAGE.ROWID_OBJECT IS NOT NULL ;
 CREATE TABLE "ORACDC"."DEPARTMENT"  (    "EMP_NO" VARCHAR2(20) NOT NULL ENABLE, "REQUEST_ID" VARCHAR2(30) NOT NULL ENABLE, "EMP_RCODE" NUMBER(2,0), "EMP_RFLAG" VARCHAR2(20), "EMP_RMSG" VARCHAR2(1000), "EMP_EMP_AMOUNT" NUMBER(8,2), "EMP_EMP_AVS" VARCHAR2(20), "EMP_EMP_CODE" VARCHAR2(200), "EMP_EMP_TIME" VARCHAR2(20), "LAST_UPD_DATE" DATE, "LAST_UPD_BY" VARCHAR2(20), "SITE_ID" NUMBER(5,0) DEFAULT NULL NOT NULL ENABLE, "OBSOLETE_FLAG" CHAR(1) DEFAULT 'N' NOT NULL ENABLE, "PRODUCT_TYPE_ID" NUMBER DEFAULT 2, "TRX_NUMBER" VARCHAR2(30), "RECONCILIATION_ID" VARCHAR2(60), "REQUEST_TOKEN" VARCHAR2(256), "LOAD_TIMESTAMP" TIMESTAMP (6), "PAYMENT_TYPE" VARCHAR2(50), "TRANSACTION_SOURCE" VARCHAR2(50), "CREDIT_CARD_TYPE" VARCHAR2(50),  SUPPLEMENTAL LOG GROUP "GGS_19282" ("EMP_NO", "REQUEST_ID") ALWAYS, SUPPLEMENTAL LOG DATA (ALL) COLUMNS, CONSTRAINT "DEPARTMENT_FK" FOREIGN KEY ("EMP_NO")   REFERENCES "ORACDC"."MEM_REG" ("EMP_NO") ENABLE NOVALIDATE  ) PARTITION BY HASH ("EMP_NO") (PARTITION "DEPARTMENT_P1" ,PARTITION "DEPARTMENT_P2" , PARTITION "DEPARTMENT_P32" );
 CREATE TABLE "ODS_XMES_QY"."ORDER" ("Oid" CHAR(36), "CONTRACT" CHAR(36), CONSTRAINT "PK_ORDER" PRIMARY KEY ("Oid") USING INDEX ENABLE, SUPPLEMENTAL LOG GROUP "GGS_87678" ("Oid") ALWAYS) INMEMORY PRIORITY CRITICAL MEMCOMPRESS FOR QUERY LOW DISTRIBUTE AUTO FOR SERVICE ALL NO DUPLICATE;
+-- Create External Table
+CREATE TABLE deptXTec3
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_DATAPUMP DEFAULT DIRECTORY def_dir1
+                            ACCESS PARAMETERS (COMPRESSION ENABLED)
+                            LOCATION ('dept.dmp'));
+
+CREATE TABLE inv_part_all_xt (PRODUCT_ID NUMBER(6), WAREHOUSE_ID NUMBER(3), QUANTITY_ON_HAND NUMBER(8))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_DATAPUMP DEFAULT DIRECTORY def_dir1
+                            ACCESS PARAMETERS (COMPRESSION ENABLED)
+                            LOCATION ('inv_p1_xt.dmp','inv_p2_xt.dmp'));
+
+CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), resume CHAR(2000), picture RAW (2000))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
+                            ACCESS PARAMETERS (FIELDS (first_name VARCHARC(5,12), last_name VARCHARC(2,20), resume VARCHARC(4,10000), picture VARRAWC(4,100000)))
+                            LOCATION ('info.dat'));
+
+CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), resume CHAR(2000), picture RAW (2000))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
+                            ACCESS PARAMETERS ( RECORDS VARIABLE 2 DATA IS BIG ENDIAN CHARACTERSET US7ASCII
+                                                FIELDS (first_name VARCHAR(2,12), last_name VARCHAR(2,20), resume VARCHAR(4,10000), picture VARRAW(4,100000)))
+                            LOCATION ('info.dat'));
+
+CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth INT, phone CHAR(12), area_code CHAR(3), exchange CHAR(3), extension CHAR(4))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
+                            ACCESS PARAMETERS ( FIELDS RTRIM (first_name (1:15) CHAR(15), last_name (*:+20), year_of_birth (36:39), phone (40:52), area_code (*-12: +3), exchange (*+1: +3), extension (*+1: +4)))
+                            LOCATION ('info.dat'));
+
+CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth CHAR(4))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
+                            ACCESS PARAMETERS ( FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '(' and ')' LRTRIM )
+                            LOCATION ('info.dat'));
+
+CREATE TABLE xtab (recno varchar2(2000))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY data_dir
+                            ACCESS PARAMETERS ( RECORDS DELIMITED BY NEWLINE
+                                                PREPROCESSOR execdir:'zcat'
+                                                LOGFILE 'deptxt1.log'
+                                                BADFILE 'deptXT.bad'
+                                                FIELDS TERMINATED BY ',' MISSING FIELD VALUES ARE NULL (recno char(2000)))
+                            LOCATION ('foo.dat.gz')) REJECT LIMIT UNLIMITED;
+
+CREATE TABLE deptxt1 ( deptno number(2), dname varchar2(14), loc varchar2(13))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY dpump_dir
+                            ACCESS PARAMETERS ( EXTERNAL VARIABLE DATA
+                                               LOGFILE 'deptxt1.log'
+                                               READSIZE=10000
+                                               PREPROCESSOR execdir:'uncompress.sh' )
+                            LOCATION ('deptxt1.dmp')) REJECT LIMIT UNLIMITED;
+
+CREATE TABLE "T_XT" ("C0" VARCHAR2(2000))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY DMPDIR
+                            ACCESS PARAMETERS ( RECORDS XMLTAG ("home address", "work address", "home phone")
+                                                READSIZE 1024
+                                                SKIP 0
+                                                FIELDS NOTRIM MISSING FIELD VALUES ARE NULL)
+                            LOCATION ('t.dat')) REJECT LIMIT UNLIMITED;
+
+CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth CHAR(4))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
+                            ACCESS PARAMETERS ( RECORDS DELIMITED BY '|' FIELDS TERMINATED BY ','
+                                              ( first_name CHAR(7), last_name CHAR(8), year_of_birth CHAR(4)))
+                            LOCATION ('info.dat'));
+
+CREATE TABLE emp_load (first_name CHAR(15), last_name CHAR(20), year_of_birth CHAR(4))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_LOADER DEFAULT DIRECTORY ext_tab_dir
+                            ACCESS PARAMETERS (RECORDS FIXED 20 FIELDS (first_name CHAR(7), last_name CHAR(8), year_of_birth CHAR(4)))
+                            LOCATION ('info.dat'));
+
+CREATE TABLE CUSTOMER_TABLE (cust_num VARCHAR2(10), order_num VARCHAR2(20), order_date DATE, item_cnt NUMBER, description VARCHAR2(100), order_total NUMBER(8,2))
+    ORGANIZATION EXTERNAL ( TYPE ORACLE_HIVE
+                            ACCESS PARAMETERS (
+                                com.oracle.bigdata.tableName:  order_db.order_summary
+                                com.oracle.bigdata.colMap:     {"col":"ITEM_CNT", "field":"order_line_item_count"}
+                                com.oracle.bigdata.overflow:   {"action":"ERROR", "col":"DESCRIPTION"}
+                                com.oracle.bigdata.errorOpt:   [{"action":"replace", "value":"INV_NUM" , "col":["CUST_NUM","ORDER_NUM"]} , {"action":"reject", "col":"ORDER_TOTAL"}]
+                          ));
+CREATE TABLE TT_BSTOFF_VERDICHT ( TrxKey NUMBER(12), BStoffPKey NUMBER(12), BStoffBOId VARCHAR2(40), BStoffBelegNr NUMBER(12), BStoffBetrag NUMBER(15,2), BStoffBetragWA NUMBER(15,2),  PRIMARY KEY (TrxKey, BStoffPKey)) ORGANIZATION INDEX;
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);

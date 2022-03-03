@@ -54,15 +54,6 @@ public class SqlServerConnectorConfigTest {
         assertFalse(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
-    @Test
-    public void multipleDatabaseNames() {
-        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
-                defaultConfig()
-                        .with(SqlServerConnectorConfig.DATABASE_NAMES, "testDB1,testDB2")
-                        .build());
-        assertFalse(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
-    }
-
     private Configuration.Builder defaultConfig() {
         return Configuration.create()
                 .with(SqlServerConnectorConfig.SERVER_NAME, "server")

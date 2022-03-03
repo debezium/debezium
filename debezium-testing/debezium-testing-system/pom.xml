@@ -13,18 +13,18 @@
   <name>Debezium system integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>5.9.0</version.fabric8.client>
+    <version.fabric8.client>5.12.1</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.21</version.commons.compress>
-    <version.strimzi>0.26.0</version.strimzi>
+    <version.strimzi>0.28.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
 
     <!--KC image configuration-->
     <image.build.registry>quay.io</image.build.registry>
-    <image.kc>${image.build.registry}/debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}${image.tag.suffix}</image.kc>
-    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}${image.tag.suffix}</image.as>
+    <image.kc>${image.build.registry}/debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.kc>
+    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}</image.as>
 
     <!--Docker configuration-->
     <docker.image.mysql>quay.io/debezium/example-mysql:latest</docker.image.mysql>
@@ -202,6 +202,14 @@
           <groupId>com.squareup.okhttp3</groupId>
           <artifactId>logging-interceptor</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
 
@@ -239,6 +247,10 @@
         <exclusion>
           <groupId>org.apache.logging.log4j</groupId>
           <artifactId>log4j-slf4j-impl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-annotations</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

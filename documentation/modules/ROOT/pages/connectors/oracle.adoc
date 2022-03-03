@@ -39,14 +39,6 @@ endif::community[]
 ifdef::product[]
 .
 
-[IMPORTANT]
-====
-{prodname} Oracle connector is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
-====
-
 Information and procedures for using a {prodname} Oracle connector are organized as follows:
 
   * xref:how-debezium-oracle-connectors-work[]
@@ -731,7 +723,7 @@ The payload section of every change event value produced by the Oracle connector
 
 `after`:: An optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema used in `before`.
 `source`:: A mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting).
-
++
 [TIP]
 ====
 The `commit_scn` field is optional and describes the SCN of the transaction commit that the change event participates within.
@@ -1172,10 +1164,19 @@ The following table describes how the connector maps basic character types.
 ifdef::community[]
 [NOTE]
 ====
-Support for these data types is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
+Support for `BLOB`, `CLOB`, and `NCLOB` is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
 Please let us know if you encounter any problems while using these data types.
 ====
 endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the `BLOB`, `CLOB`, and `NCLOB` with the {prodname} Oracle connector is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
 The following table describes how the connector maps binary and character large object (LOB) data types.
 
 .Mappings for Oracle binary and character LOB types
@@ -1184,6 +1185,10 @@ The following table describes how the connector maps binary and character large 
 |Oracle Data Type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
+
+|`BFILE`
+|n/a
+|_This data type is not supported_
 
 |`BLOB`
 |`BYTES`
@@ -1500,6 +1505,20 @@ endif::product[]
 
 |===
 
+[id="oracle-user-defined-types"]
+=== User-defined types
+
+Oracle enables you to define custom data types to provide flexibility when the built-in data types do not satisfy your requirements.
+There are a several user-defined types such as Object types, REF data types, Varrays, and Nested Tables.
+At this time, you cannot use the {prodname} Oracle connector with any of these user-defined types.
+
+[id="oracle-suppplied-types"]
+=== Oracle-supplied types
+
+Oracle provides SQL-based interfaces that you can use to define new types when the built-in or ANSI-supported types are insufficient.
+Oracle offers several commonly used data types to serve a broad array of purposes such as *Any*, *XML*, or *Spatial* types.
+At this time, you cannot use the {prodname} Oracle connector with any of these data types.
+
 [[oracle-default-values]]
 === Default Values
 If a default value is specified for a column in the database schema, the Oracle connector will attempt to propagate this value to the schema of the corresponding Kafka record field. Most common data types are supported, including:
@@ -1535,6 +1554,16 @@ For details about setting up Oracle for use with the {prodname} connector, see t
 * xref:oracle-redo-log-sizing[]
 * xref:creating-an-oracle-user-for-the-debezium-oracle-connector[]
 
+endif::product[]
+
+=== Compatibility with Oracle installation types
+
+ifdef::community[]
+An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
+The {prodname} Oracle connector is compatible with both types of installation.
+endif::community[]
+ifdef::product[]
+The {prodname} Oracle connector is compatible with Oracle installed as a standalone instance.
 endif::product[]
 
 // Type: procedure
@@ -1731,8 +1760,26 @@ The connector must be able to read information about the Oracle redo and archive
 Without these grants, the connector cannot operate.
 
 |===
+=== Standby databases
+ifdef::product[]
+The {prodname} Oracle connector cannot be used with Oracle physical or logical standby databases.
+endif::product[]
+ifdef::community[]
+An Oracle database can be configured with either a physical or a logical standby environment to provide for recovery after of a production failure.
+At this time, the {prodname} Oracle connector cannot use a physical or logical standby database as the change event source.
+There is an open https://issues.redhat.com/browse/DBZ-3866[Jira issue] to investigate this support.
 
+=== Failover databases
 
+It is customary for a logical or physical standby to exist in the case of an Oracle production failure.
+When a failure occurs and the standby instance is promoted to production, the database must be opened for read/write transactions before the {prodname} Oracle connector can connect to the database.
+
+In the case of a physical standby, the standby is an exact copy of production, which implies that the SCN values are identical.
+When using a physical standby, it is sufficient to reconfigure the {prodname} Oracle connector to use the hostname of the standby once the database is open.
+
+In the case of a logical standby, the standby is not an exact copy of the production database, so the SCN offsets in the standby differ from those in the production database.
+If you use a logical standby, to help ensure that {prodname} does not miss any change events, after the database is open, configure a new connector and perform a new database snapshot.
+endif::community[]
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
 // Title: Deployment of {prodname} Oracle connectors
@@ -2313,7 +2360,12 @@ The following configuration properties are _required_ unless a default value is 
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
 |Specifies the raw database JDBC URL. Use this property to provide flexibility in defining that database connection.
+ifdef::community[]
 Valid values include raw TNS names and RAC connection strings.
+endif::community[]
+ifdef::product[]
+Valid values include raw TNS names connection strings.
+endif::product[]
 
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
 |No default
@@ -2807,10 +2859,13 @@ By default, change events have large object columns, but the columns contain no 
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
 
+NOTE: Use of large object data types is a Technology Preview feature.
+
 |[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is unchanged and not provided by the database.
 
+ifdef::community[]
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |No default
 |A comma-separated list of Oracle Real Application Clusters (RAC) node host names or addresses.
@@ -2837,6 +2892,7 @@ rac.nodes=192.168.1.100,192.168.1.101:1522
 ----
 
 If you supply a raw JDBC URL for the database by using the xref:oracle-property-database-url[`database.url`] property, instead of defining a value for `database.port`, each RAC node entry must explicitly specify a port value.
+endif::community[]
 
 |[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
 |No default

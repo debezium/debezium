@@ -95,7 +95,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         // Skipping deletes
         if (op.equals(Envelope.Operation.DELETE.code())) {
-            LOGGER.info("Delete message {} ignored", r.key());
+            LOGGER.debug("Delete message {} ignored", r.key());
             return null;
         }
 
@@ -209,15 +209,19 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             updatedSchema = structValueSchema;
         }
 
+        Object recordKey = defineRecordKey(fieldEventKey, eventStruct, payloadId);
+
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField),
                 null,
                 defineRecordKeySchema(fieldEventKey, eventValueSchema, fallbackPayloadIdField),
-                defineRecordKey(fieldEventKey, eventStruct, payloadId),
+                recordKey,
                 updatedSchema,
                 updatedValue,
                 timestamp,
                 headers);
+
+        LOGGER.debug("Message emitted with event id: \"{}\", event key: \"{}\"", eventId, recordKey);
 
         return regexRouter.apply(newRecord);
     }

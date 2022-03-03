@@ -28,7 +28,6 @@ public class RedisStreamTestProfile implements QuarkusTestProfile {
 
     public Map<String, String> getConfigOverrides() {
         Map<String, String> config = new HashMap<String, String>();
-        config.put("debezium.source.connector.bla", "hello");
         config.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         config.put("debezium.source." + OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         return config;

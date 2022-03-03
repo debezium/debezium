@@ -150,7 +150,14 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
                 // after that call, causing the GTID 1 (which is in the first log file) to be part of offsets
                 // which is not what we expect
                 Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
-                    return getBinlogs(connection).size() == 1;
+                    List<String> binlogsAfterPurge = getBinlogs(connection);
+
+                    if (binlogsAfterPurge.size() != 1) {
+                        Testing.print("Binlogs before purging: " + binlogs);
+                        Testing.print("Binlogs after purging: " + binlogsAfterPurge);
+                    }
+
+                    return binlogsAfterPurge.size() == 1;
                 });
             }
         }

@@ -37,9 +37,18 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
      * @return the table ID, or null if it could not be parsed
      */
     public static TableId parse(String str, boolean useCatalogBeforeSchema) {
-        String[] parts = TableIdParser.parse(str).toArray(new String[0]);
-
+        final String[] parts = parseParts(str);
         return TableId.parse(parts, parts.length, useCatalogBeforeSchema);
+    }
+
+    /**
+     * Parse the supplied string into its tokenized parts.
+     *
+     * @param str the string representation of the table identifier; may not be null
+     * @return the parts of the parsed string.
+     */
+    public static String[] parseParts(String str) {
+        return TableIdParser.parse(str).toArray(new String[0]);
     }
 
     /**

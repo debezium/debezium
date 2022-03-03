@@ -27,7 +27,7 @@ class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServe
                 (SqlServerPartition partition) -> new SqlServerSnapshotPartitionMetrics(taskContext,
                         Collect.linkMapOf(
                                 "server", taskContext.getConnectorName(),
-                                "task", "0",
+                                "task", taskContext.getTaskId(),
                                 "context", "snapshot",
                                 "database", partition.getDatabaseName()),
                         metadataProvider));

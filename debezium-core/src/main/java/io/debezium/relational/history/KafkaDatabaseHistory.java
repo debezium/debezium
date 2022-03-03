@@ -188,6 +188,18 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private ExecutorService checkTopicSettingsExecutor;
     private Duration kafkaQueryTimeout;
 
+    private static final boolean USE_KAFKA_24_NEW_TOPIC_CONSTRUCTOR = hasNewTopicConstructorWithOptionals();
+
+    private static boolean hasNewTopicConstructorWithOptionals() {
+        try {
+            NewTopic.class.getConstructor(String.class, Optional.class, Optional.class);
+            return true;
+        }
+        catch (NoSuchMethodException nsme) {
+            return false;
+        }
+    }
+
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
@@ -506,21 +518,28 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
         try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
 
-            NewTopic topic;
+            NewTopic topic = null;
+
+            // if possible (underlying client and server are Kafka API 2.4+), we create the
+            // topic without explicitly specifying the replication factor, relying on the
+            // broker default setting
             try {
-                // Create topic with optional Replication Factor to rely on broker default on Kafka API 2.4+
-                topic = new NewTopic(topicName, Optional.of(PARTITION_COUNT), Optional.empty());
+                if (USE_KAFKA_24_NEW_TOPIC_CONSTRUCTOR) {
+                    topic = new NewTopic(topicName, Optional.of(PARTITION_COUNT), Optional.empty());
+                }
             }
             catch (Exception ex) {
-                if ((ex.getCause() instanceof UnsupportedVersionException)) {
-                    // Find default replication factor by querying the broker as the API is not compatible with optional Replication Factor
-                    final short replicationFactor = getDefaultTopicReplicationFactor(admin);
-                    // Create topic with specific Replication Factor
-                    topic = new NewTopic(topicName, PARTITION_COUNT, replicationFactor);
-                }
-                else {
+                if (!(ex.getCause() instanceof UnsupportedVersionException)) {
                     throw ex;
                 }
+            }
+
+            // falling back to querying and providing the replication factor explicitly;
+            // that's not the preferred choice, as querying ("DescribeConfigs") requires an
+            // additional ACL/privilege, which we otherwise don't need
+            if (topic == null) {
+                short replicationFactor = getDefaultTopicReplicationFactor(admin);
+                topic = new NewTopic(topicName, PARTITION_COUNT, replicationFactor);
             }
 
             topic.configs(Collect.hashMapOf(CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE, RETENTION_MS_NAME, Long.toString(RETENTION_MS_MAX), RETENTION_BYTES_NAME,

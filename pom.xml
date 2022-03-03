@@ -78,7 +78,7 @@
         <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
         <version.staging.plugin>1.6.8</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
-        <version.javadoc.plugin>3.1.1</version.javadoc.plugin>
+        <version.javadoc.plugin>3.3.2</version.javadoc.plugin>
         <version.code.formatter>2.16.0</version.code.formatter>
         <version.surefire.plugin>3.0.0-M3</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
@@ -113,7 +113,7 @@
 
         <!-- Quarkus -->
         <!-- Must be aligned with Apicurio version below -->
-        <quarkus.version>2.7.1.Final</quarkus.version>
+        <quarkus.version>2.7.2.Final</quarkus.version>
 
         <!-- Apicurio -->
         <version.apicurio>2.1.5.Final</version.apicurio>

@@ -5,7 +5,12 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.config.CommonConnectorConfig.TASK_ID;
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAME;
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
+
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Strings;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -51,29 +55,54 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
-        if (maxTasks > 1) {
-            throw new IllegalArgumentException("Only a single connector task may be started");
+        if (maxTasks > 1 && !properties.containsKey(DATABASE_NAMES.name())) {
+            throw new IllegalArgumentException("Only a single connector task may be started in single-partition mode");
         }
 
-        Map<String, String> taskConfig = new HashMap<>(properties);
+        final SqlServerConnectorConfig config = new SqlServerConnectorConfig(Configuration.from(properties));
 
-        Configuration config = Configuration.from(properties);
-        final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
-        final String databaseName = sqlServerConfig.getDatabaseName();
-        try (SqlServerConnection connection = connect(sqlServerConfig)) {
-            final String realDatabaseName = connection.retrieveRealDatabaseName(databaseName);
-            if (!sqlServerConfig.isMultiPartitionModeEnabled()) {
-                taskConfig.put(SqlServerConnectorConfig.DATABASE_NAME.name(), realDatabaseName);
-            }
-            else {
-                taskConfig.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), realDatabaseName);
-            }
+        try (SqlServerConnection connection = connect(config)) {
+            return buildTaskConfigs(connection, config, maxTasks);
         }
         catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve real database name", e);
+            throw new IllegalArgumentException("Could not build task configs", e);
+        }
+    }
+
+    private List<Map<String, String>> buildTaskConfigs(SqlServerConnection connection, SqlServerConnectorConfig config,
+                                                       int maxTasks) {
+        final boolean multiPartitionMode = config.isMultiPartitionModeEnabled();
+        List<String> databaseNames = config.getDatabaseNames();
+
+        // Initialize the database list for each task
+        List<List<String>> databasesByTask = new ArrayList<>();
+        for (int i = 0; i < maxTasks; i++) {
+            databasesByTask.add(new ArrayList<>());
         }
 
-        return Collections.singletonList(taskConfig);
+        // Add each database to a task list via round-robin.
+        for (int databaseNameIndex = 0; databaseNameIndex < databaseNames.size(); databaseNameIndex++) {
+            int taskIndex = databaseNameIndex % maxTasks;
+            String realDatabaseName = connection.retrieveRealDatabaseName(databaseNames.get(databaseNameIndex));
+            databasesByTask.get(taskIndex).add(realDatabaseName);
+        }
+
+        // Create a task config for each task, assigning each a list of database names.
+        List<Map<String, String>> taskConfigs = new ArrayList<>();
+        for (int taskIndex = 0; taskIndex < maxTasks; taskIndex++) {
+            String taskDatabases = String.join(",", databasesByTask.get(taskIndex));
+            Map<String, String> taskProperties = new HashMap<>(properties);
+            if (multiPartitionMode) {
+                taskProperties.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), taskDatabases);
+                taskProperties.put(TASK_ID, String.valueOf(taskIndex));
+            }
+            else {
+                taskProperties.put(SqlServerConnectorConfig.DATABASE_NAME.name(), taskDatabases);
+            }
+            taskConfigs.add(Collections.unmodifiableMap(taskProperties));
+        }
+
+        return taskConfigs;
     }
 
     @Override
@@ -87,14 +116,12 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
-        final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
-
-        if (Strings.isNullOrEmpty(sqlServerConfig.getDatabaseName())) {
-            throw new IllegalArgumentException("Either '" + SqlServerConnectorConfig.DATABASE_NAME
-                    + "' or '" + SqlServerConnectorConfig.DATABASE_NAMES
-                    + "' option must be specified");
+        if (!configValues.get(DATABASE_NAME.name()).errorMessages().isEmpty()
+                || !configValues.get(DATABASE_NAMES.name()).errorMessages().isEmpty()) {
+            return;
         }
 
+        final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
         // Try to connect to the database ...
