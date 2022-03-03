@@ -1558,8 +1558,13 @@ endif::product[]
 
 === Compatibility with Oracle installation types
 
+ifdef::community[]
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
 The {prodname} Oracle connector is compatible with both types of installation.
+endif::community[]
+ifdef::product[]
+The {prodname} Oracle connector is compatible with Oracle installed as a standalone instance.
+endif::product[]
 
 // Type: procedure
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
