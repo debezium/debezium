@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 public class RedisOffsetTestProfile implements QuarkusTestProfile {
