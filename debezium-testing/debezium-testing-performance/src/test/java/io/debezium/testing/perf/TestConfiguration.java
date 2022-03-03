@@ -92,7 +92,7 @@ public class TestConfiguration {
         kafkaPort = config.getInteger(PROP_DEPLOYMENT_KAFKA_PORT, 9092);
 
         pollInterval = Duration.ofMillis(config.getLong(PROP_TEST_POLL_INTERVAL, 100L));
-        waitTime = Duration.ofSeconds(config.getLong(PROP_TEST_WAIT_TIME, 120L));
+        waitTime = Duration.ofSeconds(config.getLong(PROP_TEST_WAIT_TIME, 600L));
 
         reportFile = config.getString(PROP_TEST_REPORT_FILE, "test_report.csv");
         schemasCount = config.getInteger(PROP_TEST_SCHEMAS_COUNT, 0);

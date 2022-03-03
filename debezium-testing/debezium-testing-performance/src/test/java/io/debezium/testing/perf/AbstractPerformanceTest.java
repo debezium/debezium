@@ -34,13 +34,16 @@ public abstract class AbstractPerformanceTest {
     private static final String TEST_OUTPUT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus sed ante vitae justo dictum ultrices. Phasellus non enim a ligula fringilla mattis sit amet placerat sem. Nulla pharetra est sem, nec imperdiet sem molestie sed. Pellentesque tempor tempus lacus, sit amet blandit sapien consequat non. Nulla accumsan sit amet felis quis laoreet. Etiam consectetur tempus est, molestie semper lorem eleifend vitae. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Mauris convallis lobortis vestibulum. Etiam convallis purus eget urna accumsan egestas. Integer semper cursus tellus ut venenatis. Nunc euismod, felis ultricies mollis elementum, lectus lacus ultrices ligula, vel eleifend massa lacus id mi. In venenatis, orci vitae luctus venenatis, diam ex suscipit lacus, eu hendrerit lectus elit quis lectus. Proin finibus lacus vitae quam blandit, et placerat sapien suscipit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vestibulum ex quis velit eleifend, ac non.";
 
     private static final String SCENARIO_BASIC = "basic";
+    private static final String SCENARIO_SCHEMA = "schema";
     private static final String RECORDING_STREAMING = "streaming";
     private static final String RECORDING_SNAPSHOT = "snapshot";
+    private static final String RECORDING_SCHEMA_SNAPSHOT = "schema-snapshot";
 
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
 
     private Instant capturingStart;
+    private Instant capturingEnd;
     private TestConfiguration config;
     private DeploymentController deployment;
 
@@ -74,7 +77,7 @@ public abstract class AbstractPerformanceTest {
         capturingStart = deployment.waitForSnapshotToStart();
         deployment.waitForCaptureCompletion();
         deployment.stopRecording();
-        logResults(SCENARIO_BASIC, RECORDING_SNAPSHOT);
+        logResults(SCENARIO_BASIC, RECORDING_SNAPSHOT, deployment.lastDataMessageTimestamp());
     }
 
     @Test
@@ -89,11 +92,22 @@ public abstract class AbstractPerformanceTest {
         capturingStart = deployment.waitForStreamingToStart();
         deployment.waitForCaptureCompletion();
         deployment.stopRecording();
-        logResults(SCENARIO_BASIC, RECORDING_STREAMING);
+        logResults(SCENARIO_BASIC, RECORDING_STREAMING, deployment.lastDataMessageTimestamp());
     }
 
-    private void logResults(String scenario, String recording) throws IOException {
-        final Duration runtime = Duration.between(capturingStart, deployment.lastDataMessageTimestamp());
+    @Test
+    public void testSchemaSnapshot() throws Exception {
+        populateSchema();
+        deployment.startRecording(RECORDING_SCHEMA_SNAPSHOT);
+        deployment.registerConnector(SCENARIO_SCHEMA);
+        capturingStart = deployment.waitForSnapshotToStart();
+        capturingEnd = deployment.waitForSnapshotToStop();
+        deployment.stopRecording();
+        logResults(SCENARIO_BASIC, RECORDING_SCHEMA_SNAPSHOT, capturingEnd);
+    }
+
+    private void logResults(String scenario, String recording, Instant capturingEnd) throws IOException {
+        final Duration runtime = Duration.between(capturingStart, capturingEnd);
         final long speed = (long) (((double) config().totalMessageCount() / runtime.toMillis()) * 1000);
         LOGGER.info("{} messages processed in {} with speed {} msgs/sec", config().totalMessageCount(), runtime,
                 speed);

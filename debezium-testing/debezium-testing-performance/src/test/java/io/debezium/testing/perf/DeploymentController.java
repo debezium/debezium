@@ -182,18 +182,21 @@ public class DeploymentController {
                     now.set(Instant.now());
                     return debeziumSnapshotMBean().getSnapshotRunning();
                 });
-        LOGGER.info("Snapshot started at {}", now);
+        LOGGER.info("Snapshot started at {}", now.get());
         return now.get();
     }
 
     public Instant waitForSnapshotToStop() {
-        Awaitility.waitAtMost(Duration.ofSeconds(10))
-                .pollInterval(Duration.ofMillis(100))
+        final AtomicReference<Instant> now = new AtomicReference<>();
+        Awaitility.waitAtMost(config.waitTime())
+                .pollInterval(config.pollInterval())
                 .ignoreException(UndeclaredThrowableException.class)
-                .until(() -> debeziumSnapshotMBean().getSnapshotCompleted());
-        final Instant now = Instant.now();
-        LOGGER.info("Snapshot stopped at {}", now);
-        return now;
+                .until(() -> {
+                    now.set(Instant.now());
+                    return debeziumSnapshotMBean().getSnapshotCompleted();
+                });
+        LOGGER.info("Snapshot stopped at {}", now.get());
+        return now.get();
     }
 
     public void startRecording(String name) throws Exception {
@@ -242,7 +245,7 @@ public class DeploymentController {
             consumer.unsubscribe();
             consumer.subscribe(Collections.singleton(config.capturedTopicName()));
             consumer.seekToBeginning(Collections.emptySet());
-            Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+            Awaitility.await().atMost(config.waitTime()).until(() -> {
                 final ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
                 if (!records.isEmpty()) {
                     final ConsumerRecord<String, String> record = records.iterator().next();
