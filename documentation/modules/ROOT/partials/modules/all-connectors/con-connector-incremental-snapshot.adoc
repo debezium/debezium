@@ -17,7 +17,7 @@ This phased approach to capturing data provides the following advantages over th
 * If the progress of an incremental snapshot is interrupted, you can resume it without losing any data.
   After the process resumes, the snapshot begins at the point where it stopped, rather than recapturing the {data-collection} from the beginning.
 * You can run an incremental snapshot on demand at any time, and repeat the process as needed to adapt to database updates.
-  For example, you might re-run a snapshot after you modify the connector configuration to add a {data-collection} to its xref:{context}-property-table-include-list[`table.include.list`] property.
+  For example, you might re-run a snapshot after you modify the connector configuration to add a {data-collection} to its xref:{context}-property-table-include-list[`{data-collection}.include.list`] property.
 
 .Incremental snapshot process
 When you run an incremental snapshot, {prodname} sorts each {data-collection} by primary key and then splits the {data-collection} into chunks based on the xref:{context}-property-incremental-snapshot-chunk-size[configured chunk size].
