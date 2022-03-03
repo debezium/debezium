@@ -5,8 +5,6 @@
  */
 package io.debezium.pipeline.metrics;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.ThreadSafe;
@@ -15,11 +13,12 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.metrics.Metrics;
 import io.debezium.pipeline.ConnectorEvent;
+import io.debezium.pipeline.meters.CommonEventMeter;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
-import io.debezium.util.Clock;
 
 /**
  * Base for metrics implementations.
@@ -27,140 +26,97 @@ import io.debezium.util.Clock;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public abstract class PipelineMetrics extends Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
+public abstract class PipelineMetrics<P extends Partition> extends Metrics
+        implements DataChangeEventListener<P>, ChangeEventSourceMetricsMXBean {
 
     protected final EventMetadataProvider metadataProvider;
-    protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
-    protected final AtomicLong totalNumberOfCreateEventsSeen = new AtomicLong();
-    protected final AtomicLong totalNumberOfUpdateEventsSeen = new AtomicLong();
-    protected final AtomicLong totalNumberOfDeleteEventsSeen = new AtomicLong();
-    private final AtomicLong numberOfEventsFiltered = new AtomicLong();
-    protected final AtomicLong numberOfErroneousEvents = new AtomicLong();
-    protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
-    private volatile String lastEvent;
 
-    protected final Clock clock;
     private final ChangeEventQueueMetrics changeEventQueueMetrics;
     protected final CdcSourceTaskContext taskContext;
+    private final CommonEventMeter commonEventMeter;
 
     protected <T extends CdcSourceTaskContext> PipelineMetrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                EventMetadataProvider metadataProvider) {
         super(taskContext, contextName);
         this.taskContext = taskContext;
-        this.clock = taskContext.getClock();
         this.changeEventQueueMetrics = changeEventQueueMetrics;
         this.metadataProvider = metadataProvider;
+        this.commonEventMeter = new CommonEventMeter(taskContext.getClock(), metadataProvider);
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
-        updateCommonEventMetrics(operation);
-        lastEvent = metadataProvider.toSummaryString(source, offset, key, value);
-    }
-
-    private void updateCommonEventMetrics() {
-        updateCommonEventMetrics(null);
-    }
-
-    private void updateCommonEventMetrics(Operation operation) {
-        totalNumberOfEventsSeen.incrementAndGet();
-        lastEventTimestamp.set(clock.currentTimeInMillis());
-
-        if (operation != null) {
-            switch (operation) {
-                case CREATE:
-                    totalNumberOfCreateEventsSeen.incrementAndGet();
-                    break;
-                case UPDATE:
-                    totalNumberOfUpdateEventsSeen.incrementAndGet();
-                    break;
-                case DELETE:
-                    totalNumberOfDeleteEventsSeen.incrementAndGet();
-                    break;
-                default:
-                    break;
-            }
-        }
+    public void onEvent(P partition, DataCollectionId source, OffsetContext offset, Object key, Struct value,
+                        Operation operation) {
+        commonEventMeter.onEvent(source, offset, key, value, operation);
     }
 
     @Override
-    public void onFilteredEvent(String event) {
-        numberOfEventsFiltered.incrementAndGet();
-        updateCommonEventMetrics();
+    public void onFilteredEvent(P partition, String event) {
+        commonEventMeter.onFilteredEvent();
     }
 
     @Override
-    public void onFilteredEvent(String event, Operation operation) {
-        numberOfEventsFiltered.incrementAndGet();
-        updateCommonEventMetrics(operation);
+    public void onFilteredEvent(P partition, String event, Operation operation) {
+        commonEventMeter.onFilteredEvent(operation);
     }
 
     @Override
-    public void onErroneousEvent(String event) {
-        numberOfErroneousEvents.incrementAndGet();
-        updateCommonEventMetrics();
+    public void onErroneousEvent(P partition, String event) {
+        commonEventMeter.onErroneousEvent();
     }
 
     @Override
-    public void onErroneousEvent(String event, Operation operation) {
-        numberOfErroneousEvents.incrementAndGet();
-        updateCommonEventMetrics(operation);
+    public void onErroneousEvent(P partition, String event, Operation operation) {
+        commonEventMeter.onErroneousEvent(operation);
     }
 
     @Override
-    public void onConnectorEvent(ConnectorEvent event) {
+    public void onConnectorEvent(P partition, ConnectorEvent event) {
     }
 
     @Override
     public String getLastEvent() {
-        return lastEvent;
+        return commonEventMeter.getLastEvent();
     }
 
     @Override
     public long getMilliSecondsSinceLastEvent() {
-        return (lastEventTimestamp.get() == -1) ? -1 : (clock.currentTimeInMillis() - lastEventTimestamp.get());
+        return commonEventMeter.getMilliSecondsSinceLastEvent();
     }
 
     @Override
     public long getTotalNumberOfEventsSeen() {
-        return totalNumberOfEventsSeen.get();
+        return commonEventMeter.getTotalNumberOfEventsSeen();
     }
 
     @Override
     public long getTotalNumberOfCreateEventsSeen() {
-        return totalNumberOfCreateEventsSeen.get();
+        return commonEventMeter.getTotalNumberOfCreateEventsSeen();
     }
 
     @Override
     public long getTotalNumberOfUpdateEventsSeen() {
-        return totalNumberOfUpdateEventsSeen.get();
+        return commonEventMeter.getTotalNumberOfUpdateEventsSeen();
     }
 
     @Override
     public long getTotalNumberOfDeleteEventsSeen() {
-        return totalNumberOfDeleteEventsSeen.get();
+        return commonEventMeter.getTotalNumberOfDeleteEventsSeen();
     }
 
     @Override
     public long getNumberOfEventsFiltered() {
-        return numberOfEventsFiltered.get();
+        return commonEventMeter.getNumberOfEventsFiltered();
     }
 
     @Override
     public long getNumberOfErroneousEvents() {
-        return numberOfErroneousEvents.get();
+        return commonEventMeter.getNumberOfErroneousEvents();
     }
 
     @Override
     public void reset() {
-        totalNumberOfEventsSeen.set(0);
-        totalNumberOfCreateEventsSeen.set(0);
-        totalNumberOfUpdateEventsSeen.set(0);
-        totalNumberOfDeleteEventsSeen.set(0);
-        lastEventTimestamp.set(-1);
-        numberOfEventsFiltered.set(0);
-        numberOfErroneousEvents.set(0);
-        lastEvent = null;
+        commonEventMeter.reset();
     }
 
     @Override

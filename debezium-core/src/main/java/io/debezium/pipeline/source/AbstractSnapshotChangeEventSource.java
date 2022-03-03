@@ -43,16 +43,16 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
     private final CommonConnectorConfig connectorConfig;
-    private final SnapshotProgressListener snapshotProgressListener;
+    private final SnapshotProgressListener<P> snapshotProgressListener;
 
-    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener snapshotProgressListener) {
+    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener<P> snapshotProgressListener) {
         this.connectorConfig = connectorConfig;
         this.snapshotProgressListener = snapshotProgressListener;
     }
 
     @Override
     public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
-        SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
+        SnapshottingTask snapshottingTask = getSnapshottingTask(partition, previousOffset);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
             return SnapshotResult.skipped(previousOffset);
@@ -72,7 +72,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         boolean completedSuccessfully = true;
 
         try {
-            snapshotProgressListener.snapshotStarted();
+            snapshotProgressListener.snapshotStarted(partition);
             return doExecute(context, previousOffset, ctx, snapshottingTask);
         }
         catch (InterruptedException e) {
@@ -89,10 +89,10 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
             complete(ctx);
 
             if (completedSuccessfully) {
-                snapshotProgressListener.snapshotCompleted();
+                snapshotProgressListener.snapshotCompleted(partition);
             }
             else {
-                snapshotProgressListener.snapshotAborted();
+                snapshotProgressListener.snapshotAborted(partition);
             }
         }
     }
@@ -151,7 +151,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(O previousOffset);
+    protected abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.

@@ -178,7 +178,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         // If the value does NOT contain a single quote it is assumed to be a raw value. Otherwise the value is
         // extracted from inside the single quotes.
         if (!defaultValue.contains("'")) {
-            return defaultValue;
+            return defaultValue.startsWith("NULL::") ? null : defaultValue;
         }
 
         final Matcher matcher = LITERAL_DEFAULT_PATTERN.matcher(defaultValue);

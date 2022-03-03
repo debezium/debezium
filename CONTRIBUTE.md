@@ -2,34 +2,19 @@
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. This document outlines the basic steps required to work with and contribute to the Debezium codebase.
 
-## Table of contents
+## Talk to us
 
-- [Talk to us](#talk-to-us)
-  - [User chat](https://debezium.zulipchat.com/#narrow/stream/302529-users)
-  - [Developers chat](https://debezium.zulipchat.com/#narrow/stream/302533-dev) - Only for internal development subjects
-  - [Google Group](https://groups.google.com/forum/#!forum/debezium)
-  - [JIRA](https://issues.jboss.org/projects/DBZ/issues/) - You can [create an account for free](https://developer.jboss.org/register.jspa)
-- [Install the tools](#install-the-tools)
-- Repository
-  - [GitHub account](#github-account)
-  - [Fork the Debezium repository](#fork-the-debezium-repository)
-  - [Clone your fork](#clone-your-fork)
-  - [Get the latest upstream code](#get-the-latest-upstream-code)
-- Local development
-  - [Building locally](#building-locally)
-  - [Running and debugging tests](#running-and-debugging-tests)
-  - [Making changes](#making-changes)
-  - [Rebasing](#rebasing)
-- Proposing the changes
-  - [Creating a pull request](#creating-a-pull-request)
-  - [Continuous Integration](#continuous-integration)
-  - [Summary](#summary)
+Before doing any code changes,
+it's a good idea to reach out to us,
+so as to make sure there's a general consencus on the proposed change and the implementation strategy.
+You can reach us here:
 
-### Talk to us
+* [User chat](https://debezium.zulipchat.com/#narrow/stream/302529-users)
+* [Developers chat](https://debezium.zulipchat.com/#narrow/stream/302533-dev) - Only for internal development subjects
+* [Google Group](https://groups.google.com/forum/#!forum/debezium)
+* [Jira](https://issues.redhat.com/projects/DBZ/)
 
-You can talk to us in our [chat room for users](https://debezium.zulipchat.com/#narrow/stream/302529-users) or on our [Google Group](https://groups.google.com/forum/#!forum/debezium). If you want to contribute, consider joining the [chat room for developers](https://debezium.zulipchat.com/#narrow/stream/302533-dev). We also [track our issues using JIRA](https://issues.jboss.org/projects/DBZ/issues/) and you can [create an account for free](https://developer.jboss.org/register.jspa); please don't create GitHub issues.
-
-### Install the tools
+## Install the tools
 
 The following software is required to work with the Debezium codebase and build it locally:
 
@@ -48,6 +33,13 @@ See the links above for installation instructions on your platform. You can veri
 ### GitHub account
 
 Debezium uses [GitHub](GitHub.com) for its primary code repository and for pull-requests, so if you don't already have a GitHub account you'll need to [join](https://github.com/join).
+
+### Jira account
+
+Debezium uses the [Red Hat Jira](https://issues.redhat.com/) instance for issue tracking.
+If you don't have an account yet, you can create one for free by clicking "Log In" and then signing up with Red Hat's SSO service.
+
+## Working with the codebase
 
 ### Fork the Debezium repository
 
@@ -115,12 +107,12 @@ or the following Docker commands:
 
     $ docker stop database; docker rm database
 
-### Making changes
+## Making changes
 
-Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [JIRA](https://issues.jboss.org/projects/DBZ/issues/). If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description.
+Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [Jira](https://issues.redhat.com/projects/DBZ/) project. If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description.
 If you are going to work on a specific issue and it's your first contribution,
 please add a short comment to the issue, so other people know you're working on it.
-If you are contributing repeatedly, ask in our [chat room for developers](https://debezium.zulipchat.com/#narrow/stream/302533-dev) for the 'developer' JIRA role so you can assign issues to yourself.
+If you are contributing repeatedly, ask in our [chat room for developers](https://debezium.zulipchat.com/#narrow/stream/302533-dev) for the 'developer' Jira role so you can assign issues to yourself.
 
 Before you make any changes, be sure to switch to the `main` branch and pull the latest commits on the `main` branch from the upstream repository. Also, it's probably good to run a build and verify all tests pass *before* you make any changes.
 
@@ -144,7 +136,7 @@ Committing is as simple as:
 
     $ git commit .
 
-which should then pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the JIRA issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
+which should then pop up an editor of your choice in which you should place a good commit message. _*We do expect that all commit messages begin with a line starting with the Jira issue and ending with a short phrase that summarizes what changed in the commit.*_ For example:
 
     DBZ-1234 Expanded the MySQL integration test and correct a unit test.
 
@@ -208,9 +200,9 @@ Once you're finished making your changes, your topic branch should have your com
 
     $ git push origin DBZ-1234
 
-Then, in a browser go to your forked repository, and you should see a small section near the top of the page with a button labeled "Contribute". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and a button "Open pull request" will apper. Click it and GitHub will present you the "Comparing changes" page, where you can view all changes that you are about to submit. With all revised, click in "Create pull request" and a short form will be given, that you should fill out with information about your pull request. The title should start with the JIRA issue and end with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.)
+Then, in a browser go to your forked repository, and you should see a small section near the top of the page with a button labeled "Contribute". GitHub recognized that you pushed a new topic branch to your fork of the upstream repository, and it knows you probably want to create a pull request with those changes. Click on the button, and a button "Open pull request" will apper. Click it and GitHub will present you the "Comparing changes" page, where you can view all changes that you are about to submit. With all revised, click in "Create pull request" and a short form will be given, that you should fill out with information about your pull request. The title should start with the Jira issue and end with a short phrase that summarizes the changes included in the pull request. (If the pull request contains a single commit, GitHub will automatically prepopulate the title and description fields from the commit message.)
 
-When completed, press the "Create" button and copy the URL to the new pull request. Go to the corresponding JIRA issue and record the pull request by pasting the URL into the "Pull request" field. (Be sure to not overwrite any URLs that were already in this field; this is how a single issue is bound to multiple pull requests.) Also, please add a JIRA comment with a clear description of what you changed. You might even use the commit message (except for the first line).
+When completed, press the "Create" button and copy the URL to the new pull request. Go to the corresponding Jira issue and record the pull request by pasting the URL into the "Pull request" field. (Be sure to not overwrite any URLs that were already in this field; this is how a single issue is bound to multiple pull requests.) Also, please add a Jira comment with a clear description of what you changed. You might even use the commit message (except for the first line).
 
 At this point, you can switch to another issue and another topic branch. The Debezium committers will be notified of your new pull request, and will review it in short order. They may ask questions or make remarks using line notes or comments on the pull request. (By default, GitHub will send you an email notification of such changes, although you can control this via your GitHub preferences.)
 
@@ -251,19 +243,20 @@ The project currently builds its jobs in two environments:
 
 Here's a quick check list for a good pull request (PR):
 
-* Discussed and approved on IRC or the mailing list
-* A JIRA associated with your PR (include the JIRA issue number in commit comment)
-* One commit per PR
+* Discussed and approved on Jira, chat or the mailing list
+* A Jira associated with your PR (include the Jira issue number in commit comment)
 * One feature/change per PR
-* No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code, if you want to refactor/improve existing code that's a separate discussion and separate JIRA issue)
+* No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code, if you want to refactor/improve existing code that's a separate discussion and separate Jira issue)
 * New/changed features have been documented
 * A full build completes successfully
 * Do a rebase on upstream `main`
 
-### PR Handling (For Committers)
+## PR Handling (For committers)
 
-* Don't merge your own PRs, ensure four eyes principle (unless it's trivial typo fixes and the like)
-* Ensure there are no https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile["Octocat" commits]
+* No code changes without PR (unless it's trivial typo fixes and the like; just commit those)
+* Don't merge your own PRs, ensure four eyes principle (unless it's trivial changes, or a reviewer suggested to merge yourself after applying some suggestions)
+* Ensure there are no ["Octocat" commits](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile)
+* During reviews, focus on the relevant parts (APIs, semantics, functional behavior, performance aspects, etc); de-focus on style and formatting (the latter is automated anyways)
 * Don't do force pushes to master/main branches (it's disabled for all repos)
 * Always apply PRs via rebasing instead of merges (there should be a linear commit history)
 * Optional: squash commits into one if there's lots of forth and back on a PR which isn't relevant for the history in the long run

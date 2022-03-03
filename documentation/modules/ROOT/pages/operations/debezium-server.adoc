@@ -189,13 +189,31 @@ The source configuration uses the same configuration properties that are describ
 |
 |The name of the Java class implementing the source connector.
 
-|[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
+|[[debezium-source-offset-storage]]<<debezium-source-offset-storage, `debezium.source.offset.storage`>>
 |
-|The file in which connector offsets are stored for non-Kafka deployments.
+|Class to use for storing and retrieving offsets for non-Kafka deployments.
+|To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingStore`
+
+|[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
+|`org.apache.kafka.connect.storage.FileOffsetBackingStore`
+|If using a file offset store (default), the file in which connector offsets are stored for non-Kafka deployments.
 
 |[[debezium-source-offset-flush-interval-ms]]<<debezium-source-offset-flush-interval-ms, `debezium.source.offset.flush.interval.ms`>>
 |
 |Defines how frequently the offsets are flushed into the file.
+
+|[[redis-address]]<<redis-address, `debezium.source.offset.storage.redis.address`>>
+|
+|(Optional) If using Redis to store offsets, an address, formatted as `host:port`, at which the Redis target streams are provided. If not supplied, will attempt to read `debezium.sink.redis.address`
+
+|[[redis-user]]<<redis-user, `debezium.source.offset.storage.redis.user`>>
+|
+|(Optional) If using Redis to store offsets, a user name used to communicate with Redis. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.user`
+
+|[[redis-password]]<<redis-password, `debezium.source.offset.storage.redis.password`>>
+|
+|(Optional)  If using Redis to store offsets, a password (of respective user) used to communicate with Redis. A password must be set if a user is set. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.password`
+
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
 |`io.debezium.relational.history.KafkaDatabaseHistory`
@@ -619,6 +637,19 @@ So this string will be used as key for records without primary key.
 |Redis does not support the notion of null payloads, as is the case with tombstone events.
 So this string will be used as value for records without a payload.
 
+|[[redis-batch-size]]<<redis-batch-size, `debezium.sink.redis.batch.size`>>
+|`500`
+|Number of change records to insert in a single batch write (Pipelined transaction).
+
+|[[redis-retry-initial-delay-ms]]<<redis-retry-initial-delay-ms, `debezium.sink.redis.retry.initial.delay.ms`>>
+|`300`
+|Initial retry delay when encountering Redis connection or OOM issues.
+This value will be doubled upon every retry but won't exceed `debezium.sink.redis.retry.max.delay.ms`
+
+|[[redis-retry-max-delay-ms]]<<redis-retry-max-delay-ms, `debezium.sink.redis.retry.max.delay.ms`>>
+|`10000`
+|Max delay when encountering Redis connection or OOM issues.
+
 |===
 
 
@@ -632,10 +663,6 @@ When the alternative implementations are not available then the default ones are
 |Interface
 |CDI classifier
 |Description
-
-|[[redis-client]]<<redis-client, `redis.clients.jedis.Jedis`>>
-|`@CustomConsumerBuilder`
-|Custom configured instance of a `Jedis` used to send messages to target streams.
 
 |[[redis-ext-stream-name-mapper]]<<redis-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |

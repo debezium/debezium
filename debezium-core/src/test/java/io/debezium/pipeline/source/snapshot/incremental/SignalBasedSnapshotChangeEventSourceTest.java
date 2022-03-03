@@ -13,6 +13,7 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -44,9 +45,9 @@ public class SignalBasedSnapshotChangeEventSourceTest {
 
     @Test
     public void testBuildQueryOnePkColumn() {
-        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
-                config(), new JdbcConnection(config().getConfig(), config -> null, "\"", "\""), null, null, null, SnapshotProgressListener.NO_OP,
-                DataChangeEventListener.NO_OP);
+        final SignalBasedIncrementalSnapshotChangeEventSource<? extends Partition, TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
+                config(), new JdbcConnection(config().getConfig(), config -> null, "\"", "\""), null, null, null, SnapshotProgressListener.NO_OP(),
+                DataChangeEventListener.NO_OP());
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
         source.setContext(context);
         final Column pk1 = Column.editor().name("pk1").create();
@@ -66,9 +67,9 @@ public class SignalBasedSnapshotChangeEventSourceTest {
 
     @Test
     public void testBuildQueryThreePkColumns() {
-        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
-                config(), new JdbcConnection(config().getConfig(), config -> null, "\"", "\""), null, null, null, SnapshotProgressListener.NO_OP,
-                DataChangeEventListener.NO_OP);
+        final SignalBasedIncrementalSnapshotChangeEventSource<? extends Partition, TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
+                config(), new JdbcConnection(config().getConfig(), config -> null, "\"", "\""), null, null, null, SnapshotProgressListener.NO_OP(),
+                DataChangeEventListener.NO_OP());
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
         source.setContext(context);
         final Column pk1 = Column.editor().name("pk1").create();
@@ -92,9 +93,9 @@ public class SignalBasedSnapshotChangeEventSourceTest {
 
     @Test
     public void testMaxQuery() {
-        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
-                config(), new JdbcConnection(config().getConfig(), config -> null, "\"", "\""), null, null, null, SnapshotProgressListener.NO_OP,
-                DataChangeEventListener.NO_OP);
+        final SignalBasedIncrementalSnapshotChangeEventSource<? extends Partition, TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
+                config(), new JdbcConnection(config().getConfig(), config -> null, "\"", "\""), null, null, null, SnapshotProgressListener.NO_OP(),
+                DataChangeEventListener.NO_OP());
         final Column pk1 = Column.editor().name("pk1").create();
         final Column pk2 = Column.editor().name("pk2").create();
         final Column val1 = Column.editor().name("val1").create();

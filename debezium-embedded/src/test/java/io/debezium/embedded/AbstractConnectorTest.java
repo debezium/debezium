@@ -26,6 +26,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -446,9 +448,35 @@ public abstract class AbstractConnectorTest implements Testing {
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
     protected int consumeRecords(int numberOfRecords, int breakAfterNulls, Consumer<SourceRecord> recordConsumer, boolean assertRecords) throws InterruptedException {
+        return consumeRecordsUntil(
+                (recordsConsumed, record) -> recordsConsumed >= numberOfRecords,
+                (recordsConsumed, record) -> "Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
+                        + (numberOfRecords - recordsConsumed) + " more)",
+                breakAfterNulls,
+                recordConsumer, assertRecords);
+    }
+
+    /**
+     * Try to consume the records from the connector, until a condition is satisfied.
+     * For slower connectors it is possible to receive no records from the connector multiple times in a row
+     * till the waiting is terminated.
+     *
+     * @param condition the condition that decides that consuming has finished
+     * @param logMessage diagnostic message printed
+     * @param breakAfterNulls the number of allowed runs when no records are received
+     * @param recordConsumer the function that should be called with each consumed record
+     * @param assertRecords true if records serialization should be verified
+     * @return the actual number of records that were consumed
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected int consumeRecordsUntil(BiPredicate<Integer, SourceRecord> condition,
+                                      BiFunction<Integer, SourceRecord, String> logMessage, int breakAfterNulls,
+                                      Consumer<SourceRecord> recordConsumer, boolean assertRecords)
+            throws InterruptedException {
         int recordsConsumed = 0;
         int nullReturn = 0;
-        while (recordsConsumed < numberOfRecords) {
+        boolean isLastRecord = false;
+        while (!isLastRecord) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 nullReturn = 0;
@@ -457,18 +485,17 @@ public abstract class AbstractConnectorTest implements Testing {
                     recordConsumer.accept(record);
                 }
                 if (Testing.Debug.isEnabled()) {
-                    Testing.debug("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
-                            + (numberOfRecords - recordsConsumed) + " more)");
+                    Testing.debug(logMessage.apply(recordsConsumed, record));
                     debug(record);
                 }
                 else if (Testing.Print.isEnabled()) {
-                    Testing.print("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
-                            + (numberOfRecords - recordsConsumed) + " more)");
+                    Testing.print(logMessage.apply(recordsConsumed, record));
                     print(record);
                 }
                 if (assertRecords) {
                     VerifyRecord.isValid(record, skipAvroValidation);
                 }
+                isLastRecord = condition.test(recordsConsumed, record);
             }
             else {
                 if (++nullReturn >= breakAfterNulls) {
@@ -519,6 +546,24 @@ public abstract class AbstractConnectorTest implements Testing {
     protected SourceRecords consumeRecordsByTopic(int numRecords) throws InterruptedException {
         SourceRecords records = new SourceRecords();
         consumeRecords(numRecords, records::add);
+        return records;
+    }
+
+    /**
+     * Try to consume and capture records untel a codition is satisfied.
+     *
+     * @param condition contition that must be satisifed to terminate reading
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected SourceRecords consumeRecordsByTopicUntil(BiPredicate<Integer, SourceRecord> condition) throws InterruptedException {
+        SourceRecords records = new SourceRecords();
+        consumeRecordsUntil(
+                condition,
+                (recordsConsumed, record) -> "Consumed " + (condition.test(recordsConsumed, record) ? "last " : "") + "record " + recordsConsumed,
+                waitTimeForRecordsAfterNulls(),
+                records::add,
+                true);
         return records;
     }
 

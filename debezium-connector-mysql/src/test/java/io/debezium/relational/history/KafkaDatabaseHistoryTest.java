@@ -6,11 +6,13 @@
 package io.debezium.relational.history;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -378,6 +380,30 @@ public class KafkaDatabaseHistoryTest {
                 "database.history.kafka.bootstrap.servers",
                 "database.history.kafka.recovery.poll.interval.ms",
                 "database.history.connector.id",
-                "database.history.kafka.recovery.attempts"));
+                "database.history.kafka.recovery.attempts",
+                "database.history.kafka.query.timeout.ms"));
+    }
+
+    @Test
+    @FixFor("DBZ-4518")
+    public void shouldConnectionTimeoutIfValueIsTooLow() {
+        Configuration config = Configuration.create()
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaDatabaseHistory.TOPIC, "this-should-not-get-created")
+                .with(DatabaseHistory.NAME, "my-db-history")
+                .with(KafkaDatabaseHistory.KAFKA_QUERY_TIMEOUT_MS, 1)
+                .build();
+
+        history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
+        history.start();
+
+        try {
+            history.initializeStorage();
+        }
+        catch (Exception ex) {
+            assertEquals(TimeoutException.class, ex.getCause().getClass());
+        }
+
+        assertTrue(history.storageExists());
     }
 }

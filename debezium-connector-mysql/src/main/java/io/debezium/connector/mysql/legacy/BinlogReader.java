@@ -74,6 +74,7 @@ import io.debezium.connector.mysql.HaltingPredicate;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.RowDeserializers;
 import io.debezium.connector.mysql.StopEventDataDeserializer;
 import io.debezium.connector.mysql.legacy.RecordMakers.RecordsForTable;
@@ -185,7 +186,7 @@ public class BinlogReader extends AbstractReader {
      *
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
-     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
+     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, HaltingPredicate)}
      */
     public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue) {
         this(name, context, acceptAndContinue, context.serverId());
@@ -196,7 +197,7 @@ public class BinlogReader extends AbstractReader {
      *
      * @param name the name of this reader; may not be null
      * @param context the task context in which this reader is running; may not be null
-     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
+     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, HaltingPredicate)}
      * @param serverId the server id to use for the {@link BinaryLogClient}
      */
     public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue, long serverId) {
@@ -329,7 +330,7 @@ public class BinlogReader extends AbstractReader {
     }
 
     @Override
-    protected void doStart() {
+    protected void doStart(MySqlPartition partition) {
         if (context.snapshotMode() != MySqlConnectorConfig.SnapshotMode.NEVER) {
             context.dbSchema().assureNonEmptySchema();
         }
@@ -338,24 +339,24 @@ public class BinlogReader extends AbstractReader {
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);
         eventHandlers.put(EventType.HEARTBEAT, this::handleServerHeartbeat);
-        eventHandlers.put(EventType.INCIDENT, this::handleServerIncident);
+        eventHandlers.put(EventType.INCIDENT, (event) -> handleServerIncident(partition, event));
         eventHandlers.put(EventType.ROTATE, this::handleRotateLogsEvent);
-        eventHandlers.put(EventType.TABLE_MAP, this::handleUpdateTableMetadata);
+        eventHandlers.put(EventType.TABLE_MAP, (event) -> handleUpdateTableMetadata(partition, event));
         eventHandlers.put(EventType.QUERY, this::handleQueryEvent);
 
         if (!skippedOperations.contains(Operation.CREATE)) {
-            eventHandlers.put(EventType.WRITE_ROWS, this::handleInsert);
-            eventHandlers.put(EventType.EXT_WRITE_ROWS, this::handleInsert);
+            eventHandlers.put(EventType.WRITE_ROWS, (event) -> handleInsert(partition, event));
+            eventHandlers.put(EventType.EXT_WRITE_ROWS, (event) -> handleInsert(partition, event));
         }
 
         if (!skippedOperations.contains(Operation.UPDATE)) {
-            eventHandlers.put(EventType.UPDATE_ROWS, this::handleUpdate);
-            eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
+            eventHandlers.put(EventType.UPDATE_ROWS, (event) -> handleUpdate(partition, event));
+            eventHandlers.put(EventType.EXT_UPDATE_ROWS, (event) -> handleUpdate(partition, event));
         }
 
         if (!skippedOperations.contains(Operation.DELETE)) {
-            eventHandlers.put(EventType.DELETE_ROWS, this::handleDelete);
-            eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
+            eventHandlers.put(EventType.DELETE_ROWS, (event) -> handleDelete(partition, event));
+            eventHandlers.put(EventType.EXT_DELETE_ROWS, (event) -> handleDelete(partition, event));
         }
 
         eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
@@ -490,13 +491,13 @@ public class BinlogReader extends AbstractReader {
     }
 
     @Override
-    protected void doStop() {
+    protected void doStop(MySqlPartition partition) {
         try {
             if (client.isConnected()) {
                 logger.debug("Stopping binlog reader '{}', last recorded offset: {}", this.name(), lastOffset);
                 client.disconnect();
             }
-            cleanupResources();
+            cleanupResources(partition);
         }
         catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader '{}'", this.name(), e);
@@ -671,9 +672,9 @@ public class BinlogReader extends AbstractReader {
      *
      * @param event the server stopped event to be processed; may not be null
      */
-    protected void handleServerIncident(Event event) {
+    protected void handleServerIncident(MySqlPartition partition, Event event) {
         if (event.getData() instanceof EventDataDeserializationExceptionData) {
-            metrics.onErroneousEvent("source = " + event);
+            metrics.onErroneousEvent(partition, "source = " + event);
             EventDataDeserializationExceptionData data = event.getData();
 
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
@@ -853,7 +854,7 @@ public class BinlogReader extends AbstractReader {
      *
      * @param event the update event; never null
      */
-    protected void handleUpdateTableMetadata(Event event) {
+    protected void handleUpdateTableMetadata(MySqlPartition partition, Event event) {
         TableMapEventData metadata = unwrapData(event);
         long tableNumber = metadata.getTableId();
         String databaseName = metadata.getDatabase();
@@ -863,7 +864,7 @@ public class BinlogReader extends AbstractReader {
             logger.debug("Received update table metadata event: {}", event);
         }
         else {
-            informAboutUnknownTableIfRequired(event, tableId, "update table metadata");
+            informAboutUnknownTableIfRequired(partition, event, tableId, "update table metadata");
         }
     }
 
@@ -872,9 +873,9 @@ public class BinlogReader extends AbstractReader {
      * don't know, either ignore that event or raise a warning or error as per the
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
      */
-    private void informAboutUnknownTableIfRequired(Event event, TableId tableId, String typeToLog, Operation operation) {
+    private void informAboutUnknownTableIfRequired(MySqlPartition partition, Event event, TableId tableId, String typeToLog, Operation operation) {
         if (tableId != null && context.dbSchema().isTableCaptured(tableId)) {
-            metrics.onErroneousEvent("source = " + tableId + ", event " + event, operation);
+            metrics.onErroneousEvent(partition, "source = " + tableId + ", event " + event, operation);
             EventHeaderV4 eventHeader = event.getHeader();
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
@@ -924,12 +925,12 @@ public class BinlogReader extends AbstractReader {
         }
         else {
             logger.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
-            metrics.onFilteredEvent("source = " + tableId, operation);
+            metrics.onFilteredEvent(partition, "source = " + tableId, operation);
         }
     }
 
-    private void informAboutUnknownTableIfRequired(Event event, TableId tableId, String typeToLog) {
-        informAboutUnknownTableIfRequired(event, tableId, typeToLog, null);
+    private void informAboutUnknownTableIfRequired(MySqlPartition partition, Event event, TableId tableId, String typeToLog) {
+        informAboutUnknownTableIfRequired(partition, event, tableId, typeToLog, null);
     }
 
     /**
@@ -938,7 +939,7 @@ public class BinlogReader extends AbstractReader {
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
-    protected void handleInsert(Event event) throws InterruptedException {
+    protected void handleInsert(MySqlPartition partition, Event event) throws InterruptedException {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
             logger.debug("Skipping previously processed row event: {}", event);
@@ -977,7 +978,7 @@ public class BinlogReader extends AbstractReader {
             }
         }
         else {
-            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "insert row", Operation.CREATE);
+            informAboutUnknownTableIfRequired(partition, event, recordMakers.getTableIdFromTableNumber(tableNumber), "insert row", Operation.CREATE);
         }
         startingRowNumber = 0;
     }
@@ -988,7 +989,7 @@ public class BinlogReader extends AbstractReader {
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
-    protected void handleUpdate(Event event) throws InterruptedException {
+    protected void handleUpdate(MySqlPartition partition, Event event) throws InterruptedException {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
             logger.debug("Skipping previously processed row event: {}", event);
@@ -1031,7 +1032,7 @@ public class BinlogReader extends AbstractReader {
             }
         }
         else {
-            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "update row", Operation.UPDATE);
+            informAboutUnknownTableIfRequired(partition, event, recordMakers.getTableIdFromTableNumber(tableNumber), "update row", Operation.UPDATE);
         }
         startingRowNumber = 0;
     }
@@ -1042,7 +1043,7 @@ public class BinlogReader extends AbstractReader {
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
-    protected void handleDelete(Event event) throws InterruptedException {
+    protected void handleDelete(MySqlPartition partition, Event event) throws InterruptedException {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
             logger.debug("Skipping previously processed row event: {}", event);
@@ -1081,7 +1082,7 @@ public class BinlogReader extends AbstractReader {
             }
         }
         else {
-            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "delete row", Operation.DELETE);
+            informAboutUnknownTableIfRequired(partition, event, recordMakers.getTableIdFromTableNumber(tableNumber), "delete row", Operation.DELETE);
         }
         startingRowNumber = 0;
     }

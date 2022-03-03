@@ -31,7 +31,7 @@ This way, cleanup is simple when you complete the tutorial.
 [NOTE]
 ====
 For more information about storing persistent data,
-see the documentation for the https://hub.docker.com/r/debezium/[container images].
+see the documentation for the https://quay.io/organization/debezium[container images].
 ====
 
 * This tutorial requires you to run each service in a different container.

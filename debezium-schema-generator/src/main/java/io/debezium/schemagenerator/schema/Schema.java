@@ -3,21 +3,19 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.schemagenerator.formats;
+package io.debezium.schemagenerator.schema;
 
 import java.util.Map;
 
-import org.eclipse.microprofile.openapi.models.media.Schema;
-
 import io.debezium.config.Field;
 
-public interface ApiFormat {
+public interface Schema {
 
-    ApiFormatDescriptor getDescriptor();
+    SchemaDescriptor getDescriptor();
 
     void configure(Map<String, Object> config);
 
-    String getSpec(Schema connectorSchema);
+    String getSpec(org.eclipse.microprofile.openapi.models.media.Schema connectorSchema);
 
     /**
      * Returns a filter to be applied to the fields of the schema. Only matching

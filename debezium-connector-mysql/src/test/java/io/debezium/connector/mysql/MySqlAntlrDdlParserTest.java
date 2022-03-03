@@ -613,6 +613,74 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4661")
+    public void shouldSupportCreateTableWithEcrytion() {
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test1` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `ENCRYPTED`=YES COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test2` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=yes COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test3` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTED=yes COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=YES COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse("CREATE TABLE `t_test_encryption` " +
+                "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTION='Y' COMMENT 'Mysql encrypted table';", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("DBZ-4675")
+    public void shouldSupportCreateTableWithCompressed() {
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed1` (\n" +
+                        "`column1` bigint(20) NOT NULL,\n" +
+                        "`column2` bigint(20) NOT NULL,\n" +
+                        "`column3` bigint(20) NOT NULL,\n" +
+                        "`column4` bigint(20) NOT NULL,\n" +
+                        "`column5` bigint(20) NOT NULL,\n" +
+                        "`column6` bigint(20) NOT NULL,\n" +
+                        "`column7` bigint(20) NOT NULL,\n" +
+                        "`column8` blob,\n" +
+                        "`column9` varchar(64) DEFAULT NULL,\n" +
+                        "PRIMARY KEY (`column1`),\n" +
+                        "KEY `idx_my_index_column2` (`column2`)\n" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED `encrypted`=yes `page_compressed`=0",
+                tables);
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed2` (\n" +
+                        "`column1` bigint(20) NOT NULL" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
+                        "`encrypted`=yes `page_compressed`=1 `PAGE_COMPRESSION_LEVEL`=0",
+                tables);
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed3` (\n" +
+                        "`column1` bigint(20) NOT NULL" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
+                        "`encrypted`=yes page_compressed=1 `page_compression_level`=3",
+                tables);
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed4` (\n" +
+                        "`column1` bigint(20) NOT NULL" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
+                        "`encrypted`=yes `page_compressed`=0 PAGE_COMPRESSION_LEVEL=3",
+                tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-1349")
     public void shouldSupportUtfMb3Charset() {
         String ddl = " CREATE TABLE `engine_cost` (\n" +

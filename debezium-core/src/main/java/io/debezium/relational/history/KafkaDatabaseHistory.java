@@ -11,6 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
@@ -79,7 +80,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     private static final String RETENTION_BYTES_NAME = "retention.bytes";
     private static final int UNLIMITED_VALUE = -1;
-    private static final short PARTITION_COUNT = (short) 1;
+    private static final int PARTITION_COUNT = 1;
 
     /**
      * The name of broker property defining default replication factor for topics without the explicit setting.
@@ -155,13 +156,22 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withDescription("The unique identifier of the Debezium connector")
             .withNoValidation();
 
+    public static final Field KAFKA_QUERY_TIMEOUT_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.query.timeout.ms")
+            .withDisplayName("Kafka admin client query timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 33))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The number of milliseconds to wait while fetching cluster information using Kafka admin client.")
+            .withDefault(Duration.ofSeconds(3).toMillis())
+            .withValidation(Field::isPositiveInteger);
+
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
-            RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID);
+            RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID,
+            KAFKA_QUERY_TIMEOUT_MS);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
-
-    private static final Duration KAFKA_QUERY_TIMEOUT = Duration.ofSeconds(3);
 
     /**
      * The one and only partition of the history topic.
@@ -176,6 +186,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private int maxRecoveryAttempts;
     private Duration pollInterval;
     private ExecutorService checkTopicSettingsExecutor;
+    private Duration kafkaQueryTimeout;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
@@ -186,6 +197,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         this.topicName = config.getString(TOPIC);
         this.pollInterval = Duration.ofMillis(config.getInteger(RECOVERY_POLL_INTERVAL_MS));
         this.maxRecoveryAttempts = config.getInteger(RECOVERY_POLL_ATTEMPTS);
+        this.kafkaQueryTimeout = Duration.ofMillis(config.getLong(KAFKA_QUERY_TIMEOUT_MS));
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
@@ -393,7 +405,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
                 Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.TOPIC, topicName));
                 final Map<ConfigResource, Config> configs = admin.describeConfigs(resources).all().get(
-                        KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                        kafkaQueryTimeout.toMillis(), TimeUnit.MILLISECONDS);
                 if (configs.size() != 1) {
                     LOGGER.info("Expected one topic '{}' to match the query but got {}", topicName, configs.values().size());
                     return;
@@ -494,11 +506,23 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
         try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
 
-            // Find default replication factor
-            final short replicationFactor = getDefaultTopicReplicationFactor(admin);
+            NewTopic topic;
+            try {
+                // Create topic with optional Replication Factor to rely on broker default on Kafka API 2.4+
+                topic = new NewTopic(topicName, Optional.of(PARTITION_COUNT), Optional.empty());
+            }
+            catch (Exception ex) {
+                if ((ex.getCause() instanceof UnsupportedVersionException)) {
+                    // Find default replication factor by querying the broker as the API is not compatible with optional Replication Factor
+                    final short replicationFactor = getDefaultTopicReplicationFactor(admin);
+                    // Create topic with specific Replication Factor
+                    topic = new NewTopic(topicName, PARTITION_COUNT, replicationFactor);
+                }
+                else {
+                    throw ex;
+                }
+            }
 
-            // Create topic
-            final NewTopic topic = new NewTopic(topicName, PARTITION_COUNT, replicationFactor);
             topic.configs(Collect.hashMapOf(CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE, RETENTION_MS_NAME, Long.toString(RETENTION_MS_MAX), RETENTION_BYTES_NAME,
                     Long.toString(UNLIMITED_VALUE)));
             admin.createTopics(Collections.singleton(topic));
@@ -537,7 +561,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     private Config getKafkaBrokerConfig(AdminClient admin) throws Exception {
-        final Collection<Node> nodes = admin.describeCluster().nodes().get(KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        final Collection<Node> nodes = admin.describeCluster().nodes().get(kafkaQueryTimeout.toMillis(), TimeUnit.MILLISECONDS);
         if (nodes.isEmpty()) {
             throw new ConnectException("No brokers available to obtain default settings");
         }
@@ -545,7 +569,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         String nodeId = nodes.iterator().next().idString();
         Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodeId));
         final Map<ConfigResource, Config> configs = admin.describeConfigs(resources).all().get(
-                KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                kafkaQueryTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
         if (configs.isEmpty()) {
             throw new ConnectException("No configs have been received");

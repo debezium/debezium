@@ -9,7 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,6 +30,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
+import io.debezium.util.HexConverter;
 
 /**
  * A {@link StreamingChangeEventSource} for Oracle.
@@ -43,8 +46,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleDatabaseSchema databaseSchema;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
-                                           OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
-                                           SnapshotProgressListener snapshotProgressListener) {
+                                           OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
+                                           SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
         super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
 
         this.connectorConfig = connectorConfig;
@@ -53,7 +56,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OracleOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -150,9 +153,16 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             currentScn = jdbcConnection.getCurrentScn();
         } while (areSameTimestamp(latestTableDdlScn.orElse(null), currentScn));
 
+        // Record the starting SCNs for all currently in-progress transactions.
+        // We should mine from the oldest still-reachable start SCN, but only for those transactions.
+        // For everything else, we mine only from the snapshot SCN forward.
+        Map<String, Scn> snapshotPendingTransactions = getSnapshotPendingTransactions(currentScn);
+
         ctx.offset = OracleOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
+                .snapshotScn(currentScn)
+                .snapshotPendingTransactions(snapshotPendingTransactions)
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
@@ -218,6 +228,31 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             }
             throw e;
         }
+    }
+
+    /**
+     * Returns a map of transaction id to start SCN for all ongoing transactions before snapshotSCN.
+     */
+    private Map<String, Scn> getSnapshotPendingTransactions(final Scn snapshotSCN) throws SQLException {
+        StringBuilder txQuery = new StringBuilder("SELECT XID, START_SCN FROM V$TRANSACTION WHERE START_SCN < ");
+        txQuery.append(snapshotSCN.toString());
+
+        Map<String, Scn> transactions = new HashMap<>();
+
+        try (Statement statement = jdbcConnection.connection().createStatement();
+                ResultSet rs = statement.executeQuery(txQuery.toString())) {
+            while (rs.next()) {
+                byte[] txid = rs.getBytes(1);
+                String scn = rs.getString(2);
+                transactions.put(HexConverter.convertToHexString(txid), Scn.valueOf(scn));
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Could not query the V$TRANSACTION view: {}", e);
+            throw e;
+        }
+
+        return transactions;
     }
 
     @Override

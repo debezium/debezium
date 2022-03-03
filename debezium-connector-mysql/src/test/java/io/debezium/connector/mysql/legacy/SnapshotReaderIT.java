@@ -34,6 +34,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.data.KeyValueStore;
@@ -135,11 +136,12 @@ public class SnapshotReaderIT {
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context, useGlobalLock);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
 
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -262,8 +264,10 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context, true);
         reader.generateReadEvents();
 
+        MySqlPartition partition = new MySqlPartition("test");
+
         if (!MySqlTestConnection.isPerconaServer()) {
-            reader.start(); // Start the reader to avoid failure in the afterEach method.
+            reader.start(partition); // Start the reader to avoid failure in the afterEach method.
             return; // Skip these tests for non-Percona flavours of MySQL
         }
 
@@ -284,7 +288,7 @@ public class SnapshotReaderIT {
 
         // Start the snapshot ...
         boolean connectException = false;
-        reader.start();
+        reader.start(partition);
 
         List<SourceRecord> records = null;
         try {
@@ -309,10 +313,11 @@ public class SnapshotReaderIT {
         context.start();
         reader = new SnapshotReader("snapshot", context);
 
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -360,11 +365,12 @@ public class SnapshotReaderIT {
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
 
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -460,11 +466,12 @@ public class SnapshotReaderIT {
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
 
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -490,11 +497,12 @@ public class SnapshotReaderIT {
         context.start();
         context.source().setBinlogStartPoint("binlog1", 555); // manually set for happy path testing
         reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
 
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();
@@ -537,10 +545,11 @@ public class SnapshotReaderIT {
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         // Poll for records ...
         List<SourceRecord> records;
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
@@ -565,10 +574,11 @@ public class SnapshotReaderIT {
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         // Poll for records ...
         List<SourceRecord> records;
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
@@ -591,10 +601,11 @@ public class SnapshotReaderIT {
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         // Poll for records ...
         // Testing.Print.enable();
         List<SourceRecord> records;
@@ -628,11 +639,12 @@ public class SnapshotReaderIT {
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
+        reader.uponCompletion((partition) -> completed.countDown());
         reader.generateReadEvents();
 
         // Start the snapshot ...
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
 
         // Poll for records ...
         // Testing.Print.enable();

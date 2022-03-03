@@ -573,6 +573,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = Field.create("unavailable.value.placeholder")
             .withDisplayName("Unavailable value placeholder")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 20))
             .withWidth(Width.MEDIUM)
             .withDefault(DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER)
             .withImportance(Importance.MEDIUM)

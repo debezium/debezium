@@ -6,18 +6,21 @@
 package io.debezium.connector.mysql.legacy;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.connector.mysql.MySqlPartition;
+
 /**
  * A component that reads a portion of the MySQL server history or current state.
  * <p>
- * A reader starts out in the {@link State#STOPPED stopped} state, and when {@link #start() started} transitions to a
+ * A reader starts out in the {@link State#STOPPED stopped} state, and when {@link #start(MySqlPartition)} () started} transitions to a
  * {@link State#RUNNING} state. The reader may either complete its work or be explicitly {@link #stop() stopped}, at which
  * point the reader transitions to a {@value State#STOPPING stopping} state until all already-generated {@link SourceRecord}s
  * are consumed by the client via the {@link #poll() poll} method. Only after all records are consumed does the reader
- * transition to the {@link State#STOPPED stopped} state and call the {@link #uponCompletion(Runnable)} method.
+ * transition to the {@link State#STOPPED stopped} state and call the {@link #uponCompletion(Consumer)} method.
  * <p>
  * See {@link ChainedReader} if multiple {@link Reader} implementations are to be run in-sequence while keeping the
  * correct start, stop, and completion semantics.
@@ -71,11 +74,11 @@ public interface Reader {
      *
      * @param handler the function; may not be null
      */
-    public void uponCompletion(Runnable handler);
+    public void uponCompletion(Consumer<MySqlPartition> handler);
 
     /**
      * Perform any initialization of the reader before being started. This method should be
-     * called exactly once before {@link #start()} is called, and it should block until all
+     * called exactly once before {@link #start(MySqlPartition)} ()} is called, and it should block until all
      * initialization is completed.
      */
     public default void initialize() {
@@ -99,7 +102,7 @@ public interface Reader {
      * <p>
      * This method does nothing if it is already running.
      */
-    public void start();
+    public void start(MySqlPartition partition);
 
     /**
      * Stop the reader from running and transition to the {@link State#STOPPING} state until all remaining records

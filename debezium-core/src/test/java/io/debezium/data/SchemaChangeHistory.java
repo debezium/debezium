@@ -63,6 +63,11 @@ public class SchemaChangeHistory {
         return sourceRecordsByDbName.get(dbName);
     }
 
+    public List<SourceRecord> ddlRecordsForDatabaseOrEmpty(String dbName) {
+        final List<SourceRecord> list = ddlRecordsForDatabase(dbName);
+        return list == null ? Collections.emptyList() : list;
+    }
+
     protected String getAffectedDatabase(SourceRecord record) {
         Struct envelope = (Struct) record.value();
         Field dbField = envelope.schema().field(HistoryRecord.Fields.DATABASE_NAME);

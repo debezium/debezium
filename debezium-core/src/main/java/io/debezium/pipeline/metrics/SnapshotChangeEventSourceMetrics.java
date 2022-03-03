@@ -6,9 +6,11 @@
 package io.debezium.pipeline.metrics;
 
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * Metrics related to the snapshot phase of a connector.
  */
-public interface SnapshotChangeEventSourceMetrics extends ChangeEventSourceMetrics, SnapshotProgressListener {
+public interface SnapshotChangeEventSourceMetrics<P extends Partition> extends ChangeEventSourceMetrics<P>,
+        SnapshotProgressListener<P> {
 }

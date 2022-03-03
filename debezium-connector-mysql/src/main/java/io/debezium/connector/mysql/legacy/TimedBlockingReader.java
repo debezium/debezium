@@ -12,6 +12,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.util.Clock;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -38,8 +39,8 @@ public class TimedBlockingReader extends BlockingReader {
     }
 
     @Override
-    public void start() {
-        super.start();
+    public void start(MySqlPartition partition) {
+        super.start(partition);
         this.timer = Threads.timer(Clock.SYSTEM, timeout);
     }
 

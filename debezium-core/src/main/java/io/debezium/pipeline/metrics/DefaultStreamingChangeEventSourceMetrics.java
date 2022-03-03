@@ -5,25 +5,20 @@
  */
 package io.debezium.pipeline.metrics;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ConnectorEvent;
+import io.debezium.pipeline.meters.ConnectionMeter;
+import io.debezium.pipeline.meters.StreamingMeter;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -32,25 +27,22 @@ import io.debezium.schema.DataCollectionId;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public class DefaultStreamingChangeEventSourceMetrics extends PipelineMetrics
-        implements StreamingChangeEventSourceMetrics, StreamingChangeEventSourceMetricsMXBean {
+public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> extends PipelineMetrics<P>
+        implements StreamingChangeEventSourceMetrics<P>, StreamingChangeEventSourceMetricsMXBean {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultStreamingChangeEventSourceMetrics.class);
-
-    private final AtomicBoolean connected = new AtomicBoolean();
-    private final AtomicReference<Duration> lagBehindSource = new AtomicReference<>();
-    private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
-    private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<Map<String, String>>(Collections.emptyMap());
-    private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
+    private final ConnectionMeter connectionMeter;
+    private final StreamingMeter streamingMeter;
 
     public <T extends CdcSourceTaskContext> DefaultStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                      EventMetadataProvider metadataProvider) {
         super(taskContext, "streaming", changeEventQueueMetrics, metadataProvider);
+        streamingMeter = new StreamingMeter(taskContext, metadataProvider);
+        connectionMeter = new ConnectionMeter();
     }
 
     @Override
     public boolean isConnected() {
-        return this.connected.get();
+        return connectionMeter.isConnected();
     }
 
     /**
@@ -60,74 +52,52 @@ public class DefaultStreamingChangeEventSourceMetrics extends PipelineMetrics
     @Override
     @Deprecated
     public String[] getMonitoredTables() {
-        return taskContext.capturedDataCollections();
+        return streamingMeter.getCapturedTables();
     }
 
     @Override
     public String[] getCapturedTables() {
-        return taskContext.capturedDataCollections();
+        return streamingMeter.getCapturedTables();
     }
 
     public void connected(boolean connected) {
-        this.connected.set(connected);
-        LOGGER.info("Connected metrics set to '{}'", this.connected.get());
+        connectionMeter.connected(connected);
     }
 
     @Override
     public Map<String, String> getSourceEventPosition() {
-        return sourceEventPosition.get();
+        return streamingMeter.getSourceEventPosition();
     }
 
     @Override
     public long getMilliSecondsBehindSource() {
-        Duration lag = lagBehindSource.get();
-        return lag != null ? lag.toMillis() : -1;
+        return streamingMeter.getMilliSecondsBehindSource();
     }
 
     @Override
     public long getNumberOfCommittedTransactions() {
-        return numberOfCommittedTransactions.get();
+        return streamingMeter.getNumberOfCommittedTransactions();
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
-        super.onEvent(source, offset, key, value, operation);
-
-        final Instant eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
-        if (eventTimestamp != null) {
-            lagBehindSource.set(Duration.between(eventTimestamp, Instant.now()));
-        }
-
-        final String transactionId = metadataProvider.getTransactionId(source, offset, key, value);
-        if (transactionId != null) {
-            if (!transactionId.equals(lastTransactionId.get())) {
-                lastTransactionId.set(transactionId);
-                numberOfCommittedTransactions.incrementAndGet();
-            }
-        }
-
-        final Map<String, String> eventSource = metadataProvider.getEventSourcePosition(source, offset, key, value);
-        if (eventSource != null) {
-            sourceEventPosition.set(eventSource);
-        }
+    public void onEvent(P partition, DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
+        super.onEvent(partition, source, offset, key, value, operation);
+        streamingMeter.onEvent(source, offset, key, value);
     }
 
     @Override
-    public void onConnectorEvent(ConnectorEvent event) {
+    public void onConnectorEvent(P partition, ConnectorEvent event) {
     }
 
     @Override
     public String getLastTransactionId() {
-        return lastTransactionId.get();
+        return streamingMeter.getLastTransactionId();
     }
 
     @Override
     public void reset() {
         super.reset();
-        connected.set(false);
-        lagBehindSource.set(null);
-        numberOfCommittedTransactions.set(0);
-        sourceEventPosition.set(Collections.emptyMap());
-        lastTransactionId.set(null);
+        streamingMeter.reset();
+        connectionMeter.reset();
     }
 }

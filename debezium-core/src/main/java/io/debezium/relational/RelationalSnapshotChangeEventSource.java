@@ -60,13 +60,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
     private final RelationalDatabaseSchema schema;
-    protected final EventDispatcher<TableId> dispatcher;
+    protected final EventDispatcher<P, TableId> dispatcher;
     protected final Clock clock;
-    private final SnapshotProgressListener snapshotProgressListener;
+    private final SnapshotProgressListener<P> snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                JdbcConnection jdbcConnection, RelationalDatabaseSchema schema,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               EventDispatcher<P, TableId> dispatcher, Clock clock, SnapshotProgressListener<P> snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -98,7 +98,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
-            snapshotProgressListener.monitoredDataCollectionsDetermined(ctx.capturedTables);
+            snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
@@ -178,22 +178,26 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx) throws Exception {
-        Set<TableId> allTableIds = determineDataCollectionsToBeSnapshotted(getAllTableIds(ctx)).collect(Collectors.toSet());
+        Set<TableId> allTableIds = getAllTableIds(ctx);
+        Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds).collect(Collectors.toSet());
 
         Set<TableId> capturedTables = new HashSet<>();
         Set<TableId> capturedSchemaTables = new HashSet<>();
 
         for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().eligibleDataCollectionFilter().isIncluded(tableId)) {
-                LOGGER.trace("Adding table {} to the list of capture schema tables", tableId);
+            if (connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId)) {
+                LOGGER.info("Adding table {} to the list of capture schema tables", tableId);
                 capturedSchemaTables.add(tableId);
             }
+        }
+
+        for (TableId tableId : snapshottedTableIds) {
             if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                LOGGER.trace("Adding table {} to the list of captured tables", tableId);
+                LOGGER.trace("Adding table {} to the list of captured tables for which the data will be snapshotted", tableId);
                 capturedTables.add(tableId);
             }
             else {
-                LOGGER.trace("Ignoring table {} as it's not included in the filter configuration", tableId);
+                LOGGER.trace("Ignoring table {} for data snapshotting as it's not included in the filter configuration", tableId);
             }
         }
 
@@ -290,7 +294,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private void createDataEvents(ChangeEventSourceContext sourceContext,
                                   RelationalSnapshotContext<P, O> snapshotContext)
             throws Exception {
-        SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
+        SnapshotReceiver<P> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         tryStartingSnapshot(snapshotContext);
 
         final int tableCount = snapshotContext.capturedTables.size();
@@ -326,7 +330,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      */
     private void createDataEventsForTable(ChangeEventSourceContext sourceContext,
                                           RelationalSnapshotContext<P, O> snapshotContext,
-                                          SnapshotReceiver snapshotReceiver, Table table, int tableOrder,
+                                          SnapshotReceiver<P> snapshotReceiver, Table table, int tableOrder,
                                           int tableCount)
             throws InterruptedException {
 
@@ -336,7 +340,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
         if (!selectStatement.isPresent()) {
             LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
-            snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), 0);
+            snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, table.id(), 0);
             return;
         }
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
@@ -370,14 +374,15 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                             LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
                                     Strings.duration(stop - exportStart));
                         }
-                        snapshotProgressListener.rowsScanned(table.id(), rows);
+                        snapshotProgressListener.rowsScanned(snapshotContext.partition, table.id(), rows);
                         logTimer = getTableScanLogTimer();
                     }
 
                     if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
                         lastSnapshotRecord(snapshotContext);
                     }
-                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
+                    dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
+                            getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
                 }
             }
             else if (snapshotContext.lastTable) {
@@ -386,7 +391,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
-            snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), rows);
+            snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, table.id(), rows);
         }
         catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
@@ -411,10 +416,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
-    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext<P, O> snapshotContext, TableId tableId,
-                                                         Object[] row) {
+    protected ChangeRecordEmitter<P> getChangeRecordEmitter(SnapshotContext<P, O> snapshotContext, TableId tableId,
+                                                            Object[] row) {
         snapshotContext.offset.event(tableId, getClock().currentTime());
-        return new SnapshotChangeRecordEmitter(snapshotContext.partition, snapshotContext.offset, row, getClock());
+        return new SnapshotChangeRecordEmitter<>(snapshotContext.partition, snapshotContext.offset, row, getClock());
     }
 
     /**

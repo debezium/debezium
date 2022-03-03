@@ -35,6 +35,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.MysqlBinaryProtocolFieldReader;
 import io.debezium.connector.mysql.MysqlFieldReader;
 import io.debezium.connector.mysql.MysqlTextProtocolFieldReader;
@@ -101,8 +102,8 @@ public class SnapshotReader extends AbstractReader {
     }
 
     /**
-     * Set this reader's {@link #execute() execution} to produce a {@link io.debezium.data.Envelope.Operation#READ} event for each
-     * row.
+     * Set this reader's {@link #execute(MySqlPartition) execution} to produce
+     * an {@link io.debezium.data.Envelope.Operation#READ} event for each row.
      *
      * @return this object for method chaining; never null
      */
@@ -126,15 +127,15 @@ public class SnapshotReader extends AbstractReader {
      * {@link #poll()} until that method returns {@code null}.
      */
     @Override
-    protected void doStart() {
+    protected void doStart(MySqlPartition partition) {
         executorService = Threads.newSingleThreadExecutor(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "snapshot");
-        executorService.execute(this::execute);
+        executorService.execute(() -> execute(partition));
     }
 
     @Override
-    protected void doStop() {
+    protected void doStop(MySqlPartition partition) {
         logger.debug("Stopping snapshot reader");
-        cleanupResources();
+        cleanupResources(partition);
         // The parent class will change the isRunning() state, and this class' execute() uses that and will stop automatically
     }
 
@@ -147,7 +148,7 @@ public class SnapshotReader extends AbstractReader {
     /**
      * Perform the snapshot using the same logic as the "mysqldump" utility.
      */
-    protected void execute() {
+    protected void execute(MySqlPartition partition) {
         context.configureLoggingContext("snapshot");
         final AtomicReference<String> sql = new AtomicReference<>();
         final JdbcConnection mysql = connectionContext.jdbc();
@@ -170,7 +171,7 @@ public class SnapshotReader extends AbstractReader {
         final Predicate<TableId> isAllowedForSnapshot = tableId -> snapshotAllowedTables.size() == 0
                 || snapshotAllowedTables.stream().anyMatch(s -> tableId.identifier().matches(s));
         try {
-            metrics.snapshotStarted();
+            metrics.snapshotStarted(partition);
 
             // ------
             // STEP 0
@@ -504,7 +505,7 @@ public class SnapshotReader extends AbstractReader {
 
                     // Dump all of the tables and generate source records ...
                     logger.info("Step {}: scanning contents of {} tables while still in transaction", step, capturedTableIds.size());
-                    metrics.monitoredDataCollectionsDetermined(capturedTableIds);
+                    metrics.monitoredDataCollectionsDetermined(partition, capturedTableIds);
 
                     long startScan = clock.currentTimeInMillis();
                     AtomicLong totalRowCount = new AtomicLong();
@@ -588,7 +589,7 @@ public class SnapshotReader extends AbstractReader {
                                                     logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
                                                             stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
                                                 }
-                                                metrics.rowsScanned(tableId, rowNum.get());
+                                                metrics.rowsScanned(partition, tableId, rowNum.get());
                                             }
                                         }
                                         totalRowCount.addAndGet(rowNum.get());
@@ -598,7 +599,7 @@ public class SnapshotReader extends AbstractReader {
                                                 logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum, tableId, Strings.duration(stop - start));
                                             }
-                                            metrics.rowsScanned(tableId, rowNum.get());
+                                            metrics.rowsScanned(partition, tableId, rowNum.get());
                                         }
                                     }
                                     catch (InterruptedException e) {
@@ -610,7 +611,7 @@ public class SnapshotReader extends AbstractReader {
                                 });
                             }
                             finally {
-                                metrics.dataCollectionSnapshotCompleted(tableId, rowNum.get());
+                                metrics.dataCollectionSnapshotCompleted(partition, tableId, rowNum.get());
                                 if (interrupted.get()) {
                                     break;
                                 }
@@ -664,14 +665,14 @@ public class SnapshotReader extends AbstractReader {
                         // so roll back the transaction and return immediately ...
                         logger.info("Step {}: rolling back transaction after abort", step++);
                         mysql.connection().rollback();
-                        metrics.snapshotAborted();
+                        metrics.snapshotAborted(partition);
                         rolledBack = true;
                     }
                     else {
                         // Otherwise, commit our transaction
                         logger.info("Step {}: committing transaction", step++);
                         mysql.connection().commit();
-                        metrics.snapshotCompleted();
+                        metrics.snapshotCompleted(partition);
                     }
                 }
                 else {
@@ -727,7 +728,7 @@ public class SnapshotReader extends AbstractReader {
                 }
                 finally {
                     // and since there's no more work to do clean up all resources ...
-                    cleanupResources();
+                    cleanupResources(partition);
                 }
             }
             else {

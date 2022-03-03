@@ -20,7 +20,6 @@ import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 
 /**
@@ -28,7 +27,7 @@ import io.debezium.util.Clock;
  *
  * @author Jiri Pechanec
  */
-public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecordEmitter<MongoDbCollectionSchema> {
+public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecordEmitter<MongoDbPartition, MongoDbCollectionSchema> {
 
     private final ChangeStreamDocument<Document> changeStreamEvent;
 
@@ -46,7 +45,8 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeStreamChangeRecordEmitter(Partition partition, OffsetContext offsetContext, Clock clock, ChangeStreamDocument<Document> changeStreamEvent) {
+    public MongoDbChangeStreamChangeRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock,
+                                                  ChangeStreamDocument<Document> changeStreamEvent) {
         super(partition, offsetContext, clock);
         this.changeStreamEvent = changeStreamEvent;
     }
@@ -57,27 +57,27 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
     }
 
     @Override
-    protected void emitReadRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
+    protected void emitReadRecord(Receiver<MongoDbPartition> receiver, MongoDbCollectionSchema schema) throws InterruptedException {
         // TODO Handled in MongoDbChangeSnapshotOplogRecordEmitter
         // It might be worthy haveing three classes - one for Snapshot, one for oplog and one for change streams
     }
 
     @Override
-    protected void emitCreateRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
+    protected void emitCreateRecord(Receiver<MongoDbPartition> receiver, MongoDbCollectionSchema schema) throws InterruptedException {
         createAndEmitChangeRecord(receiver, schema);
     }
 
     @Override
-    protected void emitUpdateRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
+    protected void emitUpdateRecord(Receiver<MongoDbPartition> receiver, MongoDbCollectionSchema schema) throws InterruptedException {
         createAndEmitChangeRecord(receiver, schema);
     }
 
     @Override
-    protected void emitDeleteRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
+    protected void emitDeleteRecord(Receiver<MongoDbPartition> receiver, MongoDbCollectionSchema schema) throws InterruptedException {
         createAndEmitChangeRecord(receiver, schema);
     }
 
-    private void createAndEmitChangeRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
+    private void createAndEmitChangeRecord(Receiver<MongoDbPartition> receiver, MongoDbCollectionSchema schema) throws InterruptedException {
         final Object newKey = schema.keyFromDocument(changeStreamEvent.getDocumentKey());
         assert newKey != null;
 

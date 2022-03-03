@@ -265,6 +265,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                             tableId);
 
                     boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
+                            partition,
                             tableId,
                             new PostgresChangeRecordEmitter(
                                     partition,

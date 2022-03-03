@@ -1029,10 +1029,12 @@ into_clause1
 //Making assumption on partition ad subpartition key value clauses
 partition_key_value
     : literal
+    | TIMESTAMP quoted_string
     ;
 
 subpartition_key_value
     : literal
+    | TIMESTAMP quoted_string
     ;
 
 //https://docs.oracle.com/cd/E11882_01/server.112/e41084/statements_4006.htm#SQLRF01106
@@ -2070,12 +2072,19 @@ table_compression
     ;
 
 inmemory_table_clause
-    : INMEMORY inmemory_attributes inmemory_columns_clause
+    : INMEMORY inmemory_attributes? inmemory_columns_clause
     | NO INMEMORY inmemory_columns_clause
     ;
 
+// This rule ignores the attribute order despite the Oracle grammar being explict about the order.
+// This is because Oracle LogMiner may return the generated SQL with out of order attributes such
+// as providing the priority clause prior to the memcompress clause.
+// See DBZ-4752 for more details
 inmemory_attributes
-    : inmemory_memcompress? inmemory_priority? inmemory_distribute? inmemory_duplicate?
+    : inmemory_memcompress inmemory_attributes*
+    | inmemory_priority inmemory_attributes*
+    | inmemory_distribute inmemory_attributes*
+    | inmemory_duplicate inmemory_attributes*
     ;
 
 inmemory_memcompress
@@ -2183,6 +2192,7 @@ flashback_archive_clause
 
 log_grp
     : UNSIGNED_INTEGER
+    | identifier
     ;
 
 supplemental_table_logging
@@ -2193,7 +2203,7 @@ supplemental_table_logging
     ;
 
 supplemental_log_grp_clause
-    : GROUP log_grp '(' regular_id (NO LOG)? (',' regular_id (NO LOG)?)* ')' ALWAYS?
+    : GROUP log_grp '(' column_name (NO LOG)? (',' column_name (NO LOG)?)* ')' ALWAYS?
     ;
 
 supplemental_id_key_clause
@@ -2222,7 +2232,9 @@ deallocate_unused_clause
     ;
 
 shrink_clause
-    : SHRINK SPACE_KEYWORD COMPACT? CASCADE?
+    // CHECK is an internal Oracle option
+    // It is used to check for proper segment type and segment attributes to allow shrink
+    : SHRINK SPACE_KEYWORD (COMPACT|CASCADE|CHECK)?
     ;
 
 records_per_block_clause
@@ -2650,7 +2662,7 @@ merge_table_partition
     ;
 
 modify_table_partition
-    : MODIFY PARTITION partition_name ((ADD | DROP) list_values_clause)? (REBUILD UNUSABLE LOCAL INDEXES)?
+    : MODIFY PARTITION partition_name ((ADD | DROP) list_values_clause)? (ADD range_subpartition_desc)? (REBUILD? UNUSABLE LOCAL INDEXES)?
     ;
 
 split_table_partition

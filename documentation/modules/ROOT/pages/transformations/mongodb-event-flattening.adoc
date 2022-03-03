@@ -19,7 +19,7 @@ Please see below for a descriptions of known limitations of this transformation.
 [NOTE]
 ====
 This SMT is supported only for the MongoDB connector.
-See {link-prefix}:{link-event-flattening}[Extracting source record `after` state from {prodname} change events] for the relational database equivalent to this SMT.
+See xref:{link-event-flattening}[Extracting source record `after` state from {prodname} change events] for the relational database equivalent to this SMT.
 ====
 
 The {prodname} MongoDB connector generates the data in a form of a complex message structure.
@@ -40,7 +40,7 @@ E.g. the general message structure for a insert event looks like this:
 }
 ----
 
-More details about the message structure are provided in {link-prefix}:{link-mongodb-connector}[the documentation] of the MongoDB connector.
+More details about the message structure are provided in xref:{link-mongodb-connector}[the documentation] of the MongoDB connector.
 
 While this structure is a good fit to represent changes to MongoDB's schemaless collections,
 it is not understood by existing sink connectors such as the Confluent JDBC sink connector.
@@ -207,7 +207,7 @@ Note that other MongoDB operations might cause an `$unset` internally, `$rename`
 
 === Determine original operation
 
-When a message is flattened the final result does not show whether it was an insert, update or first read. (Deletions can be detected via tombstones or rewrites, see {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options].)
+When a message is flattened the final result does not show whether it was an insert, update or first read. (Deletions can be detected via tombstones or rewrites, see xref:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options].)
 
 To solve this problem, you can propagate the original operation either as a field added to message value or as a header property,
 e.g. like so to use a header property:
@@ -219,13 +219,13 @@ transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocume
 transforms.unwrap.add.headers=op
 ----
 
-The possible values are the ones from the `op` field of {link-prefix}:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
+The possible values are the ones from the `op` field of xref:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
 
 === Adding source metadata fields
 
 The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__").
 This ability to add metadata to the event record makes it possible to include content such as the name of the collection associated with the change event, or such connector-specific fields as the replica set name.
-For more information about the MongoDB source structure, see {link-prefix}:{link-mongodb-connector}[the documentation] for the MongoDB connector.
+For more information about the MongoDB source structure, see xref:{link-mongodb-connector}[the documentation] for the MongoDB connector.
 
 For example, you might specify the following configuration to add a replica set name (`rs`) and the collection name for a change event to the final flattened event record:
 
@@ -252,7 +252,7 @@ For `DELETE` events, the option to add metadata fields is supported only if the 
 In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 
-For more information about how to apply the SMT selectively, see {link-prefix}:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
 
 [[mongodb-extract-new-record-state-configuration-options]]
 == Configuration options
@@ -305,7 +305,7 @@ Please use a comma separated list without spaces.
 |[[mongodb-extract-new-record-state-sanitize-field-names]]<<mongodb-extract-new-record-state-sanitize-field-names, `sanitize.field.names`>>
 |`false`
 |Whether field names will be sanitized to adhere to Avro naming requirements.
-See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 == Known limitations

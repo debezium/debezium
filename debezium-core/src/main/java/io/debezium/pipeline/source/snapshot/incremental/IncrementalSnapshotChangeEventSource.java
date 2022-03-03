@@ -18,26 +18,26 @@ import io.debezium.schema.DataCollectionId;
  *
  * @param <T> data collection id class
  */
-public interface IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
+public interface IncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId> {
 
-    void closeWindow(Partition partition, String id, OffsetContext offsetContext) throws InterruptedException;
+    void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException;
 
-    void processMessage(Partition partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException;
+    void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException;
 
-    void init(OffsetContext offsetContext);
+    void init(P partition, OffsetContext offsetContext);
 
-    void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, OffsetContext offsetContext)
+    void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext)
             throws InterruptedException;
 
-    default void processHeartbeat(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    default void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
     }
 
-    default void processFilteredEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    default void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
     }
 
-    default void processTransactionStartedEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    default void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
     }
 
-    default void processTransactionCommittedEvent(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    default void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
     }
 }

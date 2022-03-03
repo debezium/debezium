@@ -31,7 +31,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     private final MySqlConnectorConfig configuration;
     private final MySqlConnection connection;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<MySqlPartition, TableId> dispatcher;
     private final Clock clock;
     private final MySqlTaskContext taskContext;
     private final MySqlStreamingChangeEventSourceMetrics streamingMetrics;
@@ -43,7 +43,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     private final ChangeEventQueue<DataChangeEvent> queue;
 
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MySqlConnection connection,
-                                         ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
+                                         ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
                                          ChangeEventQueue<DataChangeEvent> queue) {
         this.configuration = configuration;
@@ -58,9 +58,9 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     }
 
     @Override
-    public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MySqlPartition> snapshotProgressListener) {
         return new MySqlSnapshotChangeEventSource(configuration, connection, taskContext.getSchema(), dispatcher, clock,
-                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, record -> modifyAndFlushLastRecord(record));
+                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, this::modifyAndFlushLastRecord);
     }
 
     private void modifyAndFlushLastRecord(Function<SourceRecord, SourceRecord> modify) throws InterruptedException {
@@ -82,10 +82,10 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     }
 
     @Override
-    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
-                                                                                                                              MySqlOffsetContext offsetContext,
-                                                                                                                              SnapshotProgressListener snapshotProgressListener,
-                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+    public Optional<IncrementalSnapshotChangeEventSource<MySqlPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                                              MySqlOffsetContext offsetContext,
+                                                                                                                                              SnapshotProgressListener<MySqlPartition> snapshotProgressListener,
+                                                                                                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener) {
         if (configuration.isReadOnlyConnection()) {
             if (connection.isGtidModeEnabled()) {
                 return Optional.of(new MySqlReadOnlyIncrementalSnapshotChangeEventSource<>(

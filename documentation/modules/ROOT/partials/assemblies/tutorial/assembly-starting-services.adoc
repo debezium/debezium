@@ -10,7 +10,7 @@
 Using {prodname} requires three separate services:
 http://zookeeper.apache.org[ZooKeeper], Kafka, and the {prodname} connector service.
 In this tutorial,
-you will set up a single instance of each service using http://docker.com[Docker] and https://hub.docker.com/u/debezium/[the {prodname} container images].
+you will set up a single instance of each service using http://docker.com[Docker] and https://quay.io/organization/debezium[the {prodname} container images].
 
 To start the services needed for this tutorial, you must:
 

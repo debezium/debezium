@@ -59,22 +59,23 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final Offsets<P, O> previousOffsets;
     protected final ErrorHandler errorHandler;
     protected final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
-    protected final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
+    protected final ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory;
     protected final ExecutorService executor;
-    protected final EventDispatcher<?> eventDispatcher;
+    protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
 
     private volatile boolean running;
     protected volatile StreamingChangeEventSource<P, O> streamingSource;
     protected final ReentrantLock commitOffsetLock = new ReentrantLock();
 
-    protected SnapshotChangeEventSourceMetrics snapshotMetrics;
-    protected StreamingChangeEventSourceMetrics streamingMetrics;
+    protected SnapshotChangeEventSourceMetrics<P> snapshotMetrics;
+    protected StreamingChangeEventSourceMetrics<P> streamingMetrics;
 
     public ChangeEventSourceCoordinator(Offsets<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
-                                        ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema) {
+                                        ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
+                                        DatabaseSchema<?> schema) {
         this.previousOffsets = previousOffsets;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
@@ -167,22 +168,22 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
-        initStreamEvents(offsetContext);
+        initStreamEvents(partition, offsetContext);
         LOGGER.info("Starting streaming");
         streamingSource.execute(context, partition, offsetContext);
         LOGGER.info("Finished streaming");
     }
 
-    protected void initStreamEvents(O offsetContext) throws InterruptedException {
+    protected void initStreamEvents(P partition, O offsetContext) throws InterruptedException {
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         streamingSource.init();
 
-        final Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
+        final Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
                 .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics);
         eventDispatcher.setIncrementalSnapshotChangeEventSource(incrementalSnapshotChangeEventSource);
-        incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(offsetContext));
+        incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(partition, offsetContext));
     }
 
     public void commitOffset(Map<String, ?> offset) {
@@ -229,6 +230,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected void streamingConnected(boolean status) {
         if (changeEventSourceMetricsFactory.connectionMetricHandledByCoordinator()) {
             streamingMetrics.connected(status);
+            LOGGER.info("Connected metrics set to '{}'", status);
         }
     }
 

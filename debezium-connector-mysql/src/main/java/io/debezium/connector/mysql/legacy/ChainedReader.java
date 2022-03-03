@@ -11,12 +11,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.mysql.MySqlPartition;
 
 /**
  * A {@link Reader} implementation that runs one or more other {@link Reader}s in a consistently, completely, and sequentially.
@@ -36,7 +38,7 @@ public final class ChainedReader implements Reader {
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicBoolean completed = new AtomicBoolean(true);
     private final AtomicReference<Reader> currentReader = new AtomicReference<>();
-    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<Consumer<MySqlPartition>> uponCompletion = new AtomicReference<>();
 
     public static class Builder {
 
@@ -74,7 +76,7 @@ public final class ChainedReader implements Reader {
     }
 
     @Override
-    public void uponCompletion(Runnable handler) {
+    public void uponCompletion(Consumer<MySqlPartition> handler) {
         uponCompletion.set(handler);
     }
 
@@ -91,7 +93,7 @@ public final class ChainedReader implements Reader {
     }
 
     @Override
-    public synchronized void start() {
+    public synchronized void start(MySqlPartition partition) {
         if (running.compareAndSet(false, true)) {
             completed.set(false);
 
@@ -100,7 +102,7 @@ public final class ChainedReader implements Reader {
             readers.forEach(remainingReaders::add);
 
             // Start the first reader, if there is one ...
-            if (!startNextReader()) {
+            if (!startNextReader(partition)) {
                 // We couldn't start it ...
                 running.set(false);
                 completed.set(true);
@@ -154,15 +156,15 @@ public final class ChainedReader implements Reader {
      * Only when this method is called is the now-completed reader removed as the current reader, and this is what
      * guarantees that all records produced by the now-completed reader have been polled.
      */
-    private synchronized void readerCompletedPolling() {
-        if (!startNextReader()) {
+    private synchronized void readerCompletedPolling(MySqlPartition partition) {
+        if (!startNextReader(partition)) {
             // We've finished with the last reader ...
             try {
                 if (running.get() || !completed.get()) {
                     // Notify the handler ...
-                    Runnable handler = uponCompletion.get();
+                    Consumer<MySqlPartition> handler = uponCompletion.get();
                     if (handler != null) {
-                        handler.run();
+                        handler.accept(partition);
                     }
                     // and output our message ...
                     if (completionMessage != null) {
@@ -183,7 +185,7 @@ public final class ChainedReader implements Reader {
      *
      * @return {@code true} if the next reader was started, or {@code false} if there are no more readers
      */
-    private boolean startNextReader() {
+    private boolean startNextReader(MySqlPartition partition) {
         Reader reader = remainingReaders.isEmpty() ? null : remainingReaders.pop();
         if (reader == null) {
             // There are no readers, so nothing to do ...
@@ -203,7 +205,7 @@ public final class ChainedReader implements Reader {
         else {
             logger.debug("Starting the {} reader", reader.name());
         }
-        reader.start();
+        reader.start(partition);
         currentReader.set(reader);
         return true;
     }

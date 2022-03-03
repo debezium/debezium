@@ -18,17 +18,17 @@ import io.debezium.schema.DataCollectionSchema;
  *
  * @author Gunnar Morling
  */
-public interface ChangeRecordEmitter {
+public interface ChangeRecordEmitter<P extends Partition> {
 
     /**
      * Emits the change record(s) corresponding to data change represented by this emitter.
      */
-    void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException;
+    void emitChangeRecords(DataCollectionSchema schema, Receiver<P> receiver) throws InterruptedException;
 
     /**
      * Returns the partition of the change record(s) emitted.
      */
-    Partition getPartition();
+    P getPartition();
 
     /**
      * Returns the offset of the change record(s) emitted.
@@ -44,9 +44,9 @@ public interface ChangeRecordEmitter {
      * Callback passed to {@link ChangeRecordEmitter}s, allowing them to produce one
      * or more change records.
      */
-    public interface Receiver {
+    interface Receiver<P extends Partition> {
 
-        void changeRecord(Partition partition, DataCollectionSchema schema, Operation operation, Object key, Struct value,
+        void changeRecord(P partition, DataCollectionSchema schema, Operation operation, Object key, Struct value,
                           OffsetContext offset, ConnectHeaders headers)
                 throws InterruptedException;
     }

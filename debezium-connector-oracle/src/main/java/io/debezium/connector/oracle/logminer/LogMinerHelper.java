@@ -67,7 +67,9 @@ public class LogMinerHelper {
         for (int attempt = 0; attempt <= maxAttempts; ++attempt) {
             logFilesForMining.addAll(getLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention,
                     archiveLogOnlyMode, archiveDestinationName));
-            if (hasNoLogFilesStartingBeforeScn(logFilesForMining, lastProcessedScn)) {
+            // we don't need lastProcessedSCN in the logs, as that one was already processed, but we do want
+            // the next SCN to be present, as that is where we'll start processing from.
+            if (!hasLogFilesStartingBeforeOrAtScn(logFilesForMining, lastProcessedScn.add(Scn.ONE))) {
                 LOGGER.debug("No logs available yet...");
                 logFilesForMining.clear();
                 metronome.pause();
@@ -94,8 +96,8 @@ public class LogMinerHelper {
         throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
     }
 
-    private static boolean hasNoLogFilesStartingBeforeScn(List<LogFile> logs, Scn scn) {
-        return logs.stream().noneMatch(l -> l.getFirstScn().compareTo(scn) <= 0);
+    private static boolean hasLogFilesStartingBeforeOrAtScn(List<LogFile> logs, Scn scn) {
+        return logs.stream().anyMatch(l -> l.getFirstScn().compareTo(scn) <= 0);
     }
 
     private static Scn getMinimumScn(List<LogFile> logs) {

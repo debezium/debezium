@@ -26,7 +26,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final OracleConnectorConfig configuration;
     private final OracleConnection jdbcConnection;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final Configuration jdbcConfig;
@@ -34,7 +34,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection,
-                                          ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
+                                          ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
                                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
@@ -49,7 +49,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     }
 
     @Override
-    public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
         return new OracleSnapshotChangeEventSource(configuration, jdbcConnection,
                 schema, dispatcher, clock, snapshotProgressListener);
     }
@@ -68,10 +68,10 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     }
 
     @Override
-    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
-                                                                                                                              OracleOffsetContext offsetContext,
-                                                                                                                              SnapshotProgressListener snapshotProgressListener,
-                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+    public Optional<IncrementalSnapshotChangeEventSource<OraclePartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                                               OracleOffsetContext offsetContext,
+                                                                                                                                               SnapshotProgressListener<OraclePartition> snapshotProgressListener,
+                                                                                                                                               DataChangeEventListener<OraclePartition> dataChangeEventListener) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {

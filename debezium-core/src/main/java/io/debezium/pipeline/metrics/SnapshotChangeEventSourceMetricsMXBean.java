@@ -5,34 +5,10 @@
  */
 package io.debezium.pipeline.metrics;
 
-import java.util.Map;
+import io.debezium.pipeline.metrics.traits.SnapshotMetricsMXBean;
 
 /**
  * @author Randall Hauch, Jiri Pechanec
  */
-public interface SnapshotChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean {
-
-    int getTotalTableCount();
-
-    int getRemainingTableCount();
-
-    boolean getSnapshotRunning();
-
-    boolean getSnapshotAborted();
-
-    boolean getSnapshotCompleted();
-
-    long getSnapshotDurationInSeconds();
-
-    Map<String, Long> getRowsScanned();
-
-    String getChunkId();
-
-    String getChunkFrom();
-
-    String getChunkTo();
-
-    String getTableFrom();
-
-    String getTableTo();
+public interface SnapshotChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean, SnapshotMetricsMXBean {
 }

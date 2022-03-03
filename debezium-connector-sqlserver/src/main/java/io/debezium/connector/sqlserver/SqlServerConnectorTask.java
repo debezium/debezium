@@ -17,11 +17,13 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -105,7 +107,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        final EventDispatcher<SqlServerPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
@@ -121,7 +123,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 SqlServerConnector.class,
                 connectorConfig,
                 new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
-                new DefaultChangeEventSourceMetricsFactory(),
+                createChangeEventSourceMetricsFactory(connectorConfig.isMultiPartitionModeEnabled(), offsets),
                 dispatcher,
                 schema,
                 clock);
@@ -170,5 +172,15 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return SqlServerConnectorConfig.ALL_FIELDS;
+    }
+
+    private ChangeEventSourceMetricsFactory<SqlServerPartition> createChangeEventSourceMetricsFactory(boolean multiPartitionMode,
+                                                                                                      Offsets<SqlServerPartition, SqlServerOffsetContext> offsets) {
+        if (multiPartitionMode) {
+            return new SqlServerMetricsFactory(offsets.getPartitions());
+        }
+        else {
+            return new DefaultChangeEventSourceMetricsFactory<>();
+        }
     }
 }

@@ -28,7 +28,7 @@ Restart your Kafka Connect process to pick up the new JARs.
 
 The connector plug-ins are available from Maven:
 
-ifeval::['{page-version}' == 'main']
+ifeval::['{page-version}' == 'master']
 * {link-mysql-plugin-snapshot}[MySQL Connector plugin archive]
 * {link-postgres-plugin-snapshot}[Postgres Connector plugin archive]
 * {link-mongodb-plugin-snapshot}[MongoDB Connector plugin archive]
@@ -38,9 +38,9 @@ ifeval::['{page-version}' == 'main']
 * {link-cassandra-plugin-snapshot}[Cassandra plugin archive] (incubating)
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 
-NOTE: All above links are to nightly snapshots of the {prodname} master branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
+NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
-ifeval::['{page-version}' != 'main']
+ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[Postgres Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[MongoDB Connector plugin archive]
@@ -111,7 +111,7 @@ e.g. when updating them
 *** You can relax the single partition rule but your application must handle out-of-order events for different rows in database (events for a single row are still totally ordered). If multiple partitions are used, Kafka will determine the partition by hashing the key by default. Other partition strategies require using SMTs to set the partition number for each record.
 // the condition can be removed once downstream  is updated to Kafka 2.6+
 ifdef::community[]
-** For customizable topic auto-creation (available since Kafka Connect 2.6.0) see {link-prefix}:{link-topic-auto-creation}[Custom Topic Auto-Creation]
+** For customizable topic auto-creation (available since Kafka Connect 2.6.0) see xref:{link-topic-auto-creation}[Custom Topic Auto-Creation]
 endif::community[]
 
 == Using the {prodname} Libraries

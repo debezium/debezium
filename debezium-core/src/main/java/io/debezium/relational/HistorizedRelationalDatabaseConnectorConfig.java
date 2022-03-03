@@ -33,6 +33,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     private boolean useCatalogBeforeSchema;
     private final String logicalName;
     private final Class<? extends SourceConnector> connectorClass;
+    private final boolean multiPartitionMode;
 
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
@@ -58,30 +59,33 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC,
                     KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS)
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
+                    KafkaDatabaseHistory.KAFKA_QUERY_TIMEOUT_MS)
             .create();
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
+                                                          Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter,
-                                                          boolean useCatalogBeforeSchema, int defaultSnapshotFetchSize, ColumnFilterMode columnFilterMode) {
+                                                          boolean useCatalogBeforeSchema,
+                                                          int defaultSnapshotFetchSize,
+                                                          ColumnFilterMode columnFilterMode,
+                                                          boolean multiPartitionMode) {
         super(config, logicalName, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.logicalName = logicalName;
         this.connectorClass = connectorClass;
-    }
-
-    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
-                                                          TableFilter systemTablesFilter, boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
-        this(connectorClass, config, logicalName, systemTablesFilter, useCatalogBeforeSchema, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
+        this.multiPartitionMode = multiPartitionMode;
     }
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper,
-                                                          boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
+                                                          boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode,
+                                                          boolean multiPartitionMode) {
         super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.logicalName = logicalName;
         this.connectorClass = connectorClass;
+        this.multiPartitionMode = multiPartitionMode;
     }
 
     /**
@@ -105,7 +109,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                 .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
-        databaseHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(this), useCatalogBeforeSchema); // validates
+        databaseHistory.configure(dbHistoryConfig, historyComparator,
+                new DatabaseHistoryMetrics(this, multiPartitionMode), useCatalogBeforeSchema); // validates
 
         return databaseHistory;
     }

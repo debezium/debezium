@@ -384,7 +384,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public SqlServerConnectorConfig(Configuration config) {
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
-                ColumnFilterMode.SCHEMA);
+                ColumnFilterMode.SCHEMA, config.hasKey(DATABASE_NAMES));
 
         final String databaseName = config.getString(DATABASE_NAME.name());
         final String databaseNames = config.getString(DATABASE_NAMES.name());

@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -18,6 +19,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.legacy.Reader.State;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
@@ -55,7 +57,8 @@ public class ChainedReaderTest {
     public void shouldNotStartWithoutReaders() throws InterruptedException {
         reader = new ChainedReader.Builder().build();
         assertThat(reader.state()).isEqualTo(State.STOPPED);
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         assertThat(reader.state()).isEqualTo(State.STOPPED);
         assertPollReturnsNoMoreRecords();
     }
@@ -66,7 +69,8 @@ public class ChainedReaderTest {
                 .addReader(new MockReader("r1", records()))
                 .completionMessage("Stopped the r1 reader")
                 .build();
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
         assertThat(reader.poll()).isSameAs(RL2);
@@ -85,7 +89,8 @@ public class ChainedReaderTest {
                 .addReader(new MockReader("r2", records()))
                 .completionMessage("Stopped the r2 reader")
                 .build();
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
         assertThat(reader.poll()).isSameAs(RL2);
@@ -104,7 +109,8 @@ public class ChainedReaderTest {
                 .addReader(new MockReader("r4", records()))
                 .completionMessage("Stopped the r3+r4 reader")
                 .build();
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
         assertThat(reader.poll()).isSameAs(RL2);
@@ -137,7 +143,8 @@ public class ChainedReaderTest {
                 .addReader(new CompletingMockReader("r5", records()))
                 .completionMessage("Stopped the r5 reader")
                 .build();
-        reader.start();
+        MySqlPartition partition = new MySqlPartition("test");
+        reader.start(partition);
         assertThat(reader.state()).isEqualTo(State.RUNNING);
         assertThat(reader.poll()).isSameAs(RL1);
         assertThat(reader.poll()).isSameAs(RL2);
@@ -180,7 +187,8 @@ public class ChainedReaderTest {
     public static class MockReader implements Reader {
         private final String name;
         private final Supplier<List<SourceRecord>> pollResultsSupplier;
-        private final AtomicReference<Runnable> completionHandler = new AtomicReference<>();
+        private final AtomicReference<Consumer<MySqlPartition>> completionHandler = new AtomicReference<>();
+        private final AtomicReference<MySqlPartition> partition = new AtomicReference<>();
         private final AtomicBoolean running = new AtomicBoolean();
         private final AtomicBoolean completed = new AtomicBoolean();
         private Object mockResource;
@@ -214,9 +222,9 @@ public class ChainedReaderTest {
             }
             if (record == null) {
                 // We're done ...
-                Runnable handler = this.completionHandler.get();
+                Consumer<MySqlPartition> handler = this.completionHandler.get();
                 if (handler != null) {
-                    handler.run();
+                    handler.accept(partition.get());
                 }
                 completed.set(true);
                 running.set(false);
@@ -229,9 +237,10 @@ public class ChainedReaderTest {
         }
 
         @Override
-        public void start() {
+        public void start(MySqlPartition partition) {
             assertThat(running.get()).isFalse();
             running.set(true);
+            this.partition.set(partition);
         }
 
         @Override
@@ -240,7 +249,7 @@ public class ChainedReaderTest {
         }
 
         @Override
-        public void uponCompletion(Runnable handler) {
+        public void uponCompletion(Consumer<MySqlPartition> handler) {
             completionHandler.set(handler);
         }
 

@@ -113,14 +113,14 @@
 
         <!-- Quarkus -->
         <!-- Must be aligned with Apicurio version below -->
-        <quarkus.version>2.6.2.Final</quarkus.version>
+        <quarkus.version>2.7.1.Final</quarkus.version>
 
         <!-- Apicurio -->
         <version.apicurio>2.1.5.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.3.2</version.postgresql.driver>
-        <version.mysql.driver>8.0.27</version.mysql.driver>
+        <version.mysql.driver>8.0.28</version.mysql.driver>
         <version.mysql.binlog>0.25.5</version.mysql.binlog>
         <version.mongo.driver>4.3.3</version.mongo.driver>
         <version.sqlserver.driver>9.4.1.jre8</version.sqlserver.driver>
@@ -133,6 +133,8 @@
         <version.mongo.server>3.6</version.mongo.server>
         <version.cassandra>3.11.10</version.cassandra>
 
+        <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
+        <version.com.google.protobuf>3.19.2</version.com.google.protobuf>
     </properties>
 
     <modules>

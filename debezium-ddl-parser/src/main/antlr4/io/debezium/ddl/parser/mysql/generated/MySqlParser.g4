@@ -428,6 +428,10 @@ tableOption
     | DATA DIRECTORY '='? STRING_LITERAL                                            #tableOptionDataDirectory
     | DELAY_KEY_WRITE '='? boolValue=('0' | '1')                                    #tableOptionDelay
     | ENCRYPTION '='? STRING_LITERAL                                                #tableOptionEncryption
+    | encryptedLiteral '='? (YES | NO)                                              #tableOptionEncrypted
+    | (PAGE_COMPRESSED | STRING_LITERAL) '='? ('0' | '1')                           #tableOptionPageCompressed
+    | (PAGE_COMPRESSION_LEVEL | STRING_LITERAL) '='? decimalLiteral                 #tableOptionPageCompressionLevel
+    | ENCRYPTION_KEY_ID '='? decimalLiteral                                         #tableOptionEncryptionKeyId
     | INDEX DIRECTORY '='? STRING_LITERAL                                           #tableOptionIndexDirectory
     | INSERT_METHOD '='? insertMethod=(NO | FIRST | LAST)                           #tableOptionInsertMethod
     | KEY_BLOCK_SIZE '='? fileSizeLiteral                                           #tableOptionKeyBlockSize
@@ -1749,7 +1753,7 @@ showStatement
         (LIMIT
           (offset=decimalLiteral ',')?
           rowCount=decimalLiteral
-        )                                                           #showErrors
+        )?                                                          #showErrors
     | SHOW COUNT '(' '*' ')' errorFormat=(ERRORS | WARNINGS)        #showCountErrors
     | SHOW showSchemaEntity
         (schemaFormat=(FROM | IN) uid)? showFilter?                 #showSchemaFilter
@@ -2008,6 +2012,12 @@ engineName
     | ID
     | STRING_LITERAL | REVERSE_QUOTE_ID
     | CONNECT
+    ;
+
+// MariaDB
+encryptedLiteral
+    : ENCRYPTED
+    | STRING_LITERAL
     ;
 
 uuidSet
@@ -2632,6 +2642,7 @@ keywordsCanBeId
     | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
     // MariaDB
     | VIA | LASTVAL | NEXTVAL | SETVAL | PREVIOUS | PERSISTENT | REPLICATION_MASTER_ADMIN | REPLICA | READ_ONLY_ADMIN | FEDERATED_ADMIN | BINLOG_MONITOR | BINLOG_REPLAY
+    | ENCRYPTED | ENCRYPTION_KEY_ID
     ;
 
 functionNameBase

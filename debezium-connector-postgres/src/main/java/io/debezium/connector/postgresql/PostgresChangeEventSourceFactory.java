@@ -56,7 +56,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<PostgresPartition> snapshotProgressListener) {
         return new PostgresSnapshotChangeEventSource(
                 configuration,
                 snapshotter,
@@ -84,10 +84,10 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
-                                                                                                                              PostgresOffsetContext offsetContext,
-                                                                                                                              SnapshotProgressListener snapshotProgressListener,
-                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+    public Optional<IncrementalSnapshotChangeEventSource<PostgresPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                                                 PostgresOffsetContext offsetContext,
+                                                                                                                                                 SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
+                                                                                                                                                 DataChangeEventListener<PostgresPartition> dataChangeEventListener) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {

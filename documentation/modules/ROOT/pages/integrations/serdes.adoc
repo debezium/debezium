@@ -89,7 +89,7 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 * if the value is deserialized and contains the {prodname} event envelope then:
 ** if `from.field` is not set, then deserialize the complete envelope into the target type
 ** otherwise deserialize and map only content of the field configured into the target type, thus effectively flatting the message
-* if the value is deserialized and contains already a flattened message (i.e. when using the SMT for {link-prefix}:{link-event-flattening}[Event Flattening]) then map the flattened record into the target logical type
+* if the value is deserialized and contains already a flattened message (i.e. when using the SMT for xref:{link-event-flattening}[Event Flattening]) then map the flattened record into the target logical type
 
 [[serdes-configuration_options]]
 === Configuration options
@@ -101,12 +101,12 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 |Description
 
 [id="serdes-from-field"]
-|{link-prefix}:{link-serdes}#serdes-from-field[`from.field`]
+|xref:{link-serdes}#serdes-from-field[`from.field`]
 |`N/A`
 |Empty if a message with full envelope should be deserialized, `before`/`after` if only data values before or after the change are required.
 
 [id="serdes-unknown-properties-ignored"]
-|{link-prefix}:{link-serdes}#serdes-unknown-properties-ignored[`unknown.properties.ignored`]
+|xref:{link-serdes}#serdes-unknown-properties-ignored[`unknown.properties.ignored`]
 |`false`
 |Determines when an unknown property is encountered whether it should be silently ignored or if a runtime exception should be thrown.
 |===

@@ -6,11 +6,12 @@
 package io.debezium.pipeline.metrics;
 
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * Common API for all change event source metrics regardless of the connector phase.
  */
-interface ChangeEventSourceMetrics extends DataChangeEventListener {
+public interface ChangeEventSourceMetrics<P extends Partition> extends DataChangeEventListener<P> {
 
     void register();
 
