@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -12,6 +13,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -48,11 +50,13 @@ public class LogMinerHelper {
      * @param archiveDestinationName configured archive log destination name to use, may be {@code null}
      * @param maxRetries the number of retry attempts before giving up and throwing an exception about log state
      * @throws SQLException if anything unexpected happens
+     * @return current redo log sequences
      */
     // todo: check RAC resiliency
-    public static void setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention,
-                                            boolean archiveLogOnlyMode, String archiveDestinationName, int maxRetries)
+    public static List<BigInteger> setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention,
+                                                        boolean archiveLogOnlyMode, String archiveDestinationName, int maxRetries)
             throws SQLException, InterruptedException {
+        List<BigInteger> ret = new LinkedList<>();
         removeLogFilesFromMining(connection);
 
         // Restrict max attempts to 0 or greater values (sanity-check)
@@ -84,7 +88,12 @@ public class LogMinerHelper {
             }
 
             LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}", lastProcessedScn, logFilesNames);
-            return;
+            for (LogFile logFile : logFilesForMining) {
+                if (logFile.isCurrent()) {
+                    ret.add(logFile.getSequence());
+                }
+            }
+            return ret;
         }
 
         final Scn minScn = getMinimumScn(logFilesForMining);
@@ -141,7 +150,7 @@ public class LogMinerHelper {
                 Scn nextScn = getScnFromString(rs.getString(3));
                 String status = rs.getString(5);
                 String type = rs.getString(6);
-                Long sequence = rs.getLong(7);
+                BigInteger sequence = new BigInteger(rs.getString(7));
                 if ("ARCHIVED".equals(type)) {
                     // archive log record
                     LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE);
