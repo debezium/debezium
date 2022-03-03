@@ -143,7 +143,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         return;
                     }
 
-                    currentRedoLogSequences = getCurrentRedoLogSequences();
                     initializeRedoLogsForMining(jdbcConnection, false, startScn);
 
                     while (context.isRunning()) {
