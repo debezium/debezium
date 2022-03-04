@@ -233,13 +233,11 @@ Try to avoid task reassignment and reconfiguration while the connector is perfor
 ====
 
 // Type: concept
-// ModuleID: debezium-mongodb-ad-hoc-snapshots
 [id="mongodb-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
 // Type: concept
-// ModuleID: debezium-mongodb-incremental-snapshots
 [id="mongodb-incremental-snapshots"]
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
@@ -1456,7 +1454,7 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
 [id="debezium-mongodb-connector-advanced-configuration-properties"]
-.Required {prodname} MongoDB connector advanced configuration properties
+.{prodname} MongoDB connector advanced configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
@@ -1578,6 +1576,20 @@ A value of `0` disables this behavior.
 |`0`
 |Specifies the maximum number of milliseconds the oplog/change stream cursor will wait for the server to produce a result before causing an execution timeout exception.
 A value of `0` indicates using the server/driver default wait timeout.
+
+|[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
+|No default
+| Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+Use the following format to specify the collection name: +
+`_<databaseName>_._<collectionName>_`
+
+|[[mongodb-property-incremental-snapshot-chunk-size]]<<mongodb-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|`1024`
+|The maximum number of documents that the connector fetches and reads into memory during an incremental snapshot chunk.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
 |===
 
 // Type: assembly
