@@ -1,7 +1,6 @@
 
 // Category: debezium-using
 // Type: assembly
-// ModuleID: monitoring-debezium
 
 [id="monitoring-debezium"]
 = Monitoring {prodname}
