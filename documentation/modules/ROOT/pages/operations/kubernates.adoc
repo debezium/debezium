@@ -1,5 +1,5 @@
 [id="deploying-debezium-on-kubernates"]
-= Deploying {prodname} on Kubernates
+= Deploying {prodname} on Kubernetes
 
 :linkattrs:
 :icons: font
@@ -9,22 +9,22 @@
 
 toc::[]
 
-{prodname} can be easily deployed on https://kubernetes.io/[Kubernates], an open-source container management platform.
-The deployment leverages https://strimzi.io/[Strimzi] project, which aims to simplify Apache Kafka deployment on Kubernates.
+{prodname} can be easily deployed on https://kubernetes.io/[Kubernetes], an open-source container management platform.
+The deployment leverages the https://strimzi.io/[Strimzi] project, which aims to simplify the deployment of Apache Kafka on Kubernetes by means of _custom resources_.
 
 [NOTE]
 ====
-For testing you deployment, you can use https://minikube.sigs.k8s.io/docs/[minikube] project, which starts Kubernates cluster on your local machine.
-See https://minikube.sigs.k8s.io/docs/start/[minikube documentation] how to install minikube on your machine.
-If you want to test {prodname} deployment as described in this doc completely on minikube, you need to set up unsecure Docker registry on minikube.
-To do so, you need start minikube with `--insecure-registry` flag:
+For testing your deployment, you can use https://minikube.sigs.k8s.io/docs/[minikube], which starts a Kubernetes cluster on your local machine.
+See the https://minikube.sigs.k8s.io/docs/start/[minikube documentation] for details on how to install minikube on your machine.
+If you want to test a {prodname} deployment as described in this doc completely on minikube, you need to set up an unsecure container image registry on minikube.
+To do so, you need start minikube with the `--insecure-registry` flag:
 
 [source,subs="attributes",options="nowrap"]
 ----
 minikube start --insecure-registry "10.0.0.0/24"
 ----
 
-`10.0.0.1` is the default service cluster IP, so this setup allows pulling images inside whole cluster.
+`10.0.0.1` is the default service cluster IP, so this setup allows pulling images inside the whole cluster.
 See https://minikube.sigs.k8s.io/docs/handbook/registry/#enabling-insecure-registries[minikube documentation] for more details.
 You also need to enable `registry` minikube addon:
 
