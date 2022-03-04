@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import org.awaitility.Awaitility;
 import org.infinispan.client.hotrod.impl.ConfigurationProperties;
 
 import io.debezium.config.Configuration;
@@ -509,5 +511,19 @@ public class TestHelper {
             builder.with(field, config);
         }
         return builder;
+    }
+
+    /**
+     * Simulate {@link Thread#sleep(long)} by using {@link Awaitility} instead.
+     *
+     * @param duration the duration to sleep (wait)
+     * @param units the unit of time
+     * @throws Exception if the wait/sleep failed
+     */
+    public static void sleep(long duration, TimeUnit units) throws Exception {
+        // While we wait 1 additional unit more than the requested sleep timer, the poll delay is offset
+        // by exactly the sleep time and the condition always return true and so the extended atMost
+        // value is irrelevant and only used to satisfy Awaitility's need for atMost > pollDelay.
+        Awaitility.await().atMost(duration + 1, units).pollDelay(duration, units).until(() -> true);
     }
 }
