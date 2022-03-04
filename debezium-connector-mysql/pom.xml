@@ -126,6 +126,7 @@
         <mysql.replica.password>mysqlpw</mysql.replica.password>
         <mysql.port>3306</mysql.port>
         <mysql.percona.port>3306</mysql.percona.port>
+        <mysql.ssl.port>3306</mysql.ssl.port>
         <mysql.gtid.port>3306</mysql.gtid.port>
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use primary as 'replica' -->
@@ -214,7 +215,7 @@
                         <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
                       </env>
                       <ports>
-                        <port>${mysql.port}:3306</port>
+                        <port>${mysql.ssl.port}:3306</port>
                       </ports>
                       <volumes>
                         <bind>
@@ -536,11 +537,12 @@
             </activation>
             <properties>
               <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
-              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database</docker.filter>
+              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database,debezium/mysql-server-test-database-ssl</docker.filter>
               <mysql.port>4301</mysql.port>
               <mysql.gtid.port>4302</mysql.gtid.port>
               <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
               <mysql.percona.port>4304</mysql.percona.port>
+              <mysql.ssl.port>4305</mysql.ssl.port>
             </properties>
             <build>
                 <plugins>
@@ -609,6 +611,20 @@
                                         <!-- same port for both, since we're only running one server -->
                                         <database.port>${mysql.port}</database.port>
                                         <database.replica.port>${mysql.port}</database.replica.port>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <!-- Then just SSL-enabled Server -->
+                            <execution>
+                                <id>integration-test-ssl-server</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <!-- same port for both, since we're only running one server -->
+                                        <database.port>${mysql.ssl.port}</database.port>
+                                        <database.replica.port>${mysql.ssl.port}</database.replica.port>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -760,6 +776,9 @@
           <properties>
               <!-- Docker properties -->
               <docker.filter>debezium/mysql-server-test-database-ssl</docker.filter>
+              <!-- Integration test properties -->
+              <database.port>${mysql.ssl.port}</database.port>
+              <database.replica.port>${mysql.ssl.port}</database.replica.port>
           </properties>
       </profile>
     </profiles>
