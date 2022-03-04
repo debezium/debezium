@@ -1,4 +1,4 @@
-[id="deploying-debezium-on-kubernates"]
+[id="deploying-debezium-on-Kubernetes"]
 = Deploying {prodname} on Kubernetes
 
 :linkattrs:
@@ -21,7 +21,7 @@ To do so, you need start minikube with the `--insecure-registry` flag:
 
 [source,subs="attributes",options="nowrap"]
 ----
-minikube start --insecure-registry "10.0.0.0/24"
+$ minikube start --insecure-registry "10.0.0.0/24"
 ----
 
 `10.0.0.1` is the default service cluster IP, so this setup allows pulling images inside the whole cluster.
@@ -30,43 +30,42 @@ You also need to enable `registry` minikube addon:
 
 [source,subs="attributes",options="nowrap"]
 ----
-minikube addons enable registry
+$ minikube addons enable registry
 ----
 
 ====
 
 == Prerequisites
 
-To keep containers seprated from rest fo the cluster, create dedicated namespace for {prodname}.
-In the rest of this doc, `debezium-example` will be used:
+To keep containers separated from other workloads on the cluster, create a dedicated namespace for {prodname}.
+In the remainder of this document, the `debezium-example` namespace will be used:
 
 [source,subs="attributes",options="nowrap"]
 ----
-kubectl create ns debezium-example
+$ kubectl create ns debezium-example
 ----
 
-As mentioned above, for the {prodname} deployment we will use Strimzi, which manages Kafka deployment on Kubernates.
-Please see https://strimzi.io/docs/operators/latest/deploying.html[Strimzi deployment documentation], for more details how to deploy Strimzi on your Kubernates cluster.
+As mentioned above, for the {prodname} deployment we will use Strimzi, which manages the Kafka deployment on Kubernetes.
+Please see the https://strimzi.io/docs/operators/latest/deploying.html[Strimzi deployment documentation] for more details on how to deploy Strimzi on your Kubernetes cluster.
 
-For testing purposes, you can use following, simplified and unsecured,  approach.
+For testing purposes, you can use the following, simplified and unsecured, approach.
 
-* First, https://strimzi.io/downloads/[download] recent Strimzi release and unpack it in your local directory.
-
-* Create dedicated namespace for Strimzi Kafka Cluster Operator:
+* First, https://strimzi.io/downloads/[download] the latest Strimzi release and unpack it into a local directory
+* Create a dedicated namespace for the Strimzi Kafka Cluster Operator:
 
 [source,subs="attributes",options="nowrap"]
 ----
-kubectl create ns kafka
+$ kubectl create ns kafka
 ----
 
-* Modify the downloaded source files to use `kafka` namespace for installation of Strimzi Kafka Cluster Operator:
+* Modify the downloaded source files to use the `kafka` namespace for the installation of the Strimzi Kafka Cluster Operator:
 
 [source,subs="attributes",options="nowrap"]
 ----
-sed -i 's/namespace: .*/namespace: kafka/' install/cluster-operator/*RoleBinding*.yaml
+$ sed -i 's/namespace: .*/namespace: kafka/' install/cluster-operator/*RoleBinding*.yaml
 ----
 
-and set `STRIMZI_NAMESPACE` to `debezium-example` namespace in `install/cluster-operator/060-Deployment-strimzi-cluster-operator.yaml`:
+* Set the `STRIMZI_NAMESPACE` variable in `install/cluster-operator/060-Deployment-strimzi-cluster-operator.yaml` to `debezium-example`:
 
 [source,subs="attributes",options="nowrap"]
 ----
@@ -75,11 +74,13 @@ env:
     value: debezium-example
 ----
 
-* Deploy Kafka cluster:
+== Deploying Apache Kafka
+
+Next, deploy a (single-node) Kafka cluster:
 
 [source,bash]
 ----
-cat << EOF | kubectl create -n debezium-example -f -
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -127,20 +128,22 @@ spec:
 EOF
 ----
 
-* And wait until it's ready:
+* Wait until it's ready:
 
 [source,subs="attributes",options="nowrap"]
 ----
-kubectl wait kafka/debezium-cluster --for=condition=Ready --timeout=300s -n debezium-example
+$ kubectl wait kafka/debezium-cluster --for=condition=Ready --timeout=300s -n debezium-example
 ----
 
-In this doc, MySql will be used as an example.
-Besides running a pod with MySql, appropriate service which will point to the pod with DB itself is needed.
+== Deploying a Data Source
+
+As a data source, MySQL will be used in the following.
+Besides running a pod with MySQL, an appropriate service which will point to the pod with DB itself is needed.
 It can be created e.g. as follows:
 
 [source,bash]
 ----
-cat << EOF | kubectl create -n debezium-example -f -
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: v1
 kind: Service
 metadata:
@@ -168,7 +171,7 @@ spec:
         app: mysql
     spec:
       containers:
-      - image: quay.io/debezium/example-mysql:1.9
+      - image: quay.io/debezium/example-mysql:{debezium-docker-label}
         name: mysql
         env:
         - name: MYSQL_ROOT_PASSWORD
@@ -183,22 +186,22 @@ spec:
 EOF
 ----
 
-== Deploying {prodname} Connector
+== Deploying a {prodname} Connector
 
-To deploy {prodname} connector, one needs to deploy Kafka Connect cluster with proper plugin and create the connector itself.
-As the first step, Kafka Connect Docker image with the plugin has to be created.
-If you have already Docker image built and available in registry, you can skip this step.
-In this doc, MySql connector will be used as an example.
+To deploy a {prodname} connector, you need to deploy a Kafka Connect cluster with the required connector plug-in(s), before instantiating the actual connector itself.
+As the first step, a container image for Kafka Connect with the plug-in has to be created.
+If you  already have a container image built and available in the registry, you can skip this step.
+In this document, the MySQL connector will be used as an example.
 
 === Creating Kafka Connect Cluster
 
-Again, we will use Strimzi for creating Kafka Connect cluster.
-Strimzi is able to help with building Docker image as well and can built and push required Docker image for us.
-In fact both tasks can be merged together and instructions for building Docker image can be provided directly in connector object specification:
+Again, we will use Strimzi for creating the Kafka Connect cluster.
+Strimzi also can be used for building and pushing the required container image for us.
+In fact, both tasks can be merged together and instructions for building the container image can be provided directly within the `KafkaConnect` object specification:
 
 [source,bash]
 ----
-cat << EOF | kubectl create -n debezium-example -f -
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnect
 metadata:
@@ -226,7 +229,7 @@ spec:
       - name: debezium-mysql-connector
         artifacts:
           - type: tgz
-            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.8.1.Final/debezium-connector-mysql-1.8.1.Final-plugin.tar.gz
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz
             sha512sum: dff3e1f973ab203490d19337fac65e7545fbd70e3f22555e6ca74b3c734160140cbef5905b9f138f8b56616e0af5a41a8b2b7f09497d9cc62f64863017bdc088
 EOF
 ----
@@ -234,7 +237,7 @@ EOF
 [NOTE]
 ====
 You have to replace IP address of the registry `10.110.154.103` with the registry where you can push images.
-In case you run it on minikube with registry addon, you can push the image into internal minikube registry.
+In case you run it on minikube with the registry addon, you can push the image into the internal minikube registry.
 The IP address of the registry can by obtained e.g. by running
 
 [source,subs="attributes",options="nowrap"]
@@ -244,11 +247,11 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 
 ====
 
-If you already have Docker image in Docker registry, you can used simplified version:
+If you already have a suitable container image either in the local or a remote registry (such as quay.io or DockerHub), you can use this simplified version:
 
 [source,bash]
 ----
-cat << EOF | kubectl create -n debezium-example -f -
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnect
 metadata:
@@ -272,13 +275,13 @@ spec:
 EOF
 ----
 
-=== Creating {prodname} Connector
+=== Creating a {prodname} Connector
 
-To create {prodname} connector, you just need to create connector with appropriate configuration, MySql in this case:
+To create a {prodname} connector, you just need to create a `KafkaConnector` with the appropriate configuration, MySQL in this case:
 
 [source,bash]
 ----
-cat << EOF | kubectl create -n debezium-example -f -
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnector
 metadata:
@@ -308,24 +311,24 @@ To verify the everything works fine, you can e.g. start watching `mysql.inventor
 
 [source,subs="attributes",options="nowrap"]
 ----
-kubectl run -n debezium-example -it --rm --image=quay.io/debezium/kafka:1.9  --restart=Never watcher -- watch-topic -a -k mysql.inventory.customers
+$ kubectl run -n debezium-example -it --rm --image=quay.io/debezium/kafka:{debezium-docker-label}  --restart=Never watcher -- watch-topic -a -k mysql.inventory.customers
 ----
 
-connect to MySql database:
-
-[source,subs="attributes",options="nowrap"]
-----
-kubectl run -n debezium-example -it --rm --image=mysql:8.0 --restart=Never --env MYSQL_ROOT_PASSWORD=debezium mysqlterm -- mysql -hmysql -P3306 -uroot -pdebezium
-----
-
-do some changes in `customers` table:
+Connect to the MySQL database:
 
 [source,subs="attributes",options="nowrap"]
 ----
-update customers set first_name="Sally Marie" where id=1001;
+$ kubectl run -n debezium-example -it --rm --image=mysql:8.0 --restart=Never --env MYSQL_ROOT_PASSWORD=debezium mysqlterm -- mysql -hmysql -P3306 -uroot -pdebezium
 ----
 
-and observer the change in Kafka topic watcher:
+Do some changes in the `customers` table:
+
+[source,subs="attributes",options="nowrap"]
+----
+sql> update customers set first_name="Sally Marie" where id=1001;
+----
+
+You now should be able to observe the change events on the Kafka topic:
 
 [source,json]
 ----
@@ -345,7 +348,7 @@ and observer the change in Kafka topic watcher:
       "email": "sally.thomas@acme.com"
     },
     "source": {
-      "version": "1.8.1.Final",
+      "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql",
       "ts_ms": 1646300467000,
@@ -367,4 +370,3 @@ and observer the change in Kafka topic watcher:
   }
 }
 ----
-
