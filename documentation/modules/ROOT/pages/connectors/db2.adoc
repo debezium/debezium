@@ -2305,7 +2305,7 @@ The {prodname} Db2 connector provides three types of metrics that are in additio
 * xref:{link-db2-connector}#db2-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 * xref:{link-db2-connector}#db2-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
-xref:{link-debezium-monitoring}[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
 // Type: reference
 // ModuleID: monitoring-debezium-during-snapshots-of-db2-databases

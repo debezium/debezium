@@ -2614,7 +2614,7 @@ The connector provides the following metrics:
 * xref:sqlserver-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
 * xref:sqlserver-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
 
-For information about how to expose the preceding metrics through JMX, see the xref:{link-debezium-monitoring}[{prodname} monitoring documentation].
+For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation].
 
 // Type: reference
 // ModuleID: debezium-sqlserver-connector-snapshot-metrics
