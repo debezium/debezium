@@ -11,6 +11,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -105,9 +106,13 @@ public class FlushStrategyIT extends AbstractConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Verify that the connector logged multiple rows detected and fixed
-            assertThat(logInterceptor.containsWarnMessage("DBZ-4118: The flush table, " + LOGMNR_FLUSH_TABLE + ", has multiple rows")).isTrue();
+            Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> logInterceptor.containsWarnMessage(
+                    "DBZ-4118: The flush table, " + LOGMNR_FLUSH_TABLE + ", has multiple rows"));
 
             // Verify that no additional rows get inserted on restart
+            // Log entry will occur before the SQL has fired in the strategy, so delay checking to allow
+            // the connector to have deleted and fixed the records before proceeding
+            TestHelper.sleep(5, TimeUnit.SECONDS);
             assertFlushTableHasExactlyOneRow();
 
             // Use a single insert as a marker entry to know when its safe to test flush strategy table
