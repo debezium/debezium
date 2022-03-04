@@ -19,40 +19,6 @@ ifdef::community[]
 toc::[]
 
 
-[NOTE]
-====
-A new capturing implementation for the {prodname} MySQL connector was introduced in {prodname} 1.5,
-based on the common connector framework used by the other {prodname} Kafka Connect connectors.
-
-If you encounter any issues with the new MySQL connector implementation, please log a link:https://issues.redhat.com/browse/DBZ[Jira issue]; in this case, you can use the legacy implementation by setting the `internal.implementation=legacy` connector configuration option
-(note this option as well as the legacy connector implementation itself is scheduled for removal in a future Debezium version).
-
-The new connector implementation is intended to behave exactly the same as the existing one,
-with the exception of the *experimental* parallel snapshotting feature, which isn't available any longer.
-Users of the parallel snapshotting feature should move to the more robust and flexible notion of "incremental snapshotting" introduced in Debezium 1.6.
-====
-endif::community[]
-
-ifdef::product[]
-[IMPORTANT]
-====
-This release of the {prodname} MySQL connector includes a new default capturing implementation that is based on the common connector framework that is used by the other {prodname} connectors.
-The revised capturing implementation is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-
-If the connector generates errors or unexpected behavior while running with the new capturing implementation, you can revert to the earlier implementation by setting the following configuration option:
-
-[source]
-----
-internal.implementation=legacy
-----
-====
-endif::product[]
-
-
-
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas as well as changes to the data in tables. MySQL uses the binlog for replication and recovery.
 
 The {prodname} MySQL connector reads the binlog, produces change events for row-level `INSERT`, `UPDATE`, and `DELETE` operations, and emits the change events to Kafka topics. Client applications read those Kafka topics.
