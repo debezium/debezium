@@ -673,6 +673,18 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
         }
         else {
+            if (tableId == null) {
+                EventData eventData = unwrapData(event);
+                if (eventData instanceof WriteRowsEventData) {
+                    tableId = taskContext.getSchema().getExcludeTableId(((WriteRowsEventData) eventData).getTableId());
+                }
+                else if (eventData instanceof UpdateRowsEventData) {
+                    tableId = taskContext.getSchema().getExcludeTableId(((UpdateRowsEventData) eventData).getTableId());
+                }
+                else if (eventData instanceof DeleteRowsEventData) {
+                    tableId = taskContext.getSchema().getExcludeTableId(((DeleteRowsEventData) eventData).getTableId());
+                }
+            }
             LOGGER.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
             metrics.onFilteredEvent(partition, "source = " + tableId, operation);
             eventDispatcher.dispatchFilteredEvent(partition, offsetContext);
