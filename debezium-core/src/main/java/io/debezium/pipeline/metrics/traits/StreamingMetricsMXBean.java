@@ -12,8 +12,6 @@ import java.util.Map;
  */
 public interface StreamingMetricsMXBean extends SchemaMetricsMXBean {
 
-    String[] getCapturedTables();
-
     Map<String, String> getSourceEventPosition();
 
     long getMilliSecondsBehindSource();

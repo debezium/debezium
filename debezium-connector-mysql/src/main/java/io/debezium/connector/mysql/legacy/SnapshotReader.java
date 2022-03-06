@@ -94,7 +94,7 @@ public class SnapshotReader extends AbstractReader {
         this.includeData = context.snapshotMode().includeData();
         this.snapshotLockingMode = context.getConnectorConfig().getSnapshotLockingMode();
         recorder = this::recordRowAsRead;
-        metrics = new SnapshotReaderMetrics(context, context.dbSchema(), changeEventQueueMetrics);
+        metrics = new SnapshotReaderMetrics(context, changeEventQueueMetrics);
         this.useGlobalLock = useGlobalLock;
         this.mysqlFieldReader = context.getConnectorConfig().useCursorFetch()
                 ? new MysqlBinaryProtocolFieldReader(context.getConnectorConfig())
