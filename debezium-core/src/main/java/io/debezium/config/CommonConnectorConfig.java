@@ -494,7 +494,7 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 998))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(-1)
+            .withDefault(0)
             .withValidation(Field::isInteger)
             .withDescription("The maximum number of times to retry on connection errors before failing the task (-1 - no limit)");
 
