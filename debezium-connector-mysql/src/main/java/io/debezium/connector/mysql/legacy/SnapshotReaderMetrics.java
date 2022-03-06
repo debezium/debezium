@@ -20,11 +20,8 @@ class SnapshotReaderMetrics extends DefaultSnapshotChangeEventSourceMetrics<MySq
 
     private final AtomicBoolean holdingGlobalLock = new AtomicBoolean();
 
-    private final MySqlSchema schema;
-
-    public SnapshotReaderMetrics(MySqlTaskContext taskContext, MySqlSchema schema, ChangeEventQueueMetrics changeEventQueueMetrics) {
+    public SnapshotReaderMetrics(MySqlTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics) {
         super(taskContext, changeEventQueueMetrics, null);
-        this.schema = schema;
     }
 
     @Override
@@ -38,16 +35,6 @@ class SnapshotReaderMetrics extends DefaultSnapshotChangeEventSourceMetrics<MySq
 
     public void globalLockReleased() {
         holdingGlobalLock.set(false);
-    }
-
-    @Override
-    public String[] getMonitoredTables() {
-        return schema.capturedTablesAsStringArray();
-    }
-
-    @Override
-    public String[] getCapturedTables() {
-        return schema.capturedTablesAsStringArray();
     }
 
     @Override
