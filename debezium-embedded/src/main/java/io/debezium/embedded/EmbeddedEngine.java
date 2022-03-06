@@ -31,6 +31,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
@@ -802,9 +803,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 }
                                 break;
                             }
+                            catch (RetriableException retriableException) {
+                                LOGGER.info("Retriable exception thrown, connector will be restarted", retriableException);
+                                // Retriable exception should be ignored by the engine
+                                // and no change records delivered.
+                                // The retry is handled in io.debezium.connector.common.BaseSourceTask.poll()
+                            }
                             catch (ConnectException connectException) {
-                                // In case of ConnectException (and RetriableException that extends it),
-                                // retry starting the connector with a backoff strategy
+                                // In case of ConnectException, retry starting the connector with a backoff strategy
                                 int maxRetries = config.getInteger(CommonConnectorConfig.ERRORS_MAX_RETRIES);
 
                                 if (maxRetries == 0) {
