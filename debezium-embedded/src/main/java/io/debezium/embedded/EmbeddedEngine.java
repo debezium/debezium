@@ -30,7 +30,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.errors.RetriableException;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
@@ -50,6 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Instantiator;
@@ -58,6 +59,7 @@ import io.debezium.engine.StopEngineException;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.util.Clock;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.VariableLatch;
 
 /**
@@ -795,16 +797,43 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                     // this thread is still set as the running thread -> we were not interrupted
                                     // due the stop() call -> probably someone else called the interrupt on us ->
                                     // -> we should raise the interrupt flag
+
                                     Thread.currentThread().interrupt();
                                 }
                                 break;
                             }
-                            catch (RetriableException e) {
-                                LOGGER.info("Retrieable exception thrown, connector will be restarted", e);
-                                // Retriable exception should be ignored by the engine
-                                // and no change records delivered.
-                                // The retry is handled in io.debezium.connector.common.BaseSourceTask.poll()
+                            catch (ConnectException connectException) {
+                                // In case of ConnectException (and RetriableException that extends it),
+                                // retry starting the connector with a backoff strategy
+                                int maxRetries = config.getInteger(CommonConnectorConfig.ERRORS_MAX_RETRIES);
+
+                                if (maxRetries == 0) {
+                                    throw connectException;
+                                }
+
+                                DelayStrategy delayStrategy = CommonConnectorConfig.delayStrategy(config);
+                                int totalRetries = 0;
+                                boolean startedSuccessfully = false;
+                                while (!startedSuccessfully) {
+                                    try {
+                                        totalRetries++;
+                                        LOGGER.trace("Starting connector, attempt {}", totalRetries);
+                                        task.stop();
+                                        task.start(taskConfigs.get(0));
+                                        startedSuccessfully = true;
+                                    }
+                                    catch (Exception e) {
+                                        LOGGER.error("Can't start the connector:", e);
+                                        if (totalRetries == maxRetries) {
+                                            LOGGER.info("Max retries to connect exceeded, stopping connector...");
+                                            throw e;
+                                        }
+                                    }
+
+                                    delayStrategy.sleepWhen(!startedSuccessfully);
+                                }
                             }
+
                             try {
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
                                     LOGGER.debug("Received {} records from the task", changeRecords.size());

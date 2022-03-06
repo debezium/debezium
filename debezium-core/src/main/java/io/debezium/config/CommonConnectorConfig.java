@@ -39,6 +39,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -487,35 +488,36 @@ public abstract class CommonConnectorConfig {
                     + " matched against this regular expression. If matched the error is changed to retriable.")
             .withDefault(false);
 
-    public static final Field CONNECT_ERROR_MAX_RETRIES = Field.create("connect.error.max.retries")
+    public static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
             .withDisplayName("Max retries on connection errors")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 998))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(0)
+            .withDefault(-1)
             .withValidation(Field::isInteger)
-            .withDescription("The maximum number of times to retry on connection errors before failing the task (-1 - no limit). Defaults to 0 (no retries).");
+            .withDescription("The maximum number of times to retry on connection errors before failing the task (-1 - no limit)");
 
-    public static final Field CONNECT_ERROR_INITIAL_RETRY_DELAY = Field.create("connect.error.retry.initial.delay.ms")
-            .withDisplayName("Initial retry delay when encountering connection errros (in ms)")
+    public static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
+            .withDisplayName("Initial retry delay on connection errors")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 997))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(300)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("This value will be doubled upon every retry but won't exceed connect.error.max.retry.delay.ms");
+            .withDescription("Initial retry delay (in ms) when encountering connection errors."
+                    + " This value will be doubled upon every retry but won't exceed errors.retry.delay.initial.ms");
 
-    public static final Field CONNECT_ERROR_MAX_RETRY_DELAY = Field.create("connect.error.max.retry.delay.ms")
-            .withDisplayName("Max delay when encountering connection errros (in ms)")
+    public static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
+            .withDisplayName("Max delay on connection errors")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 996))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(10000)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Backoff strategy - max delay when encountering connection errros");
+            .withDescription("Backoff strategy - max delay (in ms) when encountering connection errors");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
@@ -865,6 +867,14 @@ public abstract class CommonConnectorConfig {
         }
 
         return 0;
+    }
+
+    /**
+     * Returns a DelayStrategy for backoff strategy on connection errors
+     */
+    public static DelayStrategy delayStrategy(Configuration config) {
+        return DelayStrategy.exponential(config.getInteger(CommonConnectorConfig.ERRORS_RETRY_DELAY_INITIAL_MS),
+                config.getInteger(CommonConnectorConfig.ERRORS_RETRY_DELAY_MAX_MS));
     }
 
     /**
