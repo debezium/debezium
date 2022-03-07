@@ -2878,7 +2878,8 @@ However, it's best to use the minimum number that are required to specify a uniq
  +
 For information about the structure of _truncate_ events and about their ordering semantics, see xref:postgresql-truncate-events[]. +
  +
-_This option is deprecated, please use xref:postgresql-property-skipped-operations[`skipped.operations`] instead._
+This option is deprecated.
+Use xref:postgresql-property-skipped-operations[`skipped.operations`] in its place.
 
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`
