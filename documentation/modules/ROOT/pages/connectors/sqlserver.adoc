@@ -2060,20 +2060,11 @@ Can be omitted when using Kerberos authentication, which can be configured using
 |[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbname+`>>
 |No default
 |The name of the SQL Server database from which to stream the changes
-Must not be used with `database.names`.
+// Must not be used with `database.names`.
 
-|[[sqlserver-property-database-names]]<<sqlserver-property-database-names, `+database.names+`>>
+|[[sqlserver-property-database-instance]] <<sqlserver-property-database-instance, `+database.instance+`>>
 |No default
-|The comma-separated list of the SQL Server database names from which to stream the changes.
-Currently, only one database name is supported. Must not be used with `database.dbname`.
-
-This option is *experimental* and must not be used in production. Using it will make the behavior of the connector
-incompatible with the default configuration with no upgrade or downgrade path:
-
-* The connector will use different keys for its committed offset messages.
-* The SQL statements used in `snapshot.select.statement.overrides` will have to use the database name
-  as part of the fully-qualified table name.
-* The structure of the exposed connector metrics will be different.
+|Specifies the instance name of the link:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/database-engine-instances-sql-server?view=sql-server-latest#instances[SQL Server named instance].
 
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |No default
@@ -2287,6 +2278,12 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 |[[sqlserver-property-max-batch-size]]<<sqlserver-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
+
+|[[sqlserver-property-max-queue-size-in-bytes]]<<sqlserver-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
+|`0`
+|A long integer data type that specifies the maximum size of the blocking queue in bytes.
+By default, no size limit is specified for the blocking queue.
+Set this property to a positive long value to specify a maximum queue size.
 
 |[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
