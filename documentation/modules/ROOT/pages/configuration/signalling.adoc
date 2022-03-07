@@ -22,7 +22,7 @@ When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-
 Signaling is available for use with the following {prodname} connectors:
 
 * Db2
-* MongoDB
+* MongoDB (Technology Preview)
 * MySQL
 * Oracle
 * PostgreSQL

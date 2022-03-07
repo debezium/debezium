@@ -229,24 +229,49 @@ If the connector is stopped before the tasks' snapshots are completed, upon rest
 
 [NOTE]
 ====
-Try to avoid task reassignment and reconfiguration while the connector is performing a snapshot of any replica sets. The connector does log messages with the progress of the snapshot. For utmost control, run a separate cluster of Kafka Connect for each connector.
+Try to avoid task reassignment and reconfiguration while the connector performs snapshots of any replica sets.
+The connector generates log messages to report on the progress of the snapshot.
+To provide for the greatest control, run a separate Kafka Connect cluster for each connector.
 ====
 
 // Type: concept
 [id="mongodb-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
+
+ifdef::product[]
+[IMPORTANT]
+====
+Ad hoc snapshots are a Technology Preview feature for the {prodname} MongoDB connector.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
 // Type: concept
 [id="mongodb-incremental-snapshots"]
 ==== Incremental snapshots
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+ifdef::product[]
+[IMPORTANT]
+====
+Incremental snapshots are a Technology Preview feature for the {prodname} MongoDB connector.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [NOTE]
 ====
 Incremental snapshots are currently supported for single replica set deployments only.
+ifdef::community[]
 This limitation will be removed in the next version.
+endif::community[]
 ====
 
 // Type: concept
