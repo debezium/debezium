@@ -230,7 +230,7 @@ The IP address of the registry can by obtained e.g. by running
 
 [source,subs="attributes",options="nowrap"]
 ----
-kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
+$ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 ----
 
 ====
