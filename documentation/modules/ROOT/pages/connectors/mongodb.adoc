@@ -1602,6 +1602,7 @@ A value of `0` disables this behavior.
 |Specifies the maximum number of milliseconds the oplog/change stream cursor will wait for the server to produce a result before causing an execution timeout exception.
 A value of `0` indicates using the server/driver default wait timeout.
 
+ifdef::community[]
 |[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
@@ -1614,6 +1615,7 @@ Use the following format to specify the collection name: +
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
+endif::community[]
 
 |===
 
