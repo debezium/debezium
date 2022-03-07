@@ -48,9 +48,8 @@ $ kubectl create ns debezium-example
 As mentioned above, for the {prodname} deployment we will use Strimzi, which manages the Kafka deployment on Kubernetes.
 Please see the https://strimzi.io/docs/operators/latest/deploying.html[Strimzi deployment documentation] for more details on how to deploy Strimzi on your Kubernetes cluster.
 
-The most simple way is to install Strimzi operator.
-Operators require Operator Lifecycle Manager to be install on your cluster.
-If you don't have it installed, you can install it by:
+The simplest way for installing Strimzi is through the https://olm.operatorframework.io/[Operator Lifecycle Manager] (OLM).
+If you don't have OLM installed on your cluster yet, you can install it by running the following command:
 
 [source,subs="attributes",options="nowrap"]
 ----
