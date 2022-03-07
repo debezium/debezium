@@ -237,11 +237,10 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 
 [NOTE]
 ====
-For simplicity, we skipped here `sha512sum` of the downloaded artifact.
-If you want to be sure the artifact was correctly downloaded, specify its `sha512sum`.
+For simplicity, we've skipped the checksum validation for the downloaded artifact.
+If you want to be sure the artifact was correctly downloaded, specify its checksum via the `sha512sum` attribute.
 See https://strimzi.io/docs/operators/latest/deploying.html#creating-new-image-using-kafka-connect-build-str[Strimzi documentation] for more details.
 ====
-
 
 If you already have a suitable container image either in the local or a remote registry (such as quay.io or DockerHub), you can use this simplified version:
 
