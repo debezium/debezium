@@ -630,7 +630,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             LOGGER.debug("Received update table metadata event: {}", event);
         }
         else {
-            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, "update table metadata");
+            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId);
         }
     }
 
@@ -639,7 +639,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * don't know, either ignore that event or raise a warning or error as per the
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
      */
-    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog,
+    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId,
                                                    Operation operation)
             throws InterruptedException {
         if (tableId != null && connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
@@ -685,15 +685,15 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     tableId = taskContext.getSchema().getExcludeTableId(((DeleteRowsEventData) eventData).getTableId());
                 }
             }
-            LOGGER.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
+            LOGGER.trace("Filtered data change event for {}", tableId);
             metrics.onFilteredEvent(partition, "source = " + tableId, operation);
             eventDispatcher.dispatchFilteredEvent(partition, offsetContext);
         }
     }
 
-    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog)
+    private void informAboutUnknownTableIfRequired(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, TableId tableId)
             throws InterruptedException {
-        informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, typeToLog, null);
+        informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, null);
     }
 
     /**
@@ -784,7 +784,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
         }
         else {
-            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, changeType + " row", operation);
+            informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, operation);
         }
         startingRowNumber = 0;
     }
