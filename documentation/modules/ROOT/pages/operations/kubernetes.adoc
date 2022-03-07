@@ -48,30 +48,20 @@ $ kubectl create ns debezium-example
 As mentioned above, for the {prodname} deployment we will use Strimzi, which manages the Kafka deployment on Kubernetes.
 Please see the https://strimzi.io/docs/operators/latest/deploying.html[Strimzi deployment documentation] for more details on how to deploy Strimzi on your Kubernetes cluster.
 
-For testing purposes, you can use the following, simplified and unsecured, approach.
-
-* First, https://strimzi.io/downloads/[download] the latest Strimzi release and unpack it into a local directory
-* Create a dedicated namespace for the Strimzi Kafka Cluster Operator:
-
-[source,subs="attributes",options="nowrap"]
-----
-$ kubectl create ns kafka
-----
-
-* Modify the downloaded source files to use the `kafka` namespace for the installation of the Strimzi Kafka Cluster Operator:
+The most simple way is to install Strimzi operator.
+Operators require Operator Lifecycle Manager to be install on your cluster.
+If you don't have it installed, you can install it by:
 
 [source,subs="attributes",options="nowrap"]
 ----
-$ sed -i 's/namespace: .*/namespace: kafka/' install/cluster-operator/*RoleBinding*.yaml
+$ curl -sL https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.20.0/install.sh | bash -s v0.20.0
 ----
 
-* Set the `STRIMZI_NAMESPACE` variable in `install/cluster-operator/060-Deployment-strimzi-cluster-operator.yaml` to `debezium-example`:
+Now, install Strimzi operator itself:
 
 [source,subs="attributes",options="nowrap"]
 ----
-env:
-  - name: STRIMZI_NAMESPACE
-    value: debezium-example
+$ kubectl create -f https://operatorhub.io/install/strimzi-kafka-operator.yaml
 ----
 
 == Deploying Apache Kafka
@@ -230,7 +220,6 @@ spec:
         artifacts:
           - type: tgz
             url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz
-            sha512sum: dff3e1f973ab203490d19337fac65e7545fbd70e3f22555e6ca74b3c734160140cbef5905b9f138f8b56616e0af5a41a8b2b7f09497d9cc62f64863017bdc088
 EOF
 ----
 
@@ -246,6 +235,14 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 ----
 
 ====
+
+[NOTE]
+====
+For simplicity, we skipped here `sha512sum` of the downloaded artifact.
+If you want to be sure the artifact was correctly downloaded, specify its `sha512sum`.
+See https://strimzi.io/docs/operators/latest/deploying.html#creating-new-image-using-kafka-connect-build-str[Strimzi documentation] for more details.
+====
+
 
 If you already have a suitable container image either in the local or a remote registry (such as quay.io or DockerHub), you can use this simplified version:
 
@@ -311,7 +308,7 @@ To verify the everything works fine, you can e.g. start watching `mysql.inventor
 
 [source,subs="attributes",options="nowrap"]
 ----
-$ kubectl run -n debezium-example -it --rm --image=quay.io/debezium/kafka:{debezium-docker-label}  --restart=Never watcher -- watch-topic -a -k mysql.inventory.customers
+$ kubectl run -n debezium-example -it --rm --image=quay.io/debezium/tooling:1.2  --restart=Never watcher -- kcat -b debezium-cluster-kafka-bootstrap:9092 -C -o beginning -t mysql.inventory.customers
 ----
 
 Connect to the MySQL database:
