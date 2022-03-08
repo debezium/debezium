@@ -128,6 +128,7 @@
         <mysql.percona.port>3306</mysql.percona.port>
         <mysql.gtid.port>3306</mysql.gtid.port>
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
+        <mysql.ssl.port>3306</mysql.ssl.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use primary as 'replica' -->
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
         <!--
@@ -214,11 +215,11 @@
                         <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
                       </env>
                       <ports>
-                        <port>${mysql.port}:3306</port>
+                        <port>${mysql.ssl.port}:3306</port>
                       </ports>
                       <volumes>
                         <bind>
-                          <volume>${project.basedir}/src/test/resources/ssl:/ssl</volume>
+                          <volume>${project.basedir}/src/test/resources/ssl-certs:/etc/certs</volume>
                         </bind>
                       </volumes>
                       <log>
@@ -235,13 +236,12 @@
                       <from>mysql/mysql-server:${version.mysql.server}</from>
                         <runCmds>
                           <run>${docker.initimage}</run>
-                          <run>yum install java-11-openjdk -y</run> <!-- keytool need jdk installed -->
                         </runCmds>
                         <assembly>
                           <inline>
                             <fileSets>
                               <fileSet>
-                                <directory>${project.basedir}/src/test/docker/server</directory>
+                                <directory>${project.basedir}/src/test/docker/server-ssl</directory>
                                 <includes>
                                   <include>my.cnf</include>
                                 </includes>
@@ -252,7 +252,7 @@
                                 <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
                               </fileSet>
                               <fileSet>
-                                <directory>${project.basedir}/src/test/docker/ssl</directory> <!-- including keytool shell -->
+                                <directory>${project.basedir}/src/test/docker/init-ssl</directory>
                                 <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
                               </fileSet>
                             </fileSets>
@@ -536,11 +536,12 @@
             </activation>
             <properties>
               <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
-              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database</docker.filter>
+              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database,debezium/mysql-server-test-database-ssl</docker.filter>
               <mysql.port>4301</mysql.port>
               <mysql.gtid.port>4302</mysql.gtid.port>
               <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
               <mysql.percona.port>4304</mysql.percona.port>
+              <mysql.ssl.port>4305</mysql.ssl.port>
             </properties>
             <build>
                 <plugins>
@@ -593,6 +594,7 @@
                                 <database.replica.password>${mysql.replica.password}</database.replica.password>
                                 <database.port>${mysql.port}</database.port>
                                 <database.replica.port>${mysql.port}</database.replica.port>
+                                <database.ssl.mode>disabled</database.ssl.mode>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                             </systemPropertyVariables>
                             <runOrder>alphabetical</runOrder>
@@ -636,6 +638,25 @@
                                         <!-- same port for both, since we're only running one server -->
                                         <database.port>${mysql.percona.port}</database.port>
                                         <database.replica.port>${mysql.percona.port}</database.replica.port>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <!-- SSL -->
+                            <execution>
+                                <id>integration-test-ssl</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <database.ssl.mode>verify_ca</database.ssl.mode>
+                                        <database.ssl.truststore>${project.basedir}/src/test/resources/ssl/truststore</database.ssl.truststore>
+                                        <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
+                                        <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>
+                                        <database.ssl.keystore.password>debezium</database.ssl.keystore.password>
+                                        <!-- same port for both, since we're only running one server -->
+                                        <database.port>${mysql.ssl.port}</database.port>
+                                        <database.replica.port>${mysql.ssl.port}</database.replica.port>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -750,17 +771,21 @@
       To use, specify "-Dmysql-ssl" or -Pmysql-ssl on the Maven command line.
       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
       <profile>
-          <id>mysql-ssl</id>
-          <activation>
-              <activeByDefault>false</activeByDefault>
-              <property>
-                  <name>mysql-ssl</name>
-              </property>
-          </activation>
-          <properties>
-              <!-- Docker properties -->
-              <docker.filter>debezium/mysql-server-test-database-ssl</docker.filter>
-          </properties>
+        <id>mysql-ssl</id>
+        <activation>
+          <activeByDefault>false</activeByDefault>
+          <property>
+            <name>mysql-ssl</name>
+          </property>
+        </activation>
+        <properties>
+          <!-- Docker properties -->
+          <docker.filter>debezium/mysql-server-test-database-ssl</docker.filter>
+          <!-- Integration test properties -->
+          <database.port>${mysql.ssl.port}</database.port>
+          <database.replica.port>${mysql.ssl.port}</database.replica.port>
+          <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
+        </properties>
       </profile>
     </profiles>
 </project>
