@@ -685,7 +685,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     tableId = taskContext.getSchema().getExcludeTableId(((DeleteRowsEventData) eventData).getTableId());
                 }
             }
-            LOGGER.trace("Filtered data change event for {}", tableId);
+            LOGGER.trace("Filtered {} event for {}", event.getHeader().getEventType(), tableId);
             metrics.onFilteredEvent(partition, "source = " + tableId, operation);
             eventDispatcher.dispatchFilteredEvent(partition, offsetContext);
         }
