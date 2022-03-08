@@ -1602,20 +1602,24 @@ A value of `0` disables this behavior.
 |Specifies the maximum number of milliseconds the oplog/change stream cursor will wait for the server to produce a result before causing an execution timeout exception.
 A value of `0` indicates using the server/driver default wait timeout.
 
-ifdef::community[]
 |[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-| Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
 Use the following format to specify the collection name: +
-`_<databaseName>_._<collectionName>_`
+`_<databaseName>_._<collectionName>_` +
+ifdef::product[]
+Signaling is a Technology Preview feature for the {prodname} MongoDB connector.
+endif::product[]
 
 |[[mongodb-property-incremental-snapshot-chunk-size]]<<mongodb-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of documents that the connector fetches and reads into memory during an incremental snapshot chunk.
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
-Adjust the chunk size to a value that provides the best performance in your environment.
-endif::community[]
+Adjust the chunk size to a value that provides the best performance in your environment. +
+ifdef::product[]
+Incremental snapshots is a Technology Preview feature for the {prodname} MongoDB connector.
+endif::product[]
 
 |===
 
