@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.spi;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,6 +15,13 @@ import java.util.Set;
  */
 public interface Partition {
     Map<String, String> getSourcePartition();
+
+    /**
+     * Returns the partition representation in the logging context.
+     */
+    default Map<String, String> getLoggingContext() {
+        return Collections.emptyMap();
+    }
 
     /**
      * Implementations provide a set of connector-specific partitions based on the connector task configuration.
