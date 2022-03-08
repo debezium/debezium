@@ -2059,9 +2059,15 @@ Can be omitted when using Kerberos authentication, which can be configured using
 
 |[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbname+`>>
 |No default
-|The name of the SQL Server database from which to stream the changes
+|The name of the SQL Server database from which to stream the changes.
+ifdef::community[]
 Must not be used with `database.names`.
+endif::community[]
+|[[sqlserver-property-database-instance]] <<sqlserver-property-database-instance, `+database.instance+`>>
+|No default
+|Specifies the instance name of the link:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/database-engine-instances-sql-server?view=sql-server-latest#instances[SQL Server named instance].
 
+ifdef::community[]
 |[[sqlserver-property-database-names]]<<sqlserver-property-database-names, `+database.names+`>>
 |No default
 |The comma-separated list of the SQL Server database names from which to stream the changes.
@@ -2074,7 +2080,7 @@ incompatible with the default configuration with no upgrade or downgrade path:
 * The SQL statements used in `snapshot.select.statement.overrides` will have to use the database name
   as part of the fully-qualified table name.
 * The structure of the exposed connector metrics will be different.
-
+endif::community[]
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |No default
 |Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture.
@@ -2088,6 +2094,12 @@ If you change the name value, after a restart, instead of continuing to emit eve
 The connector is also unable to recover its database history topic.
 ====
 
+
+|[[sqlserver-property-max-queue-size-in-bytes]]<<sqlserver-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
+|`0`
+|A long integer data type that specifies the maximum size of the blocking queue in bytes.
+By default, the connector does not define a maximum size for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value.
 
 |[[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list, `+table.include.list+`>>
 |No default
