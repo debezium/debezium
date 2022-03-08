@@ -10,8 +10,8 @@ import io.debezium.testing.system.fixtures.TestSetupFixture;
 import io.debezium.testing.system.fixtures.kafka.KafkaRuntimeFixture;
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.registry.ApicurioOperatorController;
-import io.debezium.testing.system.tools.registry.OcpApicurioV2Controller;
-import io.debezium.testing.system.tools.registry.OcpApicurioV2Deployer;
+import io.debezium.testing.system.tools.registry.OcpApicurioController;
+import io.debezium.testing.system.tools.registry.OcpApicurioDeployer;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import okhttp3.OkHttpClient;
@@ -20,12 +20,21 @@ public interface OcpApicurio
         extends TestSetupFixture, RegistrySetupFixture, RegistryRuntimeFixture,
         KafkaRuntimeFixture, OcpClient {
 
-    String REGISTRY_V2_DEPLOYMENT_PATH = "/registry-resources/v1/010-registry-kafkasql.yaml";
+    String REGISTRY_DEPLOYMENT_PATH = "/registry-resources/v1/010-registry-kafkasql.yaml";
 
     @Override
     default void setupRegistry() throws Exception {
         updateApicurioOperator(ConfigProperties.OCP_PROJECT_REGISTRY, getOcpClient());
-        setupApicurioV2();
+
+        OcpApicurioDeployer deployer = new OcpApicurioDeployer.Builder()
+                .withOcpClient(getOcpClient())
+                .withHttpClient(new OkHttpClient())
+                .withProject(ConfigProperties.OCP_PROJECT_REGISTRY)
+                .withYamlPath(REGISTRY_DEPLOYMENT_PATH)
+                .build();
+
+        OcpApicurioController controller = deployer.deploy();
+        setRegistryController(controller);
     }
 
     default void updateApicurioOperator(String project, OpenShiftClient ocp) {
@@ -40,17 +49,5 @@ public interface OcpApicurio
     default void teardownRegistry() {
         // no-op
         // Registry is reused across tests
-    }
-
-    default void setupApicurioV2() throws InterruptedException {
-        OcpApicurioV2Deployer deployer = new OcpApicurioV2Deployer.Builder()
-                .withOcpClient(getOcpClient())
-                .withHttpClient(new OkHttpClient())
-                .withProject(ConfigProperties.OCP_PROJECT_REGISTRY)
-                .withYamlPath(REGISTRY_V2_DEPLOYMENT_PATH)
-                .build();
-
-        OcpApicurioV2Controller controller = deployer.deploy();
-        setRegistryController(controller);
     }
 }

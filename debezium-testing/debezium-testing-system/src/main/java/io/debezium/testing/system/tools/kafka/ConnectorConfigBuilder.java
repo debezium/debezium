@@ -46,7 +46,7 @@ public class ConnectorConfigBuilder {
         return config;
     }
 
-    public ConnectorConfigBuilder addApicurioV2AvroSupport(String apicurioUrl) {
+    public ConnectorConfigBuilder addApicurioAvroSupport(String apicurioUrl) {
         config.put("key.converter", "io.apicurio.registry.utils.converter.AvroConverter");
         config.put("key.converter.apicurio.registry.url", apicurioUrl);
         config.put("key.converter.apicurio.registry.auto-register", true);

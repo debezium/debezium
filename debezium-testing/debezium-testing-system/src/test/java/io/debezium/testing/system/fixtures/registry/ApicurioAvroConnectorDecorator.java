@@ -17,6 +17,6 @@ public interface ApicurioAvroConnectorDecorator
         String registryApiAddress = getRegistryController()
                 .orElseThrow(() -> new IllegalStateException("No registry controller"))
                 .getRegistryApiAddress();
-        config.addApicurioV2AvroSupport(registryApiAddress);
+        config.addApicurioAvroSupport(registryApiAddress);
     }
 }
