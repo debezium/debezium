@@ -31,18 +31,18 @@ import okhttp3.OkHttpClient;
  * This class provides control over Apicurio registry instance deployed in OpenShift
  * @author Jakub Cechacek
  */
-public class OcpApicurioV2Controller extends AbstractOcpApicurioController implements RegistryController {
+public class OcpApicurioController extends AbstractOcpApicurioController implements RegistryController {
     public static final String APICURIO_CRD_DESCRIPTOR = "/crd/v1/apicurioregistries_crd.yaml";
-    private static final Logger LOGGER = LoggerFactory.getLogger(OcpApicurioV2Controller.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpApicurioController.class);
 
-    public OcpApicurioV2Controller(ApicurioRegistry registry, OpenShiftClient ocp, OkHttpClient http) {
+    public OcpApicurioController(ApicurioRegistry registry, OpenShiftClient ocp, OkHttpClient http) {
         super(registry, ocp, http);
     }
 
     @Override
     protected NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
         CustomResourceDefinition crd = ocp.apiextensions().v1().customResourceDefinitions()
-                .load(OcpApicurioV2Controller.class.getResourceAsStream(APICURIO_CRD_DESCRIPTOR))
+                .load(OcpApicurioController.class.getResourceAsStream(APICURIO_CRD_DESCRIPTOR))
                 .get();
         CustomResourceDefinitionContext context = CustomResourceDefinitionContext.fromCrd(crd);
         return ocp.customResources(context, ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
