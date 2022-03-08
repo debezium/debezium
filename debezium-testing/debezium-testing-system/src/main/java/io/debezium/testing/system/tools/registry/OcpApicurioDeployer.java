@@ -27,10 +27,10 @@ public class OcpApicurioDeployer extends AbstractOcpApicurioDeployer<OcpApicurio
     public static final String APICURIO_CRD_DESCRIPTOR = "/crd/v1/apicurioregistries_crd.yaml";
 
     private OcpApicurioDeployer(
-                                  String project,
-                                  String yamlPath,
-                                  OpenShiftClient ocp,
-                                  OkHttpClient http) {
+                                String project,
+                                String yamlPath,
+                                OpenShiftClient ocp,
+                                OkHttpClient http) {
         super(project, yamlPath, ocp, http);
     }
 
