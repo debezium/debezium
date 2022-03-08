@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import io.debezium.config.Configuration;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
+import io.debezium.util.LoggingContext;
 
 public class SqlServerPartition implements Partition {
     private static final String SERVER_PARTITION_KEY = "server";
@@ -44,6 +45,11 @@ public class SqlServerPartition implements Partition {
     @Override
     public Map<String, String> getSourcePartition() {
         return sourcePartition;
+    }
+
+    @Override
+    public Map<String, String> getLoggingContext() {
+        return Collections.singletonMap(LoggingContext.DATABASE_NAME, databaseName);
     }
 
     /**
