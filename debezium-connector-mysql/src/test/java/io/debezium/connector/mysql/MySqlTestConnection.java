@@ -39,7 +39,6 @@ public class MySqlTestConnection extends JdbcConnection {
     public static MySqlTestConnection forTestDatabase(String databaseName) {
         return new MySqlTestConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDatabase(databaseName)
-                .with("useSSL", false)
                 .with("characterEncoding", "utf8")
                 .build());
     }
@@ -53,7 +52,6 @@ public class MySqlTestConnection extends JdbcConnection {
     public static MySqlTestConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
         JdbcConfiguration.Builder builder = JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDatabase(databaseName)
-                .with("useSSL", false)
                 .with("characterEncoding", "utf8");
         urlProperties.forEach(builder::with);
         return new MySqlTestConnection(builder.build());
@@ -72,7 +70,6 @@ public class MySqlTestConnection extends JdbcConnection {
                 .withDatabase(databaseName)
                 .withUser(username)
                 .withPassword(password)
-                .with("useSSL", false)
                 .build());
     }
 
