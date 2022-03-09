@@ -7,6 +7,7 @@ package io.debezium.connector.mysql.legacy;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.net.URL;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.function.Predicate;
@@ -16,12 +17,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mysql.GtidSet;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -84,7 +87,7 @@ public class MySqlTaskContextTest {
     }
 
     protected Configuration.Builder simpleConfig() {
-        return Configuration.create()
+        Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, hostname)
                 .with(MySqlConnectorConfig.PORT, port)
                 .with(MySqlConnectorConfig.USER, username)
@@ -95,6 +98,24 @@ public class MySqlTaskContextTest {
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, databaseName)
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+
+        String sslMode = System.getProperty("database.ssl.mode", "disabled");
+
+        if (sslMode.equals("disabled")) {
+            builder.with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED);
+        }
+        else {
+            URL trustStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/truststore");
+            URL keyStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/keystore");
+
+            builder.with(MySqlConnectorConfig.SSL_MODE, sslMode)
+                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE, System.getProperty("database.ssl.truststore", trustStoreFile.getPath()))
+                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, System.getProperty("database.ssl.truststore.password", "debezium"))
+                    .with(MySqlConnectorConfig.SSL_KEYSTORE, System.getProperty("database.ssl.keystore", keyStoreFile.getPath()))
+                    .with(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, System.getProperty("database.ssl.keystore.password", "debezium"));
+        }
+
+        return builder;
     }
 
     @Test

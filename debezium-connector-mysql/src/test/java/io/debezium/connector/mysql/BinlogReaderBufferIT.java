@@ -21,7 +21,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -74,14 +73,13 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        config = Configuration.create()
+        config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
@@ -143,14 +141,13 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        config = Configuration.create()
+        config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
@@ -205,14 +202,13 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        config = Configuration.create()
+        config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
@@ -277,14 +273,13 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        config = Configuration.create()
+        config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
