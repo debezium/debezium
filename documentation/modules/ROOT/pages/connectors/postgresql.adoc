@@ -2986,17 +2986,21 @@ In the resulting snapshot, the connector includes only the records for which `de
  +
 `skip` skips the problematic event and continues processing.
 
-|[[postgresql-property-max-queue-size]]<<postgresql-property-max-queue-size, `+max.queue.size+`>>
-|`20240`
-|Positive integer value for the maximum size of the blocking queue. The connector places change events received from streaming replication in the blocking queue before writing them to Kafka. This queue can provide backpressure when, for example, writing records to Kafka is slower that it should be or Kafka is not available.
-
 |[[postgresql-property-max-batch-size]]<<postgresql-property-max-batch-size, `+max.batch.size+`>>
 |`10240`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
+|[[postgresql-property-max-queue-size]]<<postgresql-property-max-queue-size, `+max.queue.size+`>>
+|`20240`
+|Positive integer value for the maximum size of the blocking queue. The connector places change events received from streaming replication in the blocking queue before writing them to Kafka. This queue can provide backpressure when, for example, writing records to Kafka is slower that it should be or Kafka is not available.
+
 |[[postgresql-property-max-queue-size-in-bytes]]<<postgresql-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0`
-|Long value for the maximum size in bytes of the blocking queue. The feature is disabled by default, it will be active if it's set with a positive long value.
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:sqlserver-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[postgresql-property-poll-interval-ms]]<<postgresql-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`1000`

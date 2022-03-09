@@ -75,10 +75,10 @@ Updates every 10,000 rows scanned and upon completing a table.
 
 |[[connectors-snaps-metric-maxqueuesizeinbytes_{context}]]<<connectors-snaps-metric-maxqueuesizeinbytes_{context}, `MaxQueueSizeInBytes`>>
 |`long`
-|The maximum buffer of the queue in bytes. It will be enabled if `max.queue.size.in.bytes` is passed with a positive long value.
+|The maximum buffer of the queue in bytes. This metric is available if xref:{context}-property-max-queue-size-in-bytes[`max.queue.size.in.bytes`] is set to a positive long value.
 
 |[[connectors-snaps-metric-currentqueuesizeinbytes_{context}]]<<connectors-snaps-metric-currentqueuesizeinbytes_{context}, `CurrentQueueSizeInBytes`>>
 |`long`
-|The current data of records in the queue in bytes.
+|The current volume, in bytes, of records in the queue.
 
 |===
