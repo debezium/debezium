@@ -2301,7 +2301,7 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 
 |[[sqlserver-property-max-queue-size-in-bytes]]<<sqlserver-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0`
-|A long integer data type that specifies the maximum volume of the blocking queue in bytes.
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
 By default, volume limits are not specified for the blocking queue.
 To specify the number of bytes that the queue can consume, set this property to a positive long value. +
 If xref:sqlserver-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.

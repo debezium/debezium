@@ -1332,15 +1332,93 @@ boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
 
 [id="oracle-decimal-types"]
 === Decimal types
+
+{prodname} connectors handle decimals according to the setting of the xref:{link-oracle-connector}#oracle-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
 The setting of the Oracle connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types.
 
+decimal.handling.mode=precise::
 When the `decimal.handling.mode` property is set to `precise`, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns.
 This is the default mode.
++
+.Mappings when `decimal.handing.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
+|===
+|Oracle type
+|Literal type (schema type)
+|Semantic type (schema name)
 
-However, when the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
+|`NUMERIC[(P[,S])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
-You can also set the `decimal.handling.mode` configuration property to use the `string` option.
-When the property is set to `string`, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation with schema type `STRING`.
+|`DECIMAL[(P[,S])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`SMALLMONEY`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`MONEY`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|===
+
+decimal.handling.mode=double::
+When the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
++
+.Mappings when `decimal.handing.mode=double`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|Oracle type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`SMALLMONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`MONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|===
+
+decimal.handling.mode=string::
+When the `decimal.handling.mode` configuration property is set to `string`, the connector represents `DECIMAL`,`NUMERIC`, and `MONEY` values as their formatted string representation, and encodes the values as shown in the following table.
++
+.Mappings when `decimal.handling.mode` is `string`
+[cols="30%a,30%a,40%a",options="header"]
+|===
+|Oracle data type
+|Literal type (schema type)
+|Semantic type (schema name)
+
+|`NUMERIC[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|`MONEY[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|===
+
 
 [id="oracle-temporal-types"]
 === Temporal types
@@ -2582,6 +2660,10 @@ You can set one of the following options:
 `warn`:: Causes the problematic event to be skipped. The offset of the problematic event is then logged.
 `skip`:: Causes the problematic event to be skipped.
 
+|[[oracle-property-max-batch-size]]<<oracle-property-max-batch-size, `+max.batch.size+`>>
+|`2048`
+|A positive integer value that specifies the maximum size of each batch of events to process during each iteration of this connector.
+
 |[[oracle-property-max-queue-size]]<<oracle-property-max-queue-size, `+max.queue.size+`>>
 |`8192`
 |A positive integer value that specifies the maximum size of the blocking queue.
@@ -2590,13 +2672,13 @@ This queue can provide backpressure to the binlog reader when, for example, writ
 Events that appear in the queue are not included in the offsets that the connector records periodically.
 Always specify a value that is larger than the maximum batch size that specified for the `max.batch.size` property.
 
-|[[oracle-property-max-batch-size]]<<oracle-property-max-batch-size, `+max.batch.size+`>>
-|`2048`
-|A positive integer value that specifies the maximum size of each batch of events to process during each iteration of this connector.
-
 |[[oracle-property-max-queue-size-in-bytes]]<<oracle-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0` (disabled)
-|Long value for the maximum size in bytes of the blocking queue. To activate the feature, set the value to a positive long data type.
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:sqlserver-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[oracle-property-poll-interval-ms]]<<oracle-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`1000` (1 second)
