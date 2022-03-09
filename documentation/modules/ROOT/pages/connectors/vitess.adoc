@@ -908,7 +908,7 @@ a|_n/a_
 [[setting-up-vitess]]
 == Seting up Vitess
 
-{prodname} does not require any specific configuration for use with Vitess. Install Vitess according to the standard instructions in the link:https://vitess.io/docs/get-started/local-docker/[Local Install via Docker] guide, or the link:https://vitess.io/docs/get-started/operator/[Vitess Operator for Kubernetes] guide. 
+{prodname} does not require any specific configuration for use with Vitess. Install Vitess according to the standard instructions in the link:https://vitess.io/docs/get-started/local-docker/[Local Install via Docker] guide, or the link:https://vitess.io/docs/get-started/operator/[Vitess Operator for Kubernetes] guide.
 
 .Checklist
 
@@ -1161,7 +1161,15 @@ If set to `true`, you should also consider setting `vitess.gtid` in the configur
 
 |[[vitess-property-database-server-name]]<<vitess-property-database-server-name, `+database.server.name+`>>
 |
-|Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
+|Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes.
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
+The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector. +
+ +
+[WARNING]
+====
+Changing the value of this property disrupts connector operations.
+All stored offsets are flushed and the connector must re-consume all of the source data.
+====
 
 |[[vitess-property-table-include-list]]<<vitess-property-table-include-list, `+table.include.list+`>>
 |
