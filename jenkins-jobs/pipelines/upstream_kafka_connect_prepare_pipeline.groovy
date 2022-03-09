@@ -108,7 +108,7 @@ pipeline {
                     sh '''
                     set -x
                     cd "${WORKSPACE}/debezium"
-                    ./jenkins-jobs/scripts/upstream-kafka-connect-prepare.sh      \\
+                    ./jenkins-jobs/scripts/upstream-kafka-connect-prepare.sh        \\
                         --dir="${WORKSPACE}"                                        \\
                         --tags="${EXTRA_IMAGE_TAGS}"                                \\
                         --auto-tag="${AUTO_TAG}"                                    \\
@@ -117,6 +117,7 @@ pipeline {
                         --dest-pass="${QUAY_PASSWORD}"                              \\
                         --kc-base-tag="${KC_BASE_TAG}"                              \\
                         --kafka-version="${KAFKA_VERSION}"                          \\
+                        --apicurio-version="${APICURIO_VERSION}"                    \\
                         --img-output="${WORKSPACE}/published_image_dbz.txt"         \\
                         --oracle-included="${ORACLE_INCLUDED}"
                     '''
