@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.relational.history.FileDatabaseHistory;
 
 /**
@@ -184,33 +185,11 @@ public class UniqueDatabase {
      * @return Configuration builder initialized with JDBC connection parameters.
      */
     public Configuration.Builder defaultJdbcConfigBuilder() {
-        return Configuration.create()
+        Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.port", "3306"))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass");
-    }
-
-    /**
-     * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters
-     */
-    public Configuration.Builder defaultConfig() {
-        return defaultConfigWithoutDatabaseFilter()
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, getDatabaseName());
-    }
-
-    /**
-     * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters,
-     * database not filtered by default
-     */
-    public Configuration.Builder defaultConfigWithoutDatabaseFilter() {
-        final Configuration.Builder builder = defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
-                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
 
         String sslMode = System.getProperty("database.ssl.mode", "disabled");
 
@@ -233,6 +212,28 @@ public class UniqueDatabase {
         }
 
         return builder;
+    }
+
+    /**
+     * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters
+     */
+    public Configuration.Builder defaultConfig() {
+        return defaultConfigWithoutDatabaseFilter()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, getDatabaseName());
+    }
+
+    /**
+     * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters,
+     * database not filtered by default
+     */
+    public Configuration.Builder defaultConfigWithoutDatabaseFilter() {
+        return defaultJdbcConfigBuilder()
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
+                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
     }
 
     /**
