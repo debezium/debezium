@@ -1163,7 +1163,7 @@ If set to `true`, you should also consider setting `vitess.gtid` in the configur
 |
 |Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
-The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector. +
+The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
  +
 [WARNING]
 ====
