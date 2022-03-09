@@ -53,12 +53,16 @@ public class MySqlParserIT extends AbstractConnectorTest {
 
     private Configuration config;
     private String oldContainerPort;
+    private String oldSslMode;
 
     @Before
     public void beforeEach() {
         mySQLContainer.start();
         oldContainerPort = System.getProperty("database.port", "3306");
+        oldSslMode = System.getProperty("database.ssl.mode", "disabled");
+
         System.setProperty("database.port", String.valueOf(mySQLContainer.getMappedPort(3306)));
+        System.setProperty("database.ssl.mode", "disabled");
         initializeConnectorTestFramework();
     }
 
@@ -67,6 +71,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
         stopConnector();
         mySQLContainer.stop();
         System.setProperty("database.port", oldContainerPort);
+        System.setProperty("database.ssl.mode", oldSslMode);
     }
 
     public Configuration.Builder defaultConfig() {
