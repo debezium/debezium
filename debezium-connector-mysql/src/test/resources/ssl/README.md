@@ -2,9 +2,10 @@ This directory contains the truststore (used for validating DB server certificat
 certificate) for running the test suite with SSL enabled and two-way authentication.
 
 The files are generated based on the certificates in src/test/resources/ssl-certs, which in turn were taken from the
-MySQL container image (which generates them by default with a validity of 10 years, see /var/lib/mysql). The server
-used for SSL authentication testing uses those pre-generated certificates (see configuration in
-src/test/docker/server-ssl/my.cnf).
+MySQL container image (which generates them by default with a validity of 10 years, see /var/lib/mysql; the currently
+used certificates were created on March 8 2022, i.e. expect SSL-enabled tests to fail after March 8 2032 due to the
+expired certificates). The server used for SSL authentication testing uses those pre-generated certificates (see configuration in
+src/test/docker/server-ssl/my.cnf) instead of generating new ones.
 
 To regenerate the truststore/keystore files, run the following commands:
 

@@ -218,11 +218,14 @@ public class UniqueDatabase {
             builder.with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED);
         }
         else {
+            URL trustStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/truststore");
+            URL keyStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/keystore");
+
             builder.with(MySqlConnectorConfig.SSL_MODE, sslMode)
-                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE, System.getProperty("database.ssl.truststore"))
-                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, System.getProperty("database.ssl.truststore.password"))
-                    .with(MySqlConnectorConfig.SSL_KEYSTORE, System.getProperty("database.ssl.keystore"))
-                    .with(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, System.getProperty("database.ssl.keystore.password"));
+                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE, System.getProperty("database.ssl.truststore", trustStoreFile.getPath()))
+                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, System.getProperty("database.ssl.truststore.password", "debezium"))
+                    .with(MySqlConnectorConfig.SSL_KEYSTORE, System.getProperty("database.ssl.keystore", keyStoreFile.getPath()))
+                    .with(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, System.getProperty("database.ssl.keystore.password", "debezium"));
         }
 
         if (dbHistoryPath != null) {
