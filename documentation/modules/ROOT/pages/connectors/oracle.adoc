@@ -2376,14 +2376,13 @@ endif::product[]
 |Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 The value that you set is used as a prefix for all Kafka topic names that the connector emits.
 Specify a logical name that is unique among all connectors in your {prodname} environment.
-The following characters are valid: alphanumeric characters, hyphens, dots, and underscores. +
+The following characters are valid: alphanumeric characters, hyphens, dots, and underscores.
  +
 [WARNING]
 ====
 Changing the value of this property disrupts connector operations.
 All stored offsets are flushed and the connector must re-consume all of the source data.
 ====
-
 
 |[[oracle-property-database-connection-adapter]]<<oracle-property-database-connection-adapter, `+database.connection.adapter+`>>
 |`logminer`

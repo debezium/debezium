@@ -2662,7 +2662,7 @@ If the publication already exists, either for all tables or configured with a su
 |No default
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes.
 The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
-Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. +
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
  +
 [WARNING]
 ====
