@@ -1381,8 +1381,16 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
 |
-|A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors. Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
-Only alphanumeric characters, hyphens, dots and underscores must be used.
+|A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors.
+Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
+Use only alphanumeric characters, hyphens, dots and underscores to form the name.
+The logical name should be unique across all other connectors, because the name is used as the prefix in naming the Kafka topics that receive records from this connector.
++
+[WARNING]
+====
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+====
 
 |[[mongodb-property-mongodb-user]]<<mongodb-property-mongodb-user, `+mongodb.user+`>>
 |
