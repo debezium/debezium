@@ -2080,11 +2080,12 @@ incompatible with the default configuration with no upgrade or downgrade path:
 |Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture.
 The logical name should be unique across all other connectors, since it is used as the prefix for all Kafka topic names that receive records from this connector.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
- +
++
 [WARNING]
 ====
-Changing the value of this property disrupts connector operations.
-All stored offsets are flushed and the connector must re-consume all of the source data.
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+The connector is also unable to recover its database history topic.
 ====
 
 

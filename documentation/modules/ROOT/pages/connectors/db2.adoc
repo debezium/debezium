@@ -2016,11 +2016,12 @@ The following configuration properties are _required_ unless a default value is 
 |Logical name that identifies and provides a namespace for the particular Db2 database server that hosts the database for which {prodname} is capturing changes.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
 The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
- +
++
 [WARNING]
 ====
-Changing the value of this property disrupts connector operations.
-All stored offsets are flushed and the connector must re-consume all of the source data.
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+The connector is also unable to recover its database history topic.
 ====
 
 |[[db2-property-table-include-list]]<<db2-property-table-include-list, `+table.include.list+`>>
