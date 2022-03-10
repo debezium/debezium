@@ -50,6 +50,7 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
@@ -975,19 +976,22 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-1233")
+    @FixFor({ "DBZ-1233", "DBZ-4833" })
     public void shouldParseCheckTableSomeOtherKeyword() {
-        String[] otherKeywords = new String[]{ "cache", "close", "des_key_file", "end", "export", "flush", "found",
+        List<String> otherKeywords = Collect.arrayListOf("cache", "close", "des_key_file", "end", "export", "flush", "found",
                 "general", "handler", "help", "hosts", "install", "mode", "next", "open", "relay", "reset", "slow",
-                "soname", "traditional", "triggers", "uninstall", "until", "use_frm", "user_resources" };
-        for (String keyword : otherKeywords) {
-            String ddl = "create table t_" + keyword + "( " + keyword + " varchar(256))";
-            parser.parse(ddl, tables);
-            assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
-            final Table table = tables.forTable(null, null, "t_" + keyword);
-            assertThat(table).isNotNull();
-            assertThat(table.columnWithName(keyword)).isNotNull();
-        }
+                "soname", "traditional", "triggers", "uninstall", "until", "use_frm", "user_resources", "lag", "lead",
+                "first_value", "last_value", "cume_dist", "dense_rank", "percent_rank", "rank", "row_number",
+                "nth_value", "ntile");
+
+        String columnDefs = otherKeywords.stream().map(m -> m + " varchar(256)").collect(Collectors.joining(", "));
+        String ddl = "create table t_keywords(" + columnDefs + ");";
+
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        final Table table = tables.forTable(null, null, "t_keywords");
+        assertThat(table).isNotNull();
+        otherKeywords.stream().forEach(f -> assertThat(table.columnWithName(f)).isNotNull());
     }
 
     @Test
