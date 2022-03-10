@@ -36,7 +36,7 @@ endif::community[]
 ====
 The outbox event router SMT is not compatible with the MongoDB connector.
 
-As an alternative, MongoDB users can run the xref:transformations/mongodb-outbox-event-router.adoc[MongoDB outbox event router SMT].
+MongoDB users can run the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router[MongoDB outbox event router SMT].
 ====
 
 ifdef::product[]
@@ -58,7 +58,7 @@ endif::product[]
 [[example-outbox-message]]
 == Example outbox message
 
-To learn about how to configure the {prodname} outbox event router SMT, consider the following example of a {prodname} outbox message:
+To understand how the {prodname} outbox event router SMT is configured, review the following example of a {prodname} outbox message:
 
 [source,javascript,indent=0]
 ----
