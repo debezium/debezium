@@ -1332,15 +1332,92 @@ boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
 
 [id="oracle-decimal-types"]
 === Decimal types
-The setting of the Oracle connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types.
 
+The {prodname} Oracle connector maps decimal types based on the value of the xref:{link-oracle-connector}#oracle-property-decimal-handling-mode[`decimal.handling.mode`] configuration property.
+
+decimal.handling.mode=precise::
 When the `decimal.handling.mode` property is set to `precise`, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns.
 This is the default mode.
++
+.Mappings when `decimal.handing.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
+|===
+|Oracle data type
+|Literal type (schema type)
+|Semantic type (schema name)
 
-However, when the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
+|`NUMERIC[(P[,S])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
-You can also set the `decimal.handling.mode` configuration property to use the `string` option.
-When the property is set to `string`, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation with schema type `STRING`.
+|`DECIMAL[(P[,S])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`SMALLMONEY`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`MONEY`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|===
+
+decimal.handling.mode=double::
+When the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
++
+.Mappings when `decimal.handing.mode=double`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|Oracle data type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`SMALLMONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`MONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|===
+
+decimal.handling.mode=string::
+When the `decimal.handling.mode` configuration property is set to `string`, the connector represents `DECIMAL`,`NUMERIC`, and `MONEY` values as their formatted string representation, and encodes the values as shown in the following table.
++
+.Mappings when `decimal.handling.mode` is `string`
+[cols="30%a,30%a,40%a",options="header"]
+|===
+|Oracle data type
+|Literal type (schema type)
+|Semantic type (schema name)
+
+|`NUMERIC[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|`MONEY[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|===
+
 
 [id="oracle-temporal-types"]
 === Temporal types
