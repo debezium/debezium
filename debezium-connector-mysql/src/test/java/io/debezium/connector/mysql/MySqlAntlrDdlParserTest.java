@@ -614,6 +614,21 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4841")
+    public void shouldProcessMariadbCreateIndex() {
+        String createIndexDdl = "CREATE INDEX IF NOT EXISTS DX_DT_LAST_UPDATE ON patient(DT_LAST_UPDATE)\n"
+                + "WAIT 100\n"
+                + "KEY_BLOCK_SIZE=1024M\n"
+                + "CLUSTERING =YES\n"
+                + "USING RTREE\n"
+                + "NOT IGNORED\n"
+                + "ALGORITHM = NOCOPY\n"
+                + "LOCK EXCLUSIVE";
+        parser.parse(createIndexDdl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-4661")
     public void shouldSupportCreateTableWithEcrytion() {
         parser.parse(
