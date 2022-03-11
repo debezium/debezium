@@ -30,6 +30,9 @@ For the {prodname} deployment we will use the https://strimzi.io/[Strimzi] proje
 The simplest way for installing Strimzi is to install the Strimzi operator from https://operatorhub.io/[OperatorHub].
 Navigate to the "OperatorHub" tab in the OpenShift UI,
 select "Strimzi" and click the "install" button.
+
+image::openshift_strimzi_operator.png[width=770,align="center"]
+
 If you prefer command line tools, you can install the Strimzi operator this way as well:
 
 [source,subs="attributes",options="nowrap"]
@@ -321,6 +324,10 @@ EOF
 You can also note, that we have configured the secret provider to use Strimzi secret provider
 Strimzi secret provider will create service account for this Kafka Connect cluster (and which we have already bound to the appropriate role),
 and allow Kafka Connect to access our `Secret` object.
+
+Before creating a {prodname} connector, check that all pods are already running:
+
+image::openshift_pods.png[width=770,align="center"]
 
 === Creating a {prodname} Connector
 
