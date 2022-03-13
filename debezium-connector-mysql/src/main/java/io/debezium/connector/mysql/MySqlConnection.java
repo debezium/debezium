@@ -6,7 +6,6 @@
 
 package io.debezium.connector.mysql;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -52,7 +51,7 @@ public class MySqlConnection extends JdbcConnection {
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
     private static final String QUOTED_CHARACTER = "`";
 
-    protected static final String URL_PATTERN = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
+    protected static final String URL_PATTERN = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
 
     private final Map<String, String> originalSystemProperties = new HashMap<>();
     private final MySqlConnectionConfiguration connectionConfig;
@@ -77,19 +76,6 @@ public class MySqlConnection extends JdbcConnection {
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig) {
         this(connectionConfig, new MysqlTextProtocolFieldReader(null));
-    }
-
-    @Override
-    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
-        if (!isConnected() && connectionConfig.sslModeEnabled()) {
-            originalSystemProperties.clear();
-            // Set the System properties for SSL for the MySQL driver ...
-            setSystemProperty("javax.net.ssl.keyStore", MySqlConnectorConfig.SSL_KEYSTORE, true);
-            setSystemProperty("javax.net.ssl.keyStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
-            setSystemProperty("javax.net.ssl.trustStore", MySqlConnectorConfig.SSL_TRUSTSTORE, true);
-            setSystemProperty("javax.net.ssl.trustStorePassword", MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, false);
-        }
-        return super.connection(executeOnConnect);
     }
 
     @Override
@@ -472,6 +458,10 @@ public class MySqlConnection extends JdbcConnection {
         }
     }
 
+    public MySqlConnectionConfiguration connectionConfig() {
+        return connectionConfig;
+    }
+
     public String connectionString() {
         return connectionString(URL_PATTERN);
     }
@@ -502,7 +492,22 @@ public class MySqlConnection extends JdbcConnection {
             final Builder jdbcConfigBuilder = dbConfig
                     .edit()
                     .with("connectTimeout", Long.toString(getConnectionTimeout().toMillis()))
-                    .with("useSSL", Boolean.toString(useSSL));
+                    .with("sslMode", sslMode().getValue());
+
+            if (useSSL) {
+                if (!Strings.isNullOrBlank(sslTrustStore())) {
+                    jdbcConfigBuilder.with("trustCertificateKeyStoreUrl", "file:" + sslTrustStore());
+                }
+                if (sslTrustStorePassword() != null) {
+                    jdbcConfigBuilder.with("trustCertificateKeyStorePassword", String.valueOf(sslTrustStorePassword()));
+                }
+                if (!Strings.isNullOrBlank(sslKeyStore())) {
+                    jdbcConfigBuilder.with("clientCertificateKeyStoreUrl", "file:" + sslKeyStore());
+                }
+                if (sslKeyStorePassword() != null) {
+                    jdbcConfigBuilder.with("clientCertificateKeyStorePassword", String.valueOf(sslKeyStorePassword()));
+                }
+            }
 
             final String legacyDateTime = dbConfig.getString(JDBC_PROPERTY_LEGACY_DATETIME);
             if (legacyDateTime == null) {
@@ -573,6 +578,24 @@ public class MySqlConnection extends JdbcConnection {
 
         public boolean sslModeEnabled() {
             return sslMode() != SecureConnectionMode.DISABLED;
+        }
+
+        public String sslKeyStore() {
+            return config.getString(MySqlConnectorConfig.SSL_KEYSTORE);
+        }
+
+        public char[] sslKeyStorePassword() {
+            String password = config.getString(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
+            return Strings.isNullOrBlank(password) ? null : password.toCharArray();
+        }
+
+        public String sslTrustStore() {
+            return config.getString(MySqlConnectorConfig.SSL_TRUSTSTORE);
+        }
+
+        public char[] sslTrustStorePassword() {
+            String password = config.getString(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+            return Strings.isNullOrBlank(password) ? null : password.toCharArray();
         }
 
         public Duration getConnectionTimeout() {
