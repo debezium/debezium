@@ -7,7 +7,6 @@ package io.debezium.connector.mysql.legacy;
 
 import static io.debezium.util.Strings.isNullOrEmpty;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
@@ -36,6 +35,7 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -66,6 +66,7 @@ import com.github.shyiko.mysql.binlog.network.DefaultSSLSocketFactory;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.EventDataDeserializationExceptionData;
@@ -1217,65 +1218,73 @@ public class BinlogReader extends AbstractReader {
         String acceptedTlsVersion = connectionContext.getSessionVariableForSslVersion();
         if (!isNullOrEmpty(acceptedTlsVersion)) {
             SSLMode sslMode = sslModeFor(connectionContext.sslMode());
+            logger.info("Enable ssl " + sslMode + " mode for connector " + context.getConnectorConfig().getLogicalName());
 
-            // Keystore settings can be passed via system properties too so we need to read them
-            final String password = System.getProperty("javax.net.ssl.keyStorePassword");
-            final String keyFilename = System.getProperty("javax.net.ssl.keyStore");
+            final char[] keyPasswordArray = context.getConnectionContext().sslKeyStorePassword();
+            final String keyFilename = context.getConnectionContext().sslKeyStore();
+            final char[] trustPasswordArray = context.getConnectionContext().sslTrustStorePassword();
+            final String trustFilename = context.getConnectionContext().sslTrustStore();
             KeyManager[] keyManagers = null;
             if (keyFilename != null) {
-                final char[] passwordArray = (password == null) ? null : password.toCharArray();
                 try {
-                    KeyStore ks = KeyStore.getInstance("JKS");
-                    ks.load(new FileInputStream(keyFilename), passwordArray);
+                    KeyStore ks = context.getConnectionContext().jdbc().loadKeyStore(keyFilename, keyPasswordArray);
 
                     KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
-                    kmf.init(ks, passwordArray);
+                    kmf.init(ks, keyPasswordArray);
 
                     keyManagers = kmf.getKeyManagers();
                 }
-                catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
-                    throw new ConnectException("Could not load keystore", e);
+                catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
+                    throw new DebeziumException("Could not load keystore", e);
                 }
             }
+            TrustManager[] trustManagers;
+            try {
+                KeyStore ks = null;
+                if (trustFilename != null) {
+                    ks = context.getConnectionContext().jdbc().loadKeyStore(trustFilename, trustPasswordArray);
+                }
 
+                if (ks == null && (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED)) {
+                    trustManagers = new TrustManager[]{
+                            new X509TrustManager() {
+
+                                @Override
+                                public void checkClientTrusted(X509Certificate[] x509Certificates, String s)
+                                        throws CertificateException {
+                                }
+
+                                @Override
+                                public void checkServerTrusted(X509Certificate[] x509Certificates, String s)
+                                        throws CertificateException {
+                                }
+
+                                @Override
+                                public X509Certificate[] getAcceptedIssuers() {
+                                    return new X509Certificate[0];
+                                }
+                            }
+                    };
+                }
+                else {
+                    TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    tmf.init(ks);
+                    trustManagers = tmf.getTrustManagers();
+                }
+            }
+            catch (KeyStoreException | NoSuchAlgorithmException e) {
+                throw new DebeziumException("Could not load truststore", e);
+            }
             // DBZ-1208 Resembles the logic from the upstream BinaryLogClient, only that
             // the accepted TLS version is passed to the constructed factory
-            if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
-                final KeyManager[] finalKMS = keyManagers;
-                return new DefaultSSLSocketFactory(acceptedTlsVersion) {
+            final KeyManager[] finalKMS = keyManagers;
+            return new DefaultSSLSocketFactory(acceptedTlsVersion) {
 
-                    @Override
-                    protected void initSSLContext(SSLContext sc)
-                            throws GeneralSecurityException {
-                        sc.init(finalKMS, new TrustManager[]{
-                                new X509TrustManager() {
-
-                                    @Override
-                                    public void checkClientTrusted(
-                                                                   X509Certificate[] x509Certificates,
-                                                                   String s)
-                                            throws CertificateException {
-                                    }
-
-                                    @Override
-                                    public void checkServerTrusted(
-                                                                   X509Certificate[] x509Certificates,
-                                                                   String s)
-                                            throws CertificateException {
-                                    }
-
-                                    @Override
-                                    public X509Certificate[] getAcceptedIssuers() {
-                                        return new X509Certificate[0];
-                                    }
-                                }
-                        }, null);
-                    }
-                };
-            }
-            else {
-                return new DefaultSSLSocketFactory(acceptedTlsVersion);
-            }
+                @Override
+                protected void initSSLContext(SSLContext sc) throws GeneralSecurityException {
+                    sc.init(finalKMS, trustManagers, null);
+                }
+            };
         }
 
         return null;

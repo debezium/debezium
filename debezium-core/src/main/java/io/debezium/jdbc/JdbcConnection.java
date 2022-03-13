@@ -5,7 +5,14 @@
  */
 package io.debezium.jdbc;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -1509,5 +1516,19 @@ public class JdbcConnection implements AutoCloseable {
      */
     public String quotedColumnIdString(String columnName) {
         return openingQuoteCharacter + columnName + closingQuoteCharacter;
+    }
+
+    /**
+     * Read JKS type keystore/truststore file according related password.
+     */
+    public KeyStore loadKeyStore(String filePath, char[] passwordArray) {
+        try (InputStream in = new FileInputStream(filePath)) {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            ks.load(in, passwordArray);
+            return ks;
+        }
+        catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
+            throw new DebeziumException("Error loading keystore", e);
+        }
     }
 }

@@ -7,9 +7,7 @@ package io.debezium.connector.mysql;
 
 import static io.debezium.util.Strings.isNullOrEmpty;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -1009,19 +1007,17 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             SSLMode sslMode = sslModeFor(connectorConfig.sslMode());
             LOGGER.info("Enable ssl " + sslMode + " mode for connector " + connectorConfig.getLogicalName());
 
-            // Keystore settings can be passed via system properties too so we need to read them
-            final String password = System.getProperty("javax.net.ssl.keyStorePassword");
-            final String keyFilename = System.getProperty("javax.net.ssl.keyStore");
-            final String trustPassword = System.getProperty("javax.net.ssl.trustStorePassword");
-            final String trustFilename = System.getProperty("javax.net.ssl.trustStore");
+            final char[] keyPasswordArray = connection.connectionConfig().sslKeyStorePassword();
+            final String keyFilename = connection.connectionConfig().sslKeyStore();
+            final char[] trustPasswordArray = connection.connectionConfig().sslTrustStorePassword();
+            final String trustFilename = connection.connectionConfig().sslTrustStore();
             KeyManager[] keyManagers = null;
             if (keyFilename != null) {
-                final char[] passwordArray = (password == null) ? null : password.toCharArray();
                 try {
-                    KeyStore ks = loadKeyStore(keyFilename, passwordArray);
+                    KeyStore ks = connection.loadKeyStore(keyFilename, keyPasswordArray);
 
                     KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
-                    kmf.init(ks, passwordArray);
+                    kmf.init(ks, keyPasswordArray);
 
                     keyManagers = kmf.getKeyManagers();
                 }
@@ -1033,7 +1029,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             try {
                 KeyStore ks = null;
                 if (trustFilename != null) {
-                    ks = loadKeyStore(trustFilename, (trustPassword == null) ? null : trustPassword.toCharArray());
+                    ks = connection.loadKeyStore(trustFilename, trustPasswordArray);
                 }
 
                 if (ks == null && (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED)) {
@@ -1079,17 +1075,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
 
         return null;
-    }
-
-    private KeyStore loadKeyStore(String filePath, char[] passwordArray) {
-        try (InputStream in = new FileInputStream(filePath)) {
-            KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(in, passwordArray);
-            return ks;
-        }
-        catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
-            throw new DebeziumException("Error loading keystore", e);
-        }
     }
 
     private void logStreamingSourceState() {
