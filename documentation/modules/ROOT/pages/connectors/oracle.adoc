@@ -1356,16 +1356,6 @@ The `scale` schema parameter contains an integer that represents how many digits
 a|`org.apache.kafka.connect.data.Decimal` +
 The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
-|`SMALLMONEY`
-|`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
-
-|`MONEY`
-|`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
-
 |===
 
 decimal.handling.mode=double::
@@ -1381,14 +1371,6 @@ When the `decimal.handling.mode` property is set to `double`, the connector repr
 a|_n/a_
 
 |`DECIMAL[(M[,D])]`
-|`FLOAT64`
-a|_n/a_
-
-|`SMALLMONEY[(M[,D])]`
-|`FLOAT64`
-a|_n/a_
-
-|`MONEY[(M[,D])]`
 |`FLOAT64`
 a|_n/a_
 
@@ -1409,10 +1391,6 @@ When the `decimal.handling.mode` configuration property is set to `string`, the 
 |_n/a_
 
 |`DECIMAL[(M[,D])]`
-|`STRING`
-|_n/a_
-
-|`MONEY[(M[,D])]`
 |`STRING`
 |_n/a_
 
