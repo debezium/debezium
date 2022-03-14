@@ -1792,8 +1792,12 @@ You must enable binary logging for MySQL replication. The binary logs record tra
 +
 [source,SQL]
 ----
+// for MySql 5.x
 mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema.global_variables WHERE variable_name='log_bin';
+// for MySql 8.x
+mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM performance_schema.global_variables WHERE variable_name='log_bin';
 ----
 
 . If it is `OFF`, configure your MySQL server configuration file with the following properties, which are described in the table below:
@@ -1809,10 +1813,15 @@ expire_logs_days  = 10
 
 . Confirm your changes by checking the binlog status once more:
 +
+
 [source,SQL]
 ----
+// for MySql 5.x
 mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema.global_variables WHERE variable_name='log_bin';
+// for MySql 8.x
+mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM performance_schema.global_variables WHERE variable_name='log_bin';
 ----
 
 [[binlog-configuration-properties-mysql-connector]]
