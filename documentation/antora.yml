@@ -41,6 +41,7 @@ asciidoc:
     link-prefix: 'xref'
     link-postgresql-connector: 'connectors/postgresql.adoc'
     link-postgresql-plugins: 'postgres-plugins.adoc'
+    link-prefix: 'xref'
     link-serdes: 'integrations/serdes.adoc'
     link-signalling: 'configuration/signalling.adoc'
     link-smt-predicates: 'transformations/applying-transformations-selectively.adoc'
