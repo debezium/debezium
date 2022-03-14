@@ -36,7 +36,10 @@ public class OracleErrorHandler extends ErrorHandler {
             "ORA-26653", // Apply DBZXOUT did not start properly and is currently in state INITIALI
             "ORA-01291", // missing logfile
             "ORA-01327", // failed to exclusively lock system dictionary as required BUILD
-            "ORA-04030"); // out of process memory
+            "ORA-04030", // out of process memory
+            "ORA-00310", // archived log contains sequence *; sequence * required
+            "ORA-01343", // LogMiner encountered corruption in the logstream
+            "ORA-01371"); // Complete LogMiner dictionary not found
 
     /**
      * Contents of this set should be any type of error message text;
