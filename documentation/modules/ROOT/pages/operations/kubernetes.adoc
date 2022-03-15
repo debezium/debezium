@@ -45,6 +45,8 @@ In the remainder of this document, the `debezium-example` namespace will be used
 $ kubectl create ns debezium-example
 ----
 
+=== Deploying Strimzi Operator
+
 As mentioned above, for the {prodname} deployment we will use Strimzi, which manages the Kafka deployment on Kubernetes.
 Please see the https://strimzi.io/docs/operators/latest/deploying.html[Strimzi deployment documentation] for more details on how to deploy Strimzi on your Kubernetes cluster.
 
@@ -62,6 +64,77 @@ Now, install Strimzi operator itself:
 ----
 $ kubectl create -f https://operatorhub.io/install/strimzi-kafka-operator.yaml
 ----
+
+=== Creating Secrets for the Database
+
+Later on, when deploying {prodname} Kafka connector, we will need to provide username and password for the connector to be able to connect to the database.
+For security reasons, it's a good practice not to provide the credentials directly, but keep them in a separate secured place.
+Kubernetes provides `Secret` object for this purpose.
+Besides creating `Secret` object itself, we have to also create a role and a role binding so that Kafka can access the credentials.
+
+Let's create `Secret` object first:
+
+[source,subs="attributes",options="nowrap"]
+----
+$ cat << EOF | kubectl create -n debezium-example -f
+apiVersion: v1
+kind: Secret
+metadata:
+  name: debezium-secret
+  namespace: debezium-example
+type: Opaque 
+data: 
+  username: ZGViZXppdW0=
+  password: ZGJ6
+EOF
+----
+
+The `username` and `password` contain base64-encoded credentials (`debezium`/`dbz`) for connecting to the MySQL database, which we will deploy later.
+
+Now, we can create a role, which refers the secret created in the previous step:
+
+[source,subs="attributes",options="nowrap"]
+----
+$ cat << EOF | kubectl create -n debezium-example -f
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: connector-configuration-role
+  namespace: debezium-example
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["debezium-secret"]
+  verbs: ["get"]
+EOF
+----
+
+We also have to bind this role to the Kafka Connect cluster service account so that Kafka Connect can access the secret:
+
+[source,subs="attributes",options="nowrap"]
+----
+$ cat << EOF | kubectl create -n debezium-example -f
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: connector-configuration-role-binding
+  namespace: debezium-example
+subjects:
+- kind: ServiceAccount
+  name: debezium-connect-cluster-connect
+  namespace: debezium-example
+roleRef:
+  kind: Role
+  name: connector-configuration-role
+  apiGroup: rbac.authorization.k8s.io
+EOF
+----
+
+The service account will be create by Strimzi once we deploy Kafka Connect.
+The name of the service account take form `$KafkaConnectName-connect`.
+Later on, we will create Kafka Connect cluster named `debezium-connect-cluster`
+and therefore we used `debezium-connect-cluster-connect` here as a `subjects.name`.
+
 
 == Deploying Apache Kafka
 
@@ -202,6 +275,8 @@ spec:
   replicas: 1
   bootstrapServers: debezium-cluster-kafka-bootstrap:9092
   config:
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
     group.id: connect-cluster
     offset.storage.topic: connect-cluster-offsets
     config.storage.topic: connect-cluster-configs
@@ -259,6 +334,8 @@ spec:
   replicas: 1
   bootstrapServers: debezium-cluster-kafka-bootstrap:9092
   config:
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
     group.id: connect-cluster
     offset.storage.topic: connect-cluster-offsets
     config.storage.topic: connect-cluster-configs
@@ -269,6 +346,10 @@ spec:
     status.storage.replication.factor: -1
 EOF
 ----
+
+You can also note, that we have configured the secret provider to use Strimzi secret provider.
+Strimzi secret provider will create service account for this Kafka Connect cluster (which we have already bound to the appropriate role),
+and allow Kafka Connect to access our `Secret` object.
 
 === Creating a {prodname} Connector
 
@@ -290,8 +371,8 @@ spec:
     tasks.max: 1
     database.hostname: mysql
     database.port: 3306
-    database.user: debezium
-    database.password: dbz
+    database.user: ${secrets:debezium-example/debezium-secret:username}
+    database.password: ${secrets:debezium-example/debezium-secret:password}
     database.server.id: 184054
     database.server.name: mysql
     database.include.list: inventory
@@ -299,6 +380,9 @@ spec:
     database.history.kafka.topic: schema-changes.inventory
 EOF
 ----
+
+As you can note, we didn't use plain text user name and password in the connector configuration,
+but refer to `Secret` object we created previously.
 
 == Verifying the Deployment
 
