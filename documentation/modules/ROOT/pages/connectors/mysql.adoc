@@ -2544,14 +2544,19 @@ Setting `include.query` to `true` might expose tables or fields that are explici
 
 |[[mysql-property-max-queue-size]]<<mysql-property-max-queue-size, `+max.queue.size+`>>
 |`8192`
-|Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slow or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified by the `max.batch.size` property.
+|Positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
+The blocking queue can provide backpressure for reading change events from the database
+in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
+Events that are held in the queue are disregarded when the connector periodically records offsets.
+Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size]`.
 
 |[[mysql-property-max-queue-size-in-bytes]]<<mysql-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0`
 |A long integer value that specifies the maximum volume of the blocking queue in bytes.
 By default, volume limits are not specified for the blocking queue.
 To specify the number of bytes that the queue can consume, set this property to a positive long value. +
-If xref:sqlserver-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+If xref:mysql-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[mysql-property-poll-interval-ms]]<<mysql-property-poll-interval-ms, `+poll.interval.ms+`>>
