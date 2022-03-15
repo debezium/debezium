@@ -1792,13 +1792,13 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Oracle Database is installed, and is xref:{link-oracle-connector}#setting-up-oracle[configured to work with the {prodname} connector].
-* You have a copies of the Oracle JDBC driver and the XStream API JAR.
+* You have a copy of the Oracle JDBC driver.
+  For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 +
 [IMPORTANT]
 ====
-Due to licensing requirements, the {prodname} Oracle connector does not ship with the Oracle JDBC driver or XStream API files.
-You must download these files directly from Oracle and add them to your environment.
-For more information, see xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files].
+Due to licensing requirements, the {prodname} Oracle connector archive does not include the Oracle JDBC driver.
+To enable the connector to access the database, you must add the driver to your connector environment.
 ====
 
 .Procedure
@@ -2040,91 +2040,50 @@ oc apply -f inventory-connector.yaml
 ----
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `server1` database as defined in the `KafkaConnector` CR.
+endif::product[]
 
 // Type: procedure
 [id="obtaining-the-oracle-jdbc-driver"]
 === Obtaining the Oracle JDBC driver
 
 Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
-Regardless of which deployment method that you use, you have obtain the Oracle JDBC driver to complete the deployment.
+The following steps describe how to obtain the driver and make it available in your environment.
+ifdef::product[]
 
 There are two methods for obtaining the driver, depending on the deployment method that you use.
 
 * If you xref:openshift-streams-oracle-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image], add an artifact reference to the `KafkaConnect` custom resource and then add the location of the artifact as the `url` value.
 * If you xref:deploying-debezium-oracle-connectors[use a Dockerfile to build the connector], download the required driver file directly from Oracle and add it to your Kafka Connect environment.
 
-The following steps describe how to make the driver and available in your environment.
-
 .Procedure
 
 . Complete one of the following procedures, depending on your deployment type:
 ** If you use {StreamsName} to deploy the connector:
-.. Navigate to link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/[Maven Central] and locate the `ojdbc8.jar` file for your release of Oracle Database.
+.. Navigate to link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/[Maven Central].
 .. In the YAML for the `KafkaConnector` custom resource (CR), add the URL path for the driver to the `artifacts.url` field for the `debezium-connector-oracle` artifact.
 +
 For more information about the YAML file for the `KafkaConnector` CR, see xref:openshift-streams-oracle-connector-deployment[Using {StreamsName} to deploy a {prodname} Oracle connector].
 
 ** If you use a Dockerfile to deploy the connector:
-.. From a browser, navigate to the link:https://www.oracle.com/database/technologies/appdev/jdbc-downloads.html[Oracle JDBC and UCP Downloads page].
-.. Locate and download the `ojdbc8.jar` driver file for your version of Oracle Database.
+.. From a browser, navigate to link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/[Maven Central].
+.. Click the directory for your version of Oracle Database, and then download the `ojdbc8.jar` driver file.
 .. Copy the downloaded file to the directory that stores the {prodname} Oracle connector files, for example, `_<kafka_home>_/libs`.
 +
 When the connector starts, it is automatically configured to use the specified driver.
 endif::product[]
-
 ifdef::community[]
-[id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
-=== Obtaining the Oracle JDBC driver and XStream API files
 
-The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
-If the connector uses XStreams to access the database, you must also have the XStream API (`xstreams.jar`).
-Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
-However, the required files are available for free download as part of the Oracle Instant Client.
-The following steps describe how to download the Oracle Instant Client and extract the required files.
+NOTE: If you use the {prodname} Oracle connector with Oracle XStream, download the JDBC driver as part of the Oracle Instant Client package.
+For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
 
 .Procedure
 
-. From a browser, download the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client package] for your operating system.
+. From a browser, navigate to link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/[Maven Central].
+. Click the directory for your version of Oracle Database, and then download the `ojdbc8.jar` driver file.
+. Copy the downloaded file to the `_<kafka_home>_/libs` directory that stores the {prodname} Oracle connector files, for example, `kafka/libs` .
+endif::community[]
 
-. Extract the archive and then open the `instantclient___<version>__` directory.
-+
-For example:
-+
-[source]
-----
-instantclient_21_1/
-├── adrci
-├── BASIC_LITE_LICENSE
-├── BASIC_LITE_README
-├── genezi
-├── libclntshcore.so -> libclntshcore.so.21.1
-├── libclntshcore.so.12.1 -> libclntshcore.so.21.1
-
-...
-
-├── ojdbc8.jar
-├── ucp.jar
-├── uidrvci
-└── xstreams.jar
-
-----
-
-. Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
-+
-[NOTE]
-====
-In environments that use the Oracle LogMiner implementation, copy only the `ojdbc8.jar` file.
-The `xstreams.jar` file is only required in environments that use the Oracle XStreams implementation.
-====
-. If you are using the XStreams implementation, create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
-+
-[source,bash,indent=0]
-----
-LD_LIBRARY_PATH=/path/to/instant_client/
-----
-+
-The `LD_LIBRARY_PATH` environment variable is not required if you run the Oracle LogMiner implementation.
-
+ifdef::community[]
 [[oracle-example-configuration]]
 === {prodname} Oracle connector configuration
 
@@ -3564,6 +3523,50 @@ The following configuration example adds the properties `database.connection.ada
         "database.out.server.name" : "dbzxout"
     }
 }
+----
+
+[id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
+=== Obtaining the Oracle JDBC driver and XStream API files
+
+The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
+If the connector uses XStream to access the database, you must also have the XStream API (`xstreams.jar`).
+Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
+However, the required files are available for free download as part of the Oracle Instant Client.
+The following steps describe how to download the Oracle Instant Client and extract the required files.
+
+.Procedure
+
+. From a browser, download the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client package] for your operating system.
+
+. Extract the archive, and then open the `instantclient___<version>__` directory.
++
+For example:
++
+[source]
+----
+instantclient_21_1/
+├── adrci
+├── BASIC_LITE_LICENSE
+├── BASIC_LITE_README
+├── genezi
+├── libclntshcore.so -> libclntshcore.so.21.1
+├── libclntshcore.so.12.1 -> libclntshcore.so.21.1
+
+...
+
+├── ojdbc8.jar
+├── ucp.jar
+├── uidrvci
+└── xstreams.jar
+
+----
+
+. Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
+. Create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
++
+[source,bash,indent=0]
+----
+LD_LIBRARY_PATH=/path/to/instant_client/
 ----
 
 [[oracle-xstreams-connector-properties]]
