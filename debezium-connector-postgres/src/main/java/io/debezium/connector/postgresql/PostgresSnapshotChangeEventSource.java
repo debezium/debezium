@@ -189,7 +189,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
             }
 
-            LOGGER.info("Reading structure of schema '{}'", snapshotContext.catalogName);
+            LOGGER.info("Reading structure of schema '{}' of catalog '{}'", schema, snapshotContext.catalogName);
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     snapshotContext.catalogName,
