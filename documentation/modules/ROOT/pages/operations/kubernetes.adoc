@@ -67,10 +67,10 @@ $ kubectl create -f https://operatorhub.io/install/strimzi-kafka-operator.yaml
 
 === Creating Secrets for the Database
 
-Later on, when deploying {prodname} Kafka connector, we will need to provide username and password for the connector to be able to connect to the database.
+Later on, when deploying {prodname} Kafka connector, we will need to provide the username and password for the connector to be able to connect to the database.
 For security reasons, it's a good practice not to provide the credentials directly, but keep them in a separate secured place.
-Kubernetes provides `Secret` object for this purpose.
-Besides creating `Secret` object itself, we have to also create a role and a role binding so that Kafka can access the credentials.
+Kubernetes provides the `Secret` object for this purpose.
+Besides creating the `Secret` object itself, we have to also create a role and a role binding so that Kafka can access the credentials.
 
 Let's create `Secret` object first:
 
@@ -130,9 +130,9 @@ roleRef:
 EOF
 ----
 
-The service account will be create by Strimzi once we deploy Kafka Connect.
-The name of the service account take form `$KafkaConnectName-connect`.
-Later on, we will create Kafka Connect cluster named `debezium-connect-cluster`
+The service account will be created by Strimzi once we deploy Kafka Connect.
+The name of the service account take the form `$KafkaConnectName-connect`.
+Later on, we will the create Kafka Connect cluster named `debezium-connect-cluster`
 and therefore we used `debezium-connect-cluster-connect` here as a `subjects.name`.
 
 
@@ -347,8 +347,8 @@ spec:
 EOF
 ----
 
-You can also note, that we have configured the secret provider to use Strimzi secret provider.
-Strimzi secret provider will create service account for this Kafka Connect cluster (which we have already bound to the appropriate role),
+Also note that we have configured the Strimzi secret provider.
+This secret provider will create a service account for this Kafka Connect cluster (which we have already bound to the appropriate role),
 and allow Kafka Connect to access our `Secret` object.
 
 === Creating a {prodname} Connector
