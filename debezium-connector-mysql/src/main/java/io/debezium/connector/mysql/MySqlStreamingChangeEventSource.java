@@ -582,7 +582,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 }
 
                 final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
-                eventDispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
+                eventDispatcher.dispatchSchemaChangeEvent(partition, tableId, (receiver) -> {
                     try {
                         receiver.schemaChangeEvent(schemaChangeEvent);
                     }

@@ -234,18 +234,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         sourceInfo.setQuery(query);
     }
 
-    public void rereadChunk(MySqlPartition partition) throws InterruptedException {
-        if (context == null) {
-            return;
-        }
-        if (!context.snapshotRunning() || !context.deduplicationNeeded() || window.isEmpty()) {
-            return;
-        }
-        window.clear();
-        context.revertChunk();
-        readChunk(partition);
-    }
-
     private void checkEnqueuedSnapshotSignals(MySqlPartition partition, OffsetContext offsetContext) throws InterruptedException {
         while (getContext().hasExecuteSnapshotSignals()) {
             addDataCollectionNamesToSnapshot(getContext().getExecuteSnapshotSignals(), partition, offsetContext);

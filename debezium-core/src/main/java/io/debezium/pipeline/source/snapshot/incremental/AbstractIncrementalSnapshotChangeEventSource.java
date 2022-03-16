@@ -100,6 +100,25 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         readChunk(partition);
     }
 
+    @Override
+    public void processSchemaChange(P partition, DataCollectionId dataCollectionId) throws InterruptedException {
+        if (dataCollectionId.equals(context.currentDataCollectionId())) {
+            rereadChunk(partition);
+        }
+    }
+
+    public void rereadChunk(P partition) throws InterruptedException {
+        if (context == null) {
+            return;
+        }
+        if (!context.snapshotRunning() || !context.deduplicationNeeded() || window.isEmpty()) {
+            return;
+        }
+        window.clear();
+        context.revertChunk();
+        readChunk(partition);
+    }
+
     protected String getSignalTableName(String dataCollectionId) {
         if (Strings.isNullOrEmpty(dataCollectionId)) {
             return dataCollectionId;

@@ -249,7 +249,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                         super.lastSnapshotRecord(snapshotContext);
                     }
 
-                    dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> receiver.schemaChangeEvent(event));
+                    dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> receiver.schemaChangeEvent(event));
                 }
 
                 // Make schema available for snapshot source
@@ -555,7 +555,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             if (!snapshottingTask.snapshotData() && !i.hasNext()) {
                 lastSnapshotRecord(snapshotContext);
             }
-            dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> receiver.schemaChangeEvent(event));
+            dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> receiver.schemaChangeEvent(event));
         }
 
         // Make schema available for snapshot source
