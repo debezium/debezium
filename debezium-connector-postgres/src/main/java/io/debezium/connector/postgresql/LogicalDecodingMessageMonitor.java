@@ -65,7 +65,7 @@ public class LogicalDecodingMessageMonitor {
     private final Schema valueSchema;
 
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
-        this.schemaNameAdjuster = SchemaNameAdjuster.create();
+        this.schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         this.sender = sender;
         this.topicName = connectorConfig.getLogicalName() + LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX;
         this.binaryMode = connectorConfig.binaryHandlingMode();

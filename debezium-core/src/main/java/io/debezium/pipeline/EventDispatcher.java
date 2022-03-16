@@ -130,7 +130,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
             heartbeat = Heartbeat.create(
                     connectorConfig.getHeartbeatInterval(),
                     topicSelector.getHeartbeatTopic(),
-                    connectorConfig.getLogicalName());
+                    connectorConfig.getLogicalName(),
+                    schemaNameAdjuster);
         }
 
         schemaChangeKeySchema = SchemaBuilder.struct()

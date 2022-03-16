@@ -68,7 +68,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                         .with(AbstractDatabaseHistory.INTERNAL_PREFER_DDL, true)
                         .build());
         final TopicSelector<TableId> topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
 
         // DBZ-3238: automatically set "useCursorFetch" to true when a snapshot fetch size other than the default of -1 is given
@@ -159,7 +159,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                             default:
                                 break;
                         }
-                    });
+                    }, schemaNameAdjuster);
         }
 
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
@@ -172,8 +172,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 null,
                 metadataProvider,
                 heartbeat,
-                schemaNameAdjuster
-        );
+                schemaNameAdjuster);
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
 

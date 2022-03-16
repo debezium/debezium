@@ -86,6 +86,7 @@ import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
+import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
@@ -317,7 +318,8 @@ public class BinlogReader extends AbstractReader {
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client, context, name, changeEventQueueMetrics);
         heartbeat = Heartbeat.create(context.getConnectorConfig().getHeartbeatInterval(),
-                context.topicSelector().getHeartbeatTopic(), context.getConnectorConfig().getLogicalName());
+                context.topicSelector().getHeartbeatTopic(), context.getConnectorConfig().getLogicalName(),
+                SchemaNameAdjuster.create());
     }
 
     @Override
