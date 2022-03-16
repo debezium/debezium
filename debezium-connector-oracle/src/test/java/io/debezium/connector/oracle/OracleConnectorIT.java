@@ -3138,6 +3138,50 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4842")
+    public void shouldRestartAfterCapturedTableIsDroppedWhileConnectorDown() throws Exception {
+        TestHelper.dropTable(connection, "dbz4842");
+        try {
+            connection.execute("CREATE TABLE dbz4842 (id numeric(9,0) primary key, name varchar2(50))");
+            TestHelper.streamTable(connection, "dbz4842");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4842")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz4842 (id,name) values (1,'Test')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ4842")).hasSize(1);
+
+            stopConnector((running) -> assertThat(running).isFalse());
+
+            connection.execute("INSERT INTO dbz4842 (id,name) values (2,'Test')");
+            TestHelper.dropTable(connection, "dbz4842");
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // there won't be any records because the drop of the table will cause LogMiner to register
+            // the final insert with table-name OBJ#xxxxx since the object no longer exists.
+            Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(11, TimeUnit.SECONDS).until(() -> {
+                assertNoRecordsToConsume();
+                return true;
+            });
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4842");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();

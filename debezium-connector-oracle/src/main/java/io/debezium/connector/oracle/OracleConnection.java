@@ -406,6 +406,11 @@ public class OracleConnection extends JdbcConnection {
                 rs -> rs.next() && rs.getLong(1) > 0);
     }
 
+    public boolean isTableExists(TableId tableId) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER = '" + tableId.schema() + "' AND TABLE_NAME = '" + tableId.table() + "'",
+                rs -> rs.next() && rs.getLong(1) > 0);
+    }
+
     /**
      * Returns whether the given table is empty or not.
      *

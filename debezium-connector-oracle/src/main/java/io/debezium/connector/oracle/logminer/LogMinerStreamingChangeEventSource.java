@@ -618,7 +618,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                 // Check if ALL COLUMNS supplemental logging is enabled for each captured table
                 for (TableId tableId : schema.tableIds()) {
-                    if (!isTableAllColumnsSupplementalLoggingEnabled(connection, tableId)) {
+                    if (!connection.isTableExists(tableId)) {
+                        LOGGER.warn("Database table '{}' no longer exists, supplemental log check skipped", tableId);
+                    }
+                    else if (!isTableAllColumnsSupplementalLoggingEnabled(connection, tableId)) {
                         throw new DebeziumException("Supplemental logging not properly configured for table " + tableId + ". "
                                 + "Use: ALTER TABLE " + tableId.schema() + "." + tableId.table()
                                 + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
