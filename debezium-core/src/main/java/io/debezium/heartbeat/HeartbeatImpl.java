@@ -30,7 +30,6 @@ import io.debezium.util.Threads.Timer;
 class HeartbeatImpl implements Heartbeat {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatImpl.class);
-    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
     /**
      * Default length of interval in which connector generates periodically
@@ -45,25 +44,30 @@ class HeartbeatImpl implements Heartbeat {
 
     private static final String SERVER_NAME_KEY = "serverName";
 
-    private static final Schema KEY_SCHEMA = SchemaBuilder.struct()
-            .name(schemaNameAdjuster.adjust("io.debezium.connector.common.ServerNameKey"))
-            .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-            .build();
-    private static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
-            .name(schemaNameAdjuster.adjust("io.debezium.connector.common.Heartbeat"))
-            .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-            .build();
-
     private final String topicName;
     private final Duration heartbeatInterval;
     private final String key;
 
+    private final Schema keySchema;
+    private final Schema valueSchema;
+
     private volatile Timer heartbeatTimeout;
 
-    HeartbeatImpl(Duration heartbeatInterval, String topicName, String key) {
+    HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
         this.topicName = topicName;
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;
+
+        keySchema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.ServerNameKey"))
+                .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+                .build();
+
+        valueSchema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.Heartbeat"))
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
         heartbeatTimeout = resetHeartbeat();
     }
 
@@ -104,7 +108,7 @@ class HeartbeatImpl implements Heartbeat {
      *
      */
     private Struct serverNameKey(String serverName) {
-        Struct result = new Struct(KEY_SCHEMA);
+        Struct result = new Struct(keySchema);
         result.put(SERVER_NAME_KEY, serverName);
         return result;
     }
@@ -114,7 +118,7 @@ class HeartbeatImpl implements Heartbeat {
      *
      */
     private Struct messageValue() {
-        Struct result = new Struct(VALUE_SCHEMA);
+        Struct result = new Struct(valueSchema);
         result.put(AbstractSourceInfo.TIMESTAMP_KEY, Instant.now().toEpochMilli());
         return result;
     }
@@ -127,7 +131,7 @@ class HeartbeatImpl implements Heartbeat {
         final Integer partition = 0;
 
         return new SourceRecord(sourcePartition, sourceOffset,
-                topicName, partition, KEY_SCHEMA, serverNameKey(key), VALUE_SCHEMA, messageValue());
+                topicName, partition, keySchema, serverNameKey(key), valueSchema, messageValue());
     }
 
     private Timer resetHeartbeat() {

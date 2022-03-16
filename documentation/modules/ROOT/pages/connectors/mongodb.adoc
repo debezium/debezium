@@ -1488,6 +1488,13 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 The connector will read the collection contents in multiple batches of this size. +
 Defaults to 0, which indicates that the server chooses an appropriate fetch size.
 
+|[[mongodb-property-schema-name-adjustment-mode]]<<mongodb-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
+|avro
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `none` does not apply any adjustment. +
+
 |===
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.

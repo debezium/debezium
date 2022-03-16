@@ -987,6 +987,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     TIME_PRECISION_MODE,
                     ENABLE_TIME_ADJUSTER,
                     BINARY_HANDLING_MODE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
