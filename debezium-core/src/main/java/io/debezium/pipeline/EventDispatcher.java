@@ -7,7 +7,6 @@ package io.debezium.pipeline;
 
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -40,7 +39,6 @@ import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
-import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
@@ -80,7 +78,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
 
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
-    private final TableChangesSerializer<List<Struct>> tableChangesSerializer = new ConnectTableChangeSerializer();
+    private final ConnectTableChangeSerializer tableChangesSerializer;
     private final Signal<P> signal;
     private IncrementalSnapshotChangeEventSource<P, T> incrementalSnapshotChangeEventSource;
 
@@ -108,6 +106,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
                            EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+        this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
@@ -144,7 +143,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
                 .field(Fields.DATABASE_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.SCHEMA_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(Fields.TABLE_CHANGES, SchemaBuilder.array(ConnectTableChangeSerializer.CHANGE_SCHEMA).build())
+                .field(Fields.TABLE_CHANGES, SchemaBuilder.array(tableChangesSerializer.getChangeSchema()).build())
                 .build();
     }
 

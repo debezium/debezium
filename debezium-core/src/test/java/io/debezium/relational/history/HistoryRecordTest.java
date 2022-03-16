@@ -22,6 +22,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 import io.debezium.util.Collect;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * @author Randall Hauch
@@ -105,7 +106,7 @@ public class HistoryRecordTest {
         final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
         assertThat((Object) tableChangesSerializer.deserialize(deserialized.tableChanges(), true)).isEqualTo(tableChanges);
 
-        final TableChangesSerializer<List<Struct>> connectTableChangeSerializer = new ConnectTableChangeSerializer();
+        final TableChangesSerializer<List<Struct>> connectTableChangeSerializer = new ConnectTableChangeSerializer(SchemaNameAdjuster.NO_OP);
         Struct struct = connectTableChangeSerializer.serialize(tableChanges).get(0);
         Struct tableStruct = (Struct) struct.get(ConnectTableChangeSerializer.TABLE_KEY);
         assertThat(tableStruct.get(ConnectTableChangeSerializer.COMMENT_KEY)).isEqualTo("table comment");
