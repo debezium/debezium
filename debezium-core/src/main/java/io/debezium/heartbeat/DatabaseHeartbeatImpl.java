@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  *  Implementation of the heartbeat feature that allows for a DB query to be executed with every heartbeat.
@@ -39,8 +40,8 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
     private final HeartbeatErrorHandler errorHandler;
 
     DatabaseHeartbeatImpl(Duration heartbeatInterval, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery,
-                          HeartbeatErrorHandler errorHandler) {
-        super(heartbeatInterval, topicName, key);
+                          HeartbeatErrorHandler errorHandler, SchemaNameAdjuster schemaNameAdjuster) {
+        super(heartbeatInterval, topicName, key, schemaNameAdjuster);
 
         this.heartBeatActionQuery = heartBeatActionQuery;
         this.jdbcConnection = jdbcConnection;

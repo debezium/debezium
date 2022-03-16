@@ -1274,6 +1274,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SNAPSHOT_MODE_CLASS,
                     HSTORE_HANDLING_MODE,
                     BINARY_HANDLING_MODE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE,
                     INTERVAL_HANDLING_MODE,
                     SCHEMA_REFRESH_MODE,
                     TRUNCATE_HANDLING_MODE,

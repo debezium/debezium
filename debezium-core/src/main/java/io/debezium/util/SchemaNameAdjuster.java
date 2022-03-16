@@ -123,7 +123,9 @@ public interface SchemaNameAdjuster {
         }
     }
 
-    public static final SchemaNameAdjuster DEFAULT = create();
+    SchemaNameAdjuster NO_OP = proposedName -> proposedName;
+
+    SchemaNameAdjuster AVRO = create();
 
     /**
      * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
@@ -132,16 +134,14 @@ public interface SchemaNameAdjuster {
      *
      * @return the validator; never null
      */
-    public static SchemaNameAdjuster defaultAdjuster() {
-        return DEFAULT;
+    public static SchemaNameAdjuster avroAdjuster() {
+        return AVRO;
     }
 
     /**
      * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
      * with a valid fullname, and throws an error if the replacement conflicts with that of a different original. This method
      * replaces all invalid characters with the underscore character ('_').
-     *
-     * @param logger the logger to use; may not be null     * @return the validator; never null
      */
     public static SchemaNameAdjuster create() {
         return create((original, replacement, conflict) -> {

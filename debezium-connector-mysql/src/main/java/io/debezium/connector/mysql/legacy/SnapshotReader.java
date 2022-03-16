@@ -51,6 +51,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
@@ -741,7 +742,8 @@ public class SnapshotReader extends AbstractReader {
                             .create(
                                     context.getConnectorConfig().getHeartbeatInterval(),
                                     context.topicSelector().getHeartbeatTopic(),
-                                    context.getConnectorConfig().getLogicalName())
+                                    context.getConnectorConfig().getLogicalName(),
+                                    SchemaNameAdjuster.create())
                             .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
                 }
                 finally {

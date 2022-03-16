@@ -790,14 +790,16 @@ public class VerifyRecord {
             msg = "comparing value to its schema";
             schemaMatchesStruct(valueWithSchema);
 
+            // Introduced due to https://github.com/confluentinc/schema-registry/issues/1693
+            // and https://issues.redhat.com/browse/DBZ-3535
+            if (ignoreAvro) {
+                return;
+            }
+
             // Make sure the schema names are valid Avro schema names ...
             validateSchemaNames(record.keySchema());
             validateSchemaNames(record.valueSchema());
 
-            // Introduced due to https://github.com/confluentinc/schema-registry/issues/1693
-            if (ignoreAvro) {
-                return;
-            }
             // Serialize and deserialize the key using the Avro converter, and check that we got the same result ...
             msg = "serializing key using Avro converter";
             byte[] avroKeyBytes = avroValueConverter.fromConnectData(record.topic(), record.keySchema(), record.key());

@@ -21,7 +21,7 @@ public class LegacyV1MongoDbSourceInfoStructMaker extends LegacyV1AbstractSource
     public LegacyV1MongoDbSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
-                .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
+                .name(SchemaNameAdjuster.avroAdjuster().adjust("io.debezium.connector.mongo.Source"))
                 .version(SourceInfo.SCHEMA_VERSION)
                 .field(SourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
