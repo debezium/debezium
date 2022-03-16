@@ -251,10 +251,7 @@ public class EndToEndPerf {
         }
 
         private OracleConnection getTestConnection() {
-            Configuration config = testConfig().build();
-            Configuration jdbcConfig = config.subset("database.", true);
-
-            OracleConnection connection = new OracleConnection(jdbcConfig, EndToEndPerf.class::getClassLoader);
+            OracleConnection connection = new OracleConnection(testJdbcConfig(), EndToEndPerf.class::getClassLoader);
             try {
                 connection.setAutoCommit(false);
             }
@@ -262,7 +259,7 @@ public class EndToEndPerf {
                 throw new RuntimeException(e);
             }
 
-            String pdbName = new OracleConnectorConfig(config).getPdbName();
+            String pdbName = new OracleConnectorConfig(testConfig().build()).getPdbName();
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
             }
