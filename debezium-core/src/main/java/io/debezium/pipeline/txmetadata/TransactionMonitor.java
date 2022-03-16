@@ -49,7 +49,6 @@ import io.debezium.util.SchemaNameAdjuster;
 public class TransactionMonitor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionMonitor.class);
-    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
     public static final String DEBEZIUM_TRANSACTION_KEY = "transaction";
     public static final String DEBEZIUM_TRANSACTION_ID_KEY = "id";
@@ -66,31 +65,35 @@ public class TransactionMonitor {
             .field(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, Schema.INT64_SCHEMA)
             .build();
 
-    private static final Schema TRANSACTION_KEY_SCHEMA = SchemaBuilder.struct()
-            .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataKey"))
-            .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-            .build();
-
     private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = SchemaBuilder.struct()
             .field(DEBEZIUM_TRANSACTION_COLLECTION_KEY, Schema.STRING_SCHEMA)
             .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.INT64_SCHEMA)
             .build();
 
-    private static final Schema TRANSACTION_VALUE_SCHEMA = SchemaBuilder.struct()
-            .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataValue"))
-            .field(DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
-            .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-            .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-            .field(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA).optional().build())
-            .build();
-
+    private final Schema transactionKeySchema;
+    private final Schema transactionValueSchema;
     private final EventMetadataProvider eventMetadataProvider;
     private final String topicName;
     private final BlockingConsumer<SourceRecord> sender;
     private final CommonConnectorConfig connectorConfig;
 
-    public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider, BlockingConsumer<SourceRecord> sender) {
+    public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider,
+                              SchemaNameAdjuster schemaNameAdjuster, BlockingConsumer<SourceRecord> sender) {
         Objects.requireNonNull(eventMetadataProvider);
+
+        transactionKeySchema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataKey"))
+                .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
+                .build();
+
+        transactionValueSchema = SchemaBuilder.struct()
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataValue"))
+                .field(DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
+                .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
+                .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA).optional().build())
+                .build();
+
         this.topicName = connectorConfig.getTransactionTopic();
         this.eventMetadataProvider = eventMetadataProvider;
         this.sender = sender;
@@ -162,9 +165,9 @@ public class TransactionMonitor {
     }
 
     private void beginTransaction(Partition partition, OffsetContext offsetContext) throws InterruptedException {
-        final Struct key = new Struct(TRANSACTION_KEY_SCHEMA);
+        final Struct key = new Struct(transactionKeySchema);
         key.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
-        final Struct value = new Struct(TRANSACTION_VALUE_SCHEMA);
+        final Struct value = new Struct(transactionValueSchema);
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.BEGIN.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
 
@@ -173,9 +176,9 @@ public class TransactionMonitor {
     }
 
     private void endTransaction(Partition partition, OffsetContext offsetContext) throws InterruptedException {
-        final Struct key = new Struct(TRANSACTION_KEY_SCHEMA);
+        final Struct key = new Struct(transactionKeySchema);
         key.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
-        final Struct value = new Struct(TRANSACTION_VALUE_SCHEMA);
+        final Struct value = new Struct(transactionValueSchema);
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.END.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         value.put(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, offsetContext.getTransactionContext().getTotalEventCount());
