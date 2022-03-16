@@ -120,7 +120,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
         this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
 
-        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
+        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
+                this::enqueueTransactionMessage);
         this.signal = new Signal<>(connectorConfig, this);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
