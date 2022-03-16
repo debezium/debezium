@@ -172,8 +172,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 null,
                 metadataProvider,
                 heartbeat,
-                schemaNameAdjuster,
-                connection);
+                schemaNameAdjuster
+        );
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
 
