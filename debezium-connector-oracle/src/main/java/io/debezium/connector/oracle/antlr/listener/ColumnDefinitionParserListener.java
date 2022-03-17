@@ -293,7 +293,9 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .type("ROWID");
             }
             else {
-                throw new IllegalArgumentException("Unsupported column type: " + ctx.native_datatype_element().getText());
+                columnEditor
+                        .jdbcType(OracleTypes.OTHER)
+                        .type(ctx.native_datatype_element().getText());
             }
         }
         else if (ctx.INTERVAL() != null
@@ -330,7 +332,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
             }
         }
         else {
-            throw new IllegalArgumentException("Unsupported column type: " + ctx.getText());
+            columnEditor.jdbcType(OracleTypes.OTHER).type(ctx.getText());
         }
     }
 
