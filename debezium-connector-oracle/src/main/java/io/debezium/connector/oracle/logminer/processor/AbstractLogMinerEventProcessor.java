@@ -556,7 +556,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         if (row.getTableName() != null) {
             counters.ddlCount++;
             final TableId tableId = row.getTableId();
-            dispatcher.dispatchSchemaChangeEvent(tableId,
+            dispatcher.dispatchSchemaChangeEvent(partition,
+                    tableId,
                     new OracleSchemaChangeEventEmitter(
                             getConfig(),
                             partition,
@@ -846,7 +847,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             throws SQLException, InterruptedException {
         LOGGER.info("Table '{}' is new and will now be captured.", tableId);
         offsetContext.event(tableId, Instant.now());
-        dispatcher.dispatchSchemaChangeEvent(tableId,
+        dispatcher.dispatchSchemaChangeEvent(partition,
+                tableId,
                 new OracleSchemaChangeEventEmitter(connectorConfig,
                         partition,
                         offsetContext,
