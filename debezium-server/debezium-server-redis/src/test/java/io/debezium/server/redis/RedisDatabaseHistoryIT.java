@@ -12,12 +12,16 @@ import javax.enterprise.event.Observes;
 
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnection;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.history.AbstractDatabaseHistoryTest;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.server.TestConfigSource;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.testing.testcontainers.MySqlTestResourceLifecycleManager;
@@ -40,7 +44,7 @@ import redis.clients.jedis.resps.StreamEntry;
 @TestProfile(RedisDatabaseHistoryTestProfile.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
 
-public class RedisDatabaseHistoryIT {
+public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
 
     void setupDependencies(@Observes ConnectorStartedEvent event) {
         Testing.Print.enable();
@@ -49,6 +53,24 @@ public class RedisDatabaseHistoryIT {
     private static final String STREAM_NAME = "metadata:debezium:db_history";
 
     protected static Jedis jedis;
+
+    @Override
+    @BeforeEach
+    public void beforeEach() {
+        super.beforeEach();
+    }
+
+    @Override
+    protected DatabaseHistory createHistory() {
+        DatabaseHistory history = new RedisDatabaseHistory();
+        // config.put("debezium.source.database.history.redis.address", "${debezium.sink.redis.address}");
+
+        history.configure(Configuration.create()
+                .with(RedisDatabaseHistory.PROP_ADDRESS, HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()))
+                .build(), null, DatabaseHistoryMetrics.NOOP, true);
+        history.start();
+        return history;
+    }
 
     @Test
     @FixFor("DBZ-4771")
@@ -62,6 +84,12 @@ public class RedisDatabaseHistoryIT {
 
         final long streamLength = jedis.xlen(STREAM_NAME);
         Assertions.assertThat(streamLength > 0).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-4771")
+    public void shouldRecordChangesAndRecoverToVariousPoints() {
+        super.shouldRecordChangesAndRecoverToVariousPoints();
     }
 
     /**
