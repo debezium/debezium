@@ -176,8 +176,9 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public void stop() {
         running.set(false);
-        if (client != null)
+        if (client != null) {
             client.disconnect();
+        }
         super.stop();
     }
 

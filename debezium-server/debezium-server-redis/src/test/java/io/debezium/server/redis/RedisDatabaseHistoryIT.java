@@ -5,6 +5,8 @@
  */
 package io.debezium.server.redis;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.time.Duration;
 import java.util.List;
 
@@ -63,7 +65,6 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
     @Override
     protected DatabaseHistory createHistory() {
         DatabaseHistory history = new RedisDatabaseHistory();
-        // config.put("debezium.source.database.history.redis.address", "${debezium.sink.redis.address}");
 
         history.configure(Configuration.create()
                 .with(RedisDatabaseHistory.PROP_ADDRESS, HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()))
@@ -82,8 +83,8 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
             return streamLength > 0;
         });
 
-        final long streamLength = jedis.xlen(STREAM_NAME);
-        Assertions.assertThat(streamLength > 0).isTrue();
+        final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
+        assertTrue(entries.stream().anyMatch(item -> item.getFields().get("schema").contains("CREATE TABLE `customers`")));
     }
 
     @Test
