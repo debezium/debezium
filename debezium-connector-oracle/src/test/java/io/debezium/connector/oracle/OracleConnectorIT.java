@@ -3182,6 +3182,116 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4852")
+    public void shouldCaptureChangeForTableWithUnsupportedColumnType() throws Exception {
+        TestHelper.dropTable(connection, "dbz4852");
+        try {
+
+            // Setup a special directory reference used by the BFILENAME arguments
+            try (OracleConnection admin = TestHelper.adminConnection()) {
+                admin.execute("CREATE OR REPLACE DIRECTORY DIR_DBZ4852 AS '/home/oracle'");
+            }
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4852")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Setup table with an unsupported column type, i.e. BFILE
+            connection.execute("CREATE TABLE dbz4852 (id numeric(9,0) primary key, filename bfile)");
+            TestHelper.streamTable(connection, "dbz4852");
+
+            // Perform DML operations
+            connection.execute("INSERT INTO dbz4852 (id,filename) values (1,bfilename('DIR_DBZ4852','test.txt'))");
+            connection.execute("UPDATE dbz4852 set filename = bfilename('DIR_DBZ4852','test2.txt') WHERE id = 1");
+            connection.execute("DELETE FROM dbz4852 where id = 1");
+
+            SourceRecords records = consumeRecordsByTopic(3);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ4852")).hasSize(3);
+
+            SourceRecord insert = records.recordsForTopic("server1.DEBEZIUM.DBZ4852").get(0);
+            VerifyRecord.isValidInsert(insert, "ID", 1);
+
+            Struct after = ((Struct) insert.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("FILENAME")).isNull();
+
+            SourceRecord update = records.recordsForTopic("server1.DEBEZIUM.DBZ4852").get(1);
+            VerifyRecord.isValidUpdate(update, "ID", 1);
+
+            Struct before = ((Struct) update.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.schema().field("FILENAME")).isNull();
+
+            after = ((Struct) update.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("FILENAME")).isNull();
+
+            SourceRecord delete = records.recordsForTopic("server1.DEBEZIUM.DBZ4852").get(2);
+            VerifyRecord.isValidDelete(delete, "ID", 1);
+
+            before = ((Struct) delete.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.schema().field("FILENAME")).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4852");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4853")
+    public void shouldCaptureChangeForTableWithUnsupportedColumnTypeLong() throws Exception {
+        TestHelper.dropTable(connection, "dbz4853");
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4853")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Setup table with an unsupported column type, i.e. BFILE
+            connection.execute("CREATE TABLE dbz4853 (id numeric(9,0) primary key, long_val long)");
+            TestHelper.streamTable(connection, "dbz4853");
+
+            // Perform DML operations
+            connection.execute("INSERT INTO dbz4853 (id,long_val) values (1,'test.txt')");
+            connection.execute("UPDATE dbz4853 set long_val = 'test2.txt' WHERE id = 1");
+            connection.execute("DELETE FROM dbz4853 where id = 1");
+
+            SourceRecords records = consumeRecordsByTopic(3);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ4853")).hasSize(3);
+
+            SourceRecord insert = records.recordsForTopic("server1.DEBEZIUM.DBZ4853").get(0);
+            VerifyRecord.isValidInsert(insert, "ID", 1);
+
+            Struct after = ((Struct) insert.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("LONG_VAL")).isNull();
+
+            SourceRecord update = records.recordsForTopic("server1.DEBEZIUM.DBZ4853").get(1);
+            VerifyRecord.isValidUpdate(update, "ID", 1);
+
+            Struct before = ((Struct) update.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.schema().field("LONG_VAL")).isNull();
+
+            after = ((Struct) update.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("LONG_VAL")).isNull();
+
+            SourceRecord delete = records.recordsForTopic("server1.DEBEZIUM.DBZ4853").get(2);
+            VerifyRecord.isValidDelete(delete, "ID", 1);
+
+            before = ((Struct) delete.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.schema().field("LONG_VAL")).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4853");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();
