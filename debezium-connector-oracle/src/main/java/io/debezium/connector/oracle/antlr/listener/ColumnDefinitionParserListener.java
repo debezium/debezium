@@ -272,6 +272,11 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .jdbcType(Types.CLOB)
                         .type("CLOB");
             }
+            else if (ctx.native_datatype_element().NCLOB() != null) {
+                columnEditor
+                        .jdbcType(Types.NCLOB)
+                        .type("NCLOB");
+            }
             else if (ctx.native_datatype_element().RAW() != null) {
                 columnEditor
                         .jdbcType(OracleTypes.RAW)
