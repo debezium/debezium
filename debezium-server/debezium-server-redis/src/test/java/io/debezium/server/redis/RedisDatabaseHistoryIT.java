@@ -74,7 +74,7 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
 
     @Test
     @FixFor("DBZ-4771")
-    public void testDatabaseHistory() throws Exception {
+    public void testDatabaseHistoryIsSaved() throws Exception {
         jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         Testing.Print.enable();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
