@@ -1871,12 +1871,12 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Oracle Database is installed, and is xref:{link-oracle-connector}#setting-up-oracle[configured to work with the {prodname} connector].
 * You have a copy of the Oracle JDBC driver.
-  For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 +
 [IMPORTANT]
 ====
-Due to licensing requirements, the {prodname} Oracle connector archive does not include the Oracle JDBC driver.
+Due to licensing requirements, the {prodname} Oracle connector archive does not include the Oracle JDBC driver that the connector requires to connect to an Oracle database.
 To enable the connector to access the database, you must add the driver to your connector environment.
+For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 ====
 
 .Procedure
@@ -1899,8 +1899,12 @@ You can use either of the following methods to deploy a {prodname} Oracle connec
 This is the preferred method.
 * xref:deploying-debezium-oracle-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
-The {prodname} Oracle connector requires the Oracle JDBC driver (ojdbc8.jar) to connect to Oracle databases.
-For information about how to obtain the driver, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Oracle connector archive does not include the Oracle JDBC driver that the connector requires to connect to an Oracle database.
+To enable the connector to access the database, you must add the driver to your connector environment.
+For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+====
 
 .Additional resources
 
@@ -1945,7 +1949,7 @@ You then need to create the following custom resources (CRs):
 * You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
 
 * You have a copy of the Oracle JDBC driver.
-Due to licensing requirements, the {prodname} Oracle connector does not include the required driver file.
+You must obtain a copy of the Oracle JDBC driver that to enable {prodname} to connect to an Oracle database.
 +
 For more information, see xref:{link-oracle-connector}#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 

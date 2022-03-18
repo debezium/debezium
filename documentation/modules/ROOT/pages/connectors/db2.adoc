@@ -1613,6 +1613,9 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 . Extract the JAR files into your Kafka Connect environment.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Obtain the link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2].
++
+The {prodname} Db2 connector archive does not include the Db2 JDBC driver that {prodname} requires to connect to a Db2 database.
+
 . Add the JDBC driver JAR file to the directory with the {prodname} Db2 connector JARs.
 . xref:{link-db2-connector}#db2-adding-connector-configuration[Configure the connector and add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
@@ -1630,7 +1633,7 @@ You can use either of the following methods to deploy a {prodname} Db2 connector
 This is the preferred method.
 * xref:deploying-debezium-db2-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
-The {prodname} Db2 connector requires the Db2 JDBC driver to connect to Db2 databases.
+The {prodname} Db2 connector does not include the Db2 JDBC driver that is required to connect to Db2 databases.
 For information about how to obtain the driver, see xref:obtaining-the-db2-jdbc-driver[Obtaining the Db2 JDBC driver].
 
 .Additional resources
