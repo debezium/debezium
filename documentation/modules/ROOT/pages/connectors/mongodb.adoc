@@ -1378,6 +1378,12 @@ The following configuration properties are _required_ unless a default value is 
 |[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `+mongodb.hosts+`>>
 |
 |The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. If `mongodb.members.auto.discover` is set to `false`, then the host and port pair should be prefixed with the replica set name (e.g., `rs0/localhost:27017`).
++
+[NOTE]
+====
+It is mandatory to provide the current primary address.
+This limitation will be removed in the next {prodname} release.
+====
 
 |[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
 |
