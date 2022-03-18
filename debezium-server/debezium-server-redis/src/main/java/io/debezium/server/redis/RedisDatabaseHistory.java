@@ -105,11 +105,11 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
-        if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
+        if (!config.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
             throw new ConnectException(
                     "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
-        config.validateAndRecord(ALL_FIELDS, logger::error);
+        config.validateAndRecord(ALL_FIELDS, LOGGER::error);
         this.config = config;
         // fetch the properties. as a fallback, if we did not specify the redis address, we will take it and all the credentials from the sink
         this.address = this.config.getString(PROP_ADDRESS.name());
@@ -169,7 +169,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
                     .await().indefinitely();
         }
         catch (IOException e) {
-            logger.error("Failed to convert record to string: {}", record, e);
+            LOGGER.error("Failed to convert record to string: {}", record, e);
         }
     }
 
@@ -207,7 +207,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
                 records.accept(new HistoryRecord(reader.read(item.getFields().get("schema"))));
             }
             catch (IOException e) {
-                logger.error("Failed to convert record to string: {}", item, e);
+                LOGGER.error("Failed to convert record to string: {}", item, e);
             }
         }
 
@@ -220,6 +220,12 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     public boolean exists() {
-        return true;
+        // check if the stream is not empty
+        if (client!=null && client.xlen(this.redisKeyName)>0) {
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 }
