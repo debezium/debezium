@@ -650,7 +650,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Location of the Java keystore file containing an application process's own certificate and private key.");
+            .withDescription("The location of the key store file. "
+                    + "This is optional and can be used for two-way authentication between the client and the MySQL Server.");
 
     public static final Field SSL_KEYSTORE_PASSWORD = Field.create("database.ssl.keystore.password")
             .withDisplayName("SSL Keystore Password")
@@ -658,9 +659,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 2))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription(
-                    "Password to access the private key from the keystore file specified by 'ssl.keystore' configuration property or the 'javax.net.ssl.keyStore' system or JVM property. "
-                            + "This password is used to unlock the keystore file (store password), and to decrypt the private key stored in the keystore (key password).");
+            .withDescription("The password for the key store file. "
+                    + "This is optional and only needed if 'database.ssl.keystore' is configured.");
 
     public static final Field SSL_TRUSTSTORE = Field.create("database.ssl.truststore")
             .withDisplayName("SSL Truststore")
@@ -668,7 +668,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 3))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Location of the Java truststore file containing the collection of CA certificates trusted by this application process (trust store).");
+            .withDescription("The location of the trust store file for the server certificate verification.");
 
     public static final Field SSL_TRUSTSTORE_PASSWORD = Field.create("database.ssl.truststore.password")
             .withDisplayName("SSL Truststore Password")
@@ -676,8 +676,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 4))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription(
-                    "Password to unlock the keystore file (store password) specified by 'ssl.trustore' configuration property or the 'javax.net.ssl.trustStore' system or JVM property.");
+            .withDescription("The password for the trust store file. "
+                    + "Used to check the integrity of the truststore, and unlock the truststore.");
 
     public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
             .withDependents(DATABASE_INCLUDE_LIST_NAME);
