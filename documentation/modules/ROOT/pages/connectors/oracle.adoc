@@ -1113,8 +1113,10 @@ ifdef::product[]
 Details are in the following sections:
 
 * xref:oracle-character-types[]
+* xref:oracle-binary-character-lob-types[]
 * xref:oracle-numeric-types[]
 * xref:oracle-decimal-types[]
+* xref:oracle-boolean-types[]
 * xref:oracle-temporal-types[]
 * xref:oracle-rowid-types[]
 
@@ -1250,6 +1252,7 @@ The following table describes how the connector maps numeric types.
 |`org.apache.kafka.connect.data.Decimal` if using `BYTES` +
  +
 Handled equivalently to `NUMBER` (note that S defaults to 0 for `DECIMAL`).
+When the `decimal.handling.mode` property is set to its default value, `precise`, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` columns.
 
 |`DOUBLE PRECISION`
 |`STRUCT`
@@ -1275,6 +1278,7 @@ Contains a structure with two fields: `scale` of type `INT32` that contains the 
  +
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
+[id="oracle-number-scale-less-than-or-equal-to-zero"]
 |`NUMBER(P, S \<= 0)`
 |`INT8` / `INT16` / `INT32` / `INT64`
 |`NUMBER` columns with a scale of 0 represent integer numbers.
@@ -1297,6 +1301,7 @@ Depending on the precision and scale, one of the following matching Kafka Connec
 |`org.apache.kafka.connect.data.Decimal` if using `BYTES` +
  +
 Handled equivalently to `NUMBER` (note that S defaults to 0 for `NUMERIC`).
+When the `decimal.handling.mode` property is set to `precise`, the default, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `NUMERIC` columns.
 
 |`SMALLINT`
 |`BYTES`
@@ -1311,27 +1316,10 @@ Handled equivalently to `NUMBER` (note that S defaults to 0 for `NUMERIC`).
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |===
-
-[id="oracle-boolean-types"]
-=== Boolean types
-
-Oracle does not natively have support for a `BOOLEAN` data type; however,
-it is common practice to use other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
-
-The operator can configure the out-of-the-box `NumberOneToBooleanConverter` custom converter that would either map all `NUMBER(1)` columns to a `BOOLEAN` or if the `selector` parameter is set,
-then a subset of columns could be enumerated using a comma-separated list of regular expressions.
-
-Following is an example configuration:
-
-[source]
-----
-converters=boolean
-boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
-boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
-----
-
+// ModuleID: effect-of-decimal-handling-mode-property-on-mapping-decimal-data-types
+// Title: Effect of `decimal.handling.mode` property on mapping decimal data types
 [id="oracle-decimal-types"]
-=== Decimal types
+==== Decimal types
 
 The {prodname} Oracle connector maps decimal types based on the value of the xref:{link-oracle-connector}#oracle-property-decimal-handling-mode[`decimal.handling.mode`] configuration property.
 
@@ -1339,7 +1327,7 @@ decimal.handling.mode=precise::
 When the `decimal.handling.mode` property is set to `precise`, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns.
 This is the default mode.
 +
-.Mappings when `decimal.handing.mode=precise`
+.Mappings when `decimal.handling.mode=precise`
 [cols="30%a,15%a,55%a",options="header",subs="+attributes"]
 |===
 |Oracle data type
@@ -1361,7 +1349,7 @@ The `scale` schema parameter contains an integer that represents how many digits
 decimal.handling.mode=double::
 When the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
 +
-.Mappings when `decimal.handing.mode=double`
+.Mappings when `decimal.handling.mode=double`
 [cols="30%a,30%a,40%a",options="header",subs="+attributes"]
 |===
 |Oracle data type |Literal type |Semantic type
@@ -1377,7 +1365,7 @@ a|_n/a_
 |===
 
 decimal.handling.mode=string::
-When the `decimal.handling.mode` configuration property is set to `string`, the connector represents `DECIMAL`,`NUMERIC`, and `MONEY` values as their formatted string representation, and encodes the values as shown in the following table.
+When the `decimal.handling.mode` configuration property is set to `string`, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation, and encodes the values as shown in the following table.
 +
 .Mappings when `decimal.handling.mode` is `string`
 [cols="30%a,30%a,40%a",options="header"]
@@ -1395,6 +1383,24 @@ When the `decimal.handling.mode` configuration property is set to `string`, the 
 |_n/a_
 
 |===
+[id="oracle-boolean-types"]
+=== Boolean types
+
+Oracle does not natively have support for a `BOOLEAN` data type; however,
+it is common practice to use other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
+
+The operator can configure the out-of-the-box `NumberOneToBooleanConverter` custom converter that would either map all `NUMBER(1)` columns to a `BOOLEAN` or if the `selector` parameter is set,
+then a subset of columns could be enumerated using a comma-separated list of regular expressions.
+
+Following is an example configuration:
+
+[source]
+----
+converters=boolean
+boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
+boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
+----
+
 
 
 [id="oracle-temporal-types"]
@@ -2603,7 +2609,14 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
-| Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns.
+| Specifies how the connector handles floating point values in the following scenarios:
+
+* The column contains a `NUMERIC`, `DECIMAL`, or `NUMBER` data type, and the `scale` of the type is set to a value greater than zero.
+* The column contains numbers with a data type that does not specify its `scale`, for example, `FLOAT`.
+* The column contains numbers with a data type that does not specify either `precision` or `scale`, for example `REAL`.
+
+If the `scale` of a column is unspecified, for example, `NUMERIC(9)` or `NUMERIC(9,0)`, or if the column is assigned a negative scale, such as `NUMERIC(9,-2)`, the property is not applied, and the number is mapped to an integer value as specified for xref:oracle-number-scale-less-than-or-equal-to-zero][`NUMBER(P, S<=0)` data types] in the _Semantic type (schema name) and Notes_ column of the xref:oracle-numeric-types[Numeric types] table.
+
 You can set one of the following options:
 
 `precise` (default):: Represents values precisely by using `java.math.BigDecimal` values represented in change events in a binary form.
