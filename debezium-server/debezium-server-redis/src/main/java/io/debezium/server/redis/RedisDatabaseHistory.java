@@ -221,7 +221,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public boolean exists() {
         // check if the stream is not empty
-        if (client!=null && client.xlen(this.redisKeyName)>0) {
+        if (client != null && client.xlen(this.redisKeyName) > 0) {
             return true;
         }
         else {
