@@ -651,7 +651,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("The location of the key store file. "
-                    + "This is optional for client and can be used for two-way authentication for client.");
+                    + "This is optional and can be used for two-way authentication between the client and the MySQL Server.");
 
     public static final Field SSL_KEYSTORE_PASSWORD = Field.create("database.ssl.keystore.password")
             .withDisplayName("SSL Keystore Password")
@@ -660,7 +660,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The password for the key store file. "
-                    + "This is optional for client and only needed if 'database.ssl.keystore' is configured.");
+                    + "This is optional and only needed if 'database.ssl.keystore' is configured.");
 
     public static final Field SSL_TRUSTSTORE = Field.create("database.ssl.truststore")
             .withDisplayName("SSL Truststore")
@@ -677,7 +677,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The password for the trust store file. "
-                    + "Use to check the integrity of the truststore, and unlock the truststore.");
+                    + "Used to check the integrity of the truststore, and unlock the truststore.");
 
     public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
             .withDependents(DATABASE_INCLUDE_LIST_NAME);
