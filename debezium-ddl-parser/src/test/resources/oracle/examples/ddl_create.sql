@@ -223,6 +223,7 @@ CREATE TABLE CUSTOMER_TABLE (cust_num VARCHAR2(10), order_num VARCHAR2(20), orde
                                 com.oracle.bigdata.errorOpt:   [{"action":"replace", "value":"INV_NUM" , "col":["CUST_NUM","ORDER_NUM"]} , {"action":"reject", "col":"ORDER_TOTAL"}]
                           ));
 CREATE TABLE TT_BSTOFF_VERDICHT ( TrxKey NUMBER(12), BStoffPKey NUMBER(12), BStoffBOId VARCHAR2(40), BStoffBelegNr NUMBER(12), BStoffBetrag NUMBER(15,2), BStoffBetragWA NUMBER(15,2),  PRIMARY KEY (TrxKey, BStoffPKey)) ORGANIZATION INDEX;
+CREATE TABLE WBXCRLOG (CRID NUMBER not null, CONFLCITTIME DATE default SYSDATE, CONSTRAINT PK_WBXCRLOG PRIMARY KEY(CONFLICTTIME,CRID) USING INDEX TABLESPACE SPLEX_INDX LOCAL) PARTITION BY RANGE(CONFLICTTIME) INTERVAL(NUMTOYMINTERVAL(1, 'MONTH')) STORE IN (SPLEX_DATA) ( PARTITION P201805 VALUES LESS THAN (TO_DATE('2018-06-01', 'YYYY-MM-DD')) TABLESPACE SPLEX_DATA, PARTITION P201806 VALUES LESS THAN (TO_DATE('2018-07-01', 'YYYY-MM-DD')) TABLESPACE SPLEX_DATA );
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);
