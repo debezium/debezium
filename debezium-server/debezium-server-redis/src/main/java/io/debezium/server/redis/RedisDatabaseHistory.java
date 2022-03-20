@@ -6,7 +6,7 @@
 package io.debezium.server.redis;
 
 import java.io.IOException;
-import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -28,7 +28,7 @@ import io.debezium.relational.history.DatabaseHistoryListener;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Collect;
-import io.smallrye.mutiny.Uni;
+import io.debezium.util.DelayStrategy;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
@@ -144,32 +144,43 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
         if (record == null) {
             return;
         }
+        String line;
         try {
-            String line = writer.write(record.document());
-            Uni.createFrom().item(() -> {
-                return (StreamEntryID) client.xadd(this.redisKeyName, (StreamEntryID) null, Collections.singletonMap("schema", line));
-            })
-                    .onFailure().invoke(
-                            f -> {
-                                LOGGER.warn("Writing to database history stream failed with " + f);
-                                LOGGER.warn("Will retry");
-                            })
-                    .onFailure(JedisConnectionException.class).invoke(
-                            f -> {
-                                LOGGER.warn("Attempting to reconnect to redis ");
-                                this.connect();
-                            })
-                    // retry on failure with backoff
-                    .onFailure().retry().withBackOff(Duration.ofMillis(initialRetryDelay), Duration.ofMillis(maxRetryDelay)).indefinitely()
-                    // write success trace message
-                    .invoke(
-                            item -> {
-                                LOGGER.trace("Record written to database history in redis: " + line);
-                            })
-                    .await().indefinitely();
+            line = writer.write(record.document());
         }
         catch (IOException e) {
             LOGGER.error("Failed to convert record to string: {}", record, e);
+            throw new DatabaseHistoryException("Unable to write database history record");
+        }
+
+        DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+        boolean completedSuccessfully = false;
+
+        // loop and retry until successful
+        while (!completedSuccessfully) {
+            try {
+                if (client == null) {
+                    this.connect();
+                }
+
+                // write the entry to Redis
+                client.xadd(this.redisKeyName, (StreamEntryID) null, Collections.singletonMap("schema", line));
+                LOGGER.trace("Record written to database history in redis: " + line);
+                completedSuccessfully = true;
+            }
+            catch (JedisConnectionException jce) {
+                LOGGER.warn("Attempting to reconnect to redis ");
+                this.connect();
+            }
+            catch (Exception e) {
+                LOGGER.warn("Writing to database history stream failed", e);
+                LOGGER.warn("Will retry");
+            }
+            if (!completedSuccessfully) {
+                // Failed to execute the transaction, retry...
+                delayStrategy.sleepWhen(!completedSuccessfully);
+            }
+
         }
     }
 
@@ -184,30 +195,44 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     protected synchronized void recoverRecords(Consumer<HistoryRecord> records) {
-        List<StreamEntry> entries = Uni.createFrom().item(
-                () -> {
-                    return (List<StreamEntry>) client.xrange(
-                            this.redisKeyName, (StreamEntryID) null, (StreamEntryID) null);
-                })
-                .onFailure().invoke(
-                        f -> {
-                            LOGGER.warn("Reading from database history stream failed with " + f);
-                            LOGGER.warn("Will retry");
-                        })
-                .onFailure(JedisConnectionException.class).invoke(
-                        f -> {
-                            LOGGER.warn("Attempting to reconnect to redis ");
-                            this.connect();
-                        })
-                // retry on failure with backoff
-                .onFailure().retry().withBackOff(Duration.ofMillis(initialRetryDelay), Duration.ofMillis(maxRetryDelay)).indefinitely()
-                .await().indefinitely();
+        DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+        boolean completedSuccessfully = false;
+        List<StreamEntry> entries = new ArrayList<StreamEntry>();
+
+        // loop and retry until successful
+        while (!completedSuccessfully) {
+            try {
+                if (client == null) {
+                    this.connect();
+                }
+
+                // read the entries from Redis
+                entries = client.xrange(
+                        this.redisKeyName, (StreamEntryID) null, (StreamEntryID) null);
+                completedSuccessfully = true;
+            }
+            catch (JedisConnectionException jce) {
+                LOGGER.warn("Attempting to reconnect to redis ");
+                this.connect();
+            }
+            catch (Exception e) {
+                LOGGER.warn("Reading from database history stream failed with " + e);
+                LOGGER.warn("Will retry");
+            }
+            if (!completedSuccessfully) {
+                // Failed to execute the transaction, retry...
+                delayStrategy.sleepWhen(!completedSuccessfully);
+            }
+
+        }
+
         for (StreamEntry item : entries) {
             try {
                 records.accept(new HistoryRecord(reader.read(item.getFields().get("schema"))));
             }
             catch (IOException e) {
                 LOGGER.error("Failed to convert record to string: {}", item, e);
+                return;
             }
         }
 
