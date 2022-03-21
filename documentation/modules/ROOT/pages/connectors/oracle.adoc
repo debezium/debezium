@@ -1881,7 +1881,7 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 
 .Next steps
 
-xref:{link-oracle-connector}#oracle-example-configuration[Configure the connector] and xref:{link-oracle-connector}#oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+* xref:{link-oracle-connector}#oracle-example-configuration[Configure the connector] and xref:{link-oracle-connector}#oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 
 endif::community[]
 
@@ -2146,7 +2146,7 @@ For more information about the YAML file for the `KafkaConnector` CR, see xref:o
 
 ** If you use a Dockerfile to deploy the connector:
 .. From a browser, link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[download the 'ojdbc8.jar' from Maven Central].
-.. Copy the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file (`debezium-connector-oracle-{debezium-version}.jar`).
+.. Copy the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file (that is, `debezium-connector-oracle-{debezium-version}.jar`).
 
 endif::product[]
 ifdef::community[]
