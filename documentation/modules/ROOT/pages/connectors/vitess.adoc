@@ -1290,6 +1290,12 @@ For example, +
  +
 `x-envoy-upstream-rq-timeout-ms:0,x-envoy-max-retries:2`
 
+|[[vitess-property-grpc-max-inbound-message-size]]<<vitess-property-grpc-max-inbound-message-size, `+vitess.grpc.max_inbound_message_size+`>>
+|
+|Specify the maximum message size in bytes allowed to be received on the channel. +
+ +
+Default is 4MiB
+
 |[[vitess-property-column-propagate-source-type]]<<vitess-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
 a|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records. These schema parameters:
