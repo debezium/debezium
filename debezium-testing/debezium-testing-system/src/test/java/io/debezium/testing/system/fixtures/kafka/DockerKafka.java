@@ -5,34 +5,55 @@
  */
 package io.debezium.testing.system.fixtures.kafka;
 
-import io.debezium.testing.system.fixtures.DockerNetwork;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.testcontainers.containers.Network;
+
+import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.tools.kafka.DockerKafkaConnectController;
 import io.debezium.testing.system.tools.kafka.DockerKafkaConnectDeployer;
 import io.debezium.testing.system.tools.kafka.DockerKafkaController;
 import io.debezium.testing.system.tools.kafka.DockerKafkaDeployer;
+import io.debezium.testing.system.tools.kafka.KafkaConnectController;
+import io.debezium.testing.system.tools.kafka.KafkaController;
 
-public interface DockerKafka
-        extends KafkaSetupFixture, KafkaRuntimeFixture, DockerNetwork {
+import fixture5.TestFixture;
+import fixture5.annotations.FixtureContext;
 
-    @Override
-    default void setupKafka() {
-        DockerKafkaDeployer kafkaDeployer = new DockerKafkaDeployer.Builder()
-                .withNetwork(getNetwork())
-                .build();
-        DockerKafkaController kafka = kafkaDeployer.deploy();
+@FixtureContext(requires = { Network.class }, provides = { KafkaController.class, KafkaConnectController.class, KafkaAssertions.class })
+public class DockerKafka extends TestFixture {
+    private final Network network;
+    private DockerKafkaController kafkaController;
+    private DockerKafkaConnectController connectController;
 
-        DockerKafkaConnectDeployer connectDeployer = new DockerKafkaConnectDeployer.Builder()
-                .withKafka(kafka)
-                .build();
-        DockerKafkaConnectController connectController = connectDeployer.deploy();
-
-        setKafkaController(kafka);
-        setKafkaConnectController(connectController);
+    public DockerKafka(@NotNull ExtensionContext.Store store) {
+        super(store);
+        this.network = retrieve(Network.class);
     }
 
     @Override
-    default void teardownKafka() {
-        getKafkaConnectController().undeploy();
-        getKafkaController().undeploy();
+    public void setup() {
+        DockerKafkaDeployer kafkaDeployer = new DockerKafkaDeployer.Builder()
+                .withNetwork(network)
+                .build();
+        kafkaController = kafkaDeployer.deploy();
+
+        DockerKafkaConnectDeployer connectDeployer = new DockerKafkaConnectDeployer.Builder()
+                .withKafka(kafkaController)
+                .build();
+        connectController = connectDeployer.deploy();
+
+        store(KafkaController.class, kafkaController);
+        store(KafkaConnectController.class, connectController);
+    }
+
+    @Override
+    public void teardown() {
+        if (kafkaController != null) {
+            kafkaController.undeploy();
+        }
+        if (connectController != null) {
+            connectController.undeploy();
+        }
     }
 }

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.testing.system.tests.sqlserver;
+package io.debezium.testing.system.tests.db2;
 
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
@@ -12,8 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
-import io.debezium.testing.system.fixtures.connectors.SqlServerConnector;
-import io.debezium.testing.system.fixtures.databases.ocp.OcpSqlServer;
+import io.debezium.testing.system.fixtures.connectors.Db2Connector;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpDb2Fixture;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.registry.OcpApicurioFixture;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
@@ -24,22 +24,22 @@ import fixture5.FixtureExtension;
 import fixture5.annotations.Fixture;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Tag("sqlserver")
+@Tag("db2")
 @Tag("openshift")
 @Tag("avro")
 @Tag("apicurio")
 @Fixture(OcpClient.class)
 @Fixture(OcpKafka.class)
 @Fixture(OcpApicurioFixture.class)
-@Fixture(OcpSqlServer.class)
-@Fixture(SqlServerConnector.class)
+@Fixture(OcpDb2Fixture.class)
+@Fixture(Db2Connector.class)
 @ExtendWith(FixtureExtension.class)
-public class OcpAvroSqlServerConnectorIT extends SqlServerTests {
+public class OcpAvroDb2ConnectorIT extends Db2Tests {
 
-    public OcpAvroSqlServerConnectorIT(KafkaController kafkaController,
-                                       KafkaConnectController connectController,
-                                       ConnectorConfigBuilder connectorConfig,
-                                       KafkaAssertions<?, ?> assertions) {
+    public OcpAvroDb2ConnectorIT(KafkaController kafkaController,
+                                 KafkaConnectController connectController,
+                                 ConnectorConfigBuilder connectorConfig,
+                                 KafkaAssertions<?, ?> assertions) {
         super(kafkaController, connectController, connectorConfig, assertions);
     }
 }

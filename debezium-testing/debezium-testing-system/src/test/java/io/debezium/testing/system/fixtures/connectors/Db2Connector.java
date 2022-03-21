@@ -16,17 +16,17 @@ import io.debezium.testing.system.tools.kafka.KafkaController;
 import fixture5.annotations.FixtureContext;
 
 @FixtureContext(requires = { KafkaController.class, KafkaConnectController.class, SqlDatabaseController.class }, provides = { ConnectorConfigBuilder.class })
-public class OracleConnector extends ConnectorFixture<SqlDatabaseController> {
+public class Db2Connector extends ConnectorFixture<SqlDatabaseController> {
 
-    private static final String CONNECTOR_NAME = "inventory-connector-oracle";
+    private static final String CONNECTOR_NAME = "inventory-connector-db2";
 
-    public OracleConnector(ExtensionContext.Store store) {
+    public Db2Connector(ExtensionContext.Store store) {
         super(CONNECTOR_NAME, SqlDatabaseController.class, store);
     }
 
     @Override
     public ConnectorConfigBuilder connectorConfig(String connectorName) {
-        return new ConnectorFactories(kafkaController).oracle(dbController, connectorName);
+        return new ConnectorFactories(kafkaController).sqlserver(dbController, connectorName);
     }
 
 }

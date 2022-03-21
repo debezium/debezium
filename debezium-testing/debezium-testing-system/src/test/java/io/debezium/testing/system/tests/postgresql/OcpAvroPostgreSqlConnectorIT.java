@@ -7,27 +7,40 @@ package io.debezium.testing.system.tests.postgresql;
 
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.debezium.testing.system.assertions.KafkaAssertions;
+import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.PostgreSqlConnector;
-import io.debezium.testing.system.fixtures.databases.OcpPostgreSql;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpPostgreSql;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
-import io.debezium.testing.system.fixtures.registry.ApicurioAvroConnectorDecorator;
-import io.debezium.testing.system.fixtures.registry.OcpApicurio;
-import io.debezium.testing.system.tests.OcpConnectorTest;
-import io.debezium.testing.system.tools.databases.SqlDatabaseController;
+import io.debezium.testing.system.fixtures.registry.OcpApicurioFixture;
+import io.debezium.testing.system.tests.mysql.MySqlTests;
+import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
+import io.debezium.testing.system.tools.kafka.KafkaConnectController;
+import io.debezium.testing.system.tools.kafka.KafkaController;
 
-/**
- * @author Jakub Cechacek
- */
+import fixture5.FixtureExtension;
+import fixture5.annotations.Fixture;
+
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("postgresql")
 @Tag("openshift")
 @Tag("avro")
 @Tag("apicurio")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class OcpAvroPostgreSqlConnectorIT
-        extends OcpConnectorTest<SqlDatabaseController>
-        implements OcpKafka, OcpPostgreSql, PostgreSqlConnector, OcpApicurio, ApicurioAvroConnectorDecorator, PostgreSqlTestCases {
+@Fixture(OcpClient.class)
+@Fixture(OcpKafka.class)
+@Fixture(OcpApicurioFixture.class)
+@Fixture(OcpPostgreSql.class)
+@Fixture(PostgreSqlConnector.class)
+@ExtendWith(FixtureExtension.class)
+public class OcpAvroPostgreSqlConnectorIT extends MySqlTests {
+
+    public OcpAvroPostgreSqlConnectorIT(KafkaController kafkaController,
+                                        KafkaConnectController connectController,
+                                        ConnectorConfigBuilder connectorConfig,
+                                        KafkaAssertions<?, ?> assertions) {
+        super(kafkaController, connectController, connectorConfig, assertions);
+    }
 }

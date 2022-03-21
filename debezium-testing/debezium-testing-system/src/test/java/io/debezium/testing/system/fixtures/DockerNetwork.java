@@ -5,19 +5,26 @@
  */
 package io.debezium.testing.system.fixtures;
 
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.Network;
 
-public interface DockerNetwork {
+import fixture5.TestFixture;
+import fixture5.annotations.FixtureContext;
 
-    default void setupNetwork() {
-        setNetwork(Network.newNetwork());
+@FixtureContext(provides = { Network.class })
+public class DockerNetwork extends TestFixture {
+    public DockerNetwork(@NotNull ExtensionContext.Store store) {
+        super(store);
     }
 
-    default void teardownNetwork() {
-        getNetwork().close();
+    @Override
+    public void setup() {
+        store(Network.class, Network.newNetwork());
     }
 
-    void setNetwork(Network network);
+    @Override
+    public void teardown() {
 
-    Network getNetwork();
+    }
 }
