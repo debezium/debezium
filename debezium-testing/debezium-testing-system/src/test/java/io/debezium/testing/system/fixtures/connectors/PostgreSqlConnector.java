@@ -5,31 +5,27 @@
  */
 package io.debezium.testing.system.fixtures.connectors;
 
-import io.debezium.testing.system.TestUtils;
-import io.debezium.testing.system.fixtures.TestRuntimeFixture;
-import io.debezium.testing.system.fixtures.TestSetupFixture;
+import org.junit.jupiter.api.extension.ExtensionContext;
+
 import io.debezium.testing.system.resources.ConnectorFactories;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
+import io.debezium.testing.system.tools.kafka.KafkaConnectController;
+import io.debezium.testing.system.tools.kafka.KafkaController;
 
-public interface PostgreSqlConnector
-        extends TestSetupFixture, ConnectorSetupFixture, TestRuntimeFixture<SqlDatabaseController> {
+import fixture5.annotations.FixtureContext;
 
-    String CONNECTOR_NAME = "inventory-connector-postgresql";
+@FixtureContext(requires = { KafkaController.class, KafkaConnectController.class, SqlDatabaseController.class }, provides = { ConnectorConfigBuilder.class })
+public class PostgreSqlConnector extends ConnectorFixture<SqlDatabaseController> {
 
-    @Override
-    default void setupConnector() throws Exception {
-        String connectorName = CONNECTOR_NAME + "-" + TestUtils.getUniqueId();
-        ConnectorConfigBuilder connectorConfig = new ConnectorFactories(getKafkaController()).postgresql(getDbController(), connectorName);
-        decorateConnectorConfig(connectorConfig);
+    private static final String CONNECTOR_NAME = "inventory-connector-postgresql";
 
-        setConnectorConfig(connectorConfig);
-
-        getKafkaConnectController().deployConnector(connectorConfig);
+    public PostgreSqlConnector(ExtensionContext.Store store) {
+        super(CONNECTOR_NAME, SqlDatabaseController.class, store);
     }
 
     @Override
-    default void teardownConnector() throws Exception {
-        getKafkaConnectController().undeployConnector(getConnectorConfig().getConnectorName());
+    public ConnectorConfigBuilder connectorConfig(String connectorName) {
+        return new ConnectorFactories(kafkaController).postgresql(dbController, connectorName);
     }
 }

@@ -259,6 +259,16 @@
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>okhttp</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.jetbrains.kotlin</groupId>
+          <artifactId>kotlin-stdlib-common</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.jetbrains.kotlin</groupId>
+          <artifactId>kotlin-stdlib</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -288,6 +298,12 @@
       <artifactId>assertj-core</artifactId>
       <version>${version.assertj}</version>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>fixture5</groupId>
+      <artifactId>fixture5</artifactId>
+      <version>0.1.0-SNAPSHOT</version>
     </dependency>
 
     <dependency>

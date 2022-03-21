@@ -5,31 +5,27 @@
  */
 package io.debezium.testing.system.fixtures.connectors;
 
-import io.debezium.testing.system.TestUtils;
-import io.debezium.testing.system.fixtures.TestRuntimeFixture;
-import io.debezium.testing.system.fixtures.TestSetupFixture;
+import org.junit.jupiter.api.extension.ExtensionContext;
+
 import io.debezium.testing.system.resources.ConnectorFactories;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
+import io.debezium.testing.system.tools.kafka.KafkaConnectController;
+import io.debezium.testing.system.tools.kafka.KafkaController;
 
-public interface MongoConnector
-        extends TestSetupFixture, ConnectorSetupFixture, TestRuntimeFixture<MongoDatabaseController> {
+import fixture5.annotations.FixtureContext;
 
-    String CONNECTOR_NAME = "inventory-connector-mongo";
+@FixtureContext(requires = { KafkaController.class, KafkaConnectController.class, MongoDatabaseController.class }, provides = { ConnectorConfigBuilder.class })
+public class MongoConnector extends ConnectorFixture<MongoDatabaseController> {
 
-    @Override
-    default void setupConnector() throws Exception {
-        String connectorName = CONNECTOR_NAME + "-" + TestUtils.getUniqueId();
-        ConnectorConfigBuilder connectorConfig = new ConnectorFactories(getKafkaController()).mongo(getDbController(), connectorName);
-        decorateConnectorConfig(connectorConfig);
+    private static final String CONNECTOR_NAME = "inventory-connector-mongo";
 
-        setConnectorConfig(connectorConfig);
-
-        getKafkaConnectController().deployConnector(connectorConfig);
+    public MongoConnector(ExtensionContext.Store store) {
+        super(CONNECTOR_NAME, MongoDatabaseController.class, store);
     }
 
     @Override
-    default void teardownConnector() throws Exception {
-        getKafkaConnectController().undeployConnector(getConnectorConfig().getConnectorName());
+    public ConnectorConfigBuilder connectorConfig(String connectorName) {
+        return new ConnectorFactories(kafkaController).mongo(dbController, connectorName);
     }
 }

@@ -7,24 +7,36 @@ package io.debezium.testing.system.tests.mongodb;
 
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.debezium.testing.system.assertions.KafkaAssertions;
+import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.MongoConnector;
-import io.debezium.testing.system.fixtures.databases.OcpMongo;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMongo;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
-import io.debezium.testing.system.tests.OcpConnectorTest;
-import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
+import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
+import io.debezium.testing.system.tools.kafka.KafkaConnectController;
+import io.debezium.testing.system.tools.kafka.KafkaController;
 
-/**
- * @author Jakub Cechacek
- */
+import fixture5.FixtureExtension;
+import fixture5.annotations.Fixture;
+
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
 @Tag("mongo")
 @Tag("openshift")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class OcpMongoConnectorIT
-        extends OcpConnectorTest<MongoDatabaseController>
-        implements OcpKafka, OcpMongo, MongoConnector, MongoTestCases {
+@Fixture(OcpClient.class)
+@Fixture(OcpKafka.class)
+@Fixture(OcpMongo.class)
+@Fixture(MongoConnector.class)
+@ExtendWith(FixtureExtension.class)
+public class OcpMongoConnectorIT extends MongoTests {
+
+    public OcpMongoConnectorIT(KafkaController kafkaController,
+                               KafkaConnectController connectController,
+                               ConnectorConfigBuilder connectorConfig,
+                               KafkaAssertions<?, ?> assertions) {
+        super(kafkaController, connectController, connectorConfig, assertions);
+    }
 }

@@ -7,25 +7,38 @@ package io.debezium.testing.system.tests.sqlserver;
 
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.debezium.testing.system.assertions.KafkaAssertions;
+import io.debezium.testing.system.fixtures.DockerNetwork;
 import io.debezium.testing.system.fixtures.connectors.SqlServerConnector;
-import io.debezium.testing.system.fixtures.databases.DockerSqlServer;
+import io.debezium.testing.system.fixtures.databases.docker.DockerSqlServer;
 import io.debezium.testing.system.fixtures.kafka.DockerKafka;
-import io.debezium.testing.system.tests.DockerConnectorTest;
-import io.debezium.testing.system.tools.databases.SqlDatabaseController;
+import io.debezium.testing.system.tests.mysql.MySqlTests;
+import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
+import io.debezium.testing.system.tools.kafka.KafkaConnectController;
+import io.debezium.testing.system.tools.kafka.KafkaController;
 
-/**
- * @author Jakub Cechacek
- */
+import fixture5.FixtureExtension;
+import fixture5.annotations.Fixture;
+
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
 @Tag("sqlserver")
-@Tag("docker")
 @Tag("rhel")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DockerRhelSqlServerConnectorIT
-        extends DockerConnectorTest<SqlDatabaseController>
-        implements DockerKafka, DockerSqlServer, SqlServerConnector, SqlServerTestCases {
+@Tag("docker")
+@Fixture(DockerNetwork.class)
+@Fixture(DockerKafka.class)
+@Fixture(DockerSqlServer.class)
+@Fixture(SqlServerConnector.class)
+@ExtendWith(FixtureExtension.class)
+public class DockerRhelSqlServerConnectorIT extends MySqlTests {
+
+    public DockerRhelSqlServerConnectorIT(KafkaController kafkaController,
+                                          KafkaConnectController connectController,
+                                          ConnectorConfigBuilder connectorConfig,
+                                          KafkaAssertions<?, ?> assertions) {
+        super(kafkaController, connectController, connectorConfig, assertions);
+    }
 }
