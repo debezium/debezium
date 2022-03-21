@@ -250,6 +250,18 @@ public class ConfigurationTest {
     }
 
     @Test
+    @FixFor("DBZ-3762")
+    public void defaultDdlFilterShouldFilterOutMySqlInlineComments() {
+        String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        assertThat(ddlFilter.test("# Dummy event replacing event type 160")).isTrue();
+        assertThat(ddlFilter.test("    # Dummy event with leading white space characters")).isTrue();
+        // Other statements which don't contain comments only or e.g. Postgres JSON filter by path shouldn't be removed.
+        assertThat(ddlFilter.test("INSERT INTO test(id) VALUES (1001); # test insert")).isFalse();
+        assertThat(ddlFilter.test("SELECT '[1, 2, 3]'::JSONB #> '{1}';")).isFalse();
+    }
+
+    @Test
     @FixFor("DBZ-1015")
     public void testMsgKeyColumnsField() {
         List<String> errorList;
