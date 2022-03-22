@@ -241,6 +241,9 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
         if (value.startsWith("('") && value.endsWith("')")) {
             return value.substring(2, value.length() - 2);
         }
-        return value.substring(1, value.length() - 1);
+        if (value.startsWith("'") && value.endsWith("'")) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 }
