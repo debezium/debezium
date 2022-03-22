@@ -122,6 +122,13 @@
     <as.apicurio.url>${as.url}/apicurio-registry-distro-connect-converter-${as.apicurio.version}.zip</as.apicurio.url>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>sonatype-snapshots</id>
+      <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+    </repository>
+  </repositories>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -301,7 +308,7 @@
     </dependency>
 
     <dependency>
-      <groupId>fixture5</groupId>
+      <groupId>io.github.jcechace</groupId>
       <artifactId>fixture5</artifactId>
       <version>0.1.0-SNAPSHOT</version>
     </dependency>
