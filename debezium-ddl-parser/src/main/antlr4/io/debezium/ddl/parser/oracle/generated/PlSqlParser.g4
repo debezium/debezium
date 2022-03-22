@@ -575,6 +575,10 @@ sequence_spec
     | NOCACHE
     | ORDER
     | NOORDER
+    | KEEP
+    | NOKEEP
+    | SCALE
+    | NOSCALE
     ;
 
 sequence_start_clause
@@ -3238,7 +3242,7 @@ virtual_column_definition
     ;
 
 identity_clause
-    : GENERATED (ALWAYS | BY DEFAULT (ON NULL_)?)? AS IDENTITY ( '(' (sequence_start_clause | sequence_spec)* ')' )?
+    : GENERATED (ALWAYS | BY DEFAULT (ON NULL_)?)? AS IDENTITY ( '('? (sequence_start_clause | sequence_spec)* ')'? )?
     ;
 
 evaluation_edition_clause
