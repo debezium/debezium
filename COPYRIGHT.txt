@@ -106,6 +106,7 @@ Eric Slep
 Eric Weaver
 Eric S. Kreiseir
 Erik Malm
+Ethan Zou
 Ewen Cheslack-Postava
 Fabian Aussems
 Fabian Martinez
