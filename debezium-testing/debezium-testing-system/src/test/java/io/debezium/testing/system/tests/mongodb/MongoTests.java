@@ -75,7 +75,6 @@ public abstract class MongoTests extends ConnectorTest {
                 prefix + ".inventory.customers",
                 prefix + ".inventory.orders",
                 prefix + ".inventory.products");
-        ;
     }
 
     @Test
