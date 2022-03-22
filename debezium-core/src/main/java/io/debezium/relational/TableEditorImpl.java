@@ -162,9 +162,10 @@ class TableEditorImpl implements TableEditor {
         Column existing = sortedColumns.remove(columnName.toLowerCase());
         if (existing != null) {
             updatePositions();
+            columnName = existing.name();
         }
         assert positionsAreValid();
-        pkColumnNames.remove(existing.name());
+        pkColumnNames.remove(columnName);
         return this;
     }
 
