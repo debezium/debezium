@@ -565,8 +565,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int logMiningScnGapDetectionGapSizeMin;
     private final int logMiningScnGapDetectionTimeIntervalMaxMs;
     private final int logMiningLogFileQueryMaxRetries;
-    private final long logMiningInitialDelayMs;
-    private final long logMiningMaxDelayMs;
+    private final Duration logMiningInitialDelay;
+    private final Duration logMiningMaxDelay;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config),
@@ -611,8 +611,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
         this.logMiningScnGapDetectionTimeIntervalMaxMs = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS);
         this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_QUERY_MAX_RETRIES);
-        this.logMiningInitialDelayMs = config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS);
-        this.logMiningMaxDelayMs = config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS);
+        this.logMiningInitialDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS));
+        this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
     }
 
     private static String toUpperCase(String property) {
@@ -1373,17 +1373,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return the initial delay in milliseconds for the log query delay strategy
+     * @return the initial delay for the log query delay strategy
      */
-    public long getLogMiningInitialDelayMs() {
-        return logMiningInitialDelayMs;
+    public Duration getLogMiningInitialDelay() {
+        return logMiningInitialDelay;
     }
 
     /**
-     * @return the maximum delay in milliseconds for the log query delay strategy
+     * @return the maximum delay for the log query delay strategy
      */
-    public long getLogMiningMaxDelayMs() {
-        return logMiningMaxDelayMs;
+    public Duration getLogMiningMaxDelay() {
+        return logMiningMaxDelay;
     }
 
     @Override
