@@ -11,26 +11,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
+import io.debezium.testing.testcontainers.MySqlTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
-public class RedisStreamTestProfile implements QuarkusTestProfile {
-
+public class RedisDatabaseHistoryTestProfile implements QuarkusTestProfile {
     public static final String OFFSETS_FILE = "file-connector-offsets.txt";
     public static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath(OFFSETS_FILE).toAbsolutePath();
     public static final String OFFSET_STORAGE_FILE_FILENAME_CONFIG = "offset.storage.file.filename";
 
     @Override
     public List<TestResourceEntry> testResources() {
-        return Arrays.asList(new TestResourceEntry(PostgresTestResourceLifecycleManager.class));
+        return Arrays.asList(new TestResourceEntry(MySqlTestResourceLifecycleManager.class));
     }
 
     public Map<String, String> getConfigOverrides() {
         Map<String, String> config = new HashMap<String, String>();
-        config.put("debezium.source.connector.bla", "hello");
-        config.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         config.put("debezium.source." + OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        config.put("debezium.source.database.history", "io.debezium.server.redis.RedisDatabaseHistory");
+        config.put("debezium.source.database.history.redis.address", "${debezium.sink.redis.address}");
         return config;
     }
 
