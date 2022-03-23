@@ -2427,7 +2427,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3949")
-    public void testDMLInChangeEvents() throws Exception {
+    public void testDmlInChangeEvents() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("products"))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
