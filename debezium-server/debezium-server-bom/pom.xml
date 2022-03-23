@@ -16,7 +16,7 @@
         <version.pubsub>25.0.0</version.pubsub>
         <version.pulsar>2.5.2</version.pulsar>
         <version.eventhubs>5.1.1</version.eventhubs>
-        <version.jedis>3.5.2</version.jedis>
+        <version.jedis>4.1.1</version.jedis>
         <version.pravega>0.9.1</version.pravega>
         <version.nats>2.8.0</version.nats>
         <version.stan>2.2.3</version.stan>

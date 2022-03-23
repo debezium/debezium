@@ -31,6 +31,7 @@ import io.debezium.util.DelayStrategy;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.StreamEntryID;
 import redis.clients.jedis.Transaction;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
@@ -159,7 +160,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
 
                             // Add the record to the destination stream
-                            transaction.xadd(destination, null, Collections.singletonMap(key, value));
+                            transaction.xadd(destination, StreamEntryID.NEW_ENTRY, Collections.singletonMap(key, value));
                         }
 
                         // Execute the transaction in Redis
