@@ -48,15 +48,15 @@ public class LogMinerHelper {
      * @param archiveLogOnlyMode true to mine only archive lgos, false to mine all available logs
      * @param archiveDestinationName configured archive log destination name to use, may be {@code null}
      * @param maxRetries the number of retry attempts before giving up and throwing an exception about log state
-     * @param initialDelayMs the initial delay in milliseconds
-     * @param maxDelayMs the maximum delay in milliseconds
+     * @param initialDelayMs the initial delay
+     * @param maxDelayMs the maximum delay
      * @throws SQLException if anything unexpected happens
      * @return current redo log sequences
      */
     // todo: check RAC resiliency
     public static List<BigInteger> setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention,
                                                         boolean archiveLogOnlyMode, String archiveDestinationName, int maxRetries,
-                                                        long initialDelayMs, long maxDelayMs)
+                                                        Duration initialDelay, Duration maxDelay)
             throws SQLException {
         List<BigInteger> ret = new LinkedList<>();
         removeLogFilesFromMining(connection);
@@ -64,7 +64,7 @@ public class LogMinerHelper {
         // Restrict max attempts to 0 or greater values (sanity-check)
         // the code will do at least 1 attempt and up to maxAttempts extra polls based on configuration
         final int maxAttempts = Math.max(maxRetries, 0);
-        final DelayStrategy retryStrategy = DelayStrategy.exponential(initialDelayMs, maxDelayMs);
+        final DelayStrategy retryStrategy = DelayStrategy.exponential(initialDelay.toMillis(), maxDelay.toMillis());
 
         // We perform a retry algorithm here as there is a race condition where Oracle may update the V$LOG table
         // but the V$ARCHIVED_LOG lags behind and a single-shot SQL query may return an inconsistent set of results
