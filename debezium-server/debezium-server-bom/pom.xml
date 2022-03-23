@@ -13,7 +13,7 @@
 
     <properties>
         <version.kinesis>2.13.13</version.kinesis>
-        <version.pubsub>5.1.0</version.pubsub>
+        <version.pubsub>25.0.0</version.pubsub>
         <version.pulsar>2.5.2</version.pulsar>
         <version.eventhubs>5.1.1</version.eventhubs>
         <version.jedis>3.5.2</version.jedis>
