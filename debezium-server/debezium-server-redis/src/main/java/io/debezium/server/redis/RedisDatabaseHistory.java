@@ -23,6 +23,7 @@ import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
 import io.debezium.relational.history.AbstractDatabaseHistory;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.DatabaseHistoryException;
 import io.debezium.relational.history.DatabaseHistoryListener;
 import io.debezium.relational.history.HistoryRecord;
@@ -42,18 +43,21 @@ import redis.clients.jedis.resps.StreamEntry;
  */
 @ThreadSafe
 public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
+
+    private static final String CONFIGURATION_FIELD_PREFIX_STRING = DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "redis.";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisDatabaseHistory.class);
 
-    public static final Field PROP_ADDRESS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "redis.address")
+    public static final Field PROP_ADDRESS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "address")
             .withDescription("The redis url that will be used to access the database history");
 
-    public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "redis.user")
+    public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
             .withDescription("The redis url that will be used to access the database history");
 
-    public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "redis.password")
+    public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
             .withDescription("The redis url that will be used to access the database history");
 
-    public static final Field PROP_KEY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "redis.key")
+    public static final Field PROP_KEY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "key")
             .withDescription("The redis key that will be used to store the database history")
             .withDefault("metadata:debezium:db_history");
 
