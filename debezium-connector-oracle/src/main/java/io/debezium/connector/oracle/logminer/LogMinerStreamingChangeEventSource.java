@@ -74,8 +74,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final boolean archiveLogOnlyMode;
     private final String archiveDestinationName;
     private final int logFileQueryMaxRetries;
-    private final long initialDelayMs;
-    private final long maxDelayMs;
+    private final Duration initialDelay;
+    private final Duration maxDelay;
 
     private Scn startScn; // startScn is the **exclusive** lower bound for mining
     private Scn endScn;
@@ -100,8 +100,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveDestinationName = connectorConfig.getLogMiningArchiveDestinationName();
         this.logFileQueryMaxRetries = connectorConfig.getMaximumNumberOfLogQueryRetries();
-        this.initialDelayMs = connectorConfig.getLogMiningInitialDelayMs();
-        this.maxDelayMs = connectorConfig.getLogMiningMaxDelayMs();
+        this.initialDelay = connectorConfig.getLogMiningInitialDelay();
+        this.maxDelay = connectorConfig.getLogMiningMaxDelay();
     }
 
     /**
@@ -308,7 +308,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
             if (!isContinuousMining) {
                 currentRedoLogSequences = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries, initialDelayMs, maxDelayMs);
+                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
             }
         }
         else {
@@ -317,7 +317,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     buildDataDictionary(connection);
                 }
                 currentRedoLogSequences = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries, initialDelayMs, maxDelayMs);
+                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
             }
         }
 
