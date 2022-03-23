@@ -627,7 +627,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     }
                     else if (!isTableAllColumnsSupplementalLoggingEnabled(connection, tableId)) {
                         LOGGER.warn("Database table '{}' not configured with supplemental logging \"(ALL) COLUMNS\"; " +
-                                "only explicitly changed columns will be captured", tableId);
+                                "only explicitly changed columns will be captured. " +
+                                "Use: ALTER TABLE {}.{} ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", tableId, tableId.schema(), tableId.table());
                     }
                     final Table table = schema.tableFor(tableId);
                     if (table == null) {
