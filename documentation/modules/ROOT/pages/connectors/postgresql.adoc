@@ -3006,7 +3006,7 @@ When {prodname} reads events streamed from the database, it places the events in
 The blocking queue can provide backpressure for reading change events from the database
 in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
 Events that are held in the queue are disregarded when the connector periodically records offsets.
-Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size]`.
+Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
 
 |[[postgresql-property-max-queue-size-in-bytes]]<<postgresql-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0`
