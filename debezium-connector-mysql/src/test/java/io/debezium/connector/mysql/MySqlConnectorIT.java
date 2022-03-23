@@ -2424,4 +2424,61 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse());
     }
+
+    @Test
+    @FixFor("DBZ-3949")
+    public void testDmlInChangeEvents() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("products"))
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, CommonConnectorConfig.EventProcessingFailureHandlingMode.FAIL)
+                .build();
+
+        // Start the connector.
+        CompletionResult completion = new CompletionResult();
+        start(MySqlConnector.class, config, completion);
+        waitForStreamingRunning(DATABASE.getServerName());
+
+        // Do some changes.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products VALUES (204,'rubberduck','Rubber Duck',2.12);");
+                connection.execute("INSERT INTO products VALUES (205,'rubbercrocodile','Rubber Crocodile',4.14);");
+                connection.execute("INSERT INTO products VALUES (206,'rubberfish','Rubber Fish',5.15);");
+            }
+        }
+
+        // Switch to 'STATEMENT' binlog format to mimic DML events in the log.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(String.format("SET GLOBAL binlog_format = 'STATEMENT'", DATABASE.getDatabaseName()));
+            }
+        }
+
+        // Do some more changes.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE products SET weight=2.22 WHERE id=204;");
+                connection.execute("UPDATE products SET weight=4.44 WHERE id=205;");
+                connection.execute("UPDATE products SET weight=5.55 WHERE id=206;");
+            }
+        }
+
+        // Last 3 changes should be ignored as they were stored using STATEMENT format.
+        SourceRecords records = consumeRecordsByTopic(3);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("products"));
+        assertThat(changeEvents.size()).isEqualTo(3);
+        // There shouldn't be any error.
+        assertThat(completion.hasError()).isFalse();
+
+        // Switch back to 'ROW' binlog format.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(String.format("SET GLOBAL binlog_format = 'ROW'", DATABASE.getDatabaseName()));
+            }
+        }
+
+        stopConnector();
+    }
 }
