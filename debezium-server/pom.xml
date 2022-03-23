@@ -118,6 +118,11 @@
             <artifactId>debezium-connector-postgres</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Aligning versions/fixing scopes -->
         <dependency>

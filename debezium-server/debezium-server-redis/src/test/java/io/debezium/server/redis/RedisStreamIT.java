@@ -33,7 +33,6 @@ import redis.clients.jedis.Jedis;
  */
 @QuarkusIntegrationTest
 @TestProfile(RedisStreamTestProfile.class)
-@QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
 public class RedisStreamIT {
 

@@ -223,10 +223,35 @@ There are also other options available
 
 * `io.debezium.relational.history.FileDatabaseHistory` for non-Kafka deployments
 * `io.debezium.relational.history.MemoryDatabaseHistory` volatile store for test environments
+* `io.debezium.server.redis.RedisDatabaseHistory` volatile store for test environments
 
 |[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.database.history.file.filename`>>
 |
 |The name and location of the file to which `FileDatabaseHistory` persists its data.
+
+|[[debezium-source-database-history-redis-address]]<<debezium-source-database-history-redis-address, `debezium.source.database.history.redis.address`>>
+|
+|The Redis host:port to connect to if using `RedisDatabaseHistory`.
+
+|[[debezium-source-database-history-redis-user]]<<debezium-source-database-history-redis-user, `debezium.source.database.history.redis.user`>>
+|
+|The Redis user to use if using `RedisDatabaseHistory`.
+
+|[[debezium-source-database-history-redis-password]]<<debezium-source-database-history-redis-password, `debezium.source.database.history.redis.password`>>
+|
+|The Redis password to use if using `RedisDatabaseHistory`.
+
+|[[debezium-source-database-history-redis-key]]<<debezium-source-database-history-redis-key, `debezium.source.database.history.redis.key`>>
+|
+|The Redis key to use for storage if using `RedisDatabaseHistory`. Default: metadata:debezium:db_history
+
+|[[debezium-source-database-history-retry-initial-delay-ms]]<<debezium-source-database-history-retry-initial-delay-ms, `debezium.source.database.history.retry.initial.delay.ms`>>
+|
+|The initial delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 300 (ms)
+
+|[[debezium-source-database-history-retry-max-delay-ms]]<<debezium-source-database-history-retry-max-delay-ms, `debezium.source.database.history.retry.max.delay.ms`>>
+|
+|The maximum delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 10000 (ms)
 
 |===
 
@@ -695,6 +720,8 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 
 |===
+
+
 
 ==== NATS Streaming
 
