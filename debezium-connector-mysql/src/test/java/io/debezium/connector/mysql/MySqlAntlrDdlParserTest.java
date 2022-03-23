@@ -2044,6 +2044,34 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4786")
+    public void shouldParseCreateAndRemoveTwiceOrDoesNotExist() {
+        String ddl = "CREATE TABLE customers ( "
+                + "id INT PRIMARY KEY NOT NULL, "
+                + "name VARCHAR(30) NOT NULL, "
+                + "PRIMARY KEY (id) );";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(listener.total()).isEqualTo(1);
+
+        Table t = tables.forTable(new TableId(null, null, "customers"));
+        assertThat(t).isNotNull();
+        assertThat(t.retrieveColumnNames()).containsExactly("id", "name");
+        assertThat(t.primaryKeyColumnNames()).containsExactly("id");
+
+        parser.parse("ALTER TABLE customers DROP COLUMN name", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        t = tables.forTable(new TableId(null, null, "customers"));
+        assertThat(t.columnWithName("NAME")).isEqualTo(null);
+
+        parser.parse("ALTER TABLE customers DROP COLUMN name", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        parser.parse("ALTER TABLE customers DROP COLUMN not_exists", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-1411")
     public void shouldParseGrantStatement() {
         parser.parse("GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'", tables);

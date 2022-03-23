@@ -1611,15 +1611,23 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plug-in archive].
 . Extract the JAR files into your Kafka Connect environment.
+. Download the link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2], and extract the downloaded driver file to the directory that contains the {prodname} Db2 connector JAR file (that is, `debezium-connector-db2-{debezium-version}.jar`).
++
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Db2 connector archive does not include the Db2 JDBC driver that {prodname} requires to connect to a Db2 database.
+To enable the connector to access the database, you must add the driver to your connector environment.
+====
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
-. Obtain the link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2].
-. Add the JDBC driver JAR file to the directory with the {prodname} Db2 connector JARs.
-. xref:{link-db2-connector}#db2-adding-connector-configuration[Configure the connector and add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+
+.Next steps
+
+* xref:db2-example-configuration[Configure the connector] and xref:db2-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 endif::community[]
 
 ifdef::product[]
@@ -1630,8 +1638,12 @@ You can use either of the following methods to deploy a {prodname} Db2 connector
 This is the preferred method.
 * xref:deploying-debezium-db2-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
-The {prodname} Db2 connector requires the Db2 JDBC driver to connect to Db2 databases.
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Db2 connector archive does not include the Db2 JDBC driver that {prodname} requires to connect to a Db2 database.
+To enable the connector to access the database, you must add the driver to your connector environment.
 For information about how to obtain the driver, see xref:obtaining-the-db2-jdbc-driver[Obtaining the Db2 JDBC driver].
+====
 
 .Additional resources
 
@@ -1650,7 +1662,7 @@ The following steps describe how to obtain the driver and use it your your envir
 
 . From a browser, navigate to the link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[IBM Support site] and download the JDBC driver that matches your version of Db2.
 
-* If you xref:deploying-debezium-db2-connectors[use a Dockerfile to build the connector], copy the downloaded file to the directory that contains the {prodname} Db2 connector files, for example, `_<kafka_home>_/libs` directory.
+* If you xref:deploying-debezium-db2-connectors[use a Dockerfile to build the connector], copy the downloaded driver file to the directory that contains the {prodname} Db2 connector JAR file (that is, `debezium-connector-db2-{debezium-version}.jar`).
 
 * If you xref:openshift-streams-db2-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image]:
 .. Deploy the driver to a Maven repository or to another HTTP server that is available to your OpenShift cluster.
