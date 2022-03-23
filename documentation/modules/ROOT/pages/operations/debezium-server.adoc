@@ -217,7 +217,7 @@ The source configuration uses the same configuration properties that are describ
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
 |`io.debezium.relational.history.KafkaDatabaseHistory`
-|Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) monitors the database schema evolution over the time and stores the data in database history.
+|Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) track the database schema evolution over time and stores this data in a database schema history.
 This is by default based on Kafka.
 There are also other options available
 
@@ -245,11 +245,11 @@ There are also other options available
 |
 |The Redis key to use for storage if using `RedisDatabaseHistory`. Default: metadata:debezium:db_history
 
-|[[debezium-source-database-history-retry-initial-delay-ms]]<<debezium-source-database-history-retry-initial-delay-ms, `debezium.source.database.history.retry.initial.delay.ms`>>
+|[[debezium-source-database-history-redis-retry-initial-delay-ms]]<<debezium-source-database-history-redis-retry-initial-delay-ms, `debezium.source.database.history.redis.retry.initial.delay.ms`>>
 |
 |The initial delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 300 (ms)
 
-|[[debezium-source-database-history-retry-max-delay-ms]]<<debezium-source-database-history-retry-max-delay-ms, `debezium.source.database.history.retry.max.delay.ms`>>
+|[[debezium-source-database-history-redis-retry-max-delay-ms]]<<debezium-source-database-history-redis-retry-max-delay-ms, `debezium.source.database.history.redis.retry.max.delay.ms`>>
 |
 |The maximum delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 10000 (ms)
 
