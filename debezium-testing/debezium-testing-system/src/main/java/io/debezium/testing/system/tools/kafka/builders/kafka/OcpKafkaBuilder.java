@@ -31,6 +31,9 @@ import io.strimzi.api.kafka.model.listener.arraylistener.GenericKafkaListenerBui
 import io.strimzi.api.kafka.model.listener.arraylistener.KafkaListenerType;
 import io.strimzi.api.kafka.model.storage.EphemeralStorage;
 
+/**
+ * This class simplifies building of kafka by providing default configuration for whole kafka or parts of its definition
+ */
 public class OcpKafkaBuilder extends KafkaBuilder {
     public static String DEFAULT_KAFKA_METADATA_NAME = "debezium-kafka-cluster";
     public static String DEFAULT_KAFKA_VERSION = "${version.strimzi.kafka}";

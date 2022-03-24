@@ -10,6 +10,9 @@ import static io.debezium.testing.system.tools.kafka.builders.OcpKafkaConstants.
 
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 
+/**
+ * This class simplifies building of kafkaConnect by providing pre-made configurations for whole kafkaConnect or parts of its definition
+ */
 public class OcpKafkaConnectBuilder extends io.strimzi.api.kafka.model.KafkaConnectBuilder {
     public static String DEFAULT_KAFKA_CONNECT_METADATA_NAME = "debezium-kafka-connect-cluster";
     public static String DEFAULT_KAFKA_CONNECT_VERSION = "${version.strimzi.kafka}";
@@ -32,7 +35,7 @@ public class OcpKafkaConnectBuilder extends io.strimzi.api.kafka.model.KafkaConn
                 .withDefaultApiVersion()
                 .withDefaultKind()
                 .withDefaultMeta()
-                .withNonKcSpec();
+                .withKcSpec();
     }
 
     public OcpKafkaConnectBuilder withDefaultApiVersion() {
@@ -57,7 +60,7 @@ public class OcpKafkaConnectBuilder extends io.strimzi.api.kafka.model.KafkaConn
 
     public OcpKafkaConnectBuilder withKcSpec() {
         return (OcpKafkaConnectBuilder) this.withSpec(new OcpKafkaConnectSpecBuilder()
-                .withNonKcSetup()
+                .withKcSetup()
                 .build());
     }
 }
