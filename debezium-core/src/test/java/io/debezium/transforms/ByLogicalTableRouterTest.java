@@ -50,7 +50,19 @@ public class ByLogicalTableRouterTest {
     }
 
     @Test
-    public void testKeyReplacementWorkingConfiguration() {
+    public void testKeyReplacementWorkingConfigurationWithAvroSchemaNameAdjustment() {
+        testKeyReplacementWorkingConfiguration("avro",
+                "mysql_server_1.inventory.customers_all_shards.Key");
+    }
+
+    @Test
+    @FixFor("DBZ-3535")
+    public void testKeyReplacementWorkingConfigurationWithNoSchemaNameAdjustment() {
+        testKeyReplacementWorkingConfiguration("none",
+                "mysql-server-1.inventory.customers_all_shards.Key");
+    }
+
+    private void testKeyReplacementWorkingConfiguration(String schemaNameAdjustmentMode, String expectedKeySchemaName) {
         final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
         final Map<String, String> props = new HashMap<>();
 
@@ -59,6 +71,7 @@ public class ByLogicalTableRouterTest {
         props.put("key.field.name", "shard_id");
         props.put("key.field.regex", "(.*)customers_shard_(.*)");
         props.put("key.field.replacement", "$2");
+        props.put("schema.name.adjustment.mode", schemaNameAdjustmentMode);
         router.configure(props);
 
         Schema keySchema = SchemaBuilder.struct()
@@ -75,7 +88,7 @@ public class ByLogicalTableRouterTest {
         assertThat(transformed1).isNotNull();
         assertThat(transformed1.topic()).isEqualTo("mysql-server-1.inventory.customers_all_shards");
 
-        assertThat(transformed1.keySchema().name()).isEqualTo("mysql_server_1.inventory.customers_all_shards.Key");
+        assertThat(transformed1.keySchema().name()).isEqualTo(expectedKeySchemaName);
         assertThat(transformed1.keySchema().fields()).hasSize(2);
         assertThat(transformed1.keySchema().fields().get(0).name()).isEqualTo("id");
         assertThat(transformed1.keySchema().fields().get(1).name()).isEqualTo("shard_id");
@@ -92,7 +105,7 @@ public class ByLogicalTableRouterTest {
         assertThat(transformed2).isNotNull();
         assertThat(transformed2.topic()).isEqualTo("mysql-server-1.inventory.customers_all_shards");
 
-        assertThat(transformed2.keySchema().name()).isEqualTo("mysql_server_1.inventory.customers_all_shards.Key");
+        assertThat(transformed2.keySchema().name()).isEqualTo(expectedKeySchemaName);
         assertThat(transformed2.keySchema().fields()).hasSize(2);
         assertThat(transformed2.keySchema().fields().get(0).name()).isEqualTo("id");
         assertThat(transformed2.keySchema().fields().get(1).name()).isEqualTo("shard_id");
@@ -109,7 +122,7 @@ public class ByLogicalTableRouterTest {
         assertThat(transformed3).isNotNull();
         assertThat(transformed3.topic()).isEqualTo("mysql-server-1.inventory.customers_all_shards");
 
-        assertThat(transformed3.keySchema().name()).isEqualTo("mysql_server_1.inventory.customers_all_shards.Key");
+        assertThat(transformed3.keySchema().name()).isEqualTo(expectedKeySchemaName);
         assertThat(transformed3.keySchema().fields()).hasSize(2);
         assertThat(transformed3.keySchema().fields().get(0).name()).isEqualTo("id");
         assertThat(transformed3.keySchema().fields().get(1).name()).isEqualTo("shard_id");
