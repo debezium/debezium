@@ -25,6 +25,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -111,10 +112,19 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withValidation(ByLogicalTableRouter::validateKeyFieldReplacement)
             .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
                     ". This will be used to create the physical table identifier in the record's key.");
+    private static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
+            .withDisplayName("Schema Name Adjustment")
+            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.AVRO)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription(
+                    "Specify how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector, including:"
+                            + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
+                            + "'none' does not apply any adjustment");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ByLogicalTableRouter.class);
 
-    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
+    private SchemaNameAdjuster schemaNameAdjuster;
     private Pattern topicRegex;
     private String topicReplacement;
     private Pattern keyFieldRegex;
@@ -163,7 +173,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 TOPIC_REPLACEMENT,
                 KEY_ENFORCE_UNIQUENESS,
                 KEY_FIELD_REGEX,
-                KEY_FIELD_REPLACEMENT);
+                KEY_FIELD_REPLACEMENT,
+                SCHEMA_NAME_ADJUSTMENT_MODE);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -184,6 +195,9 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         keyEnforceUniqueness = config.getBoolean(KEY_ENFORCE_UNIQUENESS);
 
         smtManager = new SmtManager<>(config);
+
+        schemaNameAdjuster = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE))
+                .createAdjuster();
     }
 
     @Override
