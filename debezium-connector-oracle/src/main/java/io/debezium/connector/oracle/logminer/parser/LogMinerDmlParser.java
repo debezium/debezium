@@ -276,8 +276,24 @@ public class LogMinerDmlParser implements DmlParser {
         index += VALUES_LENGTH;
 
         int columnIndex = 0;
+        StringBuilder collectedValue = null;
         for (; index < sql.length(); ++index) {
+            char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
             char c = sql.charAt(index);
+
+            if (inQuote) {
+                if (c != '\'') {
+                    collectedValue.append(c);
+                }
+                else {
+                    if (sql.charAt(index + 1) == '\'') {
+                        collectedValue.append('\'');
+                        index = index + 1;
+                        continue;
+                    }
+                }
+            }
+
             if (c == '(' && !inQuote && !inValues) {
                 inValues = true;
                 start = index + 1;
@@ -291,6 +307,7 @@ public class LogMinerDmlParser implements DmlParser {
                     continue;
                 }
                 inQuote = true;
+                collectedValue = new StringBuilder();
             }
             else if (!inQuote && (c == ',' || c == ')')) {
                 if (c == ')' && nested != 0) {
@@ -304,7 +321,8 @@ public class LogMinerDmlParser implements DmlParser {
                 if (sql.charAt(start) == '\'' && sql.charAt(index - 1) == '\'') {
                     // value is single-quoted at the start/end, substring without the quotes.
                     int position = LogMinerHelper.getColumnIndexByName(columnNames[columnIndex], table);
-                    values[position] = sql.substring(start + 1, index - 1);
+                    values[position] = collectedValue.toString();
+                    collectedValue = null;
                 }
                 else {
                     // use value as-is
@@ -321,6 +339,7 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         return index;
+
     }
 
     /**
@@ -353,9 +372,24 @@ public class LogMinerDmlParser implements DmlParser {
 
         int index = start;
         String currentColumnName = null;
+        StringBuilder collectedValue = null;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
+
+            if (inSingleQuote) {
+                if (c != '\'') {
+                    collectedValue.append(c);
+                }
+                else {
+                    if (lookAhead == '\'') {
+                        collectedValue.append('\'');
+                        index = index + 1;
+                        continue;
+                    }
+                }
+            }
+
             if (c == '"' && inColumnName) {
                 // Set clause column names are double-quoted
                 if (inDoubleQuote) {
@@ -398,7 +432,8 @@ public class LogMinerDmlParser implements DmlParser {
                     inSingleQuote = false;
                     if (nested == 0) {
                         int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
-                        newValues[position] = sql.substring(start + 1, index);
+                        newValues[position] = collectedValue.toString();
+                        collectedValue = null;
                         start = index + 1;
                         inColumnValue = false;
                         inColumnName = false;
@@ -409,6 +444,7 @@ public class LogMinerDmlParser implements DmlParser {
                     start = index;
                 }
                 inSingleQuote = true;
+                collectedValue = new StringBuilder();
             }
             else if (c == ',' && !inColumnValue && !inColumnName) {
                 // Set clause uses ', ' skip following space
@@ -505,9 +541,22 @@ public class LogMinerDmlParser implements DmlParser {
 
         int index = start;
         String currentColumnName = null;
+        StringBuilder collectedValue = null;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
+            if (inSingleQuote) {
+                if (c != '\'') {
+                    collectedValue.append(c);
+                }
+                else {
+                    if (lookAhead == '\'') {
+                        collectedValue.append('\'');
+                        index = index + 1;
+                        continue;
+                    }
+                }
+            }
             if (c == '"' && inColumnName) {
                 // Where clause column names are double-quoted
                 if (inDoubleQuote) {
@@ -544,7 +593,8 @@ public class LogMinerDmlParser implements DmlParser {
                     inSingleQuote = false;
                     if (nested == 0) {
                         int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
-                        values[position] = sql.substring(start + 1, index);
+                        values[position] = collectedValue.toString();
+                        collectedValue = null;
                         start = index + 1;
                         inColumnValue = false;
                         inColumnName = false;
@@ -555,6 +605,7 @@ public class LogMinerDmlParser implements DmlParser {
                     start = index;
                 }
                 inSingleQuote = true;
+                collectedValue = new StringBuilder();
             }
             else if (inColumnValue && !inSingleQuote) {
                 if (!inSpecial) {
