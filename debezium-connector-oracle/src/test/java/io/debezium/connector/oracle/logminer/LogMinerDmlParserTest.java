@@ -264,6 +264,31 @@ public class LogMinerDmlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-4891")
+    public void testEscapedSingleQuote() throws Exception {
+        final Table table = Table.editor()
+                .tableId(new TableId(null, "UNKNOWN", "TABLE"))
+                .addColumn(Column.editor().name("COL1").create())
+                .create();
+
+        String sql = "update \"UNKNOWN\".\"TABLE\" set \"COL1\" = 'I love ''Debezium''' where \"COL1\" = 'Use ''streams'' my friends'";
+
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getNewValues()).hasSize(1);
+        assertThat(entry.getNewValues()[0]).isEqualTo("I love 'Debezium'");
+        assertThat(entry.getOldValues()).hasSize(1);
+        assertThat(entry.getOldValues()[0]).isEqualTo("Use 'streams' my friends");
+
+        sql = "insert into \"UNKNOWN\".\"TABLE\" (\"COL1\") values ('''Debezium'' rulez')'";
+
+        entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getNewValues()).hasSize(1);
+        assertThat(entry.getNewValues()[0]).isEqualTo("'Debezium' rulez");
+    }
+
+    @Test
     @FixFor("DBZ-3305")
     public void testParsingUpdateWithNoWhereClauseFunctionAsLastColumn() throws Exception {
         final Table table = Table.editor()
@@ -351,24 +376,24 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
-        assertThat(entry.getNewValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Bob's dog");
         assertThat(entry.getNewValues()[1]).isEqualTo("0");
 
         sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = '1' where \"COL1\" = 'Bob''s dog' and \"COL2\" = '0';";
         entry = fastDmlParser.parse(sql, table);
         assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
-        assertThat(entry.getOldValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getOldValues()[0]).isEqualTo("Bob's dog");
         assertThat(entry.getOldValues()[1]).isEqualTo("0");
         assertThat(entry.getNewValues()).hasSize(2);
-        assertThat(entry.getNewValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Bob's dog");
         assertThat(entry.getNewValues()[1]).isEqualTo("1");
 
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"COL1\" = 'Bob''s dog' and \"COL2\" = '1';";
         entry = fastDmlParser.parse(sql, table);
         assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
         assertThat(entry.getOldValues()).hasSize(2);
-        assertThat(entry.getOldValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getOldValues()[0]).isEqualTo("Bob's dog");
         assertThat(entry.getOldValues()[1]).isEqualTo("1");
         assertThat(entry.getNewValues()).isEmpty();
     }
