@@ -130,6 +130,7 @@ public class CloudEventsConverter implements Converter {
 
     private Converter avroConverter;
     private List<String> schemaRegistryUrls;
+    private SchemaNameAdjuster schemaNameAdjuster;
 
     public CloudEventsConverter() {
         this(null);
@@ -149,6 +150,7 @@ public class CloudEventsConverter implements Converter {
         CloudEventsConverterConfig ceConfig = new CloudEventsConverterConfig(conf);
         ceSerializerType = ceConfig.cloudeventsSerializerType();
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
+        schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
 
         boolean usingAvro = false;
 
@@ -412,7 +414,6 @@ public class CloudEventsConverter implements Converter {
     }
 
     private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, String dataSchema, Object serializedData) {
-        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
         Struct source = parser.source();
         Schema sourceSchema = parser.source().schema();
         final Struct transaction = parser.transaction();
