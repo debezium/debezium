@@ -21,6 +21,7 @@ import io.debezium.testing.system.tools.kafka.OcpKafkaConnectDeployer;
 import io.debezium.testing.system.tools.kafka.OcpKafkaController;
 import io.debezium.testing.system.tools.kafka.OcpKafkaDeployer;
 import io.debezium.testing.system.tools.kafka.StrimziOperatorController;
+import io.debezium.testing.system.tools.kafka.builders.kafkaconnect.OcpKafkaConnectBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.TestFixture;
@@ -80,18 +81,21 @@ public class OcpKafka extends TestFixture {
     }
 
     private void deployConnectCluster(StrimziOperatorController operatorController) throws InterruptedException {
-        String yamlDescriptor = KAFKA_CONNECT;
+        OcpKafkaConnectBuilder kafkaConnectBuilder = new OcpKafkaConnectBuilder();
 
         if (ConfigProperties.STRIMZI_KC_BUILD) {
-            yamlDescriptor = KAFKA_CONNECT_BUILD;
+            kafkaConnectBuilder = kafkaConnectBuilder.withKcBuildSetup();
             deployArtifactServer();
+        }
+        else {
+            kafkaConnectBuilder = kafkaConnectBuilder.withNonKcBuildSetup();
         }
 
         OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer.Builder()
                 .withOcpClient(ocp)
                 .withHttpClient(new OkHttpClient())
                 .withProject(project)
-                .withYamlPath(yamlDescriptor)
+                .withKafkaConnectBuilder(kafkaConnectBuilder)
                 .withCfgYamlPath(KAFKA_CONNECT_LOGGING)
                 .withConnectorResources(ConfigProperties.STRIMZI_OPERATOR_CONNECTORS)
                 .withOperatorController(operatorController)
