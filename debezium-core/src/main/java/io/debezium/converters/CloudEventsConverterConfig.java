@@ -10,6 +10,7 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.storage.ConverterConfig;
 
+import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.converters.spi.SerializerType;
 
 /**
@@ -25,6 +26,12 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     public static final String CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT = "json";
     private static final String CLOUDEVENTS_DATA_SERIALIZER_TYPE_DOC = "Specify a serializer to serialize the data field of CloudEvents values";
 
+    public static final String CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG = "schema.name.adjustment.mode";
+    public static final String CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT = "avro";
+    private static final String CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC = "Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including:"
+            + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
+            + "'none' does not apply any adjustment";
+
     private static final ConfigDef CONFIG;
 
     static {
@@ -34,6 +41,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_SERIALIZER_TYPE_DOC);
         CONFIG.define(CLOUDEVENTS_DATA_SERIALIZER_TYPE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT, ConfigDef.Importance.HIGH,
                 CLOUDEVENTS_DATA_SERIALIZER_TYPE_DOC);
+        CONFIG.define(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT, ConfigDef.Importance.LOW,
+                CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC);
     }
 
     public static ConfigDef configDef() {
@@ -60,5 +69,14 @@ public class CloudEventsConverterConfig extends ConverterConfig {
      */
     public SerializerType cloudeventsDataSerializerTypeConfig() {
         return SerializerType.withName(getString(CLOUDEVENTS_DATA_SERIALIZER_TYPE_CONFIG));
+    }
+
+    /**
+     * Return which adjustment mode is used to build message schema names.
+     *
+     * @return schema name adjustment mode
+     */
+    public SchemaNameAdjustmentMode schemaNameAdjustmentMode() {
+        return SchemaNameAdjustmentMode.parse(getString(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG));
     }
 }
