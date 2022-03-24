@@ -7,6 +7,7 @@ package io.debezium.testing.system.fixtures.kafka;
 
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_CRD_VERSION;
 
+import io.debezium.testing.system.tools.kafka.builders.kafkaconnect.OcpKafkaConnectBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
