@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
 import io.debezium.testing.system.tools.Deployer;
-import io.debezium.testing.system.tools.YAML;
+import io.debezium.testing.system.tools.kafka.builders.kafka.OcpKafkaBuilder;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -92,15 +92,14 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
      */
     @Override
     public OcpKafkaController deploy() throws InterruptedException {
-        LOGGER.info("Deploying Kafka from " + yamlPath);
-        Kafka kafka = YAML.fromResource(yamlPath, Kafka.class);
-        KafkaBuilder builder = new KafkaBuilder(kafka);
+        LOGGER.info("Deploying Kafka with default config");
+        KafkaBuilder builder = new OcpKafkaBuilder().withDefaults();
 
         if (pullSecretName != null) {
             configurePullSecret(builder);
         }
 
-        kafka = kafkaOperation().createOrReplace(builder.build());
+        Kafka kafka = kafkaOperation().createOrReplace(builder.build());
 
         OcpKafkaController controller = new OcpKafkaController(kafka, operatorController, ocp);
         controller.waitForCluster();

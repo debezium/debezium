@@ -17,6 +17,7 @@ import io.debezium.testing.system.tools.kafka.OcpKafkaConnectController;
 import io.debezium.testing.system.tools.kafka.OcpKafkaConnectDeployer;
 import io.debezium.testing.system.tools.kafka.OcpKafkaDeployer;
 import io.debezium.testing.system.tools.kafka.StrimziOperatorController;
+import io.debezium.testing.system.tools.kafka.builders.kafkaconnect.OcpKafkaConnectBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import okhttp3.OkHttpClient;
@@ -65,18 +66,21 @@ public interface OcpKafka extends KafkaSetupFixture, KafkaRuntimeFixture, OcpCli
     default KafkaConnectController deployKafkaConnectCluster(OpenShiftClient ocp,
                                                              StrimziOperatorController operatorController)
             throws InterruptedException {
-        String yamlDescriptor = KAFKA_CONNECT;
+        OcpKafkaConnectBuilder kafkaConnectBuilder = new OcpKafkaConnectBuilder();
 
         if (ConfigProperties.STRIMZI_KC_BUILD) {
-            yamlDescriptor = KAFKA_CONNECT_BUILD;
+            kafkaConnectBuilder = kafkaConnectBuilder.withKcBuildSetup();
             deployArtifactServer(ocp);
+        }
+        else {
+            kafkaConnectBuilder = kafkaConnectBuilder.withNonKcBuildSetup();
         }
 
         OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer.Builder()
                 .withOcpClient(ocp)
                 .withHttpClient(new OkHttpClient())
                 .withProject(ConfigProperties.OCP_PROJECT_DBZ)
-                .withYamlPath(yamlDescriptor)
+                .withKafkaConnectBuilder(ConfigProperties.STRIMZI_KC_BUILD ? kafkaConnectBuilder.withKcBuildSetup() : kafkaConnectBuilder.withNonKcBuildSetup())
                 .withCfgYamlPath(KAFKA_CONNECT_LOGGING)
                 .withConnectorResources(ConfigProperties.STRIMZI_OPERATOR_CONNECTORS)
                 .withOperatorController(operatorController)

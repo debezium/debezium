@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.YAML;
+import io.debezium.testing.system.tools.kafka.builders.kafkaconnect.OcpKafkaConnectBuilder;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -39,7 +40,6 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
     public static class Builder implements Deployer.Builder<Builder, OcpKafkaConnectDeployer> {
 
         private String project;
-        private String yamlPath;
         private OpenShiftClient ocpClient;
         private OkHttpClient httpClient;
         private String cfgYamlPath;
@@ -47,6 +47,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         private boolean exposedMetrics;
         private boolean exposedApi;
         private StrimziOperatorController operatorController;
+        private OcpKafkaConnectBuilder kafkaConnectBuilder;
 
         public OcpKafkaConnectDeployer.Builder withProject(String project) {
             this.project = project;
@@ -63,8 +64,8 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
             return this;
         }
 
-        public OcpKafkaConnectDeployer.Builder withYamlPath(String yamlPath) {
-            this.yamlPath = yamlPath;
+        public OcpKafkaConnectDeployer.Builder withKafkaConnectBuilder(OcpKafkaConnectBuilder ocpKafkaConnectBuilder) {
+            this.kafkaConnectBuilder = ocpKafkaConnectBuilder;
             return this;
         }
 
@@ -97,7 +98,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         public OcpKafkaConnectDeployer build() {
             return new OcpKafkaConnectDeployer(
                     project,
-                    yamlPath,
+                    kafkaConnectBuilder,
                     cfgYamlPath,
                     connectorResources,
                     operatorController,
@@ -105,12 +106,11 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
                     exposedMetrics,
                     ocpClient, httpClient);
         }
-
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaConnectDeployer.class);
 
-    private final String yamlPath;
+    private final OcpKafkaConnectBuilder kafkaConnectBuilder;
     private final String cfgYamlPath;
     private final boolean connectorResources;
     private final StrimziOperatorController operatorController;
@@ -120,7 +120,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
 
     private OcpKafkaConnectDeployer(
                                     String project,
-                                    String yamlPath,
+                                    OcpKafkaConnectBuilder kafkaConnectBuilder,
                                     String cfgYamlPath,
                                     boolean connectorResources,
                                     StrimziOperatorController operatorController,
@@ -129,7 +129,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
                                     OpenShiftClient ocp,
                                     OkHttpClient http) {
         super(project, ocp, http);
-        this.yamlPath = yamlPath;
+        this.kafkaConnectBuilder = kafkaConnectBuilder;
         this.cfgYamlPath = cfgYamlPath;
         this.connectorResources = connectorResources;
         this.operatorController = operatorController;
@@ -144,29 +144,26 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
      */
     @Override
     public OcpKafkaConnectController deploy() throws InterruptedException {
-        LOGGER.info("Deploying KafkaConnect from " + yamlPath);
-
-        KafkaConnect kafkaConnect = YAML.fromResource(yamlPath, KafkaConnect.class);
-        Build kcBuild = kafkaConnect.getSpec().getBuild();
-        KafkaConnectBuilder kcBuilder = new KafkaConnectBuilder(kafkaConnect);
+        LOGGER.info("Deploying KafkaConnect");
+        Build kcBuild = kafkaConnectBuilder.buildSpec().getBuild();
 
         if (cfgYamlPath != null) {
             deployConfigMap();
         }
 
         if (connectorResources) {
-            configureConnectorResources(kcBuilder);
+            configureConnectorResources(kafkaConnectBuilder);
         }
 
         if (pullSecretName != null) {
-            configurePullSecret(kcBuilder, kcBuild);
+            configurePullSecret(kafkaConnectBuilder, kcBuild);
         }
 
         if (kcBuild != null && "imagestream".equals(kcBuild.getOutput().getType())) {
             deployImageStream(kcBuild);
         }
 
-        kafkaConnect = kcBuilder.build();
+        KafkaConnect kafkaConnect = kafkaConnectBuilder.build();
         kafkaConnect = kafkaConnectOperation().createOrReplace(kafkaConnect);
 
         OcpKafkaConnectController controller = new OcpKafkaConnectController(
