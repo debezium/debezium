@@ -69,6 +69,7 @@ Christopher Burch
 Christopher Sang
 Chuck Ha
 Claus Guttesen
+Clément Loiselet
 Cliff Wheadon
 Collin Van Dyck
 Cory Harper
@@ -186,6 +187,7 @@ Jork Zijlstra
 Jorn Argelo
 Jos Huiting
 Jose Luis
+Jose Luis Sánchez
 Josh Arenberg
 Josh Ribera
 Josh Stanfield
@@ -357,6 +359,7 @@ Victor Xiang
 Vivek Wassan
 Vladimir Osin
 Vojtech Juranek
+Vojtěch Juránek
 Wang-Yu-Chao
 WenChao Ke
 Wei Wu
