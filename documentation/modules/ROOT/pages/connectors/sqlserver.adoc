@@ -2095,6 +2095,14 @@ The connector is also unable to recover its database history topic.
 ====
 
 
+|[[sqlserver-property-schema-include-list]]<<sqlserver-property-schema-include-list, `+schema.include.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
+
+|[[sqlserver-property-schema-exclude-list]]<<sqlserver-property-schema-exclude-list, `+schema.exclude.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
+
 |[[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list, `+table.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables that you want {prodname} to capture; any table that is not included in `table.include.list` is excluded from capture. Each identifier is of the form _schemaName_._tableName_.
