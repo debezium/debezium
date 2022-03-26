@@ -17,7 +17,7 @@ ifdef::community[]
 :source-highlighter: highlight.js
 
 toc::[]
-
+endif::community[]
 
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas as well as changes to the data in tables. MySQL uses the binlog for replication and recovery.
 
@@ -2894,7 +2894,7 @@ The {prodname} MySQL connector provides three types of metrics that are in addit
 * xref:{link-mysql-connector}#mysql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is reading the binlog.
 * xref:{link-mysql-connector}#mysql-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
-xref:{link-debezium-monitoring}[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
 // Type: reference
 // ModuleID: monitoring-debezium-during-snapshots-of-mysql-databases
