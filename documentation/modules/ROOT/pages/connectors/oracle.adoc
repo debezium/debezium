@@ -1913,7 +1913,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 // Type: procedure
 [id="using-streams-to-deploy-debezium-oracle-connectors"]
 === Using {StreamsName} to deploy a {prodname} Oracle connector
-
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
 
 // Type: procedure
@@ -1942,8 +1941,8 @@ You then need to create the following custom resources (CRs):
 
 * You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
 
-* You have a copy of the Oracle JDBC driver.
-You must obtain a copy of the Oracle JDBC driver that to enable {prodname} to connect to an Oracle database.
+* The Kafka Connect server has access to Maven Central to download the required JDBC driver for Oracle.
+  You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
 +
 For more information, see xref:{link-oracle-connector}#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 
@@ -2122,31 +2121,13 @@ endif::product[]
 [id="obtaining-the-oracle-jdbc-driver"]
 === Obtaining the Oracle JDBC driver
 
-Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
-The following steps describe how to obtain the driver and make it available in your environment.
+Due to licensing requirements, the Oracle JDBC driver file that {prodname} requires to connect to an Oracle database is not included in the {prodname} Oracle connector archive.
 ifdef::product[]
+The driver is available for download from Maven Central.
+Depending on the deployment method that you use, you retrieve the driver by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
 
-There are two methods for obtaining the driver, depending on the deployment method that you use.
-
-* If you xref:openshift-streams-oracle-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image], add an artifact reference to the `KafkaConnect` custom resource and then add the location of the artifact as the `url` value.
-* If you xref:deploying-debezium-oracle-connectors[use a Dockerfile to build the connector], download the required driver file directly from Oracle and add it to your Kafka Connect environment.
-
-.Procedure
-
-. Complete one of the following procedures, depending on your deployment type:
-** If you use {StreamsName} to deploy the connector:
-.. In the YAML for the `KafkaConnector` custom resource (CR), add the following URL path for the driver to the `artifacts.url` field for the `debezium-connector-oracle` artifact:
-+
-[source,shell,subs="attributes+"]
-----
-https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar
-----
-+
-For more information about the YAML file for the `KafkaConnector` CR, see xref:openshift-streams-oracle-connector-deployment[Using {StreamsName} to deploy a {prodname} Oracle connector].
-
-** If you use a Dockerfile to deploy the connector:
-.. From a browser, link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[download the 'ojdbc8.jar' from Maven Central].
-.. Copy the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file (that is, `debezium-connector-oracle-{debezium-version}.jar`).
+* If you xref:openshift-streams-oracle-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image], add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource.
+* If you xref:deploying-debezium-oracle-connectors[use a Dockerfile to build the connector], use a `curl` command in the Dockerfile to obtain the required driver file from Maven Central.
 
 endif::product[]
 ifdef::community[]
@@ -2588,13 +2569,6 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 |[[oracle-property-binary-handling-mode]]<<oracle-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
 |Specifies how binary (`blob`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
-
-|[[oracle-property-schema-name-adjustment-mode]]<<oracle-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
-|avro
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
-
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `none` does not apply any adjustment. +
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
