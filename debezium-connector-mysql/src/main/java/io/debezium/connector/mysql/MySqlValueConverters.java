@@ -390,6 +390,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
         });
     }
 
+    @Override
+    protected Object convertInteger(Column column, Field fieldDefn, Object data) {
+        // MySQL allows decimal default values for integer columns
+        if (data instanceof String) {
+            data = Math.round(Double.parseDouble((String) data));
+        }
+
+        return super.convertInteger(column, fieldDefn, data);
+    }
+
     /**
      * Convert the {@link String} or {@code byte[]} value to a string value used in a {@link SourceRecord}.
      *
