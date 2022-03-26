@@ -1653,22 +1653,13 @@ For information about how to obtain the driver, see xref:obtaining-the-db2-jdbc-
 [id="obtaining-the-db2-jdbc-driver"]
 === Obtaining the Db2 JDBC driver
 
-Due to licensing requirements, the Db2 JDBC driver file is not included in the {prodname} Db2 connector archive.
-Regardless of the deployment method that you use, you must download the driver file to complete the deployment.
+Due to licensing requirements, the Db2 JDBC driver file that {prodname} requires to connect to an Db2 database is not included in the {prodname} Db2 connector archive.
+The driver is available for download from Maven Central.
+Depending on the deployment method that you use, you retrieve the driver by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
 
-The following steps describe how to obtain the driver and use it your your environment.
+* If you xref:openshift-streams-db2-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image], add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource.
+* If you xref:deploying-debezium-db2-connectors[use a Dockerfile to build the connector], add a `curl` command in the Dockerfile to obtain the required driver file from Maven Central.
 
-.Procedure
-
-. From a browser, navigate to the link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[IBM Support site] and download the JDBC driver that matches your version of Db2.
-
-* If you xref:deploying-debezium-db2-connectors[use a Dockerfile to build the connector], copy the downloaded driver file to the directory that contains the {prodname} Db2 connector JAR file (that is, `debezium-connector-db2-{debezium-version}.jar`).
-
-* If you xref:openshift-streams-db2-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image]:
-.. Deploy the driver to a Maven repository or to another HTTP server that is available to your OpenShift cluster.
-.. Add the artifact URL to the `KafkaConnect` custom resource.
-
-After you apply the `KafkaConnector` resource to deploy the connector, the connector is configured to use the specified driver.
 
 // Type: concept
 [id="openshift-streams-db2-connector-deployment"]
@@ -1706,8 +1697,8 @@ For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOp
 
 * Podman or Docker is installed.
 
-* You obtained the required link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2].
-
+* The Kafka Connect server has access to Maven Central to download the required JDBC driver for Db2.
+  You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
 * You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
 
 .Procedure
@@ -2155,13 +2146,6 @@ The following example sets the message key for the tables `inventory.customers` 
  +
 In the preceding example, the columns `pk1` and `pk2` are specified as the message key for the table `inventory.customer`.
 For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as the message key.
-
-|[[db2-property-schema-name-adjustment-mode]]<<db2-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
-|avro
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
-
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `none` does not apply any adjustment. +
 |===
 
 [id="db2-advanced-configuration-properties"]

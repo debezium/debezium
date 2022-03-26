@@ -3,6 +3,9 @@ The current preferred method for deploying connectors on OpenShift is to use a b
 
 During the build process, the {kafka-streams} Operator transforms input parameters in a `KafkaConnect` custom resource, including {prodname} connector definitions, into a Kafka Connect container image.
 The build downloads the necessary artifacts from the Red Hat Maven repository or another configured HTTP server.
+ifeval::["{context}" == "oracle"]
+You can also configure the custom resource to download the Oracle JDBC driver, which is not included in the connector archive.  
+endif::[]
 The newly created container is pushed to the container registry that is specified in `.spec.build.output`, and is used to deploy a Kafka Connect pod.
 After {StreamsName} builds the Kafka Connect image, you create `KafkaConnector` custom resources to start the connectors that are included in the build.
 
@@ -32,71 +35,7 @@ Save the file with a name such as `dbz-connect.yaml`.
 +
 .A `dbz-connect.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
 =====================================================================
-[source%nowrap,yaml,subs="+attributes,+quotes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnect
-metadata:
-  name: debezium-kafka-connect-cluster
-  annotations:
-    strimzi.io/use-connector-resources: "true" // <1>
-spec:
-  version: 3.00
-  build: // <2>
-    output: // <3>
-      type: imagestream  // <4>
-      image: debezium-streams-connect:latest
-    plugins: // <5>
-      - name: debezium-connector-{connector-file}
-        artifacts:
-          - type: zip // <6>
-            url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip  // <7>
-          - type: zip
-            url: {red-hat-maven-repository}apicurio/apicurio-registry-distro-connect-converter/{registry-version}-redhat-_<build-number>_/apicurio-registry-distro-connect-converter-{registry-version}-redhat-_<build-number>_.zip
-          - type: zip
-            url: {red-hat-maven-repository}debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.zip
-
-  bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
-----
-.Descriptions of Kafka Connect configuration settings
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
-
-|1
-| Sets the `strimzi.io/use-connector-resources` annotation to `"true"` to enable the Cluster Operator to use `KafkaConnector` resources to configure connectors in this Kafka Connect cluster.
-
-|2
-|The `spec.build` configuration specifies where to store the build image and lists the plug-ins to include in the image, along with the location of the plug-in artifacts.
-
-|3
-|The `build.output` specifies the registry in which the newly built image is stored.
-
-|4
-|Specifies the name and image name for the image output.
-Valid values for `output.type` are `docker` to push into a container registry like Docker Hub or Quay, or `imagestream` to push the image to an internal OpenShift ImageStream.
-To use an ImageStream, an ImageStream resource must be deployed to the cluster.
-For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkStreamsOpenShift}#type-Build-reference[{StreamsName} Build schema reference documentation].
-
-|5
-|The `plugins` configuration lists all of the connectors that you want to include in the Kafka Connect image.
-For each entry in the list, specify a plug-in `name`, and information for about the artifacts that are required to build the connector.
-Optionally, for each connector plug-in, you can include other components that you want to be available for use with the connector.
-For example, you can add Service Registry artifacts, or the {prodname} scripting component.
-
-|6
-|The value of `artifacts.type` specifies the file type of the artifact specified in the `artifacts.url`.
-Valid types are `zip`, `tgz`, or `jar`.
-{prodname} connector archives are provided in `.zip` file format.
-JDBC driver files are in `.jar` format.
-The `type` value must match the type of the file that is referenced in the `url` field.
-
-|7
-|The value of `artifacts.url` specifies the address of an HTTP server, such as a Maven repository, that stores the file for the connector artifact.
-The OpenShift cluster must have access to the specified server.
-
-|===
-=====================================================================
+include::../{partialsdir}/modules/all-connectors/ref-deploy-{context}-kafka-connect-yaml.adoc[]
 
 . Apply the `KafkaConnect` build specification to the OpenShift cluster by entering the following command:
 +
@@ -112,7 +51,7 @@ The connector artifacts that you listed in the configuration are available in th
 . Create a `KafkaConnector` resource to define an instance of each connector that you want to deploy. +
 For example, create the following `KafkaConnector` CR, and save it as `{context}-inventory-connector.yaml`
 +
-.A `{context}-inventory-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
+.`{context}-inventory-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
 =====================================================================
 
 [source,yaml,subs="+attributes"]
