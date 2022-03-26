@@ -530,6 +530,19 @@ public class MySqlDefaultValueTest {
     }
 
     @Test
+    @FixFor("DBZ-3541")
+    public void shouldRoundIntExpressedAsDecimal() {
+        String ddl = "CREATE TABLE int_as_decimal (col1 INT DEFAULT '0.0', col2 INT DEFAULT '1.5')";
+
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "int_as_decimal"));
+
+        assertThat(getColumnSchema(table, "col1").defaultValue()).isEqualTo(0);
+        assertThat(getColumnSchema(table, "col2").defaultValue()).isEqualTo(2);
+    }
+
+    @Test
     @FixFor("DBZ-3989")
     public void shouldTrimNumericalDefaultValueAndShouldNotTrimNonNumericalDefaultValue() {
         String ddl = "CREATE TABLE data(id INT DEFAULT '1 ', data VARCHAR(3) DEFAULT ' 3 ')";
