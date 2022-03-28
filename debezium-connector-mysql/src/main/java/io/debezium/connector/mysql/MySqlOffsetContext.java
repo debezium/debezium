@@ -409,11 +409,11 @@ public class MySqlOffsetContext implements OffsetContext {
      * Given the row number within a binlog event and the total number of rows in that event, compute the
      * Kafka Connect offset that is be included in the produced change event describing the row.
      * <p>
-     * This method should always be called before {@link #struct()}.
+     * This method should always be called before {@link SourceInfo#struct()}.
      *
      * @param eventRowNumber the 0-based row number within the event for which the offset is to be produced
      * @param totalNumberOfRows the total number of rows within the event being processed
-     * @see #struct()
+     * @see SourceInfo#struct()
      */
     public void setRowNumber(int eventRowNumber, int totalNumberOfRows) {
         sourceInfo.setRowNumber(eventRowNumber);

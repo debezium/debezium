@@ -141,8 +141,6 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
 
     /**
      * Initialize DB to JDBC data types mapping for resolver.
-     *
-     * @param dataTypeResolver data type resolver
      */
     protected abstract DataTypeResolver initializeDataTypeResolver();
 
