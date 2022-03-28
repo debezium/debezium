@@ -20,8 +20,8 @@ final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
     }
 
     /**
-     * Determine whether the first {@link #offset() offset} is at or before the point in time of the second
-     * offset, where the offsets are given in JSON representation of the maps returned by {@link #offset()}.
+     * Determine whether the first offset is at or before the point in time of the second
+     * offset, where the offsets are given in JSON representation of the maps returned by {@link MySqlOffsetContext#getOffset()}.
      * <p>
      * This logic makes a significant assumption: once a MySQL server/cluster has GTIDs enabled, they will
      * never be disabled. This is the only way to compare a position with a GTID to a position without a GTID,
@@ -33,8 +33,6 @@ final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
      * @param recorded the position obtained from recorded history; never null
      * @param desired the desired position that we want to obtain, which should be after some recorded positions,
      *            at some recorded positions, and before other recorded positions; never null
-     * @param gtidFilter the predicate function that will return {@code true} if a GTID source is to be included, or
-     *            {@code false} if a GTID source is to be excluded; may be null if no filtering is to be done
      * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
      */
     @Override

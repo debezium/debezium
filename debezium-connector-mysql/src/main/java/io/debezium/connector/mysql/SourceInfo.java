@@ -22,7 +22,7 @@ import io.debezium.relational.TableId;
 /**
  * Information about the source of information, which includes the position in the source binary log we have previously processed.
  * <p>
- * The {@link MySqlOffsetContext#getPartition() source partition} information describes the database whose log is being consumed. Typically, the
+ * The {@link MySqlPartition#getSourcePartition() source partition} information describes the database whose log is being consumed. Typically, the
  * database is identified by the host address port number of the MySQL server and the name of the database. Here's a JSON-like
  * representation of an example database:
  *
@@ -33,11 +33,9 @@ import io.debezium.relational.TableId;
  * </pre>
  *
  * <p>
- * The {@link MySqlOffsetContext#getOffset() source offset} information is included in each event and captures where the connector should restart
- * if this event's offset is the last one recorded. The offset includes the {@link #binlogFilename() binlog filename},
- * the {@link #binlogPosition() position of the first event} in the binlog, the
- * {@link #eventsToSkipUponRestart() number of events to skip}, and the
- * {@link #rowsToSkipUponRestart() number of rows to also skip}.
+ * The offset includes the {@link #binlogFilename() binlog filename}, the {@link #binlogPosition() position of the first event} in the binlog, the
+ * {@link MySqlOffsetContext#eventsToSkipUponRestart() number of events to skip}, and the
+ * {@link MySqlOffsetContext#rowsToSkipUponRestart() number of rows to also skip}.
  * <p>
  * Here's a JSON-like representation of an example offset:
  *
@@ -60,8 +58,8 @@ import io.debezium.relational.TableId;
  * timestamp, but that timestamp is the <em>milliseconds</em> since since Jan 1, 1970.
  * <p>
  * Each change event envelope also includes the {@link #struct() source} struct that contains MySQL information about that
- * particular event, including a mixture the fields from the {@link MySqlOffsetContext#getPartition() partition} (which is renamed in the source to
- * make more sense), the binlog filename and position where the event can be found, and when GTIDs are enabled the GTID of the
+ * particular event, including a mixture the fields from the binlog filename and position where the event can be found,
+ * and when GTIDs are enabled the GTID of the
  * transaction in which the event occurs. Like with the offset, the "{@code snapshot}" field only appears for events produced
  * when the connector is in the middle of a snapshot. Note that this information is likely different than the offset information,
  * since the connector may need to restart from either just after the most recently completed transaction or the beginning
@@ -225,7 +223,7 @@ public final class SourceInfo extends BaseSourceInfo {
     /**
      * Get the name of the MySQL binary log file that has last been processed.
      *
-     * @return the name of the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
+     * @return the name of the binary log file; null if it has not been {@link MySqlOffsetContext#setBinlogStartPoint(String, long) set}
      */
     public String binlogFilename() {
         return currentBinlogFilename;
@@ -234,7 +232,7 @@ public final class SourceInfo extends BaseSourceInfo {
     /**
      * Get the position within the MySQL binary log file of the next event to be processed.
      *
-     * @return the position within the binary log file; null if it has not been {@link #setBinlogStartPoint(String, long) set}
+     * @return the position within the binary log file; null if it has not been {@link MySqlOffsetContext#setBinlogStartPoint(String, long) set}
      */
     public long binlogPosition() {
         return currentBinlogPosition;
