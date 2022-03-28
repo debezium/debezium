@@ -19,9 +19,11 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
@@ -245,7 +247,7 @@ public final class TestHelper {
 
     protected static Set<String> schemaNames() throws SQLException {
         try (PostgresConnection connection = create()) {
-            return connection.readAllSchemaNames(Filters.IS_SYSTEM_SCHEMA.negate());
+            return connection.readAllSchemaNames(((Predicate<String>) Arrays.asList("pg_catalog", "information_schema")::contains).negate());
         }
     }
 

@@ -1421,10 +1421,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private static class SystemTablesPredicate implements TableFilter {
         protected static final List<String> SYSTEM_SCHEMAS = Arrays.asList("pg_catalog", "information_schema");
+        // these are tables that may be placed in the user's schema but are system tables. This typically includes modules
+        // that install system tables such as the GEO module
+        protected static final List<String> SYSTEM_TABLES = Arrays.asList("spatial_ref_sys");
+        protected static final String TEMP_TABLE_SCHEMA_PREFIX = "pg_temp";
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase());
+            return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
+                    !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
+                    !t.schema().startsWith(TEMP_TABLE_SCHEMA_PREFIX);
         }
     }
 }
