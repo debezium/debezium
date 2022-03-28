@@ -214,6 +214,10 @@ The source configuration uses the same configuration properties that are describ
 |
 |(Optional)  If using Redis to store offsets, a password (of respective user) used to communicate with Redis. A password must be set if a user is set. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.password`
 
+|[[redis-ssl-enabled]]<<redis-ssl-enabled, `debezium.source.offset.storage.redis.ssl.enabled`>>
+|
+|(Optional)  If using Redis to store offsets, whether or not to use SSL to communicate with Redis. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.ssl.enabled`. Default is 'false'
+
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
 |`io.debezium.relational.history.KafkaDatabaseHistory`
@@ -240,6 +244,10 @@ There are also other options available
 |[[debezium-source-database-history-redis-password]]<<debezium-source-database-history-redis-password, `debezium.source.database.history.redis.password`>>
 |
 |The Redis password to use if using `RedisDatabaseHistory`.
+
+|[[debezium-source-database-history-redis-ssl-enabled]]<<debezium-source-database-history-redis-ssl-enabled, `debezium.source.database.history.redis.ssl.enabled`>>
+|
+|Use SSL connection if using `RedisDatabaseHistory`.
 
 |[[debezium-source-database-history-redis-key]]<<debezium-source-database-history-redis-key, `debezium.source.database.history.redis.key`>>
 |
@@ -676,6 +684,10 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |[[redis-password]]<<redis-password, `debezium.sink.redis.password`>>
 |
 |(Optional) A password (of respective user) used to communicate with Redis. A password must be set if a user is set.
+
+|[[redis-ssl-enabled]]<<redis-ssl-enabled, `debezium.sink.redis.ssl.enabled`>>
+|
+|(Optional) Use SSL to communicate with Redis. Default 'false'
 
 |[[redis-null-key]]<<redis-null-key, `debezium.sink.redis.null.key`>>
 |`default`

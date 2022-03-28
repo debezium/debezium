@@ -79,7 +79,7 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
         Testing.Print.enable();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final long streamLength = jedis.xlen(STREAM_NAME);
-            return streamLength > 0;
+            return streamLength == 16; // wait until all the DB history of the sample mysql DB has loaded
         });
 
         final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
@@ -132,6 +132,7 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
             return streamLength > 0;
         });
         final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
+        Testing.print(entries);
         Assertions.assertThat(entries.size() == 1).isTrue();
         Assertions.assertThat(entries.get(0).getFields().get("schema")).contains("redis_test");
     }
