@@ -13,7 +13,7 @@ import java.util.Map;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
-public class RedisOffsetTestProfile implements QuarkusTestProfile {
+public class RedisOffsetConfigurationTestProfile implements QuarkusTestProfile {
 
     @Override
     public List<TestResourceEntry> testResources() {
@@ -25,7 +25,6 @@ public class RedisOffsetTestProfile implements QuarkusTestProfile {
         Map<String, String> config = new HashMap<String, String>();
         config.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         config.put("debezium.source.offset.storage", "io.debezium.server.redis.RedisOffsetBackingStore");
-        config.put("debezium.source.offset.storage.redis.address", RedisTestResourceLifecycleManager.getRedisContainerAddress());
         return config;
     }
 

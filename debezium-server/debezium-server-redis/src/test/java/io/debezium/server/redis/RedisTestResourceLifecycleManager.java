@@ -39,7 +39,6 @@ public class RedisTestResourceLifecycleManager implements QuarkusTestResourceLif
 
         Map<String, String> params = new ConcurrentHashMap<>();
         params.put("debezium.sink.type", "redis");
-        params.put("debezium.source.offset.storage.redis.address", RedisTestResourceLifecycleManager.getRedisContainerAddress());
         params.put("debezium.sink.redis.address", RedisTestResourceLifecycleManager.getRedisContainerAddress());
         params.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         params.put("debezium.source.offset.flush.interval.ms", "0");
