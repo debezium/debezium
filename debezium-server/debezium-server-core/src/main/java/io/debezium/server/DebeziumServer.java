@@ -126,6 +126,7 @@ public class DebeziumServer {
         configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.");
         configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.");
         configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.");
+        configToProperties(config, props, PROP_SINK_PREFIX, PROP_SINK_PREFIX);
         final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
         if (transforms.isPresent()) {
             props.setProperty("transforms", transforms.get());

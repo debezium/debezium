@@ -100,6 +100,7 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     public void configure(WorkerConfig config) {
         super.configure(config);
         this.config = config.originalsStrings();
+
         // fetch the properties. as a fallback, if we did not specify the redis address, we will take it and all the credentials from the sink
         this.address = this.config.get(PROP_ADDRESS.name());
         if (this.address == null) {
