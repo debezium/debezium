@@ -25,16 +25,7 @@ A {prodname} connector that is configured to apply the outbox SMT should capture
 For more information, see xref:options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
 
 A connector can capture changes in more than one outbox table only if each outbox table has the same structure.
-ifdef::product[]
-[IMPORTANT]
-====
-The outbox event router SMT is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
-====
-endif::product[]
+
 See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works.
 
 ifdef::community[]
@@ -45,9 +36,7 @@ endif::community[]
 ====
 The outbox event router SMT is not compatible with the MongoDB connector.
 
-ifdef::community[]
-As an alternative, MongoDB users can run the xref:transformations/mongodb-outbox-event-router.adoc[MongoDB outbox event router SMT].
-endif::community[]
+MongoDB users can run the {link-prefix}:{link-mongodb-outbox-event-router}#mongodb-outbox-event-router[MongoDB outbox event router SMT].
 ====
 
 ifdef::product[]
@@ -69,7 +58,7 @@ endif::product[]
 [[example-outbox-message]]
 == Example outbox message
 
-To learn about how to configure the {prodname} outbox event router SMT, consider the following example of a {prodname} outbox message:
+To understand how the {prodname} outbox event router SMT is configured, review the following example of a {prodname} outbox message:
 
 [source,javascript,indent=0]
 ----
@@ -219,10 +208,6 @@ You can use one of the following methods to configure the connector to apply the
 
 The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. An alternative to working with JSON is to use Avro.
 This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
-
-ifdef::product[]
-NOTE: The use of Avro to format the message payload is a Technology Preview feature.
-endif::product[]
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
 One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances.

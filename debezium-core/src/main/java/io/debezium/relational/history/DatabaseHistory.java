@@ -88,7 +88,8 @@ public interface DatabaseHistory {
                             "DELETE FROM mysql.rds_monitor.*," +
                             "FLUSH RELAY LOGS.*," +
                             "flush relay logs.*," +
-                            "SAVEPOINT .*")
+                            "SAVEPOINT .*," +
+                            "^\\s*#.*")
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withDescription("A regular expression to filter out a subset of incoming DDL statements "

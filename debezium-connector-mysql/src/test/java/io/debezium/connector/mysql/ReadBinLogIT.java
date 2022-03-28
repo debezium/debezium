@@ -168,6 +168,14 @@ public class ReadBinLogIT implements Testing {
 
     @Test
     public void shouldCaptureSingleWriteUpdateDeleteEvents() throws Exception {
+        String sslMode = System.getProperty("database.ssl.mode", "disabled");
+
+        // not running this test with SSL, there's enough coverage of that elsewhere and setting up
+        // the plain client with the right config seems not worth the effort
+        if (!sslMode.equals("disabled")) {
+            return;
+        }
+
         startClient();
         // Testing.Print.enable();
         // write/insert
@@ -192,6 +200,14 @@ public class ReadBinLogIT implements Testing {
 
     @Test
     public void shouldCaptureMultipleWriteUpdateDeleteEvents() throws Exception {
+        String sslMode = System.getProperty("database.ssl.mode", "disabled");
+
+        // not running this test with SSL, there's enough coverage of that elsewhere and setting up
+        // the plain client with the right config seems not worth the effort
+        if (!sslMode.equals("disabled")) {
+            return;
+        }
+
         startClient();
         // write/insert as a single transaction
         conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30)",
@@ -231,6 +247,14 @@ public class ReadBinLogIT implements Testing {
 
     @Test
     public void shouldCaptureMultipleWriteUpdateDeletesInSingleEvents() throws Exception {
+        String sslMode = System.getProperty("database.ssl.mode", "disabled");
+
+        // not running this test with SSL, there's enough coverage of that elsewhere and setting up
+        // the plain client with the right config seems not worth the effort
+        if (!sslMode.equals("disabled")) {
+            return;
+        }
+
         startClient();
         // write/insert as a single statement/transaction
         conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30),('Janice',19)");

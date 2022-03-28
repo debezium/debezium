@@ -126,12 +126,13 @@
         <version.sqlserver.driver>9.4.1.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.1.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
-        <version.cassandra.driver>3.11.0</version.cassandra.driver>
+        <version.cassandra.driver>4.14.0</version.cassandra.driver>
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>5.7</version.mysql.server>
         <version.mongo.server>3.6</version.mongo.server>
-        <version.cassandra>3.11.10</version.cassandra>
+        <version.cassandra3>3.11.12</version.cassandra3>
+        <version.cassandra4>4.0.2</version.cassandra4>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
         <version.com.google.protobuf>3.19.2</version.com.google.protobuf>

@@ -11,7 +11,9 @@ import java.sql.SQLException;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
@@ -21,6 +23,8 @@ import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnSslModeRule;
+import io.debezium.connector.mysql.junit.SkipWhenSslModeIsNot;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -30,34 +34,34 @@ import io.debezium.util.Testing;
 /**
  * Integration test for {@link MySqlConnector} using Testcontainers infrastructure for testing column constraints supported in MySQL 8.0.x.
  */
-
+@SkipWhenSslModeIsNot(value = MySqlConnectorConfig.SecureConnectionMode.DISABLED, reason = "Only running with ssl disabled mode")
 public class MySqlParserIT extends AbstractConnectorTest {
 
+    @Rule
+    public TestRule skipTestRule = new SkipTestDependingOnSslModeRule();
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlParserIT.class);
-
-    private static final String MYSQL_IMAGE = ContainerImageVersions.getStableImage("debezium/example-mysql");
-
-    private static final DockerImageName MYSQL_DOCKER_IMAGE_NAME = DockerImageName.parse(MYSQL_IMAGE)
-            .asCompatibleSubstituteFor("mysql");
-
     private static final String DB_NAME = "inventory";
 
-    private static final MySQLContainer<?> mySQLContainer = new MySQLContainer<>(MYSQL_DOCKER_IMAGE_NAME)
-            .withDatabaseName("mysql")
-            .withUsername("mysqluser")
-            .withPassword("mysql")
-            .withClasspathResourceMapping("/docker/conf/mysql.cnf", "/etc/mysql/conf.d/", BindMode.READ_ONLY)
-            .withLogConsumer(new Slf4jLogConsumer(LOGGER))
-            .withExposedPorts(3306)
-            .withNetworkAliases("mysql");
-
+    private MySQLContainer<?> mySQLContainer;
     private Configuration config;
     private String oldContainerPort;
 
     @Before
     public void beforeEach() {
+        String mysqlImage = ContainerImageVersions.getStableImage("debezium/example-mysql");
+        DockerImageName mysqlDockerImageName = DockerImageName.parse(mysqlImage).asCompatibleSubstituteFor("mysql");
+        mySQLContainer = new MySQLContainer<>(mysqlDockerImageName)
+                .withDatabaseName("mysql")
+                .withUsername("mysqluser")
+                .withPassword("mysql")
+                .withClasspathResourceMapping("/docker/conf/mysql.cnf", "/etc/mysql/conf.d/", BindMode.READ_ONLY)
+                .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+                .withExposedPorts(3306)
+                .withNetworkAliases("mysql");
         mySQLContainer.start();
         oldContainerPort = System.getProperty("database.port", "3306");
+
         System.setProperty("database.port", String.valueOf(mySQLContainer.getMappedPort(3306)));
         initializeConnectorTestFramework();
     }

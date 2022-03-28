@@ -6,7 +6,6 @@
 
 package io.debezium.connector.mysql;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -28,6 +27,7 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -51,7 +51,7 @@ public class MySqlConnection extends JdbcConnection {
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
     private static final String QUOTED_CHARACTER = "`";
 
-    protected static final String URL_PATTERN = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
+    protected static final String URL_PATTERN = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
 
     private final Map<String, String> originalSystemProperties = new HashMap<>();
     private final MySqlConnectionConfiguration connectionConfig;
@@ -64,7 +64,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param fieldReader binary or text protocol based readers
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MysqlFieldReader fieldReader) {
-        super(connectionConfig.config(), connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
+        super(connectionConfig.jdbcConfig, connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = connectionConfig;
         this.mysqlFieldReader = fieldReader;
     }
@@ -76,19 +76,6 @@ public class MySqlConnection extends JdbcConnection {
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig) {
         this(connectionConfig, new MysqlTextProtocolFieldReader(null));
-    }
-
-    @Override
-    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
-        if (!isConnected() && connectionConfig.sslModeEnabled()) {
-            originalSystemProperties.clear();
-            // Set the System properties for SSL for the MySQL driver ...
-            setSystemProperty("javax.net.ssl.keyStore", MySqlConnectorConfig.SSL_KEYSTORE, true);
-            setSystemProperty("javax.net.ssl.keyStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
-            setSystemProperty("javax.net.ssl.trustStore", MySqlConnectorConfig.SSL_TRUSTSTORE, true);
-            setSystemProperty("javax.net.ssl.trustStorePassword", MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, false);
-        }
-        return super.connection(executeOnConnect);
     }
 
     @Override
@@ -180,7 +167,7 @@ public class MySqlConnection extends JdbcConnection {
     }
 
     protected void setSystemProperty(String property, Field field, boolean showValueInError) {
-        String value = connectionConfig.config().getString(field);
+        String value = connectionConfig.originalConfig().getString(field);
         if (value != null) {
             value = value.trim();
             String existingValue = System.getProperty(property);
@@ -471,6 +458,10 @@ public class MySqlConnection extends JdbcConnection {
         }
     }
 
+    public MySqlConnectionConfiguration connectionConfig() {
+        return connectionConfig;
+    }
+
     public String connectionString() {
         return connectionString(URL_PATTERN);
     }
@@ -481,7 +472,7 @@ public class MySqlConnection extends JdbcConnection {
         protected static final String JDBC_PROPERTY_CONNECTION_TIME_ZONE = "connectionTimeZone";
         protected static final String JDBC_PROPERTY_LEGACY_SERVER_TIME_ZONE = "serverTimezone";
 
-        private final Configuration jdbcConfig;
+        private final JdbcConfiguration jdbcConfig;
         private final ConnectionFactory factory;
         private final Configuration config;
 
@@ -501,7 +492,22 @@ public class MySqlConnection extends JdbcConnection {
             final Builder jdbcConfigBuilder = dbConfig
                     .edit()
                     .with("connectTimeout", Long.toString(getConnectionTimeout().toMillis()))
-                    .with("useSSL", Boolean.toString(useSSL));
+                    .with("sslMode", sslMode().getValue());
+
+            if (useSSL) {
+                if (!Strings.isNullOrBlank(sslTrustStore())) {
+                    jdbcConfigBuilder.with("trustCertificateKeyStoreUrl", "file:" + sslTrustStore());
+                }
+                if (sslTrustStorePassword() != null) {
+                    jdbcConfigBuilder.with("trustCertificateKeyStorePassword", String.valueOf(sslTrustStorePassword()));
+                }
+                if (!Strings.isNullOrBlank(sslKeyStore())) {
+                    jdbcConfigBuilder.with("clientCertificateKeyStoreUrl", "file:" + sslKeyStore());
+                }
+                if (sslKeyStorePassword() != null) {
+                    jdbcConfigBuilder.with("clientCertificateKeyStorePassword", String.valueOf(sslKeyStorePassword()));
+                }
+            }
 
             final String legacyDateTime = dbConfig.getString(JDBC_PROPERTY_LEGACY_DATETIME);
             if (legacyDateTime == null) {
@@ -513,7 +519,7 @@ public class MySqlConnection extends JdbcConnection {
 
             jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, determineConnectionTimeZone(dbConfig));
 
-            this.jdbcConfig = jdbcConfigBuilder.build();
+            this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
             String driverClassName = this.jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
             factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader());
         }
@@ -537,8 +543,12 @@ public class MySqlConnection extends JdbcConnection {
             return connectionTimeZone != null ? connectionTimeZone : "SERVER";
         }
 
-        public Configuration config() {
+        public JdbcConfiguration config() {
             return jdbcConfig;
+        }
+
+        public Configuration originalConfig() {
+            return config;
         }
 
         public ConnectionFactory factory() {
@@ -568,6 +578,24 @@ public class MySqlConnection extends JdbcConnection {
 
         public boolean sslModeEnabled() {
             return sslMode() != SecureConnectionMode.DISABLED;
+        }
+
+        public String sslKeyStore() {
+            return config.getString(MySqlConnectorConfig.SSL_KEYSTORE);
+        }
+
+        public char[] sslKeyStorePassword() {
+            String password = config.getString(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
+            return Strings.isNullOrBlank(password) ? null : password.toCharArray();
+        }
+
+        public String sslTrustStore() {
+            return config.getString(MySqlConnectorConfig.SSL_TRUSTSTORE);
+        }
+
+        public char[] sslTrustStorePassword() {
+            String password = config.getString(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+            return Strings.isNullOrBlank(password) ? null : password.toCharArray();
         }
 
         public Duration getConnectionTimeout() {

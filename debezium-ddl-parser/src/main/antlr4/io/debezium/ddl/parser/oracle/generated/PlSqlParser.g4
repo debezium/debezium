@@ -575,6 +575,10 @@ sequence_spec
     | NOCACHE
     | ORDER
     | NOORDER
+    | KEEP
+    | NOKEEP
+    | SCALE
+    | NOSCALE
     ;
 
 sequence_start_clause
@@ -2985,7 +2989,7 @@ enable_disable_clause
     ;
 
 using_index_clause
-    : USING INDEX (index_name | '(' create_index ')' | index_attributes )?
+    : USING INDEX (index_name | '(' create_index ')' | index_properties )?
     ;
 
 index_attributes
@@ -3238,7 +3242,7 @@ virtual_column_definition
     ;
 
 identity_clause
-    : GENERATED (ALWAYS | BY DEFAULT (ON NULL_)?)? AS IDENTITY ( '(' (sequence_start_clause | sequence_spec)* ')' )?
+    : GENERATED (ALWAYS | BY DEFAULT (ON NULL_)?)? AS IDENTITY ( '('? (sequence_start_clause | sequence_spec)* ')'? )?
     ;
 
 evaluation_edition_clause

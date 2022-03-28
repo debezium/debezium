@@ -14,9 +14,9 @@ import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.server.TestConfigSource;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
@@ -26,7 +26,8 @@ import io.quarkus.test.junit.TestProfile;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.StreamEntry;
+import redis.clients.jedis.StreamEntryID;
+import redis.clients.jedis.resps.StreamEntry;
 
 /**
  * Integration test that verifies reading and writing offsets from Redis key value store
@@ -35,7 +36,6 @@ import redis.clients.jedis.StreamEntry;
  */
 @QuarkusIntegrationTest
 @TestProfile(RedisOffsetTestProfile.class)
-@QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
 
 public class RedisOffsetIT {
@@ -46,7 +46,7 @@ public class RedisOffsetIT {
     protected static Jedis jedis;
 
     private PostgresConnection getPostgresConnection() {
-        return new PostgresConnection(Configuration.create()
+        return new PostgresConnection(JdbcConfiguration.create()
                 .with("user", PostgresTestResourceLifecycleManager.POSTGRES_USER)
                 .with("password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD)
                 .with("dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME)
@@ -62,7 +62,7 @@ public class RedisOffsetIT {
         Testing.Print.enable();
         final List<StreamEntry> entries = new ArrayList<>();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
-            final List<StreamEntry> response = jedis.xrange(STREAM_NAME, null, null, MESSAGE_COUNT);
+            final List<StreamEntry> response = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null, MESSAGE_COUNT);
             entries.addAll(response);
             return entries.size() >= MESSAGE_COUNT;
         });

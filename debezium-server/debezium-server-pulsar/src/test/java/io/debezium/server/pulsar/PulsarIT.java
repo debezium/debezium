@@ -21,8 +21,8 @@ import org.awaitility.Awaitility;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.server.TestConfigSource;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
@@ -93,7 +93,7 @@ public class PulsarIT {
             records.add(consumer.receive());
             return records.size() >= MESSAGE_COUNT;
         });
-        final Configuration config = Configuration.create()
+        final JdbcConfiguration config = JdbcConfiguration.create()
                 .with("hostname", dbHostname)
                 .with("port", dbPort)
                 .with("user", dbUser)

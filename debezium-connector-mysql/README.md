@@ -77,17 +77,17 @@ This instructs Maven to run the normal Maven lifecycle through `integration-test
 
 ### Using MySQL with GTIDs
 
-By default the build will run a MySQL server instance that is not configured to use GTIDs. However, we've provided a Maven profile that will instead run all the same integration tests against a MySQL instance that does use GTIDs. Simply use the `gtid-mysql` profile on each of your normal Maven commands. For example, to run a build:
+By default the build will run a MySQL server instance that is not configured to use GTIDs. However, we've provided a Maven profile that will instead run all the same integration tests against a MySQL instance that does use GTIDs. Simply use the `mysql-gtids` profile on each of your normal Maven commands. For example, to run a build:
 
-    $ mvn clean install -Pgtid-mysql
+    $ mvn clean install -Pmysql-gtids
 
 or to manually start the Docker container and keep it running:
 
-    $ mvn docker:start -Pgtid-mysql
+    $ mvn docker:start -Pmysql-gtids
 
 or to stop and remove the Docker container:
 
-    $ mvn docker:stop -Pgtid-mysql
+    $ mvn docker:stop -Pmysql-gtids
 
 ### Using an alternative MySQL Server
 

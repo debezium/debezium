@@ -614,7 +614,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .connector(
                     MAX_COPY_THREADS,
                     SNAPSHOT_MODE,
-                    CAPTURE_MODE)
+                    CAPTURE_MODE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE)
             .create();
 
     /**

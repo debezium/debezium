@@ -3,7 +3,7 @@
     <appender name="CONSOLE"
         class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n</pattern>
+            <pattern>%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.taskId}|%X{dbz.connectorContext}|%X{dbz.databaseName}  %m   [%c]%n</pattern>
         </encoder>
     </appender>
 

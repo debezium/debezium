@@ -29,7 +29,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.schema.TopicSelector;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Component that records the schema information for the {@link PostgresConnector}. The schema information contains
@@ -70,7 +69,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
     private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, PostgresValueConverter valueConverter,
                                                             PostgresDefaultValueConverter defaultValueConverter) {
-        return new TableSchemaBuilder(valueConverter, defaultValueConverter, SchemaNameAdjuster.create(),
+        return new TableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjustmentMode().createAdjuster(),
                 config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
                 config.getSanitizeFieldNames(), false);
     }

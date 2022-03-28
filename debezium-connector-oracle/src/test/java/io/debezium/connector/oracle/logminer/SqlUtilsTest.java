@@ -75,7 +75,7 @@ public class SqlUtilsTest {
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.currentRedoLogSequenceQuery();
-        expected = "SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT'";
+        expected = "SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT' ORDER BY SEQUENCE#";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.databaseSupplementalLoggingAllCheckQuery();

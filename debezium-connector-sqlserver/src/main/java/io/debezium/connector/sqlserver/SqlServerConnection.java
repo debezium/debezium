@@ -124,7 +124,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @param classLoaderSupplier class loader supplier
      * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
      */
-    public SqlServerConnection(Configuration config, SourceTimestampMode sourceTimestampMode,
+    public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
                                SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
                                Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode) {
         super(config, createConnectionFactory(multiPartitionMode), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
@@ -182,7 +182,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
      * @param optionRecompile Includes query option RECOMPILE on incremental snapshots
      */
-    public SqlServerConnection(Configuration config, SourceTimestampMode sourceTimestampMode,
+    public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
                                SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
                                Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode, boolean optionRecompile) {
         this(config, sourceTimestampMode, valueConverters, classLoaderSupplier, skippedOperations, multiPartitionMode);

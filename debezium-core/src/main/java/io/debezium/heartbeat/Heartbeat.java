@@ -16,6 +16,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
@@ -128,20 +129,20 @@ public interface Heartbeat {
      * @param topicName topic to which the heartbeat messages will be sent
      * @param key kafka partition key to use for the heartbeat message
      */
-    static Heartbeat create(Duration heartbeatInterval, String topicName, String key) {
-        return heartbeatInterval.isZero() ? DEFAULT_NOOP_HEARTBEAT : new HeartbeatImpl(heartbeatInterval, topicName, key);
+    static Heartbeat create(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
+        return heartbeatInterval.isZero() ? DEFAULT_NOOP_HEARTBEAT : new HeartbeatImpl(heartbeatInterval, topicName, key, schemaNameAdjuster);
     }
 
     static Heartbeat create(Duration heartbeatInterval, String heartbeatQuery, String topicName, String key, JdbcConnection jdbcConnection,
-                            HeartbeatErrorHandler errorHandler) {
+                            HeartbeatErrorHandler errorHandler, SchemaNameAdjuster schemaNameAdjuster) {
         if (heartbeatInterval.isZero()) {
             return DEFAULT_NOOP_HEARTBEAT;
         }
 
         if (heartbeatQuery != null) {
-            return new DatabaseHeartbeatImpl(heartbeatInterval, topicName, key, jdbcConnection, heartbeatQuery, errorHandler);
+            return new DatabaseHeartbeatImpl(heartbeatInterval, topicName, key, jdbcConnection, heartbeatQuery, errorHandler, schemaNameAdjuster);
         }
 
-        return new HeartbeatImpl(heartbeatInterval, topicName, key);
+        return new HeartbeatImpl(heartbeatInterval, topicName, key, schemaNameAdjuster);
     }
 }

@@ -7,7 +7,6 @@ package io.debezium.pipeline;
 
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -27,7 +26,6 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -41,7 +39,6 @@ import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
-import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
@@ -81,7 +78,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
 
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
-    private final TableChangesSerializer<List<Struct>> tableChangesSerializer = new ConnectTableChangeSerializer();
+    private final ConnectTableChangeSerializer tableChangesSerializer;
     private final Signal<P> signal;
     private IncrementalSnapshotChangeEventSource<P, T> incrementalSnapshotChangeEventSource;
 
@@ -94,7 +91,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                null, schemaNameAdjuster, null);
+                null, schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
@@ -102,14 +99,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
                            Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster, null);
+                heartbeat, schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster,
-                           JdbcConnection jdbcConnection) {
+                           EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+        this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
@@ -123,7 +120,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
         this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
 
-        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
+        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
+                this::enqueueTransactionMessage);
         this.signal = new Signal<>(connectorConfig, this);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
@@ -132,7 +130,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
             heartbeat = Heartbeat.create(
                     connectorConfig.getHeartbeatInterval(),
                     topicSelector.getHeartbeatTopic(),
-                    connectorConfig.getLogicalName());
+                    connectorConfig.getLogicalName(),
+                    schemaNameAdjuster);
         }
 
         schemaChangeKeySchema = SchemaBuilder.struct()
@@ -145,7 +144,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
                 .field(Fields.DATABASE_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.SCHEMA_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(Fields.TABLE_CHANGES, SchemaBuilder.array(ConnectTableChangeSerializer.CHANGE_SCHEMA).build())
+                .field(Fields.TABLE_CHANGES, SchemaBuilder.array(tableChangesSerializer.getChangeSchema()).build())
                 .build();
     }
 
@@ -301,7 +300,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
         return Optional.empty();
     }
 
-    public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
+    public void dispatchSchemaChangeEvent(P partition, T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
         if (dataCollectionId != null && !filter.isIncluded(dataCollectionId)) {
             if (historizedSchema == null || historizedSchema.storeOnlyCapturedTables()) {
                 LOGGER.trace("Filtering schema change event for {}", dataCollectionId);
@@ -309,6 +308,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
             }
         }
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+        if (incrementalSnapshotChangeEventSource != null) {
+            incrementalSnapshotChangeEventSource.processSchemaChange(partition, dataCollectionId);
+        }
     }
 
     public void dispatchSchemaChangeEvent(Collection<T> dataCollectionIds, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {

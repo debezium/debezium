@@ -1,11 +1,11 @@
 #! /usr/bin/env bash
 set -x
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-DOCKER_FILE=${DIR}/../docker/Dockerfile.AMQ
+DOCKER_FILE=${DIR}/../docker/Dockerfile.Strimzi
 PLUGIN_DIR="plugins"
 
 
-OPTS=$(getopt -o d:f:r:o:t:a: --long dir:,dockerfile:,registry:,organisation:,tags:,auto-tag:,kc-base-tag:,kafka-version:,dest-login:,dest-pass:,img-output: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o d:f:r:o:t:a: --long dir:,dockerfile:,registry:,organisation:,tags:,auto-tag:,kc-base-tag:,kafka-version:,apicurio-version:,dest-login:,dest-pass:,img-output:,oracle-included: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -20,9 +20,11 @@ while true; do
     -a | --auto-tag )           AUTO_TAG=$2;                        shift; shift ;;
     --kc-base-tag )             CONNECT_BASE_TAG=$2;                shift; shift ;;
     --kafka-version )           KAFKA_VERSION=$2;                   shift; shift ;;
+    --apicurio-version )        APICURIO_VERSION=$2;                shift; shift ;;
     --dest-login )              DEST_LOGIN=$2;                      shift; shift ;;
     --dest-pass )               DEST_PASS=$2;                       shift; shift ;;
     --img-output )              IMAGE_OUTPUT_FILE=$2;               shift; shift ;;
+    --oracle-included )         ORACLE=$2;                          shift; shift ;;
     -h | --help )               PRINT_HELP=true;                    shift ;;
     -- ) shift; break ;;
     * ) break ;;
@@ -33,7 +35,7 @@ if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = "false" ]; then
   echo "Cannot push image without tag." >&2 ; exit 1 ;
 fi
 
-if [ ! -z "${DEST_LOGIN}" ] ; then
+if [ ! -z "${DEST_LOGIN}" ] && [ "$ORACLE" = "false" ]; then
   docker login -u "${DEST_LOGIN}" -p "${DEST_PASS}" "${REGISTRY}" || { echo "Cannot login to docker image registry" ; exit 1 ; }
 fi
 
@@ -51,20 +53,31 @@ cp ~/.m2/repository/com/ibm/db2/jcc/*/jcc-*.jar debezium-connector-db2/
 cp ~/.m2/repository/com/oracle/database/jdbc/ojdbc8/*/ojdbc8-*.jar debezium-connector-oracle/
 
 cp ~/.m2/repository/io/apicurio/apicurio-registry-distro-connect-converter/*/apicurio-registry-*.zip .
-unzip -o apicurio-registry-*.zip -d debezium-connector-mysql/
-unzip -o apicurio-registry-*.zip -d debezium-connector-postgres/
-unzip -o apicurio-registry-*.zip -d debezium-connector-mongodb/
-unzip -o apicurio-registry-*.zip -d debezium-connector-sqlserver/
-unzip -o apicurio-registry-*.zip -d debezium-connector-db2/
+
+CONNECTORS='debezium-connector-oracle debezium-connector-db2 debezium-connector-sqlserver'\
+' debezium-connector-mongodb debezium-connector-postgres debezium-connector-mysql'
+
+for connector in $CONNECTORS
+do
+	unzip -o apicurio-registry-*.zip -d "${connector}/"
+done
+
 rm apicurio-registry-*.zip
+
+if [ "${ORACLE}" = "false" ] ; then
+  rm -rf debezium-connector-oracle
+else
+  echo "Changing quay organisation to private rh_integration since ORACLE connector is included"
+  ORGANISATION="rh_integration"
+fi
 
 popd || exit
 
 echo "Copying Dockerfile to" "${BUILD_DIR}"
 cp "$DOCKER_FILE" "${BUILD_DIR}/Dockerfile"
 
-image=${REGISTRY}/${ORGANISATION}/testing-openshift-connect
-target=${image}:kafka-${KAFKA_VERSION}-${project_version}
+image=${REGISTRY}/${ORGANISATION}/test-strimzi-kafka
+target=${image}:strz-${CONNECT_BASE_TAG}-kafka-${KAFKA_VERSION}-apc-${APICURIO_VERSION}-dbz-${project_version}
 
 pushd "${BUILD_DIR}" || exit
 echo "[Build] Building $target"

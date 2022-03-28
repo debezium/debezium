@@ -28,6 +28,9 @@ pipelineJob('ocp-upstream-kafka-connect-prepare-job') {
 //        COMPONENT VERSIONS
         stringParam('APICURIO_VERSION', '2.1.0.Final', 'Service registry bits version')
         stringParam('KAFKA_VERSION', '3.1.0', 'Kafka version')
+//        ORACLE INCLUSION
+        booleanParam('ORACLE_INCLUDED', false, 'Should Oracle connector be included in image')
+        stringParam('PRIVATE_QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id to private repo')
     }
 
     definition {

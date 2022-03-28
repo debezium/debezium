@@ -172,7 +172,7 @@ public class TestHelper {
     public static OracleConnection defaultConnection() {
         Configuration config = defaultConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
-        return createConnection(config, jdbcConfig, true);
+        return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), true);
     }
 
     /**
@@ -257,7 +257,7 @@ public class TestHelper {
     public static OracleConnection testConnection() {
         Configuration config = testConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
-        return createConnection(config, jdbcConfig, false);
+        return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), false);
     }
 
     /**
@@ -267,7 +267,7 @@ public class TestHelper {
     public static OracleConnection adminConnection() {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
-        return createConnection(config, jdbcConfig, false);
+        return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), false);
     }
 
     /**
@@ -278,7 +278,7 @@ public class TestHelper {
      * @param autoCommit whether the connection should enforce auto-commit
      * @return the connection
      */
-    private static OracleConnection createConnection(Configuration config, Configuration jdbcConfig, boolean autoCommit) {
+    private static OracleConnection createConnection(Configuration config, JdbcConfiguration jdbcConfig, boolean autoCommit) {
         OracleConnection connection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
         try {
             connection.setAutoCommit(autoCommit);
@@ -299,7 +299,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), TestHelper.class::getClassLoader)) {
             if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -314,7 +314,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), TestHelper.class::getClassLoader)) {
             if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
                 jdbcConnection.resetSessionToCdb();
             }

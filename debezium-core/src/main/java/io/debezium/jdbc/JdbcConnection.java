@@ -5,7 +5,14 @@
  */
 package io.debezium.jdbc;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -46,7 +53,6 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -307,7 +313,7 @@ public class JdbcConnection implements AutoCloseable {
         return url;
     }
 
-    private final Configuration config;
+    private final JdbcConfiguration config;
     private final ConnectionFactory factory;
     private final Operations initialOps;
     private final String openingQuoteCharacter;
@@ -320,8 +326,8 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
-        this(config, connectionFactory, null, null, null, openingQuoteCharacter, closingQuoteCharacter);
+    public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
+        this(config, connectionFactory, null, null, openingQuoteCharacter, closingQuoteCharacter);
     }
 
     /**
@@ -330,9 +336,9 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      */
-    public JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String openingQuoteCharacter,
+    public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String openingQuoteCharacter,
                           String closingQuoteCharacter) {
-        this(config, connectionFactory, null, null, classLoaderSupplier, openingQuoteCharacter, closingQuoteCharacter);
+        this(config, connectionFactory, null, classLoaderSupplier, openingQuoteCharacter, closingQuoteCharacter);
     }
 
     /**
@@ -342,28 +348,13 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      * @param initialOperations the initial operations that should be run on each new connection; may be null
-     * @param adapter the function that can be called to update the configuration with defaults
-     */
-    protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Consumer<Configuration.Builder> adapter, String openingQuotingChar, String closingQuotingChar) {
-        this(config, connectionFactory, initialOperations, adapter, null, openingQuotingChar, closingQuotingChar);
-    }
-
-    /**
-     * Create a new instance with the given configuration and connection factory, and specify the operations that should be
-     * run against each newly-established connection.
-     *
-     * @param config the configuration; may not be null
-     * @param connectionFactory the connection factory; may not be null
-     * @param initialOperations the initial operations that should be run on each new connection; may be null
-     * @param adapter the function that can be called to update the configuration with defaults
      * @param classLoaderSupplier class loader supplier
      * @param openingQuotingChar the opening quoting character
      * @param closingQuotingChar the closing quoting character
      */
-    protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Consumer<Configuration.Builder> adapter, Supplier<ClassLoader> classLoaderSupplier, String openingQuotingChar, String closingQuotingChar) {
-        this.config = adapter == null ? config : config.edit().apply(adapter).build();
+    protected JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Operations initialOperations,
+                             Supplier<ClassLoader> classLoaderSupplier, String openingQuotingChar, String closingQuotingChar) {
+        this.config = config;
         this.factory = classLoaderSupplier == null ? connectionFactory : new ConnectionFactoryDecorator(connectionFactory, classLoaderSupplier);
         this.initialOps = initialOperations;
         this.openingQuoteCharacter = openingQuotingChar;
@@ -377,7 +368,7 @@ public class JdbcConnection implements AutoCloseable {
      * @return the JDBC configuration; never null
      */
     public JdbcConfiguration config() {
-        return JdbcConfiguration.adapt(config);
+        return config;
     }
 
     public JdbcConnection setAutoCommit(boolean autoCommit) throws SQLException {
@@ -1525,5 +1516,19 @@ public class JdbcConnection implements AutoCloseable {
      */
     public String quotedColumnIdString(String columnName) {
         return openingQuoteCharacter + columnName + closingQuoteCharacter;
+    }
+
+    /**
+     * Read JKS type keystore/truststore file according related password.
+     */
+    public KeyStore loadKeyStore(String filePath, char[] passwordArray) {
+        try (InputStream in = new FileInputStream(filePath)) {
+            KeyStore ks = KeyStore.getInstance("JKS");
+            ks.load(in, passwordArray);
+            return ks;
+        }
+        catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
+            throw new DebeziumException("Error loading keystore", e);
+        }
     }
 }

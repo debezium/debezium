@@ -7,8 +7,11 @@ package io.debezium.util;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 
 import org.slf4j.MDC;
+
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * A utility that provides a consistent set of properties for the Mapped Diagnostic Context (MDC) properties used by Debezium
@@ -31,6 +34,14 @@ public class LoggingContext {
      * The key for the connector context name MDC property.
      */
     public static final String CONNECTOR_CONTEXT = "dbz.connectorContext";
+    /**
+     * The key for the task id MDC property.
+     */
+    public static final String TASK_ID = "dbz.taskId";
+    /**
+     * The key for the database name MDC property.
+     */
+    public static final String DATABASE_NAME = "dbz.databaseName";
 
     private LoggingContext() {
     }
@@ -62,19 +73,35 @@ public class LoggingContext {
      * @param connectorName the name of the connector; may not be null
      * @param contextName the name of the context; may not be null
      * @return the previous MDC context; never null
-     * @throws IllegalArgumentException if any of the parameters are null
+     * @throws NullPointerException if any of the parameters are null
      */
     public static PreviousContext forConnector(String connectorType, String connectorName, String contextName) {
-        if (connectorType == null) {
-            throw new IllegalArgumentException("The MDC value for the connector type may not be null");
-        }
-        if (connectorName == null) {
-            throw new IllegalArgumentException("The MDC value for the connector name may not be null");
-        }
-        if (contextName == null) {
-            throw new IllegalArgumentException("The MDC value for the connector context may not be null");
-        }
+        return forConnector(connectorType, connectorName, null, contextName, null);
+    }
+
+    /**
+     * Configure for a connector the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
+     *
+     * @param connectorType the type of connector; may not be null
+     * @param connectorName the name of the connector; may not be null
+     * @param taskId the task id; may be null
+     * @param contextName the name of the context; may not be null
+     * @param partition the partition; may be null
+     * @return the previous MDC context; never null
+     * @throws NullPointerException if connectorType, connectorName, or contextName parameters are null
+     */
+    public static PreviousContext forConnector(String connectorType, String connectorName, String taskId, String contextName, Partition partition) {
+        Objects.requireNonNull(connectorType, "The MDC value for the connector type may not be null");
+        Objects.requireNonNull(connectorName, "The MDC value for the connector name may not be null");
+        Objects.requireNonNull(contextName, "The MDC value for the connector context may not be null");
+
         PreviousContext previous = new PreviousContext();
+        if (taskId != null) {
+            MDC.put(TASK_ID, taskId);
+        }
+        if (partition != null) {
+            partition.getLoggingContext().forEach(MDC::put);
+        }
         MDC.put(CONNECTOR_TYPE, connectorType);
         MDC.put(CONNECTOR_NAME, connectorName);
         MDC.put(CONNECTOR_CONTEXT, contextName);
@@ -89,21 +116,14 @@ public class LoggingContext {
      * @param connectorName the logical name of the connector; may not be null
      * @param contextName the name of the context; may not be null
      * @param operation the function to run in the new MDC context; may not be null
-     * @throws IllegalArgumentException if any of the parameters are null
+     * @throws NullPointerException if any of the parameters are null
      */
     public static void temporarilyForConnector(String connectorType, String connectorName, String contextName, Runnable operation) {
-        if (connectorType == null) {
-            throw new IllegalArgumentException("The MDC value for the connector type may not be null");
-        }
-        if (connectorName == null) {
-            throw new IllegalArgumentException("The MDC value for the connector name may not be null");
-        }
-        if (contextName == null) {
-            throw new IllegalArgumentException("The MDC value for the connector context may not be null");
-        }
-        if (operation == null) {
-            throw new IllegalArgumentException("The operation may not be null");
-        }
+        Objects.requireNonNull(connectorType, "The MDC value for the connector type may not be null");
+        Objects.requireNonNull(connectorName, "The MDC value for the connector name may not be null");
+        Objects.requireNonNull(contextName, "The MDC value for the connector context may not be null");
+        Objects.requireNonNull(operation, "The operation may not be null");
+
         PreviousContext previous = new PreviousContext();
         try {
             forConnector(connectorType, connectorName, contextName);

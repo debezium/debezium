@@ -290,7 +290,7 @@ public class LogMinerQueryBuilderTest {
         TableNameCaseSensitivity tableNameSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
 
         TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
-        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
+        SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
 
         return new OracleDatabaseSchema(connectorConfig, converters, defaultValueConverter, schemaNameAdjuster, topicSelector, tableNameSensitivity);
     }

@@ -46,28 +46,7 @@ public class ConnectorConfigBuilder {
         return config;
     }
 
-    /**
-     * Adds all properties required to enable Avro serialisation via Apicurio Registry.
-     * @param apicurioUrl Apicurio REST endpoint
-     * @return this builder
-     */
-    public ConnectorConfigBuilder addApicurioV1AvroSupport(String apicurioUrl) {
-        config.put("key.converter", "io.apicurio.registry.utils.converter.AvroConverter");
-        config.put("key.converter.apicurio.registry.url", apicurioUrl);
-        config.put("key.converter.apicurio.registry.converter.serializer", "io.apicurio.registry.utils.serde.AvroKafkaSerializer");
-        config.put("key.converter.apicurio.registry.converter.deserializer", "io.apicurio.registry.utils.serde.AvroKafkaDeserializer");
-        config.put("key.converter.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy");
-
-        config.put("value.converter", "io.apicurio.registry.utils.converter.AvroConverter");
-        config.put("value.converter.apicurio.registry.url", apicurioUrl);
-        config.put("value.converter.apicurio.registry.converter.serializer", "io.apicurio.registry.utils.serde.AvroKafkaSerializer");
-        config.put("value.converter.apicurio.registry.converter.deserializer", "io.apicurio.registry.utils.serde.AvroKafkaDeserializer");
-        config.put("value.converter.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy");
-
-        return this;
-    }
-
-    public ConnectorConfigBuilder addApicurioV2AvroSupport(String apicurioUrl) {
+    public ConnectorConfigBuilder addApicurioAvroSupport(String apicurioUrl) {
         config.put("key.converter", "io.apicurio.registry.utils.converter.AvroConverter");
         config.put("key.converter.apicurio.registry.url", apicurioUrl);
         config.put("key.converter.apicurio.registry.auto-register", true);

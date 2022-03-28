@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -428,6 +429,33 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
                     " this value, consider it a SCN gap.");
 
+    public static final Field LOG_MINING_LOG_QUERY_MAX_RETRIES = Field.createInternal("log.mining.log.query.max.retries")
+            .withDisplayName("Maximum number of retries before failing to locate redo logs")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_LOG_FILE_QUERY_MAX_RETRIES)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The maximum number of log query retries before throwing an exception that logs cannot be found.");
+
+    public static final Field LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS = Field.createInternal("log.mining.log.backoff.initial.delay.ms")
+            .withDisplayName("Initial delay when logs cannot yet be found (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(TimeUnit.SECONDS.toMillis(1))
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The initial delay when trying to query database redo logs, given in milliseconds. Defaults to 1 second (1,000 ms).");
+
+    public static final Field LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS = Field.createInternal("log.mining.log.backoff.max.delay.ms")
+            .withDisplayName("Maximum delay when logs cannot yet be found (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(TimeUnit.MINUTES.toMillis(1))
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The maximum delay when trying to query database redo logs, given in milliseconds. Defaults to 60 seconds (60,000 ms).");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -480,7 +508,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
                     LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
-                    BINARY_HANDLING_MODE)
+                    BINARY_HANDLING_MODE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE,
+                    LOG_MINING_LOG_QUERY_MAX_RETRIES,
+                    LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
+                    LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS)
             .create();
 
     /**
@@ -534,6 +566,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int logMiningScnGapDetectionGapSizeMin;
     private final int logMiningScnGapDetectionTimeIntervalMaxMs;
     private final int logMiningLogFileQueryMaxRetries;
+    private final Duration logMiningInitialDelay;
+    private final Duration logMiningMaxDelay;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config),
@@ -577,7 +611,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
         this.logMiningScnGapDetectionTimeIntervalMaxMs = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS);
-        this.logMiningLogFileQueryMaxRetries = DEFAULT_LOG_FILE_QUERY_MAX_RETRIES;
+        this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_QUERY_MAX_RETRIES);
+        this.logMiningInitialDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS));
+        this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
     }
 
     private static String toUpperCase(String property) {
@@ -1333,8 +1369,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     /**
      * @return the maximum number of retries that should be used to resolve log filenames for mining
      */
-    public int getDefaultLogFileQueryMaxRetries() {
+    public int getMaximumNumberOfLogQueryRetries() {
         return logMiningLogFileQueryMaxRetries;
+    }
+
+    /**
+     * @return the initial delay for the log query delay strategy
+     */
+    public Duration getLogMiningInitialDelay() {
+        return logMiningInitialDelay;
+    }
+
+    /**
+     * @return the maximum delay for the log query delay strategy
+     */
+    public Duration getLogMiningMaxDelay() {
+        return logMiningMaxDelay;
     }
 
     @Override

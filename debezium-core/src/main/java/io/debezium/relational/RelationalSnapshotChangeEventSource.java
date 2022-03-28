@@ -272,7 +272,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     lastSnapshotRecord(snapshotContext);
                 }
 
-                dispatcher.dispatchSchemaChangeEvent(table.id(), (receiver) -> {
+                dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, table.id(), (receiver) -> {
                     try {
                         receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
                     }

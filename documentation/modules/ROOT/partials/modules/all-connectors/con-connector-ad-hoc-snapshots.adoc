@@ -1,22 +1,3 @@
-ifdef::community[]
-[NOTE]
-====
-This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
-Please let us know if you encounter any problems while using this extension.
-====
-endif::community[]
-
-ifdef::product[]
-[IMPORTANT]
-====
-The use of ad hoc snapshots is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 By default, a connector runs an initial snapshot operation only after it starts for the first time.
 Following this initial snapshot, under normal circumstances, the connector does not repeat the snapshot process.
 Any future change event data that the connector captures comes in through the streaming process only.
