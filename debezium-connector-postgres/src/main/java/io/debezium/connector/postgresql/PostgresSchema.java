@@ -57,7 +57,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      */
     protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, PostgresDefaultValueConverter defaultValueConverter,
                              TopicSelector<TableId> topicSelector, PostgresValueConverter valueConverter) {
-        super(config, topicSelector, new Filters(config).tableFilter(),
+        super(config, topicSelector, config.getTableFilters().dataCollectionFilter(),
                 config.getColumnFilter(), getTableSchemaBuilder(config, valueConverter, defaultValueConverter),
                 false, config.getKeyMapper());
 
