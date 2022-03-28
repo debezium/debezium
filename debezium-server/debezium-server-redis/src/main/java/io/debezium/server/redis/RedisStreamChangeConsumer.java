@@ -57,6 +57,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private Optional<String> user;
     private Optional<String> password;
 
+    @ConfigProperty(name = PROP_PREFIX + "ssl.enabled", defaultValue = "false")
+    boolean sslEnabled;
+
     @ConfigProperty(name = PROP_PREFIX + "batch.size", defaultValue = "500")
     Integer batchSize;
 
@@ -81,7 +84,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         user = config.getOptionalValue(PROP_USER, String.class);
         password = config.getOptionalValue(PROP_PASSWORD, String.class);
 
-        client = new Jedis(address);
+        client = new Jedis(address.getHost(), address.getPort(), sslEnabled);
         if (user.isPresent()) {
             client.auth(user.get(), password.get());
         }

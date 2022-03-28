@@ -51,6 +51,10 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     public static final Field PROP_ADDRESS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "address")
             .withDescription("The redis url that will be used to access the database history");
 
+    public static final Field PROP_SSL_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ssl.enabled")
+            .withDescription("Use SSL for Redis connection")
+            .withDefault("false");
+
     public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
             .withDescription("The redis url that will be used to access the database history");
 
@@ -87,6 +91,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     private String address;
     private String user;
     private String password;
+    private boolean sslEnabled;
 
     private Jedis client = null;
 
@@ -94,7 +99,8 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
 
         HostAndPort address = HostAndPort.from(this.address);
 
-        client = new Jedis(address);
+        client = new Jedis(address.getHost(), address.getPort(), this.sslEnabled);
+
         if (user != null) {
             client.auth(this.user, this.password);
         }
@@ -122,10 +128,12 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
             this.address = this.config.getString(SINK_PROP_PREFIX + "address");
             this.user = this.config.getString(SINK_PROP_PREFIX + "user");
             this.password = this.config.getString(SINK_PROP_PREFIX + "password");
+            this.sslEnabled = Boolean.parseBoolean(this.config.getString(SINK_PROP_PREFIX + "ssl.enabled"));
         }
         else {
             this.user = this.config.getString(PROP_USER.name());
             this.password = this.config.getString(PROP_PASSWORD.name());
+            this.sslEnabled = Boolean.parseBoolean(this.config.getString(PROP_SSL_ENABLED.name()));
         }
         this.redisKeyName = this.config.getString(PROP_KEY);
         LOGGER.info("rediskeyname:" + this.redisKeyName);
