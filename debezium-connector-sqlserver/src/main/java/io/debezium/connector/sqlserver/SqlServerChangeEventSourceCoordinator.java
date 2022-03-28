@@ -67,6 +67,7 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
             SqlServerPartition partition = entry.getKey();
             SqlServerOffsetContext previousOffset = entry.getValue();
 
+            previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
             SnapshotResult<SqlServerOffsetContext> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
 
             if (snapshotResult.isCompletedOrSkipped()) {
@@ -75,11 +76,6 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
         }
 
         previousLogContext.set(taskContext.configureLoggingContext("streaming"));
-        streamEvents(context, streamingOffsets);
-    }
-
-    private void streamEvents(ChangeEventSourceContext context, Offsets<SqlServerPartition, SqlServerOffsetContext> streamingOffsets)
-            throws InterruptedException {
 
         // TODO: Determine how to do incremental snapshots with multiple partitions
         for (Map.Entry<SqlServerPartition, SqlServerOffsetContext> entry : streamingOffsets) {
@@ -95,6 +91,8 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
             for (Map.Entry<SqlServerPartition, SqlServerOffsetContext> entry : streamingOffsets) {
                 SqlServerPartition partition = entry.getKey();
                 SqlServerOffsetContext previousOffset = entry.getValue();
+
+                previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
 
                 if (context.isRunning()) {
                     if (streamingSource.executeIteration(context, partition, previousOffset)) {

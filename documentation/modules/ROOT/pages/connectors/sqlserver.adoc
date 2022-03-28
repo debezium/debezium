@@ -2059,9 +2059,15 @@ Can be omitted when using Kerberos authentication, which can be configured using
 
 |[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbname+`>>
 |No default
-|The name of the SQL Server database from which to stream the changes
+|The name of the SQL Server database from which to stream the changes.
+ifdef::community[]
 Must not be used with `database.names`.
+endif::community[]
+|[[sqlserver-property-database-instance]] <<sqlserver-property-database-instance, `+database.instance+`>>
+|No default
+|Specifies the instance name of the link:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/database-engine-instances-sql-server?view=sql-server-latest#instances[SQL Server named instance].
 
+ifdef::community[]
 |[[sqlserver-property-database-names]]<<sqlserver-property-database-names, `+database.names+`>>
 |No default
 |The comma-separated list of the SQL Server database names from which to stream the changes.
@@ -2074,11 +2080,20 @@ incompatible with the default configuration with no upgrade or downgrade path:
 * The SQL statements used in `snapshot.select.statement.overrides` will have to use the database name
   as part of the fully-qualified table name.
 * The structure of the exposed connector metrics will be different.
-
+endif::community[]
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |No default
-|Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
-Only alphanumeric characters, hyphens, dots and underscores must be used.
+|Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture.
+The logical name should be unique across all other connectors, since it is used as the prefix for all Kafka topic names that receive records from this connector.
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
++
+[WARNING]
+====
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+The connector is also unable to recover its database history topic.
+====
+
 
 |[[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list, `+table.include.list+`>>
 |No default
@@ -2215,6 +2230,14 @@ However, it's best to use the minimum number that are required to specify a uniq
 |[[sqlserver-property-binary-handling-mode]]<<sqlserver-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
 |Specifies how binary (`binary`, `varbinary`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
+
+|[[sqlserver-property-schema-name-adjustment-mode]]<<sqlserver-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
+|avro
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `none` does not apply any adjustment. +
+
 |===
 
 [id="sqlserver-advanced-connector-configuration-properties"]
@@ -2282,11 +2305,24 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 
 |[[sqlserver-property-max-queue-size]]<<sqlserver-property-max-queue-size, `+max.queue.size+`>>
 |`8192`
-|Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the CDC table reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.
+|Positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
+The blocking queue can provide backpressure for reading change events from the database
+in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
+Events that are held in the queue are disregarded when the connector periodically records offsets.
+Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
+
+|[[sqlserver-property-max-queue-size-in-bytes]]<<sqlserver-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
+|`0`
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:sqlserver-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[sqlserver-property-max-batch-size]]<<sqlserver-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
-|Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
+|Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector.
 
 |[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
@@ -2394,10 +2430,6 @@ By default, no operations are skipped.
 | Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
-
-ifdef::product[]
-Signaling is a Technology Preview feature.
-endif::product[]
 
 |[[sqlserver-property-incremental-snapshot-allow-schema-changes]]<<sqlserver-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
 |`false`
@@ -2618,7 +2650,7 @@ The connector provides the following metrics:
 * xref:sqlserver-streaming-metrics[Streaming metrics] for monitoring the connector when reading CDC table data.
 * xref:sqlserver-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history.
 
-For information about how to expose the preceding metrics through JMX, see the xref:{link-debezium-monitoring}[{prodname} monitoring documentation].
+For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation].
 
 // Type: reference
 // ModuleID: debezium-sqlserver-connector-snapshot-metrics

@@ -1332,15 +1332,93 @@ boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
 
 [id="oracle-decimal-types"]
 === Decimal types
+
+{prodname} connectors handle decimals according to the setting of the xref:{link-oracle-connector}#oracle-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
 The setting of the Oracle connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types.
 
+decimal.handling.mode=precise::
 When the `decimal.handling.mode` property is set to `precise`, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns.
 This is the default mode.
++
+.Mappings when `decimal.handing.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
+|===
+|Oracle type
+|Literal type (schema type)
+|Semantic type (schema name)
 
-However, when the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
+|`NUMERIC[(P[,S])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
-You can also set the `decimal.handling.mode` configuration property to use the `string` option.
-When the property is set to `string`, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation with schema type `STRING`.
+|`DECIMAL[(P[,S])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`SMALLMONEY`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`MONEY`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|===
+
+decimal.handling.mode=double::
+When the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
++
+.Mappings when `decimal.handing.mode=double`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|Oracle type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`SMALLMONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`MONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|===
+
+decimal.handling.mode=string::
+When the `decimal.handling.mode` configuration property is set to `string`, the connector represents `DECIMAL`,`NUMERIC`, and `MONEY` values as their formatted string representation, and encodes the values as shown in the following table.
++
+.Mappings when `decimal.handling.mode` is `string`
+[cols="30%a,30%a,40%a",options="header"]
+|===
+|Oracle data type
+|Literal type (schema type)
+|Semantic type (schema name)
+
+|`NUMERIC[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|`MONEY[(M[,D])]`
+|`STRING`
+|_n/a_
+
+|===
+
 
 [id="oracle-temporal-types"]
 === Temporal types
@@ -1792,25 +1870,19 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Oracle Database is installed, and is xref:{link-oracle-connector}#setting-up-oracle[configured to work with the {prodname} connector].
-* You have a copies of the Oracle JDBC driver and the XStream API JAR.
-+
-[IMPORTANT]
-====
-Due to licensing requirements, the {prodname} Oracle connector does not ship with the Oracle JDBC driver or XStream API files.
-You must download these files directly from Oracle and add them to your environment.
-For more information, see xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files].
-====
 
 .Procedure
 
 . Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle connector plug-in archive].
-
 . Extract the files into your Kafka Connect environment.
-
+. xref:obtaining-the-oracle-jdbc-driver[Download the Oracle JDBC driver from Maven Central and extract it to the directory with the connector JAR files.]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
-
-  . xref:{link-oracle-connector}#oracle-example-configuration[Configure the connector] and xref:{link-oracle-connector}#oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
+
+.Next steps
+
+* xref:{link-oracle-connector}#oracle-example-configuration[Configure the connector] and xref:{link-oracle-connector}#oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+
 endif::community[]
 
 ifdef::product[]
@@ -1821,8 +1893,12 @@ You can use either of the following methods to deploy a {prodname} Oracle connec
 This is the preferred method.
 * xref:deploying-debezium-oracle-connectors[Build a custom Kafka Connect container image from a Dockerfile].
 
-The {prodname} Oracle connector requires the Oracle JDBC driver (ojdbc8.jar) to connect to Oracle databases.
-For information about how to obtain the driver, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Oracle connector archive does not include the Oracle JDBC driver that the connector requires to connect to an Oracle database.
+To enable the connector to access the database, you must add the driver to your connector environment.
+For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+====
 
 .Additional resources
 
@@ -1867,7 +1943,7 @@ You then need to create the following custom resources (CRs):
 * You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
 
 * You have a copy of the Oracle JDBC driver.
-Due to licensing requirements, the {prodname} Oracle connector does not include the required driver file.
+You must obtain a copy of the Oracle JDBC driver that to enable {prodname} to connect to an Oracle database.
 +
 For more information, see xref:{link-oracle-connector}#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 
@@ -2040,91 +2116,51 @@ oc apply -f inventory-connector.yaml
 ----
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `server1` database as defined in the `KafkaConnector` CR.
+endif::product[]
 
 // Type: procedure
 [id="obtaining-the-oracle-jdbc-driver"]
 === Obtaining the Oracle JDBC driver
 
 Due to licensing requirements, the required driver file is not included in the {prodname} Oracle connector archive.
-Regardless of which deployment method that you use, you have obtain the Oracle JDBC driver to complete the deployment.
+The following steps describe how to obtain the driver and make it available in your environment.
+ifdef::product[]
 
 There are two methods for obtaining the driver, depending on the deployment method that you use.
 
 * If you xref:openshift-streams-oracle-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image], add an artifact reference to the `KafkaConnect` custom resource and then add the location of the artifact as the `url` value.
 * If you xref:deploying-debezium-oracle-connectors[use a Dockerfile to build the connector], download the required driver file directly from Oracle and add it to your Kafka Connect environment.
 
-The following steps describe how to make the driver and available in your environment.
-
 .Procedure
 
 . Complete one of the following procedures, depending on your deployment type:
 ** If you use {StreamsName} to deploy the connector:
-.. Navigate to link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/[Maven Central] and locate the `ojdbc8.jar` file for your release of Oracle Database.
-.. In the YAML for the `KafkaConnector` custom resource (CR), add the URL path for the driver to the `artifacts.url` field for the `debezium-connector-oracle` artifact.
+.. In the YAML for the `KafkaConnector` custom resource (CR), add the following URL path for the driver to the `artifacts.url` field for the `debezium-connector-oracle` artifact:
++
+[source,shell,subs="attributes+"]
+----
+https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar
+----
 +
 For more information about the YAML file for the `KafkaConnector` CR, see xref:openshift-streams-oracle-connector-deployment[Using {StreamsName} to deploy a {prodname} Oracle connector].
 
 ** If you use a Dockerfile to deploy the connector:
-.. From a browser, navigate to the link:https://www.oracle.com/database/technologies/appdev/jdbc-downloads.html[Oracle JDBC and UCP Downloads page].
-.. Locate and download the `ojdbc8.jar` driver file for your version of Oracle Database.
-.. Copy the downloaded file to the directory that stores the {prodname} Oracle connector files, for example, `_<kafka_home>_/libs`.
-+
-When the connector starts, it is automatically configured to use the specified driver.
+.. From a browser, link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[download the 'ojdbc8.jar' from Maven Central].
+.. Copy the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file (that is, `debezium-connector-oracle-{debezium-version}.jar`).
+
 endif::product[]
-
 ifdef::community[]
-[id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
-=== Obtaining the Oracle JDBC driver and XStream API files
 
-The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
-If the connector uses XStreams to access the database, you must also have the XStream API (`xstreams.jar`).
-Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
-However, the required files are available for free download as part of the Oracle Instant Client.
-The following steps describe how to download the Oracle Instant Client and extract the required files.
+NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
+For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
 
 .Procedure
 
-. From a browser, download the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client package] for your operating system.
+. From a browser, link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[download the 'ojdbc8.jar' from Maven Central].
+. Copy the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file (`debezium-connector-oracle-{debezium-version}.jar`).
+endif::community[]
 
-. Extract the archive and then open the `instantclient___<version>__` directory.
-+
-For example:
-+
-[source]
-----
-instantclient_21_1/
-├── adrci
-├── BASIC_LITE_LICENSE
-├── BASIC_LITE_README
-├── genezi
-├── libclntshcore.so -> libclntshcore.so.21.1
-├── libclntshcore.so.12.1 -> libclntshcore.so.21.1
-
-...
-
-├── ojdbc8.jar
-├── ucp.jar
-├── uidrvci
-└── xstreams.jar
-
-----
-
-. Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
-+
-[NOTE]
-====
-In environments that use the Oracle LogMiner implementation, copy only the `ojdbc8.jar` file.
-The `xstreams.jar` file is only required in environments that use the Oracle XStreams implementation.
-====
-. If you are using the XStreams implementation, create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
-+
-[source,bash,indent=0]
-----
-LD_LIBRARY_PATH=/path/to/instant_client/
-----
-+
-The `LD_LIBRARY_PATH` environment variable is not required if you run the Oracle LogMiner implementation.
-
+ifdef::community[]
 [[oracle-example-configuration]]
 === {prodname} Oracle connector configuration
 
@@ -2377,6 +2413,13 @@ endif::product[]
 The value that you set is used as a prefix for all Kafka topic names that the connector emits.
 Specify a logical name that is unique among all connectors in your {prodname} environment.
 The following characters are valid: alphanumeric characters, hyphens, dots, and underscores.
++
+[WARNING]
+====
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+The connector is also unable to recover its database history topic.
+====
 
 |[[oracle-property-database-connection-adapter]]<<oracle-property-database-connection-adapter, `+database.connection.adapter+`>>
 |`logminer`
@@ -2546,6 +2589,13 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 |bytes
 |Specifies how binary (`blob`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
 
+|[[oracle-property-schema-name-adjustment-mode]]<<oracle-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
+|avro
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `none` does not apply any adjustment. +
+
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
 | Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns.
@@ -2575,21 +2625,26 @@ You can set one of the following options:
 `warn`:: Causes the problematic event to be skipped. The offset of the problematic event is then logged.
 `skip`:: Causes the problematic event to be skipped.
 
-|[[oracle-property-max-queue-size]]<<oracle-property-max-queue-size, `+max.queue.size+`>>
-|`8192`
-|A positive integer value that specifies the maximum size of the blocking queue.
-Change events read from the database log are placed in the blocking queue before they are written to Kafka.
-This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slow, or if Kafka is not available.
-Events that appear in the queue are not included in the offsets that the connector records periodically.
-Always specify a value that is larger than the maximum batch size that specified for the `max.batch.size` property.
-
 |[[oracle-property-max-batch-size]]<<oracle-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
 |A positive integer value that specifies the maximum size of each batch of events to process during each iteration of this connector.
 
+|[[oracle-property-max-queue-size]]<<oracle-property-max-queue-size, `+max.queue.size+`>>
+|`8192`
+|Positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
+The blocking queue can provide backpressure for reading change events from the database
+in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
+Events that are held in the queue are disregarded when the connector periodically records offsets.
+Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
+
 |[[oracle-property-max-queue-size-in-bytes]]<<oracle-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0` (disabled)
-|Long value for the maximum size in bytes of the blocking queue. To activate the feature, set the value to a positive long data type.
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:oracle-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[oracle-property-poll-interval-ms]]<<oracle-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`1000` (1 second)
@@ -3557,6 +3612,50 @@ The following configuration example adds the properties `database.connection.ada
         "database.out.server.name" : "dbzxout"
     }
 }
+----
+
+[id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
+=== Obtaining the Oracle JDBC driver and XStream API files
+
+The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
+If the connector uses XStream to access the database, you must also have the XStream API (`xstreams.jar`).
+Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
+However, the required files are available for free download as part of the Oracle Instant Client.
+The following steps describe how to download the Oracle Instant Client and extract the required files.
+
+.Procedure
+
+. From a browser, download the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client package] for your operating system.
+
+. Extract the archive, and then open the `instantclient___<version>__` directory.
++
+For example:
++
+[source]
+----
+instantclient_21_1/
+├── adrci
+├── BASIC_LITE_LICENSE
+├── BASIC_LITE_README
+├── genezi
+├── libclntshcore.so -> libclntshcore.so.21.1
+├── libclntshcore.so.12.1 -> libclntshcore.so.21.1
+
+...
+
+├── ojdbc8.jar
+├── ucp.jar
+├── uidrvci
+└── xstreams.jar
+
+----
+
+. Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
+. Create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
++
+[source,bash,indent=0]
+----
+LD_LIBRARY_PATH=/path/to/instant_client/
 ----
 
 [[oracle-xstreams-connector-properties]]

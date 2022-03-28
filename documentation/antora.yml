@@ -8,7 +8,7 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.9.0.Beta1'
+    debezium-version: '1.9.0.CR1'
     debezium-dev-version: '1.9'
     debezium-kafka-version: '3.1.0'
     debezium-docker-label: '1.9'
@@ -20,6 +20,7 @@ asciidoc:
     strimzi-version: '0.18.0'
     apicurio-version: '2.1.5.Final'
     db2-version: '11.5.0.0'
+    ojdbc8-version: '21.1.0.0'
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
@@ -38,10 +39,13 @@ asciidoc:
     link-install-debezium: 'install.adoc'
     link-mongodb-connector: 'connectors/mongodb.adoc'
     link-mongodb-event-flattening: 'transformations/mongodb-event-flattening.adoc'
+    link-mongodb-outbox-event-router: 'transformations/mongodb-outbox-event-router.adoc'
     link-mysql-connector: 'connectors/mysql.adoc'
     link-oracle-connector: 'connectors/oracle.adoc'
+    link-outbox-event-router: 'transformations/outbox-event-router.adoc'
     link-postgresql-connector: 'connectors/postgresql.adoc'
     link-postgresql-plugins: 'postgres-plugins.adoc'
+    link-prefix: 'xref'
     link-serdes: 'integrations/serdes.adoc'
     link-signalling: 'configuration/signalling.adoc'
     link-smt-predicates: 'transformations/applying-transformations-selectively.adoc'
@@ -56,7 +60,8 @@ asciidoc:
     link-sqlserver-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-sqlserver&v=LATEST&c=plugin&e=tar.gz'
     link-oracle-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-oracle&v=LATEST&c=plugin&e=tar.gz'
     link-db2-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-db2&v=LATEST&c=plugin&e=tar.gz'
-    link-cassandra-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra&v=LATEST&c=plugin&e=tar.gz'
+    link-cassandra-3-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-3&v=LATEST&c=plugin&e=tar.gz'
+    link-cassandra-4-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-4&v=LATEST&c=plugin&e=tar.gz'
     link-vitess-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-vitess&v=LATEST&c=plugin&e=tar.gz'
     link-server-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-server-dist&v=LATEST&e=tar.gz'
     link-kafka-docs: 'https://kafka.apache.org/documentation'

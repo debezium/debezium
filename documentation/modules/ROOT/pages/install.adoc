@@ -35,7 +35,8 @@ ifeval::['{page-version}' == 'master']
 * {link-sqlserver-plugin-snapshot}[SQL Server Connector plugin archive]
 * {link-oracle-plugin-snapshot}[Oracle Connector plugin archive]
 * {link-db2-plugin-snapshot}[Db2 Connector plugin archive]
-* {link-cassandra-plugin-snapshot}[Cassandra plugin archive] (incubating)
+* {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive] (incubating)
+* {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive] (incubating)
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
@@ -47,7 +48,8 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-{debezium-version}-plugin.tar.gz[Cassandra plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 endif::[]
 

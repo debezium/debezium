@@ -29,9 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -70,7 +70,7 @@ public class OracleConnection extends JdbcConnection {
 
     private static final String QUOTED_CHARACTER = "\"";
 
-    public OracleConnection(Configuration config, Supplier<ClassLoader> classLoaderSupplier) {
+    public OracleConnection(JdbcConfiguration config, Supplier<ClassLoader> classLoaderSupplier) {
         super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER, QUOTED_CHARACTER);
 
         this.databaseVersion = resolveOracleDatabaseVersion();
@@ -406,6 +406,11 @@ public class OracleConnection extends JdbcConnection {
                 rs -> rs.next() && rs.getLong(1) > 0);
     }
 
+    public boolean isTableExists(TableId tableId) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER = '" + tableId.schema() + "' AND TABLE_NAME = '" + tableId.table() + "'",
+                rs -> rs.next() && rs.getLong(1) > 0);
+    }
+
     /**
      * Returns whether the given table is empty or not.
      *
@@ -474,12 +479,12 @@ public class OracleConnection extends JdbcConnection {
         return sql.toString();
     }
 
-    public static String connectionString(Configuration config) {
+    public static String connectionString(JdbcConfiguration config) {
         return config.getString(URL) != null ? config.getString(URL)
                 : ConnectorAdapter.parse(config.getString("connection.adapter")).getConnectionUrl();
     }
 
-    private static ConnectionFactory resolveConnectionFactory(Configuration config) {
+    private static ConnectionFactory resolveConnectionFactory(JdbcConfiguration config) {
         return JdbcConnection.patternBasedFactory(connectionString(config));
     }
 

@@ -40,7 +40,7 @@ import io.debezium.util.Strings;
  */
 public class MySqlJdbcContext implements AutoCloseable {
 
-    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
+    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
     protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
 
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
@@ -73,7 +73,22 @@ public class MySqlJdbcContext implements AutoCloseable {
         Builder jdbcConfigBuilder = jdbcConfig
                 .edit()
                 .with("connectTimeout", Long.toString(config.getConnectionTimeout().toMillis()))
-                .with("useSSL", Boolean.toString(useSSL));
+                .with("sslMode", sslMode().getValue());
+
+        if (useSSL) {
+            if (!Strings.isNullOrBlank(sslTrustStore())) {
+                jdbcConfigBuilder.with("trustCertificateKeyStoreUrl", "file:" + sslTrustStore());
+            }
+            if (sslTrustStorePassword() != null) {
+                jdbcConfigBuilder.with("trustCertificateKeyStorePassword", String.valueOf(sslTrustStorePassword()));
+            }
+            if (!Strings.isNullOrBlank(sslKeyStore())) {
+                jdbcConfigBuilder.with("clientCertificateKeyStoreUrl", "file:" + sslKeyStore());
+            }
+            if (sslKeyStorePassword() != null) {
+                jdbcConfigBuilder.with("clientCertificateKeyStorePassword", String.valueOf(sslKeyStorePassword()));
+            }
+        }
 
         final String legacyDateTime = jdbcConfig.getString(JDBC_PROPERTY_LEGACY_DATETIME);
         if (legacyDateTime == null) {
@@ -85,7 +100,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
         jdbcConfig = jdbcConfigBuilder.build();
         String driverClassName = jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
-        this.jdbc = new JdbcConnection(jdbcConfig,
+        this.jdbc = new JdbcConnection(JdbcConfiguration.adapt(jdbcConfig),
                 JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()), "`", "`");
     }
 
@@ -126,6 +141,24 @@ public class MySqlJdbcContext implements AutoCloseable {
         return sslMode() != SecureConnectionMode.DISABLED;
     }
 
+    public String sslKeyStore() {
+        return config.getString(MySqlConnectorConfig.SSL_KEYSTORE);
+    }
+
+    public char[] sslKeyStorePassword() {
+        String password = config.getString(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
+        return Strings.isNullOrBlank(password) ? null : password.toCharArray();
+    }
+
+    public String sslTrustStore() {
+        return config.getString(MySqlConnectorConfig.SSL_TRUSTSTORE);
+    }
+
+    public char[] sslTrustStorePassword() {
+        String password = config.getString(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+        return Strings.isNullOrBlank(password) ? null : password.toCharArray();
+    }
+
     public EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode() {
         String mode = config.getString(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         if (mode == null) {
@@ -137,17 +170,6 @@ public class MySqlJdbcContext implements AutoCloseable {
     public EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode() {
         String mode = config.getString(MySqlConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE);
         return EventProcessingFailureHandlingMode.parse(mode);
-    }
-
-    public void start() {
-        if (sslModeEnabled()) {
-            originalSystemProperties.clear();
-            // Set the System properties for SSL for the MySQL driver ...
-            setSystemProperty("javax.net.ssl.keyStore", MySqlConnectorConfig.SSL_KEYSTORE, true);
-            setSystemProperty("javax.net.ssl.keyStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
-            setSystemProperty("javax.net.ssl.trustStore", MySqlConnectorConfig.SSL_TRUSTSTORE, true);
-            setSystemProperty("javax.net.ssl.trustStorePassword", MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, false);
-        }
     }
 
     public void shutdown() {
@@ -327,7 +349,6 @@ public class MySqlJdbcContext implements AutoCloseable {
     private Map<String, String> querySystemVariables(String statement) {
         Map<String, String> variables = new HashMap<>();
         try {
-            start();
             jdbc.connect().query(statement, rs -> {
                 while (rs.next()) {
                     String varName = rs.getString(1);
@@ -356,7 +377,6 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected Map<String, DatabaseLocales> readDatabaseCollations() {
         logger.debug("Reading default database charsets");
         try {
-            start();
             return jdbc.connect().queryAndMap("SELECT schema_name, default_character_set_name, default_collation_name FROM information_schema.schemata", rs -> {
                 final Map<String, DatabaseLocales> charsets = new HashMap<>();
                 while (rs.next()) {

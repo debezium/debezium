@@ -22,36 +22,36 @@ import okhttp3.OkHttpClient;
  * Deployment management for Apicurio service registry OCP deployment
  * @author Jakub Cechacek
  */
-public class OcpApicurioV2Deployer extends AbstractOcpApicurioDeployer<OcpApicurioV2Controller> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OcpApicurioV2Deployer.class);
+public class OcpApicurioDeployer extends AbstractOcpApicurioDeployer<OcpApicurioController> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpApicurioDeployer.class);
     public static final String APICURIO_CRD_DESCRIPTOR = "/crd/v1/apicurioregistries_crd.yaml";
 
-    private OcpApicurioV2Deployer(
-                                  String project,
-                                  String yamlPath,
-                                  OpenShiftClient ocp,
-                                  OkHttpClient http) {
+    private OcpApicurioDeployer(
+                                String project,
+                                String yamlPath,
+                                OpenShiftClient ocp,
+                                OkHttpClient http) {
         super(project, yamlPath, ocp, http);
     }
 
     protected NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
         CustomResourceDefinition crd = ocp.apiextensions().v1().customResourceDefinitions()
-                .load(OcpApicurioV2Deployer.class.getResourceAsStream(APICURIO_CRD_DESCRIPTOR))
+                .load(OcpApicurioDeployer.class.getResourceAsStream(APICURIO_CRD_DESCRIPTOR))
                 .get();
         CustomResourceDefinitionContext context = CustomResourceDefinitionContext.fromCrd(crd);
         return ocp.customResources(context, ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
     }
 
     @Override
-    protected OcpApicurioV2Controller getController(ApicurioRegistry registry) {
-        return new OcpApicurioV2Controller(registry, ocp, http);
+    protected OcpApicurioController getController(ApicurioRegistry registry) {
+        return new OcpApicurioController(registry, ocp, http);
     }
 
-    public static class Builder extends AbstractOcpApicurioDeployer.RegistryBuilder<Builder, OcpApicurioV2Deployer> {
+    public static class Builder extends AbstractOcpApicurioDeployer.RegistryBuilder<Builder, OcpApicurioDeployer> {
 
         @Override
-        public OcpApicurioV2Deployer build() {
-            return new OcpApicurioV2Deployer(
+        public OcpApicurioDeployer build() {
+            return new OcpApicurioDeployer(
                     project,
                     yamlPath,
                     ocpClient,

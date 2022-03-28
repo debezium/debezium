@@ -271,7 +271,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
         final TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         final OracleValueConverters converters = new OracleValueConverters(connectorConfig, connection);
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         final TableNameCaseSensitivity sensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);

@@ -58,7 +58,7 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
                                    EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster,
                                    JdbcConnection jdbcConnection) {
         super(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, metadataProvider,
-                customHeartbeat, schemaNameAdjuster, jdbcConnection);
+                customHeartbeat, schemaNameAdjuster);
         this.queue = queue;
         this.logicalDecodingMessageMonitor = new LogicalDecodingMessageMonitor(connectorConfig, this::enqueueLogicalDecodingMessage);
         this.messageFilter = connectorConfig.getMessageFilter();

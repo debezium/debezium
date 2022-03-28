@@ -2,7 +2,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 COPY_IMAGES=true
 REGISTRY="quay.io"
-DOCKER_FILE=${DIR}/../docker/Dockerfile.AMQ
+DOCKER_FILE=${DIR}/../docker/Dockerfile.Strimzi
 PLUGIN_DIR="plugins"
 EXTRA_LIBS=""
 

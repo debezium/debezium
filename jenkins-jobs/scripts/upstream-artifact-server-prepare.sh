@@ -5,7 +5,7 @@ DOCKER_FILE=${DIR}/../docker/artifact-server/Dockerfile
 PLUGIN_DIR="plugins"
 
 
-OPTS=$(getopt -o d:f:r:o:t:a: --long dir:,dockerfile:,registry:,organisation:,tags:,auto-tag:,dest-login:,dest-pass:,img-output: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o d:f:r:o:t:a: --long dir:,dockerfile:,registry:,organisation:,tags:,auto-tag:,dest-login:,dest-pass:,img-output:,oracle-included: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -21,6 +21,7 @@ while true; do
     --dest-login )              DEST_LOGIN=$2;                      shift; shift ;;
     --dest-pass )               DEST_PASS=$2;                       shift; shift ;;
     --img-output )              IMAGE_OUTPUT_FILE=$2;               shift; shift ;;
+    --oracle-included )         ORACLE=$2;                          shift; shift ;;
     -h | --help )               PRINT_HELP=true;                    shift ;;
     -- ) shift; break ;;
     * ) break ;;
@@ -31,7 +32,7 @@ if [ -z "${TAGS}" ] && [ "${AUTO_TAG}" = "false" ]; then
   echo "Cannot push image without tag." >&2 ; exit 1 ;
 fi
 
-if [ ! -z "${DEST_LOGIN}" ] ; then
+if [ ! -z "${DEST_LOGIN}" ] && [ "$ORACLE" = "false" ]; then
   docker login -u "${DEST_LOGIN}" -p "${DEST_PASS}" "${REGISTRY}" || { echo "Cannot login to docker image registry" ; exit 1 ; }
 fi
 
@@ -46,8 +47,15 @@ cp ~/.m2/repository/io/debezium/debezium-connector-*/"${project_version}"/debezi
 cp ~/.m2/repository/io/debezium/debezium-scripting/"${project_version}"/debezium-scripting-*.zip .
 mkdir jdbc
 cp ~/.m2/repository/com/ibm/db2/jcc/*/jcc-*.jar jdbc/
-cp ~/.m2/repository/com/oracle/database/jdbc/ojdbc8/*/ojdbc8-*.jar jdbc/
 cp ~/.m2/repository/io/apicurio/apicurio-registry-distro-connect-converter/*/apicurio-registry-*.zip .
+
+if [ "${ORACLE}" = "false" ] ; then
+  rm debezium-connector-oracle*.zip
+else
+  cp ~/.m2/repository/com/oracle/database/jdbc/ojdbc8/*/ojdbc8-*.jar jdbc/
+  echo "Changing quay organisation to private rh-integration since ORACLE connector is included"
+  ORGANISATION="rh_integration"
+fi
 
 popd || exit
 

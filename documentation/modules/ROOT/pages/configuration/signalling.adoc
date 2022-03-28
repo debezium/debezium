@@ -11,24 +11,8 @@ ifdef::community[]
 
 toc::[]
 
-[NOTE]
-====
-This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this extension.
-====
-
 == Overview
 endif::community[]
-
-ifdef::product[]
-[IMPORTANT]
-====
-Signaling is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
 To trigger a connector to perform a specified action, you issue a SQL command to add a signal message to a specialized signaling table, also referred to as a signaling data collection.
@@ -38,9 +22,7 @@ When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-
 Signaling is available for use with the following {prodname} connectors:
 
 * Db2
-ifdef::community[]
-* MongoDB
-endif::community[]
+* MongoDB (Technology Preview)
 * MySQL
 * Oracle
 * PostgreSQL
@@ -71,13 +53,9 @@ The format for the fully-qualified name of the signaling collection depends on t
 The following example shows the naming formats to use for each connector:
 
 Db2:: `_<schemaName>_._<tableName>_`
-ifdef::community[]
 MongoDB:: `_<databaseName>_._<collectionName>_`
-endif::community[]
 MySQL:: `_<databaseName>_._<tableName>_`
-ifdef::community[]
 Oracle:: `_<databaseName>_._<schemaName>_._<tableName>_`
-endif::community[]
 PostgreSQL:: `_<schemaName>_._<tableName>_`
 SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_` +
  +

@@ -12,6 +12,7 @@ import java.util.function.Supplier;
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
@@ -55,6 +56,10 @@ public class CdcSourceTaskContext {
      */
     public LoggingContext.PreviousContext configureLoggingContext(String contextName) {
         return LoggingContext.forConnector(connectorType, connectorName, contextName);
+    }
+
+    public LoggingContext.PreviousContext configureLoggingContext(String contextName, Partition partition) {
+        return LoggingContext.forConnector(connectorType, connectorName, taskId, contextName, partition);
     }
 
     /**

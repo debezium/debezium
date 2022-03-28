@@ -39,6 +39,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
+import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -242,6 +243,59 @@ public abstract class CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined SchemaNameAdjustmentMode options
+     */
+    public enum SchemaNameAdjustmentMode implements EnumeratedValue {
+
+        /**
+         * Do not adjust names
+         */
+        NONE("none"),
+
+        /**
+         * Adjust names for compatibility with Avro
+         */
+        AVRO("avro");
+
+        private final String value;
+
+        SchemaNameAdjustmentMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public SchemaNameAdjuster createAdjuster() {
+            if (this == SchemaNameAdjustmentMode.AVRO) {
+                return SchemaNameAdjuster.create();
+            }
+            return SchemaNameAdjuster.NO_OP;
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static SchemaNameAdjustmentMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SchemaNameAdjustmentMode option : SchemaNameAdjustmentMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
     private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
@@ -439,6 +493,16 @@ public abstract class CommonConnectorConfig {
                     + "'base64' represents binary data as base64-encoded string"
                     + "'hex' represents binary data as hex-encoded (base16) string");
 
+    public static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
+            .withDisplayName("Schema Name Adjustment")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 7))
+            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.AVRO)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including:"
+                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
+                    + "'none' does not apply any adjustment");
+
     public static final Field QUERY_FETCH_SIZE = Field.create("query.fetch.size")
             .withDisplayName("Query fetch size")
             .withType(Type.INT)
@@ -536,6 +600,7 @@ public abstract class CommonConnectorConfig {
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
+    private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final String signalingDataCollection;
     private final EnumSet<Operation> skippedOperations;
     private final String transactionTopic;
@@ -558,6 +623,7 @@ public abstract class CommonConnectorConfig {
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
+        this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
@@ -847,6 +913,10 @@ public abstract class CommonConnectorConfig {
 
     public BinaryHandlingMode binaryHandlingMode() {
         return binaryHandlingMode;
+    }
+
+    public SchemaNameAdjustmentMode schemaNameAdjustmentMode() {
+        return schemaNameAdjustmentMode;
     }
 
     public String getSignalingDataCollectionId() {

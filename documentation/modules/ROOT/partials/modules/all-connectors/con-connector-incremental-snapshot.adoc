@@ -1,22 +1,3 @@
-ifdef::community[]
-[NOTE]
-====
-This feature is currently in incubating state. The exact semantics, configuration options, and so forth is subject to change in future revisions, based on the feedback we receive.
-Please let us know if you encounter any problems while using this extension.
-====
-endif::community[]
-
-ifdef::product[]
-[IMPORTANT]
-====
-The use of incremental snapshots is a Technology Preview feature.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 To provide flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
 Incremental snapshots rely on the {prodname} mechanism for xref:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
 ifdef::community[]
@@ -36,7 +17,7 @@ This phased approach to capturing data provides the following advantages over th
 * If the progress of an incremental snapshot is interrupted, you can resume it without losing any data.
   After the process resumes, the snapshot begins at the point where it stopped, rather than recapturing the {data-collection} from the beginning.
 * You can run an incremental snapshot on demand at any time, and repeat the process as needed to adapt to database updates.
-  For example, you might re-run a snapshot after you modify the connector configuration to add a {data-collection} to its xref:{context}-property-table-include-list[`table.include.list`] property.
+  For example, you might re-run a snapshot after you modify the connector configuration to add a {data-collection} to its xref:{context}-property-{data-collection}-include-list[`{data-collection}.include.list`] property.
 
 .Incremental snapshot process
 When you run an incremental snapshot, {prodname} sorts each {data-collection} by primary key and then splits the {data-collection} into chunks based on the xref:{context}-property-incremental-snapshot-chunk-size[configured chunk size].

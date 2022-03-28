@@ -79,6 +79,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final RelationalTableFilters filters;
     private final DdlChanges ddlChanges;
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
+    private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private boolean storageInitialiationExecuted = false;
     private final MySqlConnectorConfig connectorConfig;
 
@@ -353,6 +354,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public boolean assignTableNumber(long tableNumber, TableId id) {
         final TableSchema tableSchema = schemaFor(id);
         if (tableSchema == null) {
+            excludeTableIdsByTableNumber.put(tableNumber, id);
             return false;
         }
 
@@ -371,12 +373,23 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
+     * Return the excluded table id associated with MySQL-specific table number.
+     *
+     * @param tableNumber
+     * @return the table id or null if not known
+     */
+    public TableId getExcludeTableId(long tableNumber) {
+        return excludeTableIdsByTableNumber.get(tableNumber);
+    }
+
+    /**
      * Clear all of the table mappings. This should be done when the logs are rotated, since in that a different table
      * numbering scheme will be used by all subsequent TABLE_MAP binlog events.
      */
     public void clearTableMappings() {
         LOGGER.debug("Clearing table number mappings");
         tableIdsByTableNumber.clear();
+        excludeTableIdsByTableNumber.clear();
     }
 
     @Override

@@ -238,6 +238,12 @@ public class OracleDefaultValueConverter implements DefaultValueConverter {
     }
 
     private static String unquote(String value) {
-        return value.substring(1, value.length() - 1);
+        if (value.startsWith("('") && value.endsWith("')")) {
+            return value.substring(2, value.length() - 2);
+        }
+        if (value.startsWith("'") && value.endsWith("'")) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 }

@@ -209,7 +209,7 @@ public class SqlServerConnectionIT {
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
-                    SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+                    SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
@@ -379,7 +379,7 @@ public class SqlServerConnectionIT {
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
-                    SchemaNameAdjuster.create(), new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+                    SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);

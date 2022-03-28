@@ -2,6 +2,77 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.0.CR1
+March 25th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379895)
+
+### New features since 1.9.0.Beta1
+
+* Add support for Cassandra 4.x [DBZ-2514](https://issues.redhat.com/browse/DBZ-2514)
+* Exclude dummy events from database history [DBZ-3762](https://issues.redhat.com/browse/DBZ-3762)
+* Define how MCS container images should be build [DBZ-4006](https://issues.redhat.com/browse/DBZ-4006)
+* Document kafka-connect-offset related properties [DBZ-4014](https://issues.redhat.com/browse/DBZ-4014)
+* Update UI dependency and it's configuration accordingly  [DBZ-4636](https://issues.redhat.com/browse/DBZ-4636)
+* Save and load database history in Redis [DBZ-4771](https://issues.redhat.com/browse/DBZ-4771)
+* Provide the Federated module UI component for DBZ Connector edit Flow [DBZ-4785](https://issues.redhat.com/browse/DBZ-4785)
+* Switch to fabric8 model provided by Apicurio team [DBZ-4790](https://issues.redhat.com/browse/DBZ-4790)
+* Merge the Data and Runtime option page in federated component. [DBZ-4804](https://issues.redhat.com/browse/DBZ-4804)
+* Add task id and partition to the logging context for multi-partition connectors [DBZ-4809](https://issues.redhat.com/browse/DBZ-4809)
+* run.sh is not working in windows environment [DBZ-4821](https://issues.redhat.com/browse/DBZ-4821)
+* Log the tableId is null when filter out some tables [DBZ-4823](https://issues.redhat.com/browse/DBZ-4823)
+* Debezium Mysql connector can't handle CREATE INDEX IF NOT EXISTS (MariaDB) [DBZ-4841](https://issues.redhat.com/browse/DBZ-4841)
+* Postgresql connector prints uninformative log on snapshot phase [DBZ-4861](https://issues.redhat.com/browse/DBZ-4861)
+
+
+### Breaking changes since 1.9.0.Beta1
+
+None
+
+
+### Fixes since 1.9.0.Beta1
+
+* SchemaNameAdjuster is too restrictive by default [DBZ-3535](https://issues.redhat.com/browse/DBZ-3535)
+* CVE-2022-21363 mysql-connector-java: Difficult to exploit vulnerability allows high privileged attacker with network access via multiple protocols to compromise MySQL Connectors [rhint-debezium-1] [DBZ-4758](https://issues.redhat.com/browse/DBZ-4758)
+* java.lang.NullPointerException while handling DROP column query [DBZ-4786](https://issues.redhat.com/browse/DBZ-4786)
+* Not reading the keystore/truststore when enabling MySQL SSL authentication [DBZ-4787](https://issues.redhat.com/browse/DBZ-4787)
+* "DebeziumException: Unable to find primary from MongoDB connection" post upgrade to 1.8.1 [DBZ-4802](https://issues.redhat.com/browse/DBZ-4802)
+* Oracle TO_DATE cannot be parsed when NLS parameter is provided [DBZ-4810](https://issues.redhat.com/browse/DBZ-4810)
+* Oracle test FlushStrategyIT fails [DBZ-4819](https://issues.redhat.com/browse/DBZ-4819)
+* Mysql: Getting ERROR `Failed due to error: connect.errors.ConnectException: For input string: "false"` [DBZ-4822](https://issues.redhat.com/browse/DBZ-4822)
+* Expect the null value with snapshot CapturedTables metric when skipping snapshotting [DBZ-4824](https://issues.redhat.com/browse/DBZ-4824)
+* MySQL 5.7 - no viable alternative at input 'ALTER TABLE ORD_ALLOCATION_CONFIG CHANGE RANK' [DBZ-4833](https://issues.redhat.com/browse/DBZ-4833)
+* missing notes on using db2 connector [DBZ-4835](https://issues.redhat.com/browse/DBZ-4835)
+* ParsingException when adding a new table to an existing oracle connector [DBZ-4836](https://issues.redhat.com/browse/DBZ-4836)
+* Supplemental log check fails when restarting connector after table dropped [DBZ-4842](https://issues.redhat.com/browse/DBZ-4842)
+* CREATE_TOPIC docker image regression [DBZ-4844](https://issues.redhat.com/browse/DBZ-4844)
+* Logminer mining session stopped due to several kinds of SQL exceptions [DBZ-4850](https://issues.redhat.com/browse/DBZ-4850)
+* DDL statement couldn't be parsed [DBZ-4851](https://issues.redhat.com/browse/DBZ-4851)
+* Gracefully pass unsupported column types from DDL parser as OracleTypes.OTHER [DBZ-4852](https://issues.redhat.com/browse/DBZ-4852)
+* Debezium oracle connector stopped because of Unsupported column type: LONG  [DBZ-4853](https://issues.redhat.com/browse/DBZ-4853)
+* Compilation of SqlServerConnectorIntegrator fails [DBZ-4856](https://issues.redhat.com/browse/DBZ-4856)
+* Maven cannot compile  debezium-microbenchmark-oracle [DBZ-4860](https://issues.redhat.com/browse/DBZ-4860)
+* oracle connector fails because of Supplemental logging not properly configured  [DBZ-4869](https://issues.redhat.com/browse/DBZ-4869)
+* Re-read incremental snapshot chunk on DDL event [DBZ-4878](https://issues.redhat.com/browse/DBZ-4878)
+* oracle connector fails because of unsupported column type nclob  [DBZ-4880](https://issues.redhat.com/browse/DBZ-4880)
+* Debezium throws CNFE for Avro converter [DBZ-4885](https://issues.redhat.com/browse/DBZ-4885)
+
+
+### Other changes since 1.9.0.Beta1
+
+* OpenShift deployment instruction improvements [DBZ-2594](https://issues.redhat.com/browse/DBZ-2594)
+* Add Kubernetes version of deployment page [DBZ-2646](https://issues.redhat.com/browse/DBZ-2646)
+* Log DML replication events instead of throwing an error [DBZ-3949](https://issues.redhat.com/browse/DBZ-3949)
+* Review SqlServerConnector properties [DBZ-4052](https://issues.redhat.com/browse/DBZ-4052)
+* Promote Outbox Quarkus extension to stable [DBZ-4430](https://issues.redhat.com/browse/DBZ-4430)
+* Restructure Oracle connector documentation [DBZ-4436](https://issues.redhat.com/browse/DBZ-4436)
+* Downstream docs for outbox event routing SMTs [DBZ-4652](https://issues.redhat.com/browse/DBZ-4652)
+* Promote incremental snapshots to stable and GA [DBZ-4655](https://issues.redhat.com/browse/DBZ-4655)
+* Remove legacy --zookeeper option from example instructions [DBZ-4660](https://issues.redhat.com/browse/DBZ-4660)
+* Use JdbcConfiguration instead of Configuration for JDBC config values [DBZ-4801](https://issues.redhat.com/browse/DBZ-4801)
+* Don't set truststore/keystore parameters to system variables [DBZ-4832](https://issues.redhat.com/browse/DBZ-4832)
+* Docs: JDBC driver should go to Oracle connector dir [DBZ-4883](https://issues.redhat.com/browse/DBZ-4883)
+
+
+
 ## 1.9.0.Beta1
 March 3rd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379893)
 

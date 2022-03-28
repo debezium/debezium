@@ -1149,6 +1149,7 @@ NOREWRITE:                    'NOREWRITE';
 NORMAL:                       'NORMAL';
 NO_ROOT_SW_FOR_LOCAL:         'NO_ROOT_SW_FOR_LOCAL';
 NOROWDEPENDENCIES:            'NOROWDEPENDENCIES';
+NOSCALE:                      'NOSCALE';
 NOSCHEMACHECK:                'NOSCHEMACHECK';
 NOSEGMENT:                    'NOSEGMENT';
 NO_SEMIJOIN:                  'NO_SEMIJOIN';

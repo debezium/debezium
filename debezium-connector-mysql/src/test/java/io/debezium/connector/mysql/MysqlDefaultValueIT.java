@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -882,5 +883,51 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         final Schema columnSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(columnSchema.defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+    }
+
+    @Test
+    @FixFor("DBZ-4822")
+    public void shouldConvertDefaultBoolean2Number() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ_4822_DEFAULT_BOOLEAN"))
+                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.DecimalHandlingMode.STRING)
+                .build();
+
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        // Connect to the DB and issue our alter statement to test.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                String addColumnDdl = "CREATE TABLE DBZ_4822_DEFAULT_BOOLEAN (\n"
+                        + "ID INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\n"
+                        + "C0 BIGINT NULL DEFAULT TRUE,\n"
+                        + "C1 INT(1) NULL DEFAULT true,\n"
+                        + "C2 BIT DEFAULT true,\n"
+                        + "C3 TINYINT DEFAULT false,\n"
+                        + "C4 FLOAT DEFAULT false,\n"
+                        + "C5 REAL DEFAULT false\n,"
+                        + "C6 DOUBLE DEFAULT false\n,"
+                        + "C7 NUMERIC(38, 26) DEFAULT false,\n"
+                        + "C8 DECIMAL(10, 2) DEFAULT false,\n"
+                        + "C9 BIGINT DEFAULT false);";
+                connection.execute(addColumnDdl);
+                connection.execute("insert into DBZ_4822_DEFAULT_BOOLEAN (C0) values(1000);");
+            }
+        }
+
+        SourceRecords records = consumeRecordsByTopic(100);
+        assertThat(records).isNotNull();
+
+        List<SourceRecord> events = records.recordsForTopic(DATABASE.topicForTable("DBZ_4822_DEFAULT_BOOLEAN"));
+        assertThat(events).hasSize(1);
+        SourceRecord record = events.get(0);
+        Struct change = ((Struct) record.value()).getStruct("after");
+        assertThat(change.get("C7")).isEqualTo("0.00000000000000000000000000");
+        assertThat(change.get("C8")).isEqualTo("0.00");
+        assertThat(change.get("C9")).isEqualTo(0L);
     }
 }

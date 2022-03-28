@@ -413,6 +413,14 @@ COMMIT;
 END
 #end
 #begin
+-- delimiter //
+CREATE PROCEDURE set_unique_check()
+BEGIN
+    SET unique_checks=off;
+    SET unique_checks=on;
+END; -- //-- delimiter ;
+#end
+#begin
 -- Create Role
 create role 'RL_COMPLIANCE_NSA';
 create role if not exists 'RL_COMPLIANCE_NSA';

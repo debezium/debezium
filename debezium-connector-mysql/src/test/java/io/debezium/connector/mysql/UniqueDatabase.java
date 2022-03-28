@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.relational.history.FileDatabaseHistory;
 
 /**
@@ -184,11 +185,33 @@ public class UniqueDatabase {
      * @return Configuration builder initialized with JDBC connection parameters.
      */
     public Configuration.Builder defaultJdbcConfigBuilder() {
-        return Configuration.create()
+        Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.port", "3306"))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass");
+
+        String sslMode = System.getProperty("database.ssl.mode", "disabled");
+
+        if (sslMode.equals("disabled")) {
+            builder.with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED);
+        }
+        else {
+            URL trustStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/truststore");
+            URL keyStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/keystore");
+
+            builder.with(MySqlConnectorConfig.SSL_MODE, sslMode)
+                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE, System.getProperty("database.ssl.truststore", trustStoreFile.getPath()))
+                    .with(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, System.getProperty("database.ssl.truststore.password", "debezium"))
+                    .with(MySqlConnectorConfig.SSL_KEYSTORE, System.getProperty("database.ssl.keystore", keyStoreFile.getPath()))
+                    .with(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, System.getProperty("database.ssl.keystore.password", "debezium"));
+        }
+
+        if (dbHistoryPath != null) {
+            builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
+        }
+
+        return builder;
     }
 
     /**
@@ -204,20 +227,13 @@ public class UniqueDatabase {
      * database not filtered by default
      */
     public Configuration.Builder defaultConfigWithoutDatabaseFilter() {
-        final Configuration.Builder builder = defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
+        return defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
                 .with(MySqlConnector.IMPLEMENTATION_PROP, System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
-
-        if (dbHistoryPath != null) {
-            builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
-        }
-
-        return builder;
     }
 
     /**

@@ -36,7 +36,6 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlTestConnection.MySqlVersion;
@@ -164,70 +163,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldValidateValidConfigurationWithSSL() {
-        Configuration config = DATABASE.defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
-                .with(MySqlConnectorConfig.SSL_KEYSTORE, "/some/path/to/keystore")
-                .with(MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, "keystore1234")
-                .with(MySqlConnectorConfig.SSL_TRUSTSTORE, "/some/path/to/truststore")
-                .with(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, "truststore1234")
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
-                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .build();
-        MySqlConnector connector = new MySqlConnector();
-        Config result = connector.validate(config.asMap());
-
-        // Can't connect to MySQL using SSL on a container using the 'mysql/mysql-server' image maintained by MySQL team,
-        // but can actually connect to MySQL using SSL on a container using the 'mysql' image maintained by Docker, Inc.
-        assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 0, 1);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
-    }
-
-    @Test
     public void shouldValidateAcceptableConfiguration() {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
                 .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
@@ -295,7 +232,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Loop over all known valid values
         for (final String acceptableValue : acceptableValues) {
             Configuration config = DATABASE.defaultJdbcConfigBuilder()
-                    .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                     .with(MySqlConnectorConfig.SERVER_ID, 18765)
                     .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
                     .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
@@ -350,14 +286,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        config = Configuration.create()
+        config = DATABASE.defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
-                .with(MySqlConnectorConfig.USER, "snapper")
-                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, serverId)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(dbIncludeListField, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
@@ -764,14 +697,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Thread.sleep(5000L);
         }
 
-        config = Configuration.create()
+        config = DATABASE.defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
-                .with(MySqlConnectorConfig.USER, "snapper")
-                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 28765)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.getDatabaseName() + ".products")
@@ -815,14 +745,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
 
         String tables = String.format("%s.products,%s.products_on_hand", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
-        config = Configuration.create()
+        config = DATABASE.defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
-                .with(MySqlConnectorConfig.USER, "snapper")
-                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 28765)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
@@ -2496,5 +2423,62 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse());
+    }
+
+    @Test
+    @FixFor("DBZ-3949")
+    public void testDmlInChangeEvents() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("products"))
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, CommonConnectorConfig.EventProcessingFailureHandlingMode.FAIL)
+                .build();
+
+        // Start the connector.
+        CompletionResult completion = new CompletionResult();
+        start(MySqlConnector.class, config, completion);
+        waitForStreamingRunning(DATABASE.getServerName());
+
+        // Do some changes.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products VALUES (204,'rubberduck','Rubber Duck',2.12);");
+                connection.execute("INSERT INTO products VALUES (205,'rubbercrocodile','Rubber Crocodile',4.14);");
+                connection.execute("INSERT INTO products VALUES (206,'rubberfish','Rubber Fish',5.15);");
+            }
+        }
+
+        // Switch to 'STATEMENT' binlog format to mimic DML events in the log.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(String.format("SET GLOBAL binlog_format = 'STATEMENT'", DATABASE.getDatabaseName()));
+            }
+        }
+
+        // Do some more changes.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE products SET weight=2.22 WHERE id=204;");
+                connection.execute("UPDATE products SET weight=4.44 WHERE id=205;");
+                connection.execute("UPDATE products SET weight=5.55 WHERE id=206;");
+            }
+        }
+
+        // Last 3 changes should be ignored as they were stored using STATEMENT format.
+        SourceRecords records = consumeRecordsByTopic(3);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("products"));
+        assertThat(changeEvents.size()).isEqualTo(3);
+        // There shouldn't be any error.
+        assertThat(completion.hasError()).isFalse();
+
+        // Switch back to 'ROW' binlog format.
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(String.format("SET GLOBAL binlog_format = 'ROW'", DATABASE.getDatabaseName()));
+            }
+        }
+
+        stopConnector();
     }
 }

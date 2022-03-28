@@ -2,21 +2,6 @@
 
 The Debezium documentation in [documentation](https://github.com/debezium/debezium/tree/main/documentation) is built using the [Antora Framework](https://www.antora.org).
 
-- [Antora Quickstart](#antora-quickstart)
-    - [Component descriptors](#component-descriptors)
-    - [Page content](#page-content)
-    - [Linking to content](#linking-to-content)
-        - [External](#external)
-        - [Internal](#internal)
-    - [Navigation Pane](#navigation-pane)
-    - [Antora Configuration](#antora-configuration)
-    - [Attributes](#attributes)
-- [Contributing to the Documentation](#contributing-to-the-documentation)
-    - [Using AsciiDoc attributes](#using-asciidoc-attributes)
-    - [Adding cross references](#adding-cross-references-that-link-to-other-content)
-    - [Adding images](#adding-images)
-    - [Best practices](#best-practices)
-
 ## Antora Quickstart
 
 The Antora framework is opinionated about its directory structure, which is why the folder layout is as follows:
@@ -162,7 +147,7 @@ For example, to link to a section header with the name _Custom connector_, the h
 ```
 
 ```
-[[schema-change-topic]}
+[[schema-change-topic]]
 == Schema change topic
 ```
 

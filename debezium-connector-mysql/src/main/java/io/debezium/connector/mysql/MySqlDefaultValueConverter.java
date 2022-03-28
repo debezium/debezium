@@ -62,6 +62,11 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
             Types.DATE, Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE, Types.TIME, Types.BOOLEAN, Types.BIT,
             Types.NUMERIC, Types.DECIMAL, Types.FLOAT, Types.DOUBLE, Types.REAL);
 
+    @Immutable
+    private static final Set<Integer> NUMBER_DATA_TYPES = Collect.unmodifiableSet(Types.BIT, Types.TINYINT,
+            Types.SMALLINT, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.REAL, Types.DOUBLE, Types.NUMERIC,
+            Types.DECIMAL);
+
     private static final DateTimeFormatter ISO_LOCAL_DATE_WITH_OPTIONAL_TIME = new DateTimeFormatterBuilder()
             .append(DateTimeFormatter.ISO_LOCAL_DATE)
             .optionalStart()
@@ -125,10 +130,11 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         }
 
         // boolean is also INT(1) or TINYINT(1)
-        if ("TINYINT".equals(column.typeName()) || "INT".equals(column.typeName())) {
-            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-                return convertToBoolean(value);
+        if (NUMBER_DATA_TYPES.contains(column.jdbcType()) && ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))) {
+            if (Types.DECIMAL == column.jdbcType() || Types.NUMERIC == column.jdbcType()) {
+                return convertToDecimal(column, value.equalsIgnoreCase("true") ? "1" : "0");
             }
+            return value.equalsIgnoreCase("true") ? 1 : 0;
         }
         switch (column.jdbcType()) {
             case Types.DATE:

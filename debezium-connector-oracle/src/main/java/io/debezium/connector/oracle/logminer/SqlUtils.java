@@ -57,7 +57,7 @@ public class SqlUtils {
     }
 
     static String currentRedoLogSequenceQuery() {
-        return String.format("SELECT SEQUENCE# FROM %s WHERE STATUS = 'CURRENT'", LOG_VIEW);
+        return String.format("SELECT SEQUENCE# FROM %s WHERE STATUS = 'CURRENT' ORDER BY SEQUENCE#", LOG_VIEW);
     }
 
     static String databaseSupplementalLoggingAllCheckQuery() {

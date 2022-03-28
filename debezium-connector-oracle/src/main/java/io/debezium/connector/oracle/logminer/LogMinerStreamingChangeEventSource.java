@@ -74,6 +74,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final boolean archiveLogOnlyMode;
     private final String archiveDestinationName;
     private final int logFileQueryMaxRetries;
+    private final Duration initialDelay;
+    private final Duration maxDelay;
 
     private Scn startScn; // startScn is the **exclusive** lower bound for mining
     private Scn endScn;
@@ -97,7 +99,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveDestinationName = connectorConfig.getLogMiningArchiveDestinationName();
-        this.logFileQueryMaxRetries = connectorConfig.getDefaultLogFileQueryMaxRetries();
+        this.logFileQueryMaxRetries = connectorConfig.getMaximumNumberOfLogQueryRetries();
+        this.initialDelay = connectorConfig.getLogMiningInitialDelay();
+        this.maxDelay = connectorConfig.getLogMiningMaxDelay();
     }
 
     /**
@@ -304,7 +308,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
             if (!isContinuousMining) {
                 currentRedoLogSequences = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries);
+                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
             }
         }
         else {
@@ -313,7 +317,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     buildDataDictionary(connection);
                 }
                 currentRedoLogSequences = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries);
+                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
             }
         }
 
@@ -618,10 +622,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                 // Check if ALL COLUMNS supplemental logging is enabled for each captured table
                 for (TableId tableId : schema.tableIds()) {
-                    if (!isTableAllColumnsSupplementalLoggingEnabled(connection, tableId)) {
-                        throw new DebeziumException("Supplemental logging not properly configured for table " + tableId + ". "
-                                + "Use: ALTER TABLE " + tableId.schema() + "." + tableId.table()
-                                + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+                    if (!connection.isTableExists(tableId)) {
+                        LOGGER.warn("Database table '{}' no longer exists, supplemental log check skipped", tableId);
+                    }
+                    else if (!isTableAllColumnsSupplementalLoggingEnabled(connection, tableId)) {
+                        LOGGER.warn("Database table '{}' not configured with supplemental logging \"(ALL) COLUMNS\"; " +
+                                "only explicitly changed columns will be captured. " +
+                                "Use: ALTER TABLE {}.{} ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", tableId, tableId.schema(), tableId.table());
                     }
                     final Table table = schema.tableFor(tableId);
                     if (table == null) {

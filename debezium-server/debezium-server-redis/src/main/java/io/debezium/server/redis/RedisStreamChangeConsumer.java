@@ -33,6 +33,7 @@ import io.debezium.util.DelayStrategy;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.StreamEntryID;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
 
@@ -56,6 +57,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private HostAndPort address;
     private Optional<String> user;
     private Optional<String> password;
+
+    @ConfigProperty(name = PROP_PREFIX + "ssl.enabled", defaultValue = "false")
+    boolean sslEnabled;
 
     @ConfigProperty(name = PROP_PREFIX + "batch.size", defaultValue = "500")
     Integer batchSize;
@@ -81,7 +85,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         user = config.getOptionalValue(PROP_USER, String.class);
         password = config.getOptionalValue(PROP_PASSWORD, String.class);
 
-        client = new Jedis(address);
+        client = new Jedis(address.getHost(), address.getPort(), sslEnabled);
         if (user.isPresent()) {
             client.auth(user.get(), password.get());
         }
@@ -164,7 +168,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
 
                             // Add the record to the destination stream
-                            pipeline.xadd(destination, null, Collections.singletonMap(key, value));
+                            pipeline.xadd(destination, StreamEntryID.NEW_ENTRY, Collections.singletonMap(key, value));
                         }
 
                         // Sync the pipeline in Redis and parse the responses (response per command with the same order)
