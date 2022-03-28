@@ -5,9 +5,11 @@
  */
 package io.debezium.server.redis;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -15,6 +17,8 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.enterprise.context.Dependent;
 import javax.inject.Named;
+
+import com.google.common.net.HostAndPort;
 
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
@@ -28,10 +32,9 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
 import io.debezium.util.DelayStrategy;
-
-import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Transaction;
+import redis.clients.jedis.Pipeline;
+import redis.clients.jedis.StreamEntryID;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
 
@@ -39,6 +42,7 @@ import redis.clients.jedis.exceptions.JedisDataException;
  * Implementation of the consumer that delivers the messages into Redis (stream) destination.
  *
  * @author M Sazzadul Hoque
+ * @author Yossi Shirizli
  */
 @Named("redis")
 @Dependent
@@ -55,6 +59,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private HostAndPort address;
     private Optional<String> user;
     private Optional<String> password;
+
+    @ConfigProperty(name = PROP_PREFIX + "ssl.enabled", defaultValue = "false")
+    boolean sslEnabled;
 
     @ConfigProperty(name = PROP_PREFIX + "batch.size", defaultValue = "500")
     Integer batchSize;
@@ -80,7 +87,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         user = config.getOptionalValue(PROP_USER, String.class);
         password = config.getOptionalValue(PROP_PASSWORD, String.class);
 
-        client = new Jedis(address);
+        client = new Jedis(address.getHost(), address.getPort(), sslEnabled);
         if (user.isPresent()) {
             client.auth(user.get(), password.get());
         }
@@ -133,6 +140,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         batches(records, batchSize).forEach(batch -> {
             boolean completedSuccessfully = false;
 
+            // Clone the batch and remove the records that have been successfully processed.
+            // Move to the next batch once this list is empty.
+            List<ChangeEvent<Object, Object>> clonedBatch = batch.stream().collect(Collectors.toList());
+
             // As long as we failed to execute the current batch to the stream, we should retry if the reason was either a connection error or OOM in Redis.
             while (!completedSuccessfully) {
                 if (client == null) {
@@ -147,46 +158,63 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     }
                 }
                 else {
-                    Transaction transaction;
+                    Pipeline pipeline;
                     try {
-                        LOGGER.trace("Preparing a Redis Transaction of {} records", batch.size());
-                        transaction = client.multi();
+                        LOGGER.trace("Preparing a Redis Pipeline of {} records", clonedBatch.size());
+                        pipeline = client.pipelined();
 
-                        // Add the batch records to the stream(s) via Transaction
-                        for (ChangeEvent<Object, Object> record : batch) {
+                        // Add the batch records to the stream(s) via Pipeline
+                        for (ChangeEvent<Object, Object> record : clonedBatch) {
                             String destination = streamNameMapper.map(record.destination());
                             String key = (record.key() != null) ? getString(record.key()) : nullKey;
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
 
                             // Add the record to the destination stream
-                            transaction.xadd(destination, null, Collections.singletonMap(key, value));
+                            pipeline.xadd(destination, StreamEntryID.NEW_ENTRY, Collections.singletonMap(key, value));
                         }
 
-                        // Execute the transaction in Redis
-                        transaction.exec();
+                        // Sync the pipeline in Redis and parse the responses (response per command with the same order)
+                        List<Object> responses = pipeline.syncAndReturnAll();
+                        List<ChangeEvent<Object, Object>> processedRecords = new ArrayList<ChangeEvent<Object, Object>>();
+                        int index = 0;
+                        int totalOOMResponses = 0;
 
-                        // Mark all the batch records as processed only when the transaction succeeds
-                        for (ChangeEvent<Object, Object> record : batch) {
-                            committer.markProcessed(record);
+                        for (Object response : responses) {
+                            String message = response.toString();
+                            // When Redis reaches its max memory limitation, an OOM error message will be retrieved.
+                            // In this case, we will retry execute the failed commands, assuming some memory will be freed eventually as result
+                            // of evicting elements from the stream by the target DB.
+                            if (message.contains("OOM command not allowed when used memory > 'maxmemory'")) {
+                                totalOOMResponses++;
+                            }
+                            else {
+                                // Mark the record as processed
+                                ChangeEvent<Object, Object> currentRecord = clonedBatch.get(index);
+                                committer.markProcessed(currentRecord);
+                                processedRecords.add(currentRecord);
+                            }
+
+                            index++;
                         }
-                        completedSuccessfully = true;
+
+                        clonedBatch.removeAll(processedRecords);
+
+                        if (totalOOMResponses > 0) {
+                            LOGGER.warn("Redis runs OOM, {} command(s) failed", totalOOMResponses);
+                        }
+
+                        if (clonedBatch.size() == 0) {
+                            completedSuccessfully = true;
+                        }
                     }
                     catch (JedisConnectionException jce) {
+                        LOGGER.error("Connection error", jce);
                         close();
                     }
                     catch (JedisDataException jde) {
-                        // When Redis reaches its max memory limitation, a JedisDataException will be thrown with one of the messages listed below.
-                        // In this case, we will retry execute the batch, assuming some memory will be freed eventually as result
-                        // of evicting elements from the stream by the target DB.
-                        if (jde.getMessage().equals("EXECABORT Transaction discarded because of: OOM command not allowed when used memory > 'maxmemory'.")) {
-                            LOGGER.error("Redis runs OOM", jde);
-                        }
-                        else if (jde.getMessage().startsWith("EXECABORT")) {
-                            LOGGER.error("Redis transaction error", jde);
-                        }
                         // When Redis is starting, a JedisDataException will be thrown with this message.
                         // We will retry communicating with the target DB as once of the Redis is available, this message will be gone.
-                        else if (jde.getMessage().equals("LOADING Redis is loading the dataset in memory")) {
+                        if (jde.getMessage().equals("LOADING Redis is loading the dataset in memory")) {
                             LOGGER.error("Redis is starting", jde);
                         }
                         else {
