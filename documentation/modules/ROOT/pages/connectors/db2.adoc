@@ -1723,12 +1723,15 @@ For example, from a terminal window, enter the following, replacing `my-plugins`
 cat <<EOF >debezium-container-for-db2.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
-COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+RUN mkdir -p /opt/kafka/plugins/debezium // <2>
+RUN curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+Run curl -O https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar
 USER 1001
 EOF
 ----
+// Does the preceding example require additional commands to extract the retrieved zip and JAR files? E.g. piping the `curl` request to `tar` or extending the command with `&& tar -xzf _<filename>_`?
 <1> You can specify any file name that you want.
-<2> Replace `my-plugins` with the name of your plug-ins directory.
+<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plugins directory is in a different location, replace instances of this path to reflect the actual location.
 +
 The command creates a Dockerfile with the name `debezium-container-for-db2.yaml` in the current directory.
 
