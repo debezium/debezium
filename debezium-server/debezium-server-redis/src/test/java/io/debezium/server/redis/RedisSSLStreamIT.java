@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.server.TestConfigSource;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
+
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 
