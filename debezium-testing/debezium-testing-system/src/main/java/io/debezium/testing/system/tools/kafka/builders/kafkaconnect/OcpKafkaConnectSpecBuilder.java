@@ -12,6 +12,7 @@ import static io.debezium.testing.system.tools.kafka.builders.kafkaconnect.OcpKa
 import java.util.LinkedList;
 import java.util.List;
 
+import io.strimzi.api.kafka.model.connect.build.*;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
@@ -23,11 +24,6 @@ import io.strimzi.api.kafka.model.ExternalConfigurationReferenceBuilder;
 import io.strimzi.api.kafka.model.ExternalLoggingBuilder;
 import io.strimzi.api.kafka.model.JmxPrometheusExporterMetricsBuilder;
 import io.strimzi.api.kafka.model.KafkaConnectSpecBuilder;
-import io.strimzi.api.kafka.model.connect.build.BuildBuilder;
-import io.strimzi.api.kafka.model.connect.build.ImageStreamOutputBuilder;
-import io.strimzi.api.kafka.model.connect.build.Plugin;
-import io.strimzi.api.kafka.model.connect.build.PluginBuilder;
-import io.strimzi.api.kafka.model.connect.build.ZipArtifactBuilder;
 import io.strimzi.api.kafka.model.template.ContainerTemplateBuilder;
 import io.strimzi.api.kafka.model.template.KafkaConnectTemplateBuilder;
 
@@ -47,23 +43,29 @@ public class OcpKafkaConnectSpecBuilder extends KafkaConnectSpecBuilder {
 
     public OcpKafkaConnectSpecBuilder withKcSetup() {
         List<Plugin> plugins = new LinkedList<>();
-        List<String> databases = ImmutableList.of("mysql", "postgres", "mongo", "db2", "sqlserver", "oracle");
+        List<String> databases = ImmutableList.of("mysql", "postgres", "mongodb", "db2", "sqlserver", "oracle");
+        String as_url = System.getProperty("as.url");
+        String as_debezium_version = System.getProperty("as.debezium.version");
         for (String db : databases) {
             PluginBuilder builder = new PluginBuilder()
                     .withName("debezium-connector-" + db)
                     .withArtifacts(
                             new ZipArtifactBuilder()
-                                    .withUrl(String.format("${as.url}/debezium-connector-%s-${as.debezium.version}-plugin.zip", db))
+                                    .withUrl(String.format("%s/debezium-connector-%s-%s-plugin.zip", as_url, db, as_debezium_version))
                                     .build(),
                             new ZipArtifactBuilder()
-                                    .withUrl("${as.apicurio.url}")
+                                    .withUrl(System.getProperty("as.apicurio.url"))
                                     .build(),
                             new ZipArtifactBuilder()
-                                    .withUrl("${as.url}/debezium-scripting-${as.debezium.version}.zip")
+                                    .withUrl(String.format("%s/debezium-scripting-%s.zip", as_url, as_debezium_version))
                                     .build());
             if ("oracle".equals(db)) {
-                builder.addToArtifacts(new ZipArtifactBuilder()
-                        .withUrl("${as.url}/jdbc/ojdbc8-${version.oracle.driver}.jar")
+                builder.addToArtifacts(new JarArtifactBuilder()
+                        .withUrl(String.format("%s/jdbc/ojdbc8-%s.jar", as_url, System.getProperty("version.oracle.driver")))
+                        .build());
+            } else if ("db2".equals(db)) {
+                builder.addToArtifacts(new JarArtifactBuilder()
+                        .withUrl(String.format("%s/jdbc/jcc-%s.jar", as_url, System.getProperty("version.db2.driver")))
                         .build());
             }
             plugins.add(builder.build());

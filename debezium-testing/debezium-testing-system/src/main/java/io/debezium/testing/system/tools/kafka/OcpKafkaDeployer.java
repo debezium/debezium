@@ -35,7 +35,6 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
     public static class Builder implements Deployer.Builder<Builder, OcpKafkaDeployer> {
 
         private String project;
-        private String yamlPath;
         private OpenShiftClient ocpClient;
         private OkHttpClient httpClient;
         private StrimziOperatorController operatorController;
@@ -55,11 +54,6 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
             return this;
         }
 
-        public Builder withYamlPath(String yamlPath) {
-            this.yamlPath = yamlPath;
-            return this;
-        }
-
         public Builder withOperatorController(StrimziOperatorController operatorController) {
             this.operatorController = operatorController;
             return this;
@@ -67,20 +61,18 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
 
         @Override
         public OcpKafkaDeployer build() {
-            return new OcpKafkaDeployer(project, yamlPath, operatorController, ocpClient, httpClient);
+            return new OcpKafkaDeployer(project, operatorController, ocpClient, httpClient);
         }
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaDeployer.class);
 
-    private final String yamlPath;
     private final String pullSecretName;
     private final StrimziOperatorController operatorController;
 
-    private OcpKafkaDeployer(String project, String yamlPath, StrimziOperatorController operatorController,
+    private OcpKafkaDeployer(String project, StrimziOperatorController operatorController,
                              OpenShiftClient ocp, OkHttpClient http) {
         super(project, ocp, http);
-        this.yamlPath = yamlPath;
         this.operatorController = operatorController;
         this.pullSecretName = this.operatorController.getPullSecretName();
     }

@@ -36,7 +36,7 @@ import io.strimzi.api.kafka.model.storage.EphemeralStorage;
  */
 public class OcpKafkaBuilder extends KafkaBuilder {
     public static String DEFAULT_KAFKA_METADATA_NAME = "debezium-kafka-cluster";
-    public static String DEFAULT_KAFKA_VERSION = "${version.strimzi.kafka}";
+    public static String DEFAULT_KAFKA_VERSION = System.getProperty("version.strimzi.kafka");
 
     public OcpKafkaBuilder() {
     }

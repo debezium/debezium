@@ -71,7 +71,6 @@ public class OcpKafka extends TestFixture {
                 .withOcpClient(ocp)
                 .withHttpClient(new OkHttpClient())
                 .withProject(project)
-                .withYamlPath(KAFKA)
                 .withOperatorController(operatorController)
                 .build();
 

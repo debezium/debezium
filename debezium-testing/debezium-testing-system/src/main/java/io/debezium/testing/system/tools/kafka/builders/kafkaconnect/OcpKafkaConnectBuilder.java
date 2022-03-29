@@ -15,8 +15,8 @@ import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
  */
 public class OcpKafkaConnectBuilder extends io.strimzi.api.kafka.model.KafkaConnectBuilder {
     public static String DEFAULT_KAFKA_CONNECT_METADATA_NAME = "debezium-kafka-connect-cluster";
-    public static String DEFAULT_KAFKA_CONNECT_VERSION = "${version.strimzi.kafka}";
-    public static String DEFAULT_IMAGE = "${image.kc}";
+    public static String DEFAULT_KAFKA_CONNECT_VERSION = System.getProperty("version.strimzi.kafka");
+    public static String DEFAULT_IMAGE = System.getProperty("image.kc");
     public static String DEFAULT_BOOSTRAP_SERVER = "debezium-kafka-cluster-kafka-bootstrap:9093";
 
     public OcpKafkaConnectBuilder() {
