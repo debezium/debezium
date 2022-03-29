@@ -204,7 +204,7 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         KafkaConnectTemplateBuilder templateBuilder = new KafkaConnectTemplateBuilder(template);
 
         if (kcBuild == null) {
-            templateBuilder.withNewPod().addNewImagePullSecret(pullSecretName);
+            templateBuilder.withNewPod().addNewImagePullSecret(pullSecretName).endPod();
         }
         else {
             templateBuilder.withNewBuildConfig().withPullSecret(pullSecretName).endBuildConfig();
