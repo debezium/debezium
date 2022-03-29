@@ -7,7 +7,6 @@ package io.debezium.testing.system.fixtures.kafka;
 
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_CRD_VERSION;
 
-import io.debezium.testing.system.tools.kafka.builders.kafkaconnect.OcpKafkaConnectBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -35,10 +34,7 @@ public class OcpKafka extends TestFixture {
     private final OpenShiftClient ocp;
     private final String project;
     // Kafka resources
-    String KAFKA = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/010-kafka.yaml";
     String KAFKA_CONNECT_LOGGING = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/020-kafka-connect-cfg.yaml";
-    String KAFKA_CONNECT = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/021-kafka-connect.yaml";
-    String KAFKA_CONNECT_BUILD = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/121-kafka-connect-build.yaml";
     // Artifact Server resources
     String ARTIFACT_SERVER_DEPLOYMENT = "/artifact-server/010-deployment.yaml";
     String ARTIFACT_SERVER_SERVICE = "/artifact-server/020-service.yaml";
