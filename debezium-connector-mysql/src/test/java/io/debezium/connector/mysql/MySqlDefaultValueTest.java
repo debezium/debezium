@@ -556,6 +556,19 @@ public class MySqlDefaultValueTest {
     }
 
     @Test
+    @FixFor("DBZ-3541")
+    public void shouldParseStringScientificNotation() {
+        String ddl = "CREATE TABLE int_as_e (col1 INT DEFAULT 1E1, col2 INT DEFAULT '15E-1')";
+
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "int_as_e"));
+
+        assertThat(getColumnSchema(table, "col1").defaultValue()).isEqualTo(10);
+        assertThat(getColumnSchema(table, "col2").defaultValue()).isEqualTo(2);
+    }
+
+    @Test
     @FixFor("DBZ-3989")
     public void shouldTrimNumericalDefaultValueAndShouldNotTrimNonNumericalDefaultValue() {
         String ddl = "CREATE TABLE data(id INT DEFAULT '1 ', data VARCHAR(3) DEFAULT ' 3 ')";
