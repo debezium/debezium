@@ -15,15 +15,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mysql:
