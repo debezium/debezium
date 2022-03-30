@@ -278,7 +278,6 @@ public class LogMinerDmlParser implements DmlParser {
         int columnIndex = 0;
         StringBuilder collectedValue = null;
         for (; index < sql.length(); ++index) {
-            char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
             char c = sql.charAt(index);
 
             if (inQuote) {
