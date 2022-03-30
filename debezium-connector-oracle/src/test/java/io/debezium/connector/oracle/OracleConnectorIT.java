@@ -3292,6 +3292,46 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4907")
+    public void shouldContinueToUpdateOffsetsEvenWhenTableIsNotChanged() throws Exception {
+        TestHelper.dropTable(connection, "dbz4907");
+        try {
+
+            connection.execute("CREATE TABLE dbz4907 (id numeric(9,0) primary key, state varchar2(50))");
+            connection.execute("INSERT INTO dbz4907 (id,state) values (1, 'snapshot')");
+            TestHelper.streamTable(connection, "dbz4907");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4907")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> table = records.recordsForTopic("server1.DEBEZIUM.DBZ4907");
+            assertThat(table).hasSize(1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // There should at least be a commit by the flush policy that triggers the advancement
+            // of the SCN values in the offsets within a few seconds of the polling mechanism.
+            final String offsetScn = getStreamingMetric("OffsetScn");
+            final String committedScn = getStreamingMetric("CommittedScn");
+            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+                final String newOffsetScn = getStreamingMetric("OffsetScn");
+                final String newCommittedScn = getStreamingMetric("CommittedScn");
+                return !newOffsetScn.equals(offsetScn) && !newCommittedScn.equals(committedScn);
+            });
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4907");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();
