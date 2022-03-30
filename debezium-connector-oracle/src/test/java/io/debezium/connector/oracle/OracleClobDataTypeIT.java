@@ -1907,6 +1907,51 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor({ "DBZ-4891", "DBZ-4862" })
+    public void shouldStreamClobValueWithEscapedSingleQuoteValue() throws Exception {
+        String ddl = "CREATE TABLE CLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_CLOB clob, "
+                + "VAL_NCLOB nclob, "
+                + "VAL_USERNAME varchar2(100),"
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.clob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Insert record
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
+        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
+        connection.prepareQuery("INSERT INTO clob_test VALUES (1, ?, ?, ?)", ps -> {
+            ps.setClob(1, clob1);
+            ps.setNClob(2, nclob1);
+            ps.setString(3, "This will be fixed soon so please don't worry, she wrote.");
+        }, null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidInsert(record, "ID", 1);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_CLOB")).isEqualTo(getClobString(clob1));
+        assertThat(after.get("VAL_NCLOB")).isEqualTo(getClobString(nclob1));
+        assertThat(after.get("VAL_USERNAME")).isEqualTo("This will be fixed soon so please don't worry, she wrote.");
+    }
+
     private Clob createClob(String data) throws SQLException {
         Clob clob = connection.connection().createClob();
         clob.setString(1, data);
