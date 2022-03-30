@@ -96,10 +96,10 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     private Jedis client = null;
 
     void connect() {
-
         HostAndPort address = HostAndPort.from(this.address);
 
         client = new Jedis(address.getHost(), address.getPort(), this.sslEnabled);
+        client.clientSetname("debezium:db-history");
 
         if (user != null) {
             client.auth(this.user, this.password);

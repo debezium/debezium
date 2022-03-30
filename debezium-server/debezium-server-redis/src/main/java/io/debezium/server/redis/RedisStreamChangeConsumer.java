@@ -88,6 +88,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         password = config.getOptionalValue(PROP_PASSWORD, String.class);
 
         client = new Jedis(address.getHost(), address.getPort(), sslEnabled);
+        client.clientSetname("debezium:redis:sink");
+
         if (user.isPresent()) {
             client.auth(user.get(), password.get());
         }
