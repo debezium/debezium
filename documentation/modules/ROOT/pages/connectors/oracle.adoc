@@ -3771,3 +3771,39 @@ This change will likely require SYSDBA permissions, so coordinate with your data
 
 Oracle uses the `SYS` and `SYSTEM` accounts for lots of internal changes and therefore the connector automatically filters changes made by these users when fetching changes from LogMiner.
 Never use the `SYS` or `SYSTEM` user accounts for changes to be emitted by the {prodname} Oracle connector.
+
+[id="oracle-stops-capturing-changes-aws"]
+=== Connector stops capturing changes from Oracle on AWS
+
+Due to the https://aws.amazon.com/blogs/networking-and-content-delivery/best-practices-for-deploying-gateway-load-balancer[fixed idle timeout of 350 seconds on the AWS Gateway Load Balancer],
+JDBC calls that require more than 350 seconds to complete can hang indefinitely.
+
+In situations where calls to the Oracle LogMiner API take more than 350 seconds to complete, a timeout can be triggered, causing the AWS Gateway Load Balancer to hang.
+For example, such timeouts can occur when a LogMiner session that processes large amounts of data runs concurrently with Oracle's periodic checkpointing task.
+
+ifdef::product[]
+To prevent timeouts with the AWS Gateway Load Balancer, enable keep-alive packets from the Kafka Connect environment, by performing the following task as root or a super-user:
+endif::product[]
+ifdef::community[]
+To prevent timeouts with the AWS Gateway Load Balancer, enable keep-alive packets from the kafka Connect or Debezium Server environment, by performing the following task as root or a super-user in the environment that hosts the connector:
+endif::community[]
+
+From a terminal, run the following command:
+```shell
+sysctl -w net.ipv4.tcp_keepalive_time=60
+```
+
+Edit `/etc/sysctl.conf` and set the value of the following variable as shown:
+
+```properties
+net.ipv4.tcp_keepalive_time=60
+```
+
+Reconfigure the {prodname} for Oracle connector to use the `database.url` property rather than `database.hostname` and add the `(ENABLE=broken)` Oracle connect string descriptor as shown in the following example:
+
+```properties
+database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(Host=hostname)(Port=port)))(CONNECT_DATA=(SERVICE_NAME=serviceName)))
+```
+
+The precdeding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
+As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
