@@ -23,7 +23,7 @@ import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
-/** 
+/**
  * Implementation of OffsetBackingStore that saves to Redis
  * @author Oren Elias
  */
@@ -83,6 +83,7 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
         HostAndPort address = HostAndPort.from(this.address);
 
         client = new Jedis(address.getHost(), address.getPort(), this.sslEnabled);
+        client.clientSetname("debezium:offsets");
 
         if (this.user != null) {
             client.auth(this.user, this.password);
