@@ -3036,7 +3036,7 @@ The {prodname} Oracle connector also provides the following additional streaming
 |`string`
 |The oldest system change number in the transaction buffer.
 
-|[[oracle-streaming-metrics-committed-scn]]<<oracle-streaming-metrics-committed-scn, `+ComittedScn+`>>
+|[[oracle-streaming-metrics-committed-scn]]<<oracle-streaming-metrics-committed-scn, `+CommittedScn+`>>
 |`string`
 |The last committed system change number from the transaction buffer.
 
