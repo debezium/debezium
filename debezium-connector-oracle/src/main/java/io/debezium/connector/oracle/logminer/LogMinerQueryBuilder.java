@@ -60,10 +60,19 @@ public class LogMinerQueryBuilder {
         // These bind parameters will be bound when the query is executed by the caller.
         query.append("WHERE SCN > ? AND SCN <= ? ");
 
-        // Restrict to configured PDB if one is supplied
+        // The connector currently requires a "database.pdb.name" configuration property when using CDB mode.
+        // If this property is provided, build a predicate that will be used in later predicates.
         final String pdbName = connectorConfig.getPdbName();
+        final String pdbPredicate;
         if (!Strings.isNullOrEmpty(pdbName)) {
-            query.append("AND ").append("SRC_CON_NAME = '").append(pdbName.toUpperCase()).append("' ");
+            // This predicate is used later to explicitly restrict certain OPERATION_CODE and DDL events by the
+            // PDB database name while allowing all START, COMMIT, MISSING_SCN, and ROLLBACK operations
+            // regardless of where they originate, i.e. the PDB or CDB$ROOT.
+            pdbPredicate = "SRC_CON_NAME = '" + pdbName + "'";
+        }
+        else {
+            // No PDB configuration provided, no PDB predicate is necessary.
+            pdbPredicate = null;
         }
 
         // Excluded schemas, if defined
@@ -81,8 +90,9 @@ public class LogMinerQueryBuilder {
 
         if (!schema.storeOnlyCapturedTables()) {
             // In this mode, the connector will always be fed DDL operations for all tables even if they
-            // are not part of the inclusion/exclusion lists.
-            query.append(" OR ").append(buildDdlPredicate()).append(" ");
+            // are not part of the inclusion/exclusion lists. We will pass the PDB predicate here to then
+            // restrict DDL operations to only the PDB database if not null.
+            query.append(" OR ").append(buildDdlPredicate(pdbPredicate)).append(" ");
             // Insert, Update, Delete, SelectLob, LobWrite, LobTrim, and LobErase
             if (connectorConfig.isLobEnabled()) {
                 query.append(") OR (OPERATION_CODE IN (1,2,3,9,10,11,29) ");
@@ -90,17 +100,30 @@ public class LogMinerQueryBuilder {
             else {
                 query.append(") OR (OPERATION_CODE IN (1,2,3) ");
             }
+            if (pdbPredicate != null) {
+                // Restrict Insert, Update, Delete, and optionally SelectLob, LobWrite, LobTrim, and LobErase by PDB
+                query.append("AND ").append(pdbPredicate).append(' ');
+            }
         }
         else {
+            query.append(") OR (");
+            if (pdbPredicate != null) {
+                // We specify the PDB predicate here because it applies to the OPERATION_CODE predicates but
+                // also the DDL predicate that is to follow later due to predicate groups, effectively
+                // restricting all DML operations and DDL changes to the PDB only.
+                query.append(pdbPredicate).append(" AND ");
+            }
             // Insert, Update, Delete, SelectLob, LobWrite, LobTrim, and LobErase
             if (connectorConfig.isLobEnabled()) {
-                query.append(") OR ((OPERATION_CODE IN (1,2,3,9,10,11,29) ");
+                query.append("(OPERATION_CODE IN (1,2,3,9,10,11,29) ");
             }
             else {
-                query.append(") OR ((OPERATION_CODE IN (1,2,3) ");
+                query.append("(OPERATION_CODE IN (1,2,3) ");
             }
             // In this mode, the connector will filter DDL operations based on the table inclusion/exclusion lists
-            query.append("OR ").append(buildDdlPredicate()).append(") ");
+            // We pass "null" to the DDL predicate because we will have added the predicate earlier as a part of
+            // the outer predicate group to also be applied to OPERATION_CODE
+            query.append("OR ").append(buildDdlPredicate(null)).append(") ");
         }
 
         // Always ignore the flush table
@@ -124,13 +147,18 @@ public class LogMinerQueryBuilder {
     /**
      * Builds a common SQL fragment used to obtain DDL operations via LogMiner.
      *
+     * @param pdbPredicate pluggable database predicate, maybe {@code null}
      * @return predicate that can be used to obtain DDL operations via LogMiner
      */
-    private static String buildDdlPredicate() {
+    private static String buildDdlPredicate(String pdbPredicate) {
         final StringBuilder predicate = new StringBuilder(256);
         predicate.append("(OPERATION_CODE = 5 ");
         predicate.append("AND USERNAME NOT IN ('SYS','SYSTEM') ");
         predicate.append("AND INFO NOT LIKE 'INTERNAL DDL%' ");
+        if (pdbPredicate != null) {
+            // DDL changes should be restricted to only the PDB database if supplied
+            predicate.append("AND ").append(pdbPredicate).append(' ');
+        }
         predicate.append("AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%'))");
         return predicate.toString();
     }

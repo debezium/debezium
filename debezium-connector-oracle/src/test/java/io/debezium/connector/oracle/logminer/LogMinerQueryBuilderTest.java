@@ -62,14 +62,15 @@ public class LogMinerQueryBuilderTest {
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE1 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
-            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
             "${systemTablePredicate}" +
             "AND ((" +
             "OPERATION_CODE IN (6,7,34,36) OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM') " +
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
+            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
             "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')) ) " +
             "OR (OPERATION_CODE IN ${operationCodes} " +
+            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
             "AND TABLE_NAME != '" + LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE + "' " +
             "${schemaPredicate}" +
             "${tablePredicate}" +
@@ -82,11 +83,12 @@ public class LogMinerQueryBuilderTest {
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE2 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
-            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
             "${systemTablePredicate}" +
             "AND ((" +
             "OPERATION_CODE IN (6,7,34,36)) OR " +
-            "((OPERATION_CODE IN ${operationCodes} OR " +
+            "(" +
+            "SRC_CON_NAME = '" + TestHelper.DATABASE + "' AND " +
+            "(OPERATION_CODE IN ${operationCodes} OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM') " +
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
             "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%'))) " +
