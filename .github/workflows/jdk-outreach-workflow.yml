@@ -32,15 +32,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   postgres-pgoutput:
@@ -54,15 +49,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mongodb-40:
@@ -76,15 +66,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   oracle:
@@ -98,15 +83,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   db2:
@@ -126,15 +106,10 @@ jobs:
           repository: debezium/debezium-connector-db2
           path: db2
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Build Debezium Core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Db2
@@ -156,15 +131,10 @@ jobs:
           repository: debezium/debezium-connector-vitess
           path: vitess
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Build Debezium Core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Vitess
@@ -180,15 +150,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl :debezium-quarkus-outbox -U -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   rest-extension:
@@ -202,15 +167,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-connect-rest-extension -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   testing:
@@ -224,15 +184,10 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-testing -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   server:
@@ -246,14 +201,9 @@ jobs:
         with:
           submodules: recursive
       - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
+        uses: oracle-actions/setup-java@v1
         with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
