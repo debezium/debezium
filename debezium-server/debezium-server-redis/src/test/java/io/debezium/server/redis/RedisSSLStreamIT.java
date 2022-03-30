@@ -21,10 +21,9 @@ import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 
 /**
- * Integration tests that verify basic reading from PostgreSQL database and writing to Redis stream
- * and retry mechanism in case of connectivity issues or OOM in Redis
+ * Integration tests for secured Redis
  *
- * @author M Sazzadul Hoque
+ * @author Oren Elias
  */
 @QuarkusIntegrationTest
 @TestProfile(RedisSSLStreamTestProfile.class)

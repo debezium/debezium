@@ -30,6 +30,7 @@ import redis.clients.jedis.Jedis;
  * and retry mechanism in case of connectivity issues or OOM in Redis
  *
  * @author M Sazzadul Hoque
+ * @author Yossi Shirizli
  */
 @QuarkusIntegrationTest
 @TestProfile(RedisStreamTestProfile.class)
@@ -77,7 +78,6 @@ public class RedisStreamIT {
     @Test
     @FixFor("DBZ-4510")
     public void testRedisConnectionRetry() throws Exception {
-        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         final int MESSAGE_COUNT = 5;
         final String STREAM_NAME = "testc.inventory.redis_test";
         Testing.print("Pausing container");
@@ -99,6 +99,7 @@ public class RedisStreamIT {
         Testing.print("Unpausing container");
         RedisTestResourceLifecycleManager.unpause();
 
+        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         Long streamLength = getStreamLength(jedis, STREAM_NAME, MESSAGE_COUNT);
 
         Testing.print("Entries in " + STREAM_NAME + ":" + streamLength);
@@ -109,24 +110,18 @@ public class RedisStreamIT {
     /**
     * Test retry mechanism when encountering Redis Out of Memory:
     * 1. Simulate a Redis OOM by setting its max memory to 1M
-    * 2. Create a new table named redis_test2 in PostgreSQL and insert 10 records to it
-    * 3. Then, delete all the records in this table and expect the stream to contain 30 records 
-    *    (10 inserted before + 20 as result of this deletion including the tombstone events)
-    * 4. Insert 22 records to redis_test2 table and sleep for 1 second to simulate Redis OOM
-    * 5. Delete the stream and expect those 22 records to be inserted to it as there's enough memory to complete this operation
+    * 2. Create a new table named redis_test2 in PostgreSQL and insert 50 records to it
+    * 3. Sleep for 1 second to simulate Redis OOM (stream does not contain 50 records)
+    * 4. Unlimit memory and verify that all 50 records have been streamed
     */
     @Test
     @FixFor("DBZ-4510")
     public void testRedisOOMRetry() throws Exception {
         Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         final String STREAM_NAME = "testc.inventory.redis_test2";
-        final int FIRST_BATCH_SIZE = 10;
-        final int EXPECTED_STREAM_LENGTH_AFTER_DELETION = 30; // Every delete change record is followed by a tombstone event
-        final int SECOND_BATCH_SIZE = 22;
-        final String INSERT_SQL = "INSERT INTO inventory.redis_test2 (id,first_name,last_name) " +
-                "SELECT LEFT(i::text, 10), RANDOM()::text, RANDOM()::text FROM generate_series(1,%d) s(i)";
+        final int TOTAL_RECORDS = 50;
 
-        Testing.print("Setting Redis' maxmemory to 2M");
+        Testing.print("Setting Redis' maxmemory to 1M");
         jedis.configSet("maxmemory", "1M");
 
         PostgresConnection connection = getPostgresConnection();
@@ -134,31 +129,18 @@ public class RedisStreamIT {
                 "(id VARCHAR(100) PRIMARY KEY, " +
                 "first_name VARCHAR(100), " +
                 "last_name VARCHAR(100))");
-        connection.execute(
-                String.format(INSERT_SQL, FIRST_BATCH_SIZE));
+        connection.execute(String.format("INSERT INTO inventory.redis_test2 (id,first_name,last_name) " +
+                "SELECT LEFT(i::text, 10), RANDOM()::text, RANDOM()::text FROM generate_series(1,%d) s(i)", TOTAL_RECORDS));
         connection.commit();
 
-        Long streamLengthAfterInserts = getStreamLength(jedis, STREAM_NAME, FIRST_BATCH_SIZE);
-        Testing.print("Entries in " + STREAM_NAME + ":" + streamLengthAfterInserts);
-
-        connection.execute("DELETE FROM inventory.redis_test2");
-        Long streamLengthAfterDeletion = getStreamLength(jedis, STREAM_NAME, EXPECTED_STREAM_LENGTH_AFTER_DELETION);
-        Testing.print("Entries in " + STREAM_NAME + ":" + streamLengthAfterDeletion);
-
-        connection.execute(String.format(INSERT_SQL, SECOND_BATCH_SIZE));
-        connection.close();
+        Thread.sleep(1000);
+        Testing.print("Entries in " + STREAM_NAME + ":" + jedis.xlen(STREAM_NAME));
+        assertTrue(jedis.xlen(STREAM_NAME) < TOTAL_RECORDS);
 
         Thread.sleep(1000);
-
-        Testing.print("Deleting stream in order to free memory");
-        jedis.del(STREAM_NAME);
-
-        Long streamLength = getStreamLength(jedis, STREAM_NAME, SECOND_BATCH_SIZE);
-
-        Testing.print("Entries in " + STREAM_NAME + ":" + streamLength);
         jedis.configSet("maxmemory", "0");
-        jedis.close();
+        Long streamLength = getStreamLength(jedis, STREAM_NAME, TOTAL_RECORDS);
 
-        assertTrue("Redis OOM Test Failed", streamLength == SECOND_BATCH_SIZE);
+        assertTrue("Redis OOM Test Failed", streamLength == TOTAL_RECORDS);
     }
 }
