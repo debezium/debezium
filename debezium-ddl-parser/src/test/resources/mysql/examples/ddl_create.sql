@@ -245,6 +245,11 @@ BEGIN
 END
 #end
 #begin
+-- Create trigger 6
+-- delimiter //
+create or replace trigger trg_my1 before delete on test.t1 for each row begin insert into log_table values ("delete row from test.t1"); insert into t4 values (old.col1, old.col1 + 5, old.col1 + 7); end; -- //-- delimiter ;
+#end
+#begin
 -- Create view
 create or replace view my_view1 as select 1 union select 2 limit 0,5;
 create algorithm = merge view my_view2(col1, col2) as select * from t2 with check option;

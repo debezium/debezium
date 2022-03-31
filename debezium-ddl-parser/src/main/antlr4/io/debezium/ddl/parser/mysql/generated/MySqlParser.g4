@@ -232,7 +232,7 @@ createTablespaceNdb
     ;
 
 createTrigger
-    : CREATE ownerStatement?
+    : CREATE (OR REPLACE)? ownerStatement?  // OR is MariaDB-specific only
       TRIGGER thisTrigger=fullId
       triggerTime=(BEFORE | AFTER)
       triggerEvent=(INSERT | UPDATE | DELETE)
