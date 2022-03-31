@@ -63,7 +63,9 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
         else if (!connectorConfig.customConverterRegistry().isEmpty() && TEXT_DATATYPES.contains(column.typeName())) {
             try {
                 String columnValue = rs.getString(columnIndex);
-                return columnValue == null ? rs.getObject(columnIndex) : columnValue.getBytes(column.charsetName());
+                if (columnValue != null) {
+                    return columnValue.getBytes(column.charsetName());
+                }
             }
             catch (UnsupportedEncodingException e) {
                 logger.warn("Unsupported encoding '{}' for column '{}', sending value as String");
