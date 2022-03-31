@@ -31,7 +31,6 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Collect;
 import io.debezium.util.DelayStrategy;
 
-import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.StreamEntryID;
 import redis.clients.jedis.exceptions.JedisConnectionException;
@@ -96,21 +95,8 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     private Jedis client = null;
 
     void connect() {
-        HostAndPort address = HostAndPort.from(this.address);
-
-        client = new Jedis(address.getHost(), address.getPort(), this.sslEnabled);
-        client.clientSetname("debezium:db-history");
-
-        if (user != null) {
-            client.auth(this.user, this.password);
-        }
-        else if (this.password != null) {
-            client.auth(this.password);
-        }
-        else {
-            // make sure that client is connected
-            client.ping();
-        }
+        RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.sslEnabled);
+        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_DB_HISTORY);
     }
 
     @Override

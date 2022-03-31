@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Field;
 import io.smallrye.mutiny.Uni;
 
-import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
@@ -80,21 +79,8 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     }
 
     void connect() {
-        HostAndPort address = HostAndPort.from(this.address);
-
-        client = new Jedis(address.getHost(), address.getPort(), this.sslEnabled);
-        client.clientSetname("debezium:offsets");
-
-        if (this.user != null) {
-            client.auth(this.user, this.password);
-        }
-        else if (this.password != null) {
-            client.auth(this.password);
-        }
-        else {
-            // make sure that client is connected
-            client.ping();
-        }
+        RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.sslEnabled);
+        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_OFFSETS_CLIENT_NAME);
     }
 
     @Override
