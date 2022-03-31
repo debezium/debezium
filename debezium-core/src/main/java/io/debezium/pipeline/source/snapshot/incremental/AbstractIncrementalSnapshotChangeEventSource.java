@@ -103,6 +103,23 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     @Override
+    public void pauseSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context.snapshotRunning() && !context.isSnapshotPaused()) {
+            context.pauseSnapshot();
+        }
+    }
+
+    @Override
+    public void resumeSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context.snapshotRunning() && context.isSnapshotPaused()) {
+            context.resumeSnapshot();
+            readChunk(partition);
+        }
+    }
+
+    @Override
     public void processSchemaChange(P partition, DataCollectionId dataCollectionId) throws InterruptedException {
         if (dataCollectionId != null && dataCollectionId.equals(context.currentDataCollectionId())) {
             rereadChunk(partition);
@@ -273,6 +290,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
+            return;
+        }
+        if (context.isSnapshotPaused()) {
+            LOGGER.info("Incremental snapshot was paused.");
             return;
         }
         try {

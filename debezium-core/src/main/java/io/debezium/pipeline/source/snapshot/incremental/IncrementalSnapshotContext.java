@@ -25,6 +25,12 @@ public interface IncrementalSnapshotContext<T> {
 
     boolean closeWindow(String id);
 
+    void pauseSnapshot();
+
+    void resumeSnapshot();
+
+    boolean isSnapshotPaused();
+
     boolean isNonInitialChunk();
 
     boolean snapshotRunning();
