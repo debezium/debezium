@@ -1100,23 +1100,30 @@ If _truncate_ events are not desired, they can be filtered out with the xref:ora
 [[oracle-data-type-mappings]]
 == Data type mappings
 
-To represent changes that occur in a table rows, the {prodname} Oracle connector emits change events that are structured like the table in which the rows exists.
-The event contains a field for each column value.
-Column values are represented according to the Oracle data type of the column.
-The following sections describe how the connector maps oracle data types to a _literal type_ and a _semantic type_ in event fields.
+When the {prodname} {connector-name} connector detects a change in the value of a table row, it emits a change event that represents the change.
+Each change event record is structured in the same way as the original table, with the event record containing a field for each column value.
+The data type of a table column determines how the connector represents the column's values in change event fields, as shown in the tables in the following sections.
 
-_literal type_:: Describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+For each column in a table, {prodname} maps the source data type to a _literal type_ and, and in some cases, a _semantic type_, in the corresponding event field.
 
-_semantic type_:: Describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
+Literal types:: Describe how the value is literally represented, using one of the following Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+
+Semantic types:: Describe how the Kafka Connect schema captures the _meaning_ of the field, by using the name of the Kafka Connect schema for the field.
+
+For some Oracle binary large object (BLOB) and numeric data types, you can manipulate the way that the connector performs the type mapping by changing default configuration property settings.
+For more information about how {prodname} properties control mappings for these data types, see xref:oracle-binary-character-lob-types[Binary and Character LOB types] and xref:oracle-numeric-types[Numeric types].
 
 ifdef::product[]
-Details are in the following sections:
+For more information about data type mappings, see the following topics:
 
+* xref:oracle-binary-character-lob-types[]
 * xref:oracle-character-types[]
 * xref:oracle-numeric-types[]
-* xref:oracle-decimal-types[]
+* xref:oracle-boolean-types[]
 * xref:oracle-temporal-types[]
 * xref:oracle-rowid-types[]
+* xref:oracle-user-defined-types[]
+* xref:oracle-suppplied-types[]
 
 endif::product[]
 
@@ -1192,7 +1199,7 @@ The following table describes how the connector maps binary and character large 
 
 |`BLOB`
 |`BYTES`
-|Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:#oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+|Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`CLOB`
 |`STRING`
@@ -1228,8 +1235,15 @@ If the value of a `CLOB`, `NCLOB`, or `BLOB` column gets updated, the new value 
 [id="oracle-numeric-types"]
 === Numeric types
 
-The following table describes how the connector maps numeric types.
+The following table describes how the {prodname} Oracle connector maps numeric types.
 
+[NOTE]
+====
+You can modify the way that the connector maps the Oracle `DECIMAL`, `NUMBER`, `NUMERIC`, and `REAL` data types by changing the value of the connector's xref:oracle-property-decimal-handling-mode[`decimal.handling.mode`] configuration property.
+When the property is set to its default value of `precise`, the connector maps these Oracle data types to the Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type, as indicated in the table.
+When the value of the property is set to `double` or `string`, the connector uses alternate mappings for some Oracle data types.
+For more information, see the _Semantic type and Notes_ column in the following table.
+====
 .Mappings for Oracle numeric data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
@@ -1250,6 +1264,10 @@ The following table describes how the connector maps numeric types.
 |`org.apache.kafka.connect.data.Decimal` if using `BYTES` +
  +
 Handled equivalently to `NUMBER` (note that S defaults to 0 for `DECIMAL`).
+
+When the `decimal.handling.mode` property is set to `double`, the connector represents `DECIMAL` values as Java `double` values with schema type `FLOAT64`.
+
+When the `decimal.handling.mode` property is set to `string`, the connector represents DECIMAL values as their formatted string representation with schema type `STRING`.
 
 |`DOUBLE PRECISION`
 |`STRUCT`
@@ -1275,6 +1293,10 @@ Contains a structure with two fields: `scale` of type `INT32` that contains the 
  +
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
+When the `decimal.handling.mode` property is set to `double`, the connector represents `NUMBER` values as Java `double` values with schema type `FLOAT64`.
+
+When the `decimal.handling.mode` property is set to `string`, the connector represents `NUMBER` values as their formatted string representation with schema type `STRING`.
+
 |`NUMBER(P, S \<= 0)`
 |`INT8` / `INT16` / `INT32` / `INT64`
 |`NUMBER` columns with a scale of 0 represent integer numbers.
@@ -1286,7 +1308,12 @@ Depending on the precision and scale, one of the following matching Kafka Connec
  * P - S < 5, `INT16` +
  * P - S < 10, `INT32` +
  * P - S < 19, `INT64` +
- * P - S >= 19, `BYTES` (`org.apache.kafka.connect.data.Decimal`).
+ * P - S >= 19, `BYTES` (`org.apache.kafka.connect.data.Decimal`)
+
+When the `decimal.handling.mode` property is set to `double`, the connector represents `NUMBER` values as Java `double` values with schema type `FLOAT64`.
+
+When the `decimal.handling.mode` property is set to `string`, the connector represents `NUMBER` values as their formatted string representation with schema type `STRING`.
+
 
 |`NUMBER(P, S > 0)`
 |`BYTES`
@@ -1297,6 +1324,10 @@ Depending on the precision and scale, one of the following matching Kafka Connec
 |`org.apache.kafka.connect.data.Decimal` if using `BYTES` +
  +
 Handled equivalently to `NUMBER` (note that S defaults to 0 for `NUMERIC`).
+
+When the `decimal.handling.mode` property is set to `double`, the connector represents `NUMERIC` values as Java `double` values with schema type `FLOAT64`.
+
+When the `decimal.handling.mode` property is set to `string`, the connector represents `NUMERIC` values as their formatted string representation with schema type `STRING`.
 
 |`SMALLINT`
 |`BYTES`
@@ -1309,6 +1340,10 @@ Handled equivalently to `NUMBER` (note that S defaults to 0 for `NUMERIC`).
 |`io.debezium.data.VariableScaleDecimal` +
  +
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+
+When the `decimal.handling.mode` property is set to `double`, the connector represents `REAL` values as Java `double` values with schema type `FLOAT64`.
+
+When the `decimal.handling.mode` property is set to `string`, the connector represents `REAL` values as their formatted string representation with schema type `STRING`.
 
 |===
 
@@ -1329,96 +1364,6 @@ converters=boolean
 boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
 boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
 ----
-
-[id="oracle-decimal-types"]
-=== Decimal types
-
-{prodname} connectors handle decimals according to the setting of the xref:{link-oracle-connector}#oracle-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
-The setting of the Oracle connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types.
-
-decimal.handling.mode=precise::
-When the `decimal.handling.mode` property is set to `precise`, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns.
-This is the default mode.
-+
-.Mappings when `decimal.handing.mode=precise`
-[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
-|===
-|Oracle type
-|Literal type (schema type)
-|Semantic type (schema name)
-
-|`NUMERIC[(P[,S])]`
-|`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
-
-|`DECIMAL[(P[,S])]`
-|`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
-
-|`SMALLMONEY`
-|`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
-
-|`MONEY`
-|`BYTES`
-a|`org.apache.kafka.connect.data.Decimal` +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
-
-|===
-
-decimal.handling.mode=double::
-When the `decimal.handling.mode` property is set to `double`, the connector represents the values as Java double values with schema type `FLOAT64`.
-+
-.Mappings when `decimal.handing.mode=double`
-[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
-|===
-|Oracle type |Literal type |Semantic type
-
-|`NUMERIC[(M[,D])]`
-|`FLOAT64`
-a|_n/a_
-
-|`DECIMAL[(M[,D])]`
-|`FLOAT64`
-a|_n/a_
-
-|`SMALLMONEY[(M[,D])]`
-|`FLOAT64`
-a|_n/a_
-
-|`MONEY[(M[,D])]`
-|`FLOAT64`
-a|_n/a_
-
-|===
-
-decimal.handling.mode=string::
-When the `decimal.handling.mode` configuration property is set to `string`, the connector represents `DECIMAL`,`NUMERIC`, and `MONEY` values as their formatted string representation, and encodes the values as shown in the following table.
-+
-.Mappings when `decimal.handling.mode` is `string`
-[cols="30%a,30%a,40%a",options="header"]
-|===
-|Oracle data type
-|Literal type (schema type)
-|Semantic type (schema name)
-
-|`NUMERIC[(M[,D])]`
-|`STRING`
-|_n/a_
-
-|`DECIMAL[(M[,D])]`
-|`STRING`
-|_n/a_
-
-|`MONEY[(M[,D])]`
-|`STRING`
-|_n/a_
-
-|===
-
 
 [id="oracle-temporal-types"]
 === Temporal types
@@ -3782,28 +3727,27 @@ In situations where calls to the Oracle LogMiner API take more than 350 seconds 
 For example, such timeouts can occur when a LogMiner session that processes large amounts of data runs concurrently with Oracle's periodic checkpointing task.
 
 ifdef::product[]
-To prevent timeouts with the AWS Gateway Load Balancer, enable keep-alive packets from the Kafka Connect environment, by performing the following task as root or a super-user:
+To prevent timeouts from occurring on the AWS Gateway Load Balancer, enable keep-alive packets from the Kafka Connect environment, by performing the following steps as root or a super-user:
 endif::product[]
 ifdef::community[]
-To prevent timeouts with the AWS Gateway Load Balancer, enable keep-alive packets from the kafka Connect or Debezium Server environment, by performing the following task as root or a super-user in the environment that hosts the connector:
+To prevent timeouts from occurring on the AWS Gateway Load Balancer, enable keep-alive packets from the kafka Connect or Debezium Server environment, by performing the following task as the root user or as a super-user in the environment that hosts the connector:
 endif::community[]
 
-From a terminal, run the following command:
+. From a terminal, run the following command:
++
 ```shell
 sysctl -w net.ipv4.tcp_keepalive_time=60
 ```
-
-Edit `/etc/sysctl.conf` and set the value of the following variable as shown:
-
+. Edit `/etc/sysctl.conf` and set the value of the following variable as shown:
++
 ```properties
 net.ipv4.tcp_keepalive_time=60
 ```
-
-Reconfigure the {prodname} for Oracle connector to use the `database.url` property rather than `database.hostname` and add the `(ENABLE=broken)` Oracle connect string descriptor as shown in the following example:
-
+. Reconfigure the {prodname} for Oracle connector to use the `database.url` property rather than `database.hostname` and add the `(ENABLE=broken)` Oracle connect string descriptor as shown in the following example:
++
 ```properties
 database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(Host=hostname)(Port=port)))(CONNECT_DATA=(SERVICE_NAME=serviceName)))
 ```
 
-The precdeding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
+The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
