@@ -445,13 +445,13 @@ public class OracleConnection extends JdbcConnection {
     @Override
     public String buildSelectWithRowLimits(TableId tableId,
                                            int limit,
-                                           String projection,
+                                           List<String> projection,
                                            Optional<String> condition,
                                            String orderBy) {
         final TableId table = new TableId(null, tableId.schema(), tableId.table());
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
-                .append(projection)
+                .append(Strings.join(", ", projection))
                 .append(" FROM ");
         sql.append(quotedTableIdString(table));
         if (condition.isPresent()) {
