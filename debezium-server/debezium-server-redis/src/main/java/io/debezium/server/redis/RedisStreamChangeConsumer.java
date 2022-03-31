@@ -8,7 +8,6 @@ package io.debezium.server.redis;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -31,7 +30,6 @@ import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
 import io.debezium.util.DelayStrategy;
 
-import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.StreamEntryID;
@@ -56,9 +54,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_USER = PROP_PREFIX + "user";
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
 
-    private HostAndPort address;
-    private Optional<String> user;
-    private Optional<String> password;
+    private String address;
+    private String user;
+    private String password;
 
     @ConfigProperty(name = PROP_PREFIX + "ssl.enabled", defaultValue = "false")
     boolean sslEnabled;
@@ -83,25 +81,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
-        address = HostAndPort.from(config.getValue(PROP_ADDRESS, String.class));
-        user = config.getOptionalValue(PROP_USER, String.class);
-        password = config.getOptionalValue(PROP_PASSWORD, String.class);
+        address = config.getValue(PROP_ADDRESS, String.class);
+        user = config.getOptionalValue(PROP_USER, String.class).orElse(null);
+        password = config.getOptionalValue(PROP_PASSWORD, String.class).orElse(null);
 
-        client = new Jedis(address.getHost(), address.getPort(), sslEnabled);
-        client.clientSetname("debezium:redis:sink");
-
-        if (user.isPresent()) {
-            client.auth(user.get(), password.get());
-        }
-        else if (password.isPresent()) {
-            client.auth(password.get());
-        }
-        else {
-            // make sure that client is connected
-            client.ping();
-        }
-
-        LOGGER.info("Using Jedis '{}'", client);
+        RedisConnection redisConnection = new RedisConnection(address, user, password, sslEnabled);
+        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_REDIS_SINK_CLIENT_NAME);
     }
 
     @PreDestroy
