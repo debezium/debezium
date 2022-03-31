@@ -1114,7 +1114,7 @@ For some Oracle binary large object (BLOB) and numeric data types, you can manip
 For more information about how {prodname} properties control mappings for these data types, see xref:oracle-binary-character-lob-types[Binary and Character LOB types] and xref:oracle-numeric-types[Numeric types].
 
 ifdef::product[]
-For more information about data type mappings, see the following topics:
+For more information about how the {prodname} connector maps Oracle data types, see the following topics:
 
 * xref:oracle-binary-character-lob-types[]
 * xref:oracle-character-types[]
@@ -2551,7 +2551,7 @@ You can set one of the following options:
   Using `double` values is easier, but can result in a loss of precision.
 `string`:: Encodes values as formatted strings.
   Using the `string` option is easier to consume, but results in a loss of semantic information about the real type.
-  For more information, see <<oracle-decimal-types>>.
+  For more information, see <<oracle-numeric-types>>.
 
 |[[oracle-property-interval-handling-mode]]<<oracle-property-interval-handling-mode, `+interval.handling.mode+`>>
 |`numeric`
