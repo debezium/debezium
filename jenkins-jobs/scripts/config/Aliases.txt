@@ -123,3 +123,6 @@ yingyingtang-brex,Yingying Tang
 zalmane,Oren Elias
 asibanovs,Aleksejs Sibanovs
 AleksejsSibanovs,Aleksejs Sibanovs
+nenad,Nenad Stojanovikj
+miphik,Andrey Savchuk
+narzdavid,Narz David

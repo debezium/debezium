@@ -26,6 +26,7 @@ Andrew Garrett
 Andrew Tongen
 Andrey Ignatenko
 Andrey Pustovetov
+Andrey Savchuk
 Andrey Yegorov
 Andy Teijelo
 Anisha Mohanty
@@ -248,11 +249,13 @@ Mohamed Pudukulathan
 Moira Tagle
 Muhammad Sufyian
 Nansen
+Narz David
 Nathan Mills
 Nathan Smit
 Navdeep Agarwal
 Naveen Kumar KR
 Nayana Hettiarachchi
+Nenad Stojanovikj
 Nick Murray
 Niels Pardon
 Nikhil Benesch
