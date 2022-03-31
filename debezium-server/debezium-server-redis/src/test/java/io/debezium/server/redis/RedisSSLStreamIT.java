@@ -59,7 +59,5 @@ public class RedisSSLStreamIT {
         assertTrue(redisOffsets.size() > 0);
 
         jedis.close();
-
     }
-
 }

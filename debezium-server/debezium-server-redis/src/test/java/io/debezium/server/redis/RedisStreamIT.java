@@ -78,8 +78,11 @@ public class RedisStreamIT {
     @Test
     @FixFor("DBZ-4510")
     public void testRedisConnectionRetry() throws Exception {
+        Testing.Print.enable();
+
         final int MESSAGE_COUNT = 5;
         final String STREAM_NAME = "testc.inventory.redis_test";
+        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         Testing.print("Pausing container");
         RedisTestResourceLifecycleManager.pause();
 
@@ -98,8 +101,6 @@ public class RedisStreamIT {
         Thread.sleep(5000);
         Testing.print("Unpausing container");
         RedisTestResourceLifecycleManager.unpause();
-
-        Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         Long streamLength = getStreamLength(jedis, STREAM_NAME, MESSAGE_COUNT);
 
         Testing.print("Entries in " + STREAM_NAME + ":" + streamLength);
@@ -117,6 +118,8 @@ public class RedisStreamIT {
     @Test
     @FixFor("DBZ-4510")
     public void testRedisOOMRetry() throws Exception {
+        Testing.Print.enable();
+
         Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         final String STREAM_NAME = "testc.inventory.redis_test2";
         final int TOTAL_RECORDS = 50;

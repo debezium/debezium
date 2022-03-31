@@ -23,7 +23,6 @@ import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.StreamEntryID;
@@ -39,7 +38,6 @@ import redis.clients.jedis.resps.StreamEntry;
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
 
 public class RedisOffsetIT {
-
     private static final int MESSAGE_COUNT = 4;
     private static final String STREAM_NAME = "testc.inventory.customers";
 
@@ -59,7 +57,6 @@ public class RedisOffsetIT {
     @FixFor("DBZ-4509")
     public void testRedisStream() throws Exception {
         jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
-        Testing.Print.enable();
         final List<StreamEntry> entries = new ArrayList<>();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final List<StreamEntry> response = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null, MESSAGE_COUNT);
@@ -80,6 +77,8 @@ public class RedisOffsetIT {
     @Test
     @FixFor("DBZ-4509")
     public void testRedisConnectionRetry() throws Exception {
+        Testing.Print.enable();
+
         Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         // wait until the offsets are written for the first time
         Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
