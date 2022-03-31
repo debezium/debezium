@@ -10,8 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.List;
 
-import javax.enterprise.event.Observes;
-
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +23,6 @@ import io.debezium.relational.history.AbstractDatabaseHistoryTest;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.server.TestConfigSource;
-import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.testing.testcontainers.MySqlTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -46,10 +43,6 @@ import redis.clients.jedis.resps.StreamEntry;
 @TestProfile(RedisDatabaseHistoryTestProfile.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
 public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
-
-    void setupDependencies(@Observes ConnectorStartedEvent event) {
-        Testing.Print.enable();
-    }
 
     private static final String STREAM_NAME = "metadata:debezium:db_history";
 
@@ -76,7 +69,6 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
     @FixFor("DBZ-4771")
     public void testDatabaseHistoryIsSaved() throws Exception {
         jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
-        Testing.Print.enable();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final long streamLength = jedis.xlen(STREAM_NAME);
             return streamLength == 16; // wait until all the DB history of the sample mysql DB has loaded
@@ -101,6 +93,8 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
     @Test
     @FixFor("DBZ-4509")
     public void testRedisConnectionRetry() throws Exception {
+        Testing.Print.enable();
+
         Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         // wait until the db history is written for the first time
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
