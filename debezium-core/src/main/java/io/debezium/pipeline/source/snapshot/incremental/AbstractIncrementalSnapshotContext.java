@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -78,6 +79,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     private boolean schemaVerificationPassed;
 
+    /**
+     * Determines if the incremental snapshot was paused or not.
+     */
+    private AtomicBoolean paused = new AtomicBoolean(false);
+
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
@@ -100,6 +106,20 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         LOGGER.debug("Closing window for incremental snapshot chunk");
         windowOpened = false;
         return true;
+    }
+
+    public void pauseSnapshot() {
+        LOGGER.info("Pausing incremental snapshot");
+        paused.set(true);
+    }
+
+    public void resumeSnapshot() {
+        LOGGER.info("Resuming incremental snapshot");
+        paused.set(false);
+    }
+
+    public boolean isSnapshotPaused() {
+        return paused.get();
     }
 
     /**

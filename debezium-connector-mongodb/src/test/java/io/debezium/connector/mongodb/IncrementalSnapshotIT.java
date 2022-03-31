@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -233,6 +234,16 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
         sendAdHocSnapshotSignal(fullDataCollectionName());
+    }
+
+    protected void sendPauseSignal() throws SQLException {
+        insertDocuments("dbA", "signals",
+                new Document[]{ Document.parse("{\"type\": \"pause-snapshot\", \"payload\": \"{}\"}") });
+    }
+
+    protected void sendResumeSignal() throws SQLException {
+        insertDocuments("dbA", "signals",
+                new Document[]{ Document.parse("{\"type\": \"resume-snapshot\", \"payload\": \"{}\"}") });
     }
 
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
@@ -632,6 +643,40 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicNames.get(1));
         for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void pauseDuringSnapshot() throws Exception {
+        populateDataCollection();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal();
+
+        List<SourceRecord> records = new ArrayList<>();
+        String topicName = topicName();
+        consumeRecords(100, record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+        });
+
+        sendPauseSignal();
+
+        consumeAvailableRecords(record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+        });
+        int beforeResume = records.size();
+
+        sendResumeSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
+        for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
     }
