@@ -40,38 +40,46 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
         if (column.jdbcType() == Types.TIME) {
             return readTimeField(rs, columnIndex);
         }
-        else if (column.jdbcType() == Types.DATE) {
+
+        if (column.jdbcType() == Types.DATE) {
             return readDateField(rs, columnIndex, column, table);
         }
+
         // This is for DATETIME columns (a logical date + time without time zone)
         // by reading them with a calendar based on the default time zone, we make sure that the value
         // is constructed correctly using the database's (or connection's) time zone
-        else if (column.jdbcType() == Types.TIMESTAMP) {
+        if (column.jdbcType() == Types.TIMESTAMP) {
             return readTimestampField(rs, columnIndex, column, table);
         }
+
         // JDBC's rs.GetObject() will return a Boolean for all TINYINT(1) columns.
         // TINYINT columns are reported as SMALLINT by JDBC driver
-        else if (column.jdbcType() == Types.TINYINT || column.jdbcType() == Types.SMALLINT) {
+        if (column.jdbcType() == Types.TINYINT || column.jdbcType() == Types.SMALLINT) {
             // It seems that rs.wasNull() returns false when default value is set and NULL is inserted
             // We thus need to use getObject() to identify if the value was provided and if yes then
             // read it again to get correct scale
             return rs.getObject(columnIndex) == null ? null : rs.getInt(columnIndex);
         }
+
         // DBZ-2673
         // It is necessary to check the type names as types like ENUM and SET are
         // also reported as JDBC type char
-        else if (!connectorConfig.customConverterRegistry().isEmpty() && TEXT_DATATYPES.contains(column.typeName())) {
+        boolean hasConverterForColumn = connectorConfig.customConverterRegistry()
+                .getValueConverter(table.id(), column)
+                .isPresent();
+        if (hasConverterForColumn && TEXT_DATATYPES.contains(column.typeName())) {
             try {
-                return rs.getString(columnIndex).getBytes(column.charsetName());
+                String columnData = rs.getString(columnIndex);
+                if (columnData != null) {
+                    return columnData.getBytes(column.charsetName());
+                }
             }
             catch (UnsupportedEncodingException e) {
-                logger.warn("Unsupported encoding '{}' for column '{}', sending value as String");
-                return rs.getObject(columnIndex);
+                logger.warn("Unsupported encoding '{}' for column '{}', sending value as String", e.getMessage(), column.name());
             }
         }
-        else {
-            return rs.getObject(columnIndex);
-        }
+
+        return rs.getObject(columnIndex);
     }
 
     protected abstract Object readTimeField(ResultSet rs, int columnIndex) throws SQLException;
