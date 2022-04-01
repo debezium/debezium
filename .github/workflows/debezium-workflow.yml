@@ -476,7 +476,7 @@ jobs:
 
       - name: Test Debezium Server
         run: >
-          mvn install -B -pl debezium-server -Pserver-ci -amd 
+          mvn install -B -pl debezium-server/debezium-server-redis -Pserver-ci -amd 
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false 
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

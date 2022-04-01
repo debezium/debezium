@@ -78,6 +78,7 @@ public class RedisStreamIT {
     @Test
     @FixFor("DBZ-4510")
     public void testRedisConnectionRetry() throws Exception {
+        // x
         Testing.Print.enable();
 
         final int MESSAGE_COUNT = 5;
