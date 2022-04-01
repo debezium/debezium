@@ -166,13 +166,13 @@ public class OracleOffsetContext implements OffsetContext {
             offset.put(SourceInfo.SNAPSHOT_KEY, true);
             offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
-            if (snapshotPendingTransactions != null) {
+            if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
                 String encoded = snapshotPendingTransactions.entrySet().stream()
                         .map(e -> e.getKey() + ":" + e.getValue().toString())
                         .collect(Collectors.joining(","));
                 offset.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encoded);
             }
-            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.toString() : null);
+            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.isNull() ? null : snapshotScn.toString() : null);
 
             return offset;
         }
@@ -187,13 +187,13 @@ public class OracleOffsetContext implements OffsetContext {
                 offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : null);
                 offset.put(SourceInfo.COMMIT_SCN_KEY, commitScn != null ? commitScn.toString() : null);
             }
-            if (snapshotPendingTransactions != null) {
+            if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
                 String encoded = snapshotPendingTransactions.entrySet().stream()
                         .map(e -> e.getKey() + ":" + e.getValue().toString())
                         .collect(Collectors.joining(","));
                 offset.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encoded);
             }
-            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.toString() : null);
+            offset.put(SNAPSHOT_SCN_KEY, snapshotScn != null ? snapshotScn.isNull() ? null : snapshotScn.toString() : null);
 
             return incrementalSnapshotContext.store(transactionContext.store(offset));
         }
