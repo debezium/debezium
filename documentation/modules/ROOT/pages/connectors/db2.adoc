@@ -1704,19 +1704,9 @@ For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOp
 .Procedure
 
 . Create the {prodname} Db2 container for Kafka Connect:
-.. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[Db2 connector archive].
-
-.. Extract the {prodname} Db2 connector archive to create a directory structure for the connector plug-in, for example:
-+
-[subs="+macros"]
-----
-./my-plugins/
-├── debezium-connector-db2
-│   ├── ...
-----
 
 .. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
+For example, from a terminal window, enter the following command:
 +
 [source,shell,subs="+attributes,+quotes"]
 ----
@@ -1729,9 +1719,8 @@ RUN curl -O https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db
 USER 1001
 EOF
 ----
-// Does the preceding example require additional commands to extract the retrieved zip and JAR files? E.g. piping the `curl` request to `tar` or extending the command with `&& tar -xzf _<filename>_`?
 <1> You can specify any file name that you want.
-<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plugins directory is in a different location, replace instances of this path to reflect the actual location.
+<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
 +
 The command creates a Dockerfile with the name `debezium-container-for-db2.yaml` in the current directory.
 

@@ -2038,31 +2038,22 @@ For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOp
 .Procedure
 
 . Create the {prodname} MySQL container for Kafka Connect:
-.. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MySQL connector archive].
-
-.. Extract the {prodname} MySQL connector archive to create a directory structure for the connector plug-in, for example:
-+
-[subs="+macros"]
-----
-./my-plugins/
-├── debezium-connector-mysql
-│   ├── ...
-----
 
 .. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
+For example, from a terminal window, enter the following command:
 +
 [source,shell,subs="+attributes,+quotes"]
 ----
 cat <<EOF >debezium-container-for-mysql.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
-COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+RUN mkdir -p /opt/kafka/plugins/debezium // <2>
+RUN curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
 USER 1001
 EOF
 ----
 <1> You can specify any file name that you want.
-<2> Replace `my-plugins` with the name of your plug-ins directory.
+<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
 +
 The command creates a Dockerfile with the name `debezium-container-for-mysql.yaml` in the current directory.
 
