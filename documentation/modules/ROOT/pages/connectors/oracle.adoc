@@ -1110,7 +1110,7 @@ Literal types:: Describe how the value is literally represented, using one of th
 
 Semantic types:: Describe how the Kafka Connect schema captures the _meaning_ of the field, by using the name of the Kafka Connect schema for the field.
 
-For some Oracle binary large object (BLOB) and numeric data types, you can manipulate the way that the connector performs the type mapping by changing default configuration property settings.
+For some Oracle large object (CLOB, NCLOB, and BLOB) and numeric data types, you can manipulate the way that the connector performs the type mapping by changing default configuration property settings.
 For more information about how {prodname} properties control mappings for these data types, see xref:oracle-binary-character-lob-types[Binary and Character LOB types] and xref:oracle-numeric-types[Numeric types].
 
 ifdef::product[]
