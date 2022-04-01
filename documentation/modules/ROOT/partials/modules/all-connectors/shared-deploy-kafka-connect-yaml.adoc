@@ -60,11 +60,11 @@ For example, you can add Service Registry artifacts, or the {prodname} scripting
 |The value of `artifacts.type` specifies the file type of the artifact specified in the `artifacts.url`.
 Valid types are `zip`, `tgz`, or `jar`.
 {prodname} connector archives are provided in `.zip` file format.
-JDBC driver files are in `.jar` format.
 The `type` value must match the type of the file that is referenced in the `url` field.
 
 |7
 |The value of `artifacts.url` specifies the address of an HTTP server, such as a Maven repository, that stores the file for the connector artifact.
+{prodname} connector artifacts are available in the Red Hat Maven repository.
 The OpenShift cluster must have access to the specified server.
 
 |===

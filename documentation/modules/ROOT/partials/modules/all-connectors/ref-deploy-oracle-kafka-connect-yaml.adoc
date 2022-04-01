@@ -3,7 +3,7 @@ In the example that follows, the custom resource is configured to download the f
 * The {prodname} {connector-name} connector archive.
 * The {registry-name-full} archive. The {registry} is an optional component.
 * The {prodname} scripting SMT archive. The SMT archive is an optional component.
-* The {connector-name} JDBC driver, which is required to connecto to {connector-name} databases, but is not included in the connector archive.
+* The {connector-name} JDBC driver, which is required to connect to {connector-name} databases, but is not included in the connector archive.
 
 [source%nowrap,yaml,subs="+attributes,+quotes"]
 ----
@@ -68,6 +68,7 @@ The `type` value must match the type of the file that is referenced in the `url`
 
 |7
 |The value of `artifacts.url` specifies the address of an HTTP server, such as a Maven repository, that stores the file for the connector artifact.
+{prodname} connector artifacts are available in the Red Hat Maven repository.
 The OpenShift cluster must have access to the specified server.
 
 |8
