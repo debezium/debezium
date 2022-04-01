@@ -72,9 +72,7 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
                 return rs.getObject(columnIndex);
             }
         }
-        else {
-            return rs.getObject(columnIndex);
-        }
+        return rs.getObject(columnIndex);
     }
 
     protected abstract Object readTimeField(ResultSet rs, int columnIndex) throws SQLException;
