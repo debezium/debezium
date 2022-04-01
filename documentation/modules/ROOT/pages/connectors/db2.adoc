@@ -1609,9 +1609,9 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 
 .Procedure
 
-. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plug-in archive].
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[{prodname} Db2 connector plug-in archive] from Maven Central.
 . Extract the JAR files into your Kafka Connect environment.
-. Download the link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2], and extract the downloaded driver file to the directory that contains the {prodname} Db2 connector JAR file (that is, `debezium-connector-db2-{debezium-version}.jar`).
+. Download the link:https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar[JDBC driver for Db2] from Maven Central, and extract the downloaded driver file to the directory that contains the {prodname} Db2 connector JAR file (that is, `debezium-connector-db2-{debezium-version}.jar`).
 +
 [IMPORTANT]
 ====
@@ -1657,8 +1657,9 @@ Due to licensing requirements, the Db2 JDBC driver file that {prodname} requires
 The driver is available for download from Maven Central.
 Depending on the deployment method that you use, you retrieve the driver by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
 
-* If you xref:openshift-streams-db2-connector-deployment[use {StreamsName} to add the connector to your Kafka Connect image], add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource.
-* If you xref:deploying-debezium-db2-connectors[use a Dockerfile to build the connector], add a `curl` command in the Dockerfile to obtain the required driver file from Maven Central.
+* If you use {StreamsName} to add the connector to your Kafka Connect image, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-db2-connectors[].
+* If you use a Dockerfile to build a container image for the connector, insert a `curl` command in the Dockerfile to specify the URL for downloading the required driver file from Maven Central.
+For more information, see xref:deploying-debezium-db2-connectors[].
 
 
 // Type: concept
