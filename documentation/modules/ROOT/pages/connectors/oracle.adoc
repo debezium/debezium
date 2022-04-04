@@ -222,7 +222,7 @@ ifdef::community[]
 
 [NOTE]
 ====
-Following a change in table structure, you must follow (the xref:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure].
+Following a change in table structure, you must follow (the xref:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure]).
 ====
 endif::community[]
 
