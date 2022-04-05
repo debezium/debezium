@@ -98,6 +98,7 @@
         <version.kafka>3.1.0</version.kafka>
         <version.zookeeper>3.6.3</version.zookeeper>
         <!-- Kafka uses 2.12.3 but we need to bump due to CVE-2020-36518 before Kafka fixes it -->
+        <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
         <version.jackson>2.13.2</version.jackson>
         <version.jackson.databind>2.13.2</version.jackson.databind>
         <version.org.slf4j>1.7.30</version.org.slf4j>
