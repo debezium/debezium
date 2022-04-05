@@ -1,0 +1,18 @@
+FROM stripe/veneur:6.0.0 AS veneur
+
+FROM containers.global.prod.stripe.io/stripe/build/ubuntu-20.04:latest
+
+RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y openjdk-11-jdk-headless zip && update-java-alternatives -s java-1.11.0-openjdk-amd64
+
+RUN /usr/stripe/bin/docker/stripe-install-node 10.16.3 2f0397bb81c1d0c9901b9aff82a933257bf60f3992227b86107111a75b9030d9
+
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
+ENV PATH $JAVA_HOME/bin:$PATH
+RUN export JAVA_HOME
+
+WORKDIR /src
+
+ENV PATH $PATH:/src/
+CMD /src/jenkins-build.sh

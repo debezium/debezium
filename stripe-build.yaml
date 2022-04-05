@@ -1,0 +1,12 @@
+jenkins_jobs:
+  - name: "stripe-private-oss-forks-debezium"
+    henson_tarball:
+      docker:
+        dockerfile: Dockerfile.stripe
+    network:
+      http_proxy_report_only: true
+      http_proxy_whitelist:
+          # Maven and NPM artifacts are pulled from Artifactory.
+          - 'artifactory-content.stripe.build'
+          # Docker container installs from nodejs.
+          - 'nodejs.org'
