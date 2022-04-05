@@ -28,6 +28,7 @@ pipelineJob('release-debezium-upstream') {
         stringParam('UI_REPOSITORY', 'github.com/debezium/debezium-ui.git', 'Repository from which Debezium UI is built')
         stringParam('UI_BRANCH', 'main', 'A branch from which Debezium UI is built')
         booleanParam('DRY_RUN', true, 'When checked the changes and artifacts are not pushed to repositories and registries')
+        booleanParam('IGNORE_SNAPSHOTS', false, 'When checked, snapshot dependencies are allowed to be released; otherwise build fails')
         stringParam('MAVEN_CENTRAL_SYNC_TIMEOUT', '12', 'Timeout in hours to wait for artifacts being published in the Maven Central')
         booleanParam('CHECK_BACKPORTS', false, 'When checked the back ports between the two provided versions will be compared')
         stringParam('BACKPORT_FROM_TAG', 'vx.y.z.Final', 'Tag where back port checks begin - e.g. v1.8.0.Final')

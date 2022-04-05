@@ -26,6 +26,14 @@ else if (DRY_RUN instanceof String) {
 }
 echo "Dry run: ${DRY_RUN}"
 
+if (IGNORE_SNAPSHOTS == null) {
+    IGNORE_SNAPSHOTS = false
+}
+else if (IGNORE_SNAPSHOTS instanceof String) {
+    IGNORE_SNAPSHOTS = Boolean.valueOf(IGNORE_SNAPSHOTS)
+}
+echo "Ignore snapshots: ${IGNORE_SNAPSHOTS}"
+
 if (CHECK_BACKPORTS == null) {
     CHECK_BACKPORTS = false
 }
@@ -236,7 +244,7 @@ def setTargetReleaseForJiraIssues() {
 def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
     def repoId = null
     dir(repoDir) {
-        sh "mvn release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
+        sh "mvn release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -DignoreSnapshots=${IGNORE_SNAPSHOTS} -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
         if (!DRY_RUN) {
             withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                 sh "git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repoName}\" HEAD:$branchName --follow-tags"
