@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.0.Final
+April 5th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379896)
+
+### New features since 1.9.0.CR1
+
+* Ability to support all Redis connection schemes [DBZ-4511](https://issues.redhat.com/browse/DBZ-4511)
+* pass SINK config properties to OffsetStore and DatabaseHistory adapters [DBZ-4864](https://issues.redhat.com/browse/DBZ-4864)
+* Migrate test-suite fixtures to JUnit extension [DBZ-4892](https://issues.redhat.com/browse/DBZ-4892)
+* Use Jedis' clientSetname when establishing Redis connections [DBZ-4911](https://issues.redhat.com/browse/DBZ-4911)
+
+
+### Breaking changes since 1.9.0.CR1
+
+None
+
+
+### Fixes since 1.9.0.CR1
+
+* MySQL connector fails to parse default integer value expressed as decimal [DBZ-3541](https://issues.redhat.com/browse/DBZ-3541)
+* Cannot use Secrets in Debezium server connector config [DBZ-4742](https://issues.redhat.com/browse/DBZ-4742)
+* spatial_ref_sys table should be excluded in Postgres connector [DBZ-4814](https://issues.redhat.com/browse/DBZ-4814)
+* Oracle: Parsing failed for SEL_LOB_LOCATOR sql: 'DECLARE [DBZ-4862](https://issues.redhat.com/browse/DBZ-4862)
+* Oracle connector stops calling logminer without any error message [DBZ-4884](https://issues.redhat.com/browse/DBZ-4884)
+* Single quotes replication  [DBZ-4891](https://issues.redhat.com/browse/DBZ-4891)
+* Oracle keeps trying old scn even if it had no changes [DBZ-4907](https://issues.redhat.com/browse/DBZ-4907)
+* Redis Sink - using Transaction does not work in sharded Redis  [DBZ-4912](https://issues.redhat.com/browse/DBZ-4912)
+* Oracle connector page have typo since version 1.5. [DBZ-4913](https://issues.redhat.com/browse/DBZ-4913)
+* CVE-2022-26520 jdbc-postgresql: postgresql-jdbc: Arbitrary File Write Vulnerability [rhint-debezium-1] [DBZ-4916](https://issues.redhat.com/browse/DBZ-4916)
+* Kafka topics list throw exception [DBZ-4920](https://issues.redhat.com/browse/DBZ-4920)
+* Spelling mistake in doc about Oracle metrics [DBZ-4926](https://issues.redhat.com/browse/DBZ-4926)
+* MariaDB Trigger Parsing Error [DBZ-4927](https://issues.redhat.com/browse/DBZ-4927)
+* NPE during snapshotting MySQL database if custom converters present and column is null [DBZ-4933](https://issues.redhat.com/browse/DBZ-4933)
+* Avro converter requires Guava in lib directory [DBZ-4935](https://issues.redhat.com/browse/DBZ-4935)
+* Debezium Server 1.9 Fails to start up when transferring 1.8 offsets [DBZ-4937](https://issues.redhat.com/browse/DBZ-4937)
+* Missing images for 1.9.0.Beta1 and 1.9.0.CR1 releases [DBZ-4943](https://issues.redhat.com/browse/DBZ-4943)
+
+
+### Other changes since 1.9.0.CR1
+
+* Document "schema.include.list"/"schema.exclude.list" for SQL Server connector [DBZ-2793](https://issues.redhat.com/browse/DBZ-2793)
+* Align decimal.handling.mode documentation for Oracle like other connectors [DBZ-3317](https://issues.redhat.com/browse/DBZ-3317)
+* Use Red Hat Maven repo for custom build image in docs [DBZ-4392](https://issues.redhat.com/browse/DBZ-4392)
+* Upgrade postgres driver to version 42.3.3 [DBZ-4919](https://issues.redhat.com/browse/DBZ-4919)
+* Update Quality Outreach workflow to official Oracle Java GH action [DBZ-4924](https://issues.redhat.com/browse/DBZ-4924)
+* Bump jackson to 2.13.2 [DBZ-4955](https://issues.redhat.com/browse/DBZ-4955)
+
+
+
 ## 1.9.0.CR1
 March 25th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379895)
 
