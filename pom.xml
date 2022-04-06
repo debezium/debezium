@@ -164,16 +164,16 @@
 
     <distributionManagement>
       <repository>
-        <id>ossrh</id>
-        <name>Sonatype Staging Repository</name>
-        <url>${release.endpoint}/service/local/staging/deploy/maven2</url>
+        <id>stripe-artifactory-v2</id>
+        <url>https://artifactory-content.stripe.build/artifactory/maven-releases-local/</url>
       </repository>
       <snapshotRepository>
-        <id>ossrh</id>
-        <name>OSS Sonatype Nexus Snapshots</name>
-        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        <id>stripe-artifactory-v2</id>
+        <url>https://artifactory-content.stripe.build/artifactory/maven-snapshots-local/</url>
+        <uniqueVersion>false</uniqueVersion>
       </snapshotRepository>
     </distributionManagement>
+
 
     <repositories>
         <repository>
