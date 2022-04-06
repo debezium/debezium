@@ -23,8 +23,8 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
      */
     public static final Object UNCHANGED_TOAST_VALUE = new Object();
 
-    public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional, boolean hasMetadata) {
-        super(columnName, type, typeWithModifiers, optional, hasMetadata);
+    public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
+        super(columnName, type, typeWithModifiers, optional);
     }
 
     @Override

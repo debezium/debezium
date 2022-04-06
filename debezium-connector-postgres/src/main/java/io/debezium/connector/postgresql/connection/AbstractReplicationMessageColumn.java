@@ -100,20 +100,17 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
     private final String typeWithModifiers;
     private final boolean optional;
     private TypeMetadataImpl typeMetadata;
-    private final boolean hasMetadata;
     private final PostgresType type;
 
-    public AbstractReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional, boolean hasMetadata) {
+    public AbstractReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
         super();
         this.columnName = columnName;
         this.type = type;
         this.typeWithModifiers = typeWithModifiers;
         this.optional = optional;
-        this.hasMetadata = hasMetadata;
     }
 
     private void initMetadata() {
-        assert hasMetadata : "Metadata not available";
         typeMetadata = new TypeMetadataImpl(columnName, type, typeWithModifiers, optional);
     }
 

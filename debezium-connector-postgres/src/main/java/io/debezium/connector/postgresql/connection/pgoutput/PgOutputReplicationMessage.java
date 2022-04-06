@@ -68,11 +68,6 @@ public class PgOutputReplicationMessage implements ReplicationMessage {
     }
 
     @Override
-    public boolean hasTypeMetadata() {
-        return true;
-    }
-
-    @Override
     public boolean isLastEventForLsn() {
         return true;
     }

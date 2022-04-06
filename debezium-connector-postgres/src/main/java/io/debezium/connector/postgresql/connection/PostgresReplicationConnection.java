@@ -414,8 +414,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         try {
             try {
-                s = startPgReplicationStream(startLsn, messageDecoder::optionsWithMetadata);
-                messageDecoder.setContainsMetadata(true);
+                s = startPgReplicationStream(startLsn, messageDecoder::defaultOptions);
             }
             catch (PSQLException e) {
                 LOGGER.debug("Could not register for streaming, retrying without optional options", e);
@@ -426,8 +425,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     initReplicationSlot();
                 }
 
-                s = startPgReplicationStream(startLsn, messageDecoder::optionsWithMetadata);
-                messageDecoder.setContainsMetadata(true);
+                s = startPgReplicationStream(startLsn, messageDecoder::defaultOptions);
             }
         }
         catch (PSQLException e) {
