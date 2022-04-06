@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.connector.mysql.MySqlConnectorConfig.isBuiltInDatabase;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
@@ -39,7 +40,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlTestConnection.MySqlVersion;
-import io.debezium.connector.mysql.legacy.Filters;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -1072,7 +1072,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 connection.query("SHOW DATABASES", rs -> {
                     while (rs.next()) {
                         final String dbName = rs.getString(1);
-                        if (!Filters.isBuiltInDatabase(dbName) && !dbName.equals(DATABASE.getDatabaseName())) {
+                        if (!isBuiltInDatabase(dbName) && !dbName.equals(DATABASE.getDatabaseName())) {
                             connection.execute("DROP DATABASE IF EXISTS `" + dbName + "`");
                         }
                     }

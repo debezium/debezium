@@ -94,8 +94,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL)
                 // Explicitly enable INCLUDE_SQL_QUERY connector option. For snapshots it should have no effect as
                 // source query should not included in snapshot events.
-                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new");
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true);
     }
 
     @Test
@@ -384,7 +383,6 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, BINARY_FIELD_DATABASE.qualifiedTableName("binary_field"))
                 .with(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS, "0")
                 .with(MySqlConnectorConfig.SNAPSHOT_FETCH_SIZE, "101")
-                // .with("internal.implementation", "legacy")
                 .build();
 
         // Start the connector ...

@@ -26,7 +26,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
-import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
@@ -626,5 +625,32 @@ public class MySqlConnection extends JdbcConnection {
     @Override
     public String quotedTableIdString(TableId tableId) {
         return tableId.toQuotedString('`');
+    }
+
+    public static class DatabaseLocales {
+        private final String charset;
+        private final String collation;
+
+        public DatabaseLocales(String charset, String collation) {
+            this.charset = charset;
+            this.collation = collation;
+        }
+
+        public void appendToDdlStatement(String dbName, StringBuilder ddl) {
+            if (charset != null) {
+                LOGGER.debug("Setting default charset '{}' for database '{}'", charset, dbName);
+                ddl.append(" CHARSET ").append(charset);
+            }
+            else {
+                LOGGER.info("Default database charset for '{}' not found", dbName);
+            }
+            if (collation != null) {
+                LOGGER.debug("Setting default collation '{}' for database '{}'", collation, dbName);
+                ddl.append(" COLLATE ").append(collation);
+            }
+            else {
+                LOGGER.info("Default database collation for '{}' not found", dbName);
+            }
+        }
     }
 }

@@ -232,8 +232,7 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
     }
 
     /**

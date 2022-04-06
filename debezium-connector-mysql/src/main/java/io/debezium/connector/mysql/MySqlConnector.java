@@ -35,9 +35,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
  */
 public class MySqlConnector extends RelationalBaseSourceConnector {
 
-    public static final String IMPLEMENTATION_PROP = "internal.implementation";
-    public static final String LEGACY_IMPLEMENTATION = "legacy";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnector.class);
 
     @Immutable
@@ -58,16 +55,7 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
 
     @Override
     public Class<? extends Task> taskClass() {
-        final String implementation = properties.get(IMPLEMENTATION_PROP);
-        if (isLegacy(implementation)) {
-            LOGGER.warn("Legacy MySQL connector implementation is enabled");
-            return io.debezium.connector.mysql.legacy.MySqlConnectorTask.class;
-        }
         return io.debezium.connector.mysql.MySqlConnectorTask.class;
-    }
-
-    static boolean isLegacy(final String implementation) {
-        return LEGACY_IMPLEMENTATION.equals(implementation);
     }
 
     @Override

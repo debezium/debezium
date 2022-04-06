@@ -68,7 +68,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -116,7 +115,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "tx.of.${database.server.name}")
                 .build();
 
@@ -147,7 +145,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "mytransactions")
                 .build();
 
