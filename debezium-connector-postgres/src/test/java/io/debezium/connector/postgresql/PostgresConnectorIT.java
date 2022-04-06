@@ -1409,54 +1409,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-892")
-    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON, reason = "Only wal2json decoder emits empty events and passes them to streaming source")
-    public void shouldFlushLsnOnEmptyMessage() throws InterruptedException, SQLException {
-        final String DDL_STATEMENT = "CREATE TEMPORARY TABLE xx(id INT);";
-
-        final int recordCount = 10;
-        TestHelper.execute(SETUP_TABLES_STMT);
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
-                .with(Heartbeat.HEARTBEAT_INTERVAL, 1_000)
-                .build();
-        start(PostgresConnector.class, config);
-        assertConnectorIsRunning();
-        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
-
-        final Set<String> flushLsn = new HashSet<>();
-        TestHelper.execute(INSERT_STMT);
-
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
-            final SourceRecords actualRecords = consumeRecordsByTopic(1);
-            final List<SourceRecord> topicRecords = actualRecords.recordsForTopic(topicName("s1.a"));
-            return topicRecords != null && topicRecords.size() == 1;
-        });
-
-        try (final PostgresConnection connection = TestHelper.create()) {
-            flushLsn.add(getConfirmedFlushLsn(connection));
-            for (int i = 0; i < recordCount; i++) {
-                TestHelper.execute(DDL_STATEMENT);
-
-                try {
-                    // Wait max 5 seconds for LSN change caused by DDL_STATEMENT
-                    Awaitility.await().atMost(5, TimeUnit.SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
-                }
-                catch (ConditionTimeoutException e) {
-                    // We do not require all flushes to succeed in time
-                }
-            }
-        }
-        // Theoretically the LSN should change for each record but in reality there can be
-        // unfortunate timings so let's suppose the change will happen in 75 % of cases
-        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
-    }
-
-    @Test
     @FixFor("DBZ-1082")
     public void shouldAllowForCustomSnapshot() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -1774,7 +1726,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2094")
-    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "No need for db write to complete catch-up phase")
     public void shouldResumeStreamingFromSlotPositionForCustomSnapshot() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         // Perform an regular snapshot
@@ -1834,7 +1785,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2094")
-    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "Fails due to DBZ-3158")
     public void customSnapshotterSkipsTablesOnRestart() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
 
@@ -1899,7 +1849,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2094")
-    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "Unstable with WAL2JSON plugin, leads to long build time and fails after 6h")
     public void customSnapshotterSkipsTablesOnRestartWithConcurrentTx() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
 
@@ -2776,12 +2725,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         // Assert that the sequences of different records in the same transaction differ
         // (Fix for DBZ-3801)
-        if (DecoderDifferences.singleLsnPerTransaction()) {
-            assertEquals(getSequence(records.get(5)), getSequence(records.get(6)));
-        }
-        else {
-            assertNotEquals(getSequence(records.get(5)), getSequence(records.get(6)));
-        }
+        assertNotEquals(getSequence(records.get(5)), getSequence(records.get(6)));
     }
 
     @Test

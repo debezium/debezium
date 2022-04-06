@@ -30,7 +30,6 @@ import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgCon
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
-import io.debezium.connector.postgresql.connection.wal2json.DateTimeFormat;
 
 /**
  * @author Chris Cranford

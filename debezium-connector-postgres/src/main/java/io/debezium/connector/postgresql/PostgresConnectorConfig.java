@@ -33,8 +33,6 @@ import io.debezium.connector.postgresql.connection.MessageDecoderContext;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
-import io.debezium.connector.postgresql.connection.wal2json.NonStreamingWal2JsonMessageDecoder;
-import io.debezium.connector.postgresql.connection.wal2json.StreamingWal2JsonMessageDecoder;
 import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
@@ -398,144 +396,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean supportsLogicalDecodingMessage() {
                 return false;
             }
-        },
-        @Deprecated
-        WAL2JSON_STREAMING("wal2json_streaming") {
-            @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
-                return new StreamingWal2JsonMessageDecoder();
-            }
-
-            @Override
-            public String getPostgresPluginName() {
-                return "wal2json";
-            }
-
-            @Override
-            public boolean supportsTruncate() {
-                return false;
-            }
-
-            @Override
-            public boolean hasUnchangedToastColumnMarker() {
-                return false;
-            }
-
-            @Override
-            public boolean sendsNullToastedValuesInOld() {
-                return false;
-            }
-
-            @Override
-            public boolean supportsLogicalDecodingMessage() {
-                return false;
-            }
-        },
-        @Deprecated
-        WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
-            @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
-                return new StreamingWal2JsonMessageDecoder();
-            }
-
-            @Override
-            public boolean forceRds() {
-                return true;
-            }
-
-            @Override
-            public String getPostgresPluginName() {
-                return "wal2json";
-            }
-
-            @Override
-            public boolean supportsTruncate() {
-                return false;
-            }
-
-            @Override
-            public boolean hasUnchangedToastColumnMarker() {
-                return false;
-            }
-
-            @Override
-            public boolean sendsNullToastedValuesInOld() {
-                return false;
-            }
-
-            @Override
-            public boolean supportsLogicalDecodingMessage() {
-                return false;
-            }
-        },
-        @Deprecated
-        WAL2JSON("wal2json") {
-            @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
-                return new NonStreamingWal2JsonMessageDecoder();
-            }
-
-            @Override
-            public String getPostgresPluginName() {
-                return "wal2json";
-            }
-
-            @Override
-            public boolean supportsTruncate() {
-                return false;
-            }
-
-            @Override
-            public boolean hasUnchangedToastColumnMarker() {
-                return false;
-            }
-
-            @Override
-            public boolean sendsNullToastedValuesInOld() {
-                return false;
-            }
-
-            @Override
-            public boolean supportsLogicalDecodingMessage() {
-                return true;
-            }
-        },
-        @Deprecated
-        WAL2JSON_RDS("wal2json_rds") {
-            @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
-                return new NonStreamingWal2JsonMessageDecoder();
-            }
-
-            @Override
-            public boolean forceRds() {
-                return true;
-            }
-
-            @Override
-            public String getPostgresPluginName() {
-                return "wal2json";
-            }
-
-            @Override
-            public boolean supportsTruncate() {
-                return false;
-            }
-
-            @Override
-            public boolean hasUnchangedToastColumnMarker() {
-                return false;
-            }
-
-            @Override
-            public boolean sendsNullToastedValuesInOld() {
-                return false;
-            }
-
-            @Override
-            public boolean supportsLogicalDecodingMessage() {
-                return false;
-            }
         };
 
         private final String decoderName;
@@ -545,18 +405,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
 
         public abstract MessageDecoder messageDecoder(MessageDecoderContext config);
-
-        public boolean forceRds() {
-            return false;
-        }
-
-        public boolean hasUnchangedToastColumnMarker() {
-            return true;
-        }
-
-        public boolean sendsNullToastedValuesInOld() {
-            return true;
-        }
 
         public static LogicalDecoder parse(String s) {
             return valueOf(s.trim().toUpperCase());
@@ -682,7 +530,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withValidation(PostgresConnectorConfig::validatePluginName)
             .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
                     "Supported values are '" + LogicalDecoder.DECODERBUFS.getValue()
                     + "' and '" + LogicalDecoder.PGOUTPUT.getValue()
@@ -1384,15 +1231,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             LOGGER.warn("Configuration property '{}' is deprecated and will be removed in future versions. Please use '{}' instead.",
                     TOASTED_VALUE_PLACEHOLDER.name(),
                     UNAVAILABLE_VALUE_PLACEHOLDER.name());
-        }
-        return 0;
-    }
-
-    private static int validatePluginName(Configuration config, Field field, Field.ValidationOutput problems) {
-        final String pluginName = config.getString(PLUGIN_NAME);
-        if (!Strings.isNullOrEmpty(pluginName) && pluginName.startsWith("wal2json")) {
-            LOGGER.warn("Logical decoder '{}' is deprecated and will be removed in future versions",
-                    pluginName);
         }
         return 0;
     }

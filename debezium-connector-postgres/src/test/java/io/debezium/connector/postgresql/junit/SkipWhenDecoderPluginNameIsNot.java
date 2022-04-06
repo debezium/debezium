@@ -25,30 +25,6 @@ public @interface SkipWhenDecoderPluginNameIsNot {
     String reason();
 
     enum DecoderPluginName {
-        WAL2JSON {
-            @Override
-            boolean isNotEqualTo(String pluginName) {
-                return !pluginName.equals("wal2json");
-            }
-        },
-        WAL2JSON_STREAMING {
-            @Override
-            boolean isNotEqualTo(String pluginName) {
-                return !pluginName.equals("wal2json_streaming");
-            }
-        },
-        WAL2JSON_RDS {
-            @Override
-            boolean isNotEqualTo(String pluginName) {
-                return !pluginName.equals("wal2json_rds");
-            }
-        },
-        WAL2JSON_RDS_STREAMING {
-            @Override
-            boolean isNotEqualTo(String pluginName) {
-                return !pluginName.equals("wal2json_rds_streaming");
-            }
-        },
         DECODERBUFS {
             @Override
             boolean isNotEqualTo(String pluginName) {

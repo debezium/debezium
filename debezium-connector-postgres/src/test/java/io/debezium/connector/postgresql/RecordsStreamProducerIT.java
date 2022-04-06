@@ -12,7 +12,6 @@ import static io.debezium.connector.postgresql.TestHelper.TYPE_NAME_PARAMETER_KE
 import static io.debezium.connector.postgresql.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
-import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
@@ -84,7 +83,6 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.EqualityCheck;
-import io.debezium.junit.ShouldFailWhen;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
@@ -496,8 +494,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    @ShouldFailWhen(DecoderDifferences.AreQuotedIdentifiersUnsupported.class)
-    // TODO DBZ-493
     public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -1613,56 +1609,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expectedAfter, deletedRecord, Envelope.FieldName.AFTER);
     }
 
-    @Test()
-    @FixFor("DBZ-1130")
-    @SkipWhenDecoderPluginNameIsNot(value = WAL2JSON, reason = "WAL2JSON specific: Pass 'add-tables' stream parameter and verify it acts as an include list")
-    public void testPassingStreamParams() throws Exception {
-        // Verify that passing stream parameters works by using the WAL2JSON add-tables parameter which acts as a
-        // whitelist.
-        startConnector(config -> config
-                .with(PostgresConnectorConfig.STREAM_PARAMS, "add-tables=s1.should_stream"));
-        String statement = "CREATE SCHEMA s1;" +
-                "CREATE TABLE s1.should_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
-                "CREATE TABLE s1.should_not_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
-                "INSERT INTO s1.should_not_stream (aa) VALUES (456);" +
-                "INSERT INTO s1.should_stream (aa) VALUES (123);";
-
-        // Verify only one record made it
-        consumer = testConsumer(1);
-        executeAndWait(statement);
-
-        // Verify the record that made it was from the whitelisted table
-        assertRecordInserted("s1.should_stream", PK_FIELD, 1);
-        assertThat(consumer.isEmpty()).isTrue();
-    }
-
-    @Test()
-    @FixFor("DBZ-1130")
-    @SkipWhenDecoderPluginNameIsNot(value = WAL2JSON, reason = "WAL2JSON specific: Pass multiple stream parameters and values verifying they work")
-    public void testPassingStreamMultipleParams() throws Exception {
-        // Verify that passing multiple stream parameters and multiple parameter values works.
-        startConnector(config -> config
-                .with(PostgresConnectorConfig.STREAM_PARAMS, "add-tables=s1.should_stream,s2.*;filter-tables=s2.should_not_stream"));
-        String statement = "CREATE SCHEMA s1;" + "CREATE SCHEMA s2;" +
-                "CREATE TABLE s1.should_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
-                "CREATE TABLE s2.should_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
-                "CREATE TABLE s1.should_not_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
-                "CREATE TABLE s2.should_not_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
-                "INSERT INTO s1.should_not_stream (aa) VALUES (456);" +
-                "INSERT INTO s2.should_not_stream (aa) VALUES (111);" +
-                "INSERT INTO s1.should_stream (aa) VALUES (123);" +
-                "INSERT INTO s2.should_stream (aa) VALUES (999);";
-
-        // Verify only the whitelisted record from s1 and s2 made it.
-        consumer = testConsumer(2);
-        executeAndWait(statement);
-
-        // Verify the record that made it was from the whitelisted table
-        assertRecordInserted("s1.should_stream", PK_FIELD, 1);
-        assertRecordInserted("s2.should_stream", PK_FIELD, 1);
-        assertThat(consumer.isEmpty()).isTrue();
-    }
-
     @Test
     @FixFor("DBZ-1146")
     public void shouldReceiveChangesForReplicaIdentityFullTableWithToastedValueTableFromSnapshot() throws Exception {
@@ -1821,7 +1767,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1824")
-    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "wal2json cannot resume transaction in the middle of processing")
     public void stopInTheMiddleOfTxAndResume() throws Exception {
         Testing.Print.enable();
         final int numberOfEvents = 50;
@@ -1872,7 +1817,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-2397")
-    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "wal2json cannot resume transaction in the middle of processing")
     public void restartConnectorInTheMiddleOfUncommittedTx() throws Exception {
         Testing.Print.enable();
 
@@ -1937,71 +1881,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
                 .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
 
-        final boolean streaming = TestHelper.decoderPlugin().name().toLowerCase().endsWith("streaming");
-        consumer.expects(streaming ? 2 : 3);
+        consumer.expects(3);
         consumer.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);
 
         // After loss of offset and not doing snapshot we always stream the first record available in replication slot
         // even if we have seen it as it is not possible to make a difference from plain snapshot never mode
-        // In case of streaming wal2json the LSN flush is timed differently due to the last non-functional chunk processing
-        if (!streaming) {
-            Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert2");
-        }
+        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert2");
+
         Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert3");
         Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert4");
 
         stopConnector();
-    }
-
-    @Test
-    @FixFor("DBZ-1824")
-    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON, reason = "wal2json cannot resume transaction in the middle of processing")
-    public void stopInTheMiddleOfTxAndRestart() throws Exception {
-        Testing.Print.enable();
-        final int numberOfEvents = 50;
-        final int STOP_ID = 20;
-
-        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), true, record -> {
-            if (!"test_server.public.test_table.Envelope".equals(record.valueSchema().name())) {
-                return false;
-            }
-            final Struct envelope = (Struct) record.value();
-            final Struct after = envelope.getStruct("after");
-            final Integer pk = after.getInt32("pk");
-            return pk == STOP_ID;
-        });
-        waitForStreamingToStart();
-
-        final String topicPrefix = "public.test_table";
-        final String topicName = topicName(topicPrefix);
-
-        final int expectFirstRun = STOP_ID - 2;
-        final int expectSecondRun = numberOfEvents;
-        consumer = testConsumer(expectFirstRun);
-        executeAndWait(IntStream.rangeClosed(2, numberOfEvents + 1)
-                .boxed()
-                .map(x -> "INSERT INTO test_table (text) VALUES ('insert" + x + "')")
-                .collect(Collectors.joining(";")));
-
-        // 2..19, 1 is from snapshot
-        for (int i = 0; i < expectFirstRun; i++) {
-            SourceRecord record = consumer.remove();
-            assertEquals(topicName, record.topic());
-            VerifyRecord.isValidInsert(record, PK_FIELD, i + 2);
-        }
-
-        stopConnector();
-
-        startConnector(Function.identity(), false);
-        consumer.expects(expectSecondRun);
-        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
-
-        // 2..51
-        for (int i = 0; i < expectSecondRun; i++) {
-            SourceRecord record = consumer.remove();
-            assertEquals(topicName, record.topic());
-            VerifyRecord.isValidInsert(record, PK_FIELD, i + 2);
-        }
     }
 
     @Test
@@ -2651,24 +2541,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait("UPDATE test_table set not_toast = 20");
         SourceRecord updatedRecord = consumer.remove();
 
-        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), updatedRecord, Envelope.FieldName.BEFORE);
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), updatedRecord, Envelope.FieldName.AFTER);
-        }
-        else {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10)), updatedRecord, Envelope.FieldName.BEFORE);
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)), updatedRecord, Envelope.FieldName.AFTER);
-        }
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), updatedRecord, Envelope.FieldName.BEFORE);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), updatedRecord, Envelope.FieldName.AFTER);
 
         // DELETE
         consumer.expects(2);
@@ -2677,17 +2557,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         SourceRecord tombstoneRecord = consumer.remove();
         assertThat(tombstoneRecord.value()).isNull();
         assertThat(tombstoneRecord.valueSchema()).isNull();
-        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), deletedRecord, Envelope.FieldName.BEFORE);
-        }
-        else {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)), deletedRecord, Envelope.FieldName.BEFORE);
-        }
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), deletedRecord, Envelope.FieldName.BEFORE);
 
         // INSERT null
         consumer.expects(1);
@@ -2703,24 +2576,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         executeAndWait("UPDATE test_table set not_toast = 200 WHERE id=2");
         updatedRecord = consumer.remove();
-        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.BEFORE);
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.AFTER);
-        }
-        else {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100)), updatedRecord, Envelope.FieldName.BEFORE);
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), updatedRecord, Envelope.FieldName.AFTER);
-        }
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.BEFORE);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.AFTER);
 
         // DELETE null
         consumer.expects(2);
@@ -2729,17 +2592,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         tombstoneRecord = consumer.remove();
         assertThat(tombstoneRecord.value()).isNull();
         assertThat(tombstoneRecord.valueSchema()).isNull();
-        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), deletedRecord, Envelope.FieldName.BEFORE);
-        }
-        else {
-            assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
-                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), deletedRecord, Envelope.FieldName.BEFORE);
-        }
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), deletedRecord, Envelope.FieldName.BEFORE);
     }
 
     /**

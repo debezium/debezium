@@ -54,8 +54,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     private final PostgresConnectorConfig connectorConfig;
     private final PostgresConnection connection;
     private final TableId tableId;
-    private final boolean unchangedToastColumnMarkerMissing;
-    private final boolean nullToastedValuesMissingFromOld;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
     public PostgresChangeRecordEmitter(PostgresPartition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
@@ -69,8 +67,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         this.connection = connection;
 
         this.tableId = tableId;
-        this.unchangedToastColumnMarkerMissing = !connectorConfig.plugin().hasUnchangedToastColumnMarker();
-        this.nullToastedValuesMissingFromOld = !connectorConfig.plugin().sendsNullToastedValuesInOld();
         Objects.requireNonNull(this.tableId);
     }
 
@@ -194,21 +190,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                     }
                 }
                 values[position] = value;
-            }
-        }
-        if (unchangedToastColumnMarkerMissing) {
-            for (String columnName : undeliveredToastableColumns) {
-                int position = getPosition(columnName, table, values);
-                if (position != -1) {
-                    final Object candidate = cachedOldToastedValues.get(columnName);
-                    if (oldValues && nullToastedValuesMissingFromOld) {
-                        // wal2json connector does not send null toasted value among old values
-                        values[position] = null;
-                    }
-                    else {
-                        values[position] = candidate != null ? candidate : UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
-                    }
-                }
             }
         }
         return values;
