@@ -13,6 +13,7 @@ import java.util.OptionalLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -21,6 +22,7 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessageColumnValueResolver;
 import io.debezium.connector.postgresql.proto.PgProto;
+import io.debezium.connector.postgresql.proto.PgProto.Op;
 import io.debezium.util.Strings;
 
 /**
@@ -36,6 +38,10 @@ class PgProtoReplicationMessage implements ReplicationMessage {
     public PgProtoReplicationMessage(PgProto.RowMessage rawMessage, TypeRegistry typeRegistry) {
         this.rawMessage = rawMessage;
         this.typeRegistry = typeRegistry;
+
+        if (missingTypeMetadata()) {
+            throw new DebeziumException("Protobuf message does not contain metadata. Unsupported version of protobuf plug-in is deployed in the database.");
+        }
     }
 
     @Override
@@ -82,26 +88,28 @@ class PgProtoReplicationMessage implements ReplicationMessage {
         return transform(rawMessage.getNewTupleList(), rawMessage.getNewTypeinfoList());
     }
 
-    @Override
-    public boolean hasTypeMetadata() {
-        return !(rawMessage.getNewTypeinfoList() == null || rawMessage.getNewTypeinfoList().isEmpty());
+    private boolean missingTypeMetadata() {
+        if (rawMessage.getOp() == Op.BEGIN || rawMessage.getOp() == Op.COMMIT || rawMessage.getOp() == Op.DELETE) {
+            return false;
+        }
+        return rawMessage.getNewTypeinfoList() == null;
     }
 
     private List<ReplicationMessage.Column> transform(List<PgProto.DatumMessage> messageList, List<PgProto.TypeInfo> typeInfoList) {
         return IntStream.range(0, messageList.size())
                 .mapToObj(index -> {
                     final PgProto.DatumMessage datum = messageList.get(index);
-                    final Optional<PgProto.TypeInfo> typeInfo = Optional.ofNullable(hasTypeMetadata() && typeInfoList != null ? typeInfoList.get(index) : null);
+                    final Optional<PgProto.TypeInfo> typeInfo = Optional.ofNullable(typeInfoList != null ? typeInfoList.get(index) : null);
                     final String columnName = Strings.unquoteIdentifierPart(datum.getColumnName());
                     final PostgresType type = typeRegistry.get((int) datum.getColumnType());
                     if (datum.hasDatumMissing()) {
                         return new UnchangedToastedReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null),
-                                typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata());
+                                typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE));
                     }
 
                     final String fullType = typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null);
                     return new AbstractReplicationMessageColumn(columnName, type, fullType,
-                            typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata()) {
+                            typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE)) {
 
                         @Override
                         public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
@@ -126,5 +134,10 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                            boolean includeUnknownDatatypes) {
         final PgProtoColumnValue columnValue = new PgProtoColumnValue(datumMessage);
         return ReplicationMessageColumnValueResolver.resolveValue(columnName, type, fullType, columnValue, connection, includeUnknownDatatypes, typeRegistry);
+    }
+
+    @Override
+    public String toString() {
+        return "PgProtoReplicationMessage [rawMessage=" + rawMessage + "]";
     }
 }

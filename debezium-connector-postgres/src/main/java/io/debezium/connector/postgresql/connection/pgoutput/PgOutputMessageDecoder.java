@@ -211,7 +211,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     @Override
-    public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
+    public ChainedLogicalStreamBuilder defaultOptions(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
         builder = builder.withSlotOption("proto_version", 1)
                 .withSlotOption("publication_names", decoderContext.getConfig().publicationName());
 
@@ -220,11 +220,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             builder = builder.withSlotOption("messages", true);
         }
 
-        return builder;
-    }
-
-    @Override
-    public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
         return builder;
     }
 
@@ -727,7 +722,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             if (type == 't') {
                 final String valueStr = readColumnValueAsString(buffer);
                 columns.add(
-                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional, true) {
+                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
                             @Override
                             public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
                                 return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
@@ -742,7 +737,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
             else if (type == 'u') {
                 columns.add(
-                        new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional, true) {
+                        new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
                             @Override
                             public String toString() {
                                 return columnName + "(" + typeExpression + ") - Unchanged toasted column";
@@ -751,7 +746,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
             else if (type == 'n') {
                 columns.add(
-                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true, true) {
+                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true) {
                             @Override
                             public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
                                 return null;

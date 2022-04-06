@@ -68,11 +68,6 @@ public class LogicalDecodingMessage implements ReplicationMessage {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public boolean hasTypeMetadata() {
-        throw new UnsupportedOperationException();
-    }
-
     public String getPrefix() {
         return prefix;
     }
