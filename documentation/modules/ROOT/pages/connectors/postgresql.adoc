@@ -58,7 +58,6 @@ The PostgreSQL connector contains two main parts that work together to read and 
 ifdef::community[]
 * A logical decoding output plug-in. You might need to install the output plug-in that you choose to use. You must configure a replication slot that uses your chosen output plug-in before running the PostgreSQL server. The plug-in can be one of the following:
 ** link:https://github.com/debezium/postgres-decoderbufs[`decoderbufs`] is based on Protobuf and maintained by the {prodname} community.
-** link:https://github.com/eulerto/wal2json[`wal2json`] is based on JSON and maintained by the wal2json community (deprecated, scheduled for removal in Debezium 2.0).
 ** `pgoutput` is the standard logical decoding output plug-in in PostgreSQL 10+. It is maintained by the PostgreSQL community, and used by PostgreSQL itself for link:https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication]. This plug-in is always present so no additional libraries need to be installed. The {prodname} connector interprets the raw replication event stream directly into change events.
 
 * Java code (the actual Kafka Connect connector) that reads the changes produced by the chosen logical decoding output plug-in. It uses PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_], by means of the PostgreSQL link:https://github.com/pgjdbc/pgjdbc[_JDBC driver_]
@@ -2597,9 +2596,6 @@ The following configuration properties are _required_ unless a default value is 
 
 ifdef::community[]
 Supported values are `decoderbufs`, and `pgoutput`.
-
-The `wal2json` plug-in is deprecated and scheduled for removal.
-
 endif::community[]
 ifdef::product[]
 The only supported value is `pgoutput`. You must explicitly set `plugin.name` to `pgoutput`.
