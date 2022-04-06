@@ -388,12 +388,6 @@
             </properties>
         </profile>
         <profile>
-            <id>wal2json-decoder</id>
-            <properties>
-                <decoder.plugin.name>wal2json</decoder.plugin.name>
-            </properties>
-        </profile>
-        <profile>
             <id>pgoutput-decoder</id>
             <properties>
                 <decoder.plugin.name>pgoutput</decoder.plugin.name>

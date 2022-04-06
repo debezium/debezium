@@ -237,16 +237,13 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("ss", SchemaBuilder.int16().defaultValue((short) 0).build(), (short) 1),
                 new SchemaAndValueField("bs", SchemaBuilder.int64().defaultValue(0L).build(), 123L),
                 new SchemaAndValueField("b", Schema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE),
-                new SchemaAndValueField("o", Schema.OPTIONAL_INT64_SCHEMA, 4_000_000_000L)));
-        if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
-            fields.addAll(Arrays.asList(
-                    new SchemaAndValueField("r_nan", Schema.OPTIONAL_FLOAT32_SCHEMA, Float.NaN),
-                    new SchemaAndValueField("db_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
-                    new SchemaAndValueField("r_pinf", Schema.OPTIONAL_FLOAT32_SCHEMA, Float.POSITIVE_INFINITY),
-                    new SchemaAndValueField("db_pinf", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.POSITIVE_INFINITY),
-                    new SchemaAndValueField("r_ninf", Schema.OPTIONAL_FLOAT32_SCHEMA, Float.NEGATIVE_INFINITY),
-                    new SchemaAndValueField("db_ninf", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NEGATIVE_INFINITY)));
-        }
+                new SchemaAndValueField("o", Schema.OPTIONAL_INT64_SCHEMA, 4_000_000_000L),
+                new SchemaAndValueField("r_nan", Schema.OPTIONAL_FLOAT32_SCHEMA, Float.NaN),
+                new SchemaAndValueField("db_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                new SchemaAndValueField("r_pinf", Schema.OPTIONAL_FLOAT32_SCHEMA, Float.POSITIVE_INFINITY),
+                new SchemaAndValueField("db_pinf", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.POSITIVE_INFINITY),
+                new SchemaAndValueField("r_ninf", Schema.OPTIONAL_FLOAT32_SCHEMA, Float.NEGATIVE_INFINITY),
+                new SchemaAndValueField("db_ninf", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NEGATIVE_INFINITY)));
         return fields;
     }
 
@@ -287,16 +284,13 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("dvs_int", Schema.OPTIONAL_STRING_SCHEMA, "10"),
                 new SchemaAndValueField("n_int", Schema.OPTIONAL_STRING_SCHEMA, "22.0000"),
                 new SchemaAndValueField("nzs_int", Schema.OPTIONAL_STRING_SCHEMA, "22"),
-                new SchemaAndValueField("nvs_int", Schema.OPTIONAL_STRING_SCHEMA, "22")));
-        if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
-            fields.addAll(Arrays.asList(
-                    new SchemaAndValueField("d_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
-                    new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
-                    new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
-                    new SchemaAndValueField("n_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
-                    new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
-                    new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN")));
-        }
+                new SchemaAndValueField("nvs_int", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("d_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                new SchemaAndValueField("n_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
+                new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN")));
         return fields;
     }
 
@@ -307,16 +301,13 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("dvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 10.1111d),
                 new SchemaAndValueField("n", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.22d),
                 new SchemaAndValueField("nzs", Schema.OPTIONAL_FLOAT64_SCHEMA, 22d),
-                new SchemaAndValueField("nvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.2222d)));
-        if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
-            fields.addAll(Arrays.asList(
-                    new SchemaAndValueField("d_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
-                    new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
-                    new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
-                    new SchemaAndValueField("n_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
-                    new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
-                    new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN)));
-        }
+                new SchemaAndValueField("nvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.2222d),
+                new SchemaAndValueField("d_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                new SchemaAndValueField("dzs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                new SchemaAndValueField("n_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN),
+                new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_FLOAT64_SCHEMA, Double.NaN)));
         return fields;
     }
 

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.postgresql.connection.wal2json;
+package io.debezium.connector.postgresql.connection;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Transformer for time/date related string representations in JSON messages coming from the wal2json plugin.
+ * Transformer for time/date related string representations in replication messages.
  *
  * @author Jiri Pechanec
  *

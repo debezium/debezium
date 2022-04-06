@@ -29,7 +29,7 @@ import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractColumnValue;
-import io.debezium.connector.postgresql.connection.wal2json.DateTimeFormat;
+import io.debezium.connector.postgresql.connection.DateTimeFormat;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.time.Conversions;

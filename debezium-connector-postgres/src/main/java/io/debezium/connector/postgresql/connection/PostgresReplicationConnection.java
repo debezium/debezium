@@ -280,7 +280,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * a. the slot exists
      * b. the slot isn't currently being used
      * 2. we query to get our potential start position in the slot (lsn)
-     * 3. we try and start streaming, depending on our options (such as in wal2json)
+     * 3. we try and start streaming, depending on our options
      * this may fail, which can result in the connection being killed and we need to start
      * the process over if we are using a temporary slot
      * 4. actually start the streamer
@@ -414,11 +414,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         try {
             try {
-                s = startPgReplicationStream(startLsn,
-                        plugin.forceRds()
-                                ? messageDecoder::optionsWithoutMetadata
-                                : messageDecoder::optionsWithMetadata);
-                messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
+                s = startPgReplicationStream(startLsn, messageDecoder::optionsWithMetadata);
+                messageDecoder.setContainsMetadata(true);
             }
             catch (PSQLException e) {
                 LOGGER.debug("Could not register for streaming, retrying without optional options", e);
@@ -429,25 +426,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     initReplicationSlot();
                 }
 
-                s = startPgReplicationStream(startLsn, plugin.forceRds() ? messageDecoder::optionsWithoutMetadata : messageDecoder::optionsWithMetadata);
-                messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
+                s = startPgReplicationStream(startLsn, messageDecoder::optionsWithMetadata);
+                messageDecoder.setContainsMetadata(true);
             }
         }
         catch (PSQLException e) {
-            if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
-                // It is possible we are connecting to an old wal2json plug-in
-                LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
-
-                // re-init the slot after a failed start of slot, as this
-                // may have closed the slot
-                if (useTemporarySlot()) {
-                    initReplicationSlot();
-                }
-
-                s = startPgReplicationStream(startLsn, messageDecoder::optionsWithoutMetadata);
-                messageDecoder.setContainsMetadata(false);
-            }
-            else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
+            if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
                 LOGGER.error("Cannot rewind to last processed WAL position", e);
                 throw new ConnectException(
                         "The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
