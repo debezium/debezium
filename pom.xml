@@ -170,7 +170,6 @@
       <snapshotRepository>
         <id>stripe-artifactory-v2</id>
         <url>https://artifactory-content.stripe.build/artifactory/maven-snapshots-local/</url>
-        <uniqueVersion>false</uniqueVersion>
       </snapshotRepository>
     </distributionManagement>
 

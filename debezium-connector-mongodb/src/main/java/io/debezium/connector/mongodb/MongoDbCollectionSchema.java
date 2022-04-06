@@ -87,6 +87,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         switch (operation) {
             case READ:
             case CREATE:
+            case NOOP:
                 final String jsonStr = valueGenerator.apply(fieldFilter.apply(document));
                 value.put(FieldName.AFTER, jsonStr);
                 break;

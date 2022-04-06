@@ -42,6 +42,7 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         literals.put("i", Operation.CREATE);
         literals.put("u", Operation.UPDATE);
         literals.put("d", Operation.DELETE);
+        literals.put("n", Operation.NOOP);
 
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }

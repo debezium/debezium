@@ -52,6 +52,10 @@ public final class Envelope {
          */
         TRUNCATE("t"),
         /**
+         * An operation that resulted in a noop.
+         */
+        NOOP("n"),
+        /**
          * An operation that resulted in a generic message
          */
         MESSAGE("m");
