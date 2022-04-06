@@ -153,8 +153,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.PASSWORD, "replpass")
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new");
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER);
     }
 
     @Test

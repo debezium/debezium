@@ -28,7 +28,6 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
-import io.debezium.connector.mysql.legacy.BinlogReaderIT;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -36,8 +35,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
 /**
- * The test is named to make sure it runs alphabetically last as it can influence execution
- * of for example {@link BinlogReaderIT}
+ * The test is named to make sure it runs alphabetically last as it can influence execution of other tests.
  *
  * @author Jiri Pechanec
  */

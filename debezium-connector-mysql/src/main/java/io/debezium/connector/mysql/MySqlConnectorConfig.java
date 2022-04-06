@@ -1037,7 +1037,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final Predicate<String> ddlFilter;
-    private final boolean legacy;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean readOnlyConnection;
 
@@ -1053,7 +1052,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 false);
 
         this.config = config;
-        this.legacy = MySqlConnector.isLegacy(config.getString(io.debezium.connector.mysql.MySqlConnector.IMPLEMENTATION_PROP));
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
@@ -1200,11 +1198,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         switch (version) {
             case V1:
-                return legacy ? new io.debezium.connector.mysql.legacy.LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this)
-                        : new LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+                return new LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
             default:
-                return legacy ? new io.debezium.connector.mysql.legacy.MySqlSourceInfoStructMaker(Module.name(), Module.version(), this)
-                        : new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+                return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
     }
 
@@ -1308,10 +1304,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public Predicate<String> getDdlFilter() {
         return ddlFilter;
-    }
-
-    boolean legacy() {
-        return legacy;
     }
 
     public boolean isReadOnlyConnection() {

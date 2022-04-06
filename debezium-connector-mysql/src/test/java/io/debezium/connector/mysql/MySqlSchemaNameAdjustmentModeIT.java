@@ -6,7 +6,6 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assume.assumeFalse;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -59,8 +58,6 @@ public class MySqlSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
 
     @Test
     public void shouldNotAdjustNames() throws InterruptedException {
-        assumeFalse(MySqlConnector.LEGACY_IMPLEMENTATION.equals(System.getProperty(MySqlConnector.IMPLEMENTATION_PROP)));
-
         skipAvroValidation();
         Struct data = consume(SchemaNameAdjustmentMode.NONE);
 

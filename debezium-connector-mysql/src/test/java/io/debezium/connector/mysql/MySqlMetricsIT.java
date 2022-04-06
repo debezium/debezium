@@ -124,15 +124,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .build());
 
         assertSnapshotMetrics();
-        // The legacy implementation did not exposed streaming metrics when only snapshot was executed.
-        // All other connectors based on new framework exposes streaming metrics always so we are
-        // following the same behaviour in the new implementation
-        if (isLegacy()) {
-            assertNoStreamingMetricsExist();
-        }
-        else {
-            assertStreamingMetricsExist();
-        }
+        assertStreamingMetricsExist();
     }
 
     @Test
@@ -173,16 +165,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
         // CREATE DATABASE, CREATE TABLE, and 2 INSERT
         assertStreamingMetrics(4);
-
-        // The legacy implementation did not exposed snapshot metrics when snapshot never was configured.
-        // All other connectors based on new framework exposes snapshot metrics always so we are
-        // following the same behaviour in the new implementation
-        if (isLegacy()) {
-            assertNoSnapshotMetricsExist();
-        }
-        else {
-            assertSnapshotMetricsExist();
-        }
+        assertSnapshotMetricsExist();
     }
 
     private void assertNoSnapshotMetricsExist() throws Exception {
@@ -294,9 +277,5 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
     private void waitForStreamingToStart() throws InterruptedException {
         waitForStreamingRunning("mysql", SERVER_NAME, getStreamingNamespace());
-    }
-
-    protected static boolean isLegacy() {
-        return MySqlConnector.LEGACY_IMPLEMENTATION.equals(System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
     }
 }

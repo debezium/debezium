@@ -113,7 +113,6 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
     public void shouldStoreMultipleRenames() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .build();
 
         // Start the connector ...

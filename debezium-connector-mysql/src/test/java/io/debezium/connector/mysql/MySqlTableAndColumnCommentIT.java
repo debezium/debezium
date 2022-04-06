@@ -63,7 +63,6 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true)
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .with("datatype.propagate.source.type", ".+\\.BIGINT,.+\\.VARCHAR")
                 .build();
 

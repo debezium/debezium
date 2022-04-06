@@ -574,7 +574,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .build();
 
         // Start the connector ...
@@ -853,7 +852,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             config = DATABASE.defaultConfig()
                     .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_85_fractest"))
                     .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                    .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                     .build();
             // Start the connector ...
             start(MySqlConnector.class, config);
