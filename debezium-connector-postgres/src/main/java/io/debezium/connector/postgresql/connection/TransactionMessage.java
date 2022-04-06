@@ -34,11 +34,6 @@ public class TransactionMessage implements ReplicationMessage {
     }
 
     @Override
-    public boolean hasTypeMetadata() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public OptionalLong getTransactionId() {
         return OptionalLong.of(transactionId);
     }

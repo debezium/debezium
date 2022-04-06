@@ -105,9 +105,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                 case CREATE:
                     return null;
                 case UPDATE:
-                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true, true);
+                    return columnValues(message.getOldTupleList(), tableId, true, true, true);
                 default:
-                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false, true);
+                    return columnValues(message.getOldTupleList(), tableId, true, false, true);
             }
         }
         catch (SQLException e) {
@@ -120,9 +120,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         try {
             switch (getOperation()) {
                 case CREATE:
-                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false, false);
+                    return columnValues(message.getNewTupleList(), tableId, true, false, false);
                 case UPDATE:
-                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false, false);
+                    return columnValues(message.getNewTupleList(), tableId, true, false, false);
                 default:
                     return null;
             }
@@ -136,23 +136,20 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         if (getOperation() == Operation.DELETE || !message.shouldSchemaBeSynchronized()) {
             return tableSchema;
         }
-        final boolean metadataInMessage = message.hasTypeMetadata();
         final TableId tableId = (TableId) tableSchema.id();
         final Table table = schema.tableFor(tableId);
         final List<ReplicationMessage.Column> columns = message.getNewTupleList();
         // check if we need to refresh our local schema due to DB schema changes for this table
-        if (schemaChanged(columns, table, metadataInMessage)) {
+        if (schemaChanged(columns, table)) {
             // Refresh the schema so we get information about primary keys
             refreshTableFromDatabase(tableId);
             // Update the schema with metadata coming from decoder message
-            if (metadataInMessage) {
-                schema.refresh(tableFromFromMessage(columns, schema.tableFor(tableId)));
-            }
+            schema.refresh(tableFromFromMessage(columns, schema.tableFor(tableId)));
         }
         return schema.schemaFor(tableId);
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage,
+    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged,
                                   boolean sourceOfToasted, boolean oldValues)
             throws SQLException {
         if (columns == null || columns.isEmpty()) {
@@ -241,7 +238,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         return ((PostgresChangeRecordEmitter) changeRecordEmitter).newTable(tableId);
     }
 
-    private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
+    private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table) {
         int tableColumnCount = table.columns().size();
         int replicationColumnCount = columns.size();
 
@@ -287,28 +284,26 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                         return true;
                     }
                 }
-                if (metadataInMessage) {
-                    final int localLength = column.length();
-                    final int incomingLength = message.getTypeMetadata().getLength();
-                    if (localLength != incomingLength) {
-                        LOGGER.info("detected new length for column '{}', old length was {}, new length is {}; refreshing table schema", columnName, localLength,
-                                incomingLength);
-                        return true;
-                    }
-                    final int localScale = column.scale().orElseGet(() -> 0);
-                    final int incomingScale = message.getTypeMetadata().getScale();
-                    if (localScale != incomingScale) {
-                        LOGGER.info("detected new scale for column '{}', old scale was {}, new scale is {}; refreshing table schema", columnName, localScale,
-                                incomingScale);
-                        return true;
-                    }
-                    final boolean localOptional = column.isOptional();
-                    final boolean incomingOptional = message.isOptional();
-                    if (localOptional != incomingOptional) {
-                        LOGGER.info("detected new optional status for column '{}', old value was {}, new value is {}; refreshing table schema", columnName, localOptional,
-                                incomingOptional);
-                        return true;
-                    }
+                final int localLength = column.length();
+                final int incomingLength = message.getTypeMetadata().getLength();
+                if (localLength != incomingLength) {
+                    LOGGER.info("detected new length for column '{}', old length was {}, new length is {}; refreshing table schema", columnName, localLength,
+                            incomingLength);
+                    return true;
+                }
+                final int localScale = column.scale().orElseGet(() -> 0);
+                final int incomingScale = message.getTypeMetadata().getScale();
+                if (localScale != incomingScale) {
+                    LOGGER.info("detected new scale for column '{}', old scale was {}, new scale is {}; refreshing table schema", columnName, localScale,
+                            incomingScale);
+                    return true;
+                }
+                final boolean localOptional = column.isOptional();
+                final boolean incomingOptional = message.isOptional();
+                if (localOptional != incomingOptional) {
+                    LOGGER.info("detected new optional status for column '{}', old value was {}, new value is {}; refreshing table schema", columnName, localOptional,
+                            incomingOptional);
+                    return true;
                 }
             }
             return false;

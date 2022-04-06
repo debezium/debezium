@@ -170,11 +170,6 @@ public interface ReplicationMessage {
     public List<Column> getNewTupleList();
 
     /**
-     * @return true if type metadata are passed as a part of message
-     */
-    boolean hasTypeMetadata();
-
-    /**
      * @return true if this is the last message in the batch of messages with same LSN
      */
     boolean isLastEventForLsn();
@@ -212,11 +207,6 @@ public interface ReplicationMessage {
         @Override
         public boolean isLastEventForLsn() {
             return true;
-        }
-
-        @Override
-        public boolean hasTypeMetadata() {
-            throw new UnsupportedOperationException();
         }
 
         @Override
