@@ -11,7 +11,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,8 +37,6 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
@@ -294,63 +291,6 @@ public class OracleConnection extends JdbcConnection {
             }
             throw new IllegalStateException("Could not get SCN");
         });
-    }
-
-    /**
-     * Get the maximum system change number in the archive logs.
-     *
-     * @param archiveLogDestinationName the archive log destination name to be queried, can be {@code null}.
-     * @return the maximum system change number in the archive logs
-     * @throws SQLException if a database exception occurred
-     * @throws DebeziumException if the maximum archive log system change number could not be found
-     */
-    public Scn getMaxArchiveLogScn(String archiveLogDestinationName) throws SQLException {
-        String query = "SELECT MAX(NEXT_CHANGE#) FROM V$ARCHIVED_LOG " +
-                "WHERE NAME IS NOT NULL " +
-                "AND ARCHIVED = 'YES' " +
-                "AND STATUS = 'A' " +
-                "AND DEST_ID IN (" +
-                "SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS " +
-                "WHERE STATUS = 'VALID' " +
-                "AND TYPE = 'LOCAL' ";
-
-        if (Strings.isNullOrEmpty(archiveLogDestinationName)) {
-            query += "AND ROWNUM = 1";
-        }
-        else {
-            query += "AND UPPER(DEST_NAME) = '" + archiveLogDestinationName + "'";
-        }
-
-        query += ")";
-
-        try {
-            Metronome sleeper = Metronome.sleeper(Duration.ofSeconds(1), Clock.SYSTEM);
-            int retries = 5;
-            while (retries-- > 0) {
-                Scn maxArchiveLogScn = queryAndMap(query, (rs) -> {
-                    if (rs.next()) {
-                        final String value = rs.getString(1);
-                        if (value != null) {
-                            return Scn.valueOf(value).subtract(Scn.valueOf(1));
-                        }
-                    }
-                    // if we failed to get a result or the value was null, returning Scn.NULL implies
-                    // that we should try again until we exhaust the retry attempts.
-                    return Scn.NULL;
-                });
-                if (!maxArchiveLogScn.isNull()) {
-                    // value was received, return it.
-                    return maxArchiveLogScn;
-                }
-                LOGGER.info("Query to get max archive log SCN returned no value, checking again in 1 second.");
-                sleeper.pause();
-            }
-            // retry attempts exhausted, throw exception
-            throw new DebeziumException("Could not obtain maximum archive log SCN.");
-        }
-        catch (InterruptedException e) {
-            throw new DebeziumException("Failed to obtain maximum archive log SCN.", e);
-        }
     }
 
     /**
