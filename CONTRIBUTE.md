@@ -151,6 +151,14 @@ to the database and use logical decoding to read the transaction log. Several ne
 integration test were added.
 ```
 
+As an exception, commits for trivial documentation changes which don't warrant the creation of a Jira issue can be prefixed with `[docs]`, for example:
+
+```
+[docs] Typo fix in Postgres connector documentation
+```
+
+The following commit message prefixes are reserved for internal usage by the Debezium CI infrastructure and should not be used in manually created commits: `[release]`, `[jenkins-jobs]`, `[maven-release-plugin]`, and `[ci]`.
+
 ### Code Formatting
 
 This project utilizes a set of code style rules that are automatically applied by the build process.  There are two ways in which you can apply these rules while contributing:
