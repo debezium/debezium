@@ -13,7 +13,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -48,17 +47,16 @@ public class LogMinerHelper {
      * @param archiveLogOnlyMode true to mine only archive lgos, false to mine all available logs
      * @param archiveDestinationName configured archive log destination name to use, may be {@code null}
      * @param maxRetries the number of retry attempts before giving up and throwing an exception about log state
-     * @param initialDelayMs the initial delay
-     * @param maxDelayMs the maximum delay
+     * @param initialDelay the initial delay
+     * @param maxDelay the maximum delay
      * @throws SQLException if anything unexpected happens
-     * @return current redo log sequences
+     * @return log files that were added to the current mining session
      */
     // todo: check RAC resiliency
-    public static List<BigInteger> setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention,
-                                                        boolean archiveLogOnlyMode, String archiveDestinationName, int maxRetries,
-                                                        Duration initialDelay, Duration maxDelay)
+    public static List<LogFile> setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention,
+                                                     boolean archiveLogOnlyMode, String archiveDestinationName, int maxRetries,
+                                                     Duration initialDelay, Duration maxDelay)
             throws SQLException {
-        List<BigInteger> ret = new LinkedList<>();
         removeLogFilesFromMining(connection);
 
         // Restrict max attempts to 0 or greater values (sanity-check)
@@ -90,12 +88,7 @@ public class LogMinerHelper {
             }
 
             LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}", lastProcessedScn, logFilesNames);
-            for (LogFile logFile : logFilesForMining) {
-                if (logFile.isCurrent()) {
-                    ret.add(logFile.getSequence());
-                }
-            }
-            return ret;
+            return logFilesForMining;
         }
 
         final Scn minScn = getMinimumScn(logFilesForMining);

@@ -2458,7 +2458,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-3712")
+    @FixFor({ "DBZ-3712", "DBZ-4879" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Tests archive log support for LogMiner only")
     public void shouldStartWithArchiveLogOnlyModeAndStreamWhenRecordsBecomeAvailable() throws Exception {
         TestHelper.dropTable(connection, "dbz3712");
@@ -2488,6 +2488,15 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // We should now be able to consume a record
             SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3712")).hasSize(1);
+
+            // Now insert a new record but this record won't be emitted because it will require
+            // a log switch to happen so it can be emitted.
+            connection.execute("INSERT INTO dbz3712 (id,data) values (2, 'Test2')");
+            waitForLogSwitchOrForceOneAfterTimeout();
+
+            // We should now be able to consume a record
+            records = consumeRecordsByTopic(1);
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3712")).hasSize(1);
         }
         finally {
