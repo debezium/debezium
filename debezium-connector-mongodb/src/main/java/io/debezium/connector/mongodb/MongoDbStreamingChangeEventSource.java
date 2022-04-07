@@ -244,7 +244,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 // In this situation if not document is available, we'll pause.
                 final Document event = cursor.tryNext();
                 if (event != null) {
-                    if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext)) {
+                    if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog())) {
                         // Something happened and we are supposed to stop reading
                         return;
                     }
@@ -429,7 +429,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private boolean handleOplogEvent(ServerAddress primaryAddress, Document event, Document masterEvent, long txOrder,
-                                     ReplicaSetOplogContext oplogContext) {
+                                     ReplicaSetOplogContext oplogContext, boolean isRawOplogEnabled) {
         String ns = event.getString("ns");
         Document object = event.get(OBJECT_FIELD, Document.class);
         if (Objects.isNull(object)) {
@@ -483,7 +483,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             LOGGER.debug("Skipping record as it is expected to be already processed: {}", change);
                             continue;
                         }
-                        final boolean r = handleOplogEvent(primaryAddress, change, event, txOrder, oplogContext);
+                        final boolean r = handleOplogEvent(primaryAddress, change, event, txOrder, oplogContext, connectorConfig.getEnableRawOplog());
                         if (!r) {
                             return false;
                         }
@@ -495,7 +495,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             try {
                 dispatcher.dispatchTransactionStartedEvent(oplogContext.getPartition(), getTransactionId(event), oplogContext.getOffset());
                 for (Document change : txChanges) {
-                    final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext);
+                    final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog());
                     if (!r) {
                         return false;
                     }
@@ -548,7 +548,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                     oplogContext.getOffset(),
                                     clock,
                                     event,
-                                    false));
+                                    false,
+                                    isRawOplogEnabled));
                 }
                 catch (Exception e) {
                     errorHandler.setProducerThrowable(e);

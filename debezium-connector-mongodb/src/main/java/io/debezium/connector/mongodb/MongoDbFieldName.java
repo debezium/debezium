@@ -27,4 +27,8 @@ public class MongoDbFieldName {
     public static final String TRUNCATED_ARRAYS = "truncatedArrays";
     public static final String ARRAY_FIELD_NAME = "field";
     public static final String ARRAY_NEW_SIZE = "size";
+
+    // Extra field for raw oplogs
+    // TODO(CDC-234): Deprecate once consumers are using ChangeEvent envelope
+    public static final String RAW_OPLOG_FIELD = "_raw_oplog";
 }

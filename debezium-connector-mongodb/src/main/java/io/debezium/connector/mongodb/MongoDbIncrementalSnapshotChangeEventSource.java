@@ -131,7 +131,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
      */
     protected ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(MongoDbPartition partition,
                                                                            OffsetContext offsetContext, Object[] row) {
-        return new MongoDbChangeSnapshotOplogRecordEmitter(partition, offsetContext, clock, (Document) row[0], true);
+        return new MongoDbChangeSnapshotOplogRecordEmitter(partition, offsetContext, clock, (Document) row[0], true, connectorConfig.getEnableRawOplog());
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {

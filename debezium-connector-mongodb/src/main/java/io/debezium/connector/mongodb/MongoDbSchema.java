@@ -94,6 +94,8 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                     .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                     .field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
+                    // Extra field for raw oplogs
+                    .field(MongoDbFieldName.RAW_OPLOG_FIELD, Json.builder().optional().build())
                     .build();
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);

@@ -529,6 +529,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
                     + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
 
+    public static final Field RAW_OPLOG_ENABLED = Field.create("mongodb.raw_oplog.enabled")
+            .withDisplayName("Enable populate raw oplog for MongoDB")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("If we populate raw_oplog field in the output. Should only use with capture.mode=oplog.");
+
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
             .withType(Type.INT)
@@ -631,6 +641,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private CaptureMode captureMode;
+    private final boolean enableRawOplog;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
 
@@ -642,6 +653,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
+        this.enableRawOplog = config.getBoolean(MongoDbConnectorConfig.RAW_OPLOG_ENABLED, false);
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -745,6 +757,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public CaptureMode getCaptureMode() {
         return captureMode;
+    }
+
+    public boolean getEnableRawOplog() {
+        return enableRawOplog;
     }
 
     public int getCursorMaxAwaitTime() {

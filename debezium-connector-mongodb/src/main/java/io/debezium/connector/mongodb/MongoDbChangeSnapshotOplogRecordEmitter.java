@@ -32,6 +32,11 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
      * Whether this event originates from a snapshot.
      */
     private final boolean isSnapshot;
+    /**
+     * Whether raw_oplog is enabled.
+     * Only MongoDbStreamingChangeEventSource might enable it.
+     */
+    private final boolean isRawOplogEnabled;
 
     @Immutable
     private static final Map<String, Operation> OPERATION_LITERALS;
@@ -47,10 +52,11 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeSnapshotOplogRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot) {
+    public MongoDbChangeSnapshotOplogRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot, boolean isRawOplogEnabled) {
         super(partition, offsetContext, clock);
         this.oplogEvent = oplogEvent;
         this.isSnapshot = isSnapshot;
+        this.isRawOplogEnabled = isRawOplogEnabled;
     }
 
     @Override
@@ -103,6 +109,9 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         value.put(FieldName.SOURCE, getOffset().getSourceInfo());
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
+        if (isRawOplogEnabled) {
+            value.put(MongoDbFieldName.RAW_OPLOG_FIELD, oplogEvent.toJson());
+        }
 
         receiver.changeRecord(getPartition(), schema, getOperation(), newKey, value, getOffset(), null);
     }
