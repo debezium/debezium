@@ -5,17 +5,19 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.connector.common.AbstractPartitionTest;
+import static org.fest.assertions.Assertions.assertThat;
 
-public class MySqlPartitionTest extends AbstractPartitionTest<MySqlPartition> {
+import org.junit.Test;
 
-    @Override
-    protected MySqlPartition createPartition1() {
-        return new MySqlPartition("server1");
+public class MySqlPartitionTest {
+
+    @Test
+    public void equalPartitionsShouldBeEqual() {
+        assertThat(new MySqlPartition()).isEqualTo(new MySqlPartition());
     }
 
-    @Override
-    protected MySqlPartition createPartition2() {
-        return new MySqlPartition("server2");
+    @Test
+    public void equalPartitionsShouldHaveEqualHashCodes() {
+        assertThat(new MySqlPartition().hashCode()).isEqualTo(new MySqlPartition().hashCode());
     }
 }

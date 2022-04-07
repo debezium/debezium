@@ -10,7 +10,6 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
@@ -28,7 +27,6 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 /**
@@ -323,29 +321,12 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-3347")
-    public void shouldContainPartitionInSchemaChangeEventInSinglePartitionMode() throws Exception {
-        shouldContainPartitionInSchemaChangeEvent(TestHelper.defaultConfig(),
-                TestHelper::waitForStreamingStarted,
-                Collections.singletonMap("server", "server1"));
-    }
-
-    @Test
     @FixFor({ "DBZ-3347", "DBZ-2975" })
-    public void shouldContainPartitionInSchemaChangeEventInMultiPartitionMode() throws Exception {
-        shouldContainPartitionInSchemaChangeEvent(TestHelper.defaultMultiPartitionConfig(),
-                TestHelper::waitForTaskStreamingStarted,
-                Collect.hashMapOf("server", "server1", "database", "testDB"));
-    }
-
-    private void shouldContainPartitionInSchemaChangeEvent(Configuration.Builder configBuilder,
-                                                           Runnable waitForStreamingStarted,
-                                                           Map<String, String> expectedPartition)
-            throws Exception {
+    public void shouldContainPartitionInSchemaChangeEvent() throws Exception {
         connection.execute("create table dbz3347 (id int primary key, data varchar(50))");
         TestHelper.enableTableCdc(connection, "dbz3347");
 
-        Configuration config = configBuilder
+        Configuration config = TestHelper.defaultMultiPartitionConfig()
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.dbz3347")
                 .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
@@ -353,10 +334,10 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        waitForStreamingStarted.run();
+        TestHelper.waitForTaskStreamingStarted();
 
         SourceRecords schemaChanges = consumeRecordsByTopic(1);
         SourceRecord change = schemaChanges.recordsForTopic("server1").get(0);
-        assertThat(change.sourcePartition()).isEqualTo(expectedPartition);
+        assertThat(change.sourcePartition()).isEqualTo(Collections.singletonMap("database", "testDB"));
     }
 }

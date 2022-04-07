@@ -7,24 +7,15 @@ package io.debezium.connector.postgresql;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.util.Collect;
 
 public class PostgresPartition implements Partition {
-    private static final String SERVER_PARTITION_KEY = "server";
-
-    private final String serverName;
-
-    public PostgresPartition(String serverName) {
-        this.serverName = serverName;
-    }
 
     @Override
     public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+        return Collections.emptyMap();
     }
 
     @Override
@@ -32,33 +23,24 @@ public class PostgresPartition implements Partition {
         if (this == obj) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        final PostgresPartition other = (PostgresPartition) obj;
-        return Objects.equals(serverName, other.serverName);
+        return obj != null && getClass() == obj.getClass();
     }
 
     @Override
     public int hashCode() {
-        return serverName.hashCode();
+        return 0;
     }
 
     @Override
     public String toString() {
-        return "PostgresPartition [sourcePartition=" + getSourcePartition() + "]";
+        return "PostgresPartition";
     }
 
     static class Provider implements Partition.Provider<PostgresPartition> {
-        private final PostgresConnectorConfig connectorConfig;
-
-        Provider(PostgresConnectorConfig connectorConfig) {
-            this.connectorConfig = connectorConfig;
-        }
 
         @Override
         public Set<PostgresPartition> getPartitions() {
-            return Collections.singleton(new PostgresPartition(connectorConfig.getLogicalName()));
+            return Collections.singleton(new PostgresPartition());
         }
     }
 }

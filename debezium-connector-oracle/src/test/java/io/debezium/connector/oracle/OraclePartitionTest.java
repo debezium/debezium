@@ -5,17 +5,19 @@
  */
 package io.debezium.connector.oracle;
 
-import io.debezium.connector.common.AbstractPartitionTest;
+import static org.fest.assertions.Assertions.assertThat;
 
-public class OraclePartitionTest extends AbstractPartitionTest<OraclePartition> {
+import org.junit.Test;
 
-    @Override
-    protected OraclePartition createPartition1() {
-        return new OraclePartition("server1");
+public class OraclePartitionTest {
+
+    @Test
+    public void equalPartitionsShouldBeEqual() {
+        assertThat(new OraclePartition()).isEqualTo(new OraclePartition());
     }
 
-    @Override
-    protected OraclePartition createPartition2() {
-        return new OraclePartition("server2");
+    @Test
+    public void equalPartitionsShouldHaveEqualHashCodes() {
+        assertThat(new OraclePartition().hashCode()).isEqualTo(new OraclePartition().hashCode());
     }
 }

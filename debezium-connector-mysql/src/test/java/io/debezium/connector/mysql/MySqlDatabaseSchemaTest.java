@@ -88,7 +88,7 @@ public class MySqlDatabaseSchemaTest {
         final Configuration config = DATABASE.defaultConfig().build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -116,7 +116,7 @@ public class MySqlDatabaseSchemaTest {
         mysql = getSchema(config);
         mysql.initializeStorage();
 
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -144,7 +144,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -163,7 +163,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -197,7 +197,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -230,7 +230,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -254,7 +254,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -287,7 +287,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -319,7 +319,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -352,7 +352,7 @@ public class MySqlDatabaseSchemaTest {
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
-        final MySqlPartition partition = initializePartition(connectorConfig);
+        final MySqlPartition partition = initializePartition();
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
@@ -427,8 +427,8 @@ public class MySqlDatabaseSchemaTest {
         Testing.print("Running DDL for '" + dbName + "': " + ddlStatements + " changing tables '" + tables + "'");
     }
 
-    private MySqlPartition initializePartition(MySqlConnectorConfig connectorConfig) {
-        Set<MySqlPartition> partitions = (new MySqlPartition.Provider(connectorConfig)).getPartitions();
+    private MySqlPartition initializePartition() {
+        Set<MySqlPartition> partitions = (new MySqlPartition.Provider()).getPartitions();
         assertThat(partitions.size()).isEqualTo(1);
 
         return partitions.iterator().next();

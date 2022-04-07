@@ -5,17 +5,37 @@
  */
 package io.debezium.connector.mongodb;
 
-import io.debezium.connector.common.AbstractPartitionTest;
+import static org.fest.assertions.Assertions.assertThat;
 
-public class ReplicaSetPartitionTest extends AbstractPartitionTest<ReplicaSetPartition> {
+import org.junit.Test;
 
-    @Override
-    protected ReplicaSetPartition createPartition1() {
-        return new ReplicaSetPartition("server1", "rs1");
+public class ReplicaSetPartitionTest {
+
+    @Test
+    public void equalPartitionsShouldBeEqual() {
+        assertThat(new ReplicaSetPartition("server1", "rs1"))
+                .isEqualTo(new ReplicaSetPartition("server1", "rs1"));
     }
 
-    @Override
-    protected ReplicaSetPartition createPartition2() {
-        return new ReplicaSetPartition("server2", "rs2");
+    @Test
+    public void nonEqualPartitionsShouldNotBeEqual() {
+        assertThat(new ReplicaSetPartition("server1", "rs1"))
+                .isNotEqualTo(new ReplicaSetPartition("server1", "rs2"));
+        assertThat(new ReplicaSetPartition("server1", "rs1"))
+                .isNotEqualTo(new ReplicaSetPartition("server2", "rs1"));
+    }
+
+    @Test
+    public void equalPartitionsShouldHaveEqualHashCodes() {
+        assertThat(new ReplicaSetPartition("server1", "rs1").hashCode())
+                .isEqualTo(new ReplicaSetPartition("server1", "rs1").hashCode());
+    }
+
+    @Test
+    public void nonEqualPartitionsShouldHaveNonEqualHashCodes() {
+        assertThat(new ReplicaSetPartition("server1", "rs1").hashCode())
+                .isNotEqualTo(new ReplicaSetPartition("server1", "rs2").hashCode());
+        assertThat(new ReplicaSetPartition("server1", "rs1").hashCode())
+                .isNotEqualTo(new ReplicaSetPartition("server2", "rs1").hashCode());
     }
 }

@@ -5,17 +5,33 @@
  */
 package io.debezium.connector.sqlserver;
 
-import io.debezium.connector.common.AbstractPartitionTest;
+import static org.fest.assertions.Assertions.assertThat;
 
-public class SqlServerPartitionTest extends AbstractPartitionTest<SqlServerPartition> {
+import org.junit.Test;
 
-    @Override
-    protected SqlServerPartition createPartition1() {
-        return new SqlServerPartition("server1", "database1", false);
+public class SqlServerPartitionTest {
+
+    @Test
+    public void equalPartitionsShouldBeEqual() {
+        assertThat(new SqlServerPartition("database1", false))
+                .isEqualTo(new SqlServerPartition("database1", false));
     }
 
-    @Override
-    protected SqlServerPartition createPartition2() {
-        return new SqlServerPartition("server2", "database2", false);
+    @Test
+    public void nonEqualPartitionsShouldNotBeEqual() {
+        assertThat(new SqlServerPartition("database1", false))
+                .isNotEqualTo(new SqlServerPartition("database2", false));
+    }
+
+    @Test
+    public void equalPartitionsShouldHaveEqualHashCodes() {
+        assertThat(new SqlServerPartition("database1", false).hashCode())
+                .isEqualTo(new SqlServerPartition("database1", false).hashCode());
+    }
+
+    @Test
+    public void nonEqualPartitionsShouldHaveNonEqualHashCodes() {
+        assertThat(new SqlServerPartition("database1", false).hashCode())
+                .isNotEqualTo(new SqlServerPartition("database2", false).hashCode());
     }
 }

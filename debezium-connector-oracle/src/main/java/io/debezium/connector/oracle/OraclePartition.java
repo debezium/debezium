@@ -7,24 +7,15 @@ package io.debezium.connector.oracle;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.util.Collect;
 
 public class OraclePartition implements Partition {
-    private static final String SERVER_PARTITION_KEY = "server";
-
-    private final String serverName;
-
-    public OraclePartition(String serverName) {
-        this.serverName = serverName;
-    }
 
     @Override
     public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+        return Collections.emptyMap();
     }
 
     @Override
@@ -32,33 +23,24 @@ public class OraclePartition implements Partition {
         if (this == obj) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        final OraclePartition other = (OraclePartition) obj;
-        return Objects.equals(serverName, other.serverName);
+        return obj != null && getClass() == obj.getClass();
     }
 
     @Override
     public int hashCode() {
-        return serverName.hashCode();
+        return 0;
     }
 
     @Override
     public String toString() {
-        return "OraclePartition [sourcePartition=" + getSourcePartition() + "]";
+        return "OraclePartition";
     }
 
     static class Provider implements Partition.Provider<OraclePartition> {
-        private final OracleConnectorConfig connectorConfig;
-
-        Provider(OracleConnectorConfig connectorConfig) {
-            this.connectorConfig = connectorConfig;
-        }
 
         @Override
         public Set<OraclePartition> getPartitions() {
-            return Collections.singleton(new OraclePartition(connectorConfig.getLogicalName()));
+            return Collections.singleton(new OraclePartition());
         }
     }
 }

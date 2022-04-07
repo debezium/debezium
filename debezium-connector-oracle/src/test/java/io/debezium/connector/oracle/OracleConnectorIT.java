@@ -25,7 +25,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -1984,34 +1983,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "clob_test");
-        }
-    }
-
-    @Test
-    @FixFor("DBZ-3347")
-    public void shouldContainPartitionInSchemaChangeEvent() throws Exception {
-        TestHelper.dropTable(connection, "dbz3347");
-        try {
-            connection.execute("create table dbz3347 (id number primary key, data varchar2(50))");
-            TestHelper.streamTable(connection, "dbz3347");
-
-            Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3347")
-                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
-                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                    .build();
-
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
-
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-            SourceRecords schemaChanges = consumeRecordsByTopic(1);
-            SourceRecord change = schemaChanges.recordsForTopic(TestHelper.SERVER_NAME).get(0);
-            assertThat(change.sourcePartition()).isEqualTo(Collections.singletonMap("server", TestHelper.SERVER_NAME));
-        }
-        finally {
-            TestHelper.dropTable(connection, "dbz3347");
         }
     }
 

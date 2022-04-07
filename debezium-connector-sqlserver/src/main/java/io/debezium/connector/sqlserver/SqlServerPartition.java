@@ -22,24 +22,23 @@ import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 
 public class SqlServerPartition implements Partition {
-    private static final String SERVER_PARTITION_KEY = "server";
     private static final String DATABASE_PARTITION_KEY = "database";
 
-    private final String serverName;
     private final String databaseName;
     private final Map<String, String> sourcePartition;
     private final int hashCode;
 
-    public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
-        this.serverName = serverName;
+    public SqlServerPartition(String databaseName, boolean multiPartitionMode) {
         this.databaseName = databaseName;
 
-        this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
         if (multiPartitionMode) {
-            this.sourcePartition.put(DATABASE_PARTITION_KEY, databaseName);
+            this.sourcePartition = Collect.hashMapOf(DATABASE_PARTITION_KEY, databaseName);
+        }
+        else {
+            this.sourcePartition = Collections.emptyMap();
         }
 
-        this.hashCode = Objects.hash(serverName, databaseName);
+        this.hashCode = databaseName.hashCode();
     }
 
     @Override
@@ -68,7 +67,7 @@ public class SqlServerPartition implements Partition {
             return false;
         }
         final SqlServerPartition other = (SqlServerPartition) obj;
-        return Objects.equals(serverName, other.serverName) && Objects.equals(databaseName, other.databaseName);
+        return Objects.equals(databaseName, other.databaseName);
     }
 
     @Override
@@ -78,7 +77,7 @@ public class SqlServerPartition implements Partition {
 
     @Override
     public String toString() {
-        return "SqlServerPartition [sourcePartition=" + getSourcePartition() + "]";
+        return "SqlServerPartition [databaseName=" + databaseName + "]";
     }
 
     static class Provider implements Partition.Provider<SqlServerPartition> {
@@ -92,7 +91,6 @@ public class SqlServerPartition implements Partition {
 
         @Override
         public Set<SqlServerPartition> getPartitions() {
-            String serverName = connectorConfig.getLogicalName();
             boolean multiPartitionMode = connectorConfig.isMultiPartitionModeEnabled();
 
             List<String> databaseNames;
@@ -105,7 +103,7 @@ public class SqlServerPartition implements Partition {
             }
 
             return databaseNames.stream()
-                    .map(databaseName -> new SqlServerPartition(serverName, databaseName, multiPartitionMode))
+                    .map(databaseName -> new SqlServerPartition(databaseName, multiPartitionMode))
                     .collect(Collectors.toSet());
         }
     }

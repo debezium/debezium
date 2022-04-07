@@ -7,24 +7,15 @@ package io.debezium.connector.mysql;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.util.Collect;
 
 public class MySqlPartition implements Partition {
-    private static final String SERVER_PARTITION_KEY = "server";
-
-    private final String serverName;
-
-    public MySqlPartition(String serverName) {
-        this.serverName = serverName;
-    }
 
     @Override
     public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+        return Collections.emptyMap();
     }
 
     @Override
@@ -32,33 +23,24 @@ public class MySqlPartition implements Partition {
         if (this == obj) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        final MySqlPartition other = (MySqlPartition) obj;
-        return Objects.equals(serverName, other.serverName);
+        return obj != null && getClass() == obj.getClass();
     }
 
     @Override
     public int hashCode() {
-        return serverName.hashCode();
+        return 0;
     }
 
     @Override
     public String toString() {
-        return "MySqlPartition [sourcePartition=" + getSourcePartition() + "]";
+        return "MySqlPartition";
     }
 
     public static class Provider implements Partition.Provider<MySqlPartition> {
-        private final MySqlConnectorConfig connectorConfig;
-
-        public Provider(MySqlConnectorConfig connectorConfig) {
-            this.connectorConfig = connectorConfig;
-        }
 
         @Override
         public Set<MySqlPartition> getPartitions() {
-            return Collections.singleton(new MySqlPartition(connectorConfig.getLogicalName()));
+            return Collections.singleton(new MySqlPartition());
         }
     }
 }

@@ -5,17 +5,19 @@
  */
 package io.debezium.connector.postgresql;
 
-import io.debezium.connector.common.AbstractPartitionTest;
+import static org.fest.assertions.Assertions.assertThat;
 
-public class PostgresPartitionTest extends AbstractPartitionTest<PostgresPartition> {
+import org.junit.Test;
 
-    @Override
-    protected PostgresPartition createPartition1() {
-        return new PostgresPartition("server1");
+public class PostgresPartitionTest {
+
+    @Test
+    public void equalPartitionsShouldBeEqual() {
+        assertThat(new PostgresPartition()).isEqualTo(new PostgresPartition());
     }
 
-    @Override
-    protected PostgresPartition createPartition2() {
-        return new PostgresPartition("server2");
+    @Test
+    public void equalPartitionsShouldHaveEqualHashCodes() {
+        assertThat(new PostgresPartition().hashCode()).isEqualTo(new PostgresPartition().hashCode());
     }
 }
