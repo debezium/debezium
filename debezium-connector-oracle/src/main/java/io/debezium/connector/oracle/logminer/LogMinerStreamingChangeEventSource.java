@@ -16,12 +16,14 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +82,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private Scn startScn; // startScn is the **exclusive** lower bound for mining
     private Scn endScn;
     private Scn snapshotScn;
+    private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
@@ -301,14 +304,15 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn)
-            throws SQLException, InterruptedException {
+            throws SQLException {
         if (!postEndMiningSession) {
             if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                 buildDataDictionary(connection);
             }
             if (!isContinuousMining) {
-                currentRedoLogSequences = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
+                currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
                         archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
+                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
             }
         }
         else {
@@ -316,12 +320,58 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                     buildDataDictionary(connection);
                 }
-                currentRedoLogSequences = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
+                currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
                         archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
+                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
             }
         }
 
         updateRedoLogMetrics();
+    }
+
+    /**
+     * Get the current log file sequences from the supplied list of log files.
+     *
+     * @param logFiles list of log files
+     * @return list of sequences for the logs that are marked "current" in the database.
+     */
+    private List<BigInteger> getCurrentLogFileSequences(List<LogFile> logFiles) {
+        if (logFiles == null || logFiles.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return logFiles.stream().filter(LogFile::isCurrent).map(LogFile::getSequence).collect(Collectors.toList());
+    }
+
+    /**
+     * Get the maximum archive log SCN
+     *
+     * @param logFiles the current logs that are part of the mining session
+     * @return the maximum system change number from the archive logs
+     * @throws DebeziumException if no logs are provided or if the provided logs has no archive log types
+     */
+    private Scn getMaxArchiveLogScn(List<LogFile> logFiles) {
+        if (logFiles == null || logFiles.isEmpty()) {
+            throw new DebeziumException("Cannot get maximum archive log SCN as no logs were available.");
+        }
+
+        final List<LogFile> archiveLogs = logFiles.stream()
+                .filter(log -> log.getType().equals(LogFile.Type.ARCHIVE))
+                .collect(Collectors.toList());
+
+        if (archiveLogs.isEmpty()) {
+            throw new DebeziumException("Cannot get maximum archive log SCN as no archive logs are present.");
+        }
+
+        Scn maxScn = archiveLogs.get(0).getNextScn();
+        for (int i = 1; i < archiveLogs.size(); ++i) {
+            Scn nextScn = archiveLogs.get(i).getNextScn();
+            if (nextScn.compareTo(maxScn) > 0) {
+                maxScn = nextScn;
+            }
+        }
+
+        LOGGER.debug("Maximum archive log SCN resolved as {}", maxScn);
+        return maxScn;
     }
 
     /**
@@ -534,7 +584,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     private Scn calculateEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn) throws SQLException {
         Scn currentScn = archiveLogOnlyMode
-                ? connection.getMaxArchiveLogScn(archiveDestinationName)
+                ? getMaxArchiveLogScn(currentLogFiles)
                 : connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
