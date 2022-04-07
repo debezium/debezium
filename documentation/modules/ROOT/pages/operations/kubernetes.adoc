@@ -76,7 +76,7 @@ Let's create `Secret` object first:
 
 [source,subs="attributes",options="nowrap"]
 ----
-$ cat << EOF | kubectl create -n debezium-example -f
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: v1
 kind: Secret
 metadata:
@@ -95,7 +95,7 @@ Now, we can create a role, which refers the secret created in the previous step:
 
 [source,subs="attributes",options="nowrap"]
 ----
-$ cat << EOF | kubectl create -n debezium-example -f
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -113,7 +113,7 @@ We also have to bind this role to the Kafka Connect cluster service account so t
 
 [source,subs="attributes",options="nowrap"]
 ----
-$ cat << EOF | kubectl create -n debezium-example -f
+$ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
