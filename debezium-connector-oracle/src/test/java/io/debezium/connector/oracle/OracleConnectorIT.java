@@ -3332,6 +3332,78 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4936")
+    public void shouldNotEmitLastCommittedTransactionEventsUponRestart() throws Exception {
+        TestHelper.dropTable(connection, "dbz4936");
+        try {
+            connection.execute("CREATE TABLE dbz4936 (id numeric(9,0) primary key, name varchar2(100))");
+            TestHelper.streamTable(connection, "dbz4936");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4936")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // Initiate a second connection with an open transaction
+            try (OracleConnection activeTransaction = TestHelper.testConnection()) {
+                // Wait for snapshot phase to conclude
+                waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+                // Initiate in-progress transaction on separate connection
+                activeTransaction.setAutoCommit(false);
+                activeTransaction.executeWithoutCommitting("INSERT INTO dbz4936 (id,name) values (1,'In-Progress')");
+
+                // Wait for streaming to begin
+                waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+                // Perform a DML on main connection & commit
+                connection.execute("INSERT INTO dbz4936 (id,name) values (2, 'committed')");
+
+                // Get the DML
+                SourceRecords records = consumeRecordsByTopic(1);
+                List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ4936");
+                assertThat(tableRecords).hasSize(1);
+                VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 2);
+
+                // Now update the inserted entry
+                connection.execute("UPDATE dbz4936 set name = 'updated' WHERE id = 2");
+
+                // Get the DML
+                records = consumeRecordsByTopic(1);
+                tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ4936");
+                assertThat(tableRecords).hasSize(1);
+                VerifyRecord.isValidUpdate(tableRecords.get(0), "ID", 2);
+
+                // Stop the connector
+                // This should flush commit_scn but leave scn as a value that comes before the in-progress transaction
+                stopConnector();
+
+                // Restart connector
+                start(OracleConnector.class, config);
+                assertConnectorIsRunning();
+
+                // Wait for streaming & then commit in-progress transaction
+                waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+                activeTransaction.commit();
+
+                // Get the DML
+                records = consumeRecordsByTopic(1);
+                tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ4936");
+                assertThat(tableRecords).hasSize(1);
+                VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+
+                // There should be no more records to consume
+                assertNoRecordsToConsume();
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4936");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();

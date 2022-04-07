@@ -287,6 +287,8 @@ public class OracleOffsetContext implements OffsetContext {
             sb.append(", snapshot_completed=").append(snapshotCompleted);
         }
 
+        sb.append(", commit_scn=").append(sourceInfo.getCommitScn());
+
         sb.append("]");
 
         return sb.toString();

@@ -462,7 +462,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return true if the transaction has been seen based on the offsets, false otherwise
      */
     protected boolean isTransactionAlreadyProcessed(Scn commitScn, Scn offsetCommitScn) {
-        return (offsetCommitScn != null && offsetCommitScn.compareTo(commitScn) > 0)
+        return (offsetCommitScn != null && offsetCommitScn.compareTo(commitScn) >= 0)
                 || lastCommittedScn.compareTo(commitScn) > 0;
     }
 
