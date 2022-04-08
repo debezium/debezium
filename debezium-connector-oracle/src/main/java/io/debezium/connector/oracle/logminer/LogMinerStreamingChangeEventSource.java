@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 
 import java.math.BigInteger;
@@ -213,7 +212,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
         catch (Throwable t) {
-            logError(streamingMetrics, "Mining session stopped due to the {}", t);
+            LOGGER.error("Mining session stopped due to error.", t);
+            streamingMetrics.incrementErrorCount();
             errorHandler.setProducerThrowable(t);
         }
         finally {
