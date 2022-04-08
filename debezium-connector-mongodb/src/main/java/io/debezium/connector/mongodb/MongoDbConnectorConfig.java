@@ -124,11 +124,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static enum CaptureMode implements EnumeratedValue {
 
         /**
-         * The classic oplog based capturing.
-         */
-        OPLOG("oplog", false, false),
-
-        /**
          * Change capture based on MongoDB Change Streams support.
          */
         CHANGE_STREAMS("change_streams", true, false),
@@ -190,10 +185,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             }
 
             return mode;
-        }
-
-        public boolean isChangeStreams() {
-            return changeStreams;
         }
 
         public boolean isFullUpdate() {
@@ -525,7 +516,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("The method used to capture changes from MongoDB server. "
                     + "Options include: "
-                    + "'oplog' to capture changes from the oplog; "
                     + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
                     + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
 
@@ -758,12 +748,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        switch (version) {
-            case V1:
-                return new LegacyV1MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
-            default:
-                return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
-        }
+        return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
     }
 
     public Optional<String> getSnapshotFilterQueryForCollection(CollectionId collectionId) {

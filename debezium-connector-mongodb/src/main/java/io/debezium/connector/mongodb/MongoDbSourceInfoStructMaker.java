@@ -22,9 +22,6 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
                 .field(SourceInfo.COLLECTION, Schema.STRING_SCHEMA)
                 .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
-                .field(SourceInfo.OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(SourceInfo.TX_ORD, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(SourceInfo.SESSION_TXN_ID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.LSID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.TXN_NUMBER, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
@@ -40,16 +37,12 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
         Struct struct = super.commonStruct(sourceInfo)
                 .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.replicaSetName())
                 .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
-                .put(SourceInfo.ORDER, sourceInfo.position().getInc())
-                .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId())
-                .put(SourceInfo.SESSION_TXN_ID, sourceInfo.position().getOplogSessionTxnId());
+                .put(SourceInfo.ORDER, sourceInfo.position().getInc());
 
         if (sourceInfo.position().getChangeStreamSessionTxnId() != null) {
             struct.put(SourceInfo.LSID, sourceInfo.position().getChangeStreamSessionTxnId().lsid)
                     .put(SourceInfo.TXN_NUMBER, sourceInfo.position().getChangeStreamSessionTxnId().txnNumber);
         }
-
-        sourceInfo.transactionPosition().ifPresent(transactionPosition -> struct.put(SourceInfo.TX_ORD, transactionPosition));
 
         return struct;
     }

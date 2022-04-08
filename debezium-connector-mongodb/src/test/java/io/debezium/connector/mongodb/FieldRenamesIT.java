@@ -137,13 +137,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.address.missing:new_missing", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        if (TestHelper.isOplogCaptureMode()) {
-            assertThat(getDocumentFromUpdateRecord(value)).isEqualTo(updateObj);
-        }
-        else {
-            final Document fullObj = ((Document) updateObj.get("$set")).append(ID, objId);
-            assertThat(getDocumentFromUpdateRecord(value)).isEqualTo(fullObj);
-        }
+        final Document fullObj = ((Document) updateObj.get("$set")).append(ID, objId);
+        assertThat(getDocumentFromUpdateRecord(value)).isEqualTo(fullObj);
     }
 
     @Test
@@ -1155,8 +1150,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
                 .append("addresses.0.street", "Claude Debussylaan")
                 .append("addresses.0.city", "Amsterdam");
 
-        assertShouldNotRenameDuringUpdate("*.c1.addresses.street:city", obj, updateObj, false,
-                TestHelper.isOplogCaptureMode() ? "addresses.0.city" : "city");
+        assertShouldNotRenameDuringUpdate("*.c1.addresses.street:city", obj, updateObj, false, "city");
     }
 
     @Test
@@ -1466,12 +1460,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
                 .append("addresses.0.number", "")
                 .append("addresses.0.street", "")
                 .append("addresses.0.city", "");
-
-        if (TestHelper.isOplogCaptureMode()) {
-            // Change Stream does not send unset fields in both full and change document
-            // so the error would not be thrown
-            assertShouldNotRenameDuringUpdate("*.c1.addresses.street:city", obj, updateObj, true, "addresses.0.city");
-        }
     }
 
     @Test
@@ -1680,13 +1668,13 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private static Document getDocumentFromUpdateRecord(Struct value) {
         assertThat(value).isNotNull();
 
-        final String patch = value.getString(TestHelper.isOplogCaptureMode() ? PATCH : AFTER);
-        assertThat(patch).isNotNull();
+        final String after = value.getString(AFTER);
+        assertThat(after).isNotNull();
 
         // By parsing the patch string, we can remove the $v internal key added by the driver that specifies the
         // language version used to manipulate the document. The goal by removing this key is that the original
         // document used to update the database entry can be compared directly.
-        Document parsed = Document.parse(patch);
+        Document parsed = Document.parse(after);
         parsed.remove("$v");
         return parsed;
     }
@@ -1841,15 +1829,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private void assertUpdateRecord(ObjectId objectId, SourceRecord record, ExpectedUpdate expected) throws InterruptedException {
         Struct value = (Struct) record.value();
 
-        if (TestHelper.isOplogCaptureMode()) {
-            final Document expectedDoc = TestHelper
-                    .getDocumentWithoutLanguageVersion(expected.patch);
-            final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
-            assertThat(actualDoc).isEqualTo(expectedDoc);
-        }
-        else {
-            TestHelper.assertChangeStreamUpdateAsDocs(objectId, value, expected.full, expected.removedFields,
-                    expected.updatedFields);
-        }
+        TestHelper.assertChangeStreamUpdateAsDocs(objectId, value, expected.full, expected.removedFields,
+                expected.updatedFields);
     }
 }

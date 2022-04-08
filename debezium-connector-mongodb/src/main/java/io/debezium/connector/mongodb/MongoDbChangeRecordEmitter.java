@@ -27,7 +27,7 @@ import io.debezium.util.Clock;
  *
  * @author Jiri Pechanec
  */
-public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecordEmitter<MongoDbPartition, MongoDbCollectionSchema> {
+public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<MongoDbPartition, MongoDbCollectionSchema> {
 
     private final ChangeStreamDocument<Document> changeStreamEvent;
 
@@ -45,8 +45,8 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeStreamChangeRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock,
-                                                  ChangeStreamDocument<Document> changeStreamEvent) {
+    public MongoDbChangeRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock,
+                                      ChangeStreamDocument<Document> changeStreamEvent) {
         super(partition, offsetContext, clock);
         this.changeStreamEvent = changeStreamEvent;
     }

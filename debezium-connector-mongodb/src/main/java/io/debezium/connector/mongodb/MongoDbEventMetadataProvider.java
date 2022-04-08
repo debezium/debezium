@@ -63,12 +63,6 @@ public class MongoDbEventMetadataProvider implements EventMetadataProvider {
         if (source == null) {
             return null;
         }
-        if (sourceInfo.schema().field(SourceInfo.SESSION_TXN_ID) != null) {
-            final String sessionTxnId = sourceInfo.getString(SourceInfo.SESSION_TXN_ID);
-            if (sessionTxnId != null) {
-                return sessionTxnId;
-            }
-        }
         // Both components were always present in the testing but the documentation claims they are optional
         // so it is better to code this defensively
         if (sourceInfo.schema().field(SourceInfo.LSID) != null && (sourceInfo.getString(SourceInfo.LSID) != null
@@ -83,10 +77,6 @@ public class MongoDbEventMetadataProvider implements EventMetadataProvider {
             }
             return lsid + ":" + txnNumber;
         }
-        final Long operationId = sourceInfo.getInt64(SourceInfo.OPERATION_ID);
-        if (operationId == null) {
-            return null;
-        }
-        return Long.toString(operationId);
+        return null;
     }
 }

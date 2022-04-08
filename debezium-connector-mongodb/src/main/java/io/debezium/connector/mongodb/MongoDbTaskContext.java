@@ -23,7 +23,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     private final String serverName;
     private final ConnectionContext connectionContext;
     private final MongoDbConnectorConfig connectorConfig;
-    private CaptureMode captureMode;
 
     /**
      * @param config the configuration
@@ -38,7 +37,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, connectorConfig.getHeartbeatTopicsPrefix());
         this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.connectionContext = new ConnectionContext(config);
-        this.overrideCaptureMode(connectorConfig.getCaptureMode());
     }
 
     public TopicSelector<CollectionId> topicSelector() {
@@ -73,10 +71,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
      * @return effectively used capture mode
      */
     public CaptureMode getCaptureMode() {
-        return captureMode;
-    }
-
-    public void overrideCaptureMode(CaptureMode captureModeUsed) {
-        this.captureMode = captureModeUsed;
+        return connectorConfig.getCaptureMode();
     }
 }
