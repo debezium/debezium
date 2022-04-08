@@ -16,9 +16,9 @@ ENV KAFKA_HOME=/opt/kafka \
     KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/new-connector-plugins
 
 #
-# Install openjdk-11, iproute and unzip
+# Install openjdk-17, iproute and unzip
 #
-RUN dnf -y install java-11-openjdk 
+RUN dnf -y install java-17-openjdk 
 RUN dnf -y install unzip
 RUN dnf -y install iproute && dnf clean all
 

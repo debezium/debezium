@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/openjdk-11
+FROM registry.access.redhat.com/ubi8/openjdk-17
 USER root
 RUN microdnf install git   
 RUN microdnf install unzip
