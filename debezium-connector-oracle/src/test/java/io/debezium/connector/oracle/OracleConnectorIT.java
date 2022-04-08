@@ -3413,6 +3413,38 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DbZ-3318")
+    public void shouldSuccessfullyConnectAndStreamWithDatabaseUrl() throws Exception {
+        connection.execute("INSERT INTO customer (id,name,score) values (1001, 'DBZ3668', 100)");
+
+        // Use the default configuration as a baseline.
+        // The default configuration automatically adds the `database.hostname` property, but we want to
+        // use `database.url` instead. So we'll generate a map, remove the hostname key and then add
+        // the url key instead before creating a new configuration object for the connector.
+        final Map<String, String> defaultConfig = TestHelper.defaultConfig().build().asMap();
+        defaultConfig.remove(OracleConnectorConfig.HOSTNAME.name());
+        defaultConfig.put(OracleConnectorConfig.URL.name(), TestHelper.getOracleConnectionUrlDescriptor());
+
+        Configuration.Builder builder = Configuration.create();
+        for (Map.Entry<String, String> entry : defaultConfig.entrySet()) {
+            builder.with(entry.getKey(), entry.getValue());
+        }
+
+        start(OracleConnector.class, builder.build());
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Read snapshot record
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(tableRecords).hasSize(1);
+        VerifyRecord.isValidRead(tableRecords.get(0), "ID", 1001);
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();

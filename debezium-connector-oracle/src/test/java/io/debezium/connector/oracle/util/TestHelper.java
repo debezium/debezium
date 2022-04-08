@@ -526,4 +526,16 @@ public class TestHelper {
         // value is irrelevant and only used to satisfy Awaitility's need for atMost > pollDelay.
         Awaitility.await().atMost(duration + 1, units).pollDelay(duration, units).until(() -> true);
     }
+
+    /**
+     * Get a valid {@link OracleConnectorConfig#URL} string.
+     */
+    public static String getOracleConnectionUrlDescriptor() {
+        final StringBuilder url = new StringBuilder();
+        url.append("jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=");
+        url.append(HOST);
+        url.append(")(PORT=").append(PORT).append("))");
+        url.append("(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=").append(getDatabaseName()).append(")))");
+        return url.toString();
+    }
 }
