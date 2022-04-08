@@ -7,14 +7,9 @@ package io.debezium.connector.oracle;
 
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -207,55 +202,6 @@ public class OracleConnection extends JdbcConnection {
         });
 
         return tableIds;
-    }
-
-    // todo replace metadata with something like this
-    private ResultSet getTableColumnsInfo(String schemaNamePattern, String tableName) throws SQLException {
-        String columnQuery = "select column_name, data_type, data_length, data_precision, data_scale, default_length, density, char_length from " +
-                "all_tab_columns where owner like '" + schemaNamePattern + "' and table_name='" + tableName + "'";
-
-        PreparedStatement statement = connection().prepareStatement(columnQuery);
-        return statement.executeQuery();
-    }
-
-    // this is much faster, we will use it until full replacement of the metadata usage TODO
-    public void readSchemaForCapturedTables(Tables tables, String databaseCatalog, String schemaNamePattern,
-                                            ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc, Set<TableId> capturedTables)
-            throws SQLException {
-
-        Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
-
-        DatabaseMetaData metadata = connection().getMetaData();
-        Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-
-        for (TableId tableId : capturedTables) {
-            try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableId.table(), null)) {
-                while (columnMetadata.next()) {
-                    // add all whitelisted columns
-                    readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
-                        columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
-                                .add(column.create());
-                    });
-                }
-            }
-        }
-
-        // Read the metadata for the primary keys ...
-        for (Map.Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
-            // First get the primary key information, which must be done for *each* table ...
-            List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableEntry.getKey());
-
-            // Then define the table ...
-            List<Column> columns = tableEntry.getValue();
-            Collections.sort(columns);
-            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, null);
-        }
-
-        if (removeTablesNotFoundInJdbc) {
-            // Remove any definitions for tables that were not found in the database metadata ...
-            tableIdsBefore.removeAll(columnsByTable.keySet());
-            tableIdsBefore.forEach(tables::removeTable);
-        }
     }
 
     @Override
