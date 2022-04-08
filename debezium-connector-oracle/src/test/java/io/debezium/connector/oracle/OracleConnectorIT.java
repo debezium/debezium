@@ -3351,6 +3351,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4936")
+                    // this explicitly only applies when memory buffer is being used
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, "memory")
                     .build();
 
             start(OracleConnector.class, config);
