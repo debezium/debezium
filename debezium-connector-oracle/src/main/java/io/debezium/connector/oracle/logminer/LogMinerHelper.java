@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -106,16 +105,6 @@ public class LogMinerHelper {
 
     private static Scn getMinimumScn(List<LogFile> logs) {
         return logs.stream().map(LogFile::getFirstScn).min(Scn::compareTo).orElse(Scn.NULL);
-    }
-
-    static void logWarn(OracleStreamingChangeEventSourceMetrics streamingMetrics, String format, Object... args) {
-        LOGGER.warn(format, args);
-        streamingMetrics.incrementWarningCount();
-    }
-
-    static void logError(OracleStreamingChangeEventSourceMetrics streamingMetrics, String format, Object... args) {
-        LOGGER.error(format, args);
-        streamingMetrics.incrementErrorCount();
     }
 
     /**
