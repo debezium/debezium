@@ -32,11 +32,9 @@
         <version.javadoc.plugin>3.3.2</version.javadoc.plugin>
         <version.code.formatter>2.16.0</version.code.formatter>
         <version.surefire.plugin>3.0.0-M4</version.surefire.plugin>
-        <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.6.2</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
-        <version.checkstyle>8.32</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
         <version.jandex>1.0.8</version.jandex>
         <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
@@ -57,6 +55,7 @@
         <!-- Set formatting default goals -->
         <format.formatter.goal>format</format.formatter.goal>
         <format.imports.goal>sort</format.imports.goal>
+        <format.imports.source.compliance>15</format.imports.source.compliance>
 
         <!-- No debug options by default -->
         <debug.argline />
@@ -290,6 +289,7 @@
                         <artifactId>impsort-maven-plugin</artifactId>
                         <configuration>
                             <removeUnused>true</removeUnused>
+                            <compliance>${format.imports.source.compliance}</compliance>
                         </configuration>
                         <executions>
                             <execution>
