@@ -3445,6 +3445,45 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
     }
 
+    @Test
+    @FixFor("DBZ-4953")
+    public void shouldStreamTruncateEventWhenLobIsEnabled() throws Exception {
+        TestHelper.dropTable(connection, "dbz4953");
+        try {
+            connection.execute("CREATE TABLE dbz4953 (id numeric(9,0) primary key, col2 varchar2(100))");
+            TestHelper.streamTable(connection, "dbz4953");
+            connection.execute("INSERT INTO dbz4953 (id,col2) values (1, 'Daffy Duck')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4953")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ4953");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidRead(tableRecords.get(0), "ID", 1);
+
+            // truncate
+            connection.execute("TRUNCATE TABLE dbz4953");
+
+            records = consumeRecordsByTopic(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ4953");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidTruncate(tableRecords.get(0));
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4953");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();
