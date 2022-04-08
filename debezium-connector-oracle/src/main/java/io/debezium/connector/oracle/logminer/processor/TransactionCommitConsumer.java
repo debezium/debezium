@@ -29,6 +29,7 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
+import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.Table;
 
@@ -252,6 +253,12 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         idParts.add(event.getTableId().toString());
 
         Object[] values = (EventType.DELETE == event.getEventType()) ? oldValues(event) : newValues(event);
+
+        if (event.getEventType() == EventType.DDL && event instanceof TruncateEvent) {
+            // This is a special use case with TruncateEvent(s)
+            // In this case the row-id should be just the table-name
+            return String.join("|", idParts);
+        }
 
         for (String columnName : table.primaryKeyColumnNames()) {
             int position = LogMinerHelper.getColumnIndexByName(columnName, table);
