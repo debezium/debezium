@@ -271,20 +271,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
             }
-
-            // todo: DBZ-137 the new readSchemaForCapturedTables seems to cause failures.
-            // For now, reverted to the default readSchema implementation as the intended goal
-            // with the new implementation was to be faster, not change behavior.
-            // if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            // jdbcConnection.readSchemaForCapturedTables(
-            // snapshotContext.tables,
-            // snapshotContext.catalogName,
-            // schema,
-            // connectorConfig.getColumnFilter(),
-            // false,
-            // snapshotContext.capturedTables);
-            // }
-            // else {
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     null,
@@ -292,7 +278,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
                     false);
-            // }
         }
     }
 

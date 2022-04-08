@@ -171,7 +171,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     }
 
     @Override
-    public Scn process(OraclePartition partition, Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+    public Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         counters.reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
@@ -718,7 +718,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         addToTransaction(row.getTransactionId(), row, () -> {
-            final LogMinerDmlEntry dmlEntry = parseDmlStatement(row.getRedoSql(), table, row.getTransactionId());
+            final LogMinerDmlEntry dmlEntry = parseDmlStatement(row.getRedoSql(), table);
             dmlEntry.setObjectName(row.getTableName());
             dmlEntry.setObjectOwner(row.getTablespaceName());
             return new DmlEvent(row, dmlEntry);
@@ -896,10 +896,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      *
      * @param redoSql the redo SQL statement
      * @param table the table the SQL statement is for
-     * @param transactionId the associated transaction id for the SQL statement
      * @return a parse object for the redo SQL statement
      */
-    private LogMinerDmlEntry parseDmlStatement(String redoSql, Table table, String transactionId) {
+    private LogMinerDmlEntry parseDmlStatement(String redoSql, Table table) {
         LogMinerDmlEntry dmlEntry;
         try {
             Instant parseStart = Instant.now();
