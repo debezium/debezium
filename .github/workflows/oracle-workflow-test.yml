@@ -53,7 +53,7 @@ jobs:
 
       - name: Build and Install Debezium dependencies
         run: >
-          mvn clean install -pl debezium-core,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi -am 
+          mvn clean install -pl debezium-bom,debezium-core,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi -am
           -DskipTests=true 
           -DskipITs=true 
           -Dformat.formatter.goal=validate 
