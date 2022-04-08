@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - 1.*
+      - 2.*
   pull_request:
     branches:
       - main
       - 1.*
+      - 2.*
 
 env:
   MAVEN_FULL_BUILD_PROFILES: "oracle,oracle-ci,-xstream-dependency"
