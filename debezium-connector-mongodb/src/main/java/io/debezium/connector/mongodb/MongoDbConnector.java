@@ -18,16 +18,13 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoIterable;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;
@@ -225,38 +222,7 @@ public class MongoDbConnector extends SourceConnector {
             // Try to connect to the database ...
             try (ConnectionContext connContext = new ConnectionContext(config)) {
                 try (MongoClient client = connContext.clientFor(connContext.hosts())) {
-                    final MongoIterable<String> databaseNames = client.listDatabaseNames();
-                    // Can't use 'local' database through mongos
-                    final String databaseName = MongoUtil.contains(databaseNames, ReplicaSetDiscovery.CONFIG_DATABASE_NAME)
-                            ? ReplicaSetDiscovery.CONFIG_DATABASE_NAME
-                            : "local";
-                    // Oplog mode is not supported for MongoDB 5+
-                    // The version string format is not guaranteed so defensive measures are in place
-                    final Document versionDocument = client.getDatabase(databaseName)
-                            .runCommand(new Document("buildInfo", 1));
-                    if (versionDocument != null) {
-                        final String versionString = versionDocument.getString("version");
-                        if (versionString != null) {
-                            final String[] versionComponents = versionString.split("\\.");
-                            if (versionComponents.length > 0) {
-                                try {
-                                    final int majorVersion = Integer.parseInt(versionComponents[0]);
-                                    final ConfigValue captureModeValue = results
-                                            .get(MongoDbConnectorConfig.CAPTURE_MODE.name());
-                                    final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
-                                    final CaptureMode captureMode = connectorConfig.getCaptureMode();
-                                    if (majorVersion >= 5
-                                            && captureMode == CaptureMode.OPLOG) {
-                                        captureModeValue.addErrorMessage(
-                                                "The 'oplog' capture mode is not supported for MongoDB 5 and newer; Please use 'change_streams'  or 'change_streams_update_full' instead");
-                                    }
-                                }
-                                catch (NumberFormatException e) {
-                                    // Ignore the exception
-                                }
-                            }
-                        }
-                    }
+                    client.listDatabaseNames();
                 }
             }
             catch (MongoException e) {

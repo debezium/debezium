@@ -1618,19 +1618,11 @@ public class FieldBlacklistIT extends AbstractConnectorTest {
         SourceRecord record = updateRecords.allRecordsInOrder().get(0);
         Struct value = getValue(record);
 
-        if (TestHelper.isOplogCaptureMode()) {
-            Document expectedDoc = TestHelper
-                    .getDocumentWithoutLanguageVersion(expected.patch);
-            Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(field));
-            assertThat(actualDoc).isEqualTo(expectedDoc);
-        }
-        else {
-            TestHelper.assertChangeStreamUpdateAsDocs(objectId, value, expected.full, expected.removedFields,
-                    expected.updatedFields);
-        }
+        TestHelper.assertChangeStreamUpdateAsDocs(objectId, value, expected.full, expected.removedFields,
+                expected.updatedFields);
     }
 
     private String updateField() {
-        return TestHelper.isOplogCaptureMode() ? PATCH : AFTER;
+        return AFTER;
     }
 }

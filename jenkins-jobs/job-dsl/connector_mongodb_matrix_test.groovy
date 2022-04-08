@@ -6,14 +6,8 @@ matrixJob('connector-debezium-mongodb-matrix-test') {
     description('Executes tests for MongoDB Connector with MongoDB matrix')
     label('Slave')
 
-    combinationFilter('''
-         (CAPTURE_MODE == 'oplog' && (MONGODB_VERSION.startsWith('3.') || MONGODB_VERSION == '4.0')) ||
-         (CAPTURE_MODE == 'change_streams_update_full' && !MONGODB_VERSION.startsWith('3.'))
-         ''')
-
     axes {
-        text('MONGODB_VERSION', '3.2', '3.4', '3.6', '4.0', '4.2', '4.4', '5.0')
-        text('CAPTURE_MODE', 'oplog', 'change_streams_update_full')
+        text('MONGODB_VERSION', '4.0', '4.2', '4.4', '5.0')
         label("Node", "Slave")
 
     }
@@ -72,7 +66,6 @@ fi
 mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-bom,debezium-connector-mongodb -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Dversion.mongo.server=$MONGODB_VERSION \
-    -Dcapture.mode=$CAPTURE_MODE \
     -Dinsecure.repositories=WARN \
     $PROFILE_PROD 
 ''')

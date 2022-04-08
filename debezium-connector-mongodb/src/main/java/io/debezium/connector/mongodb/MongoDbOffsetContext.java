@@ -44,7 +44,7 @@ public class MongoDbOffsetContext implements OffsetContext {
     public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext,
                                 IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext, Map<ReplicaSet, Document> offsets) {
         this(sourceInfo, transactionContext, incrementalSnapshotContext);
-        offsets.forEach((replicaSet, document) -> sourceInfo.opLogEvent(replicaSet.replicaSetName(), document, document, 0));
+        offsets.forEach((replicaSet, document) -> sourceInfo.initialPosition(replicaSet.replicaSetName(), document));
     }
 
     void startReplicaSetSnapshot(String replicaSetName) {

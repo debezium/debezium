@@ -257,19 +257,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # This matrix creates a cross product across versions and capture modes
-        # There are certain combinations we want to exclude from the cross product, see exclude below
-        version-mongo-server: ["3.6", "4.0", "4.4", "5.0"]
-        capture-mode: ["oplog", "changestreams"]
-        exclude:
-          # Do not perform change streams capture mode with server 3.6
-          - capture-mode: "changestreams"
-            version-mongo-server: "3.6"
-          # Do not perform oplog capture mode with server 4.4 and 5.0
-          - capture-mode: "oplog"
-            version-mongo-server: "4.4"
-          - capture-mode: "oplog"
-            version-mongo-server: "5.0"
+        version-mongo-server: ["4.0", "4.4", "5.0"]
     steps:
       - name: Checkout Action
         uses: actions/checkout@v2
@@ -299,7 +287,6 @@ jobs:
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Drevapi.skip
-          -Dcapture.mode=${{ matrix.capture-mode }}
           -Dversion.mongo.server=${{ matrix.version-mongo-server }}
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn        
           -Dmaven.wagon.http.pool=false

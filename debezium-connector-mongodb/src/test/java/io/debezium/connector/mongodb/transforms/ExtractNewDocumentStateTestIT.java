@@ -35,7 +35,6 @@ import org.fest.assertions.Assertions;
 import org.junit.Test;
 
 import io.debezium.connector.mongodb.MongoDbFieldName;
-import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SchemaUtil;
@@ -206,12 +205,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         assertThat(transformedUnsetUpdate.valueSchema().field("_id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedUnsetUpdateValue.get("_id")).isEqualTo(1);
-        if (TestHelper.isOplogCaptureMode()) {
-            assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
-        }
-        else {
-            assertThat(transformedUnsetUpdateValue.schema().field("newStr")).isNull();
-        }
+        assertThat(transformedUnsetUpdateValue.schema().field("newStr")).isNull();
 
         // Test FullUpdate
         primary().execute("update", client -> {
@@ -328,7 +322,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord , db,rs");
+        props.put(ADD_SOURCE_FIELDS, "ts_ms,ord , db,rs");
         transformation.configure(props);
 
         // insert
@@ -362,7 +356,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // assert source fields' values
         final Struct value = (Struct) transformed.value();
-        assertThat(value.get("__h")).isEqualTo(source.getInt64("h"));
         assertThat(value.get("__ts_ms")).isEqualTo(source.getInt64("ts_ms"));
         assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
         assertThat(value.get("__db")).isEqualTo(source.getString("db"));
@@ -377,7 +370,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
+        props.put(ADD_SOURCE_FIELDS, "ts_ms,ord,db,rs");
         props.put(HANDLE_DELETES, "rewrite");
         transformation.configure(props);
 
@@ -411,7 +404,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // assert source fields' values
         final Struct value = (Struct) transformed.value();
-        assertThat(value.get("__h")).isEqualTo(source.getInt64("h"));
         assertThat(value.get("__ts_ms")).isEqualTo(source.getInt64("ts_ms"));
         assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
         assertThat(value.get("__db")).isEqualTo(source.getString("db"));
@@ -642,15 +634,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        if (TestHelper.isOplogCaptureMode()) {
-            assertThat(value.get("phone")).isNull();
-            assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-            assertThat(value.schema().fields()).hasSize(4);
-        }
-        else {
-            assertThat(value.schema().field("phone")).isNull();
-            assertThat(value.schema().fields()).hasSize(2);
-        }
+        assertThat(value.schema().field("phone")).isNull();
+        assertThat(value.schema().fields()).hasSize(2);
     }
 
     @Test
@@ -698,15 +683,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        if (TestHelper.isOplogCaptureMode()) {
-            assertThat(value.get("phone")).isNull();
-            assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-            assertThat(value.schema().fields()).hasSize(3);
-        }
-        else {
-            assertThat(value.schema().field("phone")).isNull();
-            assertThat(value.schema().fields()).hasSize(2);
-        }
+        assertThat(value.schema().field("phone")).isNull();
+        assertThat(value.schema().fields()).hasSize(2);
     }
 
     @Test
@@ -1256,7 +1234,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().field("address-city").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-city2-part").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
-        assertThat(value.schema().fields()).hasSize(TestHelper.isOplogCaptureMode() ? 4 : 7);
+        assertThat(value.schema().fields()).hasSize(7);
     }
 
     @Test
@@ -1524,25 +1502,17 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("a").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
 
-        if (TestHelper.isOplogCaptureMode()) {
-            String valueJson = TestHelper.getDocumentWithoutLanguageVersion(value.getString("__patch")).toJson();
-            assertThat(valueJson).isEqualTo("{\"$set\": {\"a\": 22}}");
-            assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
-            assertThat(value.schema().fields()).hasSize(3);
-        }
-        else {
-            // 4 data fields + 1 __patch
-            assertThat(value.schema().fields()).hasSize(4 + 1);
+        // 4 data fields + 1 __patch
+        assertThat(value.schema().fields()).hasSize(4 + 1);
 
-            assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
-            assertThat(value.get("__patch")).isNull();
+        assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
+        assertThat(value.get("__patch")).isNull();
 
-            assertThat(value.get("b")).isEqualTo(2);
-            assertThat(value.schema().field("b").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+        assertThat(value.get("b")).isEqualTo(2);
+        assertThat(value.schema().field("b").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
 
-            assertThat(value.get("c")).isEqualTo(3);
-            assertThat(value.schema().field("c").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
-        }
+        assertThat(value.get("c")).isEqualTo(3);
+        assertThat(value.schema().field("c").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
 
     }
 

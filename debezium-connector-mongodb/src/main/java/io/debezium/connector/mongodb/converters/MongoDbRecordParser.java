@@ -25,13 +25,11 @@ public class MongoDbRecordParser extends RecordParser {
 
     static final String REPLICA_SET_NAME = "rs";
     static final String ORDER = "ord";
-    static final String OPERATION_ID = "h";
     static final String COLLECTION = "collection";
 
     static final Set<String> MONGODB_SOURCE_FIELD = Collect.unmodifiableSet(
             REPLICA_SET_NAME,
             ORDER,
-            OPERATION_ID,
             COLLECTION);
 
     public MongoDbRecordParser(Schema schema, Struct record) {
