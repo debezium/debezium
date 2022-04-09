@@ -18,7 +18,6 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import com.google.cloud.ServiceOptions;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
+import com.google.cloud.ServiceOptions;
 import com.google.cloud.pubsublite.CloudRegionOrZone;
 import com.google.cloud.pubsublite.ProjectId;
 import com.google.cloud.pubsublite.TopicName;
