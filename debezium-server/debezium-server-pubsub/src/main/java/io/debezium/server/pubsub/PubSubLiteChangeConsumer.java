@@ -18,6 +18,7 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import com.google.cloud.ServiceOptions;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -75,7 +76,7 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
-        String projectId = config.getValue(PROP_PROJECT_ID, String.class);
+        String projectId = config.getOptionalValue(PROP_PROJECT_ID, String.class).orElse(ServiceOptions.getDefaultProjectId());
         String region = config.getValue(PROP_REGION, String.class);
 
         if (customPublisherBuilder.isResolvable()) {
@@ -109,7 +110,7 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
                 publisher.stopAsync().awaitTerminated();
             }
             catch (Exception e) {
-                LOGGER.warn("Exception while closing publisher: {}", e);
+                LOGGER.warn("Exception while closing publisher: " + e);
             }
         });
     }
