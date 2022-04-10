@@ -10,6 +10,8 @@ import java.util.Map;
 
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 
+import com.google.api.client.util.Strings;
+
 import io.debezium.server.TestConfigSource;
 
 public class PubSubTestConfigSource extends TestConfigSource {
@@ -20,7 +22,6 @@ public class PubSubTestConfigSource extends TestConfigSource {
         Map<String, String> pubsubTest = new HashMap<>();
 
         pubsubTest.put("debezium.sink.type", "pubsub");
-        pubsubTest.put("debezium.sink.pubsub.address", PUB_SUB_ADDRESS);
         pubsubTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         pubsubTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
@@ -28,7 +29,10 @@ public class PubSubTestConfigSource extends TestConfigSource {
         pubsubTest.put("debezium.source.database.server.name", "testc");
         pubsubTest.put("debezium.source.schema.include.list", "inventory");
         pubsubTest.put("debezium.source.table.include.list", "inventory.customers");
-
+        
+        if (!Strings.isNullOrEmpty(PUB_SUB_ADDRESS))
+        	pubsubTest.put("debezium.sink.pubsub.address", PUB_SUB_ADDRESS);
+        
         config = pubsubTest;
     }
 
