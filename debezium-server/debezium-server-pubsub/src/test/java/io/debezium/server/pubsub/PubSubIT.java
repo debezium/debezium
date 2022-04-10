@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.api.gax.grpc.GrpcTransportChannel;
-import com.google.api.gax.rpc.AlreadyExistsException;
+import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.FixedTransportChannelProvider;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.ServiceOptions;
@@ -86,7 +86,7 @@ public class PubSubIT {
                 subscriptionAdminClient.deleteSubscription(subscriptionName);
             }
             
-            try (TopicAdminClient topicAdminClient = createTopicAdminClient()){
+            try (TopicAdminClient topicAdminClient = createTopicAdminClient()) {
             	topicAdminClient.deleteTopic(topicName);
             }
         }
@@ -113,24 +113,30 @@ public class PubSubIT {
     void setupDependencies(@Observes ConnectorStartedEvent event) throws IOException {
         Testing.Print.enable();
         
-        trySetupEmulatorChannel();
+        createChannel();
         
+        // get into a clean state before running the test
+        try (SubscriptionAdminClient subscriptionAdminClient = createSubscriptionAdminClient()) {
+            subscriptionAdminClient.deleteSubscription(subscriptionName);
+        }
+        catch (NotFoundException e) {}
+        
+        try (TopicAdminClient topicAdminClient = createTopicAdminClient()) {
+        	topicAdminClient.deleteTopic(topicName);
+        }
+        catch (NotFoundException e) {}
+        
+        // setup topic and sub
         try (TopicAdminClient topicAdminClient = createTopicAdminClient()) {
             Topic topic = topicAdminClient.createTopic(topicName);
             Testing.print("Created topic: " + topic.getName());
         }
-        catch (AlreadyExistsException e) {
-        	Testing.print("Topic already exists");
-        }
-        
+       
         try (SubscriptionAdminClient subscriptionAdminClient = createSubscriptionAdminClient()) {
             int ackDeadlineSeconds = 0;
             subscriptionAdminClient.createSubscription(subscriptionName, topicName,
                     PushConfig.newBuilder().build(), ackDeadlineSeconds);
         }
-        catch (AlreadyExistsException e) {
-        	Testing.print("Subscription already exists");
-		}
 
         subscriber = createSubscriber();
         subscriber.startAsync().awaitRunning();
@@ -138,8 +144,12 @@ public class PubSubIT {
     }
     
     
-    void trySetupEmulatorChannel() {
-    	if (!Strings.isNullOrEmpty(PubSubTestConfigSource.PUB_SUB_ADDRESS)) {
+    static boolean isEmulatorInUse() {
+    	return !Strings.isNullOrEmpty(PubSubTestConfigSource.PUB_SUB_ADDRESS);
+    }
+    
+    void createChannel() {
+    	if (isEmulatorInUse()) {
     		channel = ManagedChannelBuilder.forTarget(PubSubTestConfigSource.PUB_SUB_ADDRESS).usePlaintext().build();
     		channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
     		credentialsProvider = NoCredentialsProvider.create();
@@ -148,7 +158,7 @@ public class PubSubIT {
     }
     
     Subscriber createSubscriber() {
-    	if (!Strings.isNullOrEmpty(PubSubTestConfigSource.PUB_SUB_ADDRESS)) {
+    	if (isEmulatorInUse()) {
 	        return Subscriber.newBuilder(subscriptionName, new TestMessageReceiver())
 	        		.setChannelProvider(channelProvider)
 	        		.setCredentialsProvider(credentialsProvider)
@@ -160,7 +170,7 @@ public class PubSubIT {
     
     
     static SubscriptionAdminClient createSubscriptionAdminClient() throws IOException {
-    	if (!Strings.isNullOrEmpty(PubSubTestConfigSource.PUB_SUB_ADDRESS)) {
+    	if (isEmulatorInUse()) {
 	    	return SubscriptionAdminClient.create(
 	        		SubscriptionAdminSettings.newBuilder()
 	        					.setTransportChannelProvider(channelProvider)
@@ -171,7 +181,7 @@ public class PubSubIT {
     }
     
     static TopicAdminClient createTopicAdminClient() throws IOException {
-    	if (!Strings.isNullOrEmpty(PubSubTestConfigSource.PUB_SUB_ADDRESS)) {
+    	if (isEmulatorInUse()) {
 			return TopicAdminClient.create(
 		    		TopicAdminSettings.newBuilder()
 		    			.setTransportChannelProvider(channelProvider)

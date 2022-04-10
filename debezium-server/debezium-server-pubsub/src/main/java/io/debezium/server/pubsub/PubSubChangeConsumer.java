@@ -123,7 +123,7 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
     @ConfigProperty(name = PROP_PREFIX + "retry.rpc.timeout.multiplier", defaultValue = "2.0")
     Double rpcTimeoutMultiplier;
     
-    @ConfigProperty(name = PROP_PREFIX + "address", defaultValue = "")
+    @ConfigProperty(name = PROP_PREFIX + "address")
     Optional<String> address;
 
     @Inject
