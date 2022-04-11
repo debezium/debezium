@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalLong;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -73,6 +74,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      */
     private long numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
     private Lsn lastCompletelyProcessedLsn;
+    private final AtomicBoolean isRestarting = new AtomicBoolean(false);
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                               PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
@@ -120,6 +122,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
         try {
             final WalPositionLocator walPosition;
+            isRestarting.set(true);
 
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
@@ -166,6 +169,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 stream = this.replicationStream.get();
                 stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
+            isRestarting.set(false);
             processMessages(context, partition, offsetContext, stream);
         }
         catch (Throwable e) {
@@ -393,7 +397,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
             final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
 
-            if (replicationStream != null && lsn != null) {
+            // Only Flush the LSN if we are not in the middle of a startup
+            if (replicationStream != null && lsn != null && !isRestarting.get()) {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Flushing LSN to server: {}", lsn);
                 }
