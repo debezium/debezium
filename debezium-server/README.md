@@ -19,9 +19,7 @@ We're not going to pay your AWS/GCP/Azure bill.
 ## Google Cloud Pub/Sub
 
 * Login into your Google Cloud account using `gcloud auth application-default login` as described in the [documentation](https://cloud.google.com/sdk/gcloud/reference/auth/application-default).
-* Create a new topic `gcloud pubsub topics create testc.inventory.customers`
 * Build the module and execute the tests `mvn clean install -DskipITs=false -am -pl debezium-server-pubsub`
-* Remove the topic `gcloud pubsub topics delete testc.inventory.customers`
 
 ## Azure Event Hubs
 
