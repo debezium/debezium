@@ -22,8 +22,8 @@ import org.junit.jupiter.api.Test;
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.api.gax.grpc.GrpcTransportChannel;
-import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.FixedTransportChannelProvider;
+import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
@@ -71,7 +71,7 @@ public class PubSubIT {
         Testing.Files.delete(TestConfigSource.OFFSET_STORE_PATH);
         Testing.Files.createTestingFile(PubSubTestConfigSource.OFFSET_STORE_PATH);
     }
-    
+
     private static ManagedChannel channel;
     private static TransportChannelProvider channelProvider;
     private static CredentialsProvider credentialsProvider;
@@ -85,13 +85,13 @@ public class PubSubIT {
             try (SubscriptionAdminClient subscriptionAdminClient = createSubscriptionAdminClient()) {
                 subscriptionAdminClient.deleteSubscription(subscriptionName);
             }
-            
+
             try (TopicAdminClient topicAdminClient = createTopicAdminClient()) {
-            	topicAdminClient.deleteTopic(topicName);
+                topicAdminClient.deleteTopic(topicName);
             }
         }
         if (channel != null && !channel.isShutdown()) {
-        	channel.shutdown();
+            channel.shutdown();
         }
     }
 
@@ -112,26 +112,28 @@ public class PubSubIT {
 
     void setupDependencies(@Observes ConnectorStartedEvent event) throws IOException {
         Testing.Print.enable();
-        
+
         createChannel();
-        
+
         // get into a clean state before running the test
         try (SubscriptionAdminClient subscriptionAdminClient = createSubscriptionAdminClient()) {
             subscriptionAdminClient.deleteSubscription(subscriptionName);
         }
-        catch (NotFoundException e) {}
-        
-        try (TopicAdminClient topicAdminClient = createTopicAdminClient()) {
-        	topicAdminClient.deleteTopic(topicName);
+        catch (NotFoundException e) {
         }
-        catch (NotFoundException e) {}
-        
+
+        try (TopicAdminClient topicAdminClient = createTopicAdminClient()) {
+            topicAdminClient.deleteTopic(topicName);
+        }
+        catch (NotFoundException e) {
+        }
+
         // setup topic and sub
         try (TopicAdminClient topicAdminClient = createTopicAdminClient()) {
             Topic topic = topicAdminClient.createTopic(topicName);
             Testing.print("Created topic: " + topic.getName());
         }
-       
+
         try (SubscriptionAdminClient subscriptionAdminClient = createSubscriptionAdminClient()) {
             int ackDeadlineSeconds = 0;
             subscriptionAdminClient.createSubscription(subscriptionName, topicName,
@@ -142,42 +144,39 @@ public class PubSubIT {
         subscriber.startAsync().awaitRunning();
 
     }
-    
+
     void createChannel() {
-		channel = ManagedChannelBuilder.forTarget(PubSubTestResourceLifecycleManager.getEmulatorEndpoint()).usePlaintext().build();
-		channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
-		credentialsProvider = NoCredentialsProvider.create();
-    	Testing.print("Executing test towards pubsub emulator running at: " + PubSubTestResourceLifecycleManager.getEmulatorEndpoint());
+        channel = ManagedChannelBuilder.forTarget(PubSubTestResourceLifecycleManager.getEmulatorEndpoint()).usePlaintext().build();
+        channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
+        credentialsProvider = NoCredentialsProvider.create();
+        Testing.print("Executing test towards pubsub emulator running at: " + PubSubTestResourceLifecycleManager.getEmulatorEndpoint());
     }
-    
+
     Subscriber createSubscriber() {
         return Subscriber.newBuilder(subscriptionName, new TestMessageReceiver())
-        		.setChannelProvider(channelProvider)
-        		.setCredentialsProvider(credentialsProvider)
-        		.build();	
- 
+                .setChannelProvider(channelProvider)
+                .setCredentialsProvider(credentialsProvider)
+                .build();
+
     }
-    
-    
+
     static SubscriptionAdminClient createSubscriptionAdminClient() throws IOException {
-    	return SubscriptionAdminClient.create(
-        		SubscriptionAdminSettings.newBuilder()
-        					.setTransportChannelProvider(channelProvider)
-        					.setCredentialsProvider(credentialsProvider)
-        					.build());
+        return SubscriptionAdminClient.create(
+                SubscriptionAdminSettings.newBuilder()
+                        .setTransportChannelProvider(channelProvider)
+                        .setCredentialsProvider(credentialsProvider)
+                        .build());
 
     }
-    
+
     static TopicAdminClient createTopicAdminClient() throws IOException {
-		return TopicAdminClient.create(
-	    		TopicAdminSettings.newBuilder()
-	    			.setTransportChannelProvider(channelProvider)
-	    			.setCredentialsProvider(credentialsProvider)
-	    			.build());
+        return TopicAdminClient.create(
+                TopicAdminSettings.newBuilder()
+                        .setTransportChannelProvider(channelProvider)
+                        .setCredentialsProvider(credentialsProvider)
+                        .build());
 
     }
-    
-    
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
         if (!event.isSuccess()) {

@@ -14,7 +14,6 @@ import io.debezium.server.TestConfigSource;
 
 public class PubSubTestConfigSource extends TestConfigSource {
 
-	
     public PubSubTestConfigSource() {
         Map<String, String> pubsubTest = new HashMap<>();
 
@@ -26,7 +25,7 @@ public class PubSubTestConfigSource extends TestConfigSource {
         pubsubTest.put("debezium.source.database.server.name", "testc");
         pubsubTest.put("debezium.source.schema.include.list", "inventory");
         pubsubTest.put("debezium.source.table.include.list", "inventory.customers");
-        
+
         config = pubsubTest;
     }
 
