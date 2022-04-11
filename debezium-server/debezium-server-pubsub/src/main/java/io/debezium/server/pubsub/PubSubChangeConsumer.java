@@ -122,14 +122,14 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
 
     @ConfigProperty(name = PROP_PREFIX + "retry.rpc.timeout.multiplier", defaultValue = "2.0")
     Double rpcTimeoutMultiplier;
-    
+
     @ConfigProperty(name = PROP_PREFIX + "address")
     Optional<String> address;
 
     @Inject
     @CustomConsumerBuilder
     Instance<PublisherBuilder> customPublisherBuilder;
-    
+
     private ManagedChannel channel;
     private TransportChannelProvider channelProvider;
     private CredentialsProvider credentialsProvider;
@@ -157,15 +157,15 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
                     .setLimitExceededBehavior(FlowController.LimitExceededBehavior.Block)
                     .build());
         }
-        
+
         if (address.isPresent()) {
-        	String hostport = address.get();
-        	channel = ManagedChannelBuilder
-        			.forTarget(hostport)
-        			.usePlaintext()
-        			.build();
-        	channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
-        	credentialsProvider = NoCredentialsProvider.create();        	
+            String hostport = address.get();
+            channel = ManagedChannelBuilder
+                    .forTarget(hostport)
+                    .usePlaintext()
+                    .build();
+            channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
+            credentialsProvider = NoCredentialsProvider.create();
         }
 
         publisherBuilder = (t) -> {
@@ -183,12 +183,12 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
                                         .setInitialRpcTimeout(Duration.ofMillis(initialRpcTimeout))
                                         .setRpcTimeoutMultiplier(rpcTimeoutMultiplier)
                                         .build());
-				
-                if (address.isPresent()) {                	
-                	builder.setChannelProvider(channelProvider).setCredentialsProvider(credentialsProvider);
+
+                if (address.isPresent()) {
+                    builder.setChannelProvider(channelProvider).setCredentialsProvider(credentialsProvider);
                 }
 
-				return builder.build();
+                return builder.build();
             }
             catch (IOException e) {
                 throw new DebeziumException(e);
@@ -208,9 +208,9 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
                 LOGGER.warn("Exception while closing publisher: {}", e);
             }
         });
-        
-        if (channel != null && !channel.isShutdown()) {		
-        	channel.shutdown();
+
+        if (channel != null && !channel.isShutdown()) {
+            channel.shutdown();
         }
     }
 
