@@ -44,7 +44,6 @@ import io.debezium.server.TestConfigSource;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
-import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -58,6 +57,7 @@ import io.quarkus.test.junit.QuarkusTest;
  */
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
+@QuarkusTestResource(PubSubTestResourceLifecycleManager.class)
 public class PubSubIT {
 
     private static final int MESSAGE_COUNT = 4;
@@ -143,52 +143,38 @@ public class PubSubIT {
 
     }
     
-    
-    static boolean isEmulatorInUse() {
-    	return !Strings.isNullOrEmpty(PubSubTestConfigSource.PUB_SUB_ADDRESS);
-    }
-    
     void createChannel() {
-    	if (isEmulatorInUse()) {
-    		channel = ManagedChannelBuilder.forTarget(PubSubTestConfigSource.PUB_SUB_ADDRESS).usePlaintext().build();
-    		channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
-    		credentialsProvider = NoCredentialsProvider.create();
-        	Testing.print("Executing test towards pubsub emulator running at: " + PubSubTestConfigSource.PUB_SUB_ADDRESS);
-    	}    	
+		channel = ManagedChannelBuilder.forTarget(PubSubTestResourceLifecycleManager.getEmulatorEndpoint()).usePlaintext().build();
+		channelProvider = FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
+		credentialsProvider = NoCredentialsProvider.create();
+    	Testing.print("Executing test towards pubsub emulator running at: " + PubSubTestResourceLifecycleManager.getEmulatorEndpoint());
     }
     
     Subscriber createSubscriber() {
-    	if (isEmulatorInUse()) {
-	        return Subscriber.newBuilder(subscriptionName, new TestMessageReceiver())
-	        		.setChannelProvider(channelProvider)
-	        		.setCredentialsProvider(credentialsProvider)
-	        		.build();	
-    	}
-    	return Subscriber.newBuilder(subscriptionName, new TestMessageReceiver())
-        		.build();	 
+        return Subscriber.newBuilder(subscriptionName, new TestMessageReceiver())
+        		.setChannelProvider(channelProvider)
+        		.setCredentialsProvider(credentialsProvider)
+        		.build();	
+ 
     }
     
     
     static SubscriptionAdminClient createSubscriptionAdminClient() throws IOException {
-    	if (isEmulatorInUse()) {
-	    	return SubscriptionAdminClient.create(
-	        		SubscriptionAdminSettings.newBuilder()
-	        					.setTransportChannelProvider(channelProvider)
-	        					.setCredentialsProvider(credentialsProvider)
-	        					.build());
-    	}
-    	return SubscriptionAdminClient.create();
+    	return SubscriptionAdminClient.create(
+        		SubscriptionAdminSettings.newBuilder()
+        					.setTransportChannelProvider(channelProvider)
+        					.setCredentialsProvider(credentialsProvider)
+        					.build());
+
     }
     
     static TopicAdminClient createTopicAdminClient() throws IOException {
-    	if (isEmulatorInUse()) {
-			return TopicAdminClient.create(
-		    		TopicAdminSettings.newBuilder()
-		    			.setTransportChannelProvider(channelProvider)
-		    			.setCredentialsProvider(credentialsProvider)
-		    			.build());
-    	}
-    	return TopicAdminClient.create();
+		return TopicAdminClient.create(
+	    		TopicAdminSettings.newBuilder()
+	    			.setTransportChannelProvider(channelProvider)
+	    			.setCredentialsProvider(credentialsProvider)
+	    			.build());
+
     }
     
     
