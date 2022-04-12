@@ -21,7 +21,7 @@ import io.debezium.util.Collect;
  */
 public abstract class RecordParser {
 
-    private final Struct record;
+    protected final Struct record;
     private final Struct source;
     private final Struct transaction;
     private final String op;

@@ -50,4 +50,8 @@ public class MongoDbRecordParser extends RecordParser {
 
         throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from MongoDB connector");
     }
+
+    public String getRawOplog() {
+        return record.getString(MongoDbFieldName.RAW_OPLOG_FIELD);
+    }
 }
