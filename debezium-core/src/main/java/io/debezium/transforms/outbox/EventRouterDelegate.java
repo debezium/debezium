@@ -170,8 +170,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         final Schema structValueSchema = onlyHeadersInOutputMessage ? null
                 : (fieldSchemaVersion == null)
-                        ? getValueSchema(fieldPayload, eventValueSchema, eventStruct.getString(routeByField))
-                        : getValueSchema(fieldPayload, eventValueSchema, eventStruct.getInt32(fieldSchemaVersion), eventStruct.getString(routeByField));
+                        ? getValueSchema(payloadSchema, eventValueSchema, eventStruct.getString(routeByField))
+                        : getValueSchema(payloadSchema, eventValueSchema, eventStruct.getInt32(fieldSchemaVersion), eventStruct.getString(routeByField));
 
         final Struct structValue = onlyHeadersInOutputMessage ? null : new Struct(structValueSchema).put(ENVELOPE_PAYLOAD, payload);
 
@@ -365,17 +365,17 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         onlyHeadersInOutputMessage = !additionalFields.stream().anyMatch(field -> field.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE);
     }
 
-    private Schema getValueSchema(String fieldPayload, Schema debeziumEventSchema, String routedTopic) {
+    private Schema getValueSchema(Schema payloadSchema, Schema debeziumEventSchema, String routedTopic) {
         if (defaultValueSchema == null) {
-            defaultValueSchema = getSchemaBuilder(fieldPayload, debeziumEventSchema, routedTopic).build();
+            defaultValueSchema = getSchemaBuilder(payloadSchema, debeziumEventSchema, routedTopic).build();
         }
 
         return defaultValueSchema;
     }
 
-    private Schema getValueSchema(String fieldPayload, Schema debeziumEventSchema, Integer version, String routedTopic) {
+    private Schema getValueSchema(Schema payloadSchema, Schema debeziumEventSchema, Integer version, String routedTopic) {
         if (!versionedValueSchema.containsKey(version)) {
-            final Schema schema = getSchemaBuilder(fieldPayload, debeziumEventSchema, routedTopic)
+            final Schema schema = getSchemaBuilder(payloadSchema, debeziumEventSchema, routedTopic)
                     .version(version)
                     .build();
             versionedValueSchema.put(version, schema);
@@ -384,12 +384,11 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         return versionedValueSchema.get(version);
     }
 
-    private SchemaBuilder getSchemaBuilder(String fieldPayload, Schema debeziumEventSchema, String routedTopic) {
+    private SchemaBuilder getSchemaBuilder(Schema payloadSchema, Schema debeziumEventSchema, String routedTopic) {
         SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(getSchemaName(debeziumEventSchema, routedTopic));
 
         // Add payload field
-        schemaBuilder
-                .field(ENVELOPE_PAYLOAD, debeziumEventSchema.field(fieldPayload).schema());
+        schemaBuilder.field(ENVELOPE_PAYLOAD, payloadSchema);
 
         // Add additional fields while keeping the schema inherited from Debezium based on the table column type
         additionalFields.forEach((additionalField -> {
