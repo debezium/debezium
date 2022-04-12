@@ -646,14 +646,6 @@ jobs:
           -Dmaven.wagon.http.pool=false 
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-      # Cassandra currently requires JDK8, so we build this connector with that JDK version after we have
-      # built core using JDK11.
-      - name: Set up Java 8
-        uses: actions/setup-java@v2
-        with:
-          distribution: 'temurin'
-          java-version: 8
-
       - name: Build Debezium Connector Cassandra
         run: >
           mvn clean install -f cassandra/pom.xml -Passembly
