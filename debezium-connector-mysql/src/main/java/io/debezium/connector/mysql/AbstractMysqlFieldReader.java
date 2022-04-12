@@ -28,6 +28,7 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     private static final Set<String> TEXT_DATATYPES = Collect.unmodifiableSet("CHAR", "VARCHAR", "TEXT");
+    private static final MySqlValueConverters.CharsetMappingWrapper CHARSET_MAPPING_WRAPPER = new MySqlValueConverters.CharsetMappingWrapper();
 
     private final MySqlConnectorConfig connectorConfig;
 
@@ -71,7 +72,7 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
             try {
                 String columnData = rs.getString(columnIndex);
                 if (columnData != null) {
-                    return columnData.getBytes(column.charsetName());
+                    return columnData.getBytes(CHARSET_MAPPING_WRAPPER.getJavaEncodingForMysqlCharSet(column.charsetName()));
                 }
             }
             catch (UnsupportedEncodingException e) {
