@@ -964,6 +964,45 @@ public class EventRouterTest {
         assertThat(eventRouted.value()).isEqualTo("{\"fullName\": \"John Doe\", \"rating\": 4.9, \"age\": 42}");
     }
 
+    @Test
+    public void canExpandJsonPayloadWithAdditionalFieldInEnvelope() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{\"fullName\": \"John Doe\"}",
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+        assertThat(valueSchema.fields().size()).isEqualTo(2);
+        assertThat(valueSchema.field("type").schema().type().getName()).isEqualTo("string");
+
+        Schema payloadSchema = valueSchema.field("payload").schema();
+        assertThat(payloadSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+        assertThat(payloadSchema.fields().size()).isEqualTo(1);
+        assertThat(payloadSchema.field("fullName").schema().type().getName()).isEqualTo("string");
+
+        Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("type")).isEqualTo("UserCreated");
+
+        Struct payloadStruct = valueStruct.getStruct("payload");
+        assertThat(payloadStruct.get("fullName")).isEqualTo("John Doe");
+    }
+
     private SourceRecord createEventRecord() {
         return createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
