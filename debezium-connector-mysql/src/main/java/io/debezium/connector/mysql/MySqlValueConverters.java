@@ -77,7 +77,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     /**
      * Helper to gain access to protected method
      */
-    private final static class CharsetMappingWrapper extends CharsetMapping {
+    public final static class CharsetMappingWrapper extends CharsetMapping {
         String getJavaEncodingForMysqlCharSet(String mySqlCharsetName) {
             return CharsetMapping.getStaticJavaEncodingForMysqlCharset(mySqlCharsetName);
         }
