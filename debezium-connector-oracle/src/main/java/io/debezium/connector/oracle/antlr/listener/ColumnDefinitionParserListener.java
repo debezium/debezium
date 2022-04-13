@@ -50,7 +50,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     @Override
     public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         resolveColumnDataType(ctx);
-        if (ctx.DEFAULT() != null) {
+        if (ctx != null && ctx.DEFAULT() != null) {
             columnEditor.defaultValueExpression(ctx.column_default_value().getText());
         }
         super.enterColumn_definition(ctx);
@@ -69,7 +69,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     @Override
     public void enterModify_col_properties(PlSqlParser.Modify_col_propertiesContext ctx) {
         resolveColumnDataType(ctx);
-        if (ctx.DEFAULT() != null) {
+        if (ctx != null && ctx.DEFAULT() != null) {
             columnEditor.defaultValueExpression(ctx.column_default_value().getText());
         }
         super.enterModify_col_properties(ctx);
@@ -303,7 +303,8 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .type(ctx.native_datatype_element().getText());
             }
         }
-        else if (ctx.INTERVAL() != null
+        else if (ctx != null
+                && ctx.INTERVAL() != null
                 && ctx.YEAR() != null
                 && ctx.TO() != null
                 && ctx.MONTH() != null) {
@@ -315,7 +316,8 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                 columnEditor.length(Integer.valueOf((ctx.expression(0).getText())));
             }
         }
-        else if (ctx.INTERVAL() != null
+        else if (ctx != null
+                && ctx.INTERVAL() != null
                 && ctx.DAY() != null
                 && ctx.TO() != null
                 && ctx.SECOND() != null) {
