@@ -241,6 +241,23 @@ createTrigger
       routineBody
     ;
 
+withClause
+    : WITH RECURSIVE? commonTableExpressions
+    ;
+
+commonTableExpressions
+    : cteName ('(' cteColumnName (',' cteColumnName)* ')')?  AS '(' dmlStatement ')'
+      (',' commonTableExpressions)?
+    ;
+
+cteName
+    : uid
+    ;
+
+cteColumnName
+    : uid
+    ;
+
 createView
     : CREATE (OR REPLACE)?
       (
@@ -248,7 +265,7 @@ createView
       )?
       ownerStatement?
       (SQL SECURITY secContext=(DEFINER | INVOKER))?
-      VIEW fullId ('(' uidList ')')? AS selectStatement
+      VIEW fullId ('(' uidList ')')? AS withClause? selectStatement
       (WITH checkOption=(CASCADED | LOCAL)? CHECK OPTION)?
     ;
 
@@ -2622,7 +2639,7 @@ keywordsCanBeId
     | PARTITIONING | PARTITIONS | PASSWORD | PASSWORD_LOCK_TIME | PERSIST_RO_VARIABLES_ADMIN | PHASE | PLUGINS
     | PLUGIN_DIR | PLUGIN | PORT | PRECEDES | PREPARE | PRESERVE | PREV
     | PROCESSLIST | PROFILE | PROFILES | PROXY | QUERY | QUICK
-    | REBUILD | RECOVER | REDO_BUFFER_SIZE | REDUNDANT
+    | REBUILD | RECOVER | RECURSIVE | REDO_BUFFER_SIZE | REDUNDANT
     | RELAY | RELAYLOG | RELAY_LOG_FILE | RELAY_LOG_POS | REMOVE
     | REORGANIZE | REPAIR | REPLICATE_DO_DB | REPLICATE_DO_TABLE
     | REPLICATE_IGNORE_DB | REPLICATE_IGNORE_TABLE
