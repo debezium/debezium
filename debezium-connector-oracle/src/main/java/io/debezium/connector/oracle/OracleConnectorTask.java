@@ -137,7 +137,9 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             LOGGER.error("Exception while closing JDBC connection", e);
         }
 
-        schema.close();
+        if (schema != null) {
+            schema.close();
+        }
     }
 
     @Override
