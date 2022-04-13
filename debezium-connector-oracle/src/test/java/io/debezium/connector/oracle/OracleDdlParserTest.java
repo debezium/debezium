@@ -390,6 +390,33 @@ public class OracleDdlParserTest {
         assertThat(table.columnWithName("ID").isOptional()).isTrue();
     }
 
+    @Test
+    @FixFor("DBZ-4976")
+    public void shouldParseAlterTableWithoutDatatypeContextClause() throws Exception {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("SCOTT");
+
+        String SQL = "CREATE TABLE \"SCOTT\".\"DBZ4976\" (ID NUMBER, NAME VARCHAR2(1) DEFAULT ('0'))";
+        parser.parse(SQL, tables);
+
+        // Get the create table changes & reset
+        // We're not worried about this specific phase of the schema evolution
+        DdlChanges changes = parser.getDdlChanges();
+        changes.reset();
+
+        SQL = "ALTER TABLE \"SCOTT\".\"DBZ4976\" MODIFY NAME DEFAULT NULL";
+        parser.parse(SQL, tables);
+
+        changes = parser.getDdlChanges();
+        List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "DBZ4976"));
+        assertThat(table.columnWithName("NAME").length()).isEqualTo(1);
+        assertThat(table.columnWithName("NAME").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("NAME").defaultValueExpression()).isEqualTo(Optional.of("NULL"));
+    }
+
     private List<DdlParserListener.EventType> getEventTypesFromChanges(DdlChanges changes) {
         List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
         changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
