@@ -50,7 +50,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     @Override
     public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         resolveColumnDataType(ctx);
-        if (ctx != null && ctx.DEFAULT() != null) {
+        if (ctx.DEFAULT() != null) {
             columnEditor.defaultValueExpression(ctx.column_default_value().getText());
         }
         super.enterColumn_definition(ctx);
@@ -69,7 +69,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     @Override
     public void enterModify_col_properties(PlSqlParser.Modify_col_propertiesContext ctx) {
         resolveColumnDataType(ctx);
-        if (ctx != null && ctx.DEFAULT() != null) {
+        if (ctx.DEFAULT() != null) {
             columnEditor.defaultValueExpression(ctx.column_default_value().getText());
         }
         super.enterModify_col_properties(ctx);
@@ -108,12 +108,13 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     }
 
     private void resolveColumnDataType(PlSqlParser.DatatypeContext ctx) {
-        PlSqlParser.Precision_partContext precisionPart = null;
-        if (ctx != null) {
-            precisionPart = ctx.precision_part();
+        // If the context is null, there is nothing this method can resolve and it is safe to return
+        if (ctx == null) {
+            return;
         }
 
-        if (ctx != null && ctx.native_datatype_element() != null) {
+        if (ctx.native_datatype_element() != null) {
+            PlSqlParser.Precision_partContext precisionPart = ctx.precision_part();
             if (ctx.native_datatype_element().INT() != null
                     || ctx.native_datatype_element().INTEGER() != null
                     || ctx.native_datatype_element().SMALLINT() != null
@@ -303,8 +304,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .type(ctx.native_datatype_element().getText());
             }
         }
-        else if (ctx != null
-                && ctx.INTERVAL() != null
+        else if (ctx.INTERVAL() != null
                 && ctx.YEAR() != null
                 && ctx.TO() != null
                 && ctx.MONTH() != null) {
@@ -316,8 +316,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                 columnEditor.length(Integer.valueOf((ctx.expression(0).getText())));
             }
         }
-        else if (ctx != null
-                && ctx.INTERVAL() != null
+        else if (ctx.INTERVAL() != null
                 && ctx.DAY() != null
                 && ctx.TO() != null
                 && ctx.SECOND() != null) {
