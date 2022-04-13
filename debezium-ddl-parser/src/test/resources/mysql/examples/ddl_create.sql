@@ -430,3 +430,48 @@ END; -- //-- delimiter ;
 create role 'RL_COMPLIANCE_NSA';
 create role if not exists 'RL_COMPLIANCE_NSA';
 #end
+#begin
+CREATE VIEW view_with_cte1 AS
+WITH cte1 AS
+(
+    SELECT column_1 AS a, column_2 AS b
+    FROM table1
+)
+SELECT a, b FROM cte1;
+#end
+#begin
+CREATE VIEW view_with_cte2 AS
+WITH cte1 (col1, col2) AS
+(
+  SELECT 1, 2
+  UNION ALL
+  SELECT 3, 4
+),
+cte2 (col1, col2) AS
+(
+  SELECT 5, 6
+  UNION ALL
+  SELECT 7, 8
+)
+SELECT col1, col2 FROM cte;
+#end
+#begin
+CREATE VIEW view_with_cte3 AS
+WITH cte (col1, col2) AS
+(
+  SELECT 1, 2
+  UNION ALL
+  SELECT 3, 4
+)
+SELECT col1, col2 FROM cte;
+#end
+#begin
+CREATE VIEW view_with_cte4 AS
+WITH RECURSIVE cte (n) AS
+(
+  SELECT 1
+  UNION ALL
+  SELECT n + 1 FROM cte WHERE n < 5
+)
+SELECT * FROM cte;
+#end
