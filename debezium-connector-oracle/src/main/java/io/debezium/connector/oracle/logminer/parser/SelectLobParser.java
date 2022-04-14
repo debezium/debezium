@@ -150,7 +150,7 @@ public class SelectLobParser {
             else if (c == '\'') {
                 // skip over double single quote
                 if (inSingleQuotes && lookAhead == '\'') {
-                    i += 2;
+                    i += 1;
                     continue;
                 }
                 if (inSingleQuotes) {

@@ -1908,13 +1908,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor({ "DBZ-4891", "DBZ-4862" })
+    @FixFor({ "DBZ-4891", "DBZ-4862", "DBZ-4994" })
     public void shouldStreamClobValueWithEscapedSingleQuoteValue() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
                 + "VAL_CLOB clob, "
                 + "VAL_NCLOB nclob, "
                 + "VAL_USERNAME varchar2(100),"
+                + "VAL_DATA varchar2(100), "
                 + "primary key(id))";
 
         connection.execute(ddl);
@@ -1929,15 +1930,10 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        // Insert record
-        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
-        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
-        connection.prepareQuery("INSERT INTO clob_test VALUES (1, ?, ?, ?)", ps -> {
-            ps.setClob(1, clob1);
-            ps.setNClob(2, nclob1);
-            ps.setString(3, "This will be fixed soon so please don't worry, she wrote.");
-        }, null);
-        connection.commit();
+        // Create simple insert, will be used for updates later
+        final String simpleQuote = "This will be fixed soon so please don''t worry, she wrote.";
+        final String complexQuote = "2\"''\" sd f\"\"\" '''''''' ''''";
+        connection.execute("INSERT INTO clob_test (id,val_username,val_data) values (1,'" + simpleQuote + "','" + complexQuote + "')");
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
@@ -1945,11 +1941,29 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         SourceRecord record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
         VerifyRecord.isValidInsert(record, "ID", 1);
 
+        // Update the record this way to enforce that both varchar fields are present in the SELECT_LOB_LOCATOR
+        // event that will need to be parsed by the SelectLobParser component.
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
+        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
+        connection.prepareQuery("update clob_test set val_clob=?, val_nclob=? where id=1", ps -> {
+            ps.setClob(1, clob1);
+            ps.setClob(2, nclob1);
+        }, null);
+        connection.commit();
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
+
+        record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        // Validate update data
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("VAL_CLOB")).isEqualTo(getClobString(clob1));
         assertThat(after.get("VAL_NCLOB")).isEqualTo(getClobString(nclob1));
         assertThat(after.get("VAL_USERNAME")).isEqualTo("This will be fixed soon so please don't worry, she wrote.");
+        assertThat(after.get("VAL_DATA")).isEqualTo("2\"'\" sd f\"\"\" '''' ''");
     }
 
     private Clob createClob(String data) throws SQLException {
