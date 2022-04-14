@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
-import com.mysql.cj.CharsetMapping;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
@@ -74,17 +73,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
         void error(String message, Exception exception);
     }
 
-    /**
-     * Helper to gain access to protected method
-     */
-    public final static class CharsetMappingWrapper extends CharsetMapping {
-        String getJavaEncodingForMysqlCharSet(String mySqlCharsetName) {
-            return CharsetMapping.getStaticJavaEncodingForMysqlCharset(mySqlCharsetName);
-        }
-    }
-
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
-    private static final CharsetMappingWrapper CHARSET_MAPPING_WRAPPER = new CharsetMappingWrapper();
+
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
      */
@@ -336,10 +326,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
             logger.warn("Column is missing a character set: {}", column);
             return null;
         }
-        String encoding = CHARSET_MAPPING_WRAPPER.getJavaEncodingForMysqlCharSet(mySqlCharsetName);
+        String encoding = MySqlConnection.getJavaEncodingForMysqlCharSet(mySqlCharsetName);
         if (encoding == null) {
             logger.debug("Column uses MySQL character set '{}', which has no mapping to a Java character set, will try it in lowercase", mySqlCharsetName);
-            encoding = CHARSET_MAPPING_WRAPPER.getJavaEncodingForMysqlCharSet(mySqlCharsetName.toLowerCase());
+            encoding = MySqlConnection.getJavaEncodingForMysqlCharSet(mySqlCharsetName.toLowerCase());
         }
         if (encoding == null) {
             logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);

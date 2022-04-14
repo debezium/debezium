@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
 
+import com.mysql.cj.CharsetMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -464,6 +465,19 @@ public class MySqlConnection extends JdbcConnection {
 
     public String connectionString() {
         return connectionString(URL_PATTERN);
+    }
+
+    public static String getJavaEncodingForMysqlCharSet(String mysqlCharsetName) {
+        return CharsetMappingWrapper.getJavaEncodingForMysqlCharSet(mysqlCharsetName);
+    }
+
+    /**
+     * Helper to gain access to protected method
+     */
+    private final static class CharsetMappingWrapper extends CharsetMapping {
+        static String getJavaEncodingForMysqlCharSet(String mySqlCharsetName) {
+            return CharsetMapping.getStaticJavaEncodingForMysqlCharset(mySqlCharsetName);
+        }
     }
 
     public static class MySqlConnectionConfiguration {
