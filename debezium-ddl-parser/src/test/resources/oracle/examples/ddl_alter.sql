@@ -24,6 +24,7 @@ ALTER TABLE TEST001 MODIFY NAME DEFAULT NULL;
 alter table dbz1211 add constraint name unique (id,data) using index tablespace ts;
 alter table dbz1211_child add constraint name unique (id) using index tablespace ts;
 ALTER TABLE "ORACDC"."DEPARTMENT" ADD CONSTRAINT "DEPARTMENT_PK" PRIMARY KEY ("REQUEST_ID", "EMP_NO") USING INDEX "ORACDC"."DEPARTMENT_PK"  ENABLE NOVALIDATE;
+alter table AbsTDDesc add constraint F_AbsTDDesc_AbstractTr_1vl7ewo foreign key (deviceId, whLocId) references AbstractTransportDevice;
 -- Alter table add primary key using index
 ALTER TABLE "IDENTITYDB"."CHANGE_NUMBERS" ADD CONSTRAINT "IDX_CHANGENUMBERS_PK" PRIMARY KEY ("CHANGE_NO", "EXPIRY_TIME") USING INDEX "IDENTITYDB"."IDX_CHANGENUMBERS_PK"  ENABLE NOVALIDATE;
 ALTER TABLE "MYSCHEMA"."MY_PLANT" DROP PRIMARY KEY DROP INDEX;

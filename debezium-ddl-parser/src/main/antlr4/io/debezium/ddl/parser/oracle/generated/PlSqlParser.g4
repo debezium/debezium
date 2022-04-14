@@ -3351,7 +3351,7 @@ foreign_key_clause
     ;
 
 references_clause
-    : REFERENCES tableview_name paren_column_list
+    : REFERENCES tableview_name paren_column_list? (ON DELETE (CASCADE| SET NULL_))?
     ;
 
 on_delete_clause
