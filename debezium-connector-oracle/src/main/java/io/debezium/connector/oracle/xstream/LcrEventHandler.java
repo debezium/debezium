@@ -84,33 +84,33 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     @Override
     public void processLCR(LCR lcr) throws StreamsException {
         LOGGER.trace("Received LCR {}", lcr);
-
-        // First set watermark to flush messages seen
-        setWatermark();
-        columnChunks.clear();
-
-        final LcrPosition lcrPosition = new LcrPosition(lcr.getPosition());
-
-        // After a restart it may happen we get the event with the last processed LCR again
-        LcrPosition offsetLcrPosition = LcrPosition.valueOf(offsetContext.getLcrPosition());
-        if (lcrPosition.compareTo(offsetLcrPosition) <= 0) {
-            if (LOGGER.isDebugEnabled()) {
-                final LcrPosition recPosition = offsetLcrPosition;
-                LOGGER.debug("Ignoring change event with already processed SCN/LCR Position {}/{}, last recorded {}/{}",
-                        lcrPosition,
-                        lcrPosition.getScn(),
-                        recPosition != null ? recPosition : "none",
-                        recPosition != null ? recPosition.getScn() : "none");
-            }
-            return;
-        }
-
-        offsetContext.setScn(lcrPosition.getScn());
-        offsetContext.setLcrPosition(lcrPosition.toString());
-        offsetContext.setTransactionId(lcr.getTransactionId());
-        offsetContext.tableEvent(new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName()), lcr.getSourceTime().timestampValue().toInstant());
-
         try {
+            // First set watermark to flush messages seen
+            setWatermark();
+            columnChunks.clear();
+
+            final LcrPosition lcrPosition = new LcrPosition(lcr.getPosition());
+
+            // After a restart it may happen we get the event with the last processed LCR again
+            LcrPosition offsetLcrPosition = LcrPosition.valueOf(offsetContext.getLcrPosition());
+            if (lcrPosition.compareTo(offsetLcrPosition) <= 0) {
+                if (LOGGER.isDebugEnabled()) {
+                    final LcrPosition recPosition = offsetLcrPosition;
+                    LOGGER.debug("Ignoring change event with already processed SCN/LCR Position {}/{}, last recorded {}/{}",
+                            lcrPosition,
+                            lcrPosition.getScn(),
+                            recPosition != null ? recPosition : "none",
+                            recPosition != null ? recPosition.getScn() : "none");
+                }
+                return;
+            }
+
+            offsetContext.setScn(lcrPosition.getScn());
+            offsetContext.setLcrPosition(lcrPosition.toString());
+            offsetContext.setTransactionId(lcr.getTransactionId());
+            offsetContext.tableEvent(new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName()),
+                    lcr.getSourceTime().timestampValue().toInstant());
+
             if (lcr instanceof RowLCR) {
                 processRowLCR((RowLCR) lcr);
             }
