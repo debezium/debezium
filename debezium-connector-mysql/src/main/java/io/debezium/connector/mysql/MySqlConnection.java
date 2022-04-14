@@ -16,9 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
 
-import com.mysql.cj.CharsetMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.mysql.cj.CharsetMapping;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
