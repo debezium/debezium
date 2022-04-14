@@ -39,7 +39,6 @@ public class RedisConnection {
         HostAndPort address = HostAndPort.from(this.address);
 
         Jedis client = new Jedis(address.getHost(), address.getPort(), this.sslEnabled);
-        client.clientSetname(clientName);
 
         if (this.user != null) {
             client.auth(this.user, this.password);
@@ -52,6 +51,7 @@ public class RedisConnection {
             client.ping();
         }
 
+        client.clientSetname(clientName);
         LOGGER.info("Using Jedis '{}'", client);
 
         return client;
