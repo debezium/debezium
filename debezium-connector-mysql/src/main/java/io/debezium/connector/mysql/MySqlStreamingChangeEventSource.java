@@ -78,6 +78,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
@@ -563,8 +564,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
 
+        Instant schemaTimestamp = Conversions.toInstantFromMillis(eventTimestamp.toEpochMilli());
         final List<SchemaChangeEvent> schemaChangeEvents = taskContext.getSchema().parseStreamingDdl(partition, sql,
-                command.getDatabase(), offsetContext, clock.currentTimeAsInstant());
+                command.getDatabase(), offsetContext, schemaTimestamp);
         try {
             for (SchemaChangeEvent schemaChangeEvent : schemaChangeEvents) {
                 if (taskContext.getSchema().skipSchemaChangeEvent(schemaChangeEvent)) {
