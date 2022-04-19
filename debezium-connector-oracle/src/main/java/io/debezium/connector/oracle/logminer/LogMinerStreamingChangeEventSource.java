@@ -151,6 +151,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     }
 
                     initializeRedoLogsForMining(jdbcConnection, false, startScn);
+                    long startTimeMillis = System.currentTimeMillis();
 
                     while (context.isRunning()) {
                         // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
@@ -173,12 +174,22 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                         flushStrategy.flush(jdbcConnection.getCurrentScn());
 
-                        if (hasLogSwitchOccurred()) {
+                        boolean restartRequired = false;
+                        if (!connectorConfig.getLogMiningMaximumSession().isZero()) {
+                            long timeSinceStart = System.currentTimeMillis() - startTimeMillis;
+                            if (timeSinceStart >= connectorConfig.getLogMiningMaximumSession().toMillis()) {
+                                LOGGER.info("LogMiner session has exceeded maximum session time of '{}', forcing restart.", connectorConfig.getLogMiningMaximumSession());
+                                restartRequired = true;
+                            }
+                        }
+
+                        if (restartRequired || hasLogSwitchOccurred()) {
                             // This is the way to mitigate PGA leaks.
                             // With one mining session, it grows and maybe there is another way to flush PGA.
                             // At this point we use a new mining session
                             endMiningSession(jdbcConnection, offsetContext);
                             initializeRedoLogsForMining(jdbcConnection, true, startScn);
+                            startTimeMillis = System.currentTimeMillis();
                         }
 
                         if (context.isRunning()) {

@@ -456,6 +456,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isPositiveInteger)
             .withDescription("The maximum delay when trying to query database redo logs, given in milliseconds. Defaults to 60 seconds (60,000 ms).");
 
+    public static final Field LOG_MINING_SESSION_MAX_MS = Field.create("log.mining.session.max.ms")
+            .withDisplayName("Maximum number of milliseconds of a single LogMiner session")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(TimeUnit.MINUTES.toMillis(0))
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription(
+                    "The maximum number of milliseconds that a LogMiner session lives for before being restarted. Defaults to 0 (indefinite until a log switch occurs)");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -512,7 +522,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     LOG_MINING_LOG_QUERY_MAX_RETRIES,
                     LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
-                    LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS)
+                    LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
+                    LOG_MINING_SESSION_MAX_MS)
             .create();
 
     /**
@@ -568,6 +579,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int logMiningLogFileQueryMaxRetries;
     private final Duration logMiningInitialDelay;
     private final Duration logMiningMaxDelay;
+    private final Duration logMiningMaximumSession;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config),
@@ -614,6 +626,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_QUERY_MAX_RETRIES);
         this.logMiningInitialDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS));
         this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
+        this.logMiningMaximumSession = Duration.ofMillis(config.getLong(LOG_MINING_SESSION_MAX_MS));
     }
 
     private static String toUpperCase(String property) {
@@ -1385,6 +1398,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Duration getLogMiningMaxDelay() {
         return logMiningMaxDelay;
+    }
+
+    /**
+     * @return the maximum duration for a LogMiner session
+     */
+    public Duration getLogMiningMaximumSession() {
+        return logMiningMaximumSession;
     }
 
     @Override
