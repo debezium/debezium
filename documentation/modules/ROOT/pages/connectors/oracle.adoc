@@ -2739,6 +2739,14 @@ The default behavior is that the buffer state is always retained between restart
 Set to `true` only in testing or development environments.
 endif::community[]
 
+|[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.xs+`>>
+|`0`
+|The maximum number of milliseconds that a LogMiner session can be active before a new session is used. +
+ +
+For low volume systems, a LogMiner session may consume too much PGA memory when the same session is used for a long period of time.
+The default behavior is to only use a new LogMiner session when a log switch is detected.
+By setting this value to something greater than `0`, this specifies the maximum number of milliseconds a LogMiner session can be active before it gets stopped and started to deallocate and reallocate PGA memory.
+
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
 |The minimum SCN interval size that this connector attempts to read from redo/archive logs. Active batch size is also increased/decreased by this amount for tuning connector throughput when needed.
@@ -3686,6 +3694,9 @@ ALTER SYSTEM SET archive_log_target=1200 scope=both;
 ----
 
 This change will likely require SYSDBA permissions, so coordinate with your database administrator.
+
+If you are unable to adjust the Oracle database parameter, you can instead use the connector configuration option xref:oracle-property-log-mining-session-max-ms[`log.mining.session.max.ms`] to control the duration of an Oracle LogMiner session so that it is restarted regularly even if a database log switch has not yet happened.
+
 
 [id="oracle-sys-system-change-not-emitted"]
 === LogMiner adapter does not capture changes made by SYS or SYSTEM
