@@ -148,6 +148,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     Pipeline pipeline;
                     try {
                         LOGGER.trace("Preparing a Redis Pipeline of {} records", clonedBatch.size());
+
+                        // Make sure the connection is still alive before creating the pipeline
+                        // to reduce the chance of ending up with duplicate records
+                        client.ping();
                         pipeline = client.pipelined();
 
                         // Add the batch records to the stream(s) via Pipeline
