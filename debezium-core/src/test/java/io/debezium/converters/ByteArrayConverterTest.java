@@ -8,8 +8,8 @@ package io.debezium.converters;
 
 import static junit.framework.TestCase.fail;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,12 +25,11 @@ import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-public class ByteBufferConverterTest {
-
+public class ByteArrayConverterTest {
     private static final String TOPIC = "topic";
     private static final byte[] SAMPLE_BYTES = "sample string".getBytes(StandardCharsets.UTF_8);
 
-    private ByteBufferConverter converter = new ByteBufferConverter();
+    private final ByteArrayConverter converter = new ByteArrayConverter();
 
     @Before
     public void setUp() {
@@ -38,70 +37,49 @@ public class ByteBufferConverterTest {
     }
 
     @Test
-    public void shouldConvertFromConnectData() {
-        byte[] bytes = converter.fromConnectData(TOPIC, Schema.BYTES_SCHEMA, ByteBuffer.wrap(SAMPLE_BYTES));
-
-        assertThat(bytes).isEqualTo(SAMPLE_BYTES);
+    public void shouldConvertFromData() {
+        assertThat(converter.fromConnectData(TOPIC, Schema.BYTES_SCHEMA, SAMPLE_BYTES)).isEqualTo(SAMPLE_BYTES);
     }
 
     @Test
-    public void shouldConvertFromConnectDataForOptionalBytesSchema() {
-        byte[] bytes = converter.fromConnectData(TOPIC, Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(SAMPLE_BYTES));
-
-        assertThat(bytes).isEqualTo(SAMPLE_BYTES);
+    public void shouldConvertFromDataWithNullSchema() {
+        assertThat(converter.fromConnectData(TOPIC, null, SAMPLE_BYTES)).isEqualTo(SAMPLE_BYTES);
     }
 
     @Test
-    public void shouldConvertFromConnectDataWithoutSchema() {
-        byte[] bytes = converter.fromConnectData(TOPIC, null, ByteBuffer.wrap(SAMPLE_BYTES));
-
-        assertThat(bytes).isEqualTo(SAMPLE_BYTES);
+    public void shouldThrowExceptionWhenInvalidSchema() {
+        assertThrows(DataException.class,
+                () -> converter.fromConnectData(TOPIC, Schema.INT32_SCHEMA, SAMPLE_BYTES));
     }
 
     @Test
-    public void shouldConvertNullFromConnectData() {
-        byte[] bytes = converter.fromConnectData(TOPIC, null, null);
-
-        assertThat(bytes).isNull();
+    public void shouldThrowExceptionWhenInvalidValue() {
+        assertThrows(DataException.class,
+                () -> converter.fromConnectData(TOPIC, Schema.BYTES_SCHEMA, 12));
     }
 
     @Test
-    public void shouldThrowWhenConvertNonByteSchemaFromConnectData() {
-        try {
-            converter.fromConnectData(TOPIC, Schema.BOOLEAN_SCHEMA, null);
-            fail("now expected exception thrown");
-        }
-        catch (Exception e) {
-            assertThat(e).isExactlyInstanceOf(DataException.class);
-        }
+    public void shouldReturnNullWhenConvertingNullValue() {
+        assertThat(converter.fromConnectData(TOPIC, Schema.BYTES_SCHEMA, null)).isNull();
     }
 
     @Test
-    public void shouldThrowWhenConvertRawByteArrayFromConnectData() {
-        try {
-            converter.fromConnectData(TOPIC, Schema.BOOLEAN_SCHEMA, null);
-            fail("now expected exception thrown");
-        }
-        catch (Exception e) {
-            assertThat(e).isExactlyInstanceOf(DataException.class);
-        }
-
+    public void shouldConvertFromDataIgnoringHeader() {
+        assertThat(converter.fromConnectHeader(TOPIC, "ignored", Schema.BYTES_SCHEMA, SAMPLE_BYTES)).isEqualTo(SAMPLE_BYTES);
     }
 
     @Test
     public void shouldConvertToConnectData() {
-        SchemaAndValue schemaAndValue = converter.toConnectData(TOPIC, SAMPLE_BYTES);
-
-        assertThat(schemaAndValue.schema()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA);
-        assertThat(schemaAndValue.value()).isEqualTo(ByteBuffer.wrap(SAMPLE_BYTES));
+        SchemaAndValue data = converter.toConnectData(TOPIC, SAMPLE_BYTES);
+        assertThat(data.schema()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA);
+        assertThat((byte[]) data.value()).isEqualTo(SAMPLE_BYTES);
     }
 
     @Test
     public void shouldConvertToConnectDataForNullValue() {
-        SchemaAndValue schemaAndValue = converter.toConnectData(TOPIC, null);
-
-        assertThat(schemaAndValue.schema()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA);
-        assertThat(schemaAndValue.value()).isNull();
+        SchemaAndValue data = converter.toConnectData(TOPIC, null);
+        assertThat(data.schema()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA);
+        assertThat(data.value()).isNull();
     }
 
     @Test
@@ -116,13 +94,24 @@ public class ByteBufferConverterTest {
     }
 
     @Test
+    public void shouldThrowWhenNoSchemaOrDelegateConverterConfigured() {
+        try {
+            converter.fromConnectData(TOPIC, null, "Hello World");
+            fail("now expected exception thrown");
+        }
+        catch (Exception e) {
+            assertThat(e).isExactlyInstanceOf(DataException.class);
+        }
+    }
+
+    @Test
     public void shouldConvertUsingDelegateConverter() {
         // Configure delegate converter
-        converter.configure(Collections.singletonMap(ByteBufferConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName()), false);
+        converter.configure(Collections.singletonMap(ByteArrayConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName()), false);
 
         byte[] data = converter.fromConnectData(TOPIC, Schema.OPTIONAL_STRING_SCHEMA, "{\"message\": \"Hello World\"}");
 
-        JsonNode value;
+        JsonNode value = null;
         try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
             value = jsonDeserializer.deserialize(TOPIC, data);
         }
@@ -138,11 +127,11 @@ public class ByteBufferConverterTest {
     @Test
     public void shouldConvertUsingDelegateConverterWithNoSchema() {
         // Configure delegate converter
-        converter.configure(Collections.singletonMap(ByteBufferConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName()), false);
+        converter.configure(Collections.singletonMap(ByteArrayConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName()), false);
 
         byte[] data = converter.fromConnectData(TOPIC, null, "{\"message\": \"Hello World\"}");
 
-        JsonNode value;
+        JsonNode value = null;
         try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
             value = jsonDeserializer.deserialize(TOPIC, data);
         }
@@ -155,36 +144,16 @@ public class ByteBufferConverterTest {
     }
 
     @Test
-    public void shouldConvertUsingDelegateConverterWithOptions() {
-        // Configure delegate converter
-        final Map<String, String> config = new HashMap<>();
-        config.put(ByteBufferConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName());
-        config.put(ByteBufferConverter.DELEGATE_CONVERTER_TYPE + ".schemas.enable", Boolean.FALSE.toString());
-        converter.configure(config, false);
-
-        byte[] data = converter.fromConnectData(TOPIC, Schema.OPTIONAL_STRING_SCHEMA, "{\"message\": \"Hello World\"}");
-
-        JsonNode value;
-        try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
-            value = jsonDeserializer.deserialize(TOPIC, data);
-        }
-
-        assertThat(value.has("schema")).isFalse();
-        assertThat(value.has("payload")).isFalse();
-        assertThat(value.asText()).isEqualTo("{\"message\": \"Hello World\"}");
-    }
-
-    @Test
     public void shouldConvertUsingDelegateConverterWithOptionsAndNoSchema() {
         // Configure delegate converter
         final Map<String, String> config = new HashMap<>();
-        config.put(ByteBufferConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName());
-        config.put(ByteBufferConverter.DELEGATE_CONVERTER_TYPE + ".schemas.enable", Boolean.FALSE.toString());
+        config.put(ByteArrayConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName());
+        config.put(ByteArrayConverter.DELEGATE_CONVERTER_TYPE + ".schemas.enable", Boolean.FALSE.toString());
         converter.configure(config, false);
 
         byte[] data = converter.fromConnectData(TOPIC, null, "{\"message\": \"Hello World\"}");
 
-        JsonNode value;
+        JsonNode value = null;
         try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
             value = jsonDeserializer.deserialize(TOPIC, data);
         }
