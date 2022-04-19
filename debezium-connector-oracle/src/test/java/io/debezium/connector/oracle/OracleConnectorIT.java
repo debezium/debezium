@@ -10,6 +10,7 @@ import static io.debezium.connector.oracle.util.TestHelper.TYPE_NAME_PARAMETER_K
 import static io.debezium.connector.oracle.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static io.debezium.connector.oracle.util.TestHelper.defaultConfig;
 import static io.debezium.data.Envelope.FieldName.AFTER;
+import static junit.framework.Assert.fail;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.MapAssert.entry;
@@ -4007,6 +4008,76 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         finally {
             stopConnector();
             TestHelper.dropTable(connection, quotedTableName);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4963")
+    public void shouldRestartLogMiningSessionAfterMaxSessionElapses() throws Exception {
+        TestHelper.dropTable(connection, "dbz4963");
+        try {
+            connection.execute("CREATE TABLE dbz4963 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz4963");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4963")
+                    .with(OracleConnectorConfig.LOG_MINING_SESSION_MAX_MS, 10_000L)
+                    .build();
+
+            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Wait at most 60 seconds until we get notified in the logs that maximum session had exceeded.
+            Awaitility.await()
+                    .atMost(60, TimeUnit.SECONDS)
+                    .until(() -> logInterceptor.containsMessage("LogMiner session has exceeded maximum session time"));
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4963");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4963")
+    public void shouldNotRestartLogMiningSessionWithMaxSessionZero() throws Exception {
+        TestHelper.dropTable(connection, "dbz4963");
+        try {
+            connection.execute("CREATE TABLE dbz4963 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz4963");
+
+            // default max session is 0L
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4963")
+                    .build();
+
+            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            try {
+                // Wait at most 60 seconds for potential message
+                // The message should never be written here and so a ConditionTimeoutException should be thrown.
+                Awaitility.await()
+                        .atMost(60, TimeUnit.SECONDS)
+                        .until(() -> logInterceptor.containsMessage("LogMiner session has exceeded maximum session time"));
+            }
+            catch (ConditionTimeoutException e) {
+                // expected
+                stopConnector();
+                return;
+            }
+
+            fail("Expected a ConditionTimeoutException, LogMiner session max session message should not have been written.");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4963");
         }
     }
 
