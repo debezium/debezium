@@ -97,12 +97,13 @@ public class RedisStreamIT {
                 "INSERT INTO inventory.redis_test VALUES (5)");
         connection.close();
 
-        Testing.print("Sleeping for 5 seconds to simulate no connection errors");
-        Thread.sleep(5000);
+        Testing.print("Sleeping for 3 seconds to simulate no connection errors");
+        Thread.sleep(3000);
         Testing.print("Unpausing container");
         RedisTestResourceLifecycleManager.unpause();
-        Long streamLength = getStreamLength(jedis, STREAM_NAME, MESSAGE_COUNT);
+        Thread.sleep(2000);
 
+        Long streamLength = jedis.xlen(STREAM_NAME);
         Testing.print("Entries in " + STREAM_NAME + ":" + streamLength);
         jedis.close();
         assertTrue("Redis Connection Test Failed", streamLength == MESSAGE_COUNT);
