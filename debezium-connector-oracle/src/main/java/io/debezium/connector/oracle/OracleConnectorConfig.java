@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -1403,8 +1404,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     /**
      * @return the maximum duration for a LogMiner session
      */
-    public Duration getLogMiningMaximumSession() {
-        return logMiningMaximumSession;
+    public Optional<Duration> getLogMiningMaximumSession() {
+        return logMiningMaximumSession.toMillis() == 0L ? Optional.empty() : Optional.of(logMiningMaximumSession);
     }
 
     @Override
