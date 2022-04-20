@@ -53,6 +53,7 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -4044,6 +4045,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4963")
+    @Ignore("Waits 60 seconds by default, so disabled by default")
     public void shouldNotRestartLogMiningSessionWithMaxSessionZero() throws Exception {
         TestHelper.dropTable(connection, "dbz4963");
         try {
