@@ -1,0 +1,145 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.testing.system.tools.kafka.builders.kafka;
+
+import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_VERSION_KAFKA;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import io.strimzi.api.kafka.model.EntityOperatorSpec;
+import io.strimzi.api.kafka.model.EntityOperatorSpecBuilder;
+import io.strimzi.api.kafka.model.EntityTopicOperatorSpec;
+import io.strimzi.api.kafka.model.EntityUserOperatorSpec;
+import io.strimzi.api.kafka.model.Kafka;
+import io.strimzi.api.kafka.model.KafkaBuilder;
+import io.strimzi.api.kafka.model.KafkaClusterSpec;
+import io.strimzi.api.kafka.model.KafkaClusterSpecBuilder;
+import io.strimzi.api.kafka.model.ZookeeperClusterSpec;
+import io.strimzi.api.kafka.model.ZookeeperClusterSpecBuilder;
+import io.strimzi.api.kafka.model.listener.arraylistener.GenericKafkaListener;
+import io.strimzi.api.kafka.model.listener.arraylistener.GenericKafkaListenerBuilder;
+import io.strimzi.api.kafka.model.listener.arraylistener.KafkaListenerType;
+import io.strimzi.api.kafka.model.storage.EphemeralStorage;
+import io.strimzi.api.kafka.model.template.PodTemplate;
+import io.strimzi.api.kafka.model.template.PodTemplateBuilder;
+
+/**
+ * This class simplifies building of kafka by providing default configuration for whole kafka or parts of its definition
+ */
+public final class StrimziKafkaBuilder extends StrimziBuilderWrapper<StrimziKafkaBuilder, KafkaBuilder, Kafka> {
+    public static String DEFAULT_KAFKA_NAME = "debezium-kafka-cluster";
+
+    private StrimziKafkaBuilder(KafkaBuilder kafkaBuilder) {
+        super(kafkaBuilder);
+    }
+
+    @Override
+    public Kafka build() {
+        return builder.build();
+    }
+
+    public static StrimziKafkaBuilder base() {
+        KafkaClusterSpec kafka = defaultKafkaSpec();
+        ZookeeperClusterSpec zookeeper = defaultKafkaZookeeperSpec();
+        EntityOperatorSpec entityOperator = defaultKafkaEntityOperatorSpec();
+
+        KafkaBuilder builder = new KafkaBuilder()
+                .withNewMetadata()
+                .withName(DEFAULT_KAFKA_NAME)
+                .endMetadata()
+                .withNewSpec()
+                .withKafka(kafka)
+                .withZookeeper(zookeeper)
+                .withEntityOperator(entityOperator)
+                .endSpec();
+
+        return new StrimziKafkaBuilder(builder);
+    }
+
+    public StrimziKafkaBuilder withPullSecret(String pullSecretName) {
+        PodTemplate podTemplate = new PodTemplateBuilder().addNewImagePullSecret(pullSecretName).build();
+
+        builder
+                .editSpec()
+                .editKafka()
+                .withNewTemplate().withPod(podTemplate).endTemplate()
+                .endKafka()
+                .editZookeeper()
+                .withNewTemplate().withPod(podTemplate).endTemplate()
+                .endZookeeper()
+                .editEntityOperator()
+                .withNewTemplate().withPod(podTemplate).endTemplate()
+                .endEntityOperator()
+                .endSpec();
+
+        return self();
+    }
+
+    private static KafkaClusterSpec defaultKafkaSpec() {
+        Map<String, Object> config = defaultKafkaConfig();
+        List<GenericKafkaListener> listeners = defaultKafkaListeners();
+
+        return new KafkaClusterSpecBuilder()
+                .withConfig(config)
+                .withReplicas(1)
+                .withVersion(STRIMZI_VERSION_KAFKA)
+                .withListeners(listeners)
+                .withStorage(new EphemeralStorage())
+                .build();
+    }
+
+    private static List<GenericKafkaListener> defaultKafkaListeners() {
+        GenericKafkaListener plainInternal = new GenericKafkaListenerBuilder()
+                .withName("plain")
+                .withPort(9092)
+                .withType(KafkaListenerType.INTERNAL)
+                .build();
+
+        GenericKafkaListener tlsInternal = new GenericKafkaListenerBuilder()
+                .withName("tls")
+                .withPort(9093)
+                .withType(KafkaListenerType.INTERNAL)
+                .withTls(true)
+                .build();
+
+        GenericKafkaListener loadBalancerExternal = new GenericKafkaListenerBuilder()
+                .withName("external")
+                .withPort(9094)
+                .withType(KafkaListenerType.LOADBALANCER)
+                .build();
+
+        return Arrays.asList(plainInternal, tlsInternal, loadBalancerExternal);
+    }
+
+    private static Map<String, Object> defaultKafkaConfig() {
+        Map<String, Object> config = new HashMap<>();
+        config.put("offsets.topic.replication.factor", 1);
+        config.put("transaction.state.log.replication.factor", 1);
+        config.put("transaction.state.log.min.isr", 1);
+
+        return config;
+    }
+
+    private static ZookeeperClusterSpec defaultKafkaZookeeperSpec() {
+        return new ZookeeperClusterSpecBuilder()
+                .withStorage(new EphemeralStorage())
+                .withReplicas(1)
+                .build();
+    }
+
+    private static EntityOperatorSpec defaultKafkaEntityOperatorSpec() {
+        EntityTopicOperatorSpec topicOperator = new EntityTopicOperatorSpec();
+        EntityUserOperatorSpec userOperator = new EntityUserOperatorSpec();
+
+        return new EntityOperatorSpecBuilder()
+                .withTopicOperator(topicOperator)
+                .withUserOperator(userOperator)
+                .build();
+    }
+}

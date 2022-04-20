@@ -5,8 +5,6 @@
  */
 package io.debezium.testing.system.fixtures.kafka;
 
-import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_CRD_VERSION;
-
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -21,9 +19,9 @@ import io.debezium.testing.system.tools.kafka.OcpKafkaConnectDeployer;
 import io.debezium.testing.system.tools.kafka.OcpKafkaController;
 import io.debezium.testing.system.tools.kafka.OcpKafkaDeployer;
 import io.debezium.testing.system.tools.kafka.StrimziOperatorController;
-import io.debezium.testing.system.tools.kafka.builders.kafkaconnect.OcpKafkaConnectBuilderFactory;
+import io.debezium.testing.system.tools.kafka.builders.kafka.StrimziKafkaBuilder;
+import io.debezium.testing.system.tools.kafka.builders.kafka.StrimziKafkaConnectBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
-import io.strimzi.api.kafka.model.KafkaConnectBuilder;
 
 import fixture5.TestFixture;
 import fixture5.annotations.FixtureContext;
@@ -35,7 +33,7 @@ public class OcpKafka extends TestFixture {
     private final OpenShiftClient ocp;
     private final String project;
     // Kafka resources
-    String KAFKA_CONNECT_LOGGING = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/020-kafka-connect-cfg.yaml";
+    String KAFKA_CONNECT_LOGGING = "/kafka-resources/020-kafka-connect-cfg.yaml";
     // Artifact Server resources
     String ARTIFACT_SERVER_DEPLOYMENT = "/artifact-server/010-deployment.yaml";
     String ARTIFACT_SERVER_SERVICE = "/artifact-server/020-service.yaml";
@@ -65,7 +63,7 @@ public class OcpKafka extends TestFixture {
     }
 
     private void deployKafkaCluster(StrimziOperatorController operatorController) throws Exception {
-        OcpKafkaDeployer kafkaDeployer = new OcpKafkaDeployer.Builder()
+        OcpKafkaDeployer kafkaDeployer = new OcpKafkaDeployer.Builder(StrimziKafkaBuilder.base())
                 .withOcpClient(ocp)
                 .withHttpClient(new OkHttpClient())
                 .withProject(project)
@@ -78,23 +76,19 @@ public class OcpKafka extends TestFixture {
     }
 
     private void deployConnectCluster(StrimziOperatorController operatorController) throws InterruptedException {
-        KafkaConnectBuilder kafkaConnectBuilder;
-
         if (ConfigProperties.STRIMZI_KC_BUILD) {
-            kafkaConnectBuilder = OcpKafkaConnectBuilderFactory.createKcBuildSetup();
             deployArtifactServer();
         }
-        else {
-            kafkaConnectBuilder = OcpKafkaConnectBuilderFactory.createNonKcBuildSetup();
-        }
 
-        OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer.Builder()
+        StrimziKafkaConnectBuilder strimziBuilder = StrimziKafkaConnectBuilder.base();
+
+        OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer.Builder(strimziBuilder)
                 .withOcpClient(ocp)
                 .withHttpClient(new OkHttpClient())
                 .withProject(project)
-                .withKafkaConnectBuilder(kafkaConnectBuilder)
-                .withCfgYamlPath(KAFKA_CONNECT_LOGGING)
+                .withLoggingAndMetricsFromCfgMap(KAFKA_CONNECT_LOGGING)
                 .withConnectorResources(ConfigProperties.STRIMZI_OPERATOR_CONNECTORS)
+                .withKcBuild(ConfigProperties.STRIMZI_KC_BUILD)
                 .withOperatorController(operatorController)
                 .build();
 
