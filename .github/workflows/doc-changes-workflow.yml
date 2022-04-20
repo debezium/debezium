@@ -4,13 +4,14 @@
 name: Documentation Changes
 
 on:
-  # Schedule job to run at midnight UTC every Saturday
+  # Schedule job to run at midnight UTC every day
   schedule:
     - cron: "0 0 * * *"
 
 jobs:
 
   script:
+    if: github.repository == "debezium/debezium"
     runs-on: ubuntu-latest
 
     steps:
