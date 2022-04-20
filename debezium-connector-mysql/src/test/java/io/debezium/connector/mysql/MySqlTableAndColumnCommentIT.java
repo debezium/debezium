@@ -57,7 +57,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4000")
+    @FixFor({ "DBZ-4000", "DBZ-4998" })
     public void shouldParseComment() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
@@ -86,6 +86,9 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
         List<Struct> tableChanges = (List<Struct>) ((Struct) createTable.value()).get("tableChanges");
         Struct table = (Struct) tableChanges.get(0).get("table");
         List<Struct> columns = (List<Struct>) table.get("columns");
+
+        // Check field ts_ms from snapshot phase
+        assertThat(((Struct) createTable.value()).get("ts_ms")).isNotNull();
 
         // Table comment
         assertThat(table.get("comment")).isEqualTo("table for dbz-4000");
@@ -146,6 +149,9 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
 
         Optional<Struct> remarkOpt = getColumnOpt(columns, "remark");
         assertThat(remarkOpt.get().get("comment")).isEqualTo("description");
+
+        // Check field ts_ms from streaming phase
+        assertThat(((Struct) ddl.value()).get("ts_ms")).isNotNull();
 
         // Stop the connector
         stopConnector();

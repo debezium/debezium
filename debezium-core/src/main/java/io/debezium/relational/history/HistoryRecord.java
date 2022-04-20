@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.history;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -21,6 +22,7 @@ public class HistoryRecord {
         public static final String SCHEMA_NAME = "schemaName";
         public static final String DDL_STATEMENTS = "ddl";
         public static final String TABLE_CHANGES = "tableChanges";
+        public static final String TIMESTAMP = "ts_ms";
     }
 
     private final Document doc;
@@ -30,7 +32,8 @@ public class HistoryRecord {
         this.doc = document;
     }
 
-    public HistoryRecord(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes) {
+    public HistoryRecord(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
+                         String ddl, TableChanges changes, Instant timestamp) {
         this.doc = Document.create();
 
         Document src = doc.setDocument(Fields.SOURCE);
@@ -48,6 +51,10 @@ public class HistoryRecord {
                     pos.set(positionElement.getKey(), positionElement.getValue());
                 }
             }
+        }
+
+        if (timestamp != null) {
+            doc.setNumber(Fields.TIMESTAMP, timestamp.toEpochMilli());
         }
 
         if (databaseName != null) {
@@ -94,6 +101,10 @@ public class HistoryRecord {
 
     protected Array tableChanges() {
         return doc.getArray(Fields.TABLE_CHANGES);
+    }
+
+    protected long timestamp() {
+        return doc.getLong(Fields.TIMESTAMP);
     }
 
     @Override

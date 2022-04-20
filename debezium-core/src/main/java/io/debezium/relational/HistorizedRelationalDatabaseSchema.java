@@ -99,7 +99,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
      */
     protected void record(SchemaChangeEvent schemaChange, TableChanges tableChanges) {
         databaseHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), schemaChange.getDatabase(),
-                schemaChange.getSchema(), schemaChange.getDdl(), tableChanges);
+                schemaChange.getSchema(), schemaChange.getDdl(), tableChanges, schemaChange.getTimestamp());
     }
 
     @Override

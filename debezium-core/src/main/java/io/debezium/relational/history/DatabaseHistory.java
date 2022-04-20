@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.history;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -129,7 +130,8 @@ public interface DatabaseHistory {
      */
     void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl) throws DatabaseHistoryException;
 
-    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes) throws DatabaseHistoryException;
+    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes, Instant timestamp)
+            throws DatabaseHistoryException;
 
     /**
      * @deprecated Use {@link #recover(Offsets, Tables, DdlParser)} instead.
