@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.history;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -29,6 +30,7 @@ import io.debezium.relational.history.TableChanges.TableChange;
 import io.debezium.relational.history.TableChanges.TableChangeType;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
+import io.debezium.util.Clock;
 
 /**
  * @author Randall Hauch
@@ -86,13 +88,14 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl)
             throws DatabaseHistoryException {
 
-        record(source, position, databaseName, null, ddl, null);
+        record(source, position, databaseName, null, ddl, null, Clock.SYSTEM.currentTimeAsInstant());
     }
 
     @Override
-    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes)
+    public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
+                             String ddl, TableChanges changes, Instant timestamp)
             throws DatabaseHistoryException {
-        final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes);
+        final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes, timestamp);
         storeRecord(record);
         listener.onChangeApplied(record);
     }
@@ -106,7 +109,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
             if (source != null) {
                 source.forEach(srcDocument::set);
             }
-            stopPoints.put(srcDocument, new HistoryRecord(source, position, null, null, null, null));
+            stopPoints.put(srcDocument, new HistoryRecord(source, position, null, null, null, null, null));
         });
 
         recoverRecords(recovered -> {
