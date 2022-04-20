@@ -8,6 +8,7 @@ package io.debezium.relational.history;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.Types;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +22,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges.TableChangesSerializer;
+import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -74,8 +76,9 @@ public class HistoryRecordTest {
                 .create();
 
         TableChanges tableChanges = new TableChanges().create(table);
+        Instant timestamp = Clock.SYSTEM.currentTimeAsInstant();
 
-        HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, tableChanges);
+        HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, tableChanges, timestamp);
 
         String serialized = record.toString();
         DocumentReader reader = DocumentReader.defaultReader();
@@ -89,6 +92,7 @@ public class HistoryRecordTest {
         assertThat(deserialized.position().get("positionInt")).isEqualTo(100);
         assertThat(deserialized.position().get("positionLong")).isEqualTo(Long.MAX_VALUE);
         assertThat(deserialized.position().get("entry")).isEqualTo(1);
+        assertThat(deserialized.timestamp()).isEqualTo(timestamp.toEpochMilli());
 
         assertThat(deserialized.databaseName()).isEqualTo(databaseName);
         assertThat(deserialized.schemaName()).isEqualTo(schemaName);

@@ -141,6 +141,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
         schemaChangeValueSchema = SchemaBuilder.struct()
                 .name(schemaNameAdjuster.adjust("io.debezium.connector." + connectorConfig.getConnectorName() + ".SchemaChangeValue"))
                 .field(Fields.SOURCE, connectorConfig.getSourceInfoStructMaker().schema())
+                .field(Fields.TIMESTAMP, Schema.INT64_SCHEMA)
                 .field(Fields.DATABASE_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.SCHEMA_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
@@ -535,6 +536,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
         private Struct schemaChangeRecordValue(SchemaChangeEvent event) {
             Struct result = new Struct(schemaChangeValueSchema);
             result.put(Fields.SOURCE, event.getSource());
+            result.put(Fields.TIMESTAMP, event.getTimestamp().toEpochMilli());
             result.put(Fields.DATABASE_NAME, event.getDatabase());
             result.put(Fields.SCHEMA_NAME, event.getSchema());
             result.put(Fields.DDL_STATEMENTS, event.getDdl());

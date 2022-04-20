@@ -5,6 +5,7 @@
  */
 package io.debezium.schema;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +15,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.relational.Table;
 import io.debezium.relational.history.TableChanges;
+import io.debezium.util.Clock;
 
 /**
  * Represents a structural change to a database schema.
@@ -31,17 +33,17 @@ public class SchemaChangeEvent {
     private final Map<String, ?> offset;
     private final Struct source;
     private final boolean isFromSnapshot;
+    private final Instant timestamp;
     private TableChanges tableChanges = new TableChanges();
 
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
-                             SchemaChangeEventType type,
-                             boolean isFromSnapshot) {
-        this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : Collections.emptySet(), type, isFromSnapshot);
+                             SchemaChangeEventType type, boolean isFromSnapshot) {
+        this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : Collections.emptySet(),
+                type, isFromSnapshot, Clock.SYSTEM.currentTimeAsInstant());
     }
 
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Set<Table> tables,
-                             SchemaChangeEventType type,
-                             boolean isFromSnapshot) {
+                             SchemaChangeEventType type, boolean isFromSnapshot, Instant timestamp) {
         this.partition = Objects.requireNonNull(partition, "partition must not be null");
         this.offset = Objects.requireNonNull(offset, "offset must not be null");
         this.source = Objects.requireNonNull(source, "source must not be null");
@@ -53,6 +55,7 @@ public class SchemaChangeEvent {
         this.tables = Objects.requireNonNull(tables, "tables must not be null");
         this.type = Objects.requireNonNull(type, "type must not be null");
         this.isFromSnapshot = isFromSnapshot;
+        this.timestamp = timestamp;
         switch (type) {
             case CREATE:
                 tables.forEach(tableChanges::create);
@@ -104,6 +107,10 @@ public class SchemaChangeEvent {
         return isFromSnapshot;
     }
 
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
     public TableChanges getTableChanges() {
         return tableChanges;
     }
@@ -111,7 +118,7 @@ public class SchemaChangeEvent {
     @Override
     public String toString() {
         return "SchemaChangeEvent [database=" + database + ", schema=" + schema + ", ddl=" + ddl + ", tables=" + tables
-                + ", type=" + type + "]";
+                + ", type=" + type + ", ts_ms=" + timestamp.toEpochMilli() + "]";
     }
 
     /**
