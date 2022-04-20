@@ -5,12 +5,17 @@
  */
 package io.debezium.testing.system.tools.kafka;
 
+import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_KC_IMAGE;
+
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.YAML;
+import io.debezium.testing.system.tools.kafka.builders.kafka.StrimziKafkaConnectBuilder;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -20,10 +25,6 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaConnectList;
 import io.strimzi.api.kafka.model.KafkaConnect;
-import io.strimzi.api.kafka.model.KafkaConnectBuilder;
-import io.strimzi.api.kafka.model.connect.build.Build;
-import io.strimzi.api.kafka.model.template.KafkaConnectTemplate;
-import io.strimzi.api.kafka.model.template.KafkaConnectTemplateBuilder;
 
 import okhttp3.OkHttpClient;
 
@@ -41,12 +42,13 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         private String project;
         private OpenShiftClient ocpClient;
         private OkHttpClient httpClient;
-        private String cfgYamlPath;
-        private boolean connectorResources;
-        private boolean exposedMetrics;
-        private boolean exposedApi;
+        private ConfigMap configMap;
         private StrimziOperatorController operatorController;
-        private KafkaConnectBuilder kafkaConnectBuilder;
+        private final StrimziKafkaConnectBuilder strimziBuilder;
+
+        public Builder(StrimziKafkaConnectBuilder strimziBuilder) {
+            this.strimziBuilder = strimziBuilder;
+        }
 
         public OcpKafkaConnectDeployer.Builder withProject(String project) {
             this.project = project;
@@ -63,33 +65,25 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
             return this;
         }
 
-        public OcpKafkaConnectDeployer.Builder withKafkaConnectBuilder(KafkaConnectBuilder ocpKafkaConnectBuilder) {
-            this.kafkaConnectBuilder = ocpKafkaConnectBuilder;
+        public OcpKafkaConnectDeployer.Builder withLoggingAndMetricsFromCfgMap(String cfgYamlPath) {
+            this.configMap = YAML.fromResource(cfgYamlPath, ConfigMap.class);
+            strimziBuilder
+                    .withLoggingFromConfigMap(configMap)
+                    .withMetricsFromConfigMap(configMap);
             return this;
         }
 
-        public OcpKafkaConnectDeployer.Builder withCfgYamlPath(String cfgYamlPath) {
-            this.cfgYamlPath = cfgYamlPath;
-            return this;
-        }
-
-        public OcpKafkaConnectDeployer.Builder withConnectorResources(boolean value) {
-            this.connectorResources = value;
-            return this;
-        }
-
-        public OcpKafkaConnectDeployer.Builder withExposedApi(boolean value) {
-            this.exposedApi = value;
-            return this;
-        }
-
-        public OcpKafkaConnectDeployer.Builder withExposedMetrics(boolean value) {
-            this.exposedMetrics = value;
+        public OcpKafkaConnectDeployer.Builder withConnectorResources(boolean connectorResources) {
+            if (connectorResources) {
+                strimziBuilder.withConnectorResources();
+            }
             return this;
         }
 
         public OcpKafkaConnectDeployer.Builder withOperatorController(StrimziOperatorController operatorController) {
             this.operatorController = operatorController;
+            operatorController.getPullSecretName().ifPresent(strimziBuilder::withPullSecret);
+
             return this;
         }
 
@@ -97,44 +91,43 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
         public OcpKafkaConnectDeployer build() {
             return new OcpKafkaConnectDeployer(
                     project,
-                    kafkaConnectBuilder,
-                    cfgYamlPath,
-                    connectorResources,
+                    strimziBuilder,
+                    configMap,
                     operatorController,
-                    exposedApi,
-                    exposedMetrics,
-                    ocpClient, httpClient);
+                    ocpClient,
+                    httpClient);
+        }
+
+        public Builder withKcBuild(boolean kcBuild) {
+            if (kcBuild) {
+                strimziBuilder
+                        .withBuild()
+                        .withStandardPlugins();
+            }
+            else {
+                strimziBuilder.withImage(STRIMZI_KC_IMAGE);
+            }
+            return this;
         }
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaConnectDeployer.class);
 
-    private final KafkaConnectBuilder kafkaConnectBuilder;
-    private final String cfgYamlPath;
-    private final boolean connectorResources;
+    private final StrimziKafkaConnectBuilder strimziBuilder;
+    private final ConfigMap configMap;
     private final StrimziOperatorController operatorController;
-    private final String pullSecretName;
-    private final boolean exposedApi;
-    private final boolean exposedMetrics;
 
     private OcpKafkaConnectDeployer(
                                     String project,
-                                    KafkaConnectBuilder kafkaConnectBuilder,
-                                    String cfgYamlPath,
-                                    boolean connectorResources,
+                                    StrimziKafkaConnectBuilder strimziBuilder,
+                                    ConfigMap configMap,
                                     StrimziOperatorController operatorController,
-                                    boolean exposedApi,
-                                    boolean exposedMetrics,
                                     OpenShiftClient ocp,
                                     OkHttpClient http) {
         super(project, ocp, http);
-        this.kafkaConnectBuilder = kafkaConnectBuilder;
-        this.cfgYamlPath = cfgYamlPath;
-        this.connectorResources = connectorResources;
+        this.strimziBuilder = strimziBuilder;
+        this.configMap = configMap;
         this.operatorController = operatorController;
-        this.pullSecretName = operatorController.getPullSecretName();
-        this.exposedApi = exposedApi;
-        this.exposedMetrics = exposedMetrics;
     }
 
     /**
@@ -144,33 +137,23 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
     @Override
     public OcpKafkaConnectController deploy() throws InterruptedException {
         LOGGER.info("Deploying KafkaConnect");
-        Build kcBuild = kafkaConnectBuilder.buildSpec().getBuild();
 
-        if (cfgYamlPath != null) {
+        if (configMap != null) {
             deployConfigMap();
         }
 
-        if (connectorResources) {
-            configureConnectorResources(kafkaConnectBuilder);
+        if (strimziBuilder.hasBuild()) {
+            deployImageStream();
         }
 
-        if (pullSecretName != null) {
-            configurePullSecret(kafkaConnectBuilder, kcBuild);
-        }
-
-        if (kcBuild != null && "imagestream".equals(kcBuild.getOutput().getType())) {
-            deployImageStream(kcBuild);
-        }
-
-        KafkaConnect kafkaConnect = kafkaConnectBuilder.build();
+        KafkaConnect kafkaConnect = strimziBuilder.build();
         kafkaConnect = kafkaConnectOperation().createOrReplace(kafkaConnect);
 
         OcpKafkaConnectController controller = new OcpKafkaConnectController(
                 kafkaConnect,
                 operatorController,
                 ocp,
-                http,
-                connectorResources);
+                http);
         controller.waitForCluster();
 
         return controller;
@@ -178,44 +161,27 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
     }
 
     private void deployConfigMap() {
-        ocp.configMaps().inNamespace(project)
-                .createOrReplace(YAML.fromResource(cfgYamlPath, ConfigMap.class));
+        ocp.configMaps().inNamespace(project).createOrReplace(configMap);
     }
 
-    private void deployImageStream(Build kcBuild) {
-        String[] image = kcBuild.getOutput().getImage().split(":", 2);
+    private void deployImageStream() {
+        Optional<String> imageStream = strimziBuilder.imageStream();
+        if (!imageStream.isPresent()) {
+            throw new IllegalStateException("Image stream missing");
+        }
+
+        String[] image = strimziBuilder.imageStream().get().split(":", 2);
+
         ImageStream is = new ImageStreamBuilder()
                 .withNewMetadata().withName(image[0]).endMetadata()
                 .withNewSpec()
                 .withNewLookupPolicy(true)
                 .endSpec()
                 .build();
+
         ocp.imageStreams()
                 .inNamespace(project)
                 .createOrReplace(is);
-    }
-
-    private void configurePullSecret(KafkaConnectBuilder kcBuilder, Build kcBuild) {
-        KafkaConnectTemplate template = kcBuilder.buildSpec().getTemplate();
-        KafkaConnectTemplateBuilder templateBuilder = new KafkaConnectTemplateBuilder(template);
-
-        if (kcBuild == null) {
-            templateBuilder.withNewPod().addNewImagePullSecret(pullSecretName).endPod();
-        }
-        else {
-            templateBuilder.withNewBuildConfig().withPullSecret(pullSecretName).endBuildConfig();
-        }
-        kcBuilder
-                .editSpec()
-                .withTemplate(templateBuilder.build())
-                .endSpec();
-    }
-
-    private void configureConnectorResources(KafkaConnectBuilder kcBuilder) {
-        kcBuilder
-                .editMetadata()
-                .addToAnnotations("strimzi.io/use-connector-resources", "true")
-                .endMetadata();
     }
 
     private NonNamespaceOperation<KafkaConnect, KafkaConnectList, Resource<KafkaConnect>> kafkaConnectOperation() {

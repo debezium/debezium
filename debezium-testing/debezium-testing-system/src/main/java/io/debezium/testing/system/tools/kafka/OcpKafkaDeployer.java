@@ -10,16 +10,13 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
 import io.debezium.testing.system.tools.Deployer;
-import io.debezium.testing.system.tools.kafka.builders.kafka.OcpKafkaBuilderFactory;
+import io.debezium.testing.system.tools.kafka.builders.kafka.StrimziKafkaBuilder;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaList;
 import io.strimzi.api.kafka.model.Kafka;
-import io.strimzi.api.kafka.model.KafkaBuilder;
-import io.strimzi.api.kafka.model.template.PodTemplate;
-import io.strimzi.api.kafka.model.template.PodTemplateBuilder;
 
 import okhttp3.OkHttpClient;
 
@@ -38,6 +35,11 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
         private OpenShiftClient ocpClient;
         private OkHttpClient httpClient;
         private StrimziOperatorController operatorController;
+        private final StrimziKafkaBuilder strimziBuilder;
+
+        public Builder(StrimziKafkaBuilder strimziBuilder) {
+            this.strimziBuilder = strimziBuilder;
+        }
 
         public Builder withProject(String project) {
             this.project = project;
@@ -56,25 +58,26 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
 
         public Builder withOperatorController(StrimziOperatorController operatorController) {
             this.operatorController = operatorController;
+            operatorController.getPullSecretName().ifPresent(strimziBuilder::withPullSecret);
             return this;
         }
 
         @Override
         public OcpKafkaDeployer build() {
-            return new OcpKafkaDeployer(project, operatorController, ocpClient, httpClient);
+            return new OcpKafkaDeployer(project, strimziBuilder, operatorController, ocpClient, httpClient);
         }
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaDeployer.class);
 
-    private final String pullSecretName;
+    private final StrimziKafkaBuilder strimziBuilder;
     private final StrimziOperatorController operatorController;
 
-    private OcpKafkaDeployer(String project, StrimziOperatorController operatorController,
+    private OcpKafkaDeployer(String project, StrimziKafkaBuilder strimziBuilder, StrimziOperatorController operatorController,
                              OpenShiftClient ocp, OkHttpClient http) {
         super(project, ocp, http);
+        this.strimziBuilder = strimziBuilder;
         this.operatorController = operatorController;
-        this.pullSecretName = this.operatorController.getPullSecretName();
     }
 
     /**
@@ -84,36 +87,13 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
      */
     @Override
     public OcpKafkaController deploy() throws InterruptedException {
-        LOGGER.info("Deploying Kafka with default config");
-        KafkaBuilder builder = OcpKafkaBuilderFactory.createDefaultConfig();
-
-        if (pullSecretName != null) {
-            configurePullSecret(builder);
-        }
-
-        Kafka kafka = kafkaOperation().createOrReplace(builder.build());
+        LOGGER.info("Deploying Kafka Cluster");
+        Kafka kafka = kafkaOperation().createOrReplace(strimziBuilder.build());
 
         OcpKafkaController controller = new OcpKafkaController(kafka, operatorController, ocp);
         controller.waitForCluster();
 
         return controller;
-    }
-
-    public void configurePullSecret(KafkaBuilder builder) {
-        PodTemplate podTemplate = new PodTemplateBuilder().addNewImagePullSecret(pullSecretName).build();
-
-        builder
-                .editSpec()
-                .editKafka()
-                .withNewTemplate().withPod(podTemplate).endTemplate()
-                .endKafka()
-                .editZookeeper()
-                .withNewTemplate().withPod(podTemplate).endTemplate()
-                .endZookeeper()
-                .editEntityOperator()
-                .withNewTemplate().withPod(podTemplate).endTemplate()
-                .endEntityOperator()
-                .endSpec();
     }
 
     private NonNamespaceOperation<Kafka, KafkaList, Resource<Kafka>> kafkaOperation() {

@@ -57,7 +57,6 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     private final StrimziOperatorController operatorController;
     private final OpenShiftUtils ocpUtils;
     private final HttpUtils httpUtils;
-    private final boolean connectorResources;
     private final String name;
 
     private KafkaConnect kafkaConnect;
@@ -69,8 +68,7 @@ public class OcpKafkaConnectController implements KafkaConnectController {
                                      KafkaConnect kafkaConnect,
                                      StrimziOperatorController operatorController,
                                      OpenShiftClient ocp,
-                                     OkHttpClient http,
-                                     boolean connectorResources) {
+                                     OkHttpClient http) {
         this.kafkaConnect = kafkaConnect;
         this.name = kafkaConnect.getMetadata().getName();
         this.operatorController = operatorController;
@@ -79,7 +77,6 @@ public class OcpKafkaConnectController implements KafkaConnectController {
         this.project = kafkaConnect.getMetadata().getNamespace();
         this.ocpUtils = new OpenShiftUtils(ocp);
         this.httpUtils = new HttpUtils(http);
-        this.connectorResources = connectorResources;
     }
 
     /**
@@ -204,8 +201,13 @@ public class OcpKafkaConnectController implements KafkaConnectController {
 
     }
 
+    private boolean hasConnectorResourcesEnabled() {
+        Map<String, String> annotations = kafkaConnect.getMetadata().getAnnotations();
+        return "true".equals(annotations.get("strimzi.io/use-connector-resources"));
+    }
+
     private ConnectorDeployer getConnectorDeployer() {
-        if (connectorResources) {
+        if (hasConnectorResourcesEnabled()) {
             return new CustomResourceConnectorDeployer(kafkaConnect, ocp);
         }
         else {

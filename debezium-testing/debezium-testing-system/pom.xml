@@ -466,9 +466,11 @@
                 <test.ocp.project.db2>${ocp.project.db2}</test.ocp.project.db2>
 
                 <!--Strimzi Configuration-->
+                <test.strimzi.version.kafka>${version.strimzi.kafka}</test.strimzi.version.kafka>
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
                 <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
                 <test.strimzi.kc.build>${strimzi.kc.build}</test.strimzi.kc.build>
+                <test.strimzi.kc.image>${image.kc}</test.strimzi.kc.image>
                 <test.strimzi.kc.log.level.dbz>${strimzi.kc.log.level.dbz}</test.strimzi.kc.log.level.dbz>
 
                 <!--Apicurio configuration-->
@@ -520,6 +522,14 @@
                 <test.database.oracle.dbz.password>${database.oracle.dbz.password}</test.database.oracle.dbz.password>
                 <test.database.oracle.dbname>${database.oracle.dbname}</test.database.oracle.dbname>
                 <test.database.oracle.pdbname>${database.oracle.pdbname}</test.database.oracle.pdbname>
+
+                <!-- Artifact server-->
+                <test.as.url>${as.url}</test.as.url>
+                <test.as.debezium.version>${as.debezium.version}</test.as.debezium.version>
+                <test.as.apicurio.version>${as.apicurio.version}</test.as.apicurio.version>
+                <test.as.apicurio.url>${as.apicurio.url}</test.as.apicurio.url>
+                <test.as.db2.driver.version>${version.db2.driver}</test.as.db2.driver.version>
+                <test.as.oracle.driver.version>${version.oracle.driver}</test.as.oracle.driver.version>
               </systemPropertyVariables>
             </configuration>
 

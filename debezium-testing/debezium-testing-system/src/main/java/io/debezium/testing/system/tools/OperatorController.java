@@ -138,7 +138,7 @@ public class OperatorController {
         LOGGER.info("Deploying Secret from " + yamlPath);
         this.pullSecret = ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
 
-        String secretName = getPullSecretName();
+        String secretName = pullSecret.getMetadata().getName();
         ocpUtils.linkPullSecret(project, "default", secretName);
         ocpUtils.linkPullSecret(project, "builder", secretName);
         setImagePullSecret(secretName);
@@ -158,8 +158,8 @@ public class OperatorController {
      * Gets pull secret name
      * @return name of the pull secret associated with this operator
      */
-    public String getPullSecretName() {
-        return getPullSecret().map(ps -> ps.getMetadata().getName()).orElse(null);
+    public Optional<String> getPullSecretName() {
+        return getPullSecret().map(ps -> ps.getMetadata().getName());
     }
 
     private Deployment waitForAvailable() {
