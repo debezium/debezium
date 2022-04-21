@@ -64,7 +64,7 @@ else
 fi
 
 # Run maven build
-mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae \
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-bom,debezium-connector-mysql -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Dversion.mysql.server=$MYSQL_VERSION \
     -Dmysql.port=4301 \
