@@ -868,7 +868,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         for (Object fieldValue : fields.values()) {
             if (fieldValue instanceof Document) {
                 result[idx++] = ((Document) fieldValue).toJson();
-            } else {
+            }
+            else {
                 result[idx++] = fieldValue.toString();
             }
         }
