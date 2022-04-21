@@ -92,7 +92,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @PreDestroy
     void close() {
         try {
-            client.close();
+            if (client != null) {
+                client.close();
+            }
         }
         catch (Exception e) {
             LOGGER.warn("Exception while closing Jedis: {}", client, e);
