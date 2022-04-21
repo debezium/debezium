@@ -3195,6 +3195,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4852")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "User-defined types not supported")
     public void shouldCaptureChangeForTableWithUnsupportedColumnType() throws Exception {
         TestHelper.dropTable(connection, "dbz4852");
         try {
@@ -3305,6 +3306,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4907")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only LogMiner performs flushes")
     public void shouldContinueToUpdateOffsetsEvenWhenTableIsNotChanged() throws Exception {
         TestHelper.dropTable(connection, "dbz4907");
         try {
