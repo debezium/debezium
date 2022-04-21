@@ -73,7 +73,7 @@ case $SQL_SERVER_VERSION in
 esac
                     
 # Run maven build
-mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-sqlserver -am -fae \
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-bom,debezium-connector-sqlserver -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Ddocker.filter=$DATABASE_IMAGE \
     -Dinsecure.repositories=WARN \
