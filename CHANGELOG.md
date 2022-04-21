@@ -2,6 +2,56 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.1.Final
+April 21st 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12384300)
+
+### New features since 1.9.0.Final
+
+* Extract component preparation from test-suite job [DBZ-4601](https://issues.redhat.com/browse/DBZ-4601)
+* Making Postgres `PSQLException: This connection has been closed.` retriable [DBZ-4948](https://issues.redhat.com/browse/DBZ-4948)
+
+
+### Breaking changes since 1.9.0.Final
+
+None
+
+
+### Fixes since 1.9.0.Final
+
+* Simplify and clean up system testsuite job [DBZ-4570](https://issues.redhat.com/browse/DBZ-4570)
+* Getting java.sql.SQLException: ORA-01291: missing logfile while running with archive log only [DBZ-4879](https://issues.redhat.com/browse/DBZ-4879)
+* Debezium uses wrong LCR format for Oracle 12.1 [DBZ-4932](https://issues.redhat.com/browse/DBZ-4932)
+* Oracle duplicates on connector restart [DBZ-4936](https://issues.redhat.com/browse/DBZ-4936)
+* Oracle truncate causes exception [DBZ-4953](https://issues.redhat.com/browse/DBZ-4953)
+* NPE caused by io.debezium.connector.oracle.antlr.listener.ColumnDefinitionParserListener.resolveColumnDataType [DBZ-4976](https://issues.redhat.com/browse/DBZ-4976)
+* Oracle connector may throw NullPointerException when stopped after an unsuccessful startup [DBZ-4978](https://issues.redhat.com/browse/DBZ-4978)
+* NPE for non-table related DDLs [DBZ-4979](https://issues.redhat.com/browse/DBZ-4979)
+* CTE statements aren't parsed by MySQL connector [DBZ-4980](https://issues.redhat.com/browse/DBZ-4980)
+* Unsupported MySQL Charsets during Snapshotting for fields with custom converter [DBZ-4983](https://issues.redhat.com/browse/DBZ-4983)
+* Outbox Transform does not allow expanded payload with additional fields in the envelope [DBZ-4989](https://issues.redhat.com/browse/DBZ-4989)
+* Redis Sink - clientSetname is taking place before auth [DBZ-4993](https://issues.redhat.com/browse/DBZ-4993)
+* CLOB with single quotes causes parser exception [DBZ-4994](https://issues.redhat.com/browse/DBZ-4994)
+* Oracle DDL parser fails on references_clause with no column list [DBZ-4996](https://issues.redhat.com/browse/DBZ-4996)
+* Can't use 'local' database through mongos [DBZ-5003](https://issues.redhat.com/browse/DBZ-5003)
+* Triggering Incremental Snapshot on MongoDB connector throws json parsing error [DBZ-5015](https://issues.redhat.com/browse/DBZ-5015)
+* Redis Sink - Check if client is not null before closing it [DBZ-5019](https://issues.redhat.com/browse/DBZ-5019)
+
+
+### Other changes since 1.9.0.Final
+
+* QE jenkins jobs consolidation [DBZ-4235](https://issues.redhat.com/browse/DBZ-4235)
+* Create trigger job for connector jobs [DBZ-4558](https://issues.redhat.com/browse/DBZ-4558)
+* Debezium UI dependency updates [DBZ-4881](https://issues.redhat.com/browse/DBZ-4881)
+* Read-only incremental snapshots blog post [DBZ-4917](https://issues.redhat.com/browse/DBZ-4917)
+* Update Pulsar client version used by Debezium Server [DBZ-4961](https://issues.redhat.com/browse/DBZ-4961)
+* Intermittent failure of RedisStreamIT.testRedisConnectionRetry [DBZ-4966](https://issues.redhat.com/browse/DBZ-4966)
+* Debezium raised an exception and the task was still running [DBZ-4987](https://issues.redhat.com/browse/DBZ-4987)
+* Nexus Staging Maven plugin is incompatible with OpenJDK 17 [DBZ-5025](https://issues.redhat.com/browse/DBZ-5025)
+* OracleOffsetContextTest should be scoped to LogMiner only [DBZ-5028](https://issues.redhat.com/browse/DBZ-5028)
+* Scope several new Oracle tests to LogMiner only [DBZ-5029](https://issues.redhat.com/browse/DBZ-5029)
+
+
+
 ## 1.9.0.Final
 April 5th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379896)
 
