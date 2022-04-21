@@ -2667,6 +2667,27 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-5033")
+    public void shouldIgnoreNullOffsetsWhenRecoveringHistory() {
+        final Configuration config1 = TestHelper.defaultMultiPartitionConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
+                .build();
+        start(SqlServerConnector.class, config1);
+        assertConnectorIsRunning();
+        TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE);
+        stopConnector();
+
+        TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_2);
+        final Configuration config2 = TestHelper.defaultMultiPartitionConfig(
+                TestHelper.TEST_DATABASE, TestHelper.TEST_DATABASE_2)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+        start(SqlServerConnector.class, config2);
+        assertConnectorIsRunning();
+        stopConnector();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
