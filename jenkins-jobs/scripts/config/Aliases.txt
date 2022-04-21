@@ -126,5 +126,6 @@ AleksejsSibanovs,Aleksejs Sibanovs
 nenad,Nenad Stojanovikj
 miphik,Andrey Savchuk
 narzdavid,Narz David
-LarsWerkman, Lars Werkman
-chadthman, Chad Marmon
+LarsWerkman,Lars Werkman
+chadthamn,Chad Marmon
+xqshe,Xinquan She

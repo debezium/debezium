@@ -6,6 +6,7 @@ Abhishek Hodavdekar
 Addison Higham
 Adham
 Adrian Kreuziger
+Aidas
 Ahmed Eljami
 Akshath Patkar
 Aleksejs Sibanovs
@@ -380,6 +381,7 @@ Willie Zhu
 Wout Scheepers
 Xiao Fu
 Xiaopu Zhu
+Xinquan She
 Xuan Shen
 Yang Wu
 Yang Yang
