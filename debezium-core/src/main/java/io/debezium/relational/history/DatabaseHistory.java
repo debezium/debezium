@@ -19,6 +19,7 @@ import io.debezium.config.Field;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 
@@ -145,7 +146,8 @@ public interface DatabaseHistory {
      * reflect the latest state known to the history.
      *
      * @param offsets the map of information about the source database to corresponding point in history at which database
-     *                schema should be recovered
+     *                schema should be recovered; should contain at least one non-null offset
+     *                which is enforced in {@link HistorizedRelationalDatabaseSchema#recover(Offsets)}
      * @param schema the table definitions that should be changed to reflect the database schema at the desired point in history;
      *            may not be null
      * @param ddlParser the DDL parser that can be used to apply DDL statements to the given {@code schema}; may not be null
@@ -153,7 +155,9 @@ public interface DatabaseHistory {
     default void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser) {
         Map<Map<String, ?>, Map<String, ?>> offsetMap = new HashMap<>();
         for (Entry<? extends Partition, ? extends OffsetContext> entry : offsets) {
-            offsetMap.put(entry.getKey().getSourcePartition(), entry.getValue().getOffset());
+            if (entry.getValue() != null) {
+                offsetMap.put(entry.getKey().getSourcePartition(), entry.getValue().getOffset());
+            }
         }
 
         recover(offsetMap, schema, ddlParser);
