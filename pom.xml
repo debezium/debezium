@@ -75,7 +75,7 @@
         <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
         <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
-        <version.javadoc.plugin>3.3.2</version.javadoc.plugin>
+        <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
         <version.code.formatter>2.16.0</version.code.formatter>
         <version.surefire.plugin>3.0.0-M3</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
@@ -382,6 +382,12 @@
                         <configuration>
                             <show>private</show>
                             <nohelp>true</nohelp>
+                            <!--
+                                Tests are compiled with newer Java version so this must
+                                be reflected in Javadoc, otherwise the plug-in would fail.
+                            -->
+                            <release>${maven.compiler.testRelease}</release>
+                            <debug>true</debug>
                         </configuration>
                         <executions>
                             <execution>
