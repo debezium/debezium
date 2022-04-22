@@ -79,11 +79,11 @@
             <artifactId>debezium-connector-postgres</artifactId>
             <scope>test</scope>
         </dependency>
-		<dependency>
-		    <groupId>org.testcontainers</groupId>
-		    <artifactId>gcloud</artifactId>
-		    <scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>gcloud</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
