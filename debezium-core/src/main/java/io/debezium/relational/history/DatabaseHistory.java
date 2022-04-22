@@ -24,8 +24,8 @@ import io.debezium.relational.ddl.DdlParser;
 
 /**
  * A history of the database schema described by a {@link Tables}. Changes to the database schema can be
- * {@link #record(Map, Map, String, Tables, String) recorded}, and a {@link Tables database schema} can be
- * {@link #record(Map, Map, String, Tables, String) recovered} to various points in that history.
+ * {@link #record(Map, Map, String, String) recorded}, and a {@link Tables database schema} can be
+ * {@link #record(Map, Map, String, String) recovered} to various points in that history.
  *
  * @author Randall Hauch
  */
@@ -140,7 +140,7 @@ public interface DatabaseHistory {
 
     /**
      * Recover the {@link Tables database schema} to a known point in its history. Note that it is possible to recover the
-     * database schema to a point in history that is earlier than what has been {@link #record(Map, Map, String, Tables, String)
+     * database schema to a point in history that is earlier than what has been {@link #record(Map, Map, String, String)
      * recorded}. Likewise, when recovering to a point in history <em>later</em> than what was recorded, the database schema will
      * reflect the latest state known to the history.
      *
@@ -166,7 +166,7 @@ public interface DatabaseHistory {
     void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser);
 
     /**
-     * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator, DatabaseHistoryListener)}.
+     * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator, DatabaseHistoryListener, boolean)}.
      */
     void stop();
 
