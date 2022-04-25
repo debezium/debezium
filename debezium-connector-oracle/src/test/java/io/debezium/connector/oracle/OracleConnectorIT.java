@@ -3456,6 +3456,60 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5006")
+    public void shouldSupportTablesWithForwardSlashes() throws Exception {
+        TestHelper.dropTable(connection, "\"dbz/5006\"");
+        try {
+            connection.execute("CREATE TABLE \"dbz/5006\" (id numeric(9,0) primary key, data varchar2(50))");
+            connection.execute("INSERT INTO \"dbz/5006\" (id,data) values (1, 'Record1')");
+            TestHelper.streamTable(connection, "\"dbz/5006\"");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.dbz/5006")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // NOTE: Forward slashes are not valid in topic names, will be converted to underscore.
+            // The following takes this into account.
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.dbz_5006");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidRead(tableRecords.get(0), "ID", 1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            assertNoRecordsToConsume();
+
+            connection.execute("INSERT INTO \"dbz/5006\" (id,data) values (2,'Record2')");
+            records = consumeRecordsByTopic(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.dbz_5006");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 2);
+
+            connection.execute("UPDATE \"dbz/5006\" SET data = 'Record2u' WHERE id = 2");
+            records = consumeRecordsByTopic(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.dbz_5006");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidUpdate(tableRecords.get(0), "ID", 2);
+
+            connection.execute("DELETE \"dbz/5006\" WHERE id = 1");
+            records = consumeRecordsByTopic(2);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.dbz_5006");
+            assertThat(tableRecords).hasSize(2);
+            VerifyRecord.isValidDelete(tableRecords.get(0), "ID", 1);
+            VerifyRecord.isValidTombstone(tableRecords.get(1));
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"dbz/5006\"");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection()) {
             admin.resetSessionToCdb();
