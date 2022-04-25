@@ -34,6 +34,7 @@ jobs:
       rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
+      debezium-ui-changed: ${{ steps.changed-files-debezium-ui.outputs.any_changed }}
       ddl-parser-changed: ${{ steps.changed-files-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
     steps:
@@ -138,6 +139,18 @@ jobs:
         with:
           files: |
             debezium-testing/**
+
+      - name: Get modified files (Debezium UI)
+        id: changed-files-debezium-ui
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-core/**
+            support/checkstyle/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            pom.xml
+            .github/workflows/debezium-workflow.yml
 
       - name: Get modified files (DDL parser)
         id: changed-files-ddl-parser
@@ -842,3 +855,36 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn         
           -Dmaven.wagon.http.pool=false 
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120          
+
+  build_ui:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.debezium-ui-changed == 'true' }}
+    name: "UI"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (UI)
+        uses: actions/checkout@v2
+        with:
+          repository: debezium/debezium-ui
+          path: debezium-ui
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 11
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium UI
+        run: >
+          ./mvnw clean install -f debezium-ui/backend/pom.xml -am -pl backend -B
+          -Ddebezium.test.records.waittime=20
+          -Dformat.formatter.goal=validate
+          -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
