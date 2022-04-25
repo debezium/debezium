@@ -505,8 +505,10 @@ i.e. after this value is reached, the wait time will not increase further by the
 |The max timeout for individual publish requests to Cloud Pub/Sub.
 
 |[[address]]<<address, `debezium.sink.pubsub.address`>>
-|`null`
-|The address of the pubsub emulator. Only to be used in a dev or test environment with the https://cloud.google.com/pubsub/docs/emulator[pubsub emulator]. Unless this value is set, debezium-server will connect to a cloud pubsub instance running in a gcp project, which is the desired behavior in a production environment. 
+|
+|The address of the pubsub emulator.
+Only to be used in a dev or test environment with the https://cloud.google.com/pubsub/docs/emulator[pubsub emulator].
+Unless this value is set, debezium-server will connect to a cloud pubsub instance running in a gcp project, which is the desired behavior in a production environment. 
 
 |===
 
