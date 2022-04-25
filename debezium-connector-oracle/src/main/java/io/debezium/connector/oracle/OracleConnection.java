@@ -487,4 +487,22 @@ public class OracleConnection extends JdbcConnection {
         }
         return column;
     }
+
+    @Override
+    protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog,
+                                                           String schemaNamePattern,
+                                                           String tableName,
+                                                           Tables.TableFilter tableFilter,
+                                                           ColumnNameFilter columnFilter,
+                                                           DatabaseMetaData metadata,
+                                                           Set<TableId> viewIds)
+            throws SQLException {
+        // The Oracle JDBC driver expects that if the table name contains a "/" character that
+        // the table name is pre-escaped prior to the JDBC driver call, or else it throws an
+        // exception about the character sequence being improperly escaped.
+        if (tableName != null && tableName.contains("/")) {
+            tableName = tableName.replace("/", "//");
+        }
+        return super.getColumnsDetails(databaseCatalog, schemaNamePattern, tableName, tableFilter, columnFilter, metadata, viewIds);
+    }
 }

@@ -1221,9 +1221,9 @@ public class JdbcConnection implements AutoCloseable {
         return catalogName;
     }
 
-    private Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
-                                                         String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
-                                                         final Set<TableId> viewIds)
+    protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
+                                                           String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
+                                                           final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
         try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
