@@ -211,21 +211,24 @@ apply the following configuration to the connector:
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
-value.converter=io.debezium.converters.ByteBufferConverter
+value.converter=io.debezium.converters.ByteArrayConverter
 ----
 
 By default, the `payload` field value (the Avro data) is the only message value.
-Configuration of `ByteBufferConverter` as the value converter propagates the `payload` field value as-is into the Kafka message value.
+Configuration of `ByteArrayConverter` as the value converter propagates the `payload` field value as-is into the Kafka message value.
+
+Note that this differs from the `ByteBufferConverter` suggested for other SMTs.
+This is due to the different approach MongoDB takes to storing byte arrays internally.
 
 The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
-These events cannot be serialized by the `ByteBufferConverter` so additional configuration must be provided so the converter knows how to serialize these events.
+These events cannot be serialized by the `ByteArrayConverter` so additional configuration must be provided so the converter knows how to serialize these events.
 As an example, the following configuration illustrates using the Apache Kafka `JsonConverter` with no schemas:
 
 [source]
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
-value.converter=io.debezium.converters.ByteBufferConverter
+value.converter=io.debezium.converters.ByteArrayConverter
 value.converter.delegate.converter.type=org.apache.kafka.connect.json.JsonConverter
 value.converter.delegate.converter.type.schemas.enable=false
 ----
