@@ -3421,6 +3421,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DbZ-3318")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
     public void shouldSuccessfullyConnectAndStreamWithDatabaseUrl() throws Exception {
         connection.execute("INSERT INTO customer (id,name,score) values (1001, 'DBZ3668', 100)");
 
