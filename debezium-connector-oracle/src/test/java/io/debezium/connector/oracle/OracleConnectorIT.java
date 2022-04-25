@@ -3492,6 +3492,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4963")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
     public void shouldRestartLogMiningSessionAfterMaxSessionElapses() throws Exception {
         TestHelper.dropTable(connection, "dbz4963");
         try {
