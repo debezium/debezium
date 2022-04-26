@@ -16,29 +16,16 @@
     <properties>
 
         <!-- Maven Plugins -->
-        <version.compiler.plugin>3.8.1</version.compiler.plugin>
-        <version.resources.plugin>3.1.0</version.resources.plugin>
-        <version.dependency.plugin>3.1.1</version.dependency.plugin>
-        <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
-
-        <version.jar.plugin>3.0.2</version.jar.plugin>
-        <version.source.plugin>3.1.0</version.source.plugin>
-        <version.assembly.plugin>3.1.1</version.assembly.plugin>
-        <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
         <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
-        <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
-        <version.javadoc.plugin>3.3.2</version.javadoc.plugin>
         <version.code.formatter>2.16.0</version.code.formatter>
         <version.surefire.plugin>3.0.0-M4</version.surefire.plugin>
-        <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.6.2</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
         <version.jandex>1.0.8</version.jandex>
         <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
-        <version.build-helper.plugin>1.9.1</version.build-helper.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
