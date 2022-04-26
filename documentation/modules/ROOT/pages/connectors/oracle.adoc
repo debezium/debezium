@@ -3738,3 +3738,16 @@ database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(AD
 
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
+
+[id="oracle-oracle-11-exception-ora01882"]
+=== Connector fails to connect due to ORA-01882 with Oracle 11g
+
+When using `ojdbc8.jar` with Oracle 11g, the connector may raise the following error on start up:
+
+```shell
+Caused by: java.sql.SQLException: ORA-00604: error occurred at recursive SQL level 1
+ORA-01882: timezone region not found
+```
+
+In order to use `ojdbc8.jar` with Oracle 11g, the connector configuration must include `database.oracle.jdbc.timezoneAsRegion=false`.
+This allows the driver to be able to successfully connect to Oracle 11g.
