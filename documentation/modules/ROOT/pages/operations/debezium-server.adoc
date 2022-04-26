@@ -190,7 +190,6 @@ The source configuration uses the same configuration properties that are describ
 |The name of the Java class implementing the source connector.
 
 |[[debezium-source-offset-storage]]<<debezium-source-offset-storage, `debezium.source.offset.storage`>>
-|
 |Class to use for storing and retrieving offsets for non-Kafka deployments.
 |To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingStore`
 
