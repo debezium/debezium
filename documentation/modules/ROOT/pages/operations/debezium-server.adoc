@@ -534,6 +534,61 @@ When the alternative implementations are not available then the default ones are
 
 |===
 
+
+==== Pub/Sub Lite
+
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[pubsublite-type]]<<pubsublite-type, `debezium.sink.type` >>
+|
+|Must be set to `pubsublite`
+
+|[[pubsublite-project-id]]<<pubsublite-project-id, `debezium.sink.pubsublite.project.id` >>
+|system-wide default project id
+|A project name  or project id in which the target topics are created.
+
+|[[pubsublite-region]]<<pubsublite-region, `debezium.sink.pubsublite.region` >>
+|
+|Region where the topics are being created. Example `us-east1-b`.
+
+|[[pubsublite-ordering]]<<pubsublite-ordering, `debezium.sink.pubsublite.ordering.enabled`>>
+|`true`
+|Pub/Sub Lite can optionally use a message key to guarantee the delivery of the messages in with the same key to the https://cloud.google.com/pubsub/lite/docs/publishing#using_ordering_keys-[same partition].
+This feature can be disabled.
+
+|[[pubsublite-null-key]]<<pubsublite-null-key, `debezium.sink.pubsublite.null.key`>>
+|`default`
+|Tables without primary key sends messages with `null` key.
+This is not supported by Pub/Sub Lite so a surrogate key must be used.
+
+|===
+
+===== Injection points
+
+The Pub/Sub Lite sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[pubsublite-pub-builder]]<<pubsublite-pub-builder, `io.debezium.server.pubsub.PubSubLiteChangeConsumer.PublisherBuilder`>>
+|`@CustomConsumerBuilder`
+|A class that provides custom configured instance of a `Publisher` used to send messages to a dedicated topic.
+
+|[[pubsublite-ext-stream-name-mapper]]<<pubsublite-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical Pub/Sub Lite topic name. By default the same name is used.
+|===
+
+
 ==== HTTP Client
 
 The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
