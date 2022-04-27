@@ -1589,11 +1589,30 @@ ifdef::product[]
 The {prodname} Oracle connector is compatible with Oracle installed as a standalone instance.
 endif::product[]
 
-=== Built-in excluded schemas
+=== Schemas excluded from capture
 
-The {prodname} Oracle connector automatically excludes capturing changes from the following schemas:
-`appqossys`, `audsys`, `ctxsys`, `dvsys`, `dbsfwuser`, `dbsnmp`, `qsmadmin_internal`, `lbacsys`, `mdsys`, `ojvmsys`, `olapsys`, `orddata`, `ordsys`, `outln`, `sys`, `system`, `wmsys`, and `xdb`.
-In order to guarantee that a table is captured by the connector, please be sure to any other schema.
+When the {prodname} Oracle connector captures tables, it automatically excludes tables from the following schemas:
+
+* `appqossys`
+* `audsys`
+* `ctxsys`
+* `dvsys`
+* `dbsfwuser`
+* `dbsnmp`
+* `qsmadmin_internal`
+* `lbacsys`
+* `mdsys`
+* `ojvmsys`
+* `olapsys`
+* `orddata`
+* `ordsys`
+* `outln`
+* `sys`
+* `system`
+* `wmsys`
+* `xdb`
+
+To enable the connector to capture changes from a table, the table must use a schema that is not named in the preceding list.
 
 // Type: procedure
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
