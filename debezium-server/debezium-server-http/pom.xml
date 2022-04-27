@@ -139,4 +139,35 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Do not perform any Docker-related functionality
+              To use, specify "-DskipITs" on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>skip-integration-tests</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>skipITs</name>
+                </property>
+            </activation>
+            <properties>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>
