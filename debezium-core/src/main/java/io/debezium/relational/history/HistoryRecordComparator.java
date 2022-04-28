@@ -5,8 +5,6 @@
  */
 package io.debezium.relational.history;
 
-import java.util.function.BiFunction;
-
 import io.debezium.document.Document;
 
 /**
@@ -22,23 +20,6 @@ public class HistoryRecordComparator {
      * those fields that are in both records' {@link HistoryRecord#position() positions}.
      */
     public static final HistoryRecordComparator INSTANCE = new HistoryRecordComparator();
-
-    /**
-     * Create a {@link HistoryRecordComparator} that requires identical sources but will use the supplied function to compare
-     * positions.
-     *
-     * @param positionComparator the non-null function that returns {@code true} if the first position is at or before
-     *            the second position or {@code false} otherwise
-     * @return the comparator instance; never null
-     */
-    public static HistoryRecordComparator usingPositions(BiFunction<Document, Document, Boolean> positionComparator) {
-        return new HistoryRecordComparator() {
-            @Override
-            protected boolean isPositionAtOrBefore(Document position1, Document position2) {
-                return positionComparator.apply(position1, position2);
-            }
-        };
-    }
 
     /**
      * Determine if the first {@link HistoryRecord} is at the same or earlier point in time than the second {@link HistoryRecord}.

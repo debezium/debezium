@@ -24,25 +24,8 @@ import io.debezium.relational.Tables.TableFilter;
 @NotThreadSafe
 public class DdlChanges implements DdlParserListener {
 
-    private final String terminator;
     private final List<Event> events = new ArrayList<>();
     private final Set<String> databaseNames = new HashSet<>();
-
-    /**
-     * Create a new changes object with ';' as the terminator token.
-     */
-    public DdlChanges() {
-        this(null);
-    }
-
-    /**
-     * Create a new changes object with the designated terminator token.
-     *
-     * @param terminator the token used to terminate each statement; may be null
-     */
-    public DdlChanges(String terminator) {
-        this.terminator = terminator != null ? terminator : ";";
-    }
 
     /**
      * Clear all accumulated changes.
@@ -59,76 +42,6 @@ public class DdlChanges implements DdlParserListener {
     public void handle(Event event) {
         events.add(event);
         databaseNames.add(getDatabase(event));
-    }
-
-    /**
-     * Consume the events in the same order they were {@link #handle(io.debezium.relational.ddl.DdlParserListener.Event) recorded},
-     * but grouped by database name. Multiple sequential statements that were applied to the same database are grouped together.
-     * @param consumer the consumer
-     */
-    public void groupStatementStringsByDatabase(DatabaseStatementStringConsumer consumer) {
-        groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
-            final StringBuilder statements = new StringBuilder();
-            final Set<TableId> tables = new HashSet<>();
-            eventList.forEach(event -> {
-                statements.append(event.statement());
-                statements.append(terminator);
-                addTable(tables, event);
-            });
-            consumer.consume(dbName, tables, statements.toString());
-        });
-    }
-
-    private void addTable(final Set<TableId> tables, Event event) {
-        if (event instanceof TableEvent) {
-            tables.add(((TableEvent) event).tableId());
-        }
-    }
-
-    /**
-     * Consume the events in the same order they were {@link #handle(io.debezium.relational.ddl.DdlParserListener.Event) recorded},
-     * but grouped by database name. Multiple sequential statements that were applied to the same database are grouped together.
-     * @param consumer the consumer
-     */
-    public void groupStatementsByDatabase(DatabaseStatementConsumer consumer) {
-        groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
-            List<String> statements = new ArrayList<>();
-            final Set<TableId> tables = new HashSet<>();
-            eventList.forEach(event -> {
-                statements.add(event.statement());
-                addTable(tables, event);
-            });
-            consumer.consume(dbName, tables, statements);
-        });
-    }
-
-    /**
-     * Consume the events in the same order they were {@link #handle(io.debezium.relational.ddl.DdlParserListener.Event) recorded},
-     * but grouped by database name. Multiple sequential statements that were applied to the same database are grouped together.
-     * @param consumer the consumer
-     */
-    public void groupEventsByDatabase(DatabaseEventConsumer consumer) {
-        if (isEmpty()) {
-            return;
-        }
-        if (databaseNames.size() <= 1) {
-            consumer.consume(databaseNames.iterator().next(), events);
-            return;
-        }
-        List<Event> dbEvents = new ArrayList<>();
-        String currentDatabase = null;
-        for (Event event : events) {
-            String dbName = getDatabase(event);
-            if (currentDatabase == null || dbName.equals(currentDatabase)) {
-                currentDatabase = dbName;
-                // Accumulate the statement ...
-                dbEvents.add(event);
-            }
-            else {
-                // Submit the statements ...
-                consumer.consume(currentDatabase, dbEvents);
-            }
-        }
     }
 
     /**
@@ -197,10 +110,6 @@ public class DdlChanges implements DdlParserListener {
         return events.isEmpty();
     }
 
-    public boolean applyToMoreDatabasesThan(String name) {
-        return databaseNames.contains(name) ? databaseNames.size() > 1 : databaseNames.size() > 0;
-    }
-
     @Override
     public String toString() {
         return events.toString();
@@ -208,14 +117,6 @@ public class DdlChanges implements DdlParserListener {
 
     public static interface DatabaseEventConsumer {
         void consume(String databaseName, List<Event> events);
-    }
-
-    public static interface DatabaseStatementConsumer {
-        void consume(String databaseName, Set<TableId> tableList, List<String> ddlStatements);
-    }
-
-    public static interface DatabaseStatementStringConsumer {
-        void consume(String databaseName, Set<TableId> tableList, String ddlStatements);
     }
 
     /**

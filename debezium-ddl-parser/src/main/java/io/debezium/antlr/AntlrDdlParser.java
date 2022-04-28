@@ -54,12 +54,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected Tables databaseTables;
     protected DataTypeResolver dataTypeResolver;
 
-    public AntlrDdlParser(boolean throwErrorsFromTreeWalk) {
-        this(throwErrorsFromTreeWalk, false, false);
-    }
-
     public AntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments) {
-        super(";", includeViews, includeComments);
+        super(includeViews, includeComments);
         this.throwErrorsFromTreeWalk = throwErrorsFromTreeWalk;
     }
 
