@@ -168,6 +168,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       - name: Cache Maven Repository
         id: maven-cache-check
         uses: actions/cache@v2
@@ -215,6 +220,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
 
       - name: Cache Maven Repository
         id: maven-cache-check
@@ -270,6 +280,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -304,6 +319,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
@@ -340,6 +360,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -373,6 +398,10 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -409,6 +438,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -441,6 +475,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
@@ -483,6 +522,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -516,6 +560,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -548,6 +597,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -579,6 +633,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
@@ -614,6 +673,11 @@ jobs:
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
 
       # We explicitly use only the hash of the POM files from the core repository by default
       # For this build, we do not care if there are or are not changes in the sibling repository since this
@@ -678,6 +742,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       # We explicitly use only the hash of the POM files from the core repository by default
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
@@ -734,6 +803,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
 
       # We explicitly use only the hash of the POM files from the core repository by default
       # For this build, we do not care if there are or are not changes in the sibling repository since this

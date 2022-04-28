@@ -38,6 +38,11 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
+
       # This workflow uses its own dependency cache rather than the main debezium workflow cache because
       # we explicitly want to trigger this build on pushes separate from the other workflow.  
       - name: Cache Maven Repository
