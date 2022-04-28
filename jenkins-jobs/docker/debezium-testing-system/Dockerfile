@@ -3,7 +3,7 @@ USER root
 RUN microdnf install git   
 RUN microdnf install unzip
 
-ARG MAVEN=3.6.3
+ARG MAVEN=3.8.4
 ARG OCP_CLIENT=3.7.23
 
 RUN curl --retry 7 -Lo /tmp/client-tools.tar.gz "https://mirror.openshift.com/pub/openshift-v3/clients/${OCP_CLIENT}/linux/oc.tar.gz"
