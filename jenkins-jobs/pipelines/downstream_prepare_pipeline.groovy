@@ -77,6 +77,20 @@ pipeline {
                 }
             }
         }
+
+        stage('Create main artefact') {
+            steps {
+                sh '''
+                set -x
+                mkdir "${WORKSPACE}/amq-streams-all"
+                cp -R "${WORKSPACE}/strimzi" "${WORKSPACE}/amq-streams-all/strimzi"
+                cp "${WORKSPACE}/published_images.txt" "${WORKSPACE}/amq-streams-all/amq-streams-published-images.txt"
+                cp "${WORKSPACE}/published_images_dbz.txt" \\
+                "${WORKSPACE}/amq-streams-all/amq-streams-published-images-dbz.txt" || :
+                '''
+                zip(archive: true, zipFile: 'amq-streams-all.zip', dir: 'amq-streams-all')
+            }
+        }
     }
 
     post {

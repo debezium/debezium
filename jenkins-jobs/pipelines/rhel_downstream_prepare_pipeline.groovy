@@ -42,6 +42,7 @@ pipeline {
                         --dest-pass="${QUAY_PASSWORD}"                              \\
                         --img-output="${WORKSPACE}/published_image_dbz.txt"
                     '''
+                    zip(archive: true, zipFile: 'rhel-kafka-all.zip', glob: 'published_image_dbz.txt')
                 }
             }
         }

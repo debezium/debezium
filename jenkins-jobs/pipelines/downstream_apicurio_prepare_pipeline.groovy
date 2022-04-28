@@ -53,6 +53,14 @@ pipeline {
                         `if [ $PUSH_IMAGES = false ]; then echo " -s"; fi`            
                     '''
                     zip(archive: true, zipFile: 'apicurio-registry-install-examples.zip', dir: 'apicurio')
+
+                    sh '''
+                    set -x
+                    mkdir "${WORKSPACE}/apicurio-all"
+                    cp -R "${WORKSPACE}/apicurio" "${WORKSPACE}/apicurio-all/apicurio"
+                    cp "${WORKSPACE}/published_images.txt" "${WORKSPACE}/apicurio-all/apicurio-published-images.txt"
+                    '''
+                    zip(archive: true, zipFile: 'apicurio-all.zip', dir: 'apicurio-all')
                 }
             }
         }
