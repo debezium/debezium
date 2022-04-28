@@ -2,6 +2,81 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.0.Alpha1
+April 28th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12380203)
+
+### New features since 1.9.0.Final
+
+* Implement Pub/Sub Lite change consumer [DBZ-4450](https://issues.redhat.com/browse/DBZ-4450)
+* Include Instant Client in Docker build for Oracle in Tutorial examples [DBZ-1013](https://issues.redhat.com/browse/DBZ-1013)
+* Add Google Pub/Sub emulator support [DBZ-4491](https://issues.redhat.com/browse/DBZ-4491)
+* Making Postgres `PSQLException: This connection has been closed.` retriable [DBZ-4948](https://issues.redhat.com/browse/DBZ-4948)
+* ORA-04030: out of process memory when trying to allocate 65568 bytes (Logminer LCR c,krvxrib:buffer) [DBZ-4963](https://issues.redhat.com/browse/DBZ-4963)
+* Should store event header timestamp in HistoryRecord [DBZ-4998](https://issues.redhat.com/browse/DBZ-4998)
+* DBZ-UI: In the Edit/Duplicate connector flow make the access/secret key/password/Client Secret filed as editable. [DBZ-5001](https://issues.redhat.com/browse/DBZ-5001)
+* adjust LogMiner batch size based on comparison with currently used batch size [DBZ-5005](https://issues.redhat.com/browse/DBZ-5005)
+
+
+### Breaking changes since 1.9.0.Final
+
+* Phase out a code supporting old version of protobuf decoder [DBZ-703](https://issues.redhat.com/browse/DBZ-703)
+* Remove wal2json support [DBZ-4156](https://issues.redhat.com/browse/DBZ-4156)
+* Remove legacy implementation of MySQL connector [DBZ-4950](https://issues.redhat.com/browse/DBZ-4950)
+* Remove Confluent Avro converters from connect-base image [DBZ-4952](https://issues.redhat.com/browse/DBZ-4952)
+* Remove JDBC legacy date time properties from MySQL connector [DBZ-4965](https://issues.redhat.com/browse/DBZ-4965)
+* Use Maven 3.8.4 for Debezium builds [DBZ-5064](https://issues.redhat.com/browse/DBZ-5064)
+* Switch to Java 11 as a baseline [DBZ-4949](https://issues.redhat.com/browse/DBZ-4949)
+
+
+### Fixes since 1.9.0.Final
+
+* Connector throws java.lang.ArrayIndexOutOfBoundsException [DBZ-3848](https://issues.redhat.com/browse/DBZ-3848)
+* Document no relevant tables should be in the SYS or SYSTEM tablespaces. [DBZ-4762](https://issues.redhat.com/browse/DBZ-4762)
+* Getting java.sql.SQLException: ORA-01291: missing logfile while running with archive log only [DBZ-4879](https://issues.redhat.com/browse/DBZ-4879)
+* Debezium uses wrong LCR format for Oracle 12.1 [DBZ-4932](https://issues.redhat.com/browse/DBZ-4932)
+* Oracle duplicates on connector restart [DBZ-4936](https://issues.redhat.com/browse/DBZ-4936)
+* Oracle truncate causes exception [DBZ-4953](https://issues.redhat.com/browse/DBZ-4953)
+* NPE caused by io.debezium.connector.oracle.antlr.listener.ColumnDefinitionParserListener.resolveColumnDataType [DBZ-4976](https://issues.redhat.com/browse/DBZ-4976)
+* Oracle connector may throw NullPointerException when stopped after an unsuccessful startup [DBZ-4978](https://issues.redhat.com/browse/DBZ-4978)
+* NPE for non-table related DDLs [DBZ-4979](https://issues.redhat.com/browse/DBZ-4979)
+* CTE statements aren't parsed by MySQL connector [DBZ-4980](https://issues.redhat.com/browse/DBZ-4980)
+* Missing SSL configuration option in the debezium mongodb connector UI [DBZ-4981](https://issues.redhat.com/browse/DBZ-4981)
+* Unsupported MySQL Charsets during Snapshotting for fields with custom converter [DBZ-4983](https://issues.redhat.com/browse/DBZ-4983)
+* Outbox Transform does not allow expanded payload with additional fields in the envelope [DBZ-4989](https://issues.redhat.com/browse/DBZ-4989)
+* Redis Sink - clientSetname is taking place before auth [DBZ-4993](https://issues.redhat.com/browse/DBZ-4993)
+* CLOB with single quotes causes parser exception [DBZ-4994](https://issues.redhat.com/browse/DBZ-4994)
+* Oracle DDL parser fails on references_clause with no column list [DBZ-4996](https://issues.redhat.com/browse/DBZ-4996)
+* Can't use 'local' database through mongos [DBZ-5003](https://issues.redhat.com/browse/DBZ-5003)
+* Triggering Incremental Snapshot on MongoDB connector throws json parsing error [DBZ-5015](https://issues.redhat.com/browse/DBZ-5015)
+* Jenkins jobs fail to download debezium-bom [DBZ-5017](https://issues.redhat.com/browse/DBZ-5017)
+* Redis Sink - Check if client is not null before closing it [DBZ-5019](https://issues.redhat.com/browse/DBZ-5019)
+* Cassandra 3 handler does not process partition deletions correctly [DBZ-5022](https://issues.redhat.com/browse/DBZ-5022)
+* Keyspaces should be initialised in all schema change listeners on sessions startup. [DBZ-5023](https://issues.redhat.com/browse/DBZ-5023)
+* SQL Server in multi-partition mode fails if a new database is added to an existing configuration [DBZ-5033](https://issues.redhat.com/browse/DBZ-5033)
+* Mysql tests start before MySQL DB constainer is running [DBZ-5054](https://issues.redhat.com/browse/DBZ-5054)
+* Debezium server configuration properties not rendered correctly [DBZ-5058](https://issues.redhat.com/browse/DBZ-5058)
+
+
+### Other changes since 1.9.0.Final
+
+* Add integration test for Oracle database.url configurations [DBZ-3318](https://issues.redhat.com/browse/DBZ-3318)
+* Build Cassandra 3.x connector with Java 11 [DBZ-4910](https://issues.redhat.com/browse/DBZ-4910)
+* Add ignoreSnapshots build option to release pipeline [DBZ-4957](https://issues.redhat.com/browse/DBZ-4957)
+* Update Pulsar client version used by Debezium Server [DBZ-4961](https://issues.redhat.com/browse/DBZ-4961)
+* Intermittent failure of RedisStreamIT.testRedisConnectionRetry [DBZ-4966](https://issues.redhat.com/browse/DBZ-4966)
+* Add triggers for 2.x paths in Github CI [DBZ-4971](https://issues.redhat.com/browse/DBZ-4971)
+* Debezium raised an exception and the task was still running [DBZ-4987](https://issues.redhat.com/browse/DBZ-4987)
+* Nexus Staging Maven plugin is incompatible with OpenJDK 17 [DBZ-5025](https://issues.redhat.com/browse/DBZ-5025)
+* Duplicate definition of Maven plugins [DBZ-5026](https://issues.redhat.com/browse/DBZ-5026)
+* OracleOffsetContextTest should be scoped to LogMiner only [DBZ-5028](https://issues.redhat.com/browse/DBZ-5028)
+* Scope several new Oracle tests to LogMiner only [DBZ-5029](https://issues.redhat.com/browse/DBZ-5029)
+* Failure in jdk outreach jobs [DBZ-5041](https://issues.redhat.com/browse/DBZ-5041)
+* Update artifact server job listing script [DBZ-5051](https://issues.redhat.com/browse/DBZ-5051)
+* Add FAQ about ORA-01882 and Oracle 11 to documentation [DBZ-5057](https://issues.redhat.com/browse/DBZ-5057)
+* Upgrade to Quarkus 2.8.2.Final [DBZ-5062](https://issues.redhat.com/browse/DBZ-5062)
+
+
+
 ## 1.9.0.Final
 April 5th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12379896)
 

@@ -7,6 +7,7 @@ Addison Higham
 Adham
 Adrian Kreuziger
 Ahmed Eljami
+Aidas
 Akshath Patkar
 Aleksejs Sibanovs
 Alex Mansell
@@ -61,6 +62,7 @@ Brennan Vincent
 Camile Sing
 Cao Manh Dat
 Chad Marmon
+Calin Laurentiu Ilie
 Cheng Pan
 Ching Tsai
 Chris Baumbauer
@@ -371,6 +373,7 @@ Vivek Wassan
 Vladimir Osin
 Vojtech Juranek
 Vojtěch Juránek
+Wang Min Chao
 Wang-Yu-Chao
 WenChao Ke
 Wei Wu
@@ -381,6 +384,7 @@ Willie Zhu
 Wout Scheepers
 Xiao Fu
 Xiaopu Zhu
+Xinquan She
 Xuan Shen
 Yang Wu
 Yang Yang
