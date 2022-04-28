@@ -537,6 +537,8 @@ When the alternative implementations are not available then the default ones are
 
 ==== Pub/Sub Lite
 
+Google Cloud Pub/Sub Lite is a cost-effective alternative to Google Cloud Pub/Sub.
+Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
