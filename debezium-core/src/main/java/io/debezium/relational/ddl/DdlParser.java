@@ -39,12 +39,5 @@ public interface DdlParser {
 
     DdlChanges getDdlChanges();
 
-    /**
-     * The token used to terminate a DDL statement.
-     *
-     * @return the terminating token; never null
-     */
-    String terminator();
-
     SystemVariables systemVariables();
 }

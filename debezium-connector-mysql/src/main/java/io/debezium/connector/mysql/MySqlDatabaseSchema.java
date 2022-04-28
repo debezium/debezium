@@ -30,7 +30,6 @@ import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlChanges;
-import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
@@ -41,7 +40,6 @@ import io.debezium.relational.ddl.DdlParserListener.TableEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexDroppedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexEvent;
-import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.schema.TopicSelector;
@@ -56,16 +54,6 @@ import io.debezium.util.Strings;
  * the {@link Tables table definitions} and the Kafka Connect {@link #schemaFor(TableId) Schema}s for each table, where the
  * {@link Schema} excludes any columns that have been {@link MySqlConnectorConfig#COLUMN_EXCLUDE_LIST specified} in the
  * configuration.
- * <p>
- * The history is changed by {@link #applyDdl(SourceInfo, String, String, DatabaseStatementStringConsumer) applying DDL
- * statements}, and every change is {@link DatabaseHistory persisted} as defined in the supplied {@link MySqlConnectorConfig MySQL
- * connector configuration}. This component can be reconstructed (e.g., on connector restart) and the history
- * {@link #loadHistory(SourceInfo) loaded} from persisted storage.
- * <p>
- * Note that when {@link #applyDdl(SourceInfo, String, String, DatabaseStatementStringConsumer) applying DDL statements}, the
- * caller is able to supply a {@link DatabaseStatementStringConsumer consumer function} that will be called with the DDL
- * statements and the database to which they apply, grouped by database names. However, these will only be called based when the
- * databases are included by the database filters defined in the {@link MySqlConnectorConfig MySQL connector configuration}.
  *
  * @author Randall Hauch
  */
