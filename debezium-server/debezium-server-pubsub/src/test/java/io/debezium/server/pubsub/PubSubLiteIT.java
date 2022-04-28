@@ -85,7 +85,7 @@ public class PubSubLiteIT {
                 adminClient.deleteSubscription(subscriptionPath).get();
             }
             catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace();
+                Testing.printError(e);
             }
         }
     }
@@ -138,7 +138,7 @@ public class PubSubLiteIT {
             adminClient.createSubscription(subscription).get();
         }
         catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
+            Testing.printError(e);
         }
 
         Subscriber subscriber = Subscriber.create(subscriberSettings);
