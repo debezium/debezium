@@ -1,4 +1,4 @@
-pipelineJob('trigger-downstream-preparations') {
+pipelineJob('ocp-downstream-trigger-all-prepare') {
     displayName('Trigger Downstream Prepararions')
     description('Triggers downstream preparation jobs')
 
