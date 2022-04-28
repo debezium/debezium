@@ -80,7 +80,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final DdlChanges ddlChanges;
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
-    private boolean storageInitialiationExecuted = false;
+    private boolean storageInitializationExecuted = false;
     private final MySqlConnectorConfig connectorConfig;
 
     /**
@@ -395,11 +395,11 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     @Override
     public void initializeStorage() {
         super.initializeStorage();
-        storageInitialiationExecuted = true;
+        storageInitializationExecuted = true;
     }
 
     public boolean isStorageInitializationExecuted() {
-        return storageInitialiationExecuted;
+        return storageInitializationExecuted;
     }
 
     public boolean skipSchemaChangeEvent(SchemaChangeEvent event) {
