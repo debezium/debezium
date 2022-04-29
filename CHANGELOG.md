@@ -2,6 +2,36 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.2.Final
+April 29th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385310)
+
+### New features since 1.9.1.Final
+
+* adjust LogMiner batch size based on comparison with currently used batch size [DBZ-5005](https://issues.redhat.com/browse/DBZ-5005)
+
+
+### Breaking changes since 1.9.1.Final
+
+None
+
+
+### Fixes since 1.9.1.Final
+
+* Connector throws java.lang.ArrayIndexOutOfBoundsException [DBZ-3848](https://issues.redhat.com/browse/DBZ-3848)
+* Document no relevant tables should be in the SYS or SYSTEM tablespaces. [DBZ-4762](https://issues.redhat.com/browse/DBZ-4762)
+* Unable to mine Oracle source table which have "/" in table names [DBZ-5006](https://issues.redhat.com/browse/DBZ-5006)
+* SQL Server in multi-partition mode fails if a new database is added to an existing configuration [DBZ-5033](https://issues.redhat.com/browse/DBZ-5033)
+* Debezium Server tarball 1.9.1 does not work [DBZ-5037](https://issues.redhat.com/browse/DBZ-5037)
+* Mysql tests start before MySQL DB constainer is running [DBZ-5054](https://issues.redhat.com/browse/DBZ-5054)
+* Debezium server configuration properties not rendered correctly [DBZ-5058](https://issues.redhat.com/browse/DBZ-5058)
+
+
+### Other changes since 1.9.1.Final
+
+None
+
+
+
 ## 1.9.1.Final
 April 21st 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12384300)
 
