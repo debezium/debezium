@@ -121,6 +121,15 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                     "Specify how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector, including:"
                             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
                             + "'none' does not apply any adjustment");
+    private static final Field LOGICAL_TABLE_CACHE_SIZE = Field.create("logical.table.cache.size")
+            .withDisplayName("Logical table cache size")
+            .withType(ConfigDef.Type.INT)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(16)
+            .withDescription("The size used for holding the max entries in LRUCache. The cache will keep the old/new " +
+                    "schema for logical table key and value, and cache the key and topic regex result for improving " +
+                    "the source record transformation.");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ByLogicalTableRouter.class);
 
@@ -131,10 +140,10 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private boolean keyEnforceUniqueness;
     private String keyFieldReplacement;
     private String keyFieldName;
-    private final Cache<Schema, Schema> keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
-    private final Cache<Schema, Schema> envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
-    private final Cache<String, String> keyRegexReplaceCache = new SynchronizedCache<>(new LRUCache<String, String>(16));
-    private final Cache<String, String> topicRegexReplaceCache = new SynchronizedCache<>(new LRUCache<String, String>(16));
+    private Cache<Schema, Schema> keySchemaUpdateCache;
+    private Cache<Schema, Schema> envelopeSchemaUpdateCache;
+    private Cache<String, String> keyRegexReplaceCache;
+    private Cache<String, String> topicRegexReplaceCache;
     private SmtManager<R> smtManager;
 
     /**
@@ -174,7 +183,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 KEY_ENFORCE_UNIQUENESS,
                 KEY_FIELD_REGEX,
                 KEY_FIELD_REPLACEMENT,
-                SCHEMA_NAME_ADJUSTMENT_MODE);
+                SCHEMA_NAME_ADJUSTMENT_MODE,
+                LOGICAL_TABLE_CACHE_SIZE);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -193,6 +203,11 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         }
         keyFieldName = config.getString(KEY_FIELD_NAME);
         keyEnforceUniqueness = config.getBoolean(KEY_ENFORCE_UNIQUENESS);
+        int cacheSize = config.getInteger(LOGICAL_TABLE_CACHE_SIZE);
+        keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(cacheSize));
+        envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(cacheSize));
+        keyRegexReplaceCache = new SynchronizedCache<>(new LRUCache<>(cacheSize));
+        topicRegexReplaceCache = new SynchronizedCache<>(new LRUCache<>(cacheSize));
 
         smtManager = new SmtManager<>(config);
 
@@ -268,7 +283,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 TOPIC_REPLACEMENT,
                 KEY_ENFORCE_UNIQUENESS,
                 KEY_FIELD_REGEX,
-                KEY_FIELD_REPLACEMENT);
+                KEY_FIELD_REPLACEMENT,
+                LOGICAL_TABLE_CACHE_SIZE);
         return config;
     }
 
