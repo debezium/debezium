@@ -5,6 +5,8 @@
  */
 package io.debezium.schema;
 
+import io.debezium.spi.schema.DataCollectionId;
+
 /**
  * The schema of a database. Provides information about the structures of the tables (collections etc.) it contains.
  *

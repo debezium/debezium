@@ -55,6 +55,7 @@ import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
@@ -501,7 +502,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                .with(Heartbeat.HEARTBEAT_TOPICS_PREFIX, HEARTBEAT_TOPIC_PREFIX_VALUE)
+                .with(AbstractTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX, HEARTBEAT_TOPIC_PREFIX_VALUE)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
                         String.format("INSERT INTO %s.test_heartbeat_table (text) VALUES ('test_heartbeat');",

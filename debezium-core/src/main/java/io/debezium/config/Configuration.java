@@ -1512,6 +1512,20 @@ public interface Configuration {
     }
 
     /**
+     * Get an instance of the class given by the value in the configuration associated with the given field.
+     * The instance is created using {@code Instance(Configuration)} constructor.
+     *
+     * @param field the field for the configuration property
+     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
+     * @param props the {@link Properties} object that is passed as a parameter to the constructor
+     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
+     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
+     */
+    default <T> T getInstance(Field field, Class<T> clazz, Properties props) {
+        return Instantiator.getInstanceWithProperties(getString(field), () -> getClass().getClassLoader(), props);
+    }
+
+    /**
      * Return a new {@link Configuration} that contains only the subset of keys that match the given prefix.
      * If desired, the keys in the resulting Configuration will have the prefix (plus any terminating "{@code .}" character if
      * needed) removed.

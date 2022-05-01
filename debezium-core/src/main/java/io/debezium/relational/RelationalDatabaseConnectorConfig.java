@@ -38,8 +38,7 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.schema.DataCollectionId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
@@ -690,19 +689,19 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     @Override
-    public Heartbeat createHeartbeat(TopicSelector<? extends DataCollectionId> topicSelector, SchemaNameAdjuster schemaNameAdjuster,
+    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                      HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         if (!Strings.isNullOrBlank(getHeartbeatActionQuery()) && !getHeartbeatInterval().isZero()) {
             return new DatabaseHeartbeatImpl(
                     getHeartbeatInterval(),
-                    topicSelector.getHeartbeatTopic(),
+                    topicNamingStrategy.heartbeatTopic(),
                     getLogicalName(),
                     connectionProvider.get(),
                     getHeartbeatActionQuery(),
                     errorHandler,
                     schemaNameAdjuster);
         }
-        return super.createHeartbeat(topicSelector, schemaNameAdjuster, connectionProvider, errorHandler);
+        return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {

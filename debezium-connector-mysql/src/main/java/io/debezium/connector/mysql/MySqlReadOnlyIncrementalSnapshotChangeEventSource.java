@@ -22,8 +22,8 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 /**

@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -36,7 +37,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
@@ -61,7 +62,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
-        final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
+        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
 
@@ -92,8 +93,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
         final PostgresDefaultValueConverter defaultValueConverter = jdbcConnection.getDefaultValueConverter();
 
-        schema = new PostgresSchema(connectorConfig, typeRegistry, defaultValueConverter, topicSelector, valueConverterBuilder.build(typeRegistry));
-        this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
+        schema = new PostgresSchema(connectorConfig, typeRegistry, defaultValueConverter, topicNamingStrategy, valueConverterBuilder.build(typeRegistry));
+        this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
         final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
                 new PostgresPartition.Provider(connectorConfig, config), new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
@@ -169,7 +170,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             final PostgresEventDispatcher<TableId> dispatcher = new PostgresEventDispatcher<>(
                     connectorConfig,
-                    topicSelector,
+                    topicNamingStrategy,
                     schema,
                     queue,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
@@ -177,7 +178,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
                     connectorConfig.createHeartbeat(
-                            topicSelector,
+                            topicNamingStrategy,
                             schemaNameAdjuster,
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {

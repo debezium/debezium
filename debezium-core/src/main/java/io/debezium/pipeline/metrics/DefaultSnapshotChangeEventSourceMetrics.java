@@ -15,7 +15,7 @@ import io.debezium.pipeline.meters.SnapshotMeter;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The default implementation of metrics related to the snapshot phase of a connector.

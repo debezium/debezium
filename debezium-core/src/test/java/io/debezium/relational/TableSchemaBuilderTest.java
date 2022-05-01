@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
 import java.util.Collections;
+import java.util.Properties;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -30,6 +31,9 @@ import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.mapping.ColumnMappers;
+import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.time.Date;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -56,6 +60,7 @@ public class TableSchemaBuilderTest {
     private Column c10;
 
     private TableSchema schema;
+    private TopicNamingStrategy topicNamingStrategy;
     private SchemaNameAdjuster adjuster;
     private final CustomConverterRegistry customConverterRegistry = new CustomConverterRegistry(null);
 
@@ -64,6 +69,7 @@ public class TableSchemaBuilderTest {
         adjuster = SchemaNameAdjuster.create("_", (original, replacement, conflict) -> {
             fail("Should not have come across an invalid schema name");
         });
+        topicNamingStrategy = new SchemaTopicNamingStrategy(new Properties(), prefix, false);
         schema = null;
         table = Table.editor()
                 .tableId(id)
@@ -142,14 +148,14 @@ public class TableSchemaBuilderTest {
     public void shouldFailToBuildTableSchemaFromNullTable() {
         new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", null, null, null, null);
+                        .create(topicNamingStrategy, null, null, null, null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
     }
 
@@ -159,7 +165,7 @@ public class TableSchemaBuilderTest {
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("schema.table.Key");
         assertThat(schema.valueSchema().name()).isEqualTo("schema.table.Value");
@@ -171,7 +177,7 @@ public class TableSchemaBuilderTest {
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(new DefaultTopicNamingStrategy(new Properties(), prefix), table, null, null, null);
 
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("testDb.testTable.Key");
@@ -184,7 +190,7 @@ public class TableSchemaBuilderTest {
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("testSchema.testTable.Key");
@@ -197,7 +203,7 @@ public class TableSchemaBuilderTest {
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("testTable.Key");
@@ -210,7 +216,7 @@ public class TableSchemaBuilderTest {
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, true)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(new SchemaTopicNamingStrategy(new Properties(), prefix, true), table, null, null, null);
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("catalog.schema.table.Key");
         assertThat(schema.valueSchema().name()).isEqualTo("catalog.schema.table.Value");
@@ -221,7 +227,7 @@ public class TableSchemaBuilderTest {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();
@@ -282,7 +288,7 @@ public class TableSchemaBuilderTest {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), true, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();
@@ -350,7 +356,7 @@ public class TableSchemaBuilderTest {
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), true, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
 
         Struct key = (Struct) schema.keyFromColumnData(keyData);
         Struct value = schema.valueFromColumnData(data);
@@ -369,7 +375,7 @@ public class TableSchemaBuilderTest {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
+                        .create(topicNamingStrategy, table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
         assertThat(keys).isNotNull();
@@ -383,7 +389,7 @@ public class TableSchemaBuilderTest {
     public void shouldOverrideIdentityKey() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
+                        .create(topicNamingStrategy, table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
         assertThat(keys).isNotNull();
@@ -398,7 +404,7 @@ public class TableSchemaBuilderTest {
     public void shouldFallbackToIdentyKeyWhenCustomMapperIsNull() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                        .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
         assertThat(keys).isNotNull();
@@ -430,7 +436,7 @@ public class TableSchemaBuilderTest {
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, keyMapper);
+                        .create(topicNamingStrategy, table, null, null, keyMapper);
 
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
@@ -442,7 +448,7 @@ public class TableSchemaBuilderTest {
 
         TableSchema schema2 = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table2, null, null, keyMapper);
+                        .create(topicNamingStrategy, table2, null, null, keyMapper);
 
         assertThat(schema2).isNotNull();
         Schema key2 = schema2.keySchema();
@@ -470,7 +476,7 @@ public class TableSchemaBuilderTest {
 
         TableSchema schema2 = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table2, null, null, null);
+                        .create(topicNamingStrategy, table2, null, null, null);
 
         Schema key2 = schema2.keySchema();
         assertThat(key2).isNotNull();
@@ -502,7 +508,7 @@ public class TableSchemaBuilderTest {
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table2, null, mappers, null);
+                        .create(topicNamingStrategy, table2, null, mappers, null);
 
         Struct value = schema.valueFromColumnData(data);
         assertThat(value.get("C1")).isEqualTo(0);

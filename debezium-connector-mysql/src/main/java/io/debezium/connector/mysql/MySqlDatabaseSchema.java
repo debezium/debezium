@@ -42,7 +42,7 @@ import io.debezium.relational.ddl.DdlParserListener.TableIndexDroppedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexEvent;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
@@ -76,9 +76,9 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * The DDL statements passed to the schema are parsed and a logical model of the database schema is created.
      *
      */
-    public MySqlDatabaseSchema(MySqlConnectorConfig connectorConfig, MySqlValueConverters valueConverter, TopicSelector<TableId> topicSelector,
+    public MySqlDatabaseSchema(MySqlConnectorConfig connectorConfig, MySqlValueConverters valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
                                SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
+        super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverter,
                         new MySqlDefaultValueConverter(valueConverter),

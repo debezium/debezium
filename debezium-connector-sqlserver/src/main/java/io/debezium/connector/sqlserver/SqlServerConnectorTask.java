@@ -13,6 +13,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -26,7 +27,7 @@ import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -65,19 +66,21 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .build();
 
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
-        final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
+        final boolean multiPartitionMode = connectorConfig.isMultiPartitionModeEnabled();
+        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, multiPartitionMode);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 
         dataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), connectorConfig.getSourceTimestampMode(), valueConverters,
                 () -> getClass().getClassLoader(),
-                connectorConfig.getSkippedOperations(), connectorConfig.isMultiPartitionModeEnabled(), connectorConfig.getOptionRecompile());
+                connectorConfig.getSkippedOperations(), multiPartitionMode, connectorConfig.getOptionRecompile());
         metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), connectorConfig.getSourceTimestampMode(), valueConverters,
                 () -> getClass().getClassLoader(),
-                connectorConfig.getSkippedOperations(), connectorConfig.isMultiPartitionModeEnabled());
+                connectorConfig.getSkippedOperations(), multiPartitionMode);
 
-        this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicSelector, schemaNameAdjuster);
+        this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,
+                schemaNameAdjuster);
         this.schema.initializeStorage();
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
@@ -103,7 +106,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         final EventDispatcher<SqlServerPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
-                topicSelector,
+                topicNamingStrategy,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
@@ -117,7 +120,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 SqlServerConnector.class,
                 connectorConfig,
                 new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
-                createChangeEventSourceMetricsFactory(connectorConfig.isMultiPartitionModeEnabled(), offsets),
+                createChangeEventSourceMetricsFactory(multiPartitionMode, offsets),
                 dispatcher,
                 schema,
                 clock);

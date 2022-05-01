@@ -28,7 +28,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * Component that records the schema information for the {@link PostgresConnector}. The schema information contains
@@ -56,8 +56,8 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      * @param config the connector configuration, which is presumed to be valid
      */
     protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, PostgresDefaultValueConverter defaultValueConverter,
-                             TopicSelector<TableId> topicSelector, PostgresValueConverter valueConverter) {
-        super(config, topicSelector, config.getTableFilters().dataCollectionFilter(),
+                             TopicNamingStrategy<TableId> topicNamingStrategy, PostgresValueConverter valueConverter) {
+        super(config, topicNamingStrategy, config.getTableFilters().dataCollectionFilter(),
                 config.getColumnFilter(), getTableSchemaBuilder(config, valueConverter, defaultValueConverter),
                 false, config.getKeyMapper());
 

@@ -119,6 +119,13 @@ public class Collect {
         return result;
     }
 
+    public static <T> List<T> arrayListOf(T first, List<T> additional) {
+        List<T> result = new ArrayList<>();
+        result.add(first);
+        result.addAll(additional);
+        return result;
+    }
+
     public static <T> List<T> arrayListOf(Iterable<T> values) {
         List<T> result = new ArrayList<>();
         values.forEach((value) -> result.add(value));

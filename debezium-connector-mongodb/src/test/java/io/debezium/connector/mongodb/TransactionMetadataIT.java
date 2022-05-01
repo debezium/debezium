@@ -15,6 +15,7 @@ import org.junit.Test;
 
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -85,7 +86,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MongoDbConnectorConfig.TRANSACTION_TOPIC, "tx.of.${database.server.name}")
+                .with(AbstractTopicNamingStrategy.TOPIC_TRANSACTION, "tx.of.server")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -111,7 +112,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
         // BEGIN, data, END, data
         final SourceRecords records = consumeRecordsByTopic(1 + 6 + 1 + 1);
         final List<SourceRecord> c1s = records.recordsForTopic("mongo1.dbA.c1");
-        final List<SourceRecord> txs = records.recordsForTopic("tx.of.mongo1");
+        final List<SourceRecord> txs = records.recordsForTopic("mongo1.tx.of.server");
         assertThat(c1s).hasSize(7);
         assertThat(txs).hasSize(2);
 

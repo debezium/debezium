@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 

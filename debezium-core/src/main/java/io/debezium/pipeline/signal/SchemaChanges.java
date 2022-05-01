@@ -17,8 +17,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.history.JsonTableChangeSerializer;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.relational.history.TableChanges.TableChangeType;
-import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.spi.schema.DataCollectionId;
 
 public class SchemaChanges<P extends Partition> implements Signal.Action<P> {
 

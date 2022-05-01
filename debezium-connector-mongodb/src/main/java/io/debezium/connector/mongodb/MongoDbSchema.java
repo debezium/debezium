@@ -21,7 +21,7 @@ import io.debezium.data.Json;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -53,16 +53,16 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
             .build();
 
     private final Filters filters;
-    private final TopicSelector<CollectionId> topicSelector;
+    private final TopicNamingStrategy<CollectionId> topicNamingStrategy;
     private final Schema sourceSchema;
     private final SchemaNameAdjuster adjuster;
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
     private final JsonSerialization serialization = new JsonSerialization();
 
-    public MongoDbSchema(Filters filters, TopicSelector<CollectionId> topicSelector, Schema sourceSchema,
+    public MongoDbSchema(Filters filters, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
                          SchemaNameAdjuster schemaNameAdjuster) {
         this.filters = filters;
-        this.topicSelector = topicSelector;
+        this.topicNamingStrategy = topicNamingStrategy;
         this.sourceSchema = sourceSchema;
         this.adjuster = schemaNameAdjuster;
     }
@@ -75,7 +75,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     public DataCollectionSchema schemaFor(CollectionId collectionId) {
         return collections.computeIfAbsent(collectionId, id -> {
             final FieldFilter fieldFilter = filters.fieldFilterFor(id);
-            final String topicName = topicSelector.topicNameFor(id);
+            final String topicName = topicNamingStrategy.dataChangeTopic(id);
 
             final Schema keySchema = SchemaBuilder.struct()
                     .name(adjuster.adjust(topicName + ".Key"))

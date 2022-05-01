@@ -30,7 +30,8 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The configuration properties.
@@ -478,6 +479,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
+
+    public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
+            .withDisplayName("Topic naming strategy class")
+            .withType(Type.CLASS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The name of the TopicNamingStrategy class that should be used to determine the topic name " +
+                    "for data change, schema change, transaction, heartbeat event etc.")
+            .withDefault(DefaultTopicNamingStrategy.class.getName());
 
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")

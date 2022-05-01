@@ -13,7 +13,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 class SqlServerEventMetadataProvider implements EventMetadataProvider {

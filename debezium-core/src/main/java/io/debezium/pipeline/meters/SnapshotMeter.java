@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.pipeline.metrics.traits.SnapshotMetricsMXBean;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 /**

@@ -34,6 +34,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 import io.debezium.util.Collect;
@@ -748,6 +749,15 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     + "The configuration properties for the history are prefixed with the '"
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
+
+    public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
+            .withDisplayName("Topic naming strategy class")
+            .withType(Type.CLASS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The name of the TopicNamingStrategy class that should be used to determine the topic name " +
+                    "for data change, schema change, transaction, heartbeat event etc.")
+            .withDefault(DefaultTopicNamingStrategy.class.getName());
 
     public static final Field INCLUDE_SQL_QUERY = Field.create("include.query")
             .withDisplayName("Include original SQL query with in change events")

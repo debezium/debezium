@@ -31,7 +31,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.AbstractDatabaseHistory;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -65,7 +65,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 config.edit()
                         .with(AbstractDatabaseHistory.INTERNAL_PREFER_DDL, true)
                         .build());
-        final TopicSelector<TableId> topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig);
+        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
 
@@ -89,7 +89,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
 
-        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster, tableIdCaseInsensitive);
+        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive);
 
         LOGGER.info("Closing connection before starting schema recovery");
 
@@ -138,7 +138,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         final Configuration heartbeatConfig = config;
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
-                topicSelector,
+                topicNamingStrategy,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
@@ -146,7 +146,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 null,
                 metadataProvider,
                 connectorConfig.createHeartbeat(
-                        topicSelector,
+                        topicNamingStrategy,
                         schemaNameAdjuster,
                         () -> new MySqlConnection(new MySqlConnectionConfiguration(heartbeatConfig), connectorConfig.useCursorFetch()
                                 ? new MySqlBinaryProtocolFieldReader(connectorConfig)

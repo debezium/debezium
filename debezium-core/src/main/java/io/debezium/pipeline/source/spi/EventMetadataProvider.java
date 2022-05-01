@@ -11,7 +11,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * An interface implemented by each connector that enables metrics metadata to be extracted

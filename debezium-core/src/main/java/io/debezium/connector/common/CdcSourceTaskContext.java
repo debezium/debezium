@@ -13,7 +13,7 @@ import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 

@@ -16,6 +16,8 @@ import org.junit.Test;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * Integration test for {@link PostgresConnectorTask} class.
@@ -50,7 +52,7 @@ public class PostgresConnectorTaskIT {
                 config,
                 null,
                 null,
-                PostgresTopicSelector.create(config), null)), true, 3, Duration.ofSeconds(2));
+                (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config), null)), true, 3, Duration.ofSeconds(2));
 
         // Verify retry happened for 10 seconds
         long endTime = System.currentTimeMillis();

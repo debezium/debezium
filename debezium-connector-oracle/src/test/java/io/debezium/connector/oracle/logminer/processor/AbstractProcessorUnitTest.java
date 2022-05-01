@@ -36,7 +36,6 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
-import io.debezium.connector.oracle.OracleTopicSelector;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
@@ -51,7 +50,8 @@ import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContex
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -273,7 +273,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
 
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
-        final TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
+        final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         final OracleValueConverters converters = new OracleValueConverters(connectorConfig, connection);
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
@@ -283,7 +283,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
                 converters,
                 defaultValueConverter,
                 schemaNameAdjuster,
-                topicSelector,
+                topicNamingStrategy,
                 sensitivity);
 
         Table table = Table.editor()
