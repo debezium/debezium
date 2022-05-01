@@ -21,6 +21,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,6 +50,7 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
@@ -105,7 +107,7 @@ public class MySqlAntlrDdlParserTest {
     public void shouldProcessMultipleSignedUnsignedForTable() {
         String ddl = "create table if not exists tbl_signed_unsigned(\n"
                 + "`id` bigint(20) ZEROFILL signed UNSIGNED signed ZEROFILL unsigned ZEROFILL NOT NULL AUTO_INCREMENT COMMENT 'ID',\n"
-                + "c1 int signed unsigned,\n"
+                + "c1 int signed unsigned default '',\n"
                 + "c2 decimal(10, 2) SIGNED UNSIGNED ZEROFILL,\n"
                 + "c3 float SIGNED ZEROFILL,\n"
                 + "c4 double precision(18, 4) UNSIGNED SIGNED ZEROFILL,\n"
@@ -3352,7 +3354,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     private Schema getColumnSchema(Table table, String column) {
-        TableSchema schema = tableSchemaBuilder.create("test-1", "dummy", table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(new Properties(), "test-1"), table, null, null, null);
         return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
     }
 }

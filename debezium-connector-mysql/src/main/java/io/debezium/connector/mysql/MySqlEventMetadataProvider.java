@@ -14,7 +14,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 class MySqlEventMetadataProvider implements EventMetadataProvider {

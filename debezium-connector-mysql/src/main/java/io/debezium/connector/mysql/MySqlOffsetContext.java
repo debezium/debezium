@@ -20,7 +20,7 @@ import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSn
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
 

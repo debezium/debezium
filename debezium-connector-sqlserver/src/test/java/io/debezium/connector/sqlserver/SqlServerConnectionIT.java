@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
@@ -34,6 +35,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
@@ -480,7 +482,8 @@ public class SqlServerConnectionIT {
     }
 
     private void assertColumnHasDefaultValue(Table table, String columnName, Object expectedValue, TableSchemaBuilder tableSchemaBuilder) {
-        TableSchema schema = tableSchemaBuilder.create("test", "dummy", table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(new SchemaTopicNamingStrategy(new Properties(), "test", tableSchemaBuilder.isMultiPartitionMode()), table, null,
+                null, null);
         Schema columnSchema = schema.getEnvelopeSchema().schema().field("after").schema().field(columnName).schema();
 
         Column column = table.columnWithName(columnName);

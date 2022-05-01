@@ -5,6 +5,8 @@
  */
 package io.debezium.schema;
 
+import io.debezium.spi.schema.DataCollectionId;
+
 /**
  * Provides factory methods for obtaining {@link DataCollectionFilter} instances as per the current connector configuration.
  *

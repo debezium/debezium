@@ -27,7 +27,6 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleDefaultValueConverter;
-import io.debezium.connector.oracle.OracleTopicSelector;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
@@ -35,8 +34,8 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
@@ -293,10 +292,10 @@ public class LogMinerQueryBuilderTest {
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         TableNameCaseSensitivity tableNameSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
 
-        TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
+        TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
 
-        return new OracleDatabaseSchema(connectorConfig, converters, defaultValueConverter, schemaNameAdjuster, topicSelector, tableNameSensitivity);
+        return new OracleDatabaseSchema(connectorConfig, converters, defaultValueConverter, schemaNameAdjuster, topicNamingStrategy, tableNameSensitivity);
     }
 
     private String getPdbPredicate(OracleConnectorConfig config) {

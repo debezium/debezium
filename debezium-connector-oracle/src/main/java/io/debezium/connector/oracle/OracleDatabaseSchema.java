@@ -25,7 +25,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 
 import oracle.jdbc.OracleTypes;
@@ -47,8 +47,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
-                                TopicSelector<TableId> topicSelector, TableNameCaseSensitivity tableNameCaseSensitivity) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(),
+                                TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity) {
+        super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverters,

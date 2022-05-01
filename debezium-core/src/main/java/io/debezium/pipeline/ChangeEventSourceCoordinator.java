@@ -36,8 +36,8 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
-import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Threads;
 

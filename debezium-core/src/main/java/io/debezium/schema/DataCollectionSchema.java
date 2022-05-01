@@ -8,6 +8,7 @@ package io.debezium.schema;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.data.Envelope;
+import io.debezium.spi.schema.DataCollectionId;
 
 public interface DataCollectionSchema {
 

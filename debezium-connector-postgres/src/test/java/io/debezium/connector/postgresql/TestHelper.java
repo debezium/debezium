@@ -40,6 +40,8 @@ import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Throwables;
 
 /**
@@ -85,7 +87,7 @@ public final class TestHelper {
      *
      * @param slotName the name of the logical decoding slot
      * @param dropOnClose true if the slot should be dropped upon close
-     * @param connectorConfig customized connector configuration
+     * @param config customized connector configuration
      * @return the PostgresConnection instance; never null
      * @throws SQLException if there is a problem obtaining a replication connection
      */
@@ -244,7 +246,7 @@ public final class TestHelper {
                 config,
                 typeRegistry,
                 TestHelper.getDefaultValueConverter(),
-                PostgresTopicSelector.create(config),
+                (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
                 getPostgresValueConverter(typeRegistry, config));
     }
 

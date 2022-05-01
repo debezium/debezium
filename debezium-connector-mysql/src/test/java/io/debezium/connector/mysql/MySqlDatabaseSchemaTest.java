@@ -28,6 +28,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.ParsingException;
 import io.debezium.util.IoUtil;
 import io.debezium.util.SchemaNameAdjuster;
@@ -65,7 +67,7 @@ public class MySqlDatabaseSchemaTest {
         return new MySqlDatabaseSchema(
                 connectorConfig,
                 mySqlValueConverters,
-                MySqlTopicSelector.defaultSelector(connectorConfig),
+                (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
                 false);
     }

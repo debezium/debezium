@@ -18,7 +18,7 @@ import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * A {@link DatabaseSchema} or a relational database which has a schema history, that can be recovered to the current
@@ -33,10 +33,10 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     protected final DatabaseHistory databaseHistory;
     private boolean recoveredTables;
 
-    protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
+    protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                                  TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
                                                  boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
-        super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive, customKeysMapper);
+        super(config, topicNamingStrategy, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive, customKeysMapper);
 
         this.databaseHistory = config.getDatabaseHistory();
         this.databaseHistory.start();

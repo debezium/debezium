@@ -29,7 +29,7 @@ import io.debezium.connector.mysql.MySqlReadOnlyIncrementalSnapshotChangeEventSo
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.signal.ExecuteSnapshot;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 import io.debezium.util.Threads;
 

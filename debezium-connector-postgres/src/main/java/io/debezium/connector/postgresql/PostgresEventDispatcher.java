@@ -21,9 +21,9 @@ import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionFilters;
-import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -37,27 +37,27 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
     private final LogicalDecodingMessageMonitor logicalDecodingMessageMonitor;
     private final LogicalDecodingMessageFilter messageFilter;
 
-    public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
+    public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
                                    ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
-        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                connectorConfig.createHeartbeat(topicSelector, schemaNameAdjuster, null, null), schemaNameAdjuster, null);
+        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, null);
     }
 
-    public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
+    public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
                                    ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
                                    Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
-        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
+        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
                 heartbeat, schemaNameAdjuster, null);
     }
 
-    public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
+    public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
                                    ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<PostgresPartition, T> inconsistentSchemaHandler,
                                    EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
                                    JdbcConnection jdbcConnection) {
-        super(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, metadataProvider,
+        super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, metadataProvider,
                 heartbeat, schemaNameAdjuster);
         this.queue = queue;
         this.logicalDecodingMessageMonitor = new LogicalDecodingMessageMonitor(connectorConfig, this::enqueueLogicalDecodingMessage);

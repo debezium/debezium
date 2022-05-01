@@ -15,6 +15,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.Properties;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -33,6 +34,7 @@ import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -602,7 +604,7 @@ public class MySqlDefaultValueTest {
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(1);
 
-        TableSchema schema = tableSchemaBuilder.create("test", "dummy", table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(new Properties(), "test"), table, null, null, null);
         assertThat(getColumnSchema(schema, "c0").defaultValue()).isEqualTo((short) 10);
         assertThat(getColumnSchema(schema, "c1").defaultValue()).isEqualTo(5);
         assertThat(getColumnSchema(schema, "c2").defaultValue()).isEqualTo(0L);
@@ -616,7 +618,7 @@ public class MySqlDefaultValueTest {
     }
 
     private Schema getColumnSchema(Table table, String column, TableSchemaBuilder tableSchemaBuilder) {
-        TableSchema schema = tableSchemaBuilder.create("test", "dummy", table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(new Properties(), "test"), table, null, null, null);
         return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
     }
 

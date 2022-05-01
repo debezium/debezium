@@ -21,8 +21,8 @@ import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SchemaUtil;
-import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given mongodb collection, and which can

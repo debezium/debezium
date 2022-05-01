@@ -12,7 +12,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.meters.SnapshotMeter;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 class SqlServerSnapshotPartitionMetrics extends AbstractSqlServerPartitionMetrics
         implements SqlServerSnapshotPartitionMetricsMXBean {

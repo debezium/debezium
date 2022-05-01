@@ -27,6 +27,7 @@ import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -115,7 +116,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "tx.of.${database.server.name}")
+                .with(AbstractTopicNamingStrategy.TOPIC_TRANSACTION, "tx.of.server")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -134,7 +135,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // TX BEGIN + 4 changes + TX END
         SourceRecords records = consumeRecordsByTopic(1 + 4 + 1);
-        List<SourceRecord> txnEvents = records.recordsForTopic("tx.of." + DATABASE.getServerName());
+        List<SourceRecord> txnEvents = records.recordsForTopic(DATABASE.getServerName() + ".tx.of.server");
         assertThat(txnEvents).hasSize(2);
     }
 
@@ -145,7 +146,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "mytransactions")
+                .with(AbstractTopicNamingStrategy.TOPIC_TRANSACTION, "mytransactions")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -164,7 +165,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // TX BEGIN + 4 changes + TX END
         SourceRecords records = consumeRecordsByTopic(1 + 4 + 1);
-        List<SourceRecord> txnEvents = records.recordsForTopic("mytransactions");
+        List<SourceRecord> txnEvents = records.recordsForTopic(DATABASE.getServerName() + ".mytransactions");
         assertThat(txnEvents).hasSize(2);
     }
 

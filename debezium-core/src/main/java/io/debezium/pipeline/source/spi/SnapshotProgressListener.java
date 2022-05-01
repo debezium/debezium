@@ -7,7 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * Invoked whenever an important event or change of state happens during the snapshot phase.

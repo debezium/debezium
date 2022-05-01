@@ -12,7 +12,7 @@ import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * A class invoked by {@link EventDispatcher} whenever an event is available for processing.

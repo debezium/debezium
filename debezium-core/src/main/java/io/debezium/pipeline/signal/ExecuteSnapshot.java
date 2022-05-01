@@ -16,7 +16,7 @@ import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The action to trigger an ad-hoc snapshot.

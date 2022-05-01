@@ -25,7 +25,7 @@ import io.debezium.pipeline.source.snapshot.incremental.OpenIncrementalSnapshotW
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The class responsible for processing of signals delivered to Debezium via a dedicated signaling table.

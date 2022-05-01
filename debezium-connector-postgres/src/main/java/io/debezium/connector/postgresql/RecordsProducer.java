@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
 /**
@@ -57,8 +57,8 @@ public abstract class RecordsProducer {
         return taskContext.schema();
     }
 
-    protected TopicSelector<TableId> topicSelector() {
-        return taskContext.topicSelector();
+    protected TopicNamingStrategy<TableId> topicNamingStrategy() {
+        return taskContext.topicNamingStrategy();
     }
 
     protected Clock clock() {

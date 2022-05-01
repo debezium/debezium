@@ -14,7 +14,7 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.metrics.traits.CommonEventMetricsMXBean;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 /**

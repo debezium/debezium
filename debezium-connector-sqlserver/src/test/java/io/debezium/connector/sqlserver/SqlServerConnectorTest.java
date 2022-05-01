@@ -19,6 +19,8 @@ import org.apache.kafka.connect.connector.Connector;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
+
 public class SqlServerConnectorTest {
     SqlServerConnector connector;
 
@@ -66,7 +68,7 @@ public class SqlServerConnectorTest {
             assertThat(key.importance).isEqualTo(expected.importance());
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
-            if (expected.equals(SqlServerConnectorConfig.DATABASE_HISTORY)) {
+            if (expected.equals(SqlServerConnectorConfig.DATABASE_HISTORY) || expected.equals(CommonConnectorConfig.TOPIC_NAMING_STRATEGY)) {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());

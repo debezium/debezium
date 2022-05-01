@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -26,7 +27,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
@@ -50,7 +51,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     @Override
     public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
+        TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
@@ -62,7 +63,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
-                topicSelector, tableNameCaseSensitivity);
+                topicNamingStrategy, tableNameCaseSensitivity);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());
@@ -90,14 +91,14 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         EventDispatcher<OraclePartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
-                topicSelector,
+                topicNamingStrategy,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
                 connectorConfig.createHeartbeat(
-                        topicSelector,
+                        topicNamingStrategy,
                         schemaNameAdjuster,
                         () -> getHeartbeatConnection(connectorConfig, jdbcConfig),
                         exception -> {

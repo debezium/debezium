@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -24,6 +25,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,10 +39,11 @@ import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.relational.CustomConverterRegistry;
-import io.debezium.schema.DataCollectionId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
@@ -51,6 +54,8 @@ import io.debezium.util.Strings;
  */
 public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
+    public static final String LOGICAL_NAME = "logical.name";
+    public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
 
@@ -517,15 +522,15 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
 
-    public static final Field TRANSACTION_TOPIC = Field.create("transaction.topic")
-            .withDisplayName("Transaction topic name")
+    public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
+            .withDisplayName("Topic naming strategy class")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 21))
-            .withType(Type.STRING)
+            .withType(Type.CLASS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDefault("${database.server.name}.transaction")
-            .withDescription(
-                    "The name of the transaction metadata topic. The placeholder ${database.server.name} can be used for referring to the connector's logical name; defaults to ${database.server.name}.transaction.");
+            .withDescription("The name of the TopicNamingStrategy class that should be used to determine the topic name " +
+                    "for data change, schema change, transaction, heartbeat event etc.")
+            .withDefault(SchemaTopicNamingStrategy.class.getName());
 
     public static final Field CUSTOM_RETRIABLE_EXCEPTION = Field.createInternal("custom.retriable.exception")
             .withDisplayName("Regular expression to match the exception message.")
@@ -560,7 +565,7 @@ public abstract class CommonConnectorConfig {
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                     SIGNAL_DATA_COLLECTION,
-                    TRANSACTION_TOPIC)
+                    TOPIC_NAMING_STRATEGY)
             .create();
 
     private final Configuration config;
@@ -588,7 +593,6 @@ public abstract class CommonConnectorConfig {
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final String signalingDataCollection;
     private final EnumSet<Operation> skippedOperations;
-    private final String transactionTopic;
     private final String taskId;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
@@ -617,7 +621,6 @@ public abstract class CommonConnectorConfig {
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.skippedOperations = determineSkippedOperations(config);
-        this.transactionTopic = config.getString(TRANSACTION_TOPIC).replace("${database.server.name}", logicalName);
         this.taskId = config.getString(TASK_ID);
     }
 
@@ -721,13 +724,6 @@ public abstract class CommonConnectorConfig {
     }
 
     /**
-     * Returns the name to be used for the connector's TX metadata topic.
-     */
-    public String getTransactionTopic() {
-        return transactionTopic;
-    }
-
-    /**
      * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
      */
     public boolean supportsOperationFiltering() {
@@ -740,6 +736,25 @@ public abstract class CommonConnectorConfig {
 
     public boolean isIncrementalSnapshotSchemaChangesEnabled() {
         return supportsSchemaChangesDuringIncrementalSnapshot() && incrementalSnapshotAllowSchemaChanges;
+    }
+
+    @SuppressWarnings("unchecked")
+    public TopicNamingStrategy getTopicNamingStrategy(Field topicNamingStrategyField) {
+        return getTopicNamingStrategy(topicNamingStrategyField, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    public TopicNamingStrategy getTopicNamingStrategy(Field topicNamingStrategyField, boolean multiPartitionMode) {
+        Properties props = config.asProperties();
+        props.put(LOGICAL_NAME, logicalName);
+        props.put(MULTI_PARTITION_MODE, multiPartitionMode);
+        String strategyName = config.getString(topicNamingStrategyField);
+        TopicNamingStrategy topicNamingStrategy = config.getInstance(topicNamingStrategyField, TopicNamingStrategy.class, props);
+        if (topicNamingStrategy == null) {
+            throw new ConnectException("Unable to instantiate the topic naming strategy class " + strategyName);
+        }
+        LOGGER.info("Loading the custom topic naming strategy plugin: {}", strategyName);
+        return topicNamingStrategy;
     }
 
     @SuppressWarnings("unchecked")
@@ -926,11 +941,11 @@ public abstract class CommonConnectorConfig {
         return taskId;
     }
 
-    public Heartbeat createHeartbeat(TopicSelector<? extends DataCollectionId> topicSelector, SchemaNameAdjuster schemaNameAdjuster,
+    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                      HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         if (getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
-        return new HeartbeatImpl(getHeartbeatInterval(), topicSelector.getHeartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+        return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
     }
 }

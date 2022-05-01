@@ -21,7 +21,7 @@ import io.debezium.metrics.Metrics;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.metrics.ChangeEventSourceMetrics;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 /**
