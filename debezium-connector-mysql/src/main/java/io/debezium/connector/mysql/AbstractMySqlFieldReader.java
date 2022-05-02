@@ -23,7 +23,7 @@ import io.debezium.util.Collect;
  *
  * @author yangjie
  */
-public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
+public abstract class AbstractMySqlFieldReader implements MySqlFieldReader {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -31,7 +31,7 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
 
     private final MySqlConnectorConfig connectorConfig;
 
-    protected AbstractMysqlFieldReader(MySqlConnectorConfig connectorConfig) {
+    protected AbstractMySqlFieldReader(MySqlConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 

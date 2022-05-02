@@ -22,11 +22,11 @@ import io.debezium.relational.Table;
  *
  * @author yangjie
  */
-public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
+public class MySqlTextProtocolFieldReader extends AbstractMySqlFieldReader {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MysqlTextProtocolFieldReader.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlTextProtocolFieldReader.class);
 
-    public MysqlTextProtocolFieldReader(MySqlConnectorConfig config) {
+    public MySqlTextProtocolFieldReader(MySqlConnectorConfig config) {
         super(config);
     }
 

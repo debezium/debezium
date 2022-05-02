@@ -80,8 +80,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 .build();
 
         connection = new MySqlConnection(new MySqlConnectionConfiguration(config),
-                connectorConfig.useCursorFetch() ? new MysqlBinaryProtocolFieldReader(connectorConfig)
-                        : new MysqlTextProtocolFieldReader(connectorConfig));
+                connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig)
+                        : new MySqlTextProtocolFieldReader(connectorConfig));
 
         validateBinlogConfiguration(connectorConfig);
 
@@ -140,8 +140,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         Heartbeat heartbeat = null;
         if (!connectorConfig.getHeartbeatActionQuery().isEmpty()) {
             heartbeatConnection = new MySqlConnection(new MySqlConnectionConfiguration(config),
-                    connectorConfig.useCursorFetch() ? new MysqlBinaryProtocolFieldReader(connectorConfig)
-                            : new MysqlTextProtocolFieldReader(connectorConfig));
+                    connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig)
+                            : new MySqlTextProtocolFieldReader(connectorConfig));
 
             heartbeat = Heartbeat.create(
                     connectorConfig.getHeartbeatInterval(),
