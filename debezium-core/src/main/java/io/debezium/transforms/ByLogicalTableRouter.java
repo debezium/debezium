@@ -128,7 +128,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(16)
             .withDescription("The size used for holding the max entries in LRUCache. The cache will keep the old/new " +
-                    "schema for logical table key and value, and cache the key and topic regex result for improving " +
+                    "schema for logical table key and value, also cache the derived key and topic regex result for improving " +
                     "the source record transformation.");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ByLogicalTableRouter.class);
