@@ -3707,7 +3707,7 @@ The following configuration forces Oracle to switch log files every 20 minutes i
 
 [source,sql]
 ----
-ALTER SYSTEM SET archive_log_target=1200 scope=both;
+ALTER SYSTEM SET archive_lag_target=1200 scope=both;
 ----
 
 This change will likely require SYSDBA permissions, so coordinate with your database administrator.
