@@ -129,6 +129,14 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             connection.execute("SELECT @@VERSION");
             LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                     connection.username());
+            LOGGER.info("Checking if user has access to CDC table");
+            boolean userHasAccessToCDCTable = connection.checkIfConnectedUserHasAccessToCDCTable();
+            if (!userHasAccessToCDCTable
+                    && sqlServerConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
+                String errorMessage = "User " + userValue.value() + " does not have access to CDC table and can only be used in initial_only snapshot mode";
+                LOGGER.error(errorMessage);
+                userValue.addErrorMessage(errorMessage);
+            }
         }
         catch (Exception e) {
             LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),

@@ -31,6 +31,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -893,6 +894,54 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-4346")
+    public void shouldReportConfigurationErrorForUserNotHavingAccessToCDCTableInInitialMode() throws Exception {
+        // First create a new user with only db_datareader role
+        String testUserCreateSql = "IF EXISTS (select 1 from sys.server_principals where name = 'test_user')\n"
+                + "DROP LOGIN test_user\n"
+                + "CREATE LOGIN test_user WITH PASSWORD = 'Password!'\n"
+                + "CREATE USER test_user FOR LOGIN test_user\n"
+                + "ALTER ROLE db_denydatareader ADD MEMBER test_user";
+
+        connection.execute(testUserCreateSql);
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "^dbo.tableb$")
+                .with(SqlServerConnectorConfig.USER, "test_user")
+                .build();
+
+        SqlServerConnector connector = new SqlServerConnector();
+        Config validatedConfig = connector.validate(config.asMap());
+
+        assertConfigurationErrors(validatedConfig, SqlServerConnectorConfig.USER, 1);
+    }
+
+    @Test
+    @FixFor("DBZ-4346")
+    public void shouldNotReportConfigurationErrorForUserNotHavingAccessToCDCTableInInitialOnlyMode() throws Exception {
+        // First create a new user with only db_datareader role
+        String testUserCreateSql = "IF EXISTS (select 1 from sys.server_principals where name = 'test_user')\n"
+                + "DROP LOGIN test_user\n"
+                + "CREATE LOGIN test_user WITH PASSWORD = 'Password!'\n"
+                + "CREATE USER test_user FOR LOGIN test_user\n"
+                + "ALTER ROLE db_denydatareader ADD MEMBER test_user";
+
+        connection.execute(testUserCreateSql);
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "^dbo.tableb$")
+                .with(SqlServerConnectorConfig.USER, "test_user")
+                .build();
+
+        SqlServerConnector connector = new SqlServerConnector();
+        Config validatedConfig = connector.validate(config.asMap());
+
+        assertNoConfigurationErrors(validatedConfig, SqlServerConnectorConfig.USER);
     }
 
     @Test

@@ -112,6 +112,13 @@ public class TestHelper {
                 .build();
     }
 
+    public static JdbcConfiguration jdbcConfig(String user, String password) {
+        return JdbcConfiguration.copy(defaultJdbcConfig())
+                .withUser(user)
+                .withPassword(password)
+                .build();
+    }
+
     public static Configuration.Builder defaultConnectorConfig() {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
@@ -260,7 +267,7 @@ public class TestHelper {
         return testConnection(config);
     }
 
-    private static SqlServerConnection testConnection(JdbcConfiguration config) {
+    public static SqlServerConnection testConnection(JdbcConfiguration config) {
         return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet(), true);

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
@@ -350,6 +351,19 @@ public class SqlServerConnection extends JdbcConnection {
             LOGGER.trace("Increasing lsn from {} to {}", lsn, ret);
             return ret;
         }, "Increment LSN query must return exactly one value"));
+    }
+
+    /**
+     * Check if the user with which connection object is created has
+     * access to CDC table.
+     *
+     * @return boolean indicating the presence/absence of access
+     * @throws SQLException
+     */
+    public boolean checkIfConnectedUserHasAccessToCDCTable() throws SQLException {
+        final AtomicBoolean userHasAccess = new AtomicBoolean();
+        this.query("EXEC sys.sp_cdc_help_change_data_capture", rs -> userHasAccess.set(rs.next()));
+        return userHasAccess.get();
     }
 
     /**
