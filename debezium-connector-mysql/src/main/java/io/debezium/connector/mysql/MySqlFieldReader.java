@@ -18,12 +18,12 @@ import io.debezium.relational.Table;
  * `useServerPrepStmts` is consequently also set to `true`, setting `useServerPrepStmts=true`
  * internally causes the MySQL protocol to change from "Text protocol" to "Binary Protocol".
  *
- * @see MysqlBinaryProtocolFieldReader
- * @see MysqlTextProtocolFieldReader
+ * @see MySqlBinaryProtocolFieldReader
+ * @see MySqlTextProtocolFieldReader
  * @see <a href="https://issues.redhat.com/browse/DBZ-3238">DBZ-3238</a>
  * @author yangjie
  */
-public interface MysqlFieldReader {
+public interface MySqlFieldReader {
 
     /**
      * read field from ResultSet according to different protocols

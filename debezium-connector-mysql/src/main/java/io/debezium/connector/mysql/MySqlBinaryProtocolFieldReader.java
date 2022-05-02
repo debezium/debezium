@@ -26,11 +26,11 @@ import io.debezium.relational.Table;
  *
  * @author yangjie
  */
-public class MysqlBinaryProtocolFieldReader extends AbstractMysqlFieldReader {
+public class MySqlBinaryProtocolFieldReader extends AbstractMySqlFieldReader {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MysqlBinaryProtocolFieldReader.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlBinaryProtocolFieldReader.class);
 
-    public MysqlBinaryProtocolFieldReader(MySqlConnectorConfig config) {
+    public MySqlBinaryProtocolFieldReader(MySqlConnectorConfig config) {
         super(config);
     }
 

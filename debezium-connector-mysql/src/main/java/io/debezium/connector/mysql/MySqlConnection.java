@@ -57,7 +57,7 @@ public class MySqlConnection extends JdbcConnection {
 
     private final Map<String, String> originalSystemProperties = new HashMap<>();
     private final MySqlConnectionConfiguration connectionConfig;
-    private final MysqlFieldReader mysqlFieldReader;
+    private final MySqlFieldReader mysqlFieldReader;
 
     /**
      * Creates a new connection using the supplied configuration.
@@ -65,7 +65,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param connectionConfig {@link MySqlConnectionConfiguration} instance, may not be null.
      * @param fieldReader binary or text protocol based readers
      */
-    public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MysqlFieldReader fieldReader) {
+    public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MySqlFieldReader fieldReader) {
         super(connectionConfig.jdbcConfig, connectionConfig.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = connectionConfig;
         this.mysqlFieldReader = fieldReader;
@@ -77,7 +77,7 @@ public class MySqlConnection extends JdbcConnection {
      * @param connectionConfig {@link MySqlConnectionConfiguration} instance, may not be null.
      */
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig) {
-        this(connectionConfig, new MysqlTextProtocolFieldReader(null));
+        this(connectionConfig, new MySqlTextProtocolFieldReader(null));
     }
 
     @Override
