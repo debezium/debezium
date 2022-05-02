@@ -413,6 +413,48 @@ public class SqlServerConnectionIT {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4346")
+    public void testAccessToCDCTableBasedOnUserRoleAccess() throws Exception {
+        // Setup a user with only read-only access
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
+            connection.connect();
+            connection.execute("CREATE DATABASE testDB");
+            connection.execute("USE testDB");
+
+            String testUserCreateSql = "IF EXISTS (select 1 from sys.server_principals where name = 'test_user')\n"
+                    + "DROP LOGIN test_user\n"
+                    + "CREATE LOGIN test_user WITH PASSWORD = 'Password!'\n"
+                    + "CREATE USER test_user FOR LOGIN test_user\n"
+                    + "ALTER ROLE db_denydatareader ADD MEMBER test_user";
+
+            connection.execute(testUserCreateSql);
+
+            // NOTE: you cannot enable CDC on master
+            TestHelper.enableDbCdc(connection, "testDB");
+
+            // create table if exists
+            String sql = "IF EXISTS (select 1 from sys.objects w" +
+                    "here name = 'testTable' and type = 'u')\n"
+                    + "DROP TABLE testTable\n"
+                    + "CREATE TABLE testTable (ID int not null identity(1, 1) primary key, NUMBER int, TEXT text)";
+            connection.execute(sql);
+            // then enable CDC and wrapper functions
+            TestHelper.enableTableCdc(connection, "testTable");
+
+            // sa user should have access to CDC table
+            Assertions.assertThat(connection.checkIfConnectedUserHasAccessToCDCTable()).isTrue();
+        }
+
+        // Re-connect with the newly created user
+        try (SqlServerConnection connection = TestHelper.testConnection(
+                TestHelper.jdbcConfig("test_user", "Password!"))) {
+            // This user shouldn't have access to CDC table
+            connection.execute("USE testDB");
+            Assertions.assertThat(connection.checkIfConnectedUserHasAccessToCDCTable()).isFalse();
+        }
+    }
+
     private long toMillis(OffsetDateTime datetime) {
         return datetime.toInstant().toEpochMilli();
     }
