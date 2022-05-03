@@ -96,38 +96,41 @@ pipeline {
     post {
         always {
             script {
-                def label = params.LABEL
-                def current_build_label = label
+                def version = ""
+
                 for (db in ['db2', 'mongodb', 'mysql', 'oracle', 'postgresql', 'sqlserver']) {
                     if (!params["${db.toUpperCase()}_TEST"]) {
                         continue
                     }
                     def build = jenkins.model.Jenkins.instance.getItem("connector-debezium-${db}-matrix-test").lastBuild
 
-                    // if label param is not set, try parsing label from source url/branch
-                    if (!label && params.PRODUCT_BUILD) {
-                        def version_match = params.SOURCE_URL =~ /.*\/debezium-(.+)-src.zip$/
-                        if (version_match && version_match[0][1]) {
-                            def version = version_match[0][1].toString()
-                            label = version
-                            current_build_label = version
+                    label = "#${build.number} parent: #${currentBuild.number}"
+
+                    if (params.LABEL) {
+                        label += " ${params.LABEL}"
+                    }
+                    // if label param is not set and product build, try parsing label from source url/branch
+                    else if (params.PRODUCT_BUILD) {
+                        def versionMatch = params.SOURCE_URL =~ /.*\/debezium-(.+)-src.zip$/
+                        if (!version && versionMatch && versionMatch[0][1]) {
+                            version = versionMatch[0][1].toString()
+                            label += " version: ${version}"
                         } else {
                             println "Debezium version of product build couldn't be parsed from SOURCE_URL"
                             continue
                         }
                     }
-                    // if no label is set and not a product build, add branch name
-                    else if (!label && !params.PRODUCT_BUILD) {
-                        label = "#${build.number} ${params.BRANCH}"
-                        current_build_label = "#${currentBuild.number} ${params.BRANCH}"
-                    }
 
                     // set label
                     build.displayName = label
                 }
-                if (label){
-                    currentBuild.displayName = current_build_label
+                 // set parent job label
+                if (params.LABEL) {
+                    currentBuild.displayName = "#${currentBuild.number} ${params.LABEL}"
+                } else if (version) {
+                    currentBuild.displayName = "#${currentBuild.number} version: ${version}"
                 }
+                // if not a product build and no custom label set, keep default parent build name
             }
         }
     }

@@ -25,9 +25,9 @@ pipelineJob('ocp-downstream-trigger-all-prepare') {
         stringParam('STRZ_RESOURCES_DEPLOYMENT_DESCRIPTOR', '060-Deployment-strimzi-cluster-operator.yaml', 'OCP Downstream strimzi - Descriptor for cluster-operator deployment')
         textParam('STRZ_IMAGES', '', 'OCP Downstream strimzi - List of productised strimzi images')
 //      DEBEZIUM CONNECT IMAGE CONFIG
-        booleanParam('DBZ_CONNECT_BUILD', true, 'OCP Downstream strimzi - Also build debezium images')
-        textParam('DBZ_CONNECTOR_ARCHIVE_URLS', '', 'OCP Downstream strimzi - List of URLs to productised Debezium connectors')
-        textParam('DBZ_EXTRA_LIBS', '', 'Downstream Strimzi, RHEL - List of extra libraries added to connectors')
+        booleanParam('STRZ_DBZ_CONNECT_BUILD', true, 'OCP Downstream strimzi - Also build debezium images')
+        textParam('STRZ_DBZ_CONNECTOR_ARCHIVE_URLS', '', 'OCP Downstream strimzi - List of URLs to productised Debezium connectors')
+        textParam('STRZ_DBZ_EXTRA_LIBS', '', 'Downstream Strimzi, RHEL - List of extra libraries added to connectors')
 
 //      APICURIO
         stringParam('APIC_RESOURCES_ARCHIVE_URL', '', 'URL to productised apicurio sources')
