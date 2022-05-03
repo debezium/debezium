@@ -262,6 +262,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     private long drainRecords(List<T> records, int maxElements) {
         int queueSize = queue.size();
+        LOGGER.debug("current queue size: {}, record queue size: {}", queueSize, records.size());
         if (queueSize == 0) {
             return records.size();
         }
@@ -278,6 +279,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
             }
         }
         records.addAll(Arrays.asList(drainedRecords));
+        LOGGER.debug("current record queue size: {}", records.size());
         return records.size();
     }
 
