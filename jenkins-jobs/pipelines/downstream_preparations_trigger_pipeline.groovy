@@ -115,14 +115,13 @@ pipeline {
                     }
 
                     // if no label is set, add branch name
-                    def label = params.LABEL
-                    if (!label) {
-                        println "using branch name and build number for label"
-                        label = "#${build.number} parent: #${currentBuild.number}"
+                    def label = "#${build.number} parent: #${currentBuild.number}"
+                    if (params.LABEL) {
+                        label += " ${params.LABEL}"
                     }
 
                     // set label
-                    build.displayName = "#${build.number} parent: #${currentBuild.number} ${label}"
+                    build.displayName = "${label}"
                 }
 
                 // set parent job label

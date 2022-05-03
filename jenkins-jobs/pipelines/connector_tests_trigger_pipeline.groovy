@@ -102,7 +102,13 @@ pipeline {
                     if (!params["${db.toUpperCase()}_TEST"]) {
                         continue
                     }
-                    def build = jenkins.model.Jenkins.instance.getItem("connector-debezium-${db}-matrix-test").lastBuild
+                    def jobName = "connector-debezium-${db}-matrix-test"
+                    def build = jenkins.model.Jenkins.instance.getItem(jobName).lastBuild
+
+                    if (!build) {
+                        println "No build of ${jobName} found!"
+                        return
+                    }
 
                     label = "#${build.number} parent: #${currentBuild.number}"
 
