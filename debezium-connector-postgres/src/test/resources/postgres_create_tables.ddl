@@ -24,6 +24,8 @@ CREATE TABLE bitbin_table (pk SERIAL, ba BYTEA, bol BIT(1), bol2 BIT, bs BIT(2),
 CREATE TABLE bytea_binmode_table (pk SERIAL, ba BYTEA, PRIMARY KEY(pk));
 
 CREATE TABLE time_table (pk SERIAL, ts TIMESTAMP, tsneg TIMESTAMP(6) WITHOUT TIME ZONE, ts_ms TIMESTAMP(3), ts_us TIMESTAMP(6), tz TIMESTAMPTZ, date DATE,
+    date_pinf DATE,
+    date_ninf DATE,
     ti TIME, tip TIME(3), ttf TIME,
     ttz TIME WITH TIME ZONE, tptz TIME(3) WITH TIME ZONE,
     it INTERVAL, tsp TIMESTAMP (0) WITH TIME ZONE,
