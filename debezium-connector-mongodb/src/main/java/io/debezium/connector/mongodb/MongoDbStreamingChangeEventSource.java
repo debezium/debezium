@@ -244,11 +244,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 // In this situation if not document is available, we'll pause.
                 final Document event = cursor.tryNext();
                 if (event != null) {
+                    LOGGER.debug("Processing mongo event {}", event.toJson());
                     if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog())) {
                         // Something happened and we are supposed to stop reading
+                        LOGGER.debug("Unexpected error during handleOplogEvent");
                         return;
                     }
 
+                    LOGGER.debug("Generating heartbeat events");
                     try {
                         dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
                     }
@@ -257,8 +260,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         Thread.currentThread().interrupt();
                         return;
                     }
+                    LOGGER.debug("Finish processing an event");
                 }
                 else {
+                    LOGGER.debug("Pausing for empty event");
                     try {
                         pause.pause();
                     }
@@ -267,6 +272,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     }
                 }
             }
+            LOGGER.debug("Context is closed for MongoDbStreamingChangeEventSource");
         }
     }
 
