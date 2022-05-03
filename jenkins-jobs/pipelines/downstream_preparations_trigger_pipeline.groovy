@@ -107,7 +107,7 @@ pipeline {
                         return
                     }
 
-                    def build = jenkins.model.Jenkins.instance.getItem("${entry.key}").lastBuild
+                    def build = jenkins.model.Jenkins.instance.getItem("${entry.key}").getLastCompletedBuild()
 
                     if (!build) {
                         println "No build of ${entry.key} found!"
