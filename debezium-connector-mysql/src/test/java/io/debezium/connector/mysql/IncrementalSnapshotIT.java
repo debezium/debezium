@@ -11,16 +11,25 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Assertions;
+import org.fest.assertions.MapAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.TableId;
@@ -55,6 +64,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
+                .with(MySqlConnectorConfig.SNAPSHOT_FETCH_SIZE, 5)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
@@ -167,6 +177,56 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 assertNull(query);
                 assertEquals("incremental", snapshot);
             }
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4939")
+    public void tableWithDatetime() throws Exception {
+        Testing.Print.enable();
+        final int ROWS = 10;
+
+        try (final JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROWS; i++) {
+                connection.executeWithoutCommitting(String.format(
+                        "INSERT INTO a_dt (pk, dt, d, t) VALUES (%s, TIMESTAMP('%s-05-01'), '%s-05-01', '%s:00:00')",
+                        i + 1, i + 2000, i + 2000, i));
+            }
+            connection.commit();
+        }
+
+        startConnector();
+        sendAdHocSnapshotSignal(tableName("a_dt"));
+
+        final int expectedRecordCount = ROWS;
+        final Map<Integer, List<Object>> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32(pkFieldName()),
+                record -> {
+                    long ts = ((Struct) record.value()).getStruct("after").getInt64("dt");
+                    long tsSeconds = ts / 1000;
+                    long tsMillis = ts % 1000;
+                    LocalDateTime tsDateTime = LocalDateTime.ofEpochSecond(
+                            tsSeconds,
+                            (int) TimeUnit.MILLISECONDS.toNanos(tsMillis),
+                            ZoneOffset.UTC);
+                    int dateTs = ((Struct) record.value()).getStruct("after").getInt32("d");
+                    LocalDate date = LocalDate.ofEpochDay(dateTs);
+                    long timeTs = ((Struct) record.value()).getStruct("after").getInt64("t");
+                    LocalTime time = LocalTime.ofSecondOfDay(timeTs / 1_000_000);
+                    return List.of(tsDateTime.toLocalDate(), date, time);
+                },
+                DATABASE.topicForTable("a_dt"),
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            // LocalDateTime dt = LocalDateTime.of(i + 2000, 5, 1, 0, 0);
+            LocalDateTime dateTime = LocalDateTime.parse(String.format("%s-05-01T00:00:00", 2000 + i));
+            LocalDate dt = dateTime.toLocalDate();
+            LocalDate d = LocalDate.parse(String.format("%s-05-01", 2000 + i));
+            LocalTime t = LocalTime.parse(String.format("0%s:00:00", i));
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, List.of(dt, d, t)));
         }
     }
 }
