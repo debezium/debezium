@@ -103,7 +103,7 @@ pipeline {
                         continue
                     }
                     def jobName = "connector-debezium-${db}-matrix-test"
-                    def build = jenkins.model.Jenkins.instance.getItem(jobName).lastBuild
+                    def build = jenkins.model.Jenkins.instance.getItem(jobName).getLastCompletedBuild()
 
                     if (!build) {
                         println "No build of ${jobName} found!"
