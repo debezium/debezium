@@ -42,14 +42,30 @@ public abstract class AbstractMysqlFieldReader implements MysqlFieldReader {
         }
 
         if (column.jdbcType() == Types.DATE) {
-            return readDateField(rs, columnIndex, column, table);
+            try {
+                return readDateField(rs, columnIndex, column, table);
+            }
+            catch (RuntimeException e) {
+                logger.warn("Failed to read date value: '{}'. Trying default ResultSet implementation.", e.getMessage());
+                // If our field reader failed, let's try JDBC as the last resort.
+                // Workaround for DBZ-5084.
+                return rs.getObject(columnIndex);
+            }
         }
 
         // This is for DATETIME columns (a logical date + time without time zone)
         // by reading them with a calendar based on the default time zone, we make sure that the value
         // is constructed correctly using the database's (or connection's) time zone
         if (column.jdbcType() == Types.TIMESTAMP) {
-            return readTimestampField(rs, columnIndex, column, table);
+            try {
+                return readTimestampField(rs, columnIndex, column, table);
+            }
+            catch (RuntimeException e) {
+                logger.warn("Failed to read timestamp value: '{}'. Trying default ResultSet implementation.", e.getMessage());
+                // If our field reader failed, let's try JDBC as the last resort.
+                // Workaround for DBZ-5084.
+                return rs.getObject(columnIndex);
+            }
         }
 
         // JDBC's rs.GetObject() will return a Boolean for all TINYINT(1) columns.

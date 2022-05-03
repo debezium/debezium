@@ -29,6 +29,13 @@ CREATE TABLE a42 (
   aa integer
 );
 
+CREATE TABLE a_dt (
+  pk INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  dt DATETIME NOT NULL,
+  d DATE NOT NULL,
+  t TIME NOT NULL
+) AUTO_INCREMENT = 1;
+
 CREATE TABLE debezium_signal (
   id varchar(64),
   type varchar(32),
