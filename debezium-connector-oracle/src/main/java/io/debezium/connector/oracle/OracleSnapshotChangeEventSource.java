@@ -5,13 +5,10 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -20,17 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
-import io.debezium.util.HexConverter;
 
 /**
  * A {@link StreamingChangeEventSource} for Oracle.
@@ -142,117 +136,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             return;
         }
 
-        Optional<Scn> latestTableDdlScn = getLatestTableDdlScn(ctx);
-        Scn currentScn;
-
-        // we must use an SCN for taking the snapshot that represents a later timestamp than the latest DDL change than
-        // any of the captured tables; this will not be a problem in practice, but during testing it may happen that the
-        // SCN of "now" represents the same timestamp as a newly created table that should be captured; in that case
-        // we'd get a ORA-01466 when running the flashback query for doing the snapshot
-        do {
-            currentScn = jdbcConnection.getCurrentScn();
-        } while (areSameTimestamp(latestTableDdlScn.orElse(null), currentScn));
-
-        // Record the starting SCNs for all currently in-progress transactions.
-        // We should mine from the oldest still-reachable start SCN, but only for those transactions.
-        // For everything else, we mine only from the snapshot SCN forward.
-        Map<String, Scn> snapshotPendingTransactions = getSnapshotPendingTransactions(currentScn);
-
-        ctx.offset = OracleOffsetContext.create()
-                .logicalName(connectorConfig)
-                .scn(currentScn)
-                .snapshotScn(currentScn)
-                .snapshotPendingTransactions(snapshotPendingTransactions)
-                .transactionContext(new TransactionContext())
-                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
-                .build();
-    }
-
-    /**
-     * Whether the two SCNs represent the same timestamp or not (resolution is only 3 seconds).
-     */
-    private boolean areSameTimestamp(Scn scn1, Scn scn2) throws SQLException {
-        if (scn1 == null) {
-            return false;
-        }
-
-        try (Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery("SELECT 1 FROM DUAL WHERE SCN_TO_TIMESTAMP(" + scn1 + ") = SCN_TO_TIMESTAMP(" + scn2 + ")")) {
-
-            return rs.next();
-        }
-    }
-
-    /**
-     * Returns the SCN of the latest DDL change to the captured tables. The result will be empty if there's no table to
-     * capture as per the configuration.
-     */
-    private Optional<Scn> getLatestTableDdlScn(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx)
-            throws SQLException {
-        if (ctx.capturedTables.isEmpty()) {
-            return Optional.empty();
-        }
-
-        StringBuilder lastDdlScnQuery = new StringBuilder("SELECT TIMESTAMP_TO_SCN(MAX(last_ddl_time))")
-                .append(" FROM all_objects")
-                .append(" WHERE");
-
-        for (TableId table : ctx.capturedTables) {
-            lastDdlScnQuery.append(" (owner = '" + table.schema() + "' AND object_name = '" + table.table() + "') OR");
-        }
-
-        String query = lastDdlScnQuery.substring(0, lastDdlScnQuery.length() - 3).toString();
-        try (Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(query)) {
-
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get latest table DDL SCN");
-            }
-
-            // Guard against LAST_DDL_TIME with value of 0.
-            // This case should be treated as if we were unable to determine a value for LAST_DDL_TIME.
-            // This forces later calculations to be based upon the current SCN.
-            String latestDdlTime = rs.getString(1);
-            if ("0".equals(latestDdlTime)) {
-                return Optional.empty();
-            }
-
-            return Optional.of(Scn.valueOf(latestDdlTime));
-        }
-        catch (SQLException e) {
-            if (e.getErrorCode() == 8180) {
-                // DBZ-1446 In this use case we actually do not want to propagate the exception but
-                // rather return an empty optional value allowing the current SCN to take prior.
-                LOGGER.info("No latest table SCN could be resolved, defaulting to current SCN");
-                return Optional.empty();
-            }
-            throw e;
-        }
-    }
-
-    /**
-     * Returns a map of transaction id to start SCN for all ongoing transactions before snapshotSCN.
-     */
-    private Map<String, Scn> getSnapshotPendingTransactions(final Scn snapshotSCN) throws SQLException {
-        StringBuilder txQuery = new StringBuilder("SELECT XID, START_SCN FROM V$TRANSACTION WHERE START_SCN < ");
-        txQuery.append(snapshotSCN.toString());
-
-        Map<String, Scn> transactions = new HashMap<>();
-
-        try (Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(txQuery.toString())) {
-            while (rs.next()) {
-                byte[] txid = rs.getBytes(1);
-                String scn = rs.getString(2);
-                transactions.put(HexConverter.convertToHexString(txid), Scn.valueOf(scn));
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.warn("Could not query the V$TRANSACTION view: {}", e);
-            throw e;
-        }
-
-        return transactions;
+        ctx.offset = connectorConfig.getAdapter().determineSnapshotOffset(ctx, connectorConfig, jdbcConnection);
     }
 
     @Override

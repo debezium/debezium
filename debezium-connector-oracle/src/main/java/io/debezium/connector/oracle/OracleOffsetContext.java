@@ -146,7 +146,7 @@ public class OracleOffsetContext implements OffsetContext {
             return this;
         }
 
-        OracleOffsetContext build() {
+        public OracleOffsetContext build() {
             return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshotScn, snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
                     incrementalSnapshotContext);
         }
