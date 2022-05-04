@@ -100,6 +100,7 @@ public final class TestHelper {
                 .dropSlotOnClose(dropOnClose)
                 .statusUpdateInterval(Duration.ofSeconds(10))
                 .withSchema(getSchema(config))
+                .jdbcMetadataConnection(TestHelper.createWithTypeRegistry())
                 .build();
     }
 

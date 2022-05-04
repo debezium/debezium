@@ -13,6 +13,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.doc.FixFor;
 
@@ -34,7 +35,7 @@ public class PostgresConnectorTaskIT {
         }
 
         @Override
-        protected ReplicationConnection createReplicationConnection(boolean doSnapshot) throws SQLException {
+        protected ReplicationConnection createReplicationConnection(boolean doSnapshot, PostgresConnection jdbcConnection) throws SQLException {
             throw new SQLException("Could not connect");
         }
     }

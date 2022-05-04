@@ -30,6 +30,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.MessageDecoderContext;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
@@ -357,8 +358,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public enum LogicalDecoder implements EnumeratedValue {
         PGOUTPUT("pgoutput") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
-                return new PgOutputMessageDecoder(config);
+            public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
+                return new PgOutputMessageDecoder(config, connection);
             }
 
             @Override
@@ -378,7 +379,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         DECODERBUFS("decoderbufs") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
                 return new PgProtoMessageDecoder();
             }
 
@@ -404,7 +405,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             this.decoderName = decoderName;
         }
 
-        public abstract MessageDecoder messageDecoder(MessageDecoderContext config);
+        public abstract MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection);
 
         public static LogicalDecoder parse(String s) {
             return valueOf(s.trim().toUpperCase());
