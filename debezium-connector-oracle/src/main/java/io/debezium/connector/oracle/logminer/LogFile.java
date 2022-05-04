@@ -88,6 +88,10 @@ public class LogFile {
         return type;
     }
 
+    public boolean isScnInLogFileRange(Scn scn) {
+        return getFirstScn().compareTo(scn) <= 0 && (getNextScn().compareTo(scn) > 0 || getNextScn().equals(Scn.MAX));
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(sequence);

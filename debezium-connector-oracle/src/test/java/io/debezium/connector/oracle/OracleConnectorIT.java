@@ -3273,6 +3273,144 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-5085")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to LogMiner")
+    public void shouldSnapshotAndStreamAllRecordsThatSpanAcrossSnapshotStreamingBoundarySmallTrxs() throws Exception {
+        TestHelper.dropTable(connection, "dbz5085");
+        try {
+            setConsumeTimeout(10, TimeUnit.SECONDS);
+
+            connection.execute("CREATE TABLE dbz5085 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5085");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
+                    .with(OracleConnectorConfig.LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            final int expected = 50;
+
+            // Insert records into the table while the connector starts, part of the records should be
+            // captured during snapshot and streaming. We just need to guarantee that we get all records.
+            LOGGER.info("Inserting {} records", expected);
+            for (int i = 0; i < expected; ++i) {
+                if (i % 2 == 0) {
+                    connection.execute("INSERT INTO dbz5085 (id,data) values (" + i + ", 'Test-" + i + "')");
+                }
+                else {
+                    connection.executeWithoutCommitting("INSERT INTO dbz5085 (id,data) values (" + i + ", 'Test-" + i + "')");
+                }
+                // simulate longer lived transactions
+                Thread.sleep(100L);
+            }
+            connection.commit();
+
+            // wait until we get to streaming phase
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords sourceRecords = consumeRecordsByTopic(expected);
+
+            // verify that we got expected numbers of records
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5085");
+            assertThat(records).hasSize(expected);
+
+            boolean snapshotFound = false;
+            boolean streamingFound = false;
+            for (int i = 0; i < expected; ++i) {
+                final SourceRecord record = records.get(i);
+                final Struct value = (Struct) record.value();
+                if (value.getString("op").equals(Envelope.Operation.READ.code())) {
+                    snapshotFound = true;
+                    VerifyRecord.isValidRead(record, "ID", i);
+                }
+                else {
+                    streamingFound = true;
+                    VerifyRecord.isValidInsert(record, "ID", i);
+                }
+            }
+
+            // Verify that we got records from both phases
+            assertThat(snapshotFound).isTrue();
+            assertThat(streamingFound).isTrue();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5085");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5085")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to LogMiner")
+    public void shouldSnapshotAndStreamAllRecordsThatSpanAcrossSnapshotStreamingBoundaryLargeTrxs() throws Exception {
+        TestHelper.dropTable(connection, "dbz5085");
+        try {
+            setConsumeTimeout(10, TimeUnit.SECONDS);
+
+            connection.execute("CREATE TABLE dbz5085 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5085");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
+                    .with(OracleConnectorConfig.LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            final int expected = 50;
+
+            // Insert records into the table while the connector starts, part of the records should be
+            // captured during snapshot and streaming. We just need to guarantee that we get all records.
+            LOGGER.info("Inserting {} records", expected);
+            for (int i = 0; i < expected; ++i) {
+                if (i % 10 == 0) {
+                    connection.execute("INSERT INTO dbz5085 (id,data) values (" + i + ", 'Test-" + i + "')");
+                }
+                else {
+                    connection.executeWithoutCommitting("INSERT INTO dbz5085 (id,data) values (" + i + ", 'Test-" + i + "')");
+                }
+                // simulate longer lived transactions
+                Thread.sleep(100L);
+            }
+            connection.commit();
+
+            // wait until we get to streaming phase
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords sourceRecords = consumeRecordsByTopic(expected);
+
+            // verify that we got expected numbers of records
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5085");
+            assertThat(records).hasSize(expected);
+
+            boolean snapshotFound = false;
+            boolean streamingFound = false;
+            for (int i = 0; i < expected; ++i) {
+                final SourceRecord record = records.get(i);
+                final Struct value = (Struct) record.value();
+                if (value.getString("op").equals(Envelope.Operation.READ.code())) {
+                    snapshotFound = true;
+                    VerifyRecord.isValidRead(record, "ID", i);
+                }
+                else {
+                    streamingFound = true;
+                    VerifyRecord.isValidInsert(record, "ID", i);
+                }
+            }
+
+            // Verify that we got records from both phases
+            assertThat(snapshotFound).isTrue();
+            assertThat(streamingFound).isTrue();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5085");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-4842")
     public void shouldRestartAfterCapturedTableIsDroppedWhileConnectorDown() throws Exception {
         TestHelper.dropTable(connection, "dbz4842");
