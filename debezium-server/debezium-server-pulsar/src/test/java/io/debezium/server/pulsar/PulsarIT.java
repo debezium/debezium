@@ -100,7 +100,7 @@ public class PulsarIT {
                 .with("password", dbPassword)
                 .with("dbname", dbName)
                 .build();
-        try (final PostgresConnection connection = new PostgresConnection(config)) {
+        try (final PostgresConnection connection = new PostgresConnection(config, "Debezium Pulsar Test")) {
             connection.execute(
                     "CREATE TABLE inventory.nokey (val INT);",
                     "INSERT INTO inventory.nokey VALUES (1)",

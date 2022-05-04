@@ -1376,6 +1376,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         catch (ConditionTimeoutException e) {
             fail("Failed to detect at least 2 LSN changes", e);
         }
+        Testing.print("Done");
     }
 
     @Test

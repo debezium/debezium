@@ -50,6 +50,7 @@ import io.debezium.util.Throwables;
  */
 public final class TestHelper {
 
+    private static final String CONNECTION_TEST = "Debezium Test";
     protected static final String TEST_SERVER = "test_server";
     protected static final String TEST_DATABASE = "postgres";
     protected static final String PK_FIELD = "pk";
@@ -128,7 +129,7 @@ public final class TestHelper {
      * @return the PostgresConnection instance; never null
      */
     public static PostgresConnection create() {
-        return new PostgresConnection(defaultJdbcConfig());
+        return new PostgresConnection(defaultJdbcConfig(), CONNECTION_TEST);
     }
 
     /**
@@ -141,7 +142,8 @@ public final class TestHelper {
 
         return new PostgresConnection(
                 config.getJdbcConfig(),
-                getPostgresValueConverterBuilder(config));
+                getPostgresValueConverterBuilder(config),
+                CONNECTION_TEST);
     }
 
     /**
@@ -152,7 +154,7 @@ public final class TestHelper {
      * @return the PostgresConnection instance; never null
      */
     public static PostgresConnection create(String appName) {
-        return new PostgresConnection(JdbcConfiguration.adapt(defaultJdbcConfig().edit().with("ApplicationName", appName).build()));
+        return new PostgresConnection(JdbcConfiguration.adapt(defaultJdbcConfig().edit().with("ApplicationName", appName).build()), CONNECTION_TEST);
     }
 
     /**
@@ -213,21 +215,21 @@ public final class TestHelper {
 
     public static TypeRegistry getTypeRegistry() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config))) {
+        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return connection.getTypeRegistry();
         }
     }
 
     public static PostgresDefaultValueConverter getDefaultValueConverter() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config))) {
+        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return connection.getDefaultValueConverter();
         }
     }
 
     public static Charset getDatabaseCharset() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config))) {
+        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return connection.getDatabaseCharset();
         }
     }
