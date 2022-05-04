@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -347,7 +348,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final OptionalLong rowCount = rowCountForTable(table.id());
 
         try (Statement statement = readTableStatement(rowCount);
-                ResultSet rs = statement.executeQuery(selectStatement.get())) {
+                ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
 
             ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
             long rows = 0;
