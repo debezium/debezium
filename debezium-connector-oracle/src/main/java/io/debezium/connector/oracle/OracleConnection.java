@@ -63,10 +63,15 @@ public class OracleConnection extends JdbcConnection {
     private static final String QUOTED_CHARACTER = "\"";
 
     public OracleConnection(JdbcConfiguration config, Supplier<ClassLoader> classLoaderSupplier) {
-        super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        this(config, classLoaderSupplier, true);
+    }
 
+    public OracleConnection(JdbcConfiguration config, Supplier<ClassLoader> classLoaderSupplier, boolean showVersion) {
+        super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.databaseVersion = resolveOracleDatabaseVersion();
-        LOGGER.info("Database Version: {}", databaseVersion.getBanner());
+        if (showVersion) {
+            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
+        }
     }
 
     public void setSessionToPdb(String pdbName) {

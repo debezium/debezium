@@ -5,11 +5,14 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.SQLException;
+
 import io.debezium.config.Configuration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Clock;
@@ -70,4 +73,17 @@ public interface StreamingAdapter {
     default TableNameCaseSensitivity getTableNameCaseSensitivity(OracleConnection connection) {
         return TableNameCaseSensitivity.SENSITIVE;
     }
+
+    /**
+     * Returns the offset context based on the snapshot state.
+     *
+     * @param ctx the relational snapshot context, should never be {@code null}
+     * @param connectorConfig the connector configuration, should never be {@code null}
+     * @param connection the database connection, should never be {@code null}
+     * @return the offset context, never {@code null}
+     * @throws SQLException if a database error occurred
+     */
+    OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
+                                                OracleConnectorConfig connectorConfig, OracleConnection connection)
+            throws SQLException;
 }
