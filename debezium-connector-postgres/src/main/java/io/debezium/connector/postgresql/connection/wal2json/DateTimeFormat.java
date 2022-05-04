@@ -25,6 +25,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresValueConverter;
+
 /**
  * Transformer for time/date related string representations in JSON messages coming from the wal2json plugin.
  *
@@ -132,7 +134,17 @@ public interface DateTimeFormat {
 
         @Override
         public LocalDate date(final String s) {
-            return format(DATE_FORMAT_OPT_ERA_PATTERN_HINT, s, () -> LocalDate.parse(s, DATE_FORMAT_OPT_ERA));
+            return format(DATE_FORMAT_OPT_ERA_PATTERN_HINT, s, () -> {
+                if ("infinity".equals(s)) {
+                    return PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE;
+                }
+                else if ("-infinity".equals(s)) {
+                    return PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE;
+                }
+                else {
+                    return LocalDate.parse(s, DATE_FORMAT_OPT_ERA);
+                }
+            });
         }
 
         @Override
