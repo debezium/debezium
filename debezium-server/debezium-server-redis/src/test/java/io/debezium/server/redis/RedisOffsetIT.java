@@ -51,7 +51,7 @@ public class RedisOffsetIT {
                 .with("dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME)
                 .with("hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST)
                 .with("port", PostgresTestResourceLifecycleManager.getContainer().getMappedPort(PostgresTestResourceLifecycleManager.POSTGRES_PORT))
-                .build());
+                .build(), "Debezium Redis Test");
     }
 
     @Test

@@ -84,7 +84,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         final PostgresConnectorConfig postgresConfig = new PostgresConnectorConfig(config);
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         // Try to connect to the database ...
-        try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig())) {
+        try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION)) {
             try {
                 // Prepare connection without initial statement execution
                 connection.connection(false);

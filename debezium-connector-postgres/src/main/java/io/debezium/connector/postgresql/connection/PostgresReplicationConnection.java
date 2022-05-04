@@ -125,7 +125,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
         // first copy the parent's default settings...
         // then set some additional replication specific settings
-        return JdbcConfiguration.adapt(PostgresConnection.addDefaultSettings(configuration)
+        return JdbcConfiguration.adapt(PostgresConnection.addDefaultSettings(configuration, PostgresConnection.CONNECTION_STREAMING)
                 .edit()
                 .with("replication", "database")
                 .with("preferQueryMode", "simple") // replication protocol only supports simple query mode
@@ -133,7 +133,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
-        try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig())) {
+        try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_SLOT_INFO)) {
             return connection.readReplicationSlotInfo(slotName, plugin.getPostgresPluginName());
         }
     }
@@ -640,7 +640,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
         if (dropSlotOnClose && dropSlot) {
             // we're dropping the replication slot via a regular - i.e. not a replication - connection
-            try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig())) {
+            try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_DROP_SLOT)) {
                 connection.dropReplicationSlot(slotName);
             }
             catch (Throwable e) {

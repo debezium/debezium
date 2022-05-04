@@ -233,7 +233,7 @@ public class PostgresConnectionIT {
 
     // "fake" a pg95 response by not returning confirmed_flushed_lsn
     private PostgresConnection buildPG95PGConn(String name) {
-        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig().edit().with("ApplicationName", name).build())) {
+        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()), name) {
             @Override
             protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
                                                               ResultSetMapper<ServerInfo.ReplicationSlot> map)

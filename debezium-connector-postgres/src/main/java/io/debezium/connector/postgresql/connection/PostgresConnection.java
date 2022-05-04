@@ -56,6 +56,13 @@ import io.debezium.util.Metronome;
  */
 public class PostgresConnection extends JdbcConnection {
 
+    public static final String CONNECTION_STREAMING = "Debezium Streaming";
+    public static final String CONNECTION_SLOT_INFO = "Debezium Slot Info";
+    public static final String CONNECTION_DROP_SLOT = "Debezium Drop Slot";
+    public static final String CONNECTION_VALIDATE_CONNECTION = "Debezium Validate Connection";
+    public static final String CONNECTION_HEARTBEAT = "Debezium Heartbeat";
+    public static final String CONNECTION_GENERAL = "Debezium General";
+
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
 
     private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
@@ -82,9 +89,10 @@ public class PostgresConnection extends JdbcConnection {
      *
      * @param config {@link Configuration} instance, may not be null.
      * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
+     * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
-    public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder) {
-        super(addDefaultSettings(config), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
+    public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
+        super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
 
         if (Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
@@ -102,9 +110,10 @@ public class PostgresConnection extends JdbcConnection {
      * Create a Postgres connection using the supplied configuration and {@link TypeRegistry}
      * @param config {@link Configuration} instance, may not be null.
      * @param typeRegistry an existing/already-primed {@link TypeRegistry} instance
+     * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
-    public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
-        super(addDefaultSettings(config.getJdbcConfig()), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
+    public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry, String connectionUsage) {
+        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -121,15 +130,17 @@ public class PostgresConnection extends JdbcConnection {
      * The connector is the regular one without datatype resolution capabilities.
      *
      * @param config {@link Configuration} instance, may not be null.
+     * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
-    public PostgresConnection(JdbcConfiguration config) {
-        this(config, null);
+    public PostgresConnection(JdbcConfiguration config, String connectionUsage) {
+        this(config, null, connectionUsage);
     }
 
-    static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
+    static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration, String connectionUsage) {
         // we require Postgres 9.4 as the minimum server version since that's where logical replication was first introduced
         return JdbcConfiguration.adapt(configuration.edit()
                 .with("assumeMinServerVersion", "9.4")
+                .with("ApplicationName", connectionUsage)
                 .build());
     }
 
