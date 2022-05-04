@@ -239,7 +239,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         ReplicationConnection replicationConnection = null;
         while (retryCount <= maxRetries) {
             try {
-                return taskContext.createReplicationConnection(doSnapshot);
+                return taskContext.createReplicationConnection(doSnapshot, jdbcConnection);
             }
             catch (SQLException ex) {
                 retryCount++;

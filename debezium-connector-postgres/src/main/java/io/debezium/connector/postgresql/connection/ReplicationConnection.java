@@ -195,6 +195,13 @@ public interface ReplicationConnection extends AutoCloseable {
         Builder doSnapshot(final boolean doSnapshot);
 
         /**
+         * Provides a JDBC connection used to query metadata, database information, ...
+         * @param jdbcConnection
+         * @return
+         */
+        Builder jdbcMetadataConnection(PostgresConnection jdbcConnection);
+
+        /**
          * Creates a new {@link ReplicationConnection} instance
          * @return a connection, never null
          */

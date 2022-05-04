@@ -87,6 +87,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param doSnapshot                whether the connector is doing snapshot
+     * @param jdbcConnection            general POstgreSQL JDBC connection
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
@@ -102,6 +103,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           boolean dropSlotOnClose,
                                           boolean doSnapshot,
                                           Duration statusUpdateInterval,
+                                          PostgresConnection jdbcConnection,
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
                                           PostgresSchema schema) {
@@ -115,7 +117,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
-        this.messageDecoder = plugin.messageDecoder(new MessageDecoderContext(config, schema));
+        this.messageDecoder = plugin.messageDecoder(new MessageDecoderContext(config, schema), jdbcConnection);
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -670,6 +672,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
         private Properties slotStreamParams = new Properties();
+        private PostgresConnection jdbcConnection;
 
         protected ReplicationConnectionBuilder(PostgresConnectorConfig config) {
             assert config != null;
@@ -748,10 +751,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder jdbcMetadataConnection(PostgresConnection jdbcConnection) {
+            this.jdbcConnection = jdbcConnection;
+            return this;
+        }
+
+        @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
             return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter,
-                    publicationAutocreateMode, plugin, dropSlotOnClose, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+                    publicationAutocreateMode, plugin, dropSlotOnClose, doSnapshot, statusUpdateIntervalVal,
+                    jdbcConnection, typeRegistry, slotStreamParams, schema);
         }
 
         @Override

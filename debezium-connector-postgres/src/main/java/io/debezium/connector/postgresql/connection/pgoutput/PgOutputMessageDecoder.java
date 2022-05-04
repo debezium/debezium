@@ -117,9 +117,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         }
     }
 
-    public PgOutputMessageDecoder(MessageDecoderContext decoderContext) {
+    public PgOutputMessageDecoder(MessageDecoderContext decoderContext, PostgresConnection connection) {
         this.decoderContext = decoderContext;
-        this.connection = new PostgresConnection(decoderContext.getConfig(), decoderContext.getSchema().getTypeRegistry(), "Debezium pgoutput");
+        this.connection = connection;
     }
 
     @Override
@@ -766,6 +766,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public void close() {
-        connection.close();
+        if (connection != null) {
+            connection.close();
+        }
     }
 }
