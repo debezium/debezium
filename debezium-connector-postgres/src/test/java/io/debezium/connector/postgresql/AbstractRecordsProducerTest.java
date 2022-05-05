@@ -102,6 +102,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     public TestRule logTestName = new TestLogger(LOGGER);
 
     protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (.*)\\(.*\\) VALUES .*", Pattern.CASE_INSENSITIVE);
+    protected static final Pattern DELETE_TABLE_MATCHING_PATTERN = Pattern.compile("delete from (.*) where .*", Pattern.CASE_INSENSITIVE);
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_NEGATIVE_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('($1234.11)')";
@@ -217,6 +218,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected static final String INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT = "INSERT INTO hstore_table_with_null (hs) VALUES ('\"key1\" => \"val1\",\"key2\" => NULL')";
 
     protected static final String INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT = "INSERT INTO hstore_table_with_special (hs) VALUES ('\"key_#1\" => \"val 1\",\"key 2\" =>\" ##123 78\"')";
+
+    protected static final String DELETE_DATE_TIME_TYPES_STMT = "DELETE FROM time_table WHERE pk=1;";
 
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN,
             INSERT_DATE_TIME_TYPES_STMT, INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
@@ -1109,6 +1112,19 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
     protected static TableId tableIdFromInsertStmt(String statement) {
         Matcher matcher = INSERT_TABLE_MATCHING_PATTERN.matcher(statement);
+        assertTrue("Extraction of table name from insert statement failed: " + statement, matcher.matches());
+
+        TableId id = TableId.parse(matcher.group(1), false);
+
+        if (id.schema() == null) {
+            id = new TableId(id.catalog(), "public", id.table());
+        }
+
+        return id;
+    }
+
+    protected static TableId tableIdFromDeleteStmt(String statement) {
+        Matcher matcher = DELETE_TABLE_MATCHING_PATTERN.matcher(statement);
         assertTrue("Extraction of table name from insert statement failed: " + statement, matcher.matches());
 
         TableId id = TableId.parse(matcher.group(1), false);
