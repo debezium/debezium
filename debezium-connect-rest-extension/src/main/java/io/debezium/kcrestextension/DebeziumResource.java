@@ -150,4 +150,10 @@ public class DebeziumResource {
                 && Boolean.parseBoolean(topicCreationProperty);
     }
 
+    @GET
+    @Path("/version")
+    public String getDebeziumVersion() {
+        return Module.version();
+    }
+
 }
