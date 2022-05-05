@@ -224,11 +224,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             filter = Filters.and(filter, operationFilter);
         }
 
-        FindIterable<Document> results = oplog.find(filter)
-                .sort(new Document("$natural", 1))
-                .oplogReplay(true)
-                .cursorType(CursorType.TailableAwait)
-                .noCursorTimeout(true);
+    FindIterable<Document> results = oplog.find(filter)
+            .sort(new Document("$natural", 1))
+            .oplogReplay(true)
+            .cursorType(CursorType.TailableAwait)
+            .comment("{\"op_timeout\":30,\"svcname\":\"mercury\"}")
+            .noCursorTimeout(true);
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             results = results.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
