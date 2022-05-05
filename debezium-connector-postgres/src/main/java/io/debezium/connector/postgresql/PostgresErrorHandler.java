@@ -28,7 +28,9 @@ public class PostgresErrorHandler extends ErrorHandler {
             "Database connection failed when reading from copy",
             "An I/O error occurred while sending to the backend",
             "ERROR: could not open relation with OID",
-            "This connection has been closed");
+            "This connection has been closed",
+            "terminating connection due to unexpected postmaster exit",
+            "terminating connection due to administrator command");
 
     public PostgresErrorHandler(PostgresConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
         super(PostgresConnector.class, connectorConfig, queue);
