@@ -22,14 +22,19 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 
 /**
+ * @deprecated
+ * This class is scheduled to be renamed in Debezium 2.0 to "io.debezium.converters.BinaryDataConverter". <p/>
+ *
  * A customized value converter to allow avro message to be delivered as it is (byte[]) to kafka, this is used
  * for outbox pattern where payload is serialized by KafkaAvroSerializer, the consumer need to get the deseralized payload.
  *
- * To enabled the converter in a connector, the following value need to be specified
+ * To enable the converter in a connector, the following value need to be specified
  * "value.converter": "io.debezium.converters.ByteBufferConverter"
  *
+ * @since 1.9
  * @author Yang Yang
  */
+@Deprecated
 public class ByteBufferConverter implements Converter, HeaderConverter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ByteBufferConverter.class);
