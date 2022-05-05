@@ -16,7 +16,7 @@ freeStyleJob('prepare-maven-artifact-check') {
 
     steps {
         shell('''
-            jenkins-jobs/scripts/maven-artifact-check.sh -u $ARTIFACT_URL --components $COMPONENTS
+            jenkins-jobs/scripts/maven-artifact-check.sh -u $ARTIFACT_URL --components "$COMPONENTS"
         ''')
     }
 }

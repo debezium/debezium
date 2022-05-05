@@ -17,18 +17,7 @@ while true; do
   case "$1" in
     -f | --file )           ARTIFACT_FILE=$2;           shift; shift ;;
     -u | --url )            ARTIFACT_URL=$2;            shift; shift ;;
-    --components )          shift;
-                            EXPECTED_COMPONENTS=();
-                            param=$1;
-                            while [ "${param:0:1}" != "-" ] && [ -n "$param" ]; do
-                                EXPECTED_COMPONENTS+=("$1");
-                                shift;
-                                param=$1;
-                                if [ "$param" == "--" ]; then
-                                    shift;
-                                    param=$1;
-                                fi
-                            done ;;
+    --components )          EXPECTED_COMPONENTS=$2      shift; shift ;;
     -h | --help )           PRINT_HELP=true;            shift ;;
     -- ) shift; break ;;
     * ) break ;;
