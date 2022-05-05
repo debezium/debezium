@@ -73,6 +73,8 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
+import io.debezium.data.Envelope.FieldName;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.EmbeddedEngine;
@@ -216,6 +218,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // range types
         consumer.expects(1);
         assertInsert(INSERT_RANGE_TYPES_STMT, 1, schemaAndValuesForRangeTypes());
+    }
+
+    @Test
+    @FixFor("DBZ-5014")
+    public void shouldReceiveDeletesWithInfinityDate() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_DATE_TIME_TYPES_STMT);
+        startConnector();
+
+        consumer.expects(1);
+        assertDelete(DELETE_DATE_TIME_TYPES_STMT, 1, schemaAndValuesForDateTimeTypes());
     }
 
     @Test
@@ -2877,6 +2890,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
+    private void assertDelete(String statement, Integer pk,
+                              List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
+        TableId table = tableIdFromDeleteStmt(statement);
+        String expectedTopicName = table.schema() + "." + table.table();
+        expectedTopicName = expectedTopicName.replaceAll("[ \"]", "_");
+
+        try {
+            executeAndWait(statement);
+            SourceRecord record = assertRecordDeleted(expectedTopicName, pk != null ? PK_FIELD : null, pk);
+            ((Struct) record.value()).put(FieldName.OPERATION, Operation.DELETE.code());
+            assertRecordOffsetAndSnapshotSource(record, false, false);
+            assertSourceInfo(record, "postgres", table.schema(), table.table());
+            assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.AFTER);
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
     private SourceRecord assertRecordInserted(SourceRecord insertedRecord, String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
         assertEquals(topicName(expectedTopicName), insertedRecord.topic());
 
@@ -2888,6 +2921,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
 
         return insertedRecord;
+    }
+
+    private SourceRecord assertRecordDeleted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
+        assertFalse("records not generated", consumer.isEmpty());
+        SourceRecord insertedRecord = consumer.remove();
+
+        return assertRecordDeleted(insertedRecord, expectedTopicName, pkColumn, pk);
+    }
+
+    private SourceRecord assertRecordDeleted(SourceRecord deletedRecord, String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
+        assertEquals(topicName(expectedTopicName), deletedRecord.topic());
+
+        if (pk != null) {
+            VerifyRecord.isValidDelete(deletedRecord, pkColumn, pk);
+        }
+        else {
+            VerifyRecord.isValidDelete(deletedRecord);
+        }
+
+        return deletedRecord;
     }
 
     private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
