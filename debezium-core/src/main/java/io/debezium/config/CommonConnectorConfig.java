@@ -411,6 +411,16 @@ public abstract class CommonConnectorConfig {
                     "This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.")
             .withDefault(Boolean.FALSE);
 
+    public static final Field INCREMENTAL_SNAPSHOT_CHUNK_KEY_COLUMNS = Field.create("incremental.snapshot.chunk.key.columns")
+            .withDisplayName("List of columns to be used by query during incremental snapshot.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("This settings can be set to specify a list of columns for specific tables that would be used " +
+                    "to perform filtering when running an incremental snapshot.")
+            .withDefault(Boolean.FALSE);
+
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
@@ -579,6 +589,7 @@ public abstract class CommonConnectorConfig {
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
+    private final String incrementalSnapshotChunkKeyColumns;
     private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
@@ -610,6 +621,7 @@ public abstract class CommonConnectorConfig {
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
+        this.incrementalSnapshotChunkKeyColumns = config.getString(INCREMENTAL_SNAPSHOT_CHUNK_KEY_COLUMNS);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
@@ -709,6 +721,8 @@ public abstract class CommonConnectorConfig {
     public int getIncrementalSnashotChunkSize() {
         return incrementalSnapshotChunkSize;
     }
+
+    public String getIncrementalSnapshotChunkKeyColumns() { return incrementalSnapshotChunkKeyColumns; };
 
     public boolean shouldProvideTransactionMetadata() {
         return shouldProvideTransactionMetadata;
