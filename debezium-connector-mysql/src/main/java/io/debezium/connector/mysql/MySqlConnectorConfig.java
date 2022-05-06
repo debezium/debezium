@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.util.Random;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -609,13 +608,12 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDefault(MySqlConnectorConfig::randomServerId)
             .required()
             .withValidation(Field::isPositiveLong)
             .withDescription("A numeric ID of this database client, which must be unique across all "
                     + "currently-running database processes in the cluster. This connector joins the "
                     + "MySQL database cluster as another server (with this unique ID) so it can read "
-                    + "the binlog. By default, a random number is generated between 5400 and 6400.");
+                    + "the binlog.");
 
     public static final Field SERVER_ID_OFFSET = Field.create("database.server.id.offset")
             .withDisplayName("Cluster ID offset")
@@ -1186,12 +1184,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         // Everything checks out ok.
         return 0;
-    }
-
-    private static int randomServerId() {
-        int lowestServerId = 5400;
-        int highestServerId = 6400;
-        return lowestServerId + new Random().nextInt(highestServerId - lowestServerId);
     }
 
     @Override

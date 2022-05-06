@@ -2349,7 +2349,7 @@ The connector is also unable to recover its database history topic.
 
 |[[mysql-property-database-server-id]]<<mysql-property-database-server-id, `+database.server.id+`>>
 |_random_
-|A numeric ID of this database client, which must be unique across all currently-running database processes in the MySQL cluster. This connector joins the MySQL database cluster as another server (with this unique ID) so it can read the binlog. By default, a random number between 5400 and 6400 is generated, though the recommendation is to explicitly set a value.
+|A numeric ID of this database client, which must be unique across all currently-running database processes in the MySQL cluster. This connector joins the MySQL database cluster as another server (with this unique ID) so it can read the binlog.
 
 |[[mysql-property-database-include-list]]<<mysql-property-database-include-list, `+database.include.list+`>>
 |_empty string_
