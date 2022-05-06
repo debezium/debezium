@@ -92,12 +92,36 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected void removeEventWithRowId(LogMinerEventRow row) {
-        final MemoryTransaction transaction = getTransactionCache().get(row.getTransactionId());
+        MemoryTransaction transaction = getTransactionCache().get(row.getTransactionId());
         if (transaction == null) {
-            LOGGER.warn("Cannot undo change '{}' since transaction was not found.", row);
+            if (isTransactionIdWithNoSequence(row.getTransactionId())) {
+                // This means that Oracle LogMiner found an event that should be undone but its corresponding
+                // undo entry was read in a prior mining session and the transaction's sequence could not be
+                // resolved. In this case, lets locate the transaction based solely on XIDUSN and XIDSLT.
+                final String transactionPrefix = getTransactionIdPrefix(row.getTransactionId());
+                LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
+                LOGGER.debug("Checking all transactions with prefix '{}'", transactionPrefix);
+                for (String transactionKey : getTransactionCache().keySet()) {
+                    if (transactionKey.startsWith(transactionPrefix)) {
+                        transaction = getTransactionCache().get(transactionKey);
+                        if (transaction != null && transaction.removeEventWithRowId(row.getRowId())) {
+                            // We successfully found a transaction with the same XISUSN and XIDSLT and that
+                            // transaction included a change for the specified row id.
+                            LOGGER.debug("Undo change '{}' applied to transaction '{}'", row, transactionKey);
+                            return;
+                        }
+                    }
+                }
+                LOGGER.warn("Cannot undo change '{}' since event with row-id {} was not found.", row, row.getRowId());
+            }
+            else {
+                LOGGER.warn("Cannot undo change '{}' since transaction was not found.", row);
+            }
         }
         else {
-            transaction.removeEventWithRowId(row.getRowId());
+            if (!transaction.removeEventWithRowId(row.getRowId())) {
+                LOGGER.warn("Cannot undo change '{}' since event with row-id {} was not found.", row, row.getRowId());
+            }
         }
     }
 
