@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -2224,47 +2223,87 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // We require the use of an executor here so that the multiple threads cooperate with one
             // another in a way that does not block the test moving forward in the various stages.
-            ExecutorService executorService = Executors.newFixedThreadPool(1);
+            ExecutorService executorService = Executors.newFixedThreadPool(2);
 
-            try (OracleConnection connection2 = TestHelper.testConnection()) {
+            try (OracleConnection connection2 = TestHelper.testConnection(); OracleConnection connection3 = TestHelper.testConnection()) {
 
                 connection.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test1')");
 
                 // Task that creates in-progress transaction with second connection
-                final CountDownLatch latch = new CountDownLatch(1);
-                final Callable<Boolean> task = () -> {
+                final CountDownLatch latchA = new CountDownLatch(2);
+                final CountDownLatch latchB = new CountDownLatch(1);
+                final List<Future<Boolean>> futures = new ArrayList<>();
+
+                // Task that creates in-progress transaction with second connection
+                futures.add(executorService.submit(() -> {
                     try {
                         connection2.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (2,'Test2')");
 
-                        latch.countDown();
-                        connection2.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test2')");
+                        latchA.countDown();
+                        try {
+                            connection2.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test2')");
+                        }
+                        catch (SQLException e) {
+                            // Test that transaction state isn't tainted if user retries multiple times per session
+                            // and gets repeated SQL exceptions such as constraint violations for duplicate PKs.
+                            latchB.await();
+                            connection2.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test2')");
+                        }
                         return true;
                     }
                     catch (SQLException e) {
                         return false;
                     }
-                };
+                }));
 
-                // Submit the blocking task on the executor service
-                Future<Boolean> future = executorService.submit(task);
+                // Task that creates in-progress transaction with third connection
+                futures.add(executorService.submit(() -> {
+                    try {
+                        connection3.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (3,'Test3')");
+
+                        latchA.countDown();
+                        try {
+                            connection3.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test3')");
+                        }
+                        catch (SQLException e) {
+                            // Test that transaction state isn't tainted if user retries multiple times per session
+                            // and gets repeated SQL exceptions such as constraint violations for duplicate PKs.
+                            latchB.await();
+                            connection3.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test3b')");
+                        }
+                        return true;
+                    }
+                    catch (SQLException e) {
+                        return false;
+                    }
+                }));
 
                 // We wait until the latch has been triggered by the callable task
-                latch.await();
+                latchA.await();
 
                 // Explicitly wait 5 seconds to guarantee that the thread has executed the SQL
                 Thread.sleep(5000);
 
                 connection.commit();
 
-                // Get the secondary thread blocking state, should return false due to constraint violation
-                assertThat(future.get()).isFalse();
+                // toggle each thread's second attempt
+                latchB.countDown();
 
+                // Get thread state, should return false due to constraint violation
+                assertThat(futures.get(0).get()).isFalse();
+                assertThat(futures.get(1).get()).isFalse();
+
+                // Each connection inserts one new row and attempts a duplicate insert of an existing PK
+                // so the connection needs to be committed to guarantee that we test the scenario where
+                // we get a transaction commit & need to filter out roll-back rows rather than the
+                // transaction being rolled back entirely.
                 connection2.commit();
+                connection3.commit();
             }
 
-            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+            final SourceRecords sourceRecords = consumeRecordsByTopic(3);
             List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5090");
-            assertThat(records).hasSize(2);
+            assertThat(records).hasSize(3);
 
             VerifyRecord.isValidInsert(records.get(0), "ID", 1);
 
