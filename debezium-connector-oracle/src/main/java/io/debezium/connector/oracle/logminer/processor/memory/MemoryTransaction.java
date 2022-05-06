@@ -53,8 +53,8 @@ public class MemoryTransaction extends AbstractTransaction {
         return events;
     }
 
-    public void removeEventWithRowId(String rowId) {
-        events.removeIf(event -> {
+    public boolean removeEventWithRowId(String rowId) {
+        return events.removeIf(event -> {
             if (event.getRowId().equals(rowId)) {
                 LOGGER.trace("Undo applied for event {}.", event);
                 return true;
