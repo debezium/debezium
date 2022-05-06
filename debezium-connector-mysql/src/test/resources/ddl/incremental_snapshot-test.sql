@@ -36,6 +36,13 @@ CREATE TABLE a_dt (
   t TIME NOT NULL
 ) AUTO_INCREMENT = 1;
 
+SET sql_mode = "";
+CREATE TABLE a_date (
+  pk INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  d DATE NOT NULL DEFAULT "0000-00-00",
+  d_opt DATE DEFAULT "0000-00-00"
+) AUTO_INCREMENT = 1;
+
 CREATE TABLE debezium_signal (
   id varchar(64),
   type varchar(32),

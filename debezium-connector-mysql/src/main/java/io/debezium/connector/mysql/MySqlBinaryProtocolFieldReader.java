@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.sql.Blob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Calendar;
 
 import org.slf4j.Logger;
@@ -73,6 +74,10 @@ public class MySqlBinaryProtocolFieldReader extends AbstractMySqlFieldReader {
         Blob b = rs.getBlob(columnIndex);
         if (b == null) {
             return null; // Don't continue parsing date field if it is null
+        }
+        else if (b.length() == 0) {
+            // Zero date has zero length when binary protocol uses compression.
+            return column.isOptional() ? null : LocalDate.EPOCH;
         }
         // length is 4
         if (b.length() != NativeConstants.BIN_LEN_DATE) {
