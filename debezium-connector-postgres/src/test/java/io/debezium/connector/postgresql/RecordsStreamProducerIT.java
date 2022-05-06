@@ -221,11 +221,15 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-5014")
     public void shouldReceiveDeletesWithInfinityDate() throws Exception {
+        Testing.Print.enable();
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_DATE_TIME_TYPES_STMT);
+        TestHelper.execute("ALTER TABLE time_table REPLICA IDENTITY FULL");
         startConnector();
 
-        consumer.expects(1);
+        executeAndWait(INSERT_DATE_TIME_TYPES_STMT);
+
+        consumer = testConsumer(1);
+
         assertDelete(DELETE_DATE_TIME_TYPES_STMT, 1, schemaAndValuesForDateTimeTypes());
     }
 
@@ -2899,7 +2903,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             SourceRecord record = assertRecordDeleted(expectedTopicName, pk != null ? PK_FIELD : null, pk);
             assertRecordOffsetAndSnapshotSource(record, false, false);
             assertSourceInfo(record, "postgres", table.schema(), table.table());
-            assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.AFTER);
+            assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.BEFORE);
+            assertRecordSchemaAndValues(null, record, Envelope.FieldName.AFTER);
         }
         catch (Exception e) {
             throw new RuntimeException(e);
@@ -2922,9 +2927,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     private SourceRecord assertRecordDeleted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
         assertFalse("records not generated", consumer.isEmpty());
-        SourceRecord insertedRecord = consumer.remove();
+        SourceRecord deletedRecord = consumer.remove();
 
-        return assertRecordDeleted(insertedRecord, expectedTopicName, pkColumn, pk);
+        return assertRecordDeleted(deletedRecord, expectedTopicName, pkColumn, pk);
     }
 
     private SourceRecord assertRecordDeleted(SourceRecord deletedRecord, String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
