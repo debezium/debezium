@@ -883,6 +883,16 @@ public final class Field {
     }
 
     /**
+     * Create and return a new Field instance that is a copy of this field but that uses no default value.
+     *
+     * @return the new field; never null
+     */
+    public Field withNoDefault() {
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+                null, validator, recommender, isRequired, group, allowedValues);
+    }
+
+    /**
      * Create and return a new Field instance that is a copy of this field but with the given recommender.
      *
      * @param recommender the recommender; may be null
