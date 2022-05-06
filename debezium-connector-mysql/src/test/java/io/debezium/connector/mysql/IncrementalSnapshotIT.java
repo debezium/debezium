@@ -7,6 +7,7 @@
 package io.debezium.connector.mysql;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +33,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.TableId;
 import io.debezium.util.Testing;
@@ -222,12 +225,42 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 DATABASE.topicForTable("a_dt"),
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            // LocalDateTime dt = LocalDateTime.of(i + 2000, 5, 1, 0, 0);
             LocalDateTime dateTime = LocalDateTime.parse(String.format("%s-05-01T00:00:00", 2000 + i));
             LocalDate dt = dateTime.toLocalDate();
             LocalDate d = LocalDate.parse(String.format("%s-05-01", 2000 + i));
             LocalTime t = LocalTime.parse(String.format("0%s:00:00", i));
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, List.of(dt, d, t)));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-5099")
+    public void tableWithZeroDate() throws Exception {
+        Testing.Print.enable();
+        final LogInterceptor logInterceptor = new LogInterceptor(MySqlBinaryProtocolFieldReader.class);
+
+        try (final JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            connection.executeWithoutCommitting("INSERT INTO a_date (pk) VALUES (1)");
+            connection.commit();
+        }
+
+        startConnector();
+        sendAdHocSnapshotSignal(tableName("a_date"));
+
+        final int expectedRecordCount = 1;
+        final Map<Integer, List<Integer>> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32(pkFieldName()),
+                record -> {
+                    Integer d = (((Struct) record.value()).getStruct("after").getInt32("d"));
+                    Integer d_opt = (((Struct) record.value()).getStruct("after").getInt32("d_opt"));
+                    return Arrays.asList(d, d_opt);
+                },
+                DATABASE.topicForTable("a_date"),
+                null);
+        Assertions.assertThat(dbChanges).includes(MapAssert.entry(1, Arrays.asList(0, null)));
+        assertFalse(logInterceptor.containsWarnMessage("Invalid length when read MySQL DATE value. BIN_LEN_DATE is 0."));
     }
 }
