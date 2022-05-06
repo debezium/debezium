@@ -59,6 +59,7 @@ import io.debezium.util.Clock;
 public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransaction> implements LogMinerEventProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class);
+    private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
 
     private final ChangeEventSourceContext context;
     private final OracleConnectorConfig connectorConfig;
@@ -524,11 +525,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void handleRollback(LogMinerEventRow row) {
         if (getTransactionCache().containsKey(row.getTransactionId())) {
+            LOGGER.trace("Transaction {} was rolled back.", row.getTransactionId());
             finalizeTransactionRollback(row.getTransactionId(), row.getScn());
             metrics.setActiveTransactions(getTransactionCache().size());
             metrics.incrementRolledBackTransactions();
             metrics.addRolledBackTransactionId(row.getTransactionId());
             counters.rollbackCount++;
+        }
+        else {
+            LOGGER.trace("Could not rollback transaction {}, was not found in cache.", row.getTransactionId());
         }
     }
 
@@ -964,6 +969,38 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return the minimum system change number, never {@code null} but could be {@link Scn#NULL}.
      */
     protected abstract Scn getTransactionCacheMinimumScn();
+
+    /**
+     * Returns whether the transaction id has no sequence number component.
+     *
+     * Oracle transaction identifiers are a composite of:
+     * <ol>
+     *     <li>Undo segment number</li>
+     *     <li>Slot numbber of the transaction that generated the change</li>
+     *     <li>Sequence number of the transaction that generated the change</li>
+     * </ol>
+     *
+     * When Oracle LogMiner mines records, it is possible that when an undo operation is detected,
+     * often the product of a constraint violation, the LogMiner row will have the same explicit
+     * XID (transaction id) as the source operation that we should undo; however, if the record
+     * to be undone was mined in a prior iteration, Oracle LogMiner won't be able to make a link
+     * back to the full transaction's sequence number, therefore the XID value for the undo row
+     * will contain only the undo segment number and slot number, setting the sequence number to
+     * 4294967295 (aka -1 or 0xFFFFFFFF).
+     *
+     * This method explicitly checks if the provided transaction id has the no sequence sentinel
+     * value and if so, returns {@code true}; otherwise returns {@code false}.
+     *
+     * @param transactionId the transaction identifier to check, should not be {@code null}
+     * @return true if the transaction has no sequence reference, false if it does
+     */
+    protected boolean isTransactionIdWithNoSequence(String transactionId) {
+        return transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX);
+    }
+
+    protected String getTransactionIdPrefix(String transactionId) {
+        return transactionId.substring(0, 8);
+    }
 
     /**
      * Wrapper for all counter variables

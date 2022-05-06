@@ -28,6 +28,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -2194,6 +2199,81 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz3322");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5090")
+    public void shouldNotEmitEventsOnConstraintViolationsAcrossSessions() throws Exception {
+        TestHelper.dropTable(connection, "dbz5090");
+        try {
+            connection.execute("CREATE TABLE dbz5090 (id number(9,0), data varchar2(50))");
+            connection.execute("CREATE UNIQUE INDEX uk_dbz5090 ON dbz5090 (id)");
+            TestHelper.streamTable(connection, "dbz5090");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5090")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // We require the use of an executor here so that the multiple threads cooperate with one
+            // another in a way that does not block the test moving forward in the various stages.
+            ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+            try (OracleConnection connection2 = TestHelper.testConnection()) {
+
+                connection.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test1')");
+
+                // Task that creates in-progress transaction with second connection
+                final CountDownLatch latch = new CountDownLatch(1);
+                final Callable<Boolean> task = () -> {
+                    try {
+                        connection2.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (2,'Test2')");
+
+                        latch.countDown();
+                        connection2.executeWithoutCommitting("INSERT INTO dbz5090 (id,data) values (1,'Test2')");
+                        return true;
+                    }
+                    catch (SQLException e) {
+                        return false;
+                    }
+                };
+
+                // Submit the blocking task on the executor service
+                Future<Boolean> future = executorService.submit(task);
+
+                // We wait until the latch has been triggered by the callable task
+                latch.await();
+
+                // Explicitly wait 5 seconds to guarantee that the thread has executed the SQL
+                Thread.sleep(5000);
+
+                connection.commit();
+
+                // Get the secondary thread blocking state, should return false due to constraint violation
+                assertThat(future.get()).isFalse();
+
+                connection2.commit();
+            }
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5090");
+            assertThat(records).hasSize(2);
+
+            VerifyRecord.isValidInsert(records.get(0), "ID", 1);
+
+            final Struct after = (((Struct) records.get(0).value()).getStruct("after"));
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test1");
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5090");
         }
     }
 

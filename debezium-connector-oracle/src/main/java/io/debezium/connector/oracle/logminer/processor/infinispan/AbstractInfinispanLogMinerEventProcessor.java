@@ -90,18 +90,45 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected void removeEventWithRowId(LogMinerEventRow row) {
-        List<String> eventKeys = getEventCache().keySet()
-                .stream()
-                .filter(k -> k.startsWith(row.getTransactionId() + "-"))
-                .collect(Collectors.toList());
-
-        for (String eventKey : eventKeys) {
-            final LogMinerEvent event = getEventCache().get(eventKey);
-            if (event != null && event.getRowId().equals(row.getRowId())) {
-                LOGGER.trace("Undo applied for event {}.", event);
-                getEventCache().remove(eventKey);
+        List<String> eventKeys = getTransactionKeysWithPrefix(row.getTransactionId() + "-");
+        if (eventKeys.isEmpty() && isTransactionIdWithNoSequence(row.getTransactionId())) {
+            // This means that Oracle LogMiner found an event that should be undone but its corresponding
+            // undo entry was read in a prior mining session and the transaction's sequence could not be
+            // resolved. In this case, lets locate the transaction based solely on XIDUSN and XIDSLT.
+            final String transactionPrefix = getTransactionIdPrefix(row.getTransactionId());
+            LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
+            LOGGER.debug("Checking all transactions with prefix '{}'", transactionPrefix);
+            eventKeys = getTransactionKeysWithPrefix(transactionPrefix);
+            if (!eventKeys.isEmpty()) {
+                for (String eventKey : eventKeys) {
+                    final LogMinerEvent event = getEventCache().get(eventKey);
+                    if (event != null && event.getRowId().equals(row.getRowId())) {
+                        LOGGER.debug("Undo change '{}' applied to transaction '{}'", row, eventKey);
+                        getEventCache().remove(eventKey);
+                        return;
+                    }
+                }
+                LOGGER.warn("Cannot undo change '{}' since event with row-id {} was not found.", row, row.getRowId());
+            }
+            else {
+                LOGGER.warn("Cannot undo change '{}' since transaction was not found.", row);
             }
         }
+        else {
+            for (String eventKey : eventKeys) {
+                final LogMinerEvent event = getEventCache().get(eventKey);
+                if (event != null && event.getRowId().equals(row.getRowId())) {
+                    LOGGER.trace("Undo applied for event {}.", event);
+                    getEventCache().remove(eventKey);
+                    return;
+                }
+            }
+            LOGGER.warn("Cannot undo change '{}' since event with row-id {} was not found.", row, row.getRowId());
+        }
+    }
+
+    private List<String> getTransactionKeysWithPrefix(String prefix) {
+        return getEventCache().keySet().stream().filter(k -> k.startsWith(prefix)).collect(Collectors.toList());
     }
 
     @Override
