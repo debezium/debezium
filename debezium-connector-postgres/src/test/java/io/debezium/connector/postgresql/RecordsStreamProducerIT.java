@@ -71,7 +71,6 @@ import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
-import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
