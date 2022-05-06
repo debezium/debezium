@@ -71,7 +71,6 @@ import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
-import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -2932,12 +2931,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     private SourceRecord assertRecordDeleted(SourceRecord deletedRecord, String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
         assertEquals(topicName(expectedTopicName), deletedRecord.topic());
 
-        // if (pk != null) {
-        // VerifyRecord.isValidDelete(deletedRecord, pkColumn, pk);
-        // }
-        // else {
-        // VerifyRecord.isValidDelete(deletedRecord);
-        // }
+        if (pk != null) {
+            VerifyRecord.isValidDelete(deletedRecord, pkColumn, pk);
+        }
+        else {
+            VerifyRecord.isValidDelete(deletedRecord);
+        }
 
         return deletedRecord;
     }
