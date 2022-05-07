@@ -5,14 +5,10 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,18 +21,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.bson.BsonBinaryReader;
-import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
-import org.bson.ByteBuf;
 import org.bson.Document;
-import org.bson.codecs.BsonDocumentCodec;
-import org.bson.codecs.DecoderContext;
-import org.bson.codecs.EncoderContext;
 import org.bson.conversions.Bson;
-import org.bson.io.BasicOutputBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -11,7 +11,10 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonBinaryWriter;
+import org.bson.codecs.BsonDocumentCodec;
+import org.bson.codecs.EncoderContext;
 import org.bson.Document;
+import org.bson.io.BasicOutputBuffer;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope.FieldName;
@@ -19,9 +22,6 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.util.Clock;
-import org.bson.codecs.BsonDocumentCodec;
-import org.bson.codecs.EncoderContext;
-import org.bson.io.BasicOutputBuffer;
 
 /**
  * Emits change data based on a collection document.
