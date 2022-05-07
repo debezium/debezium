@@ -11,7 +11,7 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonBinaryWriter;
-import org.bson.codecs.BsonDocumentCodec;
+import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
 import org.bson.Document;
 import org.bson.io.BasicOutputBuffer;
@@ -123,8 +123,8 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
     private static byte[] documentToBytes(Document document) {
         BasicOutputBuffer bsonOutput = new BasicOutputBuffer();
         BsonBinaryWriter bsonBinaryWriter = new BsonBinaryWriter(bsonOutput);
-        new BsonDocumentCodec()
-            .encode(bsonBinaryWriter, document.toBsonDocument(), EncoderContext.builder().build());
+        new DocumentCodec()
+            .encode(bsonBinaryWriter, document, EncoderContext.builder().build());
         bsonBinaryWriter.close();
         return bsonOutput.toByteArray();
     }
