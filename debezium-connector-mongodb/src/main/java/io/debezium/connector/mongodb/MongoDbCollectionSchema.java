@@ -82,8 +82,13 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         return document == null ? null : new Struct(keySchema).put("id", keyGeneratorChangeStream.apply(document));
     }
 
-    public Struct valueFromDocumentOplog(Document document, Document filter, Envelope.Operation operation) {
+    public Struct valueFromDocumentOplog(Document document, Document filter, Envelope.Operation operation, boolean isRawOplogEnabled) {
         Struct value = new Struct(valueSchema);
+        // If isRawOplogEnabled is enabled, we will pass in the entire oplog
+        // thus we don't need the seder below
+        if (isRawOplogEnabled) {
+            return value;
+        }
         switch (operation) {
             case READ:
             case CREATE:

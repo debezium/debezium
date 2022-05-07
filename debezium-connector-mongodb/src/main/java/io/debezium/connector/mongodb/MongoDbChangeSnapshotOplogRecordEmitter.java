@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonBinaryWriter;
 import org.bson.Document;
 
 import io.debezium.annotation.Immutable;
@@ -18,6 +19,9 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.util.Clock;
+import org.bson.codecs.BsonDocumentCodec;
+import org.bson.codecs.EncoderContext;
+import org.bson.io.BasicOutputBuffer;
 
 /**
  * Emits change data based on a collection document.
@@ -72,7 +76,7 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         final Object newKey = schema.keyFromDocument(oplogEvent);
         assert newKey != null;
 
-        final Struct value = schema.valueFromDocumentOplog(oplogEvent, null, getOperation());
+        final Struct value = schema.valueFromDocumentOplog(oplogEvent, null, getOperation(), false);
         value.put(FieldName.SOURCE, getOffset().getSourceInfo());
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
@@ -105,15 +109,24 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         final Object newKey = schema.keyFromDocument(filter);
         assert newKey != null;
 
-        final Struct value = schema.valueFromDocumentOplog(patchObject, filter, getOperation());
+        final Struct value = schema.valueFromDocumentOplog(patchObject, filter, getOperation(), isRawOplogEnabled);
         value.put(FieldName.SOURCE, getOffset().getSourceInfo());
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
         if (isRawOplogEnabled) {
-            value.put(MongoDbFieldName.RAW_OPLOG_FIELD, oplogEvent.toJson());
+            value.put(MongoDbFieldName.RAW_OPLOG_FIELD, documentToBytes(oplogEvent));
         }
-
         receiver.changeRecord(getPartition(), schema, getOperation(), newKey, value, getOffset(), null);
+    }
+
+    // This is thread-safe because it's we are creating new buffer and codec everytime
+    private static byte[] documentToBytes(Document document) {
+        BasicOutputBuffer bsonOutput = new BasicOutputBuffer();
+        BsonBinaryWriter bsonBinaryWriter = new BsonBinaryWriter(bsonOutput);
+        new BsonDocumentCodec()
+            .encode(bsonBinaryWriter, document.toBsonDocument(), EncoderContext.builder().build());
+        bsonBinaryWriter.close();
+        return bsonOutput.toByteArray();
     }
 
     public static boolean isValidOperation(String operation) {
