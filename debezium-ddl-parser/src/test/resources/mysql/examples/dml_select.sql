@@ -195,3 +195,19 @@ SELECT
 FROM table2
     WINDOW w AS (PARTITION BY id, bin_volume ORDER BY id ROWS UNBOUNDED PRECEDING),
            w2 AS (PARTITION BY id, bin_volume ORDER BY id DESC ROWS 10 PRECEDING);
+
+#begin
+-- https://dev.mysql.com/doc/refman/8.0/en/lateral-derived-tables.html
+SELECT
+  salesperson.name,
+  max_sale.amount,
+  max_sale.customer_name
+FROM
+  salesperson,
+  LATERAL
+  (SELECT amount, customer_name
+    FROM all_sales
+    WHERE all_sales.salesperson_id = salesperson.id
+    ORDER BY amount DESC LIMIT 1)
+  AS max_sale;
+#end

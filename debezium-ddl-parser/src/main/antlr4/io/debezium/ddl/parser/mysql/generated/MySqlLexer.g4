@@ -131,6 +131,7 @@ JOIN:                                'JOIN';
 KEY:                                 'KEY';
 KEYS:                                'KEYS';
 KILL:                                'KILL';
+LATERAL:                             'LATERAL';
 LEADING:                             'LEADING';
 LEAVE:                               'LEAVE';
 LEFT:                                'LEFT';

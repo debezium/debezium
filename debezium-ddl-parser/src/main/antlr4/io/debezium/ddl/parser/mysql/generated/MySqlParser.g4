@@ -881,6 +881,7 @@ selectStatement
           queryExpression
         )?
         orderByClause? limitClause? lockClause?                     #unionParenthesisSelect
+    | querySpecificationNointo (',' lateralStatement)+              #withLateralStatement
     ;
 
 updateStatement
@@ -1006,13 +1007,13 @@ indexHintType
     ;
 
 joinPart
-    : (INNER | CROSS)? JOIN tableSourceItem
+    : (INNER | CROSS)? JOIN LATERAL? tableSourceItem
       (
         ON expression
         | USING '(' uidList ')'
       )?                                                            #innerJoin
     | STRAIGHT_JOIN tableSourceItem (ON expression)?                #straightJoin
-    | (LEFT | RIGHT) OUTER? JOIN tableSourceItem
+    | (LEFT | RIGHT) OUTER? JOIN LATERAL? tableSourceItem
         (
           ON expression
           | USING '(' uidList ')'
@@ -1051,6 +1052,11 @@ unionParenthesis
 unionStatement
     : UNION unionType=(ALL | DISTINCT)?
       (querySpecificationNointo | queryExpressionNointo)
+    ;
+
+lateralStatement
+    : LATERAL (querySpecificationNointo | queryExpressionNointo)
+    | LATERAL '(' (querySpecificationNointo | queryExpressionNointo) ')' (AS? uid)?
     ;
 
 // details
