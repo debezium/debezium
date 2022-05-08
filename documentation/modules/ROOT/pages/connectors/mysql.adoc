@@ -1545,7 +1545,7 @@ Represents the number of milliseconds since the epoch, and does not include time
 
 decimal.handling.mode=precise::
 +
-.Mappings when `decimal.handing.mode=precise`
+.Mappings when `decimal.handling.mode=precise`
 [cols="30%a,15%a,55%a",options="header",subs="+attributes"]
 |===
 |MySQL type |Literal type |Semantic type
@@ -1564,7 +1564,7 @@ The `scale` schema parameter contains an integer that represents how many digits
 
 decimal.handling.mode=double::
 +
-.Mappings when `decimal.handing.mode=double`
+.Mappings when `decimal.handling.mode=double`
 [cols="30%a,30%a,40%a",options="header",subs="+attributes"]
 |===
 |MySQL type |Literal type |Semantic type
@@ -1581,7 +1581,7 @@ a|_n/a_
 
 decimal.handling.mode=string::
 +
-.Mappings when `decimal.handing.mode=string`
+.Mappings when `decimal.handling.mode=string`
 [cols="30%a,30%a,40%a",options="header",subs="+attributes"]
 |===
 |MySQL type |Literal type |Semantic type
