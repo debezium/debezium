@@ -475,3 +475,10 @@ WITH RECURSIVE cte (n) AS
 )
 SELECT * FROM cte;
 #end
+
+#begin
+CREATE VIEW `invoice_payments_stats` AS
+SELECT
+    `i`.`id` AS `id`
+FROM (`invoices` `i` JOIN lateral (SELECT MAX(`ip`.`date`) AS `latest_payment` FROM `invoice_payments` `ip`) `ps`);
+#end
