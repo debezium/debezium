@@ -20,9 +20,7 @@
         <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.code.formatter>2.16.0</version.code.formatter>
-        <version.surefire.plugin>3.0.0-M4</version.surefire.plugin>
         <version.impsort>1.6.2</version.impsort>
-        <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
         <version.jandex>1.0.8</version.jandex>
         <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
