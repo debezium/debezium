@@ -74,11 +74,14 @@ public class BinaryDataConverter implements Converter, HeaderConverter {
             assertDelegateProvided(topic, value);
             LOGGER.debug("Value is not of Schema.Type.BYTES, delegating to " + delegateConverter.getClass().getName());
             return delegateConverter.fromConnectData(topic, schema, value);
-        } else if ((value instanceof byte[])) {
+        }
+        else if ((value instanceof byte[])) {
             return (byte[]) value;
-        } else if ((value instanceof ByteBuffer)) {
+        }
+        else if ((value instanceof ByteBuffer)) {
             return ((ByteBuffer) value).array();
-        } else if (value != null) {
+        }
+        else if (value != null) {
             assertDelegateProvided(topic, value);
             LOGGER.debug("Value is not of Schema.Type.BYTES, delegating to " + delegateConverter.getClass().getName());
             return delegateConverter.fromConnectData(topic, schema, value);
