@@ -3,15 +3,14 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.testing.system.tools.kafka.builders.kafka;
+package io.debezium.testing.system.tools.kafka.builders;
 
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_VERSION_KAFKA;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.strimzi.api.kafka.model.EntityOperatorSpec;
 import io.strimzi.api.kafka.model.EntityOperatorSpecBuilder;
 import io.strimzi.api.kafka.model.EntityTopicOperatorSpec;
@@ -32,10 +31,10 @@ import io.strimzi.api.kafka.model.template.PodTemplateBuilder;
 /**
  * This class simplifies building of kafka by providing default configuration for whole kafka or parts of its definition
  */
-public final class StrimziKafkaBuilder extends StrimziBuilderWrapper<StrimziKafkaBuilder, KafkaBuilder, Kafka> {
+public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBuilder, KafkaBuilder, Kafka> {
     public static String DEFAULT_KAFKA_NAME = "debezium-kafka-cluster";
 
-    private StrimziKafkaBuilder(KafkaBuilder kafkaBuilder) {
+    private FabricKafkaBuilder(KafkaBuilder kafkaBuilder) {
         super(kafkaBuilder);
     }
 
@@ -44,7 +43,7 @@ public final class StrimziKafkaBuilder extends StrimziBuilderWrapper<StrimziKafk
         return builder.build();
     }
 
-    public static StrimziKafkaBuilder base() {
+    public static FabricKafkaBuilder base() {
         KafkaClusterSpec kafka = defaultKafkaSpec();
         ZookeeperClusterSpec zookeeper = defaultKafkaZookeeperSpec();
         EntityOperatorSpec entityOperator = defaultKafkaEntityOperatorSpec();
@@ -59,10 +58,17 @@ public final class StrimziKafkaBuilder extends StrimziBuilderWrapper<StrimziKafk
                 .withEntityOperator(entityOperator)
                 .endSpec();
 
-        return new StrimziKafkaBuilder(builder);
+        return new FabricKafkaBuilder(builder);
     }
 
-    public StrimziKafkaBuilder withPullSecret(String pullSecretName) {
+    public FabricKafkaBuilder withPullSecret(Optional<Secret> maybePullSecret) {
+        maybePullSecret
+                .map(s -> s.getMetadata().getName())
+                .ifPresent(this::withPullSecret);
+        return self();
+    }
+
+    public FabricKafkaBuilder withPullSecret(String pullSecretName) {
         PodTemplate podTemplate = new PodTemplateBuilder().addNewImagePullSecret(pullSecretName).build();
 
         builder

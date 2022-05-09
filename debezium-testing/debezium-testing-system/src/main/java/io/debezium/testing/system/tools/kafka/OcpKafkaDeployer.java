@@ -9,8 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
-import io.debezium.testing.system.tools.Deployer;
-import io.debezium.testing.system.tools.kafka.builders.kafka.StrimziKafkaBuilder;
+import io.debezium.testing.system.tools.kafka.builders.FabricKafkaBuilder;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -26,55 +25,13 @@ import okhttp3.OkHttpClient;
  */
 public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaController> {
 
-    /**
-     * Builder for {@link OcpKafkaDeployer}
-     */
-    public static class Builder implements Deployer.Builder<Builder, OcpKafkaDeployer> {
-
-        private String project;
-        private OpenShiftClient ocpClient;
-        private OkHttpClient httpClient;
-        private StrimziOperatorController operatorController;
-        private final StrimziKafkaBuilder strimziBuilder;
-
-        public Builder(StrimziKafkaBuilder strimziBuilder) {
-            this.strimziBuilder = strimziBuilder;
-        }
-
-        public Builder withProject(String project) {
-            this.project = project;
-            return this;
-        }
-
-        public Builder withOcpClient(OpenShiftClient ocpClient) {
-            this.ocpClient = ocpClient;
-            return this;
-        }
-
-        public Builder withHttpClient(OkHttpClient httpClient) {
-            this.httpClient = httpClient;
-            return this;
-        }
-
-        public Builder withOperatorController(StrimziOperatorController operatorController) {
-            this.operatorController = operatorController;
-            operatorController.getPullSecretName().ifPresent(strimziBuilder::withPullSecret);
-            return this;
-        }
-
-        @Override
-        public OcpKafkaDeployer build() {
-            return new OcpKafkaDeployer(project, strimziBuilder, operatorController, ocpClient, httpClient);
-        }
-    }
-
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaDeployer.class);
 
-    private final StrimziKafkaBuilder strimziBuilder;
+    private final FabricKafkaBuilder strimziBuilder;
     private final StrimziOperatorController operatorController;
 
-    private OcpKafkaDeployer(String project, StrimziKafkaBuilder strimziBuilder, StrimziOperatorController operatorController,
-                             OpenShiftClient ocp, OkHttpClient http) {
+    public OcpKafkaDeployer(String project, FabricKafkaBuilder strimziBuilder, StrimziOperatorController operatorController,
+                            OpenShiftClient ocp, OkHttpClient http) {
         super(project, ocp, http);
         this.strimziBuilder = strimziBuilder;
         this.operatorController = operatorController;

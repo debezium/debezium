@@ -5,12 +5,16 @@
  */
 package io.debezium.testing.system.fixtures.kafka;
 
+import static io.debezium.testing.system.tools.ConfigProperties.*;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.assertions.PlainKafkaAssertions;
 import io.debezium.testing.system.tools.ConfigProperties;
+import io.debezium.testing.system.tools.YAML;
+import io.debezium.testing.system.tools.artifacts.OcpArtifactServerController;
 import io.debezium.testing.system.tools.artifacts.OcpArtifactServerDeployer;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -19,8 +23,9 @@ import io.debezium.testing.system.tools.kafka.OcpKafkaConnectDeployer;
 import io.debezium.testing.system.tools.kafka.OcpKafkaController;
 import io.debezium.testing.system.tools.kafka.OcpKafkaDeployer;
 import io.debezium.testing.system.tools.kafka.StrimziOperatorController;
-import io.debezium.testing.system.tools.kafka.builders.kafka.StrimziKafkaBuilder;
-import io.debezium.testing.system.tools.kafka.builders.kafka.StrimziKafkaConnectBuilder;
+import io.debezium.testing.system.tools.kafka.builders.FabricKafkaBuilder;
+import io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder;
+import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.TestFixture;
@@ -32,6 +37,7 @@ public class OcpKafka extends TestFixture {
 
     private final OpenShiftClient ocp;
     private final String project;
+
     // Kafka resources
     String KAFKA_CONNECT_LOGGING = "/kafka-resources/020-kafka-connect-cfg.yaml";
     // Artifact Server resources
@@ -45,16 +51,11 @@ public class OcpKafka extends TestFixture {
     }
 
     @Override
-    public void setup() {
-        try {
-            StrimziOperatorController operatorController = updateKafkaOperator();
+    public void setup() throws Exception {
+        StrimziOperatorController operatorController = updateKafkaOperator();
 
-            deployKafkaCluster(operatorController);
-            deployConnectCluster(operatorController);
-        }
-        catch (Exception e) {
-            throw new IllegalStateException("Error while setting up Kafka", e);
-        }
+        OcpKafkaController kafkaController = deployKafkaCluster(operatorController);
+        deployConnectCluster(operatorController, kafkaController);
     }
 
     @Override
@@ -62,35 +63,41 @@ public class OcpKafka extends TestFixture {
         // no-op: kafka is reused across tests
     }
 
-    private void deployKafkaCluster(StrimziOperatorController operatorController) throws Exception {
-        OcpKafkaDeployer kafkaDeployer = new OcpKafkaDeployer.Builder(StrimziKafkaBuilder.base())
-                .withOcpClient(ocp)
-                .withHttpClient(new OkHttpClient())
-                .withProject(project)
-                .withOperatorController(operatorController)
-                .build();
+    private OcpKafkaController deployKafkaCluster(StrimziOperatorController operatorController) throws Exception {
+        FabricKafkaBuilder builder = FabricKafkaBuilder
+                .base()
+                .withPullSecret(operatorController.getPullSecret());
+
+        OcpKafkaDeployer kafkaDeployer = new OcpKafkaDeployer(
+                project, builder, operatorController, ocp, new OkHttpClient());
 
         OcpKafkaController controller = kafkaDeployer.deploy();
         store(KafkaController.class, controller);
         store(KafkaAssertions.class, new PlainKafkaAssertions(controller.getDefaultConsumerProperties()));
+
+        return controller;
     }
 
-    private void deployConnectCluster(StrimziOperatorController operatorController) throws InterruptedException {
-        if (ConfigProperties.STRIMZI_KC_BUILD) {
-            deployArtifactServer();
+    private void deployConnectCluster(StrimziOperatorController operatorController, OcpKafkaController kafkaController) throws Exception {
+        ConfigMap configMap = YAML.fromResource(KAFKA_CONNECT_LOGGING, ConfigMap.class);
+
+        FabricKafkaConnectBuilder builder = FabricKafkaConnectBuilder
+                .base(kafkaController.getLocalBootstrapAddress())
+                .withLoggingFromConfigMap(configMap)
+                .withMetricsFromConfigMap(configMap)
+                .withConnectorResources(STRIMZI_OPERATOR_CONNECTORS)
+                .withPullSecret(operatorController.getPullSecret());
+
+        if (STRIMZI_KC_BUILD) {
+            OcpArtifactServerController artifactServerController = deployArtifactServer();
+            builder.withBuild(artifactServerController);
+        }
+        else {
+            builder.withImage(STRIMZI_KC_IMAGE);
         }
 
-        StrimziKafkaConnectBuilder strimziBuilder = StrimziKafkaConnectBuilder.base();
-
-        OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer.Builder(strimziBuilder)
-                .withOcpClient(ocp)
-                .withHttpClient(new OkHttpClient())
-                .withProject(project)
-                .withLoggingAndMetricsFromCfgMap(KAFKA_CONNECT_LOGGING)
-                .withConnectorResources(ConfigProperties.STRIMZI_OPERATOR_CONNECTORS)
-                .withKcBuild(ConfigProperties.STRIMZI_KC_BUILD)
-                .withOperatorController(operatorController)
-                .build();
+        OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer(
+                project, builder, configMap, operatorController, ocp, new OkHttpClient());
 
         OcpKafkaConnectController controller = connectDeployer.deploy();
         controller.allowServiceAccess();
@@ -100,7 +107,7 @@ public class OcpKafka extends TestFixture {
         store(KafkaConnectController.class, controller);
     }
 
-    private void deployArtifactServer() throws InterruptedException {
+    private OcpArtifactServerController deployArtifactServer() throws Exception {
         OcpArtifactServerDeployer deployer = new OcpArtifactServerDeployer.Builder()
                 .withOcpClient(ocp)
                 .withHttpClient(new OkHttpClient())
@@ -109,7 +116,7 @@ public class OcpKafka extends TestFixture {
                 .withService(ARTIFACT_SERVER_SERVICE)
                 .build();
 
-        deployer.deploy();
+        return deployer.deploy();
     }
 
     private StrimziOperatorController updateKafkaOperator() {

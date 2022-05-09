@@ -3,36 +3,24 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.testing.system.tools.kafka.builders.kafka;
+package io.debezium.testing.system.tools.kafka.builders;
 
-import static io.debezium.testing.system.tools.ConfigProperties.ARTIFACT_SERVER_APC_URL;
-import static io.debezium.testing.system.tools.ConfigProperties.ARTIFACT_SERVER_DB2_DRIVER_VERSION;
-import static io.debezium.testing.system.tools.ConfigProperties.ARTIFACT_SERVER_DBZ_VERSION;
-import static io.debezium.testing.system.tools.ConfigProperties.ARTIFACT_SERVER_ORACLE_DRIVER_VERSION;
-import static io.debezium.testing.system.tools.ConfigProperties.ARTIFACT_SERVER_URL;
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toMap;
+import java.util.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
+import io.debezium.testing.system.tools.ConfigProperties;
+import io.debezium.testing.system.tools.artifacts.OcpArtifactServerController;
+import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapKeySelector;
 import io.fabric8.kubernetes.api.model.ConfigMapKeySelectorBuilder;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.strimzi.api.kafka.model.CertSecretSourceBuilder;
 import io.strimzi.api.kafka.model.ClientTls;
 import io.strimzi.api.kafka.model.ClientTlsBuilder;
 import io.strimzi.api.kafka.model.ContainerEnvVarBuilder;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnectBuilder;
-import io.strimzi.api.kafka.model.connect.build.JarArtifactBuilder;
 import io.strimzi.api.kafka.model.connect.build.Plugin;
-import io.strimzi.api.kafka.model.connect.build.PluginBuilder;
-import io.strimzi.api.kafka.model.connect.build.ZipArtifactBuilder;
 import io.strimzi.api.kafka.model.template.ContainerTemplateBuilder;
 import io.strimzi.api.kafka.model.template.KafkaConnectTemplate;
 import io.strimzi.api.kafka.model.template.KafkaConnectTemplateBuilder;
@@ -40,11 +28,12 @@ import io.strimzi.api.kafka.model.template.KafkaConnectTemplateBuilder;
 /**
  * This class simplifies building of kafkaConnect by providing pre-made configurations for whole kafkaConnect or parts of its definition
  */
-public class StrimziKafkaConnectBuilder extends StrimziBuilderWrapper<StrimziKafkaConnectBuilder, KafkaConnectBuilder, KafkaConnect> {
+public class FabricKafkaConnectBuilder extends
+        FabricBuilderWrapper<FabricKafkaConnectBuilder, KafkaConnectBuilder, KafkaConnect> {
     public static String DEFAULT_KC_NAME = "debezium-kafka-connect-cluster";
-    public static String DEFAULT_BOOSTRAP_SERVER = StrimziKafkaBuilder.DEFAULT_KAFKA_NAME + "-kafka-bootstrap:9093";
+    public static String DEFAULT_BOOSTRAP_SERVER = FabricKafkaBuilder.DEFAULT_KAFKA_NAME + "-kafka-bootstrap:9093";
 
-    protected StrimziKafkaConnectBuilder(KafkaConnectBuilder builder) {
+    protected FabricKafkaConnectBuilder(KafkaConnectBuilder builder) {
         super(builder);
     }
 
@@ -65,7 +54,7 @@ public class StrimziKafkaConnectBuilder extends StrimziBuilderWrapper<StrimziKaf
         return Optional.of(image);
     }
 
-    public static StrimziKafkaConnectBuilder base() {
+    public static FabricKafkaConnectBuilder base(String bootstrap) {
         Map<String, Object> config = defaultConfig();
         KafkaConnectTemplate template = defaultTemplate();
         ClientTls tls = defaultTLS();
@@ -75,35 +64,56 @@ public class StrimziKafkaConnectBuilder extends StrimziBuilderWrapper<StrimziKaf
                 .withName(DEFAULT_KC_NAME)
                 .endMetadata()
                 .withNewSpec()
-                .withBootstrapServers(DEFAULT_BOOSTRAP_SERVER)
+                .withBootstrapServers(bootstrap)
                 .withTemplate(template)
                 .withConfig(config)
                 .withReplicas(1)
                 .withTls(tls)
                 .endSpec();
 
-        return new StrimziKafkaConnectBuilder(builder);
+        return new FabricKafkaConnectBuilder(builder);
     }
 
-    public StrimziKafkaConnectBuilder withImage(String image) {
+    public FabricKafkaConnectBuilder withImage(String image) {
         builder.editSpec().withImage(image).endSpec();
         return self();
     }
 
-    public StrimziKafkaConnectBuilder withBuild() {
+    public FabricKafkaConnectBuilder withBuild(OcpArtifactServerController artifactServer) {
+        List<Plugin> plugins = new ArrayList<>(List.of(
+                artifactServer.createDebeziumPlugin("mysql"),
+                artifactServer.createDebeziumPlugin("postgres"),
+                artifactServer.createDebeziumPlugin("mongodb"),
+                artifactServer.createDebeziumPlugin("sqlserver"),
+                artifactServer.createDebeziumPlugin("db2", List.of("jdbc/jcc"))));
+
+        if (ConfigProperties.DATABASE_ORACLE) {
+            plugins.add(
+                    artifactServer.createDebeziumPlugin("oracle", List.of("jdbc/ojdbc8")));
+        }
+
+        return withBuild(plugins);
+    }
+
+    public FabricKafkaConnectBuilder withBuild(List<Plugin> plugins) {
         builder
                 .editSpec()
                 .withNewBuild()
                 .withNewImageStreamOutput()
                 .withImage("testing-openshift-connect:latest")
                 .endImageStreamOutput()
+                .withPlugins(plugins)
                 .endBuild()
                 .endSpec();
 
         return self();
     }
 
-    public StrimziKafkaConnectBuilder withConnectorResources() {
+    public FabricKafkaConnectBuilder withConnectorResources(Boolean enabled) {
+        return enabled ? withConnectorResources() : self();
+    }
+
+    public FabricKafkaConnectBuilder withConnectorResources() {
         builder
                 .editMetadata()
                 .addToAnnotations("strimzi.io/use-connector-resources", "true")
@@ -111,31 +121,14 @@ public class StrimziKafkaConnectBuilder extends StrimziBuilderWrapper<StrimziKaf
         return self();
     }
 
-    public StrimziKafkaConnectBuilder withStandardPlugins() {
-        Map<String, PluginBuilder> pluginBuilders = Stream.of("mysql", "postgres", "mongodb", "sqlserver", "db2", "oracle")
-                .collect(toMap(identity(), StrimziKafkaConnectBuilder::prepareStandardPluginBuilder));
-
-        pluginBuilders.get("db2")
-                .addToArtifacts(new JarArtifactBuilder()
-                        .withUrl(String.format("%s/jdbc/jcc-%s.jar", ARTIFACT_SERVER_URL, ARTIFACT_SERVER_DB2_DRIVER_VERSION))
-                        .build())
-                .build();
-        pluginBuilders.get("oracle")
-                .addToArtifacts(new JarArtifactBuilder()
-                        .withUrl(String.format("%s/jdbc/ojdbc8-%s.jar", ARTIFACT_SERVER_URL, ARTIFACT_SERVER_ORACLE_DRIVER_VERSION))
-                        .build())
-                .build();
-
-        List<Plugin> plugins = pluginBuilders.values().stream()
-                .map(PluginBuilder::build)
-                .collect(Collectors.toList());
-
-        builder.editSpec().editBuild().withPlugins(plugins).endBuild().endSpec();
-
+    public FabricKafkaConnectBuilder withPullSecret(Optional<Secret> maybePullSecret) {
+        maybePullSecret
+                .map(s -> s.getMetadata().getName())
+                .ifPresent(this::withPullSecret);
         return self();
     }
 
-    public StrimziKafkaConnectBuilder withPullSecret(String pullSecretName) {
+    public FabricKafkaConnectBuilder withPullSecret(String pullSecretName) {
         if (builder.editSpec().hasImage()) {
             builder
                     .editSpec()
@@ -161,7 +154,7 @@ public class StrimziKafkaConnectBuilder extends StrimziBuilderWrapper<StrimziKaf
         return self();
     }
 
-    public StrimziKafkaConnectBuilder withLoggingFromConfigMap(ConfigMap configMap) {
+    public FabricKafkaConnectBuilder withLoggingFromConfigMap(ConfigMap configMap) {
         ConfigMapKeySelector configMapKeySelector = new ConfigMapKeySelectorBuilder()
                 .withKey("log4j.properties")
                 .withName(configMap.getMetadata().getName())
@@ -180,7 +173,7 @@ public class StrimziKafkaConnectBuilder extends StrimziBuilderWrapper<StrimziKaf
 
     }
 
-    public StrimziKafkaConnectBuilder withMetricsFromConfigMap(ConfigMap configMap) {
+    public FabricKafkaConnectBuilder withMetricsFromConfigMap(ConfigMap configMap) {
         ConfigMapKeySelector configMapKeySelector = new ConfigMapKeySelectorBuilder()
                 .withKey("metrics")
                 .withName(configMap.getMetadata().getName())
@@ -196,22 +189,6 @@ public class StrimziKafkaConnectBuilder extends StrimziBuilderWrapper<StrimziKaf
                 .endSpec();
 
         return self();
-    }
-
-    private static PluginBuilder prepareStandardPluginBuilder(String dbName) {
-        return new PluginBuilder()
-                .withName("debezium-connector-" + dbName)
-                .withArtifacts(
-                        new ZipArtifactBuilder()
-                                .withUrl(String.format("%s/debezium-connector-%s-%s-plugin.zip", ARTIFACT_SERVER_URL, dbName,
-                                        ARTIFACT_SERVER_DBZ_VERSION))
-                                .build(),
-                        new ZipArtifactBuilder()
-                                .withUrl(ARTIFACT_SERVER_APC_URL)
-                                .build(),
-                        new ZipArtifactBuilder()
-                                .withUrl(String.format("%s/debezium-scripting-%s.zip", ARTIFACT_SERVER_URL, ARTIFACT_SERVER_DBZ_VERSION))
-                                .build());
     }
 
     private static KafkaConnectTemplate defaultTemplate() {

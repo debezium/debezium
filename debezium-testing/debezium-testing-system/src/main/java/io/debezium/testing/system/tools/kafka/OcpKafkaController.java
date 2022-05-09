@@ -65,6 +65,16 @@ public class OcpKafkaController implements KafkaController {
     }
 
     /**
+     * Returns bootstrap to be used by KC.
+     * The address is local.
+     *
+     * @return bootstrap
+     */
+    public String getLocalBootstrapAddress() {
+        return name + "-kafka-bootstrap:9093";
+    }
+
+    /**
      * Deploy kafka topic from given CR
      *
      * @param yamlPath path to yaml descript
