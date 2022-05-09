@@ -5,7 +5,11 @@
  */
 package io.debezium.testing.system.tools.kafka.builders;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.artifacts.OcpArtifactServerController;

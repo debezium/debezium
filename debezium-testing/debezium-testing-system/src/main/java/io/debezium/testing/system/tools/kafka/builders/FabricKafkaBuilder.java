@@ -7,7 +7,11 @@ package io.debezium.testing.system.tools.kafka.builders;
 
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_VERSION_KAFKA;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 import io.fabric8.kubernetes.api.model.Secret;
