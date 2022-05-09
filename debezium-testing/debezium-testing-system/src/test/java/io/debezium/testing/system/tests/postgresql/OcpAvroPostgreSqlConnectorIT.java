@@ -15,7 +15,7 @@ import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.PostgreSqlConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpPostgreSql;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
-import io.debezium.testing.system.fixtures.registry.OcpApicurioFixture;
+import io.debezium.testing.system.fixtures.registry.OcpApicurio;
 import io.debezium.testing.system.tests.mysql.MySqlTests;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
@@ -31,7 +31,7 @@ import fixture5.annotations.Fixture;
 @Tag("apicurio")
 @Fixture(OcpClient.class)
 @Fixture(OcpKafka.class)
-@Fixture(OcpApicurioFixture.class)
+@Fixture(OcpApicurio.class)
 @Fixture(OcpPostgreSql.class)
 @Fixture(PostgreSqlConnector.class)
 @ExtendWith(FixtureExtension.class)
