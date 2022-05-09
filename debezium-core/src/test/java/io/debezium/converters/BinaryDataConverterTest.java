@@ -6,7 +6,16 @@
 
 package io.debezium.converters;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import static junit.framework.TestCase.fail;
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.errors.DataException;
@@ -15,15 +24,7 @@ import org.apache.kafka.connect.json.JsonDeserializer;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import static junit.framework.TestCase.fail;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class BinaryDataConverterTest {
     private static final String TOPIC = "topic";
