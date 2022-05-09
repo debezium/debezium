@@ -21,6 +21,7 @@
     <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
     <version.apicurio>2.2.0.Final</version.apicurio>
+    <version.apicurio.model>2.2.0.Final</version.apicurio.model>
 
     <!--KC image configuration-->
     <image.build.registry>quay.io</image.build.registry>
@@ -263,7 +264,7 @@
     <dependency>
       <groupId>io.apicurio</groupId>
       <artifactId>apicurio-registry-operator-api-model</artifactId>
-      <version>2.2.0.Final</version>
+      <version>${version.apicurio.model}</version>
     </dependency>
 
     <dependency>
