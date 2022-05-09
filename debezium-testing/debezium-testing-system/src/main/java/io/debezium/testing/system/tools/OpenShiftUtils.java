@@ -215,16 +215,23 @@ public class OpenShiftUtils {
      * @param labels labels used to identify pods
      * @return {@link PodList} of matching pods
      */
-    public PodList podsWithLabels(String project, Map<String, String> labels) {
+    public List<Pod> podsWithLabels(String project, Map<String, String> labels) {
         Supplier<PodList> podListSupplier = () -> client.pods().inNamespace(project).withLabels(labels).list();
         await().atMost(scaled(5), TimeUnit.MINUTES).until(() -> podListSupplier.get().getItems().size() > 0);
-        PodList pods = podListSupplier.get();
+        List<Pod> pods = podListSupplier.get().getItems();
 
-        if (pods.getItems().isEmpty()) {
+        if (pods.isEmpty()) {
             LOGGER.warn("Empty PodList");
         }
 
         return pods;
+    }
+
+    public List<Pod> podsForDeployment(Deployment deployment) {
+        String project = deployment.getMetadata().getNamespace();
+        String name = deployment.getMetadata().getName();
+
+        return podsWithLabels(project, Map.of("deployment", name));
     }
 
     /**
@@ -236,9 +243,9 @@ public class OpenShiftUtils {
         String lbls = labels.keySet().stream().map(k -> k + "=" + labels.get(k)).collect(Collectors.joining(", "));
         LOGGER.info("Waiting for pods to deploy [" + lbls + "]");
 
-        PodList pods = podsWithLabels(project, labels);
+        List<Pod> pods = podsWithLabels(project, labels);
 
-        for (Pod p : pods.getItems()) {
+        for (Pod p : pods) {
             client.resource(p).waitUntilReady(scaled(5), TimeUnit.MINUTES);
         }
     }

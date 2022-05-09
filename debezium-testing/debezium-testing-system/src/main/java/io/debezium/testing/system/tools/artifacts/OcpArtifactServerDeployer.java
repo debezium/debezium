@@ -73,7 +73,7 @@ public class OcpArtifactServerDeployer extends AbstractOcpDeployer<OcpArtifactSe
     }
 
     @Override
-    public OcpArtifactServerController deploy() throws InterruptedException {
+    public OcpArtifactServerController deploy() throws Exception {
         LOGGER.info("Deploying debezium artifact server");
         deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
 
