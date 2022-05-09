@@ -15,7 +15,7 @@ import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.Db2Connector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpDb2Fixture;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
-import io.debezium.testing.system.fixtures.registry.OcpApicurioFixture;
+import io.debezium.testing.system.fixtures.registry.OcpApicurio;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -30,7 +30,7 @@ import fixture5.annotations.Fixture;
 @Tag("apicurio")
 @Fixture(OcpClient.class)
 @Fixture(OcpKafka.class)
-@Fixture(OcpApicurioFixture.class)
+@Fixture(OcpApicurio.class)
 @Fixture(OcpDb2Fixture.class)
 @Fixture(Db2Connector.class)
 @ExtendWith(FixtureExtension.class)

@@ -10,52 +10,48 @@ import org.slf4j.LoggerFactory;
 
 import io.apicurio.registry.operator.api.model.ApicurioRegistry;
 import io.apicurio.registry.operator.api.model.ApicurioRegistryList;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
+import io.debezium.testing.system.tools.AbstractOcpDeployer;
+import io.debezium.testing.system.tools.registry.builders.FabricApicurioBuilder;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import okhttp3.OkHttpClient;
 
 /**
  * Deployment management for Apicurio service registry OCP deployment
+ *
  * @author Jakub Cechacek
  */
-public class OcpApicurioDeployer extends AbstractOcpApicurioDeployer<OcpApicurioController> {
+
+public class OcpApicurioDeployer extends AbstractOcpDeployer<OcpApicurioController> {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpApicurioDeployer.class);
-    public static final String APICURIO_CRD_DESCRIPTOR = "/crd/v1/apicurioregistries_crd.yaml";
+    private final FabricApicurioBuilder fabricBuilder;
 
-    private OcpApicurioDeployer(
-                                String project,
-                                String yamlPath,
-                                OpenShiftClient ocp,
-                                OkHttpClient http) {
-        super(project, yamlPath, ocp, http);
-    }
-
-    protected NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
-        CustomResourceDefinition crd = ocp.apiextensions().v1().customResourceDefinitions()
-                .load(OcpApicurioDeployer.class.getResourceAsStream(APICURIO_CRD_DESCRIPTOR))
-                .get();
-        CustomResourceDefinitionContext context = CustomResourceDefinitionContext.fromCrd(crd);
-        return ocp.customResources(context, ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
+    public OcpApicurioDeployer(String project, FabricApicurioBuilder fabricBuilder, OpenShiftClient ocp, OkHttpClient http) {
+        super(project, ocp, http);
+        this.fabricBuilder = fabricBuilder;
     }
 
     @Override
+    public OcpApicurioController deploy() throws InterruptedException {
+        LOGGER.info("Deploying Apicurio Registry to '" + project + "'");
+
+        ApicurioRegistry registry = fabricBuilder.build();
+        registry = registryOperation().createOrReplace(registry);
+
+        OcpApicurioController controller = getController(registry);
+        controller.waitForRegistry();
+
+        return controller;
+    }
+
     protected OcpApicurioController getController(ApicurioRegistry registry) {
         return new OcpApicurioController(registry, ocp, http);
     }
 
-    public static class Builder extends AbstractOcpApicurioDeployer.RegistryBuilder<Builder, OcpApicurioDeployer> {
-
-        @Override
-        public OcpApicurioDeployer build() {
-            return new OcpApicurioDeployer(
-                    project,
-                    yamlPath,
-                    ocpClient,
-                    httpClient);
-        }
+    protected NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
+        return ocp.resources(ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
     }
 }

@@ -11,41 +11,79 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.apicurio.registry.operator.api.model.ApicurioRegistry;
 import io.apicurio.registry.operator.api.model.ApicurioRegistryList;
+import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.WaitConditions;
-import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
+import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
+import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import okhttp3.OkHttpClient;
 
 /**
  * This class provides control over Apicurio registry instance deployed in OpenShift
+ *
  * @author Jakub Cechacek
  */
-public class OcpApicurioController extends AbstractOcpApicurioController implements RegistryController {
-    public static final String APICURIO_CRD_DESCRIPTOR = "/crd/v1/apicurioregistries_crd.yaml";
+public class OcpApicurioController implements RegistryController {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpApicurioController.class);
 
+    public static final String APICURIO_NAME_LBL = "apicur.io/name";
+
+    protected final OpenShiftClient ocp;
+    protected final OkHttpClient http;
+    protected final String project;
+    protected final String name;
+    protected final OpenShiftUtils ocpUtils;
+    protected ApicurioRegistry registry;
+
     public OcpApicurioController(ApicurioRegistry registry, OpenShiftClient ocp, OkHttpClient http) {
-        super(registry, ocp, http);
+        this.registry = registry;
+        this.ocp = ocp;
+        this.http = http;
+        this.project = registry.getMetadata().getNamespace();
+        this.name = registry.getMetadata().getName();
+        this.ocpUtils = new OpenShiftUtils(ocp);
     }
 
-    @Override
     protected NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
-        CustomResourceDefinition crd = ocp.apiextensions().v1().customResourceDefinitions()
-                .load(OcpApicurioController.class.getResourceAsStream(APICURIO_CRD_DESCRIPTOR))
-                .get();
-        CustomResourceDefinitionContext context = CustomResourceDefinitionContext.fromCrd(crd);
-        return ocp.customResources(context, ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
+        return ocp.resources(ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
+    }
+
+    protected String getPublicRegistryAddress() {
+        await().atMost(scaled(30), TimeUnit.SECONDS)
+                .pollInterval(5, TimeUnit.SECONDS)
+                .pollDelay(5, TimeUnit.SECONDS)
+                .until(() -> !getRoutes().isEmpty());
+
+        return getRoutes().get(0).getSpec().getHost();
+    }
+
+    private List<Route> getRoutes() {
+        return ocp.routes().inNamespace(project).withLabel(APICURIO_NAME_LBL, name).list().getItems();
+    }
+
+    protected Service getRegistryService() {
+        List<Service> items = ocp.services().inNamespace(project).withLabel(APICURIO_NAME_LBL, name).list().getItems();
+        if (items.isEmpty()) {
+            throw new IllegalStateException("No service for registry '" + registry.getMetadata().getName() + "'");
+        }
+
+        return items.get(0);
+    }
+
+    protected String getRegistryAddress() {
+        Service s = getRegistryService();
+        return "http://" + s.getMetadata().getName() + "." + project + ".svc.cluster.local:8080";
     }
 
     @Override
@@ -60,14 +98,14 @@ public class OcpApicurioController extends AbstractOcpApicurioController impleme
 
     @Override
     public void waitForRegistry() throws InterruptedException {
-        LOGGER.info("Waiting for deployments of registry '" + name + "'");
-        await()
-                .atMost(scaled(1), MINUTES)
+        LOGGER.info("Waiting for deployments of registry '" + name + "' in '" + project + "'");
+        await().atMost(scaled(1), MINUTES)
                 .pollInterval(5, SECONDS)
                 .until(() -> !getRegistryDeployments(name).isEmpty());
 
         Deployment deployment = getRegistryDeployments(name).get(0);
-        ocp.apps().deployments()
+        ocp.apps()
+                .deployments()
                 .inNamespace(project)
                 .withName(deployment.getMetadata().getName())
                 .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), MINUTES);
@@ -77,5 +115,10 @@ public class OcpApicurioController extends AbstractOcpApicurioController impleme
 
     private List<Deployment> getRegistryDeployments(String name) {
         return ocp.apps().deployments().inNamespace(project).withLabel("app", name).list().getItems();
+    }
+
+    @Override
+    public boolean undeploy() {
+        return registryOperation().delete(registry);
     }
 }
