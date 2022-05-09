@@ -3141,6 +3141,12 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[postgresql-property-xmin-fetch-interval-ms]]<<postgresql-property-xmin-fetch-interval-ms, `+xmin.fetch.interval.ms+`>>
+|`0`
+|How often, in milliseconds, the XMIN will be read from the replication slot.
+The XMIN value provides the lower bounds of where a new replication slot could start from.
+The default value of `0` disables tracking XMIN tracking.
+
 |===
 
 [id="postgresql-pass-through-properties"]
