@@ -129,4 +129,6 @@ narzdavid,Narz David
 LarsWerkman,Lars Werkman
 chadthamn,Chad Marmon
 xqshe,Xinquan She
+wangminchao,Wang Min Chao
 markallanson,Mark Allanson
+AlexMiroshnikov,Alexey Miroshnikov
