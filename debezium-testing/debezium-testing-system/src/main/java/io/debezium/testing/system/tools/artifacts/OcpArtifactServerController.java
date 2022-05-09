@@ -23,7 +23,11 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
-import io.strimzi.api.kafka.model.connect.build.*;
+import io.strimzi.api.kafka.model.connect.build.Artifact;
+import io.strimzi.api.kafka.model.connect.build.JarArtifactBuilder;
+import io.strimzi.api.kafka.model.connect.build.Plugin;
+import io.strimzi.api.kafka.model.connect.build.PluginBuilder;
+import io.strimzi.api.kafka.model.connect.build.ZipArtifactBuilder;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;

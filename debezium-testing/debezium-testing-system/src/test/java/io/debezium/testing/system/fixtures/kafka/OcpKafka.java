@@ -5,7 +5,9 @@
  */
 package io.debezium.testing.system.fixtures.kafka;
 
-import static io.debezium.testing.system.tools.ConfigProperties.*;
+import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_KC_BUILD;
+import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_KC_IMAGE;
+import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_OPERATOR_CONNECTORS;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
