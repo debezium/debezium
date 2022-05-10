@@ -33,12 +33,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.mysql.MySqlBinaryProtocolFieldReader;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.MySqlFieldReader;
 import io.debezium.connector.mysql.MySqlPartition;
-import io.debezium.connector.mysql.MysqlBinaryProtocolFieldReader;
-import io.debezium.connector.mysql.MysqlFieldReader;
-import io.debezium.connector.mysql.MysqlTextProtocolFieldReader;
+import io.debezium.connector.mysql.MySqlTextProtocolFieldReader;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.connector.mysql.legacy.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope;
@@ -67,7 +67,7 @@ public class SnapshotReader extends AbstractReader {
     private final SnapshotReaderMetrics metrics;
     private ExecutorService executorService;
     private final boolean useGlobalLock;
-    private final MysqlFieldReader mysqlFieldReader;
+    private final MySqlFieldReader mysqlFieldReader;
 
     private final MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode;
 
@@ -98,8 +98,8 @@ public class SnapshotReader extends AbstractReader {
         metrics = new SnapshotReaderMetrics(context, changeEventQueueMetrics);
         this.useGlobalLock = useGlobalLock;
         this.mysqlFieldReader = context.getConnectorConfig().useCursorFetch()
-                ? new MysqlBinaryProtocolFieldReader(context.getConnectorConfig())
-                : new MysqlTextProtocolFieldReader(context.getConnectorConfig());
+                ? new MySqlBinaryProtocolFieldReader(context.getConnectorConfig())
+                : new MySqlTextProtocolFieldReader(context.getConnectorConfig());
     }
 
     /**
