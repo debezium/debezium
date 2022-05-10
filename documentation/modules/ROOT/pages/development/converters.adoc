@@ -33,27 +33,27 @@ For more information about the support scope of Red Hat Technology Preview featu
 endif::product[]
 
 Each field in a {prodname} change event record represents a field or column in the source table or data collection.
-The connector converts data types in the source to a corresponding Kafka Connect schema types.
+When a connector emits a change event record to Kafka, it converts the data type of each field in the source to a Kafka Connect schema type.
 Column values are likewise converted to match the schema type of the destination field.
 For each connector, a default mapping specifies how the connector converts each data type.
-The documentation for each connector provides details about the default mappings that the connector uses to convert data types.
+These default mappings are described in the data types documentation for each connector.
 
-The default mappings are sufficient to satisfy most needs, but for some applications it might be necessary to apply an alternate mapping.
-For example, the default mapping for a column might export values using the format of milliseconds since the UNIX epoch, but you have a downstream application that requires the values to be formatted strings.
-To customize data type mappings you can develop and deploy custom converters.
-You can configure a custom converter to apply to all columns of a certain type, or to a specific table column only.
-The converter function intercepts conversion requests for columns that match a specified criteria, and performs the specified format conversion.
+While the default mappings are generally sufficient, for some applications you might want to apply an alternate mapping.
+For example, you might need a custom mapping if the default mapping exports a column using the format of milliseconds since the UNIX epoch, but your downstream application can only consume the column values as formatted strings.
+You customize data type mappings by developing and deploying a custom converter.
+You configure custom converters to act on all columns of a certain type, or you can narrow their scope so that they apply to a specific table column only.
+The converter function intercepts data type conversion requests for any columns that match a specified criteria, and then performs the specified conversion.
 The converter ignores columns that do not match the specified criteria.
 
 Custom converters are Java classes that implement the Debezium service provider interface (SPI).
 You enable and configure a custom converter by setting the `converters` property in the connector configuration.
-The `converters` property defines the criteria for identifying the columns that you want the converter to process and provides other details that determine conversion behavior.
+The `converters` property specifies the converters avaialble to a connector, and can include sub-properties that further modify conversion behavior.
 
-After you start a connector, any converters that are enabled in the connector configuration are instantiated and are added to a registry.
+After you start a connector, the converters that are enabled in the connector configuration are instantiated and are added to a registry.
 The registry associates each converter with the columns or fields for it to process.
 Whenever {prodname} processes a new change event, it invokes the configured converter to convert the columns or fields for which it is registered.
 
-// Type: procedure
+// Type: assembly
 // Title: Creating a {prodname} custom data type converter
 // ModuleID: creating-a-debezium-custom-data-type-converter
 [id="implementing-a-custom-converter"]
@@ -85,8 +85,10 @@ public interface CustomConverter<S, F extends ConvertedField> {
 Should not be invoked more than once for the same field.
 <4> Registers the customized value and schema converter for use with a specific field.
 
-.Custom converter methods
-The `configure()` and `converterFor()` methods are mandatory for each {prodname} custom converter:
+[id="debezium-custom-converter-methods"]
+=== Custom converter methods
+
+Implementations of the `CustomConverter` interface must include the following methods:
 
 `configure()`::
 Passes the properties specified in the connector configuration to the converter instance.
@@ -116,6 +118,10 @@ ifdef::community[]
 In the future, an independent schema definition API will be added.
 endif::community[]
 
+// Type: concept
+[id="debezium-custom-converter-example"]
+=== {prodname} custom converter example
+
 The following example implements a simple converter that performs the following operations:
 
 * Runs the `configure` method, which configures the converter based on the value of the `schema.name` property that is specified in the connector configuration.
@@ -124,7 +130,6 @@ The converter configuration is specific to each instance.
 ** Identifies the target `STRING` schema based on the value that is specified for the `schema.name` property.
 ** Converts ISBN data in the source column to `String` values.
 
-=== {prodname} custom converter example
 [id="example-debezium-simple-custom-converter"]
 .A simple custom converter
 ====
@@ -151,12 +156,12 @@ The converter configuration is specific to each instance.
 ----
 ====
 
-// Type: procedure
+// Type: concept
 [id="debezium-and-kafka-connect-api-module-dependencies"]
 === {prodname} and Kafka Connect API module dependencies
 
-The converter code depends on the {prodname} and Kafka Connect API library modules.
-To enable your converter code to compile, add these dependencies to your converter Java project as shown in the following example:
+A custom converter Java project has compile dependencies on the {prodname} API and Kafka Connect API library modules.
+These compile dependencies must be included in your project's `pom.xml`, as shown in the following example:
 
 [source,xml]
 ----
@@ -180,31 +185,30 @@ To enable your converter code to compile, add these dependencies to your convert
 [id="configuring-and-using-converters"]
 == Configuring and Using Converters
 
-To use the converter with a connector, you deploy the converter JAR file alongside the connector file, and then configure the connector to use the converter.
+Custom converters act on specific columns or column types in a source table to specify how to convert the data types in the source to Kafka Connect schema types.
+To use a custom converter with a connector, you deploy the converter JAR file alongside the connector file, and then configure the connector to use the converter.
 
 // Type: procedure
 [id="deploying-a-debezium-custom-converter"]
 === Deploying a custom converter
 
-.Procedure
-* To use a custom converter with a {prodname} connector, export the Java project to a JAR file, and add the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
- +
-For example, in a typical deployment, you might store {prodname} connector files in subdirectories of a Kafka Connect directory, such as `/kafka/connect`,
-and then store the JAR for each connector in its own subdirectory (`debezium-connector-db2`, `debezium-connector-mysql`, and so forth).
-To use a converter with a connector, add the converter JAR file to the connector subdirectory.
+.Prerequisites
+* You have a custom converter Java program.
 
-NOTE: To use a converter with multiple connectors, add the connector JAR file to the directory for each of the connectors.
+.Procedure
+* To use a custom converter with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
+ +
+For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
+To use a converter with a connector, add the converter JAR file to the connector's subdirectory.
+
+NOTE: To use a converter with multiple connectors, you must place a copy of the converter JAR file in each connector subdirectory.
 
 // Type: procedure
 [id="configuring-a-connectors-to-use-a-custom-converter"]
 === Configuring a connector to use a custom converter
 
-Custom converters act on specific columns or column types in a source table to specify how to convert their data types.
 To enable a connector to use the custom converter, you add properties to the connector configuration that specify the converter name and class.
 If the converter requires further information to customize the formats of specific data types, you can also define other coniguration options to provide that information.
-
-.Prerequisites
-* You have a custom converter Java program.
 
 .Procedure
 
@@ -225,8 +229,8 @@ converters: isbn
 isbn.type: io.debezium.test.IsbnConverter
 ----
 
-* If provide further configuration properties for a converter, prefix the property names with the symbolic name of the converter, followed by a dot (`.`).
-  The symbolic name is label that you specify as a value for the `converters` property.
+* To associate other properties with a custom converter, prefix the property names with the symbolic name of the converter, followed by a dot (`.`).
+  The symbolic name is a label that you specify as a value for the `converters` property.
   For example, to add a property for the preceding `isbn` converter to specify the `schema.name` to pass to the `configure` method in the converter code, add the following property:
 +
 ----
