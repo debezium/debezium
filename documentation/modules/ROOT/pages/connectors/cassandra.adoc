@@ -751,6 +751,8 @@ The following table describes how the connector maps each of the Cassandra data 
 
 **TODO**: add logical types
 
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+
 [[cassandra-when-things-go-wrong]]
 === When Things Go Wrong
 

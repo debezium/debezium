@@ -745,6 +745,8 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 
 The Vitess connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the Vitess data type of the column. This section describes these mappings.
 
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+
 [id="vitess-basic-types"]
 === Basic types
 

@@ -1147,6 +1147,8 @@ The connector can map SQL Server data types to both _literal_ and _semantic_ typ
 Literal type:: Describes how the value is literally represented by using Kafka Connect schema types, namely `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 Semantic type:: Describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+
 ifdef::product[]
 
 For more information about data type mappings, see the following sections:

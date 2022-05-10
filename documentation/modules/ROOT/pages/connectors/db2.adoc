@@ -1102,6 +1102,7 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 Db2's data types are described in https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.sql.ref.doc/doc/r0008483.html[Db2 SQL Data Types].
 
 The Db2 connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the Db2 data type of the column. This section describes these mappings.
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
 
 ifdef::product[]
 Details are in the following sections:

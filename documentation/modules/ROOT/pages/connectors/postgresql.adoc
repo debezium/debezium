@@ -1323,6 +1323,8 @@ The PostgreSQL connector represents changes to rows with events that are structu
 
 * _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+
 ifdef::product[]
 Details are in the following sections:
 
