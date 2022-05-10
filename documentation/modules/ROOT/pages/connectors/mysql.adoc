@@ -1310,8 +1310,10 @@ Columns that store strings are defined in MySQL with a character set and collati
 
 The connector can map MySQL data types to both _literal_ and _semantic_ types.
 
-* *Literal type*: how the value is represented using Kafka Connect schema types
-* *Semantic type*: how the Kafka Connect schema captures the meaning of the field (schema name)
+* *Literal type*: how the value is represented using Kafka Connect schema types.
+* *Semantic type*: how the Kafka Connect schema captures the meaning of the field (schema name).
+
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
 
 ifdef::product[]
 Details are in the following sections:
