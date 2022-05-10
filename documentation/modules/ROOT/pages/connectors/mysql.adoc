@@ -2631,6 +2631,28 @@ The following table describes xref:{link-mysql-connector}#mysql-advanced-connect
 |`true`
 |A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the MySQL server/cluster is kept alive.
 
+|[[mysql-property-converters]]<<mysql-property-converters, `converters`>>
+|No default
+|Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use. +
+For example, `isbn`. +
+This property is required to enable the connector to use a custom converter.
+
+For each converter that you configure for a connector, you must also add a property to specify the fully-qualifed name of the class that implements the converter interface.
+This second property uses the following format: +
+
+`_<converterSymbolicName>_.type` +
+
+For example, +
+
+ isbn.type: io.debezium.test.IsbnConverter
+
+If a configured converter requires further information to customize the way that it converts specific data types, you can add configuration properties to pass these instructions.
+To associate such configuration properties with the converter, prefix their names with the converter's symbolic name. +
+ +
+For example, +
+
+ isbn.schema.name: io.debezium.mysql.type.Isbn
+
 |[[mysql-property-table-ignore-builtin]]<<mysql-property-table-ignore-builtin, `+table.ignore.builtin+`>>
 |`true`
 |A Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table include and exclude lists. By default, system tables are excluded from having their changes captured, and no events are generated when changes are made to any system tables.
