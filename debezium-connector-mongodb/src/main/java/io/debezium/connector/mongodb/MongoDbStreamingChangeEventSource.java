@@ -204,11 +204,32 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
         LOGGER.info("Reading change stream for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
 
+        // Get collection filters on change stream pipeline
+        Document[] nsList = new Document[]{};
+        for (Document db : primary.listDatabases()) {
+            String dbName = db.get("name").toString();
+            if (taskContext.filters().databaseFilter().test(dbName)) {
+                for (Document coll : primary.getDatabase(dbName).listCollections()) {
+                    String collName = coll.get("name").toString();
+                    CollectionId collectionId = new CollectionId(
+                            replicaSet.replicaSetName(),
+                            dbName,
+                            collName);
+                    if (taskContext.filters().collectionFilter().test(collectionId)) {
+                        Document ns = new Document().append("db", dbName).append("coll", collName);
+                        nsList = Arrays.copyOf(nsList, nsList.length + 1);
+                        nsList[nsList.length - 1] = ns;
+                    }
+                }
+            }
+        }
+        Bson collectionFilters = Filters.in("ns", Arrays.asList(nsList));
+
         Bson filters = Filters.in("operationType", getChangeStreamSkippedOperationsFilter());
         if (rsOffsetContext.lastResumeToken() == null) {
             // After snapshot the oplogStart points to the last change snapshotted
             // It must be filtered-out
-            filters = Filters.and(filters, Filters.ne("clusterTime", oplogStart));
+            filters = Filters.and(filters, collectionFilters, Filters.ne("clusterTime", oplogStart));
         }
         final ChangeStreamIterable<Document> rsChangeStream = primary.watch(
                 Arrays.asList(Aggregates.match(filters)));
