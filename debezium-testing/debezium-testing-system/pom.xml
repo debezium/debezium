@@ -21,6 +21,7 @@
     <version.junit5>5.7.2</version.junit5>
     <version.assertj>3.11.1</version.assertj>
     <version.apicurio>2.2.0.Final</version.apicurio>
+    <version.fixture5>0.1.0</version.fixture5>
 
     <!--KC image configuration-->
     <image.build.registry>quay.io</image.build.registry>
@@ -313,7 +314,7 @@
     <dependency>
       <groupId>io.github.jcechace</groupId>
       <artifactId>fixture5</artifactId>
-      <version>0.1.0-SNAPSHOT</version>
+      <version>${version.fixture5}</version>
     </dependency>
 
     <dependency>
