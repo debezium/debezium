@@ -630,10 +630,10 @@ alterView
 alterSpecification
     : tableOption (','? tableOption)*                               #alterByTableOption
     | ADD COLUMN? ifNotExists? uid columnDefinition (FIRST | AFTER uid)?         #alterByAddColumn // ifNotExists is MariaDB-specific
-    | ADD COLUMN?
+    | ADD COLUMN? ifNotExists?
         '('
           uid columnDefinition ( ',' uid columnDefinition)*
-        ')'                                                         #alterByAddColumns
+        ')'                                                         #alterByAddColumns // ifNotExists is MariaDB-specific
     | ADD indexFormat=(INDEX | KEY) ifNotExists? uid? indexType?
       indexColumnNames indexOption*                                 #alterByAddIndex // ifNotExists is MariaDB-specific
     | ADD (CONSTRAINT name=uid?)? PRIMARY KEY index=uid?
@@ -658,13 +658,12 @@ alterSpecification
     | MODIFY COLUMN? ifExists?
       uid columnDefinition (FIRST | AFTER uid)?                     #alterByModifyColumn // ifExists is MariaDB-specific
     | DROP COLUMN? ifExists? uid RESTRICT?                          #alterByDropColumn // ifExists is MariaDB-specific
-    | DROP (CONSTRAINT | CHECK) uid                                 #alterByDropConstraintCheck
+    | DROP (CONSTRAINT | CHECK) ifExists? uid                       #alterByDropConstraintCheck // ifExists is MariaDB-specific
     | DROP PRIMARY KEY                                              #alterByDropPrimaryKey
     | DROP indexFormat=(INDEX | KEY) ifExists? uid                  #alterByDropIndex
     | RENAME indexFormat=(INDEX | KEY) uid TO uid                   #alterByRenameIndex
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                         #alterByAlterIndexVisibility
-    | DROP FOREIGN KEY uid ifExists?                                #alterByDropForeignKey // ifExists is MariaDB-specific
-    | DROP FOREIGN KEY ifExists? uid                                #alterByDropForeignKey // ifExists is MariaDB-specific - uid follows ifExists
+    | DROP FOREIGN KEY ifExists? uid                                #alterByDropForeignKey // ifExists is MariaDB-specific
     | DISABLE KEYS                                                  #alterByDisableKeys
     | ENABLE KEYS                                                   #alterByEnableKeys
     | RENAME renameFormat=(TO | AS)? (uid | fullId)                 #alterByRename
