@@ -860,6 +860,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 11
+    
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.3
+        with:
+          maven-version: 3.8.4
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
