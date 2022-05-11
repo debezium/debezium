@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.bson.Document;
+import org.bson.BsonDocument;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
@@ -42,7 +42,7 @@ public class MongoDbOffsetContext implements OffsetContext {
     }
 
     public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext,
-                                IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext, Map<ReplicaSet, Document> offsets) {
+                                IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext, Map<ReplicaSet, BsonDocument> offsets) {
         this(sourceInfo, transactionContext, incrementalSnapshotContext);
         offsets.forEach((replicaSet, document) -> sourceInfo.initialPosition(replicaSet.replicaSetName(), document));
     }

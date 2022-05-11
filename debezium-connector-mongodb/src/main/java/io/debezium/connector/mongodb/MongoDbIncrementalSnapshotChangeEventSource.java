@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,7 +132,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
      */
     protected ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(MongoDbPartition partition,
                                                                            OffsetContext offsetContext, Object[] row) {
-        return new MongoDbChangeSnapshotOplogRecordEmitter(partition, offsetContext, clock, (Document) row[0], true);
+        return new MongoDbChangeSnapshotOplogRecordEmitter(partition, offsetContext, clock, (BsonDocument) row[0], true);
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
@@ -327,7 +328,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
         primary.executeBlocking("chunk query key for '" + currentCollection.id() + "'", primary -> {
             final MongoDatabase database = primary.getDatabase(collectionId.dbName());
-            final MongoCollection<Document> collection = database.getCollection(collectionId.name());
+            final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 
             final Document maxKeyPredicate = new Document();
             final Document maxKeyOp = new Document();
@@ -354,14 +355,14 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             Object[] lastRow = null;
             Object[] firstRow = null;
 
-            for (Document doc : collection.find(predicate).sort(new Document(DOCUMENT_ID, 1))
+            for (BsonDocument doc : collection.find(predicate).sort(new Document(DOCUMENT_ID, 1))
                     .limit(connectorConfig.getIncrementalSnashotChunkSize())) {
                 rows++;
                 final Object[] row = new Object[]{ doc };
                 if (firstRow == null) {
                     firstRow = row;
                 }
-                final Struct keyStruct = currentCollection.keyFromDocument(doc);
+                final Struct keyStruct = currentCollection.keyFromDocumentOplog(doc);
                 window.put(keyStruct, row);
                 if (logTimer.expired()) {
                     long stop = clock.currentTimeInMillis();
@@ -412,7 +413,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (row == null) {
             return null;
         }
-        return new Object[]{ ((Document) row[0]).get(DOCUMENT_ID) };
+        return new Object[]{ ((BsonDocument) row[0]).getInt32(DOCUMENT_ID).getValue() };
     }
 
     protected void setContext(IncrementalSnapshotContext<CollectionId> context) {

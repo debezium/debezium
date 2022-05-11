@@ -47,7 +47,6 @@ import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
 
 /**
- *
  * @author Chris Cranford
  */
 public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource<MongoDbPartition, MongoDbOffsetContext> {
@@ -210,8 +209,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             // It must be filtered-out
             filters = Filters.and(filters, Filters.ne("clusterTime", oplogStart));
         }
-        final ChangeStreamIterable<Document> rsChangeStream = primary.watch(
-                Arrays.asList(Aggregates.match(filters)));
+        final ChangeStreamIterable<BsonDocument> rsChangeStream = primary.watch(
+                Arrays.asList(Aggregates.match(filters)), BsonDocument.class);
         if (taskContext.getCaptureMode().isFullUpdate()) {
             rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
         }
@@ -231,7 +230,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
 
-        try (MongoCursor<ChangeStreamDocument<Document>> cursor = rsChangeStream.iterator()) {
+        try (MongoCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.iterator()) {
             // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
             // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
             // can respond to the stop request much faster and without much overhead.
@@ -239,7 +238,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             while (context.isRunning()) {
                 // Use tryNext which will return null if no document is yet available from the cursor.
                 // In this situation if not document is available, we'll pause.
-                final ChangeStreamDocument<Document> event = cursor.tryNext();
+                final ChangeStreamDocument<BsonDocument> event = cursor.tryNext();
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
 
@@ -295,15 +294,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     protected MongoDbOffsetContext initializeOffsets(MongoDbConnectorConfig connectorConfig, MongoDbPartition partition,
                                                      ReplicaSets replicaSets) {
-        final Map<ReplicaSet, Document> positions = new LinkedHashMap<>();
+        final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
         replicaSets.onEachReplicaSet(replicaSet -> {
             LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
             MongoPrimary primaryClient = establishConnectionToPrimary(partition, replicaSet);
             if (primaryClient != null) {
                 try {
                     primaryClient.execute("get oplog position", primary -> {
-                        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                        Document last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
+                        MongoCollection<BsonDocument> oplog = primary.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
+                        BsonDocument last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
                         positions.put(replicaSet, last);
                     });
                 }
