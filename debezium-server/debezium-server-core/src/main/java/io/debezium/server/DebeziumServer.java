@@ -166,7 +166,7 @@ public class DebeziumServer {
                 props.setProperty(newPrefix + updatedPropertyName.substring(oldPrefix.length()), config.getValue(name, String.class));
             }
             else if (name.startsWith(oldPrefix)) {
-                props.setProperty(newPrefix + name.substring(oldPrefix.length()), config.getValue(name, String.class));
+                props.setProperty(newPrefix + name.substring(oldPrefix.length()), config.getConfigValue(name).getValue());
             }
         }
     }
