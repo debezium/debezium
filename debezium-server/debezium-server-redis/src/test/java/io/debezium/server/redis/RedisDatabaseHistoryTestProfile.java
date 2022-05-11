@@ -30,6 +30,7 @@ public class RedisDatabaseHistoryTestProfile implements QuarkusTestProfile {
         config.put("debezium.source." + OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         config.put("debezium.source.database.history", "io.debezium.server.redis.RedisDatabaseHistory");
         config.put("debezium.source.database.history.redis.address", "${debezium.sink.redis.address}");
+        config.put("debezium.source.database.server.id", "12345");
         return config;
     }
 
