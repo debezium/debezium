@@ -29,6 +29,8 @@ public class KafkaTestConfigSource extends TestConfigSource {
         kafkaConfig.put("debezium.source.database.server.name", "testc");
         kafkaConfig.put("debezium.source.schema.include.list", "inventory");
         kafkaConfig.put("debezium.source.table.include.list", "inventory.customers");
+        // DBZ-5105
+        kafkaConfig.put("debezium.sink.kafka.producer.ssl.endpoint.identification.algorithm", "");
 
         config = kafkaConfig;
     }
