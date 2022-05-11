@@ -167,29 +167,22 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     stmt.execute(createPublicationStmt);
                                     break;
                                 case FILTERED:
-                                    try {
-                                        Set<TableId> tablesToCapture = determineCapturedTables();
-                                        tableFilterString = tablesToCapture.stream().map(TableId::toDoubleQuotedString).collect(Collectors.joining(", "));
-                                        if (tableFilterString.isEmpty()) {
-                                            throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
-                                        }
-                                        createPublicationStmt = String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
-                                        LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
-                                        // Publication doesn't exist, create it but restrict to the tableFilter.
-                                        stmt.execute(createPublicationStmt);
-                                    }
-                                    catch (Exception e) {
-                                        throw new ConnectException(String.format("Unable to create filtered publication %s for %s", publicationName, tableFilterString),
-                                                e);
-                                    }
+                                    createOrUpdatePublicationModeFilterted(tableFilterString, stmt, false);
                                     break;
                             }
                         }
                         else {
-                            LOGGER.trace(
-                                    "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
-                                            "and will be used by the plugin",
-                                    publicationName, plugin, database());
+                            switch (publicationAutocreateMode) {
+                                case FILTERED:
+                                    createOrUpdatePublicationModeFilterted(tableFilterString, stmt, true);
+                                    break;
+                                default:
+                                    LOGGER.trace(
+                                            "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
+                                                    "and will be used by the plugin",
+                                            publicationName, plugin, database());
+
+                            }
                         }
                     }
                 }
@@ -199,6 +192,26 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             catch (SQLException e) {
                 throw new JdbcConnectionException(e);
             }
+        }
+    }
+
+    private void createOrUpdatePublicationModeFilterted(String tableFilterString, Statement stmt, boolean isUpdate) {
+        String createOrUpdatePublicationStmt;
+        try {
+            Set<TableId> tablesToCapture = determineCapturedTables();
+            tableFilterString = tablesToCapture.stream().map(TableId::toDoubleQuotedString).collect(Collectors.joining(", "));
+            if (tableFilterString.isEmpty()) {
+                throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
+            }
+            createOrUpdatePublicationStmt = isUpdate ? String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString)
+                    : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+            LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
+            // Publication doesn't exist, create it but restrict to the tableFilter.
+            stmt.execute(createOrUpdatePublicationStmt);
+        }
+        catch (Exception e) {
+            throw new ConnectException(String.format("Unable to create filtered publication %s for %s", publicationName, tableFilterString),
+                    e);
         }
     }
 
