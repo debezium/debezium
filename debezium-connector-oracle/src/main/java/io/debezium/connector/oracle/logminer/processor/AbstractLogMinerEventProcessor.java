@@ -557,10 +557,38 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
+        final Scn commitScn = offsetContext.getCommitScn();
+        if (commitScn != null && commitScn.compareTo(row.getScn()) >= 0) {
+            LOGGER.trace("DDL: SQL '{}' skipped with {} (SCN) <= {} (commit SCN)", row.getRedoSql(), row.getScn(), commitScn);
+            return;
+        }
+
         LOGGER.trace("DDL: '{}' {}", row.getRedoSql(), row);
         if (row.getTableName() != null) {
             counters.ddlCount++;
             final TableId tableId = row.getTableId();
+
+            final int activeTransactions = getTransactionCache().size();
+            if (activeTransactions <= 1) {
+                boolean advanceLowerScnBoundary = true;
+                if (activeTransactions == 1) {
+                    final String transactionId = getTransactionCache().keySet().iterator().next();
+                    if (!transactionId.equals(row.getTransactionId())) {
+                        // The row's transaction is not the current only active transaction.
+                        // We should not advance the SCN boundaries.
+                        advanceLowerScnBoundary = false;
+                    }
+                }
+                if (advanceLowerScnBoundary) {
+                    LOGGER.debug("Schema change advanced offset SCN to {}", row.getScn());
+                    offsetContext.setScn(row.getScn());
+                }
+            }
+
+            // Should always advance the commit SCN point with schema changes
+            LOGGER.debug("Schema change advanced offset commit SCN to {}", row.getScn());
+            offsetContext.setCommitScn(row.getScn());
+
             dispatcher.dispatchSchemaChangeEvent(partition,
                     tableId,
                     new OracleSchemaChangeEventEmitter(
