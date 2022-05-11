@@ -15,8 +15,8 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
-import org.bson.Document;
 import org.bson.types.BSONTimestamp;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
@@ -282,20 +282,20 @@ public final class SourceInfo extends BaseSourceInfo {
      *            the oplog
      * @see #schema()
      */
-    public void initialPosition(String replicaSetName, Document oplogEvent) {
+    public void initialPosition(String replicaSetName, BsonDocument oplogEvent) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         if (oplogEvent != null) {
             BsonTimestamp ts = extractEventTimestamp(oplogEvent);
             position = Position.snapshotPosition(ts);
-            namespace = oplogEvent.getString("ns");
+            namespace = oplogEvent.getString("ns").getValue();
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position);
     }
 
-    public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<Document> changeStreamEvent) {
+    public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<BsonDocument> changeStreamEvent) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         if (changeStreamEvent != null) {
@@ -315,8 +315,8 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param oplogEvent the event
      * @return the timestamp, or null if the event is null or there is no {@code ts} field
      */
-    protected static BsonTimestamp extractEventTimestamp(Document oplogEvent) {
-        return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
+    protected static BsonTimestamp extractEventTimestamp(BsonDocument oplogEvent) {
+        return oplogEvent != null ? oplogEvent.getTimestamp("ts") : null;
     }
 
     private void onEvent(String replicaSetName, CollectionId collectionId, Position position) {

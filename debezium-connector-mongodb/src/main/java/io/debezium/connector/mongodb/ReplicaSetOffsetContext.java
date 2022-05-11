@@ -10,8 +10,8 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
-import org.bson.Document;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
@@ -117,7 +117,7 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         sourceInfo.lastOffset(replicaSetName);
     }
 
-    public void changeStreamEvent(ChangeStreamDocument<Document> changeStreamEvent) {
+    public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent) {
         sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent);
     }
 

@@ -9,14 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.bson.BsonDocument;
+import org.bson.BsonValue;
 import org.bson.Document;
-import org.bson.types.Binary;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -102,7 +102,7 @@ public class MongoUtil {
     /**
      * Perform the given operation on each of the values in the iterable container.
      *
-     * @param iterable the iterable collection obtained from a MongoDB client; may not be null
+     * @param iterable  the iterable collection obtained from a MongoDB client; may not be null
      * @param operation the operation to perform; may not be null
      */
     public static <T> void forEach(MongoIterable<T> iterable, Consumer<T> operation) {
@@ -233,15 +233,16 @@ public class MongoUtil {
      * @param oplogEvent the oplog event
      * @return the session transaction id from the oplog event
      */
-    public static String getOplogSessionTransactionId(Document oplogEvent) {
+    public static String getOplogSessionTransactionId(BsonDocument oplogEvent) {
         if (!oplogEvent.containsKey("txnNumber")) {
             return null;
         }
-        final Document lsidDoc = oplogEvent.get("lsid", Document.class);
-        final Object id = lsidDoc.get("id");
+        final BsonDocument lsidDoc = oplogEvent.getDocument("lsid");
+        final BsonValue id = lsidDoc.get("id");
         // MongoDB 4.2 returns Binary instead of UUID
-        final String lsid = (id instanceof Binary) ? UUID.nameUUIDFromBytes(((Binary) id).getData()).toString() : ((UUID) id).toString();
-        final Long txnNumber = oplogEvent.getLong("txnNumber");
+        // TODO: check if this works as expected
+        final String lsid = id.isBinary() ? id.asBinary().asUuid().toString() : id.asString().getValue();
+        final Long txnNumber = oplogEvent.get("txnNumber").isInt32() ? oplogEvent.getInt32("txnNumber").getValue() : oplogEvent.getInt64("txnNumber").getValue();
         return lsid + ":" + txnNumber;
     }
 
@@ -251,7 +252,7 @@ public class MongoUtil {
      * @param event the Change Stream event
      * @return the session transaction id from the event
      */
-    public static SourceInfo.SessionTransactionId getChangeStreamSessionTransactionId(ChangeStreamDocument<Document> event) {
+    public static SourceInfo.SessionTransactionId getChangeStreamSessionTransactionId(ChangeStreamDocument<BsonDocument> event) {
         if (event.getLsid() == null || event.getTxnNumber() == null) {
             return null;
         }

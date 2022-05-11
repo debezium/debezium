@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -254,8 +255,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 // There is no ongoing snapshot, so look to see if our last recorded offset still exists in the oplog.
                 BsonTimestamp lastRecordedTs = offsetContext.lastOffsetTimestamp();
                 BsonTimestamp firstAvailableTs = primaryClient.execute("get oplog position", primary -> {
-                    MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                    Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first();
+                    MongoCollection<BsonDocument> oplog = primary.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
+                    BsonDocument firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first();
                     return SourceInfo.extractEventTimestamp(firstEvent);
                 });
 
@@ -286,15 +287,15 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     protected void determineSnapshotOffsets(MongoDbSnapshotContext ctx, ReplicaSets replicaSets) {
-        final Map<ReplicaSet, Document> positions = new LinkedHashMap<>();
+        final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
         replicaSets.onEachReplicaSet(replicaSet -> {
             LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
             MongoPrimary primaryClient = establishConnectionToPrimary(ctx.partition, replicaSet);
             if (primaryClient != null) {
                 try {
                     primaryClient.execute("get oplog position", primary -> {
-                        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                        Document last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
+                        MongoCollection<BsonDocument> oplog = primary.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
+                        BsonDocument last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
                         positions.put(replicaSet, last);
                     });
                 }
@@ -442,14 +443,14 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         primaryClient.executeBlocking("sync '" + collectionId + "'", primary -> {
             final MongoDatabase database = primary.getDatabase(collectionId.dbName());
-            final MongoCollection<Document> collection = database.getCollection(collectionId.name());
+            final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 
             final int batchSize = taskContext.getConnectorConfig().getSnapshotFetchSize();
 
             long docs = 0;
             Bson filterQuery = Document.parse(connectorConfig.getSnapshotFilterQueryForCollection(collectionId).orElseGet(() -> "{}"));
 
-            try (MongoCursor<Document> cursor = collection.find(filterQuery).batchSize(batchSize).iterator()) {
+            try (MongoCursor<BsonDocument> cursor = collection.find(filterQuery).batchSize(batchSize).iterator()) {
                 snapshotContext.lastRecordInCollection = false;
                 if (cursor.hasNext()) {
                     while (cursor.hasNext()) {
@@ -457,7 +458,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                             throw new InterruptedException("Interrupted while snapshotting collection " + collectionId.name());
                         }
 
-                        Document document = cursor.next();
+                        BsonDocument document = cursor.next();
                         docs++;
 
                         snapshotContext.lastRecordInCollection = !cursor.hasNext();
@@ -484,7 +485,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     protected ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
-                                                                           CollectionId collectionId, Document document,
+                                                                           CollectionId collectionId, BsonDocument document,
                                                                            ReplicaSet replicaSet) {
         final MongoDbOffsetContext offsetContext = snapshotContext.offset;
 
@@ -501,6 +502,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     /**
      * A configuration describing the task to be performed during snapshotting.
+     *
      * @see AbstractSnapshotChangeEventSource.SnapshottingTask
      */
     public static class MongoDbSnapshottingTask extends SnapshottingTask {
