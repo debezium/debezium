@@ -28,6 +28,8 @@ import io.debezium.relational.Table;
  */
 public class MySqlBinaryProtocolFieldReader extends AbstractMySqlFieldReader {
 
+    public static final LocalDate EPOCH = LocalDate.of(1970, 1, 1);
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlBinaryProtocolFieldReader.class);
 
     public MySqlBinaryProtocolFieldReader(MySqlConnectorConfig config) {
@@ -77,7 +79,7 @@ public class MySqlBinaryProtocolFieldReader extends AbstractMySqlFieldReader {
         }
         else if (b.length() == 0) {
             // Zero date has zero length when binary protocol uses compression.
-            return column.isOptional() ? null : LocalDate.EPOCH;
+            return column.isOptional() ? null : EPOCH;
         }
         // length is 4
         if (b.length() != NativeConstants.BIN_LEN_DATE) {

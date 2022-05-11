@@ -220,7 +220,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                     LocalDate date = LocalDate.ofEpochDay(dateTs);
                     long timeTs = ((Struct) record.value()).getStruct("after").getInt64("t");
                     LocalTime time = LocalTime.ofSecondOfDay(timeTs / 1_000_000);
-                    return List.of(tsDateTime.toLocalDate(), date, time);
+                    return Arrays.asList(tsDateTime.toLocalDate(), date, time);
                 },
                 DATABASE.topicForTable("a_dt"),
                 null);
@@ -229,7 +229,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             LocalDate dt = dateTime.toLocalDate();
             LocalDate d = LocalDate.parse(String.format("%s-05-01", 2000 + i));
             LocalTime t = LocalTime.parse(String.format("0%s:00:00", i));
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, List.of(dt, d, t)));
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, Arrays.asList(dt, d, t)));
         }
     }
 
