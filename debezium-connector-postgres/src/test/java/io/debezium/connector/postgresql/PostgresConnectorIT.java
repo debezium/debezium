@@ -2657,6 +2657,66 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-3921")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldUpdateConfiguredTables() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration.Builder initalConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+
+        start(PostgresConnector.class, initalConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // snapshot record s2.a
+        consumeRecordsByTopic(1);
+
+        TestHelper.execute(INSERT_STMT);
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics()).hasSize(1);
+
+        // there should be no record for s1.a
+        List<SourceRecord> initalS1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> initalS2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(initalS1recs).isNull();
+        assertThat(initalS2recs).hasSize(1);
+
+        VerifyRecord.isValidInsert(initalS2recs.get(0), PK_FIELD, 2);
+
+        stopConnector();
+
+        logger.info("Connector stopped");
+
+        // update configured tables use s1.a and no longer s2.a
+        Configuration.Builder updatedConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+
+        start(PostgresConnector.class, updatedConfigBuilder.build());
+        assertConnectorIsRunning();
+
+        // snapshot record s1.a
+        consumeRecordsByTopic(1);
+
+        TestHelper.execute(INSERT_STMT);
+        SourceRecords actualRecordsAfterUpdate = consumeRecordsByTopic(1);
+        assertThat(actualRecordsAfterUpdate.topics()).hasSize(1);
+
+        // there should be no record for s2.a
+        List<SourceRecord> afterUpdateS1recs = actualRecordsAfterUpdate.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> afterUpdateS2recs = actualRecordsAfterUpdate.recordsForTopic(topicName("s2.a"));
+        assertThat(afterUpdateS1recs).hasSize(1);
+        assertThat(afterUpdateS2recs).isNull();
+    }
+
+    @Test
     public void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
         Testing.Print.enable();
         TestHelper.dropDefaultReplicationSlot();
