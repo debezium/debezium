@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.OptionalLong;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -118,34 +117,16 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         sourceInfo.lastOffset(replicaSetName);
     }
 
-    public void oplogEvent(Document oplogEvent, Document masterEvent, Long txOrder) {
-        sourceInfo.opLogEvent(replicaSetName, oplogEvent, masterEvent, txOrder);
-    }
-
-    public void changeStreamEvent(ChangeStreamDocument<Document> changeStreamEvent, OptionalLong txOrder) {
-        sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent, txOrder.orElse(0));
+    public void changeStreamEvent(ChangeStreamDocument<Document> changeStreamEvent) {
+        sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent);
     }
 
     public BsonTimestamp lastOffsetTimestamp() {
         return sourceInfo.lastOffsetTimestamp(replicaSetName);
     }
 
-    public OptionalLong lastOffsetTxOrder() {
-        return sourceInfo.lastOffsetTxOrder(replicaSetName);
-    }
-
     public String lastResumeToken() {
         return sourceInfo.lastResumeToken(replicaSetName);
-    }
-
-    public boolean isFromOplog() {
-        return sourceInfo != null && sourceInfo.lastPosition(replicaSetName) != null
-                && sourceInfo.lastPosition(replicaSetName).getOperationId() != null
-                && sourceInfo.lastResumeToken(replicaSetName) == null;
-    }
-
-    public boolean isFromChangeStream() {
-        return sourceInfo != null && sourceInfo.lastResumeToken(replicaSetName) != null;
     }
 
     @Override

@@ -329,7 +329,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            verifyNotFromTransaction(record);
         });
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -631,7 +630,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            verifyNotFromTransaction(record);
         });
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -700,7 +698,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            verifyNotFromTransaction(record);
         });
         // ---------------------------------------------------------------------------------------------------------------
         // Stop the connector
@@ -767,7 +764,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            verifyNotFromTransaction(record);
         });
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -880,7 +876,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("last");
         }
-        verifyNotFromTransaction(record);
     }
 
     @Test
@@ -945,9 +940,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            if (TestHelper.isOplogCaptureMode()) {
-                verifyFromTransaction(record, txOrder.incrementAndGet());
-            }
         });
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -975,9 +967,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            if (TestHelper.isOplogCaptureMode()) {
-                verifyFromTransaction(record, txOrder.incrementAndGet());
-            }
         });
     }
 
@@ -1009,10 +998,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Start the connector and terminate it when third event from transaction arrives
         startAndConsumeTillEnd(MongoDbConnector.class, config, record -> {
             final Struct struct = (Struct) record.value();
-            final Long txOrder = struct.getStruct("source").getInt64("tord");
             final String name = struct.getString("after");
-            return (txOrder != null && txOrder.equals(3L))
-                    || (name != null && "Taste The Tropics Ice Cream".contains(name));
+            return "Taste The Tropics Ice Cream".contains(name);
         });
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -1050,9 +1037,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            if (TestHelper.isOplogCaptureMode()) {
-                verifyFromTransaction(record, txOrder.incrementAndGet());
-            }
         });
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -1082,9 +1066,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
-            if (TestHelper.isOplogCaptureMode()) {
-                verifyFromTransaction(record, expectedTxOrd.remove(0));
-            }
         });
     }
 
@@ -1236,16 +1217,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
         Struct value = (Struct) record.value();
         assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isNull();
-    }
-
-    protected void verifyFromTransaction(SourceRecord record, long order) {
-        assertThat(record.sourceOffset().containsKey(SourceInfo.TX_ORD)).isTrue();
-        final Struct value = (Struct) record.value();
-        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.TX_ORD)).isEqualTo(order);
-    }
-
-    protected void verifyNotFromTransaction(SourceRecord record) {
-        assertThat(record.sourceOffset().containsKey(SourceInfo.TX_ORD)).isFalse();
     }
 
     protected void verifyCreateOperation(SourceRecord record) {
@@ -1441,9 +1412,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             coll.insertOne(doc, insertOptions);
         });
 
-        // Heartbeat created by non-monitored collection event and
-        // heartbeat created by MongoDB heartbeat event (oplog only)
-        final int heartbeatRecordCount = TestHelper.isOplogCaptureMode() ? 2 : 1;
+        // Heartbeat created by non-monitored collection event
+        final int heartbeatRecordCount = 1;
         records = consumeRecordsByTopic(heartbeatRecordCount);
         final List<SourceRecord> heartbeatRecords = records.recordsForTopic("__debezium-heartbeat.mongo");
         assertThat(heartbeatRecords.size()).isGreaterThanOrEqualTo(1);
@@ -1580,20 +1550,12 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
         assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
-        if (TestHelper.isOplogCaptureMode()) {
-            Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
-            patchObj.remove("$v");
-            assertThat(patchObj.toJson(COMPACT_JSON_SETTINGS)).isEqualTo(updateObj.toJson(COMPACT_JSON_SETTINGS));
-            assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        }
-        else {
-            TestHelper.assertChangeStreamUpdate(
-                    objId,
-                    value,
-                    "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Sally\"}",
-                    null,
-                    "{\"name\": \"Sally\"}");
-        }
+        TestHelper.assertChangeStreamUpdate(
+                objId,
+                value,
+                "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Sally\"}",
+                null,
+                "{\"name\": \"Sally\"}");
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
@@ -2085,20 +2047,12 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
         assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
-        if (TestHelper.isOplogCaptureMode()) {
-            Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
-            patchObj.remove("$v");
-            assertThat(patchObj.toJson(COMPACT_JSON_SETTINGS)).isEqualTo(updateObj.toJson(COMPACT_JSON_SETTINGS));
-            assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        }
-        else {
-            TestHelper.assertChangeStreamUpdate(
-                    objId,
-                    value,
-                    "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Sally\"}",
-                    null,
-                    "{\"name\": \"Sally\"}");
-        }
+        TestHelper.assertChangeStreamUpdate(
+                objId,
+                value,
+                "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Sally\"}",
+                null,
+                "{\"name\": \"Sally\"}");
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());

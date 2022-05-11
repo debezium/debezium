@@ -8,12 +8,9 @@ package io.debezium.connector.mongodb;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -29,10 +26,8 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.CursorType;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.ChangeStreamIterable;
-import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
@@ -41,7 +36,6 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
@@ -119,13 +113,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             primaryClient = establishConnectionToPrimary(partition, replicaSet);
             if (primaryClient != null) {
                 final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
-                primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
-                    if (taskContext.getCaptureMode().isChangeStreams()) {
-                        readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext);
-                    }
-                    else {
-                        readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext);
-                    }
+                primaryClient.execute("read from change stream on '" + replicaSet + "'", primary -> {
+                    readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext);
                 });
             }
         }
@@ -184,92 +173,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         });
     }
 
-    private void readOplog(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
-                           MongoDbOffsetContext offsetContext) {
-        final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
-        final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
-
-        final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
-        final OptionalLong txOrder = rsOffsetContext.lastOffsetTxOrder();
-
-        final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
-        LOGGER.info("Reading oplog for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
-
-        // Include none of the cluster-internal operations and only those events since the previous timestamp
-        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-
-        // DBZ-3331 Verify that the start position is in the oplog; throw exception if not.
-        if (!isStartPositionInOplog(oplogStart, oplog)) {
-            throw new DebeziumException("Failed to find starting position '" + oplogStart + "' in oplog");
-        }
-
-        ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
-
-        Bson filter = null;
-        if (!txOrder.isPresent()) {
-            LOGGER.info("The last event processed was not transactional, resuming at the oplog event after '{}'", oplogStart);
-            filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
-                    Filters.exists("fromMigrate", false)); // skip internal movements across shards
-        }
-        else {
-            LOGGER.info("The last event processed was transactional, resuming at the oplog event '{}', expecting to skip '{}' events",
-                    oplogStart, txOrder.getAsLong());
-            filter = Filters.and(Filters.gte("ts", oplogStart), Filters.exists("fromMigrate", false));
-            oplogContext.setIncompleteEventTimestamp(oplogStart);
-            oplogContext.setIncompleteTxOrder(txOrder.getAsLong());
-        }
-
-        Bson operationFilter = getOplogSkippedOperationsFilter();
-        if (operationFilter != null) {
-            filter = Filters.and(filter, operationFilter);
-        }
-
-        FindIterable<Document> results = oplog.find(filter)
-                .sort(new Document("$natural", 1))
-                .oplogReplay(true)
-                .cursorType(CursorType.TailableAwait)
-                .noCursorTimeout(true);
-
-        if (connectorConfig.getCursorMaxAwaitTime() > 0) {
-            results = results.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
-        }
-
-        try (MongoCursor<Document> cursor = results.iterator()) {
-            // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
-            // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
-            // can respond to the stop request much faster and without much overhead.
-            Metronome pause = Metronome.sleeper(Duration.ofMillis(500), clock);
-            while (context.isRunning()) {
-                // Use tryNext which will return null if no document is yet available from the cursor.
-                // In this situation if not document is available, we'll pause.
-                final Document event = cursor.tryNext();
-                if (event != null) {
-                    if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext)) {
-                        // Something happened and we are supposed to stop reading
-                        return;
-                    }
-
-                    try {
-                        dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
-                    }
-                    catch (InterruptedException e) {
-                        LOGGER.info("Replicator thread is interrupted");
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-                else {
-                    try {
-                        pause.pause();
-                    }
-                    catch (InterruptedException e) {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
     private List<String> getChangeStreamSkippedOperationsFilter() {
         final Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOperations();
         final List<String> includedOperations = new ArrayList<>();
@@ -295,9 +198,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
         final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
-        final OptionalLong txOrder = rsOffsetContext.lastOffsetTxOrder();
 
-        ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
+        ReplicaSetChangeStreamsContext oplogContext = new ReplicaSetChangeStreamsContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
 
         final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
         LOGGER.info("Reading change stream for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
@@ -345,7 +247,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         LOGGER.debug("Skipping the event for database '{}' based on database include/exclude list", event.getDatabaseName());
                     }
                     else {
-                        oplogContext.getOffset().changeStreamEvent(event, txOrder);
+                        oplogContext.getOffset().changeStreamEvent(event);
                         oplogContext.getOffset().getOffset();
                         CollectionId collectionId = new CollectionId(
                                 replicaSet.replicaSetName(),
@@ -357,7 +259,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                 dispatcher.dispatchDataChangeEvent(
                                         oplogContext.getPartition(),
                                         collectionId,
-                                        new MongoDbChangeStreamChangeRecordEmitter(
+                                        new MongoDbChangeRecordEmitter(
                                                 oplogContext.getPartition(),
                                                 oplogContext.getOffset(),
                                                 clock,
@@ -391,184 +293,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private boolean isStartPositionInOplog(BsonTimestamp startTime, MongoCollection<Document> oplog) {
-        final MongoCursor<Document> iterator = oplog.find().iterator();
-        if (!iterator.hasNext()) {
-            return false;
-        }
-
-        final BsonTimestamp timestamp = iterator.next().get("ts", BsonTimestamp.class);
-        if (timestamp == null) {
-            return false;
-        }
-
-        return timestamp.compareTo(startTime) <= 0;
-    }
-
-    private Bson getOplogSkippedOperationsFilter() {
-        Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOperations();
-
-        if (skippedOperations.isEmpty()) {
-            return null;
-        }
-
-        Bson skippedOperationsFilter = null;
-
-        for (Operation operation : skippedOperations) {
-            Bson skippedOperationFilter = Filters.ne("op", operation.code());
-
-            if (skippedOperationsFilter == null) {
-                skippedOperationsFilter = skippedOperationFilter;
-            }
-            else {
-                skippedOperationsFilter = Filters.or(skippedOperationsFilter, skippedOperationFilter);
-            }
-        }
-
-        return skippedOperationsFilter;
-    }
-
-    private boolean handleOplogEvent(ServerAddress primaryAddress, Document event, Document masterEvent, long txOrder,
-                                     ReplicaSetOplogContext oplogContext) {
-        String ns = event.getString("ns");
-        Document object = event.get(OBJECT_FIELD, Document.class);
-        if (Objects.isNull(object)) {
-            if (LOGGER.isWarnEnabled()) {
-                LOGGER.warn("Missing 'o' field in event, so skipping {}", event.toJson());
-            }
-            return true;
-        }
-
-        if (Objects.isNull(ns) || ns.isEmpty()) {
-            // These are considered replica set events
-            String msg = object.getString("msg");
-            if ("new primary".equals(msg)) {
-                AtomicReference<ServerAddress> address = new AtomicReference<>();
-                try {
-                    oplogContext.getPrimary().executeBlocking("conn", mongoClient -> {
-                        ServerAddress currentPrimary = MongoUtil.getPrimaryAddress(mongoClient);
-                        address.set(currentPrimary);
-                    });
-                }
-                catch (InterruptedException e) {
-                    LOGGER.error("Get current primary executeBlocking", e);
-                }
-
-                ServerAddress serverAddress = address.get();
-                if (Objects.nonNull(serverAddress) && !serverAddress.equals(primaryAddress)) {
-                    LOGGER.info("Found new primary event in oplog, so stopping use of {} to continue with new primary {}",
-                            primaryAddress, serverAddress);
-                }
-                else {
-                    LOGGER.info("Found new primary event in oplog, current {} is new primary. " +
-                            "Continue to process oplog event.", primaryAddress);
-                }
-
-                dispatcher.dispatchConnectorEvent(oplogContext.getPartition(), new PrimaryElectionEvent(serverAddress));
-            }
-            // Otherwise ignore
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Skipping event with no namespace: {}", event.toJson());
-            }
-            return true;
-        }
-
-        final List<Document> txChanges = transactionChanges(event);
-        if (!txChanges.isEmpty()) {
-            if (Objects.nonNull(oplogContext.getIncompleteEventTimestamp())) {
-                if (oplogContext.getIncompleteEventTimestamp().equals(SourceInfo.extractEventTimestamp(event))) {
-                    for (Document change : txChanges) {
-                        txOrder++;
-                        if (txOrder <= oplogContext.getIncompleteTxOrder()) {
-                            LOGGER.debug("Skipping record as it is expected to be already processed: {}", change);
-                            continue;
-                        }
-                        final boolean r = handleOplogEvent(primaryAddress, change, event, txOrder, oplogContext);
-                        if (!r) {
-                            return false;
-                        }
-                    }
-                }
-                oplogContext.setIncompleteEventTimestamp(null);
-                return true;
-            }
-            try {
-                dispatcher.dispatchTransactionStartedEvent(oplogContext.getPartition(), getTransactionId(event), oplogContext.getOffset());
-                for (Document change : txChanges) {
-                    final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext);
-                    if (!r) {
-                        return false;
-                    }
-                }
-                dispatcher.dispatchTransactionCommittedEvent(oplogContext.getPartition(), oplogContext.getOffset());
-            }
-            catch (InterruptedException e) {
-                LOGGER.error("Streaming transaction changes for replica set '{}' was interrupted", oplogContext.getReplicaSetName());
-                throw new ConnectException("Streaming of transaction changes was interrupted for replica set " + oplogContext.getReplicaSetName(), e);
-            }
-            return true;
-        }
-
-        final String operation = event.getString(OPERATION_FIELD);
-        if (!MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
-            LOGGER.debug("Skipping event with \"op={}\"", operation);
-            return true;
-        }
-
-        int delimIndex = ns.indexOf('.');
-        if (delimIndex > 0) {
-            assert (delimIndex + 1) < ns.length();
-
-            final String dbName = ns.substring(0, delimIndex);
-            final String collectionName = ns.substring(delimIndex + 1);
-            if ("$cmd".equals(collectionName)) {
-                // This is a command on the database
-                // TODO: Probably want to handle some of these when we track creation/removal of collections
-                LOGGER.debug("Skipping database command event: {}", event.toJson());
-                return true;
-            }
-
-            // Otherwise it is an event on a document in a collection
-            if (!taskContext.filters().databaseFilter().test(dbName)) {
-                LOGGER.debug("Skipping the event for database '{}' based on database include/exclude list", dbName);
-                return true;
-            }
-
-            oplogContext.getOffset().oplogEvent(event, masterEvent, txOrder);
-            oplogContext.getOffset().getOffset();
-
-            CollectionId collectionId = new CollectionId(oplogContext.getReplicaSetName(), dbName, collectionName);
-            if (taskContext.filters().collectionFilter().test(collectionId)) {
-                try {
-                    return dispatcher.dispatchDataChangeEvent(
-                            oplogContext.getPartition(),
-                            collectionId,
-                            new MongoDbChangeSnapshotOplogRecordEmitter(
-                                    oplogContext.getPartition(),
-                                    oplogContext.getOffset(),
-                                    clock,
-                                    event,
-                                    false));
-                }
-                catch (Exception e) {
-                    errorHandler.setProducerThrowable(e);
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    private List<Document> transactionChanges(Document event) {
-        final String op = event.getString(OPERATION_FIELD);
-        final Document o = event.get(OBJECT_FIELD, Document.class);
-        if (!(OPERATION_CONTROL.equals(op) && Objects.nonNull(o) && o.containsKey(TX_OPS))) {
-            return Collections.emptyList();
-        }
-        return o.get(TX_OPS, List.class);
-    }
-
     protected MongoDbOffsetContext initializeOffsets(MongoDbConnectorConfig connectorConfig, MongoDbPartition partition,
                                                      ReplicaSets replicaSets) {
         final Map<ReplicaSet, Document> positions = new LinkedHashMap<>();
@@ -594,29 +318,17 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 new MongoDbIncrementalSnapshotContext<>(false), positions);
     }
 
-    private static String getTransactionId(Document event) {
-        final Long operationId = event.getLong(SourceInfo.OPERATION_ID);
-        if (operationId != null && operationId != 0L) {
-            return Long.toString(operationId);
-        }
-
-        return MongoUtil.getOplogSessionTransactionId(event);
-    }
-
     /**
      * A context associated with a given replica set oplog read operation.
      */
-    private class ReplicaSetOplogContext {
+    private class ReplicaSetChangeStreamsContext {
         private final ReplicaSetPartition partition;
         private final ReplicaSetOffsetContext offset;
         private final MongoPrimary primary;
         private final ReplicaSet replicaSet;
 
-        private BsonTimestamp incompleteEventTimestamp;
-        private long incompleteTxOrder = 0;
-
-        ReplicaSetOplogContext(ReplicaSetPartition partition, ReplicaSetOffsetContext offsetContext,
-                               MongoPrimary primary, ReplicaSet replicaSet) {
+        ReplicaSetChangeStreamsContext(ReplicaSetPartition partition, ReplicaSetOffsetContext offsetContext,
+                                       MongoPrimary primary, ReplicaSet replicaSet) {
             this.partition = partition;
             this.offset = offsetContext;
             this.primary = primary;
@@ -637,22 +349,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         String getReplicaSetName() {
             return replicaSet.replicaSetName();
-        }
-
-        BsonTimestamp getIncompleteEventTimestamp() {
-            return incompleteEventTimestamp;
-        }
-
-        public void setIncompleteEventTimestamp(BsonTimestamp incompleteEventTimestamp) {
-            this.incompleteEventTimestamp = incompleteEventTimestamp;
-        }
-
-        public long getIncompleteTxOrder() {
-            return incompleteTxOrder;
-        }
-
-        public void setIncompleteTxOrder(long incompleteTxOrder) {
-            this.incompleteTxOrder = incompleteTxOrder;
         }
     }
 }

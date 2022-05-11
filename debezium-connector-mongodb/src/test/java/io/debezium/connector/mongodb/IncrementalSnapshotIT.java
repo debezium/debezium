@@ -28,9 +28,7 @@ import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -57,9 +55,6 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
     protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
             .toAbsolutePath();
-
-    @Rule
-    public TestRule skipForOplog = new SkipForOplogTestRule();
 
     @Before
     public void before() {

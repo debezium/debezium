@@ -24,6 +24,7 @@ public class MongoDbCloudEventsMaker extends CloudEventsMaker {
     @Override
     public String ceId() {
         return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                + ";h:" + recordParser.getMetadata(MongoDbRecordParser.OPERATION_ID);
+                + ";ts:" + recordParser.getMetadata(AbstractSourceInfo.TIMESTAMP_KEY)
+                + ";ord:" + recordParser.getMetadata(MongoDbRecordParser.ORDER);
     }
 }

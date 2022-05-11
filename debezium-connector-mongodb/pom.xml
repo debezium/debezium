@@ -94,8 +94,6 @@
         -->
         <docker.skip>false</docker.skip>
         <docker.exposeContainerInfo>docker.container</docker.exposeContainerInfo>
-
-        <capture.mode>changestreams</capture.mode>
     </properties>
     <build>
         <plugins>
@@ -208,7 +206,6 @@
                         <connector.mongodb.members.auto.discover>false</connector.mongodb.members.auto.discover>
                         <connector.mongodb.name>mongo1</connector.mongodb.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-                        <debezium.test.capture.mode>${capture.mode}</debezium.test.capture.mode>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
