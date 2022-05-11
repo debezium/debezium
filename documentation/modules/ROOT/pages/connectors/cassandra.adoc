@@ -984,7 +984,6 @@ For example, +
 
  isbn.schema.name: io.debezium.cassandra.type.Isbn
 
-
 |[[cassandra-property-offset-backing-store-dir]]<<cassandra-property-offset-backing-store-dir, `offset.backing.store.dir`>>
 |
 |The directory to store offset tracking files.
