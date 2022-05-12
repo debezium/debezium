@@ -7,7 +7,7 @@ matrixJob('connector-debezium-mysql-matrix-test') {
     label('Slave')
 
     axes {
-        text('MYSQL_VERSION', '8.0.20', '5.5', '5.6')
+        text('MYSQL_VERSION', '8.0.20', '5.7')
         text('PROFILE', 'none', 'assembly')
         label("Node", "Slave")
     }
