@@ -569,20 +569,22 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             final TableId tableId = row.getTableId();
 
             final int activeTransactions = getTransactionCache().size();
-            if (activeTransactions <= 1) {
-                boolean advanceLowerScnBoundary = true;
-                if (activeTransactions == 1) {
-                    final String transactionId = getTransactionCache().keySet().iterator().next();
-                    if (!transactionId.equals(row.getTransactionId())) {
-                        // The row's transaction is not the current only active transaction.
-                        // We should not advance the SCN boundaries.
-                        advanceLowerScnBoundary = false;
-                    }
+            boolean advanceLowerScnBoundary = false;
+            if (activeTransactions == 0) {
+                // The DDL isn't wrapped in a transaction, fast-forward the lower boundary
+                advanceLowerScnBoundary = true;
+            }
+            else if (activeTransactions == 1) {
+                final String transactionId = getTransactionCache().keySet().iterator().next();
+                if (transactionId.equals(row.getTransactionId())) {
+                    // The row's transaction is the current and only active transaction.
+                    advanceLowerScnBoundary = true;
                 }
-                if (advanceLowerScnBoundary) {
-                    LOGGER.debug("Schema change advanced offset SCN to {}", row.getScn());
-                    offsetContext.setScn(row.getScn());
-                }
+            }
+
+            if (advanceLowerScnBoundary) {
+                LOGGER.debug("Schema change advanced offset SCN to {}", row.getScn());
+                offsetContext.setScn(row.getScn());
             }
 
             // Should always advance the commit SCN point with schema changes
