@@ -1355,11 +1355,12 @@ When the `decimal.handling.mode` property is set to `string`, the connector repr
 Oracle does not natively have support for a `BOOLEAN` data type; however,
 it is common practice to use other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
 
-The operator can configure the out-of-the-box `NumberOneToBooleanConverter` custom converter that would either map all `NUMBER(1)` columns to a `BOOLEAN` or if the `selector` parameter is set,
-then a subset of columns could be enumerated using a comma-separated list of regular expressions.
+To enable you to convert source columns to Boolean data types, {prodname} provides a `NumberOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
 
-Following is an example configuration:
-
+* Map all `NUMBER(1)` columns to a `BOOLEAN` type.
+* Enumerate a subset of columns by using a comma-separated list of regular expressions. +
+To use this type of conversion you must set the `selector` parameter as shown in the following configuration example:
++
 [source]
 ----
 converters=boolean

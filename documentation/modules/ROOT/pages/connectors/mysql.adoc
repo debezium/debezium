@@ -1606,12 +1606,13 @@ The `BOOLEAN` column is internally mapped to the `TINYINT(1)` data type.
 When the table is created during streaming then it uses proper `BOOLEAN` mapping as {prodname} receives the original DDL.
 During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table definitions that return `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns. {prodname} then has no way to obtain the original type mapping and so maps to `TINYINT(1)`.
 
-ifdef::community[]
-The operator can configure the out-of-the-box xref:{link-custom-converters}[`TinyIntOneToBooleanConverter` custom converter] that would either map all `TINYINT(1)` columns to `BOOLEAN` or if the `selector` parameter is set then a subset of columns could be enumerated using comma-separated regular expressions.
-endif::community[]
+To enable you to convert source columns to Boolean data types, {prodname} provides a `TinyIntOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
 
-Following is an example configuration:
-
+* Map all `TINYINT(1)` columns to `BOOLEAN` types.
+* Enumerate a subset of columns by using a comma-separated list of regular expressions. +
+  To use this type of conversion you must set the `selector` parameter as shown in the following configuration example:
++
+[source]
 ----
 converters=boolean
 boolean.type=io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter
