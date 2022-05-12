@@ -10,11 +10,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
-import org.bson.BsonBinaryWriter;
-import org.bson.codecs.DocumentCodec;
-import org.bson.codecs.EncoderContext;
-import org.bson.Document;
-import org.bson.io.BasicOutputBuffer;
+import org.bson.BsonDocument;
+import org.bson.RawBsonDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope.FieldName;
@@ -30,7 +29,7 @@ import io.debezium.util.Clock;
  */
 public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecordEmitter<MongoDbPartition, MongoDbCollectionSchema> {
 
-    private final Document oplogEvent;
+    private final BsonDocument oplogEvent;
 
     /**
      * Whether this event originates from a snapshot.
@@ -45,6 +44,8 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
     @Immutable
     private static final Map<String, Operation> OPERATION_LITERALS;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbChangeSnapshotOplogRecordEmitter.class);
+
     static {
         Map<String, Operation> literals = new HashMap<>();
 
@@ -56,7 +57,8 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeSnapshotOplogRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot, boolean isRawOplogEnabled) {
+    public MongoDbChangeSnapshotOplogRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock, BsonDocument oplogEvent, boolean isSnapshot,
+                                                   boolean isRawOplogEnabled) {
         super(partition, offsetContext, clock);
         this.oplogEvent = oplogEvent;
         this.isSnapshot = isSnapshot;
@@ -65,15 +67,15 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
 
     @Override
     public Operation getOperation() {
-        if (isSnapshot || oplogEvent.getString("op") == null) {
+        if (isSnapshot || oplogEvent.getString("op").getValue() == null) {
             return Operation.READ;
         }
-        return OPERATION_LITERALS.get(oplogEvent.getString("op"));
+        return OPERATION_LITERALS.get(oplogEvent.getString("op").getValue());
     }
 
     @Override
     protected void emitReadRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
-        final Object newKey = schema.keyFromDocument(oplogEvent);
+        final Object newKey = schema.keyFromDocumentOplog(oplogEvent);
         assert newKey != null;
 
         final Struct value = schema.valueFromDocumentOplog(oplogEvent, null, getOperation(), false);
@@ -100,13 +102,11 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
     }
 
     private void createAndEmitChangeRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
-        Document patchObject = oplogEvent.get("o", Document.class);
+        BsonDocument patchObject = oplogEvent.getDocument("o");
         // Updates have an 'o2' field, since the updated object in 'o' might not have the ObjectID
-        Document queryObject = oplogEvent.get("o2", Document.class);
+        final BsonDocument filter = oplogEvent.containsKey("o2") ? oplogEvent.getDocument("o2") : oplogEvent.getDocument("o");
 
-        final Document filter = queryObject != null ? queryObject : patchObject;
-
-        final Object newKey = schema.keyFromDocument(filter);
+        final Object newKey = schema.keyFromDocumentOplog(filter);
         assert newKey != null;
 
         final Struct value = schema.valueFromDocumentOplog(patchObject, filter, getOperation(), isRawOplogEnabled);
@@ -114,19 +114,19 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
         if (isRawOplogEnabled) {
-            value.put(MongoDbFieldName.RAW_OPLOG_FIELD, documentToBytes(oplogEvent));
+            if (!(oplogEvent instanceof RawBsonDocument)) {
+                LOGGER.error("Expecting RawBsonDocument when RawOplogEnabled is true");
+            }
+            else {
+                value.put(MongoDbFieldName.RAW_OPLOG_FIELD, documentToBytes((RawBsonDocument) oplogEvent));
+            }
         }
         receiver.changeRecord(getPartition(), schema, getOperation(), newKey, value, getOffset(), null);
     }
 
     // This is thread-safe because it's we are creating new buffer and codec everytime
-    private static byte[] documentToBytes(Document document) {
-        BasicOutputBuffer bsonOutput = new BasicOutputBuffer();
-        BsonBinaryWriter bsonBinaryWriter = new BsonBinaryWriter(bsonOutput);
-        new DocumentCodec()
-            .encode(bsonBinaryWriter, document, EncoderContext.builder().build());
-        bsonBinaryWriter.close();
-        return bsonOutput.toByteArray();
+    private static byte[] documentToBytes(RawBsonDocument document) {
+        return document.getByteBuffer().array();
     }
 
     public static boolean isValidOperation(String operation) {

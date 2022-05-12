@@ -8,24 +8,21 @@ package io.debezium.connector.mongodb;
 import java.util.function.Function;
 
 import org.bson.BsonDocument;
-import org.bson.Document;
-import org.bson.codecs.Encoder;
+import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
 import com.mongodb.BasicDBObject;
-import com.mongodb.MongoClientSettings;
 
 /**
  * A class responsible for serialization of message keys and values to MongoDB compatible JSON
  *
  * @author Jiri Pechanec
- *
  */
 class JsonSerialization {
 
     @FunctionalInterface
-    public static interface Transformer extends Function<Document, String> {
+    public static interface Transformer extends Function<BsonDocument, String> {
     }
 
     private static final String ID_FIELD_NAME = "_id";
@@ -53,16 +50,29 @@ class JsonSerialization {
     private final Transformer transformer;
 
     public JsonSerialization() {
-        final Encoder<Document> encoder = MongoClientSettings.getDefaultCodecRegistry().get(Document.class);
-        transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS, encoder);
+        transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS);
     }
 
-    public String getDocumentIdOplog(Document document) {
+    public String getDocumentIdOplog(BsonDocument document) {
         if (document == null) {
             return null;
         }
         // The serialized value is in format {"_": xxx} so we need to remove the starting dummy field name and closing brace
-        final String keyValue = new BasicDBObject("_", document.get(ID_FIELD_NAME)).toJson(SIMPLE_JSON_SETTINGS);
+        BsonValue value = document.get(ID_FIELD_NAME);
+        Object obj;
+        if (value.isObjectId()) {
+            obj = value.asObjectId().getValue();
+        }
+        else if (value.isInt32()) {
+            obj = value.asInt32().getValue();
+        }
+        else if (value.isInt64()) {
+            obj = value.asInt64().getValue();
+        }
+        else {
+            obj = value.asString().getValue();
+        }
+        final String keyValue = new BasicDBObject("_", obj).toJson(SIMPLE_JSON_SETTINGS);
         final int start = 6;
         final int end = keyValue.length() - 1;
         if (!(end > start)) {
@@ -85,7 +95,7 @@ class JsonSerialization {
         return keyValue.substring(start, end);
     }
 
-    public String getDocumentValue(Document document) {
+    public String getDocumentValue(BsonDocument document) {
         return transformer.apply(document);
     }
 

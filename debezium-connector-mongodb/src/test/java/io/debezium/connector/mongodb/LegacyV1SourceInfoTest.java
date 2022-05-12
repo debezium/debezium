@@ -12,8 +12,10 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDocument;
+import org.bson.BsonInt64;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
-import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -22,7 +24,6 @@ import io.debezium.config.Configuration;
 
 /**
  * @author Randall Hauch
- *
  */
 public class LegacyV1SourceInfoTest {
 
@@ -69,9 +70,9 @@ public class LegacyV1SourceInfoTest {
 
     @Test
     public void shouldSetAndReturnRecordedOffset() {
-        Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                .append("h", Long.valueOf(1987654321))
-                .append("ns", "dbA.collectA");
+        BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.opLogEvent(REPLICA_SET_NAME, event);
@@ -139,9 +140,9 @@ public class LegacyV1SourceInfoTest {
 
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaName() {
-        Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                .append("h", Long.valueOf(1987654321))
-                .append("ns", "dbA.collectA");
+        BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.opLogEvent(REPLICA_SET_NAME, event);
@@ -198,9 +199,9 @@ public class LegacyV1SourceInfoTest {
     public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSync() {
         source.startInitialSync(REPLICA_SET_NAME);
 
-        Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                .append("h", Long.valueOf(1987654321))
-                .append("ns", "dbA.collectA");
+        BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.opLogEvent(REPLICA_SET_NAME, event);
@@ -228,18 +229,18 @@ public class LegacyV1SourceInfoTest {
 
     @Test
     public void versionIsPresent() {
-        final Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                .append("h", Long.valueOf(1987654321))
-                .append("ns", "dbA.collectA");
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
         source.opLogEvent("rs", event);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
-        final Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                .append("h", Long.valueOf(1987654321))
-                .append("ns", "dbA.collectA");
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
         source.opLogEvent("rs", event);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }

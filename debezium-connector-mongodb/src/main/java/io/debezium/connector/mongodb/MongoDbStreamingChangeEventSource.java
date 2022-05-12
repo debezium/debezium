@@ -24,7 +24,9 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
+import org.bson.BsonValue;
 import org.bson.Document;
+import org.bson.RawBsonDocument;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +55,6 @@ import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
 
 /**
- *
  * @author Chris Cranford
  */
 public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource<MongoDbPartition, MongoDbOffsetContext> {
@@ -195,8 +196,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
         LOGGER.info("Reading oplog for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
 
+        if (!connectorConfig.getEnableRawOplog()) {
+            throw new DebeziumException("mongodb.raw_oplog.enabled should set to be true");
+        }
+
         // Include none of the cluster-internal operations and only those events since the previous timestamp
-        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
+        MongoCollection<RawBsonDocument> oplog = primary.getDatabase("local").getCollection("oplog.rs", RawBsonDocument.class);
 
         // DBZ-3331 Verify that the start position is in the oplog; throw exception if not.
         if (!isStartPositionInOplog(oplogStart, oplog)) {
@@ -224,18 +229,18 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             filter = Filters.and(filter, operationFilter);
         }
 
-    FindIterable<Document> results = oplog.find(filter)
-            .sort(new Document("$natural", 1))
-            .oplogReplay(true)
-            .cursorType(CursorType.TailableAwait)
-            .comment("{\"op_timeout\":30,\"svcname\":\"mercury\"}")
-            .noCursorTimeout(true);
+        FindIterable<RawBsonDocument> results = oplog.find(filter)
+                .sort(new Document("$natural", 1))
+                .oplogReplay(true)
+                .cursorType(CursorType.TailableAwait)
+                .comment("{\"op_timeout\":30,\"svcname\":\"mercury\"}")
+                .noCursorTimeout(true);
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             results = results.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
 
-        try (MongoCursor<Document> cursor = results.iterator()) {
+        try (MongoCursor<RawBsonDocument> cursor = results.iterator()) {
             // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
             // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
             // can respond to the stop request much faster and without much overhead.
@@ -243,7 +248,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             while (context.isRunning()) {
                 // Use tryNext which will return null if no document is yet available from the cursor.
                 // In this situation if not document is available, we'll pause.
-                final Document event = cursor.tryNext();
+                final BsonDocument event = cursor.tryNext();
                 if (event != null) {
                     if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog())) {
                         // Something happened and we are supposed to stop reading
@@ -309,8 +314,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             // It must be filtered-out
             filters = Filters.and(filters, Filters.ne("clusterTime", oplogStart));
         }
-        final ChangeStreamIterable<Document> rsChangeStream = primary.watch(
-                Arrays.asList(Aggregates.match(filters)));
+        final ChangeStreamIterable<BsonDocument> rsChangeStream = primary.watch(
+                Arrays.asList(Aggregates.match(filters)), BsonDocument.class);
         if (taskContext.getCaptureMode().isFullUpdate()) {
             rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
         }
@@ -330,7 +335,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
 
-        try (MongoCursor<ChangeStreamDocument<Document>> cursor = rsChangeStream.iterator()) {
+        try (MongoCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.iterator()) {
             // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
             // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
             // can respond to the stop request much faster and without much overhead.
@@ -338,7 +343,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             while (context.isRunning()) {
                 // Use tryNext which will return null if no document is yet available from the cursor.
                 // In this situation if not document is available, we'll pause.
-                final ChangeStreamDocument<Document> event = cursor.tryNext();
+                final ChangeStreamDocument<BsonDocument> event = cursor.tryNext();
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
 
@@ -392,13 +397,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private boolean isStartPositionInOplog(BsonTimestamp startTime, MongoCollection<Document> oplog) {
-        final MongoCursor<Document> iterator = oplog.find().iterator();
+    private boolean isStartPositionInOplog(BsonTimestamp startTime, MongoCollection<RawBsonDocument> oplog) {
+        final MongoCursor<RawBsonDocument> iterator = oplog.find().iterator();
         if (!iterator.hasNext()) {
             return false;
         }
 
-        final BsonTimestamp timestamp = iterator.next().get("ts", BsonTimestamp.class);
+        final BsonTimestamp timestamp = iterator.next().getTimestamp("ts");
         if (timestamp == null) {
             return false;
         }
@@ -429,10 +434,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return skippedOperationsFilter;
     }
 
-    private boolean handleOplogEvent(ServerAddress primaryAddress, Document event, Document masterEvent, long txOrder,
+    private boolean handleOplogEvent(ServerAddress primaryAddress, BsonDocument event, BsonDocument masterEvent, long txOrder,
                                      ReplicaSetOplogContext oplogContext, boolean isRawOplogEnabled) {
-        String ns = event.getString("ns");
-        Document object = event.get(OBJECT_FIELD, Document.class);
+        String ns = event.getString("ns").getValue();
+        BsonDocument object = event.getDocument(OBJECT_FIELD);
         if (Objects.isNull(object)) {
             if (LOGGER.isWarnEnabled()) {
                 LOGGER.warn("Missing 'o' field in event, so skipping {}", event.toJson());
@@ -442,7 +447,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         if (Objects.isNull(ns) || ns.isEmpty()) {
             // These are considered replica set events
-            String msg = object.getString("msg");
+            String msg = object.getString("msg").getValue();
             if ("new primary".equals(msg)) {
                 AtomicReference<ServerAddress> address = new AtomicReference<>();
                 try {
@@ -474,17 +479,17 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return true;
         }
 
-        final List<Document> txChanges = transactionChanges(event);
+        final List<BsonValue> txChanges = transactionChanges(event);
         if (!txChanges.isEmpty()) {
             if (Objects.nonNull(oplogContext.getIncompleteEventTimestamp())) {
                 if (oplogContext.getIncompleteEventTimestamp().equals(SourceInfo.extractEventTimestamp(event))) {
-                    for (Document change : txChanges) {
+                    for (BsonValue change : txChanges) {
                         txOrder++;
                         if (txOrder <= oplogContext.getIncompleteTxOrder()) {
                             LOGGER.debug("Skipping record as it is expected to be already processed: {}", change);
                             continue;
                         }
-                        final boolean r = handleOplogEvent(primaryAddress, change, event, txOrder, oplogContext, connectorConfig.getEnableRawOplog());
+                        final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, txOrder, oplogContext, connectorConfig.getEnableRawOplog());
                         if (!r) {
                             return false;
                         }
@@ -495,8 +500,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
             try {
                 dispatcher.dispatchTransactionStartedEvent(oplogContext.getPartition(), getTransactionId(event), oplogContext.getOffset());
-                for (Document change : txChanges) {
-                    final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog());
+                for (BsonValue change : txChanges) {
+                    final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog());
                     if (!r) {
                         return false;
                     }
@@ -510,7 +515,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return true;
         }
 
-        final String operation = event.getString(OPERATION_FIELD);
+        final String operation = event.getString(OPERATION_FIELD).getValue();
         if (!MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
             LOGGER.debug("Skipping event with \"op={}\"", operation);
             return true;
@@ -562,26 +567,26 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return true;
     }
 
-    private List<Document> transactionChanges(Document event) {
-        final String op = event.getString(OPERATION_FIELD);
-        final Document o = event.get(OBJECT_FIELD, Document.class);
+    private List<BsonValue> transactionChanges(BsonDocument event) {
+        final String op = event.getString(OPERATION_FIELD).getValue();
+        final BsonDocument o = event.getDocument(OBJECT_FIELD);
         if (!(OPERATION_CONTROL.equals(op) && Objects.nonNull(o) && o.containsKey(TX_OPS))) {
             return Collections.emptyList();
         }
-        return o.get(TX_OPS, List.class);
+        return o.getArray(TX_OPS).getValues();
     }
 
     protected MongoDbOffsetContext initializeOffsets(MongoDbConnectorConfig connectorConfig, MongoDbPartition partition,
                                                      ReplicaSets replicaSets) {
-        final Map<ReplicaSet, Document> positions = new LinkedHashMap<>();
+        final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
         replicaSets.onEachReplicaSet(replicaSet -> {
             LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
             MongoPrimary primaryClient = establishConnectionToPrimary(partition, replicaSet);
             if (primaryClient != null) {
                 try {
                     primaryClient.execute("get oplog position", primary -> {
-                        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                        Document last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
+                        MongoCollection<BsonDocument> oplog = primary.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
+                        BsonDocument last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
                         positions.put(replicaSet, last);
                     });
                 }
@@ -596,8 +601,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 new MongoDbIncrementalSnapshotContext<>(false), positions);
     }
 
-    private static String getTransactionId(Document event) {
-        final Long operationId = event.getLong(SourceInfo.OPERATION_ID);
+    private static String getTransactionId(BsonDocument event) {
+        final Long operationId = event.getInt64(SourceInfo.OPERATION_ID).getValue();
         if (operationId != null && operationId != 0L) {
             return Long.toString(operationId);
         }

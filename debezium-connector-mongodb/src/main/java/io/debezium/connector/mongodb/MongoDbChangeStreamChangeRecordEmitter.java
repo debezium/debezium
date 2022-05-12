@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
-import org.bson.Document;
+import org.bson.BsonDocument;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.OperationType;
@@ -29,7 +29,7 @@ import io.debezium.util.Clock;
  */
 public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecordEmitter<MongoDbPartition, MongoDbCollectionSchema> {
 
-    private final ChangeStreamDocument<Document> changeStreamEvent;
+    private final ChangeStreamDocument<BsonDocument> changeStreamEvent;
 
     @Immutable
     private static final Map<OperationType, Operation> OPERATION_LITERALS;
@@ -46,7 +46,7 @@ public class MongoDbChangeStreamChangeRecordEmitter extends AbstractChangeRecord
     }
 
     public MongoDbChangeStreamChangeRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock,
-                                                  ChangeStreamDocument<Document> changeStreamEvent) {
+                                                  ChangeStreamDocument<BsonDocument> changeStreamEvent) {
         super(partition, offsetContext, clock);
         this.changeStreamEvent = changeStreamEvent;
     }

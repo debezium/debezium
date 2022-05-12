@@ -9,14 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.bson.BsonDocument;
+import org.bson.BsonValue;
 import org.bson.Document;
-import org.bson.types.Binary;
 
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -80,7 +80,7 @@ public class MongoUtil {
     /**
      * Perform the given operation on each of the database names.
      *
-     * @param client the MongoDB client; may not be null
+     * @param client    the MongoDB client; may not be null
      * @param operation the operation to perform; may not be null
      */
     public static void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
@@ -90,9 +90,9 @@ public class MongoUtil {
     /**
      * Perform the given operation on each of the collection names in the named database.
      *
-     * @param client the MongoDB client; may not be null
+     * @param client       the MongoDB client; may not be null
      * @param databaseName the name of the database; may not be null
-     * @param operation the operation to perform; may not be null
+     * @param operation    the operation to perform; may not be null
      */
     public static void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
         MongoDatabase db = client.getDatabase(databaseName);
@@ -102,7 +102,7 @@ public class MongoUtil {
     /**
      * Perform the given operation on each of the values in the iterable container.
      *
-     * @param iterable the iterable collection obtained from a MongoDB client; may not be null
+     * @param iterable  the iterable collection obtained from a MongoDB client; may not be null
      * @param operation the operation to perform; may not be null
      */
     public static <T> void forEach(MongoIterable<T> iterable, Consumer<T> operation) {
@@ -116,8 +116,8 @@ public class MongoUtil {
     /**
      * Perform the given operation on the database with the given name, only if that database exists.
      *
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
+     * @param client      the MongoDB client; may not be null
+     * @param dbName      the name of the database; may not be null
      * @param dbOperation the operation to perform; may not be null
      */
     public static void onDatabase(MongoClient client, String dbName, Consumer<MongoDatabase> dbOperation) {
@@ -129,9 +129,9 @@ public class MongoUtil {
     /**
      * Perform the given operation on the named collection in the named database, if the database and collection both exist.
      *
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
-     * @param collectionName the name of the collection; may not be null
+     * @param client              the MongoDB client; may not be null
+     * @param dbName              the name of the database; may not be null
+     * @param collectionName      the name of the collection; may not be null
      * @param collectionOperation the operation to perform; may not be null
      */
     public static void onCollection(MongoClient client, String dbName, String collectionName,
@@ -148,9 +148,9 @@ public class MongoUtil {
      * collection both exist. The operation is called once for each document, so if the collection exists but is empty then the
      * function will not be called.
      *
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
-     * @param collectionName the name of the collection; may not be null
+     * @param client            the MongoDB client; may not be null
+     * @param dbName            the name of the database; may not be null
+     * @param collectionName    the name of the collection; may not be null
      * @param documentOperation the operation to perform; may not be null
      */
     public static void onCollectionDocuments(MongoClient client, String dbName, String collectionName,
@@ -174,7 +174,7 @@ public class MongoUtil {
      * Determine if the supplied {@link MongoIterable} contains an element that is equal to the supplied value.
      *
      * @param iterable the iterable; may not be null
-     * @param match the value to find in the iterable; may be null
+     * @param match    the value to find in the iterable; may be null
      * @return {@code true} if a matching value was found, or {@code false} otherwise
      */
     public static <T> boolean contains(MongoIterable<String> iterable, String match) {
@@ -185,7 +185,7 @@ public class MongoUtil {
      * Determine if the supplied {@link MongoIterable} contains at least one element that satisfies the given predicate.
      *
      * @param iterable the iterable; may not be null
-     * @param matcher the predicate function called on each value in the iterable until a match is found; may not be null
+     * @param matcher  the predicate function called on each value in the iterable until a match is found; may not be null
      * @return {@code true} if a matching value was found, or {@code false} otherwise
      */
     public static <T> boolean contains(MongoIterable<T> iterable, Predicate<T> matcher) {
@@ -233,15 +233,15 @@ public class MongoUtil {
      * @param oplogEvent the oplog event
      * @return the session transaction id from the oplog event
      */
-    public static String getOplogSessionTransactionId(Document oplogEvent) {
+    public static String getOplogSessionTransactionId(BsonDocument oplogEvent) {
         if (!oplogEvent.containsKey("txnNumber")) {
             return null;
         }
-        final Document lsidDoc = oplogEvent.get("lsid", Document.class);
-        final Object id = lsidDoc.get("id");
+        final BsonDocument lsidDoc = oplogEvent.getDocument("lsid");
+        final BsonValue id = lsidDoc.get("id");
         // MongoDB 4.2 returns Binary instead of UUID
-        final String lsid = (id instanceof Binary) ? UUID.nameUUIDFromBytes(((Binary) id).getData()).toString() : ((UUID) id).toString();
-        final Long txnNumber = oplogEvent.getLong("txnNumber");
+        final String lsid = id.isBinary() ? id.asBinary().asUuid().toString() : id.asString().getValue();
+        final Long txnNumber = oplogEvent.get("txnNumber").isInt32() ? oplogEvent.getInt32("txnNumber").getValue() : oplogEvent.getInt64("txnNumber").getValue();
         return lsid + ":" + txnNumber;
     }
 
@@ -251,7 +251,7 @@ public class MongoUtil {
      * @param event the Change Stream event
      * @return the session transaction id from the event
      */
-    public static SourceInfo.SessionTransactionId getChangeStreamSessionTransactionId(ChangeStreamDocument<Document> event) {
+    public static SourceInfo.SessionTransactionId getChangeStreamSessionTransactionId(ChangeStreamDocument<BsonDocument> event) {
         if (event.getLsid() == null || event.getTxnNumber() == null) {
             return null;
         }
@@ -271,7 +271,7 @@ public class MongoUtil {
      * host:port,host2:port2
      * host:port,host2:port2,host3:port3
      * </pre>
-     *
+     * <p>
      * where {@code replicaSetName} is the name of the replica set, {@code host} contains the resolvable hostname or IP address of
      * the server, and {@code port} is the integral port number. If the port is not provided, the
      * {@link ServerAddress#defaultPort() default port} is used. If neither the host or port are provided (or
@@ -283,7 +283,7 @@ public class MongoUtil {
      * This method does not use the replica set name.
      *
      * @param addressStr the string containing a comma-separated list of host and port pairs, optionally preceded by a
-     *            replica set name
+     *                   replica set name
      * @return the list of server addresses; never null, but possibly empty
      */
     protected static List<ServerAddress> parseAddresses(String addressStr) {

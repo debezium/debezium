@@ -11,8 +11,8 @@ import java.util.OptionalLong;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
-import org.bson.Document;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
@@ -24,7 +24,7 @@ import io.debezium.schema.DataCollectionId;
 
 /**
  * An {@link OffsetContext} implementation that is specific to a single {@link ReplicaSet}.
- *
+ * <p>
  * The mongodb connector operates multiple threads during snapshot and streaming modes where each {@link ReplicaSet}
  * is processed individually and the offsets that pertain to that {@link ReplicaSet} should be maintained in such a
  * way that is considered thread-safe.  This implementation offers such safety.
@@ -118,11 +118,11 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         sourceInfo.lastOffset(replicaSetName);
     }
 
-    public void oplogEvent(Document oplogEvent, Document masterEvent, Long txOrder) {
+    public void oplogEvent(BsonDocument oplogEvent, BsonDocument masterEvent, Long txOrder) {
         sourceInfo.opLogEvent(replicaSetName, oplogEvent, masterEvent, txOrder);
     }
 
-    public void changeStreamEvent(ChangeStreamDocument<Document> changeStreamEvent, OptionalLong txOrder) {
+    public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent, OptionalLong txOrder) {
         sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent, txOrder.orElse(0));
     }
 

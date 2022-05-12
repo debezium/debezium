@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
-import org.bson.Document;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.TruncatedArray;
@@ -38,13 +37,13 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     private final Schema keySchema;
     private final Envelope envelopeSchema;
     private final Schema valueSchema;
-    private final Function<Document, Object> keyGeneratorOplog;
+    private final Function<BsonDocument, Object> keyGeneratorOplog;
     private final Function<BsonDocument, Object> keyGeneratorChangeStream;
-    private final Function<Document, String> valueGenerator;
+    private final Function<BsonDocument, String> valueGenerator;
 
-    public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema, Function<Document, Object> keyGenerator,
+    public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema, Function<BsonDocument, Object> keyGenerator,
                                    Function<BsonDocument, Object> keyGeneratorChangeStream, Envelope envelopeSchema, Schema valueSchema,
-                                   Function<Document, String> valueGenerator) {
+                                   Function<BsonDocument, String> valueGenerator) {
         this.id = id;
         this.fieldFilter = fieldFilter;
         this.keySchema = keySchema;
@@ -74,7 +73,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         return envelopeSchema;
     }
 
-    public Struct keyFromDocument(Document document) {
+    public Struct keyFromDocumentOplog(BsonDocument document) {
         return document == null ? null : new Struct(keySchema).put("id", keyGeneratorOplog.apply(document));
     }
 
@@ -82,7 +81,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         return document == null ? null : new Struct(keySchema).put("id", keyGeneratorChangeStream.apply(document));
     }
 
-    public Struct valueFromDocumentOplog(Document document, Document filter, Envelope.Operation operation, boolean isRawOplogEnabled) {
+    public Struct valueFromDocumentOplog(BsonDocument document, BsonDocument filter, Envelope.Operation operation, boolean isRawOplogEnabled) {
         Struct value = new Struct(valueSchema);
         // If isRawOplogEnabled is enabled, we will pass in the entire oplog
         // thus we don't need the seder below
@@ -110,7 +109,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         return value;
     }
 
-    public Struct valueFromDocumentChangeStream(ChangeStreamDocument<Document> document, Envelope.Operation operation) {
+    public Struct valueFromDocumentChangeStream(ChangeStreamDocument<BsonDocument> document, Envelope.Operation operation) {
         Struct value = new Struct(valueSchema);
         switch (operation) {
             case CREATE:

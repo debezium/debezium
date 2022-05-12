@@ -16,8 +16,8 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
-import org.bson.Document;
 import org.bson.types.BSONTimestamp;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
@@ -188,7 +188,7 @@ public final class SourceInfo extends BaseSourceInfo {
      *
      * @param partition the partition map
      * @return the replica set name (when the partition is valid), or {@code null} if the partition is null or has no replica
-     *         set name entry
+     * set name entry
      */
     public static String replicaSetNameForPartition(Map<String, ?> partition) {
         return partition != null ? (String) partition.get(REPLICA_SET_NAME) : null;
@@ -305,7 +305,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * offset} information where we have last read. The Struct complies with the {@link #schema} for the MongoDB connector.
      *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
-     * @param collectionId the event's collection identifier; may not be null
+     * @param collectionId   the event's collection identifier; may not be null
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
@@ -318,28 +318,28 @@ public final class SourceInfo extends BaseSourceInfo {
      * offset} information. The Struct complies with the {@link #schema} for the MongoDB connector.
      *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
-     * @param oplogEvent the replica set oplog event that was last read; may be null if the position is the start of
-     *            the oplog
-     * @param masterEvent the replica set oplog event that contains event metadata; same as oplogEvent for non-transactional changes
-     * @param orderInTx order in transaction batch, 0 for non-transactional events
+     * @param oplogEvent     the replica set oplog event that was last read; may be null if the position is the start of
+     *                       the oplog
+     * @param masterEvent    the replica set oplog event that contains event metadata; same as oplogEvent for non-transactional changes
+     * @param orderInTx      order in transaction batch, 0 for non-transactional events
      * @see #schema()
      */
-    public void opLogEvent(String replicaSetName, Document oplogEvent, Document masterEvent, long orderInTx) {
+    public void opLogEvent(String replicaSetName, BsonDocument oplogEvent, BsonDocument masterEvent, long orderInTx) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         if (oplogEvent != null) {
             BsonTimestamp ts = extractEventTimestamp(masterEvent);
-            Long opId = masterEvent.getLong("h");
+            Long opId = masterEvent.containsKey("h") ? masterEvent.getInt64("h").getValue() : null;
             String sessionTxnId = extractSessionTxnId(masterEvent);
             position = Position.oplogPosition(ts, opId, orderInTx, sessionTxnId);
-            namespace = oplogEvent.getString("ns");
+            namespace = oplogEvent.getString("ns").getValue();
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position);
     }
 
-    public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<Document> changeStreamEvent, long orderInTx) {
+    public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<BsonDocument> changeStreamEvent, long orderInTx) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         if (changeStreamEvent != null) {
@@ -358,11 +358,11 @@ public final class SourceInfo extends BaseSourceInfo {
      * offset} information. The Struct complies with the {@link #schema} for the MongoDB connector.
      *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
-     * @param oplogEvent the replica set oplog event that was last read; may be null if the position is the start of
-     *            the oplog
+     * @param oplogEvent     the replica set oplog event that was last read; may be null if the position is the start of
+     *                       the oplog
      * @see #schema()
      */
-    public void opLogEvent(String replicaSetName, Document oplogEvent) {
+    public void opLogEvent(String replicaSetName, BsonDocument oplogEvent) {
         opLogEvent(replicaSetName, oplogEvent, oplogEvent, 0);
     }
 
@@ -372,8 +372,8 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param oplogEvent the event
      * @return the timestamp, or null if the event is null or there is no {@code ts} field
      */
-    protected static BsonTimestamp extractEventTimestamp(Document oplogEvent) {
-        return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
+    protected static BsonTimestamp extractEventTimestamp(BsonDocument oplogEvent) {
+        return oplogEvent != null ? oplogEvent.getTimestamp("ts") : null;
     }
 
     /**
@@ -382,12 +382,11 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param oplogEvent the event
      * @return the session transaction id or null
      */
-    protected static String extractSessionTxnId(Document oplogEvent) {
+    protected static String extractSessionTxnId(BsonDocument oplogEvent) {
         // In MongoDB prior to 4.2, the h field is populated.
         // For backward compatibility if h is not present or contains a zero value, then proeeed to extract
         // the session transaction unique identifier value.
-        Long opId = oplogEvent.getLong("h");
-        if (opId == null || opId == 0L) {
+        if (!oplogEvent.containsKey("h")) {
             // For MongoDB 4.2+, the h field no longer has a non-zero value.
             // In this case, the lsid and the associated txnNumber fields must be extracted and combined to
             // represent a unique identifier for the individual operation. Therefore, the return value will
@@ -408,7 +407,7 @@ public final class SourceInfo extends BaseSourceInfo {
      *
      * @param replicaSetName the name of the replica set name; may not be null
      * @return {@code true} if an offset has been recorded for the replica set, or {@code false} if the replica set has not
-     *         yet been seen
+     * yet been seen
      */
     public boolean hasOffset(String replicaSetName) {
         return positionsByReplicaSetName.containsKey(replicaSetName);
@@ -419,7 +418,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * is null.
      *
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
-     * @param sourceOffset the previously-recorded Kafka Connect source offset; may be null
+     * @param sourceOffset   the previously-recorded Kafka Connect source offset; may be null
      * @return {@code true} if the offset was recorded, or {@code false} if the source offset is null
      * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
      */
@@ -456,7 +455,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * Set the source offset, as read from Kafka Connect, for the given replica set. This method does nothing if the supplied map
      * is null.
      *
-     * @param partition the partition information; may not be null
+     * @param partition    the partition information; may not be null
      * @param sourceOffset the previously-recorded Kafka Connect source offset; may be null
      * @return {@code true} if the offset was recorded, or {@code false} if the source offset is null
      * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
@@ -489,7 +488,7 @@ public final class SourceInfo extends BaseSourceInfo {
      *
      * @param replicaSetName the name of the replica set; never null
      * @return {@code true} if the initial sync for this replica is still ongoing or was not completed before restarting, or
-     *         {@code false} if there is currently no initial sync operation for this replica set
+     * {@code false} if there is currently no initial sync operation for this replica set
      */
     public boolean isInitialSyncOngoing(String replicaSetName) {
         return initialSyncReplicaSets.contains(replicaSetName);
