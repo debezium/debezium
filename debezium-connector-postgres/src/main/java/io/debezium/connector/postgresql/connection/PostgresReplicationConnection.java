@@ -210,7 +210,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             stmt.execute(createOrUpdatePublicationStmt);
         }
         catch (Exception e) {
-            throw new ConnectException(String.format("Unable to create filtered publication %s for %s", publicationName, tableFilterString),
+            throw new ConnectException(String.format("Unable to %s filtered publication %s for %s", isUpdate ? "update" : "create", publicationName, tableFilterString),
                     e);
         }
     }
