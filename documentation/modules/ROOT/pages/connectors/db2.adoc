@@ -2161,12 +2161,15 @@ The following _advanced_ configuration properties have defaults that work in mos
 
 |[[db2-property-converters]]<<db2-property-converters, `converters`>>
 |No default
-|Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use. +
-For example, `isbn`. +
-This property is required to enable the connector to use a custom converter.
+|Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use.
+For example, +
 
-For each converter that you configure for a connector, you must also add a property to specify the fully-qualifed name of the class that implements the converter interface.
-This second property uses the following format: +
+`isbn`
+
+You must set the `converters` property to enable the connector to use a custom converter.
+
+For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualifed name of the class that implements the converter interface.
+The `.type` property uses the following format: +
 
 `_<converterSymbolicName>_.type` +
 
@@ -2174,9 +2177,8 @@ For example, +
 
  isbn.type: io.debezium.test.IsbnConverter
 
-If a configured converter requires further information to customize the way that it converts specific data types, you can add configuration properties to pass these instructions.
-To associate such configuration properties with the converter, prefix their names with the converter's symbolic name. +
- +
+If you want to further control the behavior of a configured converter, you can add one or more configuration parameters to pass values to the converter.
+To associate any additional configuration parameter with a converter, prefix the parameter names with the symbolic name of the converter. +
 For example, +
 
  isbn.schema.name: io.debezium.db2.type.Isbn
