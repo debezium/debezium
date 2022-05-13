@@ -234,6 +234,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                         TableMapEventData tableMapEvent = event.getData();
                         tableMapEventByTableId.put(tableMapEvent.getTableId(), tableMapEvent);
                     }
+
+                    // DBZ-5126 Clean cache on rotate event to prevent it from growing indefinitely.
+                    if (event.getHeader().getEventType() == EventType.ROTATE) {
+                        tableMapEventByTableId.clear();
+                    }
                     return event;
                 }
                 // DBZ-217 In case an event couldn't be read we create a pseudo-event for the sake of logging
