@@ -5,20 +5,25 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.DATABASE_NAME;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import io.debezium.config.Configuration;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.AbstractPartition;
 import io.debezium.util.Collect;
 
-public class PostgresPartition implements Partition {
+public class PostgresPartition extends AbstractPartition implements Partition {
     private static final String SERVER_PARTITION_KEY = "server";
 
     private final String serverName;
 
-    public PostgresPartition(String serverName) {
+    public PostgresPartition(String serverName, String databaseName) {
+        super(databaseName);
         this.serverName = serverName;
     }
 
@@ -51,14 +56,17 @@ public class PostgresPartition implements Partition {
 
     static class Provider implements Partition.Provider<PostgresPartition> {
         private final PostgresConnectorConfig connectorConfig;
+        private final Configuration taskConfig;
 
-        Provider(PostgresConnectorConfig connectorConfig) {
+        Provider(PostgresConnectorConfig connectorConfig, Configuration taskConfig) {
             this.connectorConfig = connectorConfig;
+            this.taskConfig = taskConfig;
         }
 
         @Override
         public Set<PostgresPartition> getPartitions() {
-            return Collections.singleton(new PostgresPartition(connectorConfig.getLogicalName()));
+            return Collections.singleton(new PostgresPartition(
+                    connectorConfig.getLogicalName(), taskConfig.getString(DATABASE_NAME.name())));
         }
     }
 }
