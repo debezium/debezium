@@ -612,7 +612,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final MySqlOffsetContext.Loader loader = new MySqlOffsetContext.Loader(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, serverName)
                 .build()));
-        final Map<String, String> partition = new MySqlPartition(serverName).getSourcePartition();
+        final Map<String, String> partition = new MySqlPartition(serverName, DATABASE.getDatabaseName()).getSourcePartition();
         Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, partition);
         final MySqlOffsetContext offsetContext = loader.load(lastCommittedOffset);
         final SourceInfo persistedOffsetSource = offsetContext.getSource();
