@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb;
 import java.util.function.Function;
 
 import org.bson.BsonDocument;
-import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
@@ -58,21 +57,7 @@ class JsonSerialization {
             return null;
         }
         // The serialized value is in format {"_": xxx} so we need to remove the starting dummy field name and closing brace
-        BsonValue value = document.get(ID_FIELD_NAME);
-        Object obj;
-        if (value.isObjectId()) {
-            obj = value.asObjectId().getValue();
-        }
-        else if (value.isInt32()) {
-            obj = value.asInt32().getValue();
-        }
-        else if (value.isInt64()) {
-            obj = value.asInt64().getValue();
-        }
-        else {
-            obj = value.asString().getValue();
-        }
-        final String keyValue = new BasicDBObject("_", obj).toJson(SIMPLE_JSON_SETTINGS);
+        final String keyValue = new BasicDBObject("_", document.get(ID_FIELD_NAME)).toJson(SIMPLE_JSON_SETTINGS);
         final int start = 6;
         final int end = keyValue.length() - 1;
         if (!(end > start)) {
