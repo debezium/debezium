@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.history;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -140,17 +141,21 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     protected synchronized void recoverRecords(Consumer<HistoryRecord> records) {
         lock.write(() -> {
-            try {
-                if (exists()) {
-                    for (String line : Files.readAllLines(path, UTF8)) {
-                        if (line != null && !line.isEmpty()) {
+            if (exists()) {
+                try (BufferedReader historyReader = Files.newBufferedReader(path)) {
+                    while (true) {
+                        String line = historyReader.readLine();
+                        if (line == null) {
+                            break;
+                        }
+                        if (!line.isEmpty()) {
                             records.accept(new HistoryRecord(reader.read(line)));
                         }
                     }
                 }
-            }
-            catch (IOException e) {
-                logger.error("Failed to add recover records from history at {}", path, e);
+                catch (IOException e) {
+                    logger.error("Failed to add recover records from history at {}", path, e);
+                }
             }
         });
     }
