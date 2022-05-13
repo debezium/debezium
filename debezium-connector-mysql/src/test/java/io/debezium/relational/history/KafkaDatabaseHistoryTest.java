@@ -84,7 +84,7 @@ public class KafkaDatabaseHistoryTest {
 
     @Before
     public void beforeEach() throws Exception {
-        MySqlPartition source = new MySqlPartition("my-server");
+        MySqlPartition source = new MySqlPartition("my-server", "my-db");
         Configuration config = Configuration.empty()
                 .edit()
                 .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1").build();

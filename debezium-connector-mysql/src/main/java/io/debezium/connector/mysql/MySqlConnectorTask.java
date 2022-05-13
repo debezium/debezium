@@ -84,7 +84,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         validateBinlogConfiguration(connectorConfig);
 
         Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(
-                new MySqlPartition.Provider(connectorConfig),
+                new MySqlPartition.Provider(connectorConfig, config),
                 new MySqlOffsetContext.Loader(connectorConfig));
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();

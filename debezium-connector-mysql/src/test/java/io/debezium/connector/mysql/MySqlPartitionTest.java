@@ -11,11 +11,11 @@ public class MySqlPartitionTest extends AbstractPartitionTest<MySqlPartition> {
 
     @Override
     protected MySqlPartition createPartition1() {
-        return new MySqlPartition("server1");
+        return new MySqlPartition("server1", "database1");
     }
 
     @Override
     protected MySqlPartition createPartition2() {
-        return new MySqlPartition("server2");
+        return new MySqlPartition("server2", "database1");
     }
 }
