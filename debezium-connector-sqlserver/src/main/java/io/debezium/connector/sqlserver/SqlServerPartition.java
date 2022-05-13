@@ -18,21 +18,20 @@ import java.util.stream.Collectors;
 
 import io.debezium.config.Configuration;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.AbstractPartition;
 import io.debezium.util.Collect;
-import io.debezium.util.LoggingContext;
 
-public class SqlServerPartition implements Partition {
+public class SqlServerPartition extends AbstractPartition implements Partition {
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String DATABASE_PARTITION_KEY = "database";
 
     private final String serverName;
-    private final String databaseName;
     private final Map<String, String> sourcePartition;
     private final int hashCode;
 
     public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
+        super(databaseName);
         this.serverName = serverName;
-        this.databaseName = databaseName;
 
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
         if (multiPartitionMode) {
@@ -45,11 +44,6 @@ public class SqlServerPartition implements Partition {
     @Override
     public Map<String, String> getSourcePartition() {
         return sourcePartition;
-    }
-
-    @Override
-    public Map<String, String> getLoggingContext() {
-        return Collections.singletonMap(LoggingContext.DATABASE_NAME, databaseName);
     }
 
     /**
