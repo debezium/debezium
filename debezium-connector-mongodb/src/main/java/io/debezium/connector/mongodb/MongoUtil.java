@@ -240,7 +240,6 @@ public class MongoUtil {
         final BsonDocument lsidDoc = oplogEvent.getDocument("lsid");
         final BsonValue id = lsidDoc.get("id");
         // MongoDB 4.2 returns Binary instead of UUID
-        // TODO: check if this works as expected
         final String lsid = id.isBinary() ? id.asBinary().asUuid().toString() : id.asString().getValue();
         final Long txnNumber = oplogEvent.get("txnNumber").isInt32() ? oplogEvent.getInt32("txnNumber").getValue() : oplogEvent.getInt64("txnNumber").getValue();
         return lsid + ":" + txnNumber;
