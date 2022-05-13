@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.metrics.Metrics;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
 
 /**
  * Implementation of {@link DatabaseSchema} metrics.
@@ -44,9 +46,14 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     private Instant lastChangeRecoveredTimestamp;
     private HistoryRecord lastAppliedChange;
     private HistoryRecord lastRecoveredChange;
+    private final Clock clock = Clock.system();
+    private final ElapsedTimeStrategy lastChangeAppliedLogDelay = ElapsedTimeStrategy.constant(clock, PAUSE_BETWEEN_LOG_MESSAGES);
+    private final ElapsedTimeStrategy lastChangeRecoveredLogDelay = ElapsedTimeStrategy.constant(clock, PAUSE_BETWEEN_LOG_MESSAGES);
 
     public DatabaseHistoryMetrics(CommonConnectorConfig connectorConfig, boolean multiPartitionMode) {
         super(connectorConfig, CONTEXT_NAME, multiPartitionMode);
+        lastChangeAppliedLogDelay.hasElapsed();
+        lastChangeRecoveredLogDelay.hasElapsed();
     }
 
     @Override
@@ -118,7 +125,7 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     public void onChangeFromHistory(HistoryRecord record) {
         lastRecoveredChange = record;
         changesRecovered.incrementAndGet();
-        if (getMilliSecondsSinceLastRecoveredChange() >= PAUSE_BETWEEN_LOG_MESSAGES.toMillis()) {
+        if (lastChangeRecoveredLogDelay.hasElapsed()) {
             LOGGER.info("Database history recovery in progress, recovered {} records", changesRecovered);
         }
         lastChangeRecoveredTimestamp = Instant.now();
@@ -128,7 +135,7 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     public void onChangeApplied(HistoryRecord record) {
         lastAppliedChange = record;
         totalChangesApplied.incrementAndGet();
-        if (getMilliSecondsSinceLastAppliedChange() >= PAUSE_BETWEEN_LOG_MESSAGES.toMillis()) {
+        if (lastChangeAppliedLogDelay.hasElapsed()) {
             LOGGER.info("Already applied {} database changes", totalChangesApplied);
         }
         lastChangeAppliedTimestamp = Instant.now();
