@@ -7,9 +7,14 @@ package io.debezium.connector.sqlserver.metrics;
 
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.data.Envelope;
 import io.debezium.pipeline.meters.StreamingMeter;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.schema.DataCollectionId;
 
 class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetrics
         implements SqlServerStreamingPartitionMetricsMXBean {
@@ -21,6 +26,12 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
                                        EventMetadataProvider metadataProvider) {
         super(taskContext, tags, metadataProvider);
         streamingMeter = new StreamingMeter(taskContext, metadataProvider);
+    }
+
+    @Override
+    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) {
+        super.onEvent(source, offset, key, value, operation);
+        streamingMeter.onEvent(source, offset, key, value);
     }
 
     @Override
