@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
-import io.debezium.connector.mysql.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -33,12 +32,10 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     private final MySqlAntlrDdlParser parser;
     private TableEditor tableEditor;
     private ColumnDefinitionParserListener columnDefinitionListener;
-    private final MySqlDefaultValueConverter defaultValueConverter;
 
     public CreateTableParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
         this.parser = parser;
         this.listeners = listeners;
-        this.defaultValueConverter = new MySqlDefaultValueConverter(parser.getConverters());
     }
 
     @Override

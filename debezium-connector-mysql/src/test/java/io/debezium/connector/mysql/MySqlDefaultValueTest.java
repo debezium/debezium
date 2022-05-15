@@ -579,6 +579,38 @@ public class MySqlDefaultValueTest {
         assertThat((String) getColumnSchema(table, "data").defaultValue()).isEqualTo(" 3 ");
     }
 
+    @Test
+    @FixFor("DBZ-5134")
+    public void parseNumericAndDecimalToIntDefaultValue() {
+        final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
+        final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
+                converters,
+                new MySqlDefaultValueConverter(converters),
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+        String ddl = "CREATE TABLE `tbl_default` (  \n"
+                + "`id` int(11) NOT NULL AUTO_INCREMENT,\n"
+                + "c0 tinyint not null default '10.01',\n"
+                + "c1 int not null default '5.234',\n"
+                + "c2 bigint not null default '0.000000000000000000',\n"
+                + "c3 bigint not null default .12345,\n"
+                + "c4 smallint not null default 100.52345,\n"
+                + "c5 int not null default '-.789',\n"
+                + "PRIMARY KEY (`id`)\n"
+                + ")";
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId(null, null, "tbl_default"));
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        TableSchema schema = tableSchemaBuilder.create("test", "dummy", table, null, null, null);
+        assertThat(getColumnSchema(schema, "c0").defaultValue()).isEqualTo((short) 10);
+        assertThat(getColumnSchema(schema, "c1").defaultValue()).isEqualTo(5);
+        assertThat(getColumnSchema(schema, "c2").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(schema, "c3").defaultValue()).isEqualTo(0L);
+        assertThat(getColumnSchema(schema, "c4").defaultValue()).isEqualTo(Short.valueOf("101"));
+        assertThat(getColumnSchema(schema, "c5").defaultValue()).isEqualTo(-1);
+    }
+
     private Schema getColumnSchema(Table table, String column) {
         return getColumnSchema(table, column, tableSchemaBuilder);
     }
@@ -586,5 +618,9 @@ public class MySqlDefaultValueTest {
     private Schema getColumnSchema(Table table, String column, TableSchemaBuilder tableSchemaBuilder) {
         TableSchema schema = tableSchemaBuilder.create("test", "dummy", table, null, null, null);
         return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
+    }
+
+    private Schema getColumnSchema(TableSchema tableSchema, String column) {
+        return tableSchema.valueSchema().field(column).schema();
     }
 }
