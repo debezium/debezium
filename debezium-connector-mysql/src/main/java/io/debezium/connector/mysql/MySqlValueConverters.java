@@ -381,6 +381,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     @Override
+    protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
+        // MySQL allows decimal default values for smallint columns
+        if (data instanceof String) {
+            data = Math.round(Double.parseDouble((String) data));
+        }
+
+        return super.convertSmallInt(column, fieldDefn, data);
+    }
+
+    @Override
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         // MySQL allows decimal default values for integer columns
         if (data instanceof String) {
@@ -388,6 +398,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
 
         return super.convertInteger(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
+        // MySQL allows decimal default values for bigint columns
+        if (data instanceof String) {
+            data = Math.round(Double.parseDouble((String) data));
+        }
+
+        return super.convertBigInt(column, fieldDefn, data);
     }
 
     /**
