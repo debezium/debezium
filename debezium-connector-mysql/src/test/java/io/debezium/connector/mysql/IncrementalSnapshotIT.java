@@ -67,7 +67,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
-                .with(MySqlConnectorConfig.SNAPSHOT_FETCH_SIZE, 5)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
@@ -200,7 +199,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             connection.commit();
         }
 
-        startConnector();
+        final Configuration config = config().with(MySqlConnectorConfig.SNAPSHOT_FETCH_SIZE, 5).build();
+        start(connectorClass(), config, loggingCompletion());
+        waitForConnectorToStart();
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
         sendAdHocSnapshotSignal(tableName("a_dt"));
 
         final int expectedRecordCount = ROWS;
@@ -245,7 +248,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             connection.commit();
         }
 
-        startConnector();
+        final Configuration config = config().with(MySqlConnectorConfig.SNAPSHOT_FETCH_SIZE, 5).build();
+        start(connectorClass(), config, loggingCompletion());
+        waitForConnectorToStart();
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
         sendAdHocSnapshotSignal(tableName("a_date"));
 
         final int expectedRecordCount = 1;
