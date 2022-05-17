@@ -57,13 +57,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract String tableName();
 
-    protected List<String> topicNames() {
-        return List.of(topicName());
-    }
+    protected abstract List<String> topicNames();
 
-    protected List<String> tableNames() {
-        return List.of(tableName());
-    }
+    protected abstract List<String> tableNames();
 
     protected abstract String signalTableName();
 
