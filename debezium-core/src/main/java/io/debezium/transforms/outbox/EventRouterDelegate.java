@@ -175,6 +175,10 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         final Struct structValue = onlyHeadersInOutputMessage ? null : new Struct(structValueSchema).put(ENVELOPE_PAYLOAD, payload);
 
+        var partition = new Object() {
+            Integer value = null;
+        };
+
         additionalFields.forEach((additionalField -> {
             switch (additionalField.getPlacement()) {
                 case ENVELOPE:
@@ -188,6 +192,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
                             eventStruct.get(additionalField.getField()),
                             eventValueSchema.field(additionalField.getField()).schema());
                     break;
+                case PARTITION:
+                    partition.value = eventStruct.getInt32(additionalField.getField());
             }
         }));
 
@@ -213,7 +219,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField),
-                null,
+                partition.value,
                 defineRecordKeySchema(fieldEventKey, eventValueSchema, fallbackPayloadIdField),
                 recordKey,
                 updatedSchema,

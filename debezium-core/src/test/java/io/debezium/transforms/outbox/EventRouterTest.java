@@ -662,6 +662,50 @@ public class EventRouterTest {
         assertThat(eventRouted.headers().lastWithName("payloadType").value()).isEqualTo("UserCreated");
     }
 
+    @Test
+    public void canSetPartitionWithAdditionalFields() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
+        config.put(EventRouterConfigDefinition.FIELD_PAYLOAD_ID.name(), "payload_id");
+        config.put(EventRouterConfigDefinition.FIELD_EVENT_TYPE.name(), "event_type");
+        config.put(EventRouterConfigDefinition.FIELD_PAYLOAD.name(), "payload_body");
+        config.put(EventRouterConfigDefinition.ROUTE_BY_FIELD.name(), "my_route_field");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "p:partition");
+        router.configure(config);
+
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("event_id", SchemaBuilder.int32())
+                .field("payload_id", SchemaBuilder.int32())
+                .field("my_route_field", SchemaBuilder.string())
+                .field("event_type", SchemaBuilder.bytes())
+                .field("payload_body", SchemaBuilder.bytes())
+                .field("p", SchemaBuilder.int32())
+                .build();
+
+        Envelope envelope = Envelope.defineSchema()
+                .withName("event.Envelope")
+                .withRecord(recordSchema)
+                .withSource(SchemaBuilder.struct().build())
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        before.put("event_id", 2);
+        before.put("payload_id", 1232);
+        before.put("event_type", "CoolSchemaCreated".getBytes());
+        before.put("my_route_field", "routename");
+        before.put("payload_body", "{}".getBytes());
+        before.put("p", 123);
+
+        final Struct payload = envelope.create(before, null, Instant.now());
+        final SourceRecord eventRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), payload);
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(eventRouted.kafkaPartition()).isEqualTo(123);
+    }
+
     @Test(expected = ConfigException.class)
     public void shouldFailOnInvalidConfigurationForTopicRegex() {
         final EventRouter<SourceRecord> router = new EventRouter<>();
