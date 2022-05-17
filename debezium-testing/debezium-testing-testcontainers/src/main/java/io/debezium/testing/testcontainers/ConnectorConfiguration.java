@@ -60,8 +60,8 @@ public class ConnectorConfiguration {
         final String driverClassName = jdbcDatabaseContainer.getDriverClassName();
         configuration.with(CONNECTOR, ConnectorResolver.getConnectorByJdbcDriver(driverClassName));
 
-        // This property is valid for all databases except MySQL
-        if (!isMySQL(driverClassName)) {
+        // This property is valid for all databases except MySQL and SQL Server
+        if (!isMySQL(driverClassName) && !isSQLServer(driverClassName)) {
             configuration.with(DBNAME, jdbcDatabaseContainer.getDatabaseName());
         }
 
@@ -82,6 +82,10 @@ public class ConnectorConfiguration {
 
     private static boolean isMySQL(String driverClassName) {
         return "com.mysql.cj.jdbc.Driver".equals(driverClassName) || "com.mysql.jdbc.Driver".equals(driverClassName);
+    }
+
+    private static boolean isSQLServer(String driverClassName) {
+        return "com.microsoft.sqlserver.jdbc.SQLServerDriver".equals(driverClassName);
     }
 
     public ConnectorConfiguration with(String key, String value) {
