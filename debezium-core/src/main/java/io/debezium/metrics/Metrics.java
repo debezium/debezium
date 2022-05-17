@@ -83,6 +83,7 @@ public abstract class Metrics {
             for (int attempt = 1; attempt <= REGISTRATION_RETRIES; attempt++) {
                 try {
                     mBeanServer.registerMBean(this, name);
+                    registered = true;
                     break;
                 }
                 catch (InstanceAlreadyExistsException e) {
