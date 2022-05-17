@@ -561,6 +561,35 @@ public class SourceInfoTest {
         assertThatDocument(history).isAtOrBefore(current, (uuid) -> !excludes.contains(uuid));
     }
 
+    @Test
+    public void shouldComparePositionsWithDifferentFilenames() {
+        Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.000001", 1, 0, 0));
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.000002", 1, 0, 0));
+
+        history = positionWithoutGtids("mysql-bin.200001", 1, 0, 0);
+        assertThatDocument(history).isAfter(positionWithoutGtids("mysql-bin.100001", 1, 0, 0));
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.1000111", 1, 0, 0));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotComparePositionsWithDifferentFilenameFormats() {
+        Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-binlog-filename.000001", 1, 0, 0));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotComparePositionsWithInvalidFilenameFormat() {
+        Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin", 1, 0, 0));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotComparePositionsWithNotNumericFilenameExtension() {
+        Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
+        assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-bin.not-numeric", 1, 0, 0));
+    }
+
     @FixFor("DBZ-107")
     @Test
     public void shouldRemoveNewlinesFromGtidSet() {

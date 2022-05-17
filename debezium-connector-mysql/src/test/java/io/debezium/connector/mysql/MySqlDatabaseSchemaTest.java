@@ -92,7 +92,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
@@ -120,7 +120,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
@@ -148,7 +148,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
@@ -167,13 +167,13 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-test-init-5.7.ddl"), "mysql",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
-        offset.setBinlogStartPoint("binlog-001", 1000);
+        offset.setBinlogStartPoint("binlog.001", 1000);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();
@@ -201,13 +201,13 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-test-init-5.7.ddl"), "mysql",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
 
-        offset.setBinlogStartPoint("binlog-001", 1000);
+        offset.setBinlogStartPoint("binlog.001", 1000);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();
@@ -234,7 +234,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-decimal-issue.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();
@@ -258,7 +258,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();
@@ -291,7 +291,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();
@@ -323,7 +323,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();
@@ -356,7 +356,7 @@ public class MySqlDatabaseSchemaTest {
         final MySqlOffsetContext offset = initializeOffset(connectorConfig);
 
         // Set up the server ...
-        offset.setBinlogStartPoint("binlog-001", 400);
+        offset.setBinlogStartPoint("binlog.001", 400);
         mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();

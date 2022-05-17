@@ -97,12 +97,10 @@ final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
             return recordedTimestamp <= desiredTimestamp;
         }
 
-        // First compare the MySQL binlog filenames that include the numeric suffix and therefore are lexicographically
-        // comparable ...
-        String recordedFilename = recorded.getString(SourceInfo.BINLOG_FILENAME_OFFSET_KEY);
-        String desiredFilename = desired.getString(SourceInfo.BINLOG_FILENAME_OFFSET_KEY);
-        assert recordedFilename != null;
-        int diff = recordedFilename.compareToIgnoreCase(desiredFilename);
+        // First compare the MySQL binlog filenames
+        BinlogFilename recordedFilename = BinlogFilename.of(recorded.getString(SourceInfo.BINLOG_FILENAME_OFFSET_KEY));
+        BinlogFilename desiredFilename = BinlogFilename.of(desired.getString(SourceInfo.BINLOG_FILENAME_OFFSET_KEY));
+        int diff = recordedFilename.compareTo(desiredFilename);
         if (diff > 0) {
             return false;
         }
@@ -142,5 +140,48 @@ final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
 
         // The binlog coordinates are the same ...
         return true;
+    }
+
+    private static class BinlogFilename implements Comparable<BinlogFilename> {
+        final private String baseName;
+        final private long extension;
+
+        private BinlogFilename(String baseName, long extension) {
+            this.baseName = baseName;
+            this.extension = extension;
+        }
+
+        public static BinlogFilename of(String filename) {
+            int index = filename.lastIndexOf(".");
+            if (index == -1) {
+                throw new IllegalArgumentException("Filename does not have an extension: " + filename);
+            }
+
+            String baseFilename = filename.substring(0, index);
+            String stringExtension = filename.substring(index + 1);
+
+            long extension;
+            try {
+                extension = Long.parseLong(stringExtension);
+            }
+            catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Can't parse binlog filename extension: " + filename, e);
+            }
+
+            return new BinlogFilename(baseFilename, extension);
+        }
+
+        @Override
+        public String toString() {
+            return "BinlogFilename [baseName=" + baseName + ", extension=" + extension + "]";
+        }
+
+        @Override
+        public int compareTo(BinlogFilename other) {
+            if (!baseName.equals(other.baseName)) {
+                throw new IllegalArgumentException("Can't compare binlog filenames with different base names");
+            }
+            return Long.compare(extension, other.extension);
+        }
     }
 }
