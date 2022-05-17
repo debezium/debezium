@@ -205,20 +205,19 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         LOGGER.info("Reading change stream for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
 
         // Get collection filters on change stream pipeline
-        Document[] nsList = new Document[]{};
+        final List<Document> nsList = new ArrayList<>();
         for (Document db : primary.listDatabases()) {
-            String dbName = db.get("name").toString();
+            String dbName = db.getString("name");
             if (taskContext.filters().databaseFilter().test(dbName)) {
                 for (Document coll : primary.getDatabase(dbName).listCollections()) {
-                    String collName = coll.get("name").toString();
+                    String collName = coll.getString("name");
                     CollectionId collectionId = new CollectionId(
                             replicaSet.replicaSetName(),
                             dbName,
                             collName);
                     if (taskContext.filters().collectionFilter().test(collectionId)) {
-                        Document ns = new Document().append("db", dbName).append("coll", collName);
-                        nsList = Arrays.copyOf(nsList, nsList.length + 1);
-                        nsList[nsList.length - 1] = ns;
+                        final Document ns = new Document().append("db", dbName).append("coll", collName);
+                        nsList.add(ns);
                     }
                 }
             }
