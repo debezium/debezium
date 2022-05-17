@@ -65,7 +65,8 @@ public class EventRouterConfigDefinition {
 
     public enum AdditionalFieldPlacement implements EnumeratedValue {
         HEADER("header"),
-        ENVELOPE("envelope");
+        ENVELOPE("envelope"),
+        PARTITION("partition");
 
         private final String value;
 
@@ -188,7 +189,7 @@ public class EventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Extra fields can be added as part of the event envelope or a message header, format" +
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
-                    " e.g. <code>id:header,field_name:envelope:alias</code> ");
+                    " e.g. <code>id:header,field_name:envelope:alias,field_name:partition</code> ");
 
     public static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.event.schema.version")
             .withDisplayName("Event Schema Version Field")
