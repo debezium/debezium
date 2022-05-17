@@ -250,7 +250,7 @@ endif::community[]
 You can request a connector to stop an in-progress ad hoc snapshot by creating a signal table entry with the `stop-snapshot` signal type.
 After processing the signal, the connector will stop the current in-progress snapshot operation.
 
-Stopping of an ad hoc snapshot is available for the following {prodname} connectors:
+You can stop ad hoc snapshots for the following {prodname} connectors:
 
 * Db2
 ifdef::community[]
@@ -280,9 +280,11 @@ endif::community[]
 
 |===
 
-The signal requires that the `type` be specified in the payload; however, the `data-collections` is optional.
-By not specifying `data-collections`, the currently in-progress snapshot will be stopped.
-By specifying `data-collections`, you can selectively stop or prevent snapshotting specific tables associated to the current in-progress incremental snapshot.
+You must specify the `type` of the signal.
+The `data-collections` field is optional.
+Leave the `data-collections` field blank to request the connector to stop all activity in the current snapshot.
+If you want the incremental snapshot to proceed, but you want to exclude specific collections from the snapshot, provide a comma-separated list of the names of the collections to exclude.
+After the connector processes the signal, the incremental snapshot proceeds, but it excludes data from the collections that you specify.
 
 // Type: concept
 [id="debezium-signaling-incremental-snapshots"]
