@@ -206,7 +206,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             createOrUpdatePublicationStmt = isUpdate ? String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString)
                     : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
-            // Publication doesn't exist, create it but restrict to the tableFilter.
             stmt.execute(createOrUpdatePublicationStmt);
         }
         catch (Exception e) {
