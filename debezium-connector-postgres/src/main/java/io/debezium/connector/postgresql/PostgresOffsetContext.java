@@ -259,6 +259,11 @@ public class PostgresOffsetContext implements OffsetContext {
     }
 
     @Override
+    public void markLastRecordInTable() {
+        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_TABLE);
+    }
+
+    @Override
     public void markLastSnapshotRecord() {
         sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }

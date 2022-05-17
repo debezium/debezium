@@ -158,6 +158,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         SourceRecords sourceRecords = consumeRecordsByTopicUntil(
                 (recordsConsumed, record) -> !record.sourceOffset().containsKey("snapshot"));
 
+        SourceRecord previousRecord = null;
         for (Iterator<SourceRecord> i = sourceRecords.allRecordsInOrder().iterator(); i.hasNext();) {
             final SourceRecord record = i.next();
             VerifyRecord.isValid(record);
@@ -168,12 +169,19 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             if (i.hasNext()) {
                 final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
                 assertThat(snapshotOffsetField).isEqualTo(true);
-                assertThat(snapshotSourceField).isEqualTo("true");
+                if (previousRecord != null && previousRecord != record) {
+                    assertThat(snapshotSourceField).isEqualTo("last_in_table");
+                }
+                else {
+                    assertThat(snapshotSourceField).isEqualTo("true");
+                }
             }
             else {
                 assertThat(record.sourceOffset().get("snapshot")).isNull();
                 assertThat(snapshotSourceField).isEqualTo("last");
             }
+
+            previousRecord = record;
         }
 
         if (storeOnlyCapturedTables) {

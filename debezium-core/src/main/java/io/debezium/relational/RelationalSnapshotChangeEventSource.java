@@ -379,6 +379,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         logTimer = getTableScanLogTimer();
                     }
 
+                    if (snapshotContext.lastRecordInTable) {
+                        lastRecordInTable(snapshotContext);
+                    }
+
                     if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
                         lastSnapshotRecord(snapshotContext);
                     }
@@ -397,6 +401,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
+    }
+
+    protected void lastRecordInTable(RelationalSnapshotContext<P, O> snapshotContext) {
+        snapshotContext.offset.markLastRecordInTable();
     }
 
     protected void lastSnapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
