@@ -25,7 +25,9 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.util.Clock;
 import io.debezium.util.Collect;
+import io.debezium.util.Metronome;
 
 /**
  * Base for metrics implementations.
@@ -86,10 +88,12 @@ public abstract class Metrics {
                     break;
                 }
                 catch (InstanceAlreadyExistsException e) {
-                    if (attempt <= REGISTRATION_RETRIES) {
+                    if (attempt < REGISTRATION_RETRIES) {
                         LOGGER.warn(
                                 "Unable to register metrics as an old set with the same name exists, retrying in {} (attempt {} out of {})",
                                 REGISTRATION_RETRY_DELAY, attempt, REGISTRATION_RETRIES);
+                        final Metronome metronome = Metronome.sleeper(REGISTRATION_RETRY_DELAY, Clock.system());
+                        metronome.pause();
                     }
                     else {
                         LOGGER.error("Failed to register metrics MBean, metrics will not be available");
@@ -100,7 +104,7 @@ public abstract class Metrics {
             // upon shutdown.
             registered = true;
         }
-        catch (JMException e) {
+        catch (JMException | InterruptedException e) {
             throw new RuntimeException("Unable to register the MBean '" + name + "'", e);
         }
     }
