@@ -240,7 +240,10 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
             metrics.setActiveTransactions(getTransactionCache().size());
         }
-        else {
+        else if (!getConfig().isLobEnabled()) {
+            // Explicitly only log this warning when LobEnabled is false because its commonplace for a
+            // transaction to be re-mined and therefore seen as already processed until the SCN low
+            // watermark is advanced after a long transaction is committed.
             LOGGER.warn("Event for transaction {} has already been processed, skipped.", transactionId);
         }
     }
