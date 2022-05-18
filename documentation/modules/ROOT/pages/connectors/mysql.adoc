@@ -179,107 +179,105 @@ The message contains a logical representation of the table schema.
 [source,json,indent=0,subs="+attributes"]
 ----
 {
-  "schema": {
-  ...
-  },
+  "schema": { },
   "payload": {
-        "source": {  // <1>
+      "source": {  <1>
         "version": "{debezium-version}",
         "connector": "mysql",
-        "name": "dbserver1",
-        "ts_ms": 0,
+        "name": "mysql",
+        "ts_ms": 1651535750218, <2>
         "snapshot": "false",
         "db": "inventory",
         "sequence": null,
         "table": "customers",
-        "server_id": 0,
+        "server_id": 223344,
         "gtid": null,
         "file": "mysql-bin.000003",
-        "pos": 219,
+        "pos": 570,
         "row": 0,
         "thread": null,
         "query": null
-    },
-    "ts_ms": 1580390884335, // <2>
-    "databaseName": "inventory", // <3>
-    "schemaName": null,
-    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)", // <4>
-    "tableChanges": [ // <5>
+      },
+      "databaseName": "inventory", <3>
+      "schemaName": null,
+      "ddl": "ALTER TABLE customers ADD middle_name varchar(255) AFTER first_name", <4>
+      "tableChanges": [  <5>
         {
-        "type": "ALTER", // <6>
-        "id": "\"inventory\".\"customers\"",  // <7>
-        "table": { // <8>
-            "defaultCharsetName": "latin1",
-            "primaryKeyColumnNames": [  // <9>
-                "id"
+          "type": "ALTER", <6>
+          "id": "\"inventory\".\"customers\"", <7>
+          "table": {    <8>
+            "defaultCharsetName": "utf8mb4",
+            "primaryKeyColumnNames": [  <9>
+              "id"
             ],
-            "columns": [ // <10>
-                {
+            "columns": [  <10>
+              {
                 "name": "id",
                 "jdbcType": 4,
                 "nativeType": null,
                 "typeName": "INT",
                 "typeExpression": "INT",
                 "charsetName": null,
-                "length": 11,
+                "length": null,
                 "scale": null,
                 "position": 1,
                 "optional": false,
                 "autoIncremented": true,
                 "generated": true
-            },
-            {
+              },
+              {
                 "name": "first_name",
                 "jdbcType": 12,
                 "nativeType": null,
                 "typeName": "VARCHAR",
                 "typeExpression": "VARCHAR",
-                "charsetName": "latin1",
+                "charsetName": "utf8mb4",
                 "length": 255,
                 "scale": null,
                 "position": 2,
                 "optional": false,
                 "autoIncremented": false,
                 "generated": false
-            },                        {
+              },
+              {
+                "name": "middle_name",
+                "jdbcType": 12,
+                "nativeType": null,
+                "typeName": "VARCHAR",
+                "typeExpression": "VARCHAR",
+                "charsetName": "utf8mb4",
+                "length": 255,
+                "scale": null,
+                "position": 3,
+                "optional": true,
+                "autoIncremented": false,
+                "generated": false
+              },
+              {
                 "name": "last_name",
                 "jdbcType": 12,
                 "nativeType": null,
                 "typeName": "VARCHAR",
                 "typeExpression": "VARCHAR",
-                "charsetName": "latin1",
-                "length": 255,
-                "scale": null,
-                "position": 3,
-                "optional": false,
-                "autoIncremented": false,
-                "generated": false
-            },
-            {
-                "name": "email",
-                "jdbcType": 12,
-                "nativeType": null,
-                "typeName": "VARCHAR",
-                "typeExpression": "VARCHAR",
-                "charsetName": "latin1",
+                "charsetName": "utf8mb4",
                 "length": 255,
                 "scale": null,
                 "position": 4,
                 "optional": false,
                 "autoIncremented": false,
                 "generated": false
-            },
-            {
-                "name": "middle_name",
+              },
+              {
+                "name": "email",
                 "jdbcType": 12,
                 "nativeType": null,
                 "typeName": "VARCHAR",
                 "typeExpression": "VARCHAR",
-                "charsetName": "latin1",
-                "length": 2000,
+                "charsetName": "utf8mb4",
+                "length": 255,
                 "scale": null,
                 "position": 5,
-                "optional": true,
+                "optional": false,
                 "autoIncremented": false,
                 "generated": false
             }
@@ -287,27 +285,9 @@ The message contains a logical representation of the table schema.
         }
       }
     ]
-  },
-  "payload": {
-    "databaseName": "inventory",
-    "ddl": "CREATE TABLE products ( id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, description VARCHAR(512), weight FLOAT ); ALTER TABLE products AUTO_INCREMENT = 101;",
-    "source" : {
-      "version": "{debezium-version}",
-      "name": "mysql-server-1",
-      "server_id": 0,
-      "ts_ms": 0,
-      "gtid": null,
-      "file": "mysql-bin.000003",
-      "pos": 154,
-      "row": 0,
-      "snapshot": true,
-      "thread": null,
-      "db": null,
-      "table": null,
-      "query": null
-    }
   }
 }
+
 ----
 
 .Descriptions of fields in messages emitted to the schema change topic
