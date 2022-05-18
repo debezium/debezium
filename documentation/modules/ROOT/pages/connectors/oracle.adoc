@@ -3792,13 +3792,6 @@ ALTER SYSTEM SET archive_lag_target=1200 scope=both;
 Running the preceding query specific administrative privileges.
 Coordinate with your database administrator to implement the change.
 
-<<<<<<< Updated upstream
-=======
-As alternative to adjusting the Oracle `ARCHIVE_LAG_TARGET` parameter, you can limit the duration of an Oracle LogMiner session by setting the connector configuration option xref:oracle-property-log-mining-session-max-ms[`log.mining.session.max.ms`].
-The `log.mining.session.max.ms` option causes the LogMiner session to restart regularly, whether or not the switch to a new database log occurs.
-
-
->>>>>>> Stashed changes
 [id="oracle-sys-system-change-not-emitted"]
 === LogMiner adapter does not capture changes made by SYS or SYSTEM
 
@@ -3840,18 +3833,3 @@ database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(AD
 
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
-<<<<<<< Updated upstream
-=======
-
-[id="oracle-oracle-11-exception-ora01882"]
-=== Connection fails with error `ORA-01882: timezone region not found`
-
-When you start a connector that uses the Oracle JDBC driver (`ojdbc8.jar`) to access an Oracle 11g database, the connector might report the following error:
-
-```shell
-Caused by: java.sql.SQLException: ORA-00604: error occurred at recursive SQL level 1
-ORA-01882: timezone region not found
-```
-
-To prevent the preceding error from occurring, add the following setting to the connector configuration: `database.oracle.jdbc.timezoneAsRegion=false`.
->>>>>>> Stashed changes
