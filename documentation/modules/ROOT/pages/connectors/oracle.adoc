@@ -614,6 +614,29 @@ After the connector finishes the mining session and catches back up to real-time
 SCN gap detection is available only if the large SCN increment occurs while the connector is running and processing near real-time events.
 ====
 
+// Type: concept
+// ModuleID: how-debezium-manages-offsets-in-databases-that-change-infrequently
+// Title: How {prodname} manages offsets in databases that change infrequently
+[[low-change-frequency-offset-management]]
+=== Low change frequency offset management
+
+The {prodname} Oracle connector tracks system change numbers in the connector offsets so that when the connector is restarted, it can begin where it left off.
+These offsets are part of each emitted change event; however, when the frequency of database changes are low (every few hours or days), the offsets can become stale and prevent the connector from successfully restarting if the system change number is no longer available in the transaction logs.
+
+For connectors that use non-CDB mode to connect to Oracle, you can enable xref:oracle-property-heartbeat-interval-ms[`heartbeat.interval.ms`] to force the connector to emit a heartbeat event at regular intervals so that offsets remain synchronized.
+
+For connectors that use CDB mode to connect to Oracle, maintaining synchronization is more complicated.
+Not only must you set xref:oracle-property-heartbeat-interval-ms[`heartbeat.interval.ms`], but it's also necessary to set xref:oracle-property-heartbeat-action-query[`heartbeat.action.query`].
+Specifying both properties is required, because in CDB mode, the connector specifically tracks changes inside the PDB only.
+A supplementary mechanism is needed to trigger change events from within the pluggable database.
+At regular intervals, the heartbeat action query causes the connector to insert a new table row, or update an existing row in the pluggable database.
+{prodname} detects the table changes and emits change events for them, ensuring that offsets remain synchronized, even in pluggable databases that process changes infrequently.
+
+[NOTE]
+====
+For the connector to use the `heartbeat.action.query` with tables that are not owned by the xref:creating-users-for-the-connector[connector user account], you must grant the connector user permission to run the necessary `INSERT` or `UPDATE` queries on those tables.
+====
+
 // Type: assembly
 // ModuleID: descriptions-of-debezium-oracle-connector-data-change-events
 // Title: Descriptions of {prodname} Oracle connector data change events
@@ -2749,11 +2772,24 @@ See the xref:{link-oracle-connector}#oracle-data-type-mappings[list of Oracle-sp
 |`0`
 |Specifies, in milliseconds, how frequently the connector sends messages to a heartbeat topic. +
 Use this property to determine whether the connector continues to receive change events from the source database. +
-It can also be useful to set the property in situations where the connector no change events occur in captured tables for an extended period. +
-In such a a case, although the connector continues to read the redo log, it emits no change event messages, so that the offset in the Kafka topic remains unchanged.
+It can also be useful to set the property in situations where no change events occur in captured tables for an extended period. +
+In such a case, although the connector continues to read the redo log, it emits no change event messages, so that the offset in the Kafka topic remains unchanged.
 Because the connector does not flush the latest system change number (SCN) that it read from the database, the database might retain the redo log files for longer than necessary.
 If the connector restarts, the extended retention period could result in the connector redundantly sending some change events. +
 The default value of `0` prevents the connector from sending any heartbeat messages.
+
+|[[oracle-property-heartbeat-action-query]]<<oracle-property-heartbeat-action-query, `+heartbeat.action.query+`>>
+|No default
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
+ +
+For example: +
+ +
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
+ +
+The connector runs the query after it emits a xref:oracle-property-heartbeat-interval-ms[heartbeat message].
+
+Set this property and create a heartbeat table to receive the heartbeat messages to resolve situations in which xref:low-change-frequency-offset-management[{prodname} fails to synchronize offsets on low-traffic databases that are on the same host as a high-traffic database].
+After the connector inserts records into the configured table, it is able to receive changes from the low-traffic database and acknowledge SCN changes in the database, so that offsets can be synchronized with the broker.
 
 |[[oracle-property-heartbeat-topics-prefix]]<<oracle-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
 |`__debezium-heartbeat`

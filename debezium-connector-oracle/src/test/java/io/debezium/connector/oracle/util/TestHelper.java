@@ -402,13 +402,32 @@ public class TestHelper {
      * @throws RuntimeException if the role cannot be granted
      */
     public static void grantRole(String roleName) {
+        grantRole(roleName, null, testJdbcConfig().getString(JdbcConfiguration.USER));
+    }
+
+    /**
+     * Grants the specified roles to the {@link TestHelper#SCHEMA_USER} or the user configured using the
+     * configuration option {@code database.user}, which has precedence, on the specified object.  If
+     * the configuration uses PDB, the grant will be performed int he PDB and not the CDB database.
+     *
+     * @param roleName role to be granted
+     * @param objectName the object to grant the role against
+     * @param userName the user to whom the grant should be applied
+     * @throws RuntimeException if the role cannot be granted
+     */
+    public static void grantRole(String roleName, String objectName, String userName) {
         final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAME);
-        final String userName = testJdbcConfig().getString(JdbcConfiguration.USER);
         try (OracleConnection connection = adminConnection()) {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
             }
-            connection.execute("GRANT " + roleName + " TO " + userName);
+            final StringBuilder sql = new StringBuilder("GRANT ").append(roleName);
+            if (!Strings.isNullOrEmpty(objectName)) {
+                sql.append(" ON ").append(objectName);
+            }
+            sql.append(" TO ").append(userName);
+            System.out.println(sql.toString());
+            connection.execute(sql.toString());
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to grant role '" + roleName + "' for user " + userName, e);

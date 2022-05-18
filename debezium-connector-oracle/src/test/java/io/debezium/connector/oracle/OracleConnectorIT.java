@@ -78,6 +78,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -3584,6 +3585,52 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         testTableWithForwardSlashes("dbz5006/", "dbz5006_");
         testTableWithForwardSlashes("db/z50/06", "db_z50_06");
         testTableWithForwardSlashes("dbz//5006", "dbz__5006");
+    }
+
+    @Test
+    @FixFor("DBZ-5119")
+    public void shouldExecuteHeartbeatActionQuery() throws Exception {
+        TestHelper.dropTable(connection, "dbz5119");
+        TestHelper.dropTable(connection, "heartbeat");
+        try {
+            connection.execute("CREATE TABLE heartbeat (data timestamp)");
+            connection.execute("INSERT INTO heartbeat values (sysdate)");
+
+            TestHelper.grantRole("INSERT,UPDATE", "debezium.heartbeat", TestHelper.getConnectorUserName());
+
+            connection.execute("CREATE TABLE dbz5119 (id numeric(9,0) primary key, data varchar2(50))");
+
+            TestHelper.streamTable(connection, "dbz5119");
+            TestHelper.streamTable(connection, "heartbeat");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, "schema_only")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5119,DEBEZIUM\\.HEARTBEAT")
+                    .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "UPDATE debezium.heartbeat set data = sysdate WHERE ROWNUM = 1")
+                    .with(DatabaseHeartbeatImpl.HEARTBEAT_INTERVAL, 1000)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+                final SourceRecords records = consumeRecordsByTopic(1);
+                final List<SourceRecord> heartbeatRecords = records.recordsForTopic("server1.DEBEZIUM.HEARTBEAT");
+                return heartbeatRecords != null && !heartbeatRecords.isEmpty();
+            });
+
+            // stop connector and clean-up any potential residual heartbeat events
+            stopConnector((success) -> {
+                consumeAvailableRecords(r -> {
+                });
+            });
+        }
+        finally {
+            TestHelper.dropTable(connection, "heartbeat");
+            TestHelper.dropTable(connection, "dbz5119");
+        }
     }
 
     private void testTableWithForwardSlashes(String tableName, String topicTableName) throws Exception {
