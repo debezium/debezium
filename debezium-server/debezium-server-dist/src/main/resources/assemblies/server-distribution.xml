@@ -23,6 +23,7 @@
             <exclude>org.eclipse.jetty:*:*</exclude>
             <exclude>org.apache.maven:*:*</exclude>
             <exclude>log4j:log4j:*</exclude>
+            <exclude>ch.qos.reload4j:reload4j</exclude>
           </excludes>
       </dependencySet>
   </dependencySets>
