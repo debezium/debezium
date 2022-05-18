@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -159,22 +158,6 @@ public class MongoClients {
         return clientForMembers(MongoUtil.parseAddresses(addressList));
     }
 
-    /**
-     * Obtain a client connection to the replica set or cluster. The supplied addresses are used as seeds, and once a connection
-     * is established it will discover all of the members.
-     *
-     * @param seeds the seed addresses
-     * @return the MongoClient instance; never null
-     */
-    public MongoClient clientForMembers(ServerAddress... seeds) {
-        List<ServerAddress> addresses = new ArrayList<>();
-        for (ServerAddress seedAddress : seeds) {
-            if (seedAddress != null) {
-                addresses.add(seedAddress);
-            }
-        }
-        return clientForMembers(addresses);
-    }
 
     /**
      * Obtain a client connection to the replica set or cluster. The supplied addresses are used as seeds, and once a connection
