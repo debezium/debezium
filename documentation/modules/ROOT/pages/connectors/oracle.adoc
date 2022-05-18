@@ -46,6 +46,7 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:how-debezium-oracle-connectors-map-data-types[]
   * xref:setting-up-oracle-to-work-with-debezium[]
   * xref:deployment-of-debezium-oracle-connectors[]
+  * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
   * xref:monitoring-debezium-oracle-connector-performance[]
   * xref:how-debezium-oracle-connectors-handle-faults-and-problems[]
 endif::product[]
@@ -56,15 +57,16 @@ endif::product[]
 [[how-the-oracle-connector-works]]
 == How the Oracle connector works
 
-To optimally configure and run a {prodname} Oracle connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and uses metadata.
+To optimally configure and run a {prodname} Oracle connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, uses metadata, and implements event buffering.
 
 ifdef::product[]
-Details are in the following topics:
+For more information, see the following topics:
 
 * xref:how-debezium-oracle-connectors-perform-database-snapshots[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records[]
 * xref:how-debezium-oracle-connectors-expose-database-schema-changes[]
 * xref:debezium-oracle-connector-generated-events-that-represent-transaction-boundaries[]
+* xref:how-the-debezium-oracle-connector-uses-event-buffering[]
 
 endif::product[]
 
@@ -85,7 +87,7 @@ By default, the connector's snapshot mode is set to `initial`.
 .Default connector workflow for creating an initial snapshot
 When the snapshot mode is set to the default, the connector completes the following tasks to create a snapshot:
 
-1. Determines the tables to be captured
+1. Determines the tables to be captured.
 2. Obtains a `ROW SHARE MODE` lock on each of the monitored tables to prevent structural changes from occurring during creation of the snapshot. {prodname} holds the locks for only a short time.
 3. Reads the current system change number (SCN) position from the server's redo log.
 4. Captures the structure of all relevant tables.
@@ -116,10 +118,12 @@ After the snapshot completes, the connector begins to stream event records for s
 |`schema_only_recovery`
 |Set this option to restore a database history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
-You can also set the property to periodically prune the database history topic that experience unexpected growth.
-Note this mode is only safe to be used when it is guaranteed that no schema changes happened since the point in time the connector was shut down before and the point in time the snapshot is taken.
-
+You can also set the property to periodically prune a database history topic that experiences unexpected growth. +
+ +
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 |===
+
+For more information, see xref:oracle-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
 
 // Type: concept
 // ModuleID: debezium-oracle-ad-hoc-snapshots
@@ -177,7 +181,7 @@ For more information about using the logical topic routing SMT to customize topi
 [[oracle-schema-change-topic]]
 === Schema change topic
 
-You can configure a {prodname} Oracle connector to produce schema change events that describe schema changes that are applied to captured tables in the database.
+You can configure a {prodname} Oracle connector to produce schema change events that describe structural changes that are applied to captured tables in the database.
 The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the logical server name that is specified in the xref:oracle-property-database-server-name[`database.server.name`] configuration property.
 
 {prodname} emits a new message to this topic whenever it streams data from a new table.
@@ -348,7 +352,7 @@ The message contains a logical representation of the table schema.
 
 |4
 |`type`
-a|Describes the kind of change. The value is one of the following:
+a|Describes the kind of change. The `type` can be set to one of the following values:
 
 `CREATE`:: Table created.
 `ALTER`:: Table modified.
@@ -374,7 +378,7 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 |===
 
 In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
-In the following example, the `payload` field contains the key:
+In the following example, the `payload` field contains the `databaseName` key:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -454,8 +458,9 @@ The following example shows a typical transaction boundary message:
 Unless overridden via the xref:oracle-property-transaction-topic[`transaction.topic`] option,
 the connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
-//Type: concept
-//ModuleID: debezium-oracle-connector-change-data-event-enrichment
+// Type: concept
+// ModuleID: how-the-debezium-oracle-connector-enriches-change-event-messages-with-transaction-metadata
+// Title: How the {prodname} Oracle connector enriches change event messages with transaction metadata
 ==== Change data event enrichment
 
 When transaction metadata is enabled, the data message `Envelope` is enriched with a new `transaction` field.
@@ -488,6 +493,9 @@ The following example shows a typical transaction event message:
 }
 ----
 
+// Type: concept
+// ModuleID: how-the-debezium-oracle-connector-uses-event-buffering
+// Title: How the {prodname} Oracle connector uses event buffering
 [[oracle-event-buffering]]
 === Event buffering
 
@@ -576,14 +584,14 @@ endif::community[]
 
 // Type: concept
 // ModuleID: debezium-oracle-connector-scn-gap-detection
-// Title: Gaps between Oracle SCN values
+// Title: How the {prodname} Oracle connector detects gaps in SCN values
 [[scn-jumps]]
 === SCN gap detection
 
 When the {prodname} Oracle connector is configured to use LogMiner, it collects change events from Oracle by using a start and end range that is based on system change numbers (SCNs).
-The connector manages this range automatically, increasing or decreasing the range depending on whether the connector is able to stream changes in near real-time, or must process a backlog because of large or bulk transactions in the database.
+The connector manages this range automatically, increasing or decreasing the range depending on whether the connector is able to stream changes in near real-time, or must process a backlog of changes due to the volume of large or bulk transactions in the database.
 
-Under certain circumstances, the Oracle database advances the system change number by an unusually high amount, rather than increasing it at a constant rate.
+Under certain circumstances, the Oracle database advances the SCN by an unusually high amount, rather than increasing the SCN value at a constant rate.
 Such a jump in the SCN value can occur because of the way that a particular integration interacts with the database, or as a result of events such as hot backups.
 
 The {prodname} Oracle connector relies on the following configuration properties to detect the SCN gap and adjust the mining range.
@@ -592,13 +600,14 @@ The {prodname} Oracle connector relies on the following configuration properties
 `log.mining.scn.gap.detection.time.interval.max.ms`:: Specifies the maximum time interval.
 
 The connector first compares the difference in the number of changes between the current SCN and the highest SCN in the current mining range.
-If this difference is greater than the minimum gap size, then the connector has potentially detected a SCN gap.
+If the difference between the current SCN value and the highest SCN value is greater than the minimum gap size, then the connector has potentially detected a SCN gap.
 To confirm whether a gap exists, the connector next compares the timestamps of the current SCN and the SCN at the end of the previous mining range.
 If the difference between the timestamps is less than the maximum time interval, then the existence of an SCN gap is confirmed.
 
 When an SCN gap occurs, the {prodname} connector automatically uses the current SCN as the end point for the range of the current mining session.
 This allows the connector to quickly catch up to the real-time events without mining smaller ranges in between that return no changes because the SCN value was increased by an unexpectedly large number.
-Additionally, the connector will ignore the mining maximum batch size for this iteration only when this occurs.
+When the connector performs the preceding steps in response to an SCN gap, it ignores the value that is specified by the xref:oracle-property-log-mining-batch-size-max[log.mining.batch.size.max] property.
+After the connector finishes the mining session and catches back up to real-time events, it resumes enforcement of the maximum log mining batch size.
 
 [WARNING]
 ====
@@ -710,35 +719,61 @@ If the table does not have a primary or unique key, then the change event's key 
 [[oracle-change-event-values]]
 === Change event values
 
-Like the message key, the value of a change event message has a _schema_ section and _payload_ section.
-The payload section of every change event value produced by the Oracle connector has an _envelope_ structure with the following fields:
+The structure of a value in a change event message mirrors the structure of the xref:oracle-change-event-keys[message key in the change event] in the message, and contains both a _schema_ section and a _payload_ section.
 
-`op`:: A mandatory field that contains a string value describing the type of operation. Values for the Oracle connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a snapshot).
-`before`:: An optional field that, if present, contains the state of the row _before_ the event occurred. The structure is described by the `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema, which the `server1` connector uses for all rows in the `inventory.customers` table.
+.Payload of a change event value
+An _envelope_ structure in the payload sections of a change event value contains the following fields:
+
+`op`:: A mandatory field that contains a string value describing the type of operation.
+The `op` field in the payload of an Oracle connector change event value contains one of the following values: `c` (create or insert), `u` (update), `d` (delete), or `r` (read, which indicates a snapshot).
+`before`:: An optional field that, if present, describes the state of the row _before_ the event occurred.
+The structure is described by the `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema, which the `server1` connector uses for all rows in the `inventory.customers` table.
 
 // [WARNING]
 // ====
 // Whether or not this field and its elements are available is highly dependent on the https://docs.oracle.com/database/121/SUTIL/GUID-D2DDD67C-E1CC-45A6-A2A7-198E4C142FA3.htm#SUTIL1583[Supplemental Logging] configuration applying to the table.
 // ====
 
-`after`:: An optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema used in `before`.
-`source`:: A mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting).
+`after`:: An optional field that, if present, contains the state of a row _after_ a change occurs.
+The structure is described by the same `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema that is used for the `before` field.
+`source`:: A mandatory field that contains a structure that describes the source metadata for the event.
+In the case of the Oracle connector, the structure includes the following fields:
++
+* The {prodname} version.
+* The connector name.
+* Whether the event is part of an ongoing snapshot or not.
+* The transaction id (not includes for snapshots).
+* The SCN of the change.
+* A timestamp that indicates when the record in the source database changed (for snapshots, the timestamp indicates when the snapshot occurred).
 +
 [TIP]
 ====
 The `commit_scn` field is optional and describes the SCN of the transaction commit that the change event participates within.
+ifdef::community[]
 This field is only present when using the LogMiner connection adapter.
+endif::community[]
 ====
 
-`ts_ms`:: An optional field that, if present, contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
+`ts_ms`:: An optional field that, if present, contains the time (based on the system clock in the JVM that runs the Kafka Connect task) at which the connector processed the event.
 
-And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
+.Schema of a change event value
+The _schema_ portion of the event message's value contains a schema that describes the envelope structure of the payload and the nested fields within it.
+
+ifdef::product[]
+For more information about change event values, see the following topics:
+
+* xref:oracle-create-events[_create_ events]
+* xref:oracle-update-events[_update_ events]
+* xref:oracle-delete-events[_delete_ events]
+* xref:oracle-truncate-events[_truncate_ events]
+endif::product[]
+
 
 // Type: continue
 [[oracle-create-events]]
 === _create_ events
 
-Let's look at what a _create_ event value might look like for our `customers` table:
+The following example shows the value of a _create_ event value from the `customers` table that is described in the xref:oracle-change-event-keys[change event keys] example:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -882,16 +917,16 @@ Let's look at what a _create_ event value might look like for our `customers` ta
 }
 ----
 
-Examining the `schema` portion of the preceding event's _value_, we can see how the following schema are defined:
+In the preceding example, notice how the event defines the following schema:
 
-* The _envelope_
-* The `source` structure (which is specific to the Oracle connector and reused across all events).
+* The _envelope_ (`server1.DEBEZIUM.CUSTOMERS.Envelope`).
+* The `source` structure (`io.debezium.connector.oracle.Source`, which is specific to the Oracle connector and reused across all events).
 * The table-specific schemas for the `before` and `after` fields.
 
 [TIP]
 ====
 The names of the schemas for the `before` and `after` fields are of the form `_<logicalName>_._<schemaName>_._<tableName>_.Value`, and thus are entirely independent from the schemas for all other tables.
-This means that when using the xref:{link-avro-serialization}#avro-serialization[Avro Converter], the resulting Avro schems for _each table_ in each _logical source_ have their own evolution and history.
+As a result, when you use the xref:{link-avro-serialization}#avro-serialization[Avro converter], the Avro schemas for tables in each logical source have their own evolution and history.
 ====
 
 The `payload` portion of this event's _value_, provides information about the event.
@@ -899,16 +934,16 @@ It describes that a row was created (`op=c`), and shows that the `after` field v
 
 [TIP]
 ====
-By default, the JSON representations of events are much larger than the rows they describe.
-The increased size results from the JSON representation including both the schema and payload portions of a message.
+By default, the JSON representations of events are much larger than the rows that they describe.
+The larger size is due to the JSON representation including both the schema and payload portions of a message.
 You can use the xref:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
 ====
 
 // Type: continue
 [[oracle-update-events]]
 === _update_ events
-The value of an _update_ change event on this table has the same _schema_ as the _create_ event. The payload uses the same structure, but it holds different values.
-Here's an example:
+
+The following example shows an _update_ change event that the connector captures from the same table as the preceding _create_ event.
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -942,13 +977,13 @@ Here's an example:
 }
 ----
 
-Comparing the value of the _update_ event to the _create_ (insert) event, notice the following differences in the `payload` section:
+The payload has the same structure as the payload of a _create_ (insert) event, but the following values are different:
 
-* The `op` field value is now `u`, signifying that this row changed because of an update
-* The `before` field now has the state of the row with the values before the database commit
-* The `after` field now has the updated state of the row, and here was can see that the `EMAIL` value is now `anne@example.com`.
-* The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the redo log.
-* The `ts_ms` shows the timestamp that {prodname} processed this event.
+* The value of the `op` field is `u`, signifying that this row changed because of an update.
+* The `before` field shows the former state of the row with the values that were present before the `update` database commit.
+* The `after` field shows the updated state of the row, with the `EMAIL` value now set to `anne@example.com`.
+* The structure of the `source` field includes the same fields as before, but the values are different, because the connector captured the event from a different position in the redo log.
+* The `ts_ms` field shows the timestamp that indicates when {prodname} processed the event.
 
 The `payload` section reveals several other useful pieces of information.
 For example, by comparing the `before` and `after` structures, we can determine how a row changed as the result of a commit.
@@ -970,8 +1005,8 @@ As a result, {prodname} emits _three_ events after such an update:
 [[oracle-delete-events]]
 === _delete_ events
 
-So far we've seen samples of _create_ and _update_ events.
-Now, let's look at the value of a _delete_ event for the same table. As is the case with _create_ and _update_ events, for a `_delete_` event, the `schema` portion of the value is exactly the same:
+The following example shows a _delete_ event for the table that is shown in the preceding _create_ and _update_ event examples.
+The `schema` portion of the _delete_ event is identical to the `schema` portion for those events.
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -1000,22 +1035,22 @@ Now, let's look at the value of a _delete_ event for the same table. As is the c
 }
 ----
 
-If we look at the `payload` portion, we see a number of differences compared with the _create_ or _update_ event payloads:
+The `payload` portion of the event reveals several differences when compared to the payload of a _create_ or _update_ event:
 
-* The `op` field value is now `d`, signifying that this row was deleted
-* The `before` field now has the state of the row that was deleted with the database commit.
-* The `after` field is null, signifying that the row no longer exists
-* The `source` field structure has many of the same values as before, except the `ts_ms`, `scn` and `txId` fields have changed
-* The `ts_ms` shows the timestamp that {prodname} processed this event.
+* The value of the `op` field is `d`, signifying that the row was deleted.
+* The `before` field shows the former state of the row that was deleted with the database commit.
+* The value of the `after` field is `null`, signifying that the row no longer exists.
+* The structure of the `source` field includes many of the keys that exist in _create_ or _update_ events, but the values in the `ts_ms`, `scn`, and `txId` fields are different.
+* The `ts_ms` shows a timestamp that indicates when {prodname} processed this event.
 
-This event gives a consumer all kinds of information that it can use to process the removal of this row.
+The _delete_ event provides consumers with the information that they require to process the removal of this row.
 
 The Oracle connector's events are designed to work with https://cwiki.apache.org/confluence/display/KAFKA/Log+Compaction[Kafka log compaction],
 which allows for the removal of some older messages as long as at least the most recent message for every key is kept.
 This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
 
 [[oracle-tombstone-events]]
-When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key.
+When a row is deleted, the _delete_ event value shown in the preceding example still works with log compaction, because Kafka is able to remove all earlier messages that use the same key.
 The message value must be set to `null` to instruct Kafka to remove _all messages_ that share the same key.
 To make this possible, by default, {prodname}'s Oracle connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 You can change the default behavior by setting the connector property xref:oracle-property-tombstones-on-delete[`tombstones.on.delete`].
@@ -1086,13 +1121,11 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 
 |===
 
-Note that since _truncate_ events represent a change made to an entire table and don't have a message key,
-unless you're working with topics with a single partition,
-there are no ordering guarantees for the change events pertaining to a table (_create_, _update_, etc.) and _truncate_ events for that table.
-For instance a consumer may receive an _update_ event only after a _truncate_ event for that table,
-when those events are read from different partitions.
+Because _truncate_ events represent changes made to an entire table, and have no message key, in topics with multiple partitions, there is no guarantee that consumers receive _truncate_ events and change events (_create_, _update_, etc.) for to a table in order.
+For example, when a consumer reads events from different partitions, it might receive an _update_ event for a table after it receives a _truncate_ event for the same table.
+Ordering can be guaranteed only if a topic uses a single partition.
 
-If _truncate_ events are not desired, they can be filtered out with the xref:oracle-property-skipped-operations[`skipped.operations`] option.
+If you do not want to capture _truncate_ events, use the xref:oracle-property-skipped-operations[`skipped.operations`] option to filter them out.
 
 // Type: reference
 // ModuleID: how-debezium-oracle-connectors-map-data-types
@@ -1118,14 +1151,15 @@ For more information about how {prodname} properties control mappings for these 
 ifdef::product[]
 For more information about how the {prodname} connector maps Oracle data types, see the following topics:
 
-* xref:oracle-binary-character-lob-types[]
 * xref:oracle-character-types[]
+* xref:oracle-binary-character-lob-types[]
 * xref:oracle-numeric-types[]
 * xref:oracle-boolean-types[]
 * xref:oracle-temporal-types[]
 * xref:oracle-rowid-types[]
 * xref:oracle-user-defined-types[]
-* xref:oracle-suppplied-types[]
+* xref:oracle-supplied-types[]
+* xref:oracle-default-values[]
 
 endif::product[]
 
@@ -1228,10 +1262,11 @@ The following table describes how the connector maps binary and character large 
 [NOTE]
 ====
 Oracle only supplies column values for `CLOB`, `NCLOB`, and `BLOB` data types if they're explicitly set or changed in a SQL statement.
-This means that change events will never contain the value of an unchanged `CLOB`, `NCLOB`, or `BLOB` column,
-but a placeholder as defined by the connector property, `unavailable.value.placeholder`.
+As a result, change events never contain the value of an unchanged `CLOB`, `NCLOB`, or `BLOB` column.
+Instead, they contain placeholders as defined by the connector property, `unavailable.value.placeholder`.
 
-If the value of a `CLOB`, `NCLOB`, or `BLOB` column gets updated, the new value will be contained in the `after` part of the corresponding update change events whereas the unavailable value placeholder will be used in the `before` part.
+If the value of a `CLOB`, `NCLOB`, or `BLOB` column is updated, the new value is placed in the `after` element of the corresponding update change event.
+The `before` element contains the unavailable value placeholder.
 ====
 
 [id="oracle-numeric-types"]
@@ -1352,8 +1387,8 @@ When the `decimal.handling.mode` property is set to `string`, the connector repr
 [id="oracle-boolean-types"]
 === Boolean types
 
-Oracle does not natively have support for a `BOOLEAN` data type; however,
-it is common practice to use other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
+Oracle does not provide native support for a `BOOLEAN` data type.
+However, it is common practice to use other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
 
 To enable you to convert source columns to Boolean data types, {prodname} provides a `NumberOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
 
@@ -1371,7 +1406,7 @@ boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
 [id="oracle-temporal-types"]
 === Temporal types
 
-Other than Oracle's `INTERVAL`, `TIMESTAMP WITH TIME ZONE` and `TIMESTAMP WITH LOCAL TIME ZONE` data types, the other temporal types depend on the value of the `time.precision.mode` configuration property.
+Other than the Oracle `INTERVAL`, `TIMESTAMP WITH TIME ZONE`, and `TIMESTAMP WITH LOCAL TIME ZONE` data types, the way that the connector converts temporal types depends on the value of the `time.precision.mode` configuration property.
 
 When the `time.precision.mode` configuration property is set to `adaptive` (the default), then the connector determines the literal and semantic type for the temporal types based on the column's data type definition so that events _exactly_ represent the values in the database:
 
@@ -1383,7 +1418,7 @@ When the `time.precision.mode` configuration property is set to `adaptive` (the 
 |`INT64`
 |`io.debezium.time.Timestamp` +
  +
-Represents the number of milliseconds past epoch, and does not include timezone information.
+Represents the number of milliseconds since the UNIX epoch, and does not include timezone information.
 
 |`INTERVAL DAY[(M)] TO SECOND`
 |`FLOAT64`
@@ -1409,19 +1444,19 @@ The string representation of the interval value that follows the pattern `P<year
 |`INT64`
 |`io.debezium.time.Timestamp` +
  +
-Represents the number of milliseconds past epoch, and does not include timezone information.
+Represents the number of milliseconds since the UNIX epoch, and does not include timezone information.
 
 |`TIMESTAMP, TIMESTAMP(4 - 6)`
 |`INT64`
 |`io.debezium.time.MicroTimestamp` +
  +
-Represents the number of microseconds past epoch, and does not include timezone information.
+Represents the number of microseconds since the UNIX epoch, and does not include timezone information.
 
 |`TIMESTAMP(7 - 9)`
 |`INT64`
 |`io.debezium.time.NanoTimestamp` +
  +
-Represents the number of nanoseconds past epoch, and does not include timezone information.
+Represents the number of nanoseconds since the UNIX epoch, and does not include timezone information.
 
 |`TIMESTAMP WITH TIME ZONE`
 |`STRING`
@@ -1449,7 +1484,7 @@ Because the level of precision that Oracle supports exceeds the level that the l
 |`INT32`
 |`org.apache.kafka.connect.data.Date` +
  +
-Represents the number of days since the epoch.
+Represents the number of days since the UNIX epoch.
 
 |`INTERVAL DAY[(M)] TO SECOND`
 |`FLOAT64`
@@ -1475,19 +1510,19 @@ The string representation of the interval value that follows the pattern `P<year
 |`INT64`
 |`org.apache.kafka.connect.data.Timestamp` +
  +
-Represents the number of milliseconds since epoch, and does not include timezone information.
+Represents the number of milliseconds since the UNIX epoch, and does not include timezone information.
 
 |`TIMESTAMP(4 - 6)`
 |`INT64`
 |`org.apache.kafka.connect.data.Timestamp` +
  +
-Represents the number of milliseconds since epoch, and does not include timezone information.
+Represents the number of milliseconds since the UNIX epoch, and does not include timezone information.
 
 |`TIMESTAMP(7 - 9)`
 |`INT64`
 |`org.apache.kafka.connect.data.Timestamp` +
  +
-Represents the number of milliseconds since epoch, and does not include timezone information.
+Represents the number of milliseconds since the UNIX epoch, and does not include timezone information.
 
 |`TIMESTAMP WITH TIME ZONE`
 |`STRING`
@@ -1538,7 +1573,7 @@ Oracle enables you to define custom data types to provide flexibility when the b
 There are a several user-defined types such as Object types, REF data types, Varrays, and Nested Tables.
 At this time, you cannot use the {prodname} Oracle connector with any of these user-defined types.
 
-[id="oracle-suppplied-types"]
+[id="oracle-supplied-types"]
 === Oracle-supplied types
 
 Oracle provides SQL-based interfaces that you can use to define new types when the built-in or ANSI-supported types are insufficient.
@@ -1547,14 +1582,15 @@ At this time, you cannot use the {prodname} Oracle connector with any of these d
 
 [[oracle-default-values]]
 === Default Values
-If a default value is specified for a column in the database schema, the Oracle connector will attempt to propagate this value to the schema of the corresponding Kafka record field. Most common data types are supported, including:
+If a default value is specified for a column in the database schema, the Oracle connector will attempt to propagate this value to the schema of the corresponding Kafka record field.
+Most common data types are supported, including:
 
 * Character types (`CHAR`, `NCHAR`, `VARCHAR`, `VARCHAR2`, `NVARCHAR`, `NVARCHAR2`)
 * Numeric types (`INTEGER`, `NUMERIC`, etc.)
 * Temporal types (`DATE`, `TIMESTAMP`, `INTERVAL`, etc.)
 
 If a temporal type uses a function call such as `TO_TIMESTAMP` or `TO_DATE` to represent the default value, the connector will resolve the default value by making an additional database call to evaluate the function.
-For example, if a `DATE` column is defined with the default value of `TO_DATE('2021-01-02', 'YYYY-MM-DD')`, the column's default value will be the number of days since epoch for that date or `18629` in this case.
+For example, if a `DATE` column is defined with the default value of `TO_DATE('2021-01-02', 'YYYY-MM-DD')`, the column's default value will be the number of days since the UNIX epoch for that date or `18629` in this case.
 
 If a temporal type uses the `SYSDATE` constant to represent the default value, the connector will resolve this based on whether the column is defined as `NOT NULL` or `NULL`.
 If the column is nullable, no default value will be set; however, if the column isn't nullable then the default value will be resolved as either `0` (for `DATE` or `TIMESTAMP(n)` data types) or `1970-01-01T00:00:00Z` (for `TIMESTAMP WITH TIME ZONE` or `TIMESTAMP WITH LOCAL TIME ZONE` data types).
@@ -1570,18 +1606,24 @@ The following steps are necessary to set up Oracle for use with the {prodname} O
 These steps assume the use of the multi-tenancy configuration with a container database and at least one pluggable database.
 If you do not intend to use a multi-tenant configuration, it might be necessary to adjust the following steps.
 
+ifdef::community[]
 For information about using Vagrant to set up Oracle in a virtual machine, see the https://github.com/debezium/oracle-vagrant-box/[Debezium Vagrant Box for Oracle database] GitHub repository.
-
+endif::community[]
 ifdef::product[]
 
 For details about setting up Oracle for use with the {prodname} connector, see the following sections:
 
+* xref:compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types[]
+* xref:schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events[]
 * xref:preparing-oracle-databases-for-use-with-debezium[]
-* xref:oracle-redo-log-sizing[]
+* xref:resizing-oracle-redo-logs-to-accommodate-the-data-dictionary[]
 * xref:creating-an-oracle-user-for-the-debezium-oracle-connector[]
+* xref:support-for-oracle-standby-databases[]
 
 endif::product[]
-
+// Type: concept
+// Title: Compatibility of the {prodname} Oracle connector with Oracle installation types
+[id="compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types"]
 === Compatibility with Oracle installation types
 
 ifdef::community[]
@@ -1592,6 +1634,9 @@ ifdef::product[]
 The {prodname} Oracle connector is compatible with Oracle installed as a standalone instance.
 endif::product[]
 
+// Type: concept
+// Title: Schemas that the {prodname} Oracle connector excludes when capturing change events
+[id="schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events"]
 === Schemas excluded from capture
 
 When the {prodname} Oracle connector captures tables, it automatically excludes tables from the following schemas:
@@ -1640,13 +1685,16 @@ archive log list
 exit;
 ----
 
-In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
-The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
+To enable {prodname} to capture the _before_ state of changed database rows, you must also enable supplemental logging for captured tables or for the entire database.
+The following example illustrates how to configure supplemental logging for all columns in a single `inventory.customers` table.
 
 [source,indent=0]
 ----
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
+
+Enabling supplemental logging for all table columns increases the volume of the Oracle redo logs.
+To prevent excessive growth in the size of the logs, apply the preceding configuration selectively.
 
 Minimal supplemental logging must be enabled at the database level and can be configured as follows.
 
@@ -1656,6 +1704,8 @@ ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
 ----
 
 // Type: concept
+// Title: Resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
+// ModuleID: resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
 [id="oracle-redo-log-sizing"]
 === Redo log sizing
 
@@ -1811,6 +1861,10 @@ The connector must be able to read information about the Oracle redo and archive
 Without these grants, the connector cannot operate.
 
 |===
+
+// Type: concept
+// Title: Support for Oracle standby databases
+[id="support-for-oracle-standby-databases"]
 === Standby databases
 ifdef::product[]
 The {prodname} Oracle connector cannot be used with Oracle physical or logical standby databases.
@@ -2341,7 +2395,7 @@ For example, to define a `selector` parameter that specifies the subset of colum
 
 |[[oracle-property-tasks-max]]<<oracle-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The maximum number of tasks that should be created for this connector. The Oracle connector always uses a single task and therefore does not use this value, so the default is always acceptable.
+|The maximum number of tasks that to create for this connector. The Oracle connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
 |[[oracle-property-database-hostname]]<<oracle-property-database-hostname, `+database.hostname+`>>
 |No default
@@ -2395,10 +2449,10 @@ The connector is also unable to recover its database history topic.
 |`logminer`
 |The adapter implementation that the connector uses when it streams database changes.
 You can set the following values:
-
 `logminer`(default):: The connector uses the native Oracle LogMiner API.
+ifdef::community[]
 `xstream`:: The connector uses the Oracle XStreams API.
-
+endif::community[]
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
 |Specifies the mode that the connector uses to take snapshots of a captured table.
@@ -2421,7 +2475,7 @@ Note this mode is only safe to be used when it is guaranteed that no schema chan
 
 After the snapshot is complete, the connector continues to read change events from the database's redo logs except when `snapshot.mode` is configured as `initial_only`.
 
-For more information, see the xref:#oracle-connector-snapshot-mode-options[table of `snapshot.mode` options].
+For more information, see the xref:oracle-connector-snapshot-mode-options[table of `snapshot.mode` options].
 
 |[[oracle-property-snapshot-locking-mode]]<<oracle-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_shared_
@@ -2870,7 +2924,7 @@ It can be useful to set this property if you want the capturing process to alway
 |[[oracle-property-log-mining-scn-gap-detection-gap-size-min]]<<oracle-property-log-mining-scn-gap-detection-gap-size-min, `+log.mining.scn.gap.detection.gap.size.min+`>>
 |`1000000`
 |Specifies a value that the connector compares to the difference between the current and previous SCN values to determine whether an SCN gap exists.
-If the difference between the SCN values  is greater than the specified value, and the time difference is smaller than xref:oracle-property-log-mining-scn-gap-detection-time-interval-max-ms[`log.mining.scn.gap.detection.time.interval.max.ms`] then an SCN gap is detected, and the connector uses a mining window larger than the configured maximum batch.
+If the difference between the SCN values is greater than the specified value, and the time difference is smaller than xref:oracle-property-log-mining-scn-gap-detection-time-interval-max-ms[`log.mining.scn.gap.detection.time.interval.max.ms`] then an SCN gap is detected, and the connector uses a mining window larger than the configured maximum batch.
 
 |[[oracle-property-log-mining-scn-gap-detection-time-interval-max-ms]]<<oracle-property-log-mining-scn-gap-detection-time-interval-max-ms, `+log.mining.scn.gap.detection.time.interval.max.ms+`>>
 |`20000`
@@ -3187,9 +3241,9 @@ See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transa
 
 |[[oracle-streaming-metrics-scn-freeze-count]]<<oracle-streaming-metrics-scn-freeze-count, `+ScnFreezeCount+`>>
 |`int`
-|The number of times the system change number has been checked for advancement and remains unchanged.
-This is an indicator that long-running transaction(s) are ongoing and preventing the connector from flushing the latest processed system change number to the connector's offsets.
-Under optimal operations, this should always be or remain close to `0`.
+|The number of times that the system change number was checked for advancement and remains unchanged.
+A high value can indicate that a long-running transactions is ongoing and is preventing the connector from flushing the most recently processed system change number to the connector's offsets.
+When conditions are optimal, the value should be close to or equal to `0`.
 
 |[[oracle-streaming-metrics-unparsable-ddl-count]]<<oracle-streaming-metrics-unparsable-ddl-count, `+UnparsableDdlCount+`>>
 |`int`
@@ -3722,26 +3776,35 @@ The connector's `table.include.list` or `table.exclude.list` configuration optio
 [id="oracle-pga-aggregate-limit"]
 === ORA-04036: PGA memory used by the instance exceeds PGA_AGGREGATE_LIMIT
 
-Oracle may issue this error if you're connecting to a database that changes very infrequent.
+Oracle might report this error when {prodname} connects to a database in which changes occur infrequently.
 The {prodname} connector starts an Oracle LogMiner session and reuses this session until a log switch is detected.
-The reuse is both a performance and resource utilization optimization; however, a long-running mining session can cause high PGA memory usage.
+The reuse is both a performance and resource utilization optimization; however, a long-running mining session can cause high Program Global Area (PGA) memory usage.
 
-If your redo log switch frequency is low, you can avoid the ORA-04036 error by configuring Oracle to automatically switch logs on a defined frequency.
-A log switch causes the connector to restart the mining session, therefore avoiding high PGA memory usage.
-The following configuration forces Oracle to switch log files every 20 minutes if a log switch hasn't occurred within that window:
+If your redo log switches infrequently, you can avoid the ORA-04036 error by specifying how frequently Oracle switches logs.
+A log switch causes the connector to restart the mining session, thereby avoiding high PGA memory usage.
+The following configuration forces Oracle to switch log files every 20 minutes if a log switch does not occur during that interval:
 
 [source,sql]
 ----
 ALTER SYSTEM SET archive_lag_target=1200 scope=both;
 ----
 
-This change will likely require SYSDBA permissions, so coordinate with your database administrator.
+Running the preceding query specific administrative privileges.
+Coordinate with your database administrator to implement the change.
 
+<<<<<<< Updated upstream
+=======
+As alternative to adjusting the Oracle `ARCHIVE_LAG_TARGET` parameter, you can limit the duration of an Oracle LogMiner session by setting the connector configuration option xref:oracle-property-log-mining-session-max-ms[`log.mining.session.max.ms`].
+The `log.mining.session.max.ms` option causes the LogMiner session to restart regularly, whether or not the switch to a new database log occurs.
+
+
+>>>>>>> Stashed changes
 [id="oracle-sys-system-change-not-emitted"]
 === LogMiner adapter does not capture changes made by SYS or SYSTEM
 
-Oracle uses the `SYS` and `SYSTEM` accounts for lots of internal changes and therefore the connector automatically filters changes made by these users when fetching changes from LogMiner.
-Never use the `SYS` or `SYSTEM` user accounts for changes to be emitted by the {prodname} Oracle connector.
+Oracle uses the `SYS` and `SYSTEM` accounts to carry out many internal changes.
+When the {prodname} Oracle connector fetches changes from LogMiner, it automatically filters changes that originate from these administrator accounts.
+To ensure that the connector emit event records when you change a table, never use the `SYS` or `SYSTEM` user accounts to modify the table.
 
 [id="oracle-stops-capturing-changes-aws"]
 === Connector stops capturing changes from Oracle on AWS
@@ -3777,3 +3840,18 @@ database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(AD
 
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
+<<<<<<< Updated upstream
+=======
+
+[id="oracle-oracle-11-exception-ora01882"]
+=== Connection fails with error `ORA-01882: timezone region not found`
+
+When you start a connector that uses the Oracle JDBC driver (`ojdbc8.jar`) to access an Oracle 11g database, the connector might report the following error:
+
+```shell
+Caused by: java.sql.SQLException: ORA-00604: error occurred at recursive SQL level 1
+ORA-01882: timezone region not found
+```
+
+To prevent the preceding error from occurring, add the following setting to the connector configuration: `database.oracle.jdbc.timezoneAsRegion=false`.
+>>>>>>> Stashed changes
