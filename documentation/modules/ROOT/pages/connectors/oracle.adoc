@@ -2395,7 +2395,7 @@ For example, to define a `selector` parameter that specifies the subset of colum
 
 |[[oracle-property-tasks-max]]<<oracle-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The maximum number of tasks that to create for this connector. The Oracle connector always uses a single task and therefore does not use this value, so the default is always acceptable.
+|The maximum number of tasks to create for this connector. The Oracle connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
 |[[oracle-property-database-hostname]]<<oracle-property-database-hostname, `+database.hostname+`>>
 |No default
@@ -3789,7 +3789,7 @@ The following configuration forces Oracle to switch log files every 20 minutes i
 ALTER SYSTEM SET archive_lag_target=1200 scope=both;
 ----
 
-Running the preceding query specific administrative privileges.
+Running the preceding query requires specific administrative privileges.
 Coordinate with your database administrator to implement the change.
 
 [id="oracle-sys-system-change-not-emitted"]
