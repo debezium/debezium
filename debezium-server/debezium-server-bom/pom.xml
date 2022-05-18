@@ -12,7 +12,6 @@
     <packaging>jar</packaging>
 
     <properties>
-        <version.kinesis>2.13.13</version.kinesis>
         <version.pubsub>25.0.0</version.pubsub>
         <version.pulsar>2.9.2</version.pulsar>
         <version.eventhubs>5.1.1</version.eventhubs>
@@ -20,6 +19,7 @@
         <version.pravega>0.9.1</version.pravega>
         <version.nats>2.8.0</version.nats>
         <version.stan>2.2.3</version.stan>
+        <version.awssdk>2.17.171</version.awssdk>
 
         <version.commons.logging>1.2</version.commons.logging>
     </properties>
@@ -127,6 +127,11 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-server-sqs</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-server-core</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
@@ -136,7 +141,12 @@
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>kinesis</artifactId>
-                <version>${version.kinesis}</version>
+                <version>${version.awssdk}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>sqs</artifactId>
+                <version>${version.awssdk}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.cloud</groupId>
