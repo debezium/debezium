@@ -2862,6 +2862,10 @@ Since the buffer state is persisted across restarts, the buffer does not need to
 The infinispan option requires that you specify a cache file directory.
 Use the `log.mining.buffer.location` property to define the location for storing cache files.
 
+|[[oracle-property-log-mining-buffer-memory-transaction-events-threshold]]<<oracle-property-log-mining-buffer-memory-transaction-events-threshold, `+log.mining.buffer.memory.transaction.events.threshold+`>>
+|`0`
+| The transaction size threshold Debezium is able to handle when `log.mining.buffer.type` = memory. Transaction with event count exceeds this threshold will be abandoned. Value '0' means no limitation. +
+
 |[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.transactions+`>>
 |No default
 |The XML configuration for the Infinispan transaction cache.
@@ -3241,6 +3245,10 @@ See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transa
 |[[oracle-streaming-metrics-number-of-committed-transactions]]<<oracle-streaming-metrics-number-of-committed-transactions, `+NumberOfCommittedTransactions+`>>
 |`long`
 |The number of committed transactions in the transaction buffer.
+
+|[[oracle-streaming-metrics-number-of-oversized-transactions]]<<oracle-streaming-metrics-number-of-oversized-transactions, `+NumberOfOversizedTransactions+`>>
+|`long`
+|The number of oversized transactions in the transaction buffer.
 
 |[[oracle-streaming-metrics-number-of-rolledback-transactions]]<<oracle-streaming-metrics-number-of-rolledback-transactions, `+NumberOfRolledBackTransactions+`>>
 |`long`

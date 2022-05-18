@@ -212,6 +212,11 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     long getNumberOfRolledBackTransactions();
 
     /**
+     * @return the number of abandoned transactions because of number of events oversized
+     */
+    long getNumberOfOversizedTransactions();
+
+    /**
      * @return average number of committed transactions per second in the transaction buffer
      */
     long getCommitThroughput();
