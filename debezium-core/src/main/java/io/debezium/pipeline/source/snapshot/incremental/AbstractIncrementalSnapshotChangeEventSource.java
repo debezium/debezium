@@ -413,15 +413,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
 
-        List<String> expandedDataCollectionIds = dataCollectionIds
-                .stream()
-                .flatMap(x -> databaseSchema
-                        .tableIds()
-                        .stream()
-                        .map(TableId::identifier)
-                        .filter(t -> Pattern.compile(x).matcher(t).matches()))
-                .collect(Collectors.toList());
-
+        List<String> expandedDataCollectionIds = expandDataCollectionIds(dataCollectionIds);
         if (expandedDataCollectionIds.size() > dataCollectionIds.size()) {
             LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", dataCollectionIds, expandedDataCollectionIds);
         }
@@ -457,8 +449,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 }
             }
             else {
-                LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionIds);
-                for (String dataCollectionId : dataCollectionIds) {
+                final List<String> expandedDataCollectionIds = expandDataCollectionIds(dataCollectionIds);
+                LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
+                for (String dataCollectionId : expandedDataCollectionIds) {
                     final TableId collectionId = TableId.parse(dataCollectionId);
                     if (currentTable != null && currentTable.id().equals(collectionId)) {
                         window.clear();
@@ -490,6 +483,21 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 sql.append(" AND ");
             }
         }
+    }
+
+    /**
+     * Expands the string-based list of data collection ids if supplied using regex to a list of
+     * all matching explicit data collection ids.
+     */
+    private List<String> expandDataCollectionIds(List<String> dataCollectionIds) {
+        return dataCollectionIds
+                .stream()
+                .flatMap(x -> databaseSchema
+                        .tableIds()
+                        .stream()
+                        .map(TableId::identifier)
+                        .filter(t -> Pattern.compile(x).matcher(t).matches()))
+                .collect(Collectors.toList());
     }
 
     /**
