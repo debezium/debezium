@@ -83,7 +83,6 @@ public abstract class Metrics {
             for (int attempt = 1; attempt <= REGISTRATION_RETRIES; attempt++) {
                 try {
                     mBeanServer.registerMBean(this, name);
-                    registered = true;
                     break;
                 }
                 catch (InstanceAlreadyExistsException e) {
@@ -96,10 +95,10 @@ public abstract class Metrics {
                         LOGGER.error("Failed to register metrics MBean, metrics will not be available");
                     }
                 }
-                // If the old metrics MBean is present then the connector will try to unregister it
-                // upon shutdown.
-                registered = true;
             }
+            // If the old metrics MBean is present then the connector will try to unregister it
+            // upon shutdown.
+            registered = true;
         }
         catch (JMException e) {
             throw new RuntimeException("Unable to register the MBean '" + name + "'", e);
