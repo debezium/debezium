@@ -230,6 +230,15 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 getTransactionCache().put(transactionId, transaction);
             }
 
+            if (getConfig().getLogMiningBufferMemoryTransactionEventsThreshold() > 0
+                    && transaction.getEvents().size() >= getConfig().getLogMiningBufferMemoryTransactionEventsThreshold()) {
+                LOGGER.error("Transaction {} is oversized. Will abandon it.", transactionId);
+                // Discard the transaction from TransactionCache and to make it releasable.
+                getAndRemoveTransactionFromCache(transactionId).getEvents().clear();
+                abandonedTransactionsCache.add(transactionId);
+                metrics.incrementOversizedTransactions();
+                return;
+            }
             int eventId = transaction.getNextEventId();
             if (transaction.getEvents().size() <= eventId) {
                 // Add new event at eventId offset

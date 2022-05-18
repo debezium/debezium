@@ -277,6 +277,9 @@ public class OracleStreamingMetricsTest {
         assertThat(metrics.getNumberOfCommittedTransactions()).isEqualTo(1000);
         assertThat(metrics.getCommitThroughput()).isGreaterThanOrEqualTo(1_000);
 
+        metrics.incrementOversizedTransactions();
+        assertThat(metrics.getNumberOfOversizedTransactions()).isEqualTo(1);
+
         metrics.incrementRolledBackTransactions();
         assertThat(metrics.getNumberOfRolledBackTransactions()).isEqualTo(1);
 
