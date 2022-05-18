@@ -78,9 +78,8 @@ public class MongoClientsIT {
         MongoClient client2 = clients.clientForMembers(addresses);
         assertThat(client1).isSameAs(client2);
 
-        ServerAddress[] array = addresses.toArray(new ServerAddress[addresses.size()]);
-        MongoClient client3 = clients.clientForMembers(array);
-        MongoClient client4 = clients.clientForMembers(array);
+        MongoClient client3 = clients.clientForMembers(addresses);
+        MongoClient client4 = clients.clientForMembers(addresses);
         assertThat(client3).isSameAs(client4);
         assertThat(client3).isSameAs(client1);
 
