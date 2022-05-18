@@ -97,13 +97,12 @@
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
         <version.kafka>3.2.0</version.kafka>
         <version.zookeeper>3.6.3</version.zookeeper>
-        <!-- Kafka uses 2.12.3 but we need to bump due to CVE-2020-36518 before Kafka fixes it -->
+        <!-- Kafka uses 2.12.6 but we need to bump due to CVE-2020-36518 before Kafka fixes it -->
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
         <version.jackson>2.13.2</version.jackson>
         <version.jackson.databind>2.13.2.2</version.jackson.databind>
-        <version.org.slf4j>1.7.30</version.org.slf4j>
-        <version.log4j>1.2.17</version.log4j>
-        <version.netty>4.1.68.Final</version.netty>
+        <version.org.slf4j>1.7.36</version.org.slf4j>
+        <version.netty>4.1.73.Final</version.netty>
 
         <!-- Scala version used to build Kafka -->
         <version.kafka.scala>2.13</version.kafka.scala>
