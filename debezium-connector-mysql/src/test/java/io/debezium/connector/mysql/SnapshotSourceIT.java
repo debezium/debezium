@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -168,21 +169,22 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             store.add(record);
             schemaChanges.add(record);
             final String snapshotSourceField = ((Struct) record.value()).getStruct("source").getString("snapshot");
-            String currentRecordTable = ((Struct) record.value()).getStruct("source").getString("table");;
+            String currentRecordTable = ((Struct) record.value()).getStruct("source").getString("table");
             if (i.hasNext()) {
-                if (previousRecordTable != null && !Objects.equals(previousRecordTable, currentRecordTable)) {
-                    assertThat(previousSnapshotSourceField).isEqualTo("last_in_data_collection");
-                } else {
-                    assertThat(snapshotSourceField).isEqualTo("true");
+                if (Objects.equals(previousSnapshotSourceField, "last_in_data_collection")) {
+                    assertThat(previousRecordTable).isNotEqualTo(currentRecordTable);
                 }
+                assertTrue(Objects.equals(snapshotSourceField, "true") || Objects.equals(snapshotSourceField, "last_in_data_collection"));
             }
             else {
                 assertThat(record.sourceOffset().get("snapshot")).isNull();
                 assertThat(snapshotSourceField).isEqualTo("last");
             }
 
-            previousRecordTable = currentRecordTable;
-            previousSnapshotSourceField = snapshotSourceField;
+            if (!record.topic().equals(DATABASE.getServerName())) {
+                previousRecordTable = currentRecordTable;
+                previousSnapshotSourceField = snapshotSourceField;
+            }
         }
 
         if (storeOnlyCapturedTables) {

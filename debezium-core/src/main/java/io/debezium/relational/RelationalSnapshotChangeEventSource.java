@@ -20,7 +20,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.debezium.connector.SnapshotRecord;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -273,7 +272,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 if (!iterator.hasNext()) {
                     if (!snapshottingTask.snapshotData()) {
                         lastSnapshotRecord(snapshotContext);
-                    } else {
+                    }
+                    else {
                         lastRecordInDataCollection(snapshotContext);
                     }
                 }
@@ -359,10 +359,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
             snapshotContext.lastRecordInTable = false;
+            snapshotRecord(snapshotContext);
 
             if (rs.next()) {
                 while (!snapshotContext.lastRecordInTable) {
-                    snapshotRecord(snapshotContext);
 
                     if (!sourceContext.isRunning()) {
                         throw new InterruptedException("Interrupted while snapshotting table " + table.id());
@@ -389,7 +389,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     if (snapshotContext.lastRecordInTable) {
                         if (snapshotContext.lastTable) {
                             lastSnapshotRecord(snapshotContext);
-                        } else {
+                        }
+                        else {
                             lastRecordInDataCollection(snapshotContext);
                         }
                     }
