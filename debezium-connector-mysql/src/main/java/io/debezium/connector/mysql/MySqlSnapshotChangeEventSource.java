@@ -552,8 +552,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             snapshotContext.offset.event(tableId, getClock().currentTime());
 
             // If data are not snapshotted then the last schema change must set last snapshot flag
-            if (!snapshottingTask.snapshotData() && !i.hasNext()) {
-                lastSnapshotRecord(snapshotContext);
+            if (!i.hasNext()) {
+                if (!snapshottingTask.snapshotData()) {
+                    lastSnapshotRecord(snapshotContext);
+                } else {
+                    lastRecordInDataCollection(snapshotContext);
+                }
             }
             dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> receiver.schemaChangeEvent(event));
         }
@@ -566,6 +570,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     protected void lastSnapshotRecord(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext) {
         if (delayedSchemaSnapshotTables.isEmpty()) {
             super.lastSnapshotRecord(snapshotContext);
+        }
+    }
+
+    @Override
+    protected void lastRecordInDataCollection(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext) {
+        if (delayedSchemaSnapshotTables.isEmpty()) {
+            super.lastRecordInDataCollection(snapshotContext);
         }
     }
 

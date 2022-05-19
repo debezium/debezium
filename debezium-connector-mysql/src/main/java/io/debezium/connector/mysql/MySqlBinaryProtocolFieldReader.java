@@ -77,7 +77,7 @@ public class MySqlBinaryProtocolFieldReader extends AbstractMySqlFieldReader {
         }
         else if (b.length() == 0) {
             // Zero date has zero length when binary protocol uses compression.
-            return column.isOptional() ? null : LocalDate.EPOCH;
+            return column.isOptional() ? null : LocalDate.ofEpochDay(0);
         }
         // length is 4
         if (b.length() != NativeConstants.BIN_LEN_DATE) {

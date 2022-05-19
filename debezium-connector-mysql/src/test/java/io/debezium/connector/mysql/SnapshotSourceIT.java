@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -158,7 +159,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         SourceRecords sourceRecords = consumeRecordsByTopicUntil(
                 (recordsConsumed, record) -> !record.sourceOffset().containsKey("snapshot"));
 
-        SourceRecord previousRecord = null;
+        String previousRecordTable = null;
+        String previousSnapshotSourceField = null;
         for (Iterator<SourceRecord> i = sourceRecords.allRecordsInOrder().iterator(); i.hasNext();) {
             final SourceRecord record = i.next();
             VerifyRecord.isValid(record);
@@ -166,13 +168,11 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             store.add(record);
             schemaChanges.add(record);
             final String snapshotSourceField = ((Struct) record.value()).getStruct("source").getString("snapshot");
+            String currentRecordTable = ((Struct) record.value()).getStruct("source").getString("table");;
             if (i.hasNext()) {
-                final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
-                assertThat(snapshotOffsetField).isEqualTo(true);
-                if (previousRecord != null && previousRecord != record) {
-                    assertThat(snapshotSourceField).isEqualTo("last_in_table");
-                }
-                else {
+                if (previousRecordTable != null && !Objects.equals(previousRecordTable, currentRecordTable)) {
+                    assertThat(previousSnapshotSourceField).isEqualTo("last_in_data_collection");
+                } else {
                     assertThat(snapshotSourceField).isEqualTo("true");
                 }
             }
@@ -181,7 +181,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                 assertThat(snapshotSourceField).isEqualTo("last");
             }
 
-            previousRecord = record;
+            previousRecordTable = currentRecordTable;
+            previousSnapshotSourceField = snapshotSourceField;
         }
 
         if (storeOnlyCapturedTables) {

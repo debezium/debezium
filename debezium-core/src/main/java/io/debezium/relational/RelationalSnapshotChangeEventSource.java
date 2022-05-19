@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.debezium.connector.SnapshotRecord;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -269,8 +270,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 snapshotContext.offset.event(tableId, getClock().currentTime());
 
                 // If data are not snapshotted then the last schema change must set last snapshot flag
-                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
-                    lastSnapshotRecord(snapshotContext);
+                if (!iterator.hasNext()) {
+                    if (!snapshottingTask.snapshotData()) {
+                        lastSnapshotRecord(snapshotContext);
+                    } else {
+                        lastRecordInDataCollection(snapshotContext);
+                    }
                 }
 
                 dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, table.id(), (receiver) -> {
@@ -357,6 +362,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             if (rs.next()) {
                 while (!snapshotContext.lastRecordInTable) {
+                    snapshotRecord(snapshotContext);
+
                     if (!sourceContext.isRunning()) {
                         throw new InterruptedException("Interrupted while snapshotting table " + table.id());
                     }
@@ -380,12 +387,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     }
 
                     if (snapshotContext.lastRecordInTable) {
-                        lastRecordInTable(snapshotContext);
+                        if (snapshotContext.lastTable) {
+                            lastSnapshotRecord(snapshotContext);
+                        } else {
+                            lastRecordInDataCollection(snapshotContext);
+                        }
                     }
 
-                    if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
-                        lastSnapshotRecord(snapshotContext);
-                    }
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
                             getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
                 }
@@ -403,8 +411,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
     }
 
-    protected void lastRecordInTable(RelationalSnapshotContext<P, O> snapshotContext) {
-        snapshotContext.offset.markLastRecordInTable();
+    protected void snapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
+        snapshotContext.offset.markSnapshotRecord();
+    }
+
+    protected void lastRecordInDataCollection(RelationalSnapshotContext<P, O> snapshotContext) {
+        snapshotContext.offset.markLastRecordInDataCollection();
     }
 
     protected void lastSnapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {

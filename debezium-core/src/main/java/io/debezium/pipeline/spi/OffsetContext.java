@@ -46,9 +46,14 @@ public interface OffsetContext {
     boolean isSnapshotRunning();
 
     /**
-     * mark current record as the last one in the table
+     * mark current record as a regular snapshot record that is not last in a table or collection
      */
-    void markLastRecordInTable();
+    void markSnapshotRecord();
+
+    /**
+     * mark current record as the last one in the table or collection
+     */
+    void markLastRecordInDataCollection();
 
     /**
      * mark current record as the last one in the snapshot
