@@ -74,6 +74,16 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
             .withDescription("Maximum retry delay (in ms)")
             .withDefault(DEFAULT_RETRY_MAX_DELAY);
 
+    public static final Integer DEFAULT_CONNECTION_TIMEOUT = 2000;
+    public static final Field PROP_CONNECTION_TIMEOUT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connection.timeout.ms")
+            .withDescription("Connection timeout (in ms)")
+            .withDefault(DEFAULT_CONNECTION_TIMEOUT);
+
+    public static final Integer DEFAULT_SOCKET_TIMEOUT = 2000;
+    public static final Field PROP_SOCKET_TIMEOUT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "socket.timeout.ms")
+            .withDescription("Socket timeout (in ms)")
+            .withDefault(DEFAULT_SOCKET_TIMEOUT);
+
     Integer initialRetryDelay;
     Integer maxRetryDelay;
 
@@ -91,11 +101,13 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     private String user;
     private String password;
     private boolean sslEnabled;
+    private Integer connectionTimeout;
+    private Integer socketTimeout;
 
     private Jedis client = null;
 
     void connect() {
-        RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.sslEnabled);
+        RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.connectionTimeout, this.socketTimeout, this.sslEnabled);
         client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_DB_HISTORY);
     }
 
@@ -126,6 +138,9 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
         // load retry settings
         this.initialRetryDelay = this.config.getInteger(PROP_RETRY_INITIAL_DELAY);
         this.maxRetryDelay = this.config.getInteger(PROP_RETRY_MAX_DELAY);
+        // load connection timeout settings
+        this.connectionTimeout = this.config.getInteger(PROP_CONNECTION_TIMEOUT);
+        this.socketTimeout = this.config.getInteger(PROP_SOCKET_TIMEOUT);
 
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
     }

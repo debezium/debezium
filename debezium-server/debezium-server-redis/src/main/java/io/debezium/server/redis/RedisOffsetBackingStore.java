@@ -60,6 +60,16 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
             .withDescription("Maximum retry delay (in ms)")
             .withDefault(DEFAULT_RETRY_MAX_DELAY);
 
+    public static final Integer DEFAULT_CONNECTION_TIMEOUT = 2000;
+    public static final Field PROP_CONNECTION_TIMEOUT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connection.timeout.ms")
+            .withDescription("Connection timeout (in ms)")
+            .withDefault(DEFAULT_CONNECTION_TIMEOUT);
+
+    public static final Integer DEFAULT_SOCKET_TIMEOUT = 2000;
+    public static final Field PROP_SOCKET_TIMEOUT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "socket.timeout.ms")
+            .withDescription("Socket timeout (in ms)")
+            .withDefault(DEFAULT_SOCKET_TIMEOUT);
+
     private static final String SINK_PROP_PREFIX = "debezium.sink.redis.";
 
     private String redisKeyName;
@@ -74,12 +84,15 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     private Integer initialRetryDelay;
     private Integer maxRetryDelay;
 
+    private Integer connectionTimeout;
+    private Integer socketTimeout;
+
     public RedisOffsetBackingStore() {
 
     }
 
     void connect() {
-        RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.sslEnabled);
+        RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.connectionTimeout, this.socketTimeout, this.sslEnabled);
         client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_OFFSETS_CLIENT_NAME);
     }
 
@@ -109,7 +122,12 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
         this.initialRetryDelay = Optional.ofNullable(
                 Integer.getInteger(this.config.get(PROP_RETRY_INITIAL_DELAY.name()))).orElse(DEFAULT_RETRY_INITIAL_DELAY);
         this.maxRetryDelay = Optional.ofNullable(
-                Integer.getInteger(this.config.get(PROP_RETRY_INITIAL_DELAY.name()))).orElse(DEFAULT_RETRY_MAX_DELAY);
+                Integer.getInteger(this.config.get(PROP_RETRY_MAX_DELAY.name()))).orElse(DEFAULT_RETRY_MAX_DELAY);
+        // load connection timeout settings
+        this.connectionTimeout = Optional.ofNullable(
+                Integer.getInteger(this.config.get(PROP_CONNECTION_TIMEOUT.name()))).orElse(DEFAULT_CONNECTION_TIMEOUT);
+        this.socketTimeout = Optional.ofNullable(
+                Integer.getInteger(this.config.get(PROP_SOCKET_TIMEOUT.name()))).orElse(DEFAULT_SOCKET_TIMEOUT);
 
     }
 
