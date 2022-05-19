@@ -14,6 +14,7 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.mongodb.connection.ClusterType;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.Document;
@@ -381,6 +382,24 @@ public class MongoUtil {
         ServerAddress primaryAddress = primaryDescription.get().getAddress();
 
         return new ServerAddress(primaryAddress.getHost(), primaryAddress.getPort());
+    }
+
+    /**
+     * Retrieves cluster description, forcing a connection if not yet available
+     *
+     * @param client cluster connection client
+     * @return cluster description
+     */
+    public static ClusterDescription clusterDescription(MongoClient client) {
+        ClusterDescription description = client.getClusterDescription();
+
+        if (description.getType() == ClusterType.UNKNOWN) {
+            // force the connection and try again
+            client.listDatabaseNames().first(); // force the connection
+            description = client.getClusterDescription();
+        }
+
+        return description;
     }
 
     private MongoUtil() {
