@@ -261,6 +261,14 @@ There are also other options available
 |
 |The maximum delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 10000 (ms)
 
+|[[debezium-source-database-history-redis-connection-timeout-ms]]<<debezium-source-database-history-redis-connection-timeout-ms, `debezium.source.database.history.redis.connection.timeout.ms`>>
+|
+|Connection timeout of Redis client if using `RedisDatabaseHistory`. Default: 2000 (ms)
+
+|[[debezium-source-database-history-redis-socket-timeout-ms]]<<debezium-source-database-history-redis-socket-timeout-ms, `debezium.source.database.history.redis.socket.timeout.ms`>>
+|
+|Socket timeout of Redis client if using `RedisDatabaseHistory`. Default: 2000 (ms)
+
 |===
 
 [id="debezium-format-configuration-options"]
@@ -774,6 +782,14 @@ This value will be doubled upon every retry but won't exceed `debezium.sink.redi
 |[[redis-retry-max-delay-ms]]<<redis-retry-max-delay-ms, `debezium.sink.redis.retry.max.delay.ms`>>
 |`10000`
 |Max delay when encountering Redis connection or OOM issues.
+
+|[[redis-connection-timeout-ms]]<<redis-connection-timeout-ms, `debezium.sink.redis.connection.timeout.ms`>>
+|`2000`
+|Connection timeout for Redis client.
+
+|[[redis-socket-timeout-ms]]<<redis-socket-timeout-ms, `debezium.sink.redis.socket.timeout.ms`>>
+|`2000`
+|Socket timeout for Redis client.
 
 |===
 

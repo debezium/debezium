@@ -26,19 +26,23 @@ public class RedisConnection {
     private String address;
     private String user;
     private String password;
+    private int connectionTimeout;
+    private int socketTimeout;
     private boolean sslEnabled;
 
-    public RedisConnection(String address, String user, String password, boolean sslEnabled) {
+    public RedisConnection(String address, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
         this.address = address;
         this.user = user;
         this.password = password;
+        this.connectionTimeout = connectionTimeout;
+        this.socketTimeout = socketTimeout;
         this.sslEnabled = sslEnabled;
     }
 
     public Jedis getRedisClient(String clientName) {
         HostAndPort address = HostAndPort.from(this.address);
 
-        Jedis client = new Jedis(address.getHost(), address.getPort(), this.sslEnabled);
+        Jedis client = new Jedis(address.getHost(), address.getPort(), this.connectionTimeout, this.socketTimeout, this.sslEnabled);
 
         if (this.user != null) {
             client.auth(this.user, this.password);

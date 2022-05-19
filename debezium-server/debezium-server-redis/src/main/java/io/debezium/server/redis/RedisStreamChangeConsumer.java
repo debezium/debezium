@@ -53,10 +53,14 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_ADDRESS = PROP_PREFIX + "address";
     private static final String PROP_USER = PROP_PREFIX + "user";
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
+    private static final String PROP_CONNECTION_TIMEOUT = PROP_PREFIX + "connection.timeout.ms";
+    private static final String PROP_SOCKET_TIMEOUT = PROP_PREFIX + "socket.timeout.ms";
 
     private String address;
     private String user;
     private String password;
+    private Integer connectionTimeout;
+    private Integer socketTimeout;
 
     @ConfigProperty(name = PROP_PREFIX + "ssl.enabled", defaultValue = "false")
     boolean sslEnabled;
@@ -84,8 +88,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         address = config.getValue(PROP_ADDRESS, String.class);
         user = config.getOptionalValue(PROP_USER, String.class).orElse(null);
         password = config.getOptionalValue(PROP_PASSWORD, String.class).orElse(null);
+        connectionTimeout = config.getOptionalValue(PROP_CONNECTION_TIMEOUT, Integer.class).orElse(2000);
+        socketTimeout = config.getOptionalValue(PROP_SOCKET_TIMEOUT, Integer.class).orElse(2000);
 
-        RedisConnection redisConnection = new RedisConnection(address, user, password, sslEnabled);
+        RedisConnection redisConnection = new RedisConnection(address, user, password, connectionTimeout, socketTimeout, sslEnabled);
         client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_REDIS_SINK_CLIENT_NAME);
     }
 
