@@ -5,7 +5,6 @@
  */
 package io.debezium.heartbeat;
 
-import java.time.Duration;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -15,8 +14,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
-import io.debezium.jdbc.JdbcConnection;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
@@ -25,7 +22,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public interface Heartbeat {
+public interface Heartbeat extends AutoCloseable {
 
     String HEARTBEAT_INTERVAL_PROPERTY_NAME = "heartbeat.interval.ms";
 
@@ -122,27 +119,8 @@ public interface Heartbeat {
      */
     boolean isEnabled();
 
-    /**
-     * Provide an instance of Heartbeat object
-     *
-     * @param heartbeatInterval heartbeat interval config value as java.time.Duration
-     * @param topicName topic to which the heartbeat messages will be sent
-     * @param key kafka partition key to use for the heartbeat message
-     */
-    static Heartbeat create(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
-        return heartbeatInterval.isZero() ? DEFAULT_NOOP_HEARTBEAT : new HeartbeatImpl(heartbeatInterval, topicName, key, schemaNameAdjuster);
-    }
-
-    static Heartbeat create(Duration heartbeatInterval, String heartbeatQuery, String topicName, String key, JdbcConnection jdbcConnection,
-                            HeartbeatErrorHandler errorHandler, SchemaNameAdjuster schemaNameAdjuster) {
-        if (heartbeatInterval.isZero()) {
-            return DEFAULT_NOOP_HEARTBEAT;
-        }
-
-        if (heartbeatQuery != null) {
-            return new DatabaseHeartbeatImpl(heartbeatInterval, topicName, key, jdbcConnection, heartbeatQuery, errorHandler, schemaNameAdjuster);
-        }
-
-        return new HeartbeatImpl(heartbeatInterval, topicName, key, schemaNameAdjuster);
+    @Override
+    default void close() {
+        // default implementations are no-op
     }
 }

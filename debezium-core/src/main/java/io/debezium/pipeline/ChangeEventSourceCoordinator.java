@@ -213,6 +213,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 executor.shutdownNow();
                 executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             }
+
+            eventDispatcher.close();
         }
         finally {
             snapshotMetrics.unregister();
