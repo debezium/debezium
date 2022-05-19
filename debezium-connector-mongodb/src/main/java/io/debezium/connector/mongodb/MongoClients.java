@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
@@ -73,12 +74,24 @@ public class MongoClients {
         }
     }
 
+    protected static Supplier<MongoClientSettings.Builder> createSettingsSupplier(MongoClientSettings settings) {
+        return () -> MongoClientSettings.builder(settings);
+    }
+
     private final Map<ServerAddress, MongoClient> directConnections = new ConcurrentHashMap<>();
     private final Map<List<ServerAddress>, MongoClient> connections = new ConcurrentHashMap<>();
-    private final MongoClientSettings.Builder settings;
+    private final Supplier<MongoClientSettings.Builder> settingsSupplier;
 
     private MongoClients(MongoClientSettings.Builder settings) {
-        this.settings = settings;
+        this.settingsSupplier = createSettingsSupplier(settings.build());
+    }
+
+    /**
+     * Creates fresh {@link MongoClientSettings.Builder} from {@link #settingsSupplier}
+     * @return connection settings builder
+     */
+    protected MongoClientSettings.Builder settings() {
+        return settingsSupplier.get();
     }
 
     /**
@@ -171,12 +184,12 @@ public class MongoClients {
     }
 
     protected MongoClient directConnection(ServerAddress address) {
-        settings.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(address)));
+        MongoClientSettings.Builder settings = settings().applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(address)));
         return com.mongodb.client.MongoClients.create(settings.build());
     }
 
     protected MongoClient connection(List<ServerAddress> addresses) {
-        settings.applyToClusterSettings(builder -> builder.hosts(addresses));
+        MongoClientSettings.Builder settings = settings().applyToClusterSettings(builder -> builder.hosts(addresses));
         return com.mongodb.client.MongoClients.create(settings.build());
     }
 }
