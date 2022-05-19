@@ -171,16 +171,20 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             final String snapshotSourceField = ((Struct) record.value()).getStruct("source").getString("snapshot");
             String currentRecordTable = ((Struct) record.value()).getStruct("source").getString("table");
             if (i.hasNext()) {
+                final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
+                assertThat(snapshotOffsetField).isEqualTo(true);
+                assertTrue(Objects.equals(snapshotSourceField, "true") || Objects.equals(snapshotSourceField, "last_in_data_collection"));
+
                 if (Objects.equals(previousSnapshotSourceField, "last_in_data_collection")) {
                     assertThat(previousRecordTable).isNotEqualTo(currentRecordTable);
                 }
-                assertTrue(Objects.equals(snapshotSourceField, "true") || Objects.equals(snapshotSourceField, "last_in_data_collection"));
             }
             else {
                 assertThat(record.sourceOffset().get("snapshot")).isNull();
                 assertThat(snapshotSourceField).isEqualTo("last");
             }
 
+            // When the topic is the server name, it is a DDL record and not data record
             if (!record.topic().equals(DATABASE.getServerName())) {
                 previousRecordTable = currentRecordTable;
                 previousSnapshotSourceField = snapshotSourceField;

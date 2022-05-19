@@ -269,13 +269,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 snapshotContext.offset.event(tableId, getClock().currentTime());
 
                 // If data are not snapshotted then the last schema change must set last snapshot flag
-                if (!iterator.hasNext()) {
-                    if (!snapshottingTask.snapshotData()) {
-                        lastSnapshotRecord(snapshotContext);
-                    }
-                    else {
-                        lastRecordInDataCollection(snapshotContext);
-                    }
+                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
+                    lastSnapshotRecord(snapshotContext);
                 }
 
                 dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, table.id(), (receiver) -> {
@@ -363,7 +358,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             if (rs.next()) {
                 while (!snapshotContext.lastRecordInTable) {
-
                     if (!sourceContext.isRunning()) {
                         throw new InterruptedException("Interrupted while snapshotting table " + table.id());
                     }
@@ -394,7 +388,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                             lastRecordInDataCollection(snapshotContext);
                         }
                     }
-
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
                             getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
                 }
