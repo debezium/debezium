@@ -19,7 +19,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
-import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -40,7 +40,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     private volatile OracleTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile OracleConnection jdbcConnection;
-    private volatile OracleConnection heartbeatConnection;
     private volatile ErrorHandler errorHandler;
     private volatile OracleDatabaseSchema schema;
 
@@ -90,24 +89,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
 
-        Heartbeat heartbeat = null;
-        if (!connectorConfig.getHeartbeatActionQuery().isEmpty()) {
-            heartbeatConnection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());
-            if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-                heartbeatConnection.setSessionToPdb(connectorConfig.getPdbName());
-            }
-            heartbeat = Heartbeat.create(
-                    connectorConfig.getHeartbeatInterval(),
-                    connectorConfig.getHeartbeatActionQuery(),
-                    topicSelector.getHeartbeatTopic(),
-                    connectorConfig.getLogicalName(),
-                    heartbeatConnection,
-                    exception -> {
-                        final String sqlErrorId = exception.getMessage();
-                        throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                    }, schemaNameAdjuster);
-        }
-
         EventDispatcher<OraclePartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
@@ -116,7 +97,15 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                heartbeat,
+                new HeartbeatFactory<>(
+                        connectorConfig,
+                        topicSelector,
+                        schemaNameAdjuster,
+                        () -> getHeartbeatConnection(connectorConfig, jdbcConfig),
+                        exception -> {
+                            final String sqlErrorId = exception.getMessage();
+                            throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                        }),
                 schemaNameAdjuster);
 
         final OracleStreamingChangeEventSourceMetrics streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
@@ -135,6 +124,14 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
+    }
+
+    private OracleConnection getHeartbeatConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
+        final OracleConnection connection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());
+        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
+            connection.setSessionToPdb(connectorConfig.getPdbName());
+        }
+        return connection;
     }
 
     @Override
@@ -157,15 +154,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         }
         catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC connection", e);
-        }
-
-        try {
-            if (heartbeatConnection != null) {
-                heartbeatConnection.close();
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.error("Exception while closing the heartbeat JDBC connection", e);
         }
 
         if (schema != null) {
