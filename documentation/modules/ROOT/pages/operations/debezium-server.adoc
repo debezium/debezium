@@ -190,12 +190,12 @@ The source configuration uses the same configuration properties that are describ
 |The name of the Java class implementing the source connector.
 
 |[[debezium-source-offset-storage]]<<debezium-source-offset-storage, `debezium.source.offset.storage`>>
-|
+|`org.apache.kafka.connect.storage.FileOffsetBackingStore`
 |Class to use for storing and retrieving offsets for non-Kafka deployments.
 To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingStore`
 
 |[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
-|`org.apache.kafka.connect.storage.FileOffsetBackingStore`
+|
 |If using a file offset store (default), the file in which connector offsets are stored for non-Kafka deployments.
 
 |[[debezium-source-offset-flush-interval-ms]]<<debezium-source-offset-flush-interval-ms, `debezium.source.offset.flush.interval.ms`>>
