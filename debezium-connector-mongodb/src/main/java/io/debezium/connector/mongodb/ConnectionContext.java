@@ -126,7 +126,7 @@ public class ConnectionContext implements AutoCloseable {
         return false;
     }
 
-    public MongoClient clientForReplicaSet(ReplicaSet replicaSet) {
+    public MongoClient clientFor(ReplicaSet replicaSet) {
         return clientFor(replicaSet.addresses());
     }
 
@@ -427,7 +427,7 @@ public class ConnectionContext implements AutoCloseable {
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
     protected MongoClient clientForPrimary(ReplicaSet replicaSet) {
-        MongoClient replicaSetClient = clientForReplicaSet(replicaSet);
+        MongoClient replicaSetClient = clientFor(replicaSet);
         final ClusterDescription clusterDescription = replicaSetClient.getClusterDescription();
         if (clusterDescription == null) {
             if (!this.useHostsAsSeeds) {
