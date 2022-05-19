@@ -26,6 +26,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -57,7 +58,7 @@ import io.debezium.util.SchemaNameAdjuster;
  *
  * @author Gunnar Morling
  */
-public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
+public class EventDispatcher<P extends Partition, T extends DataCollectionId> implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
@@ -91,21 +92,21 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                null, schemaNameAdjuster);
+                new HeartbeatFactory<>(connectorConfig, topicSelector, schemaNameAdjuster), schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+                           HeartbeatFactory<T> heartbeatFactory, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster);
+                heartbeatFactory, schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+                           EventMetadataProvider metadataProvider, HeartbeatFactory<T> heartbeatFactory, SchemaNameAdjuster schemaNameAdjuster) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
@@ -123,16 +124,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
                 this::enqueueTransactionMessage);
         this.signal = new Signal<>(connectorConfig, this);
-        if (customHeartbeat != null) {
-            heartbeat = customHeartbeat;
-        }
-        else {
-            heartbeat = Heartbeat.create(
-                    connectorConfig.getHeartbeatInterval(),
-                    topicSelector.getHeartbeatTopic(),
-                    connectorConfig.getLogicalName(),
-                    schemaNameAdjuster);
-        }
+        this.heartbeat = heartbeatFactory.createHeartbeat();
 
         schemaChangeKeySchema = SchemaBuilder.struct()
                 .name(schemaNameAdjuster.adjust("io.debezium.connector." + connectorConfig.getConnectorName() + ".SchemaChangeKey"))
@@ -598,5 +590,12 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> {
 
     public IncrementalSnapshotChangeEventSource<P, T> getIncrementalSnapshotChangeEventSource() {
         return incrementalSnapshotChangeEventSource;
+    }
+
+    @Override
+    public void close() {
+        if (heartbeatsEnabled()) {
+            heartbeat.close();
+        }
     }
 }

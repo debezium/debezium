@@ -63,4 +63,14 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
 
         super.forcedBeat(partition, offset, consumer);
     }
+
+    @Override
+    public void close() {
+        try {
+            jdbcConnection.close();
+        }
+        catch (SQLException e) {
+            LOGGER.error("Exception while closing the heartbeat JDBC connection", e);
+        }
+    }
 }
