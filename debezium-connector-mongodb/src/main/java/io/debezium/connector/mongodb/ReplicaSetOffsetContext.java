@@ -17,6 +17,7 @@ import org.bson.Document;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -68,6 +69,16 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     @Override
     public boolean isSnapshotRunning() {
         return offsetContext.isSnapshotRunning();
+    }
+
+    @Override
+    public void markSnapshotRecord() {
+        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
+    }
+
+    @Override
+    public void markLastRecordInDataCollection() {
+        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_DATA_COLLECTION);
     }
 
     @Override
