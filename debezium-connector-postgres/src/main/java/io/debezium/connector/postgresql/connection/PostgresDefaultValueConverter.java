@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql.connection;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -27,7 +26,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
@@ -49,10 +50,12 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
 
     private final PostgresValueConverter valueConverters;
     private final Map<String, DefaultValueMapper> defaultValueMappers;
+    private final TypeRegistry typeRegistry;
 
-    public PostgresDefaultValueConverter(PostgresValueConverter valueConverters, TimestampUtils timestampUtils) {
+    public PostgresDefaultValueConverter(PostgresValueConverter valueConverters, TimestampUtils timestampUtils, TypeRegistry typeRegistry) {
         this.valueConverters = valueConverters;
-        this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers(timestampUtils));
+        this.defaultValueMappers = createDefaultValueMappers(timestampUtils, typeRegistry);
+        this.typeRegistry = typeRegistry;
     }
 
     @Override
@@ -128,7 +131,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         };
     }
 
-    private static Map<String, DefaultValueMapper> createDefaultValueMappers(TimestampUtils timestampUtils) {
+    private static Map<String, DefaultValueMapper> createDefaultValueMappers(TimestampUtils timestampUtils, TypeRegistry typeRegistry) {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
         result.put("bit", (c, v) -> {
@@ -169,6 +172,15 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         result.put("timestamptz", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
         result.put("interval", (c, v) -> new PGInterval(extractDefault(v, "epoch")));
 
+        // Register any existing enum types
+        for (Map.Entry<String, PostgresType> type : typeRegistry.getRegisteredTypes().entrySet()) {
+            if (type.getValue().isEnumType()) {
+                if (!result.containsKey(type.getKey())) {
+                    result.put(type.getKey(), (c, v) -> extractEnumDefault(type.getKey(), v));
+                }
+            }
+        }
+
         // Other data types, such as box, bytea, and more are not handled.
         return result;
     }
@@ -196,7 +208,30 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         return extractDefault(defaultValue);
     }
 
+    private static String extractEnumDefault(String enumTypeName, String defaultValue) {
+        if (defaultValue != null && enumTypeName != null && defaultValue.endsWith("::" + enumTypeName)) {
+            defaultValue = defaultValue.substring(0, defaultValue.length() - ("::" + enumTypeName).length());
+            if (defaultValue.startsWith("'") && defaultValue.endsWith("'")) {
+                return defaultValue.substring(1, defaultValue.length() - 1);
+            }
+        }
+        return null;
+    }
+
     public boolean supportConversion(String typeName) {
-        return defaultValueMappers.containsKey(typeName);
+        if (defaultValueMappers.containsKey(typeName)) {
+            return true;
+        }
+
+        // The TypeRegistry is not immutable, enum types can be added over the connector's lifetime.
+        // If an enum type is passed here, we need to dynamically check the TypeRegistry and if one
+        // exists, we need to register a value mapper for it lazily.
+        final PostgresType postgresType = typeRegistry.get(typeName);
+        if (!postgresType.isEnumType()) {
+            return false;
+        }
+
+        defaultValueMappers.put(typeName, (c, v) -> extractEnumDefault(typeName, v));
+        return true;
     }
 }
