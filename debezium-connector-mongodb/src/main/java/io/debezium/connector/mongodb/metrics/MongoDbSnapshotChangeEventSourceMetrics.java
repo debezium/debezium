@@ -15,6 +15,7 @@ import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.metrics.DefaultSnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.util.Collect;
 
 /**
  * @author Chris Cranford
@@ -26,8 +27,11 @@ public class MongoDbSnapshotChangeEventSourceMetrics extends DefaultSnapshotChan
     private AtomicLong numberOfDisconnects = new AtomicLong();
 
     public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                    EventMetadataProvider metadataProvider) {
-        super(taskContext, changeEventQueueMetrics, metadataProvider);
+                                                                                    EventMetadataProvider metadataProvider, int maxTasks) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider,
+                maxTasks > 1
+                        ? Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId())
+                        : Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName()));
     }
 
     @Override
