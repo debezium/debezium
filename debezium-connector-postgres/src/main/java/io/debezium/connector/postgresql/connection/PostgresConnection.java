@@ -102,7 +102,7 @@ public class PostgresConnection extends JdbcConnection {
             this.typeRegistry = new TypeRegistry(this);
 
             final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
-            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
+            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
         }
     }
 
@@ -121,7 +121,7 @@ public class PostgresConnection extends JdbcConnection {
         else {
             this.typeRegistry = typeRegistry;
             final PostgresValueConverter valueConverter = PostgresValueConverter.of(config, this.getDatabaseCharset(), typeRegistry);
-            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
+            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
         }
     }
 

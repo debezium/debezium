@@ -39,13 +39,14 @@ public class PostgresDefaultValueConverterIT {
         postgresConnection = TestHelper.create();
 
         PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(defaultJdbcConfig());
+        TypeRegistry typeRegistry = new TypeRegistry(postgresConnection);
         postgresValueConverter = PostgresValueConverter.of(
                 postgresConnectorConfig,
                 Charset.defaultCharset(),
-                new TypeRegistry(postgresConnection));
+                typeRegistry);
 
         postgresDefaultValueConverter = new PostgresDefaultValueConverter(
-                postgresValueConverter, postgresConnection.getTimestampUtils());
+                postgresValueConverter, postgresConnection.getTimestampUtils(), typeRegistry);
     }
 
     @After
@@ -76,13 +77,14 @@ public class PostgresDefaultValueConverterIT {
                 .build();
 
         PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(config);
+        TypeRegistry typeRegistry = new TypeRegistry(postgresConnection);
         PostgresValueConverter postgresValueConverter = PostgresValueConverter.of(
                 postgresConnectorConfig,
                 Charset.defaultCharset(),
-                new TypeRegistry(postgresConnection));
+                typeRegistry);
 
         PostgresDefaultValueConverter postgresDefaultValueConverter = new PostgresDefaultValueConverter(
-                postgresValueConverter, postgresConnection.getTimestampUtils());
+                postgresValueConverter, postgresConnection.getTimestampUtils(), typeRegistry);
 
         final Column NumericalColumn = Column.editor().type("numeric", "numeric(19, 4)")
                 .jdbcType(Types.NUMERIC).defaultValueExpression("NULL::numeric").optional(true).create();
