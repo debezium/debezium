@@ -90,17 +90,34 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
 
     @Override
     protected String tableName() {
-        return TableId.parse(DATABASE.qualifiedTableName("a")).toQuotedString('`');
+        return tableNameId().toQuotedString('`');
     }
 
     @Override
     protected String signalTableName() {
-        return TableId.parse(DATABASE.qualifiedTableName("debezium_signal")).toQuotedString('`');
+        return tableNameId("debezium_signal").toQuotedString('`');
     }
 
     @Override
     protected String tableName(String table) {
-        return TableId.parse(DATABASE.qualifiedTableName(table)).toQuotedString('`');
+        return tableNameId(table).toQuotedString('`');
+    }
+
+    @Override
+    protected String tableDataCollectionId() {
+        return tableNameId().toString();
+    }
+
+    private String dataCollectionName(String table) {
+        return tableNameId(table).toString();
+    }
+
+    private TableId tableNameId() {
+        return tableNameId("a");
+    }
+
+    private TableId tableNameId(String table) {
+        return TableId.parse(DATABASE.qualifiedTableName(table));
     }
 
     @Override
@@ -203,7 +220,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         waitForConnectorToStart();
         waitForAvailableRecords(5, TimeUnit.SECONDS);
 
-        sendAdHocSnapshotSignal(tableName("a_dt"));
+        sendAdHocSnapshotSignal(dataCollectionName("a_dt"));
 
         final int expectedRecordCount = ROWS;
         final Map<Integer, List<Object>> dbChanges = consumeMixedWithIncrementalSnapshot(
@@ -252,7 +269,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         waitForConnectorToStart();
         waitForAvailableRecords(5, TimeUnit.SECONDS);
 
-        sendAdHocSnapshotSignal(tableName("a_date"));
+        sendAdHocSnapshotSignal(dataCollectionName("a_date"));
 
         final int expectedRecordCount = 1;
         final Map<Integer, List<Integer>> dbChanges = consumeMixedWithIncrementalSnapshot(

@@ -114,7 +114,7 @@ Rather, during the snapshot, {prodname} generates its own `id` string as a water
 
 |`data-collections`
 |A required component of the `data` field of a signal that specifies an array of {data-collection} names to include in the snapshot. +
-The array lists {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
+The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
 
 |`incremental`
 |An optional `type` component of the `data` field of a signal that specifies the kind of snapshot operation to run. +
