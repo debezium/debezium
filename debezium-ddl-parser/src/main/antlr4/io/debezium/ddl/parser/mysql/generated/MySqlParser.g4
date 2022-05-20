@@ -193,18 +193,18 @@ createServer
     ;
 
 createTable
-    : CREATE TEMPORARY? TABLE ifNotExists?
+    : CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?
        tableName
        (
          LIKE tableName
          | '(' LIKE parenthesisTable=tableName ')'
        )                                                            #copyCreateTable
-    | CREATE TEMPORARY? TABLE ifNotExists?
+    | CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?
        tableName createDefinitions?
        ( tableOption (','? tableOption)* )?
        partitionDefinitions? keyViolate=(IGNORE | REPLACE)?
        AS? selectStatement                                          #queryCreateTable
-    | CREATE TEMPORARY? TABLE ifNotExists?
+    | CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?
        tableName createDefinitions
        ( tableOption (','? tableOption)* )?
        partitionDefinitions?                                        #columnCreateTable
