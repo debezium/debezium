@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -411,7 +412,21 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     public void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
-        final List<T> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds);
+
+        List<String> expandedDataCollectionIds = dataCollectionIds
+                .stream()
+                .flatMap(x -> databaseSchema
+                        .tableIds()
+                        .stream()
+                        .map(TableId::identifier)
+                        .filter(t -> Pattern.compile(x).matcher(t).matches()))
+                .collect(Collectors.toList());
+
+        if (expandedDataCollectionIds.size() > dataCollectionIds.size()) {
+            LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", dataCollectionIds, expandedDataCollectionIds);
+        }
+
+        final List<T> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(expandedDataCollectionIds);
         if (shouldReadChunk) {
             progressListener.snapshotStarted(partition);
             progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds);

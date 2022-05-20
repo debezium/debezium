@@ -470,6 +470,19 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         }
     }
 
+    @Test
+    public void snapshotWithRegexDataCollections() throws Exception {
+        populateTable();
+        startConnector();
+        sendAdHocSnapshotSignal(".*");
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
     @Override
     protected int getMaximumEnqueuedRecordCount() {
         return ROW_COUNT * 3;

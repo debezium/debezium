@@ -501,7 +501,7 @@ See the next section for more details.
 
 |`data-collections`
 |_N/A_
-| An array of qualified names of table to be snapshotted. +
+| An array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
 The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
 |===
