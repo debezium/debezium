@@ -295,6 +295,16 @@ public class OracleOffsetContext implements OffsetContext {
     }
 
     @Override
+    public void markSnapshotRecord() {
+        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
+    }
+
+    @Override
+    public void markLastRecordInDataCollection() {
+        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_DATA_COLLECTION);
+    }
+
+    @Override
     public void markLastSnapshotRecord() {
         sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }

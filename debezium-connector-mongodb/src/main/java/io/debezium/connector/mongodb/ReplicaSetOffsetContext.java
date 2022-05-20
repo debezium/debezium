@@ -70,6 +70,16 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     }
 
     @Override
+    public void markSnapshotRecord() {
+        offsetContext.markSnapshotRecord();
+    }
+
+    @Override
+    public void markLastRecordInDataCollection() {
+        offsetContext.markLastRecordInDataCollection();
+    }
+
+    @Override
     public void markLastSnapshotRecord() {
         offsetContext.markLastSnapshotRecord();
     }
