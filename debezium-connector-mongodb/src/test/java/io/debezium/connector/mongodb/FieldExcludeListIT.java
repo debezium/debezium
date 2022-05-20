@@ -8,19 +8,14 @@ package io.debezium.connector.mongodb;
 import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.Fail.fail;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.mongodb.client.MongoCollection;
@@ -28,39 +23,13 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
-import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
-// todo: extend AbstractMongoConnectorIT?
-public class FieldExcludeListIT extends AbstractConnectorTest {
+public class FieldExcludeListIT extends AbstractMongoConnectorIT {
 
     private static final String SERVER_NAME = "serverX";
     private static final String PATCH = MongoDbFieldName.PATCH;
-
-    private Configuration config;
-    private MongoDbTaskContext context;
-
-    @Before
-    public void beforeEach() {
-        Debug.disable();
-        Print.disable();
-        stopConnector();
-        initializeConnectorTestFramework();
-    }
-
-    @After
-    public void afterEach() {
-        try {
-            stopConnector();
-        }
-        finally {
-            if (context != null) {
-                context.getConnectionContext().shutdown();
-            }
-        }
-    }
 
     @Test
     public void shouldNotExcludeFieldsForEventOfOtherCollection() throws InterruptedException {
@@ -1475,21 +1444,6 @@ public class FieldExcludeListIT extends AbstractConnectorTest {
 
     private Struct getValue(SourceRecord record) {
         return (Struct) record.value();
-    }
-
-    private BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
-        AtomicInteger attempts = new AtomicInteger();
-        return (desc, error) -> {
-            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
-                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
-            }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        };
-    }
-
-    private MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
     }
 
     private void storeDocuments(String dbName, String collectionName, Document... documents) {

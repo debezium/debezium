@@ -121,7 +121,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             replicaSets,
                             taskContext,
                             schema),
-                    new MongoDbChangeEventSourceMetricsFactory(),
+                    new MongoDbChangeEventSourceMetricsFactory(connectorConfig),
                     dispatcher,
                     schema);
 

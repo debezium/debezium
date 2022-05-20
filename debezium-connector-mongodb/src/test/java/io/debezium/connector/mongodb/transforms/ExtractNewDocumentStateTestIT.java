@@ -6,14 +6,11 @@
 package io.debezium.connector.mongodb.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -42,8 +39,6 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.util.Collect;
-import io.debezium.util.IoUtil;
-import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link ExtractNewDocumentState}. It sends operations into
@@ -1707,22 +1702,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertNoRecordsToConsume();
 
         return records;
-    }
-
-    private List<Document> loadTestDocuments(String pathOnClasspath) {
-        final List<Document> documents = new ArrayList<>();
-        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath)) {
-            assertThat(stream).isNotNull();
-            IoUtil.readLines(stream, line -> {
-                Document document = Document.parse(line);
-                assertThat(document.size()).isGreaterThan(0);
-                documents.add(document);
-            });
-        }
-        catch (IOException e) {
-            fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
-        }
-        return documents;
     }
 
     private SourceRecord createCreateRecord() throws Exception {

@@ -1,4 +1,15 @@
+ifeval::['{context}' == 'mongodb']
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_`.
+
+[NOTE]
+====
+When the connector is configured with `tasks.max` greater than `1`, the MBean name will also include the task identifier.
+As an example, when using a value of `2`, the MBean names will also be suffixed by `,task=0` and `,task=1` respectively.
+====
+endif::[]
+ifeval::['{context}' != 'mongodb']
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_`.
+endif::[]
 
 Snapshot metrics are not exposed unless a snapshot operation is active, or if a snapshot has occurred since the last connector start.
 
