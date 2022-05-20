@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -19,6 +20,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -158,6 +160,9 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         SourceRecords sourceRecords = consumeRecordsByTopicUntil(
                 (recordsConsumed, record) -> !record.sourceOffset().containsKey("snapshot"));
 
+        String previousRecordTable = null;
+        String previousSnapshotSourceField = null;
+
         for (Iterator<SourceRecord> i = sourceRecords.allRecordsInOrder().iterator(); i.hasNext();) {
             final SourceRecord record = i.next();
             VerifyRecord.isValid(record);
@@ -165,14 +170,25 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             store.add(record);
             schemaChanges.add(record);
             final String snapshotSourceField = ((Struct) record.value()).getStruct("source").getString("snapshot");
+            String currentRecordTable = ((Struct) record.value()).getStruct("source").getString("table");
             if (i.hasNext()) {
                 final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
                 assertThat(snapshotOffsetField).isEqualTo(true);
-                assertThat(snapshotSourceField).isEqualTo("true");
+                assertTrue(Objects.equals(snapshotSourceField, "true") || Objects.equals(snapshotSourceField, "last_in_data_collection"));
+
+                if (Objects.equals(previousSnapshotSourceField, "last_in_data_collection")) {
+                    assertThat(previousRecordTable).isNotEqualTo(currentRecordTable);
+                }
             }
             else {
                 assertThat(record.sourceOffset().get("snapshot")).isNull();
                 assertThat(snapshotSourceField).isEqualTo("last");
+            }
+
+            // When the topic is the server name, it is a DDL record and not data record
+            if (!record.topic().equals(DATABASE.getServerName())) {
+                previousRecordTable = currentRecordTable;
+                previousSnapshotSourceField = snapshotSourceField;
             }
         }
 

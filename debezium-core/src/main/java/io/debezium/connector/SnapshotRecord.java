@@ -19,6 +19,10 @@ public enum SnapshotRecord {
      */
     TRUE,
     /**
+     * Record is from snapshot and the last record generated from the table, but not in the entire snapshot.
+     */
+    LAST_IN_DATA_COLLECTION,
+    /**
      * Record is from snapshot is the last record generated in snapshot phase.
      */
     LAST,

@@ -348,12 +348,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final OptionalLong rowCount = rowCountForTable(table.id());
 
         try (Statement statement = readTableStatement(rowCount);
-                ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
+             ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
 
             ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
             snapshotContext.lastRecordInTable = false;
+            snapshotRecord(snapshotContext);
 
             if (rs.next()) {
                 while (!snapshotContext.lastRecordInTable) {
@@ -379,8 +380,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         logTimer = getTableScanLogTimer();
                     }
 
-                    if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
-                        lastSnapshotRecord(snapshotContext);
+                    if (snapshotContext.lastRecordInTable) {
+                        if (snapshotContext.lastTable) {
+                            lastSnapshotRecord(snapshotContext);
+                        }
+                        else {
+                            lastRecordInDataCollection(snapshotContext);
+                        }
                     }
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
                             getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
@@ -397,6 +403,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
+    }
+
+    protected void snapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
+        snapshotContext.offset.markSnapshotRecord();
+    }
+
+    protected void lastRecordInDataCollection(RelationalSnapshotContext<P, O> snapshotContext) {
+        snapshotContext.offset.markLastRecordInDataCollection();
     }
 
     protected void lastSnapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
