@@ -196,10 +196,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
         LOGGER.info("Reading oplog for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
 
-        if (!connectorConfig.getEnableRawOplog()) {
-            throw new DebeziumException("mongodb.raw_oplog.enabled should set to be true");
-        }
-
         // Include none of the cluster-internal operations and only those events since the previous timestamp
         MongoCollection<RawBsonDocument> oplog = primary.getDatabase("local").getCollection("oplog.rs", RawBsonDocument.class);
 
