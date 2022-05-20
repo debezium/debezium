@@ -37,8 +37,6 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.mongodb.DBRef;
@@ -58,7 +56,6 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.schema.DatabaseSchema;
@@ -70,30 +67,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  *
  */
-public class MongoDbConnectorIT extends AbstractConnectorTest {
-
-    private Configuration config;
-    private MongoDbTaskContext context;
-
-    @Before
-    public void beforeEach() {
-        Testing.Debug.disable();
-        Testing.Print.disable();
-        stopConnector();
-        initializeConnectorTestFramework();
-    }
-
-    @After
-    public void afterEach() {
-        try {
-            stopConnector();
-        }
-        finally {
-            if (context != null) {
-                context.getConnectionContext().shutdown();
-            }
-        }
-    }
+public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     /**
      * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the MySQL server.
@@ -1536,7 +1510,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         final Instant timestamp = Instant.now();
         final Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
-        updateDocuments("dbit", "c1", filter, updateObj);
+        updateDocument("dbit", "c1", filter, updateObj);
 
         // Consume records, should be 1, the update
         final SourceRecords records = consumeRecordsByTopic(1);
@@ -2033,7 +2007,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         final Instant timestamp = Instant.now();
         final Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
-        updateDocuments("dbit", "c1", filter, updateObj);
+        updateDocument("dbit", "c1", filter, updateObj);
 
         // Consume records, should be 1, the update
         final SourceRecords records = consumeRecordsByTopic(1);
@@ -2061,29 +2035,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     private String formatObjectId(ObjectId objId) {
         return "{\"$oid\": \"" + objId + "\"}";
-    }
-
-    private void insertDocuments(String dbName, String collectionName, Document... documents) {
-        primary().execute("store documents", mongo -> {
-            Testing.debug("Storing in '" + dbName + "." + collectionName + "' document");
-            MongoDatabase db = mongo.getDatabase(dbName);
-            MongoCollection<Document> coll = db.getCollection(collectionName);
-
-            for (Document document : documents) {
-                InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
-                assertThat(document).isNotNull();
-                assertThat(document.size()).isGreaterThan(0);
-                coll.insertOne(document, insertOptions);
-            }
-        });
-    }
-
-    private void updateDocuments(String dbName, String collectionName, Document filter, Document document) {
-        primary().execute("update", mongo -> {
-            MongoDatabase db = mongo.getDatabase(dbName);
-            MongoCollection<Document> coll = db.getCollection(collectionName);
-            coll.updateOne(filter, document);
-        });
     }
 
     private void deleteDocument(String dbName, String collectionName, ObjectId objectId) {

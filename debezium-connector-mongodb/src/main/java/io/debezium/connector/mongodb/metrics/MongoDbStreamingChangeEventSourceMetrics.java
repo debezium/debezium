@@ -16,6 +16,7 @@ import io.debezium.connector.mongodb.PrimaryElectionEvent;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.util.Collect;
 
 /**
  * @author Chris Cranford
@@ -28,8 +29,11 @@ public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingCh
     private AtomicLong numberOfDisconnects = new AtomicLong();
 
     <T extends CdcSourceTaskContext> MongoDbStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                              EventMetadataProvider eventMetadataProvider) {
-        super(taskContext, changeEventQueueMetrics, eventMetadataProvider);
+                                                                              EventMetadataProvider eventMetadataProvider, int maxTasks) {
+        super(taskContext, changeEventQueueMetrics, eventMetadataProvider,
+                maxTasks > 1
+                        ? Collect.linkMapOf("context", "streaming", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId())
+                        : Collect.linkMapOf("context", "streaming", "server", taskContext.getConnectorName()));
     }
 
     @Override

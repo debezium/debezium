@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.ThreadSafe;
@@ -38,6 +40,15 @@ public abstract class PipelineMetrics<P extends Partition> extends Metrics
     protected <T extends CdcSourceTaskContext> PipelineMetrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                EventMetadataProvider metadataProvider) {
         super(taskContext, contextName);
+        this.taskContext = taskContext;
+        this.changeEventQueueMetrics = changeEventQueueMetrics;
+        this.metadataProvider = metadataProvider;
+        this.commonEventMeter = new CommonEventMeter(taskContext.getClock(), metadataProvider);
+    }
+
+    protected <T extends CdcSourceTaskContext> PipelineMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                               EventMetadataProvider metadataProvider, Map<String, String> tags) {
+        super(taskContext, tags);
         this.taskContext = taskContext;
         this.changeEventQueueMetrics = changeEventQueueMetrics;
         this.metadataProvider = metadataProvider;

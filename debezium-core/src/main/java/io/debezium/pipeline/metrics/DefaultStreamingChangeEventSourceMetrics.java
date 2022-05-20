@@ -40,6 +40,13 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
         connectionMeter = new ConnectionMeter();
     }
 
+    public <T extends CdcSourceTaskContext> DefaultStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                     EventMetadataProvider metadataProvider, Map<String, String> tags) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider, tags);
+        streamingMeter = new StreamingMeter(taskContext, metadataProvider);
+        connectionMeter = new ConnectionMeter();
+    }
+
     @Override
     public boolean isConnected() {
         return connectionMeter.isConnected();
