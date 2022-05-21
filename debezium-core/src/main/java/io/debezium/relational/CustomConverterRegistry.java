@@ -20,7 +20,6 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
-import io.debezium.spi.converter.CustomConverter.Converter;
 import io.debezium.spi.converter.RelationalColumn;
 
 /**
@@ -57,9 +56,9 @@ public class CustomConverterRegistry {
     public synchronized Optional<SchemaBuilder> registerConverterFor(TableId table, Column column, Object defaultValue) {
         final String fullColumnName = fullColumnName(table, column);
 
-        for (CustomConverter<SchemaBuilder, ConvertedField> converter : converters) {
+        for (CustomConverter<SchemaBuilder, ConvertedField> customConverter : converters) {
             AtomicReference<ConverterDefinition<SchemaBuilder>> definition = new AtomicReference<>();
-            converter.converterFor(new RelationalColumn() {
+            customConverter.converterFor(new RelationalColumn() {
 
                 @Override
                 public String name() {
@@ -115,14 +114,7 @@ public class CustomConverterRegistry {
                 public Object defaultValue() {
                     return defaultValue;
                 }
-            },
-                    new CustomConverter.ConverterRegistration<SchemaBuilder>() {
-
-                        @Override
-                        public void register(SchemaBuilder fieldSchema, Converter converter) {
-                            definition.set(new ConverterDefinition<SchemaBuilder>(fieldSchema, converter));
-                        }
-                    });
+            }, (fieldSchema, converter) -> definition.set(new ConverterDefinition<>(fieldSchema, converter)));
 
             if (definition.get() != null) {
                 conversionFunctionMap.put(fullColumnName, definition.get());

@@ -211,6 +211,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
                     return Decimal.builder(0);
             }
         }
+        if (matches(typeName, "FLOAT") && column.scale().isEmpty() && column.length() <= 24) {
+            return SchemaBuilder.float32();
+        }
         // Otherwise, let the base class handle it ...
         return super.schemaBuilder(column);
     }
@@ -407,6 +410,23 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
 
         return super.convertBigInt(column, fieldDefn, data);
+    }
+
+    /**
+     * MySql reports FLOAT(p) values as FLOAT and DOUBLE.
+     * A precision from 0 to 23 results in a 4-byte single-precision FLOAT column.
+     * A precision from 24 to 53 results in an 8-byte double-precision DOUBLE column.
+     * As of MySQL 8.0.17, the nonstandard FLOAT(M,D) and DOUBLE(M,D) syntax is deprecated, and should expect support
+     * for it be removed in a future version of MySQL. Based on this future, we didn't handle the case.
+     */
+    @Override
+    protected Object convertFloat(Column column, Field fieldDefn, Object data) {
+        if (column.scale().isEmpty() && column.length() <= 24) {
+            return super.convertReal(column, fieldDefn, data);
+        }
+        else {
+            return super.convertFloat(column, fieldDefn, data);
+        }
     }
 
     /**

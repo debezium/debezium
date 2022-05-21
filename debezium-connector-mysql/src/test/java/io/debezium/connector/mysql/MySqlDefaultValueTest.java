@@ -311,7 +311,7 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo(0);
         assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo(20L);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(null);
-        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0d);
+        assertThat(getColumnSchema(table, "F").defaultValue()).isEqualTo(0f);
     }
 
     @Test
