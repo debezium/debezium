@@ -1151,7 +1151,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Optional<SourceRecord> recordWithScientfic = records.recordsForTopic(RO_DATABASE.topicForTable("Products")).stream()
                 .filter(x -> "hammer2".equals(getAfter(x).get("name"))).findFirst();
         assertThat(recordWithScientfic.isPresent());
-        assertThat(getAfter(recordWithScientfic.get()).get("weight")).isEqualTo(0.875);
+        assertThat(getAfter(recordWithScientfic.get()).get("weight")).isEqualTo(0.875f);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);

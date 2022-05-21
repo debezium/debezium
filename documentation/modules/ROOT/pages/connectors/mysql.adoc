@@ -1361,9 +1361,15 @@ a|_n/a_
 |`FLOAT32`
 a|_n/a_
 
-|`FLOAT[(M,D)]`
+|`FLOAT[(P)]`
+|`FLOAT32` or `FLOAT64`
+a|The precision is used only to determine storage size.
+A precision `P` from 0 to 23 results in a 4-byte single-precision `FLOAT32` column.
+A precision `P` from 24 to 53 results in an 8-byte double-precision `FLOAT64` column.
+
+|`FLOAT(M,D)`
 |`FLOAT64`
-a|_n/a_
+a|As of MySQL 8.0.17, the nonstandard FLOAT(M,D) and DOUBLE(M,D) syntax is deprecated, and should expect support for it be removed in a future version of MySQL, set `FLOAT64` as default.
 
 |`DOUBLE[(M,D)]`
 |`FLOAT64`

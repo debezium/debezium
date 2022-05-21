@@ -11,8 +11,8 @@
 CREATE TABLE dbz_222_point (
   id INT AUTO_INCREMENT NOT NULL,
   point POINT DEFAULT NULL,
-  expected_x FLOAT,
-  expected_y FLOAT,
+  expected_x DOUBLE,
+  expected_y DOUBLE,
   expected_srid INT,
   PRIMARY KEY (id)
 ) DEFAULT CHARSET=utf8;

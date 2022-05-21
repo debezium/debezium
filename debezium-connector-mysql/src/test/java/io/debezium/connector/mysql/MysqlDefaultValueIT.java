@@ -570,7 +570,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
-        assertThat(schemaA.defaultValue()).isEqualTo(0d);
+        assertThat(schemaA.defaultValue()).isEqualTo(0f);
         assertThat(schemaB.defaultValue()).isEqualTo(1.0d);
         assertEmptyFieldValue(record, "H");
     }
