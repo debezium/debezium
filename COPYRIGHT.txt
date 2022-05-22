@@ -381,7 +381,7 @@ Vojtech Juranek
 Vojtěch Juránek
 Wang Min Chao
 Wang-Yu-Chao
-WenChao Ke
+柯文超
 Wei Wu
 WenZe Hu
 William Pursell
@@ -415,4 +415,3 @@ Zoran Regvart
 Snigdhajyoti Ghosh
 Andrei Isac
 Mark Allanson
-柯文超
