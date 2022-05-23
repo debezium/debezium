@@ -23,6 +23,7 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.utility.DockerImageName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -300,7 +301,12 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 final ObjectNode parsedObject = (ObjectNode) MAPPER.readTree(responseBody.string());
-                return Connector.State.valueOf(parsedObject.get("tasks").get(taskNumber).get("state").asText());
+                final JsonNode tasksNode = parsedObject.get("tasks").get(taskNumber);
+                // Task array can return null if the array is empty or the task number is not within bounds
+                if (tasksNode == null) {
+                    return null;
+                }
+                return Connector.State.valueOf(tasksNode.get("state").asText());
             }
             return null;
         }
