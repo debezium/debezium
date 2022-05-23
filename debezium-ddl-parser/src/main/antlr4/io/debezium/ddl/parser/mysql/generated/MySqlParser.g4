@@ -193,18 +193,18 @@ createServer
     ;
 
 createTable
-    : CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?
+    : CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?            // OR is MariaDB-specific only
        tableName
        (
          LIKE tableName
          | '(' LIKE parenthesisTable=tableName ')'
        )                                                            #copyCreateTable
-    | CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?
+    | CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?            // OR is MariaDB-specific only
        tableName createDefinitions?
        ( tableOption (','? tableOption)* )?
        partitionDefinitions? keyViolate=(IGNORE | REPLACE)?
        AS? selectStatement                                          #queryCreateTable
-    | CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?
+    | CREATE (OR REPLACE)? TEMPORARY? TABLE ifNotExists?            // OR is MariaDB-specific only
        tableName createDefinitions
        ( tableOption (','? tableOption)* )?
        partitionDefinitions?                                        #columnCreateTable
