@@ -87,8 +87,7 @@ public class OcpKafka extends TestFixture {
                 .base(kafkaController.getLocalBootstrapAddress())
                 .withLoggingFromConfigMap(configMap)
                 .withMetricsFromConfigMap(configMap)
-                .withConnectorResources(STRIMZI_OPERATOR_CONNECTORS)
-                .withPullSecret(operatorController.getPullSecret());
+                .withConnectorResources(STRIMZI_OPERATOR_CONNECTORS);
 
         if (STRIMZI_KC_BUILD) {
             OcpArtifactServerController artifactServerController = deployArtifactServer();
@@ -97,6 +96,8 @@ public class OcpKafka extends TestFixture {
         else {
             builder.withImage(STRIMZI_KC_IMAGE);
         }
+
+        builder.withPullSecret(operatorController.getPullSecret());
 
         OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer(
                 project, builder, configMap, operatorController, ocp, new OkHttpClient());
