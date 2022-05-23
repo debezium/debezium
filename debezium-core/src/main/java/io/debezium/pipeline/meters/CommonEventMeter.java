@@ -72,22 +72,18 @@ public class CommonEventMeter implements CommonEventMetricsMXBean {
 
     public void onFilteredEvent() {
         numberOfEventsFiltered.incrementAndGet();
-        updateCommonEventMetrics();
     }
 
     public void onFilteredEvent(Operation operation) {
         numberOfEventsFiltered.incrementAndGet();
-        updateCommonEventMetrics(operation);
     }
 
     public void onErroneousEvent() {
         numberOfErroneousEvents.incrementAndGet();
-        updateCommonEventMetrics();
     }
 
     public void onErroneousEvent(Operation operation) {
         numberOfErroneousEvents.incrementAndGet();
-        updateCommonEventMetrics(operation);
     }
 
     @Override
