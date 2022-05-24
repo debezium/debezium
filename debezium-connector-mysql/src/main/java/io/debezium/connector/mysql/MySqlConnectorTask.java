@@ -21,7 +21,6 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -146,8 +145,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                new HeartbeatFactory<>(
-                        connectorConfig,
+                connectorConfig.createHeartbeat(
                         topicSelector,
                         schemaNameAdjuster,
                         () -> new MySqlConnection(new MySqlConnectionConfiguration(heartbeatConfig), connectorConfig.useCursorFetch()

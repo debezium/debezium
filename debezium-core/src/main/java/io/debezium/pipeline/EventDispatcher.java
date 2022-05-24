@@ -26,7 +26,6 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -92,21 +91,21 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                new HeartbeatFactory<>(connectorConfig, topicSelector, schemaNameAdjuster), schemaNameAdjuster);
+                connectorConfig.createHeartbeat(topicSelector, schemaNameAdjuster, null, null), schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           HeartbeatFactory<T> heartbeatFactory, SchemaNameAdjuster schemaNameAdjuster) {
+                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeatFactory, schemaNameAdjuster);
+                heartbeat, schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, HeartbeatFactory<T> heartbeatFactory, SchemaNameAdjuster schemaNameAdjuster) {
+                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
@@ -124,7 +123,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
                 this::enqueueTransactionMessage);
         this.signal = new Signal<>(connectorConfig, this);
-        this.heartbeat = heartbeatFactory.createHeartbeat();
+        this.heartbeat = heartbeat;
 
         schemaChangeKeySchema = SchemaBuilder.struct()
                 .name(schemaNameAdjuster.adjust("io.debezium.connector." + connectorConfig.getConnectorName() + ".SchemaChangeKey"))

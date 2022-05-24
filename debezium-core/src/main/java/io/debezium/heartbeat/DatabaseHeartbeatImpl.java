@@ -39,8 +39,8 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
     private final JdbcConnection jdbcConnection;
     private final HeartbeatErrorHandler errorHandler;
 
-    DatabaseHeartbeatImpl(Duration heartbeatInterval, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery,
-                          HeartbeatErrorHandler errorHandler, SchemaNameAdjuster schemaNameAdjuster) {
+    public DatabaseHeartbeatImpl(Duration heartbeatInterval, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery,
+                                 HeartbeatErrorHandler errorHandler, SchemaNameAdjuster schemaNameAdjuster) {
         super(heartbeatInterval, topicName, key, schemaNameAdjuster);
 
         this.heartBeatActionQuery = heartBeatActionQuery;

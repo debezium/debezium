@@ -27,7 +27,7 @@ import io.debezium.util.Threads.Timer;
  * Default implementation of Heartbeat
  *
  */
-class HeartbeatImpl implements Heartbeat {
+public class HeartbeatImpl implements Heartbeat {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatImpl.class);
 
@@ -53,7 +53,7 @@ class HeartbeatImpl implements Heartbeat {
 
     private volatile Timer heartbeatTimeout;
 
-    HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
+    public HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
         this.topicName = topicName;
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;

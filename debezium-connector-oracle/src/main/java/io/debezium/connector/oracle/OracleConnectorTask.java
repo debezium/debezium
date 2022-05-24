@@ -19,7 +19,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
-import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -97,8 +96,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                new HeartbeatFactory<>(
-                        connectorConfig,
+                connectorConfig.createHeartbeat(
                         topicSelector,
                         schemaNameAdjuster,
                         () -> getHeartbeatConnection(connectorConfig, jdbcConfig),

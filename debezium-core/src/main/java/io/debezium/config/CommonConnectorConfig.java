@@ -34,9 +34,13 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatConnectionProvider;
+import io.debezium.heartbeat.HeartbeatErrorHandler;
+import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.schema.DataCollectionId;
+import io.debezium.schema.TopicSelector;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.util.SchemaNameAdjuster;
@@ -951,5 +955,13 @@ public abstract class CommonConnectorConfig {
 
     public String getTaskId() {
         return taskId;
+    }
+
+    public Heartbeat createHeartbeat(TopicSelector<? extends DataCollectionId> topicSelector, SchemaNameAdjuster schemaNameAdjuster,
+                                     HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
+        if (getHeartbeatInterval().isZero()) {
+            return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
+        }
+        return new HeartbeatImpl(getHeartbeatInterval(), topicSelector.getHeartbeatTopic(), getLogicalName(), schemaNameAdjuster);
     }
 }
