@@ -25,6 +25,9 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatConnectionProvider;
+import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -35,6 +38,10 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.schema.DataCollectionId;
+import io.debezium.schema.TopicSelector;
+import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.util.Strings;
 
 /**
  * Configuration options shared across the relational CDC connectors.
@@ -806,6 +813,22 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    }
+
+    @Override
+    public Heartbeat createHeartbeat(TopicSelector<? extends DataCollectionId> topicSelector, SchemaNameAdjuster schemaNameAdjuster,
+                                     HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
+        if (!Strings.isNullOrBlank(getHeartbeatActionQuery()) && !getHeartbeatInterval().isZero()) {
+            return new DatabaseHeartbeatImpl(
+                    getHeartbeatInterval(),
+                    topicSelector.getHeartbeatTopic(),
+                    getLogicalName(),
+                    connectionProvider.get(),
+                    getHeartbeatActionQuery(),
+                    errorHandler,
+                    schemaNameAdjuster);
+        }
+        return super.createHeartbeat(topicSelector, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
     private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
