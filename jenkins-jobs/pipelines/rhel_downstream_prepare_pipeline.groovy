@@ -33,6 +33,8 @@ pipeline {
                     ./jenkins-jobs/scripts/build-rhel-kafka-image.sh                \\
                         --dir="${WORKSPACE}"                                        \\
                         --archive-urls="${DBZ_CONNECTOR_ARCHIVE_URLS}"              \\
+                        --kafka-url="${KAFKA_URL}"                                  \\
+                        --dbz-scripts="${DBZ_SCRIPTS_VERSION}"                      \\
                         --libs="${DBZ_EXTRA_LIBS}"                                  \\
                         --image="${RHEL_IMAGE}"                                     \\
                         --tags="${EXTRA_IMAGE_TAGS}"                                \\

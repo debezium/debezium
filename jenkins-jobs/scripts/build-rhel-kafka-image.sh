@@ -4,7 +4,7 @@ DOCKER_FILE=${DIR}/../docker/rhel_kafka/Dockerfile
 PLUGIN_DIR="plugins"
 EXTRA_LIBS=""
 
-OPTS=$(getopt -o d:i:a:k:l:f:r:o:t:g: --long dir:,image:,archive-urls:,kafka-url:,libs:,dockerfile:,registry:,organisation:,tags:,auto-tag:,dest-login:,dest-pass:,img-output: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o d:i:a:k:z:l:f:r:o:t:g: --long dir:,image:,archive-urls:,kafka-url:,dbz-scripts:,libs:,dockerfile:,registry:,organisation:,tags:,auto-tag:,dest-login:,dest-pass:,img-output: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -15,6 +15,7 @@ while true; do
     -i | --image )              IMAGE=$2;                           shift; shift ;;
     -a | --archive-urls )       ARCHIVE_URLS=$2;                    shift; shift ;;
     -k | --kafka-url )          KAFKA_URL=$2;                       shift; shift ;;
+    -z | --dbz-scripts )        DEBEZIUM_VERSION=$2;                shift; shift ;;
     -l | --libs )               EXTRA_LIBS=$2;                      shift; shift ;;
     -f | --dockerfile )         DOCKER_FILE=$2;                     shift; shift ;;
     -r | --registry )           REGISTRY=$2;                        shift; shift ;;
@@ -76,7 +77,7 @@ pushd "${BUILD_DIR}" || exit
 PLUGIN_DIR_BUILDARG="./${PLUGIN_DIR##*/}"
 
 echo "[Build] Building ${image_dbz} from ${IMAGE}"
-docker build . -t "$target" --build-arg IMAGE="${IMAGE}" --build-arg KAFKA_SOURCE_PATH="${KAFKA_URL}" --build-arg DEBEZIUM_CONNECTORS="${PLUGIN_DIR_BUILDARG}" || exit
+docker build . -t "$target" --build-arg IMAGE="${IMAGE}" --build-arg KAFKA_SOURCE_PATH="${KAFKA_URL}" --build-arg DEBEZIUM_CONNECTORS="${PLUGIN_DIR_BUILDARG}" --build-arg DEBEZIUM_VERSION="${DEBEZIUM_VERSION}"|| exit
 popd || exit
 
 if [ "${AUTO_TAG}" = "true" ] ; then
