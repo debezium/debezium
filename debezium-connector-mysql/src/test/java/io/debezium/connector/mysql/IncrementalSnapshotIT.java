@@ -89,13 +89,30 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     }
 
     @Override
+    protected List<String> topicNames() {
+        return List.of(DATABASE.topicForTable("a"), DATABASE.topicForTable("c"));
+    }
+
+    @Override
     protected String tableName() {
         return tableNameId().toQuotedString('`');
     }
 
     @Override
+    protected List<String> tableNames() {
+        final String tableA = TableId.parse(DATABASE.qualifiedTableName("a")).toQuotedString('`');
+        final String tableB = TableId.parse(DATABASE.qualifiedTableName("c")).toQuotedString('`');
+        return List.of(tableA, tableB);
+    }
+
+    @Override
     protected String signalTableName() {
         return tableNameId("debezium_signal").toQuotedString('`');
+    }
+
+    @Override
+    protected String signalTableNameSanitized() {
+        return DATABASE.qualifiedTableName("debezium_signal");
     }
 
     @Override
@@ -106,6 +123,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Override
     protected String tableDataCollectionId() {
         return tableNameId().toString();
+    }
+
+    @Override
+    protected List<String> tableDataCollectionIds() {
+        return List.of(tableNameId().toString(), tableNameId("c").toString());
     }
 
     private String dataCollectionName(String table) {

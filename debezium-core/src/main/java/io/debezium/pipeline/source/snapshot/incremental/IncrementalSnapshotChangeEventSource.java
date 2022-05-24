@@ -29,6 +29,8 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
     void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext)
             throws InterruptedException;
 
+    void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext);
+
     default void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
     }
 

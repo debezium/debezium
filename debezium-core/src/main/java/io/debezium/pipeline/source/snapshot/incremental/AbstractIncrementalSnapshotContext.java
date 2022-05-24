@@ -175,6 +175,18 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return newDataCollectionIds;
     }
 
+    @Override
+    public void stopSnapshot() {
+        this.dataCollectionsToSnapshot.clear();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
+        final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
+        return dataCollectionsToSnapshot.remove(collectionId);
+    }
+
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
         final String lastEventSentKeyStr = (String) offsets.get(EVENT_PRIMARY_KEY);
         context.chunkEndPosition = (lastEventSentKeyStr != null)

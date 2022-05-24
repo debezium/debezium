@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
@@ -38,6 +39,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
 
         TestHelper.dropTable(connection, "a");
         connection.execute("CREATE TABLE a (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
+        connection.execute("CREATE TABLE b (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
 
         // todo: creates signal table in the PDB, do we want it to be in the CDB?
         TestHelper.dropTable(connection, "debezium_signal");
@@ -55,6 +57,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         stopConnector();
         if (connection != null) {
             TestHelper.dropTable(connection, "a");
+            TestHelper.dropTable(connection, "b");
             TestHelper.dropTable(connection, "debezium_signal");
             connection.close();
         }
@@ -78,6 +81,13 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected void populateTables() throws SQLException {
+        super.populateTables();
+        TestHelper.streamTable(connection, "a");
+        TestHelper.streamTable(connection, "b");
+    }
+
+    @Override
     protected Class<OracleConnector> connectorClass() {
         return OracleConnector.class;
     }
@@ -93,13 +103,28 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected List<String> topicNames() {
+        return List.of("server1.DEBEZIUM.A", "server1.DEBEZIUM.B");
+    }
+
+    @Override
     protected String tableName() {
         return "DEBEZIUM.A";
     }
 
     @Override
+    protected List<String> tableNames() {
+        return List.of("DEBEZIUM.A", "DEBEZIUM.B");
+    }
+
+    @Override
     protected String tableDataCollectionId() {
         return "ORCLPDB1.DEBEZIUM.A";
+    }
+
+    @Override
+    protected List<String> tableDataCollectionIds() {
+        return List.of("ORCLPDB1.DEBEZIUM.A", "ORCLPDB1.DEBEZIUM.B");
     }
 
     @Override
@@ -112,7 +137,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, "ORCLPDB1.DEBEZIUM.DEBEZIUM_SIGNAL")
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL")
                 .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
 
@@ -124,6 +149,11 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Override
     protected String pkFieldName() {
         return "Pk";
+    }
+
+    @Override
+    protected String getSignalTypeFieldName() {
+        return "TYPE";
     }
 
     @Override

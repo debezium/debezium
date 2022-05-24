@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +33,7 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
         connection = TestHelper.testConnectionWithOptionRecompile();
         connection.execute(
                 "CREATE TABLE a (pk int primary key, aa int)",
+                "CREATE TABLE b (pk int primary key, aa int)",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
         TestHelper.enableTableCdc(connection, "debezium_signal");
 
@@ -53,6 +55,13 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected void populateTables() throws SQLException {
+        super.populateTables();
+        TestHelper.enableTableCdc(connection, "a");
+        TestHelper.enableTableCdc(connection, "b");
+    }
+
+    @Override
     protected Class<SqlServerConnector> connectorClass() {
         return SqlServerConnector.class;
     }
@@ -68,8 +77,18 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    public List<String> topicNames() {
+        return List.of("server1.dbo.a", "server1.dbo.b");
+    }
+
+    @Override
     protected String tableName() {
         return "testDB.dbo.a";
+    }
+
+    @Override
+    protected List<String> tableNames() {
+        return List.of("testDB.dbo.a", "testDB.dbo.b");
     }
 
     @Override

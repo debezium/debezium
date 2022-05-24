@@ -26,17 +26,11 @@ import io.debezium.schema.DataCollectionId;
  * @author Jiri Pechanec
  *
  */
-public class ExecuteSnapshot<P extends Partition> implements Signal.Action<P> {
+public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal<P> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExecuteSnapshot.class);
-    private static final String FIELD_DATA_COLLECTIONS = "data-collections";
-    private static final String FIELD_TYPE = "type";
 
     public static final String NAME = "execute-snapshot";
-
-    public enum SnapshotType {
-        INCREMENTAL
-    }
 
     private final EventDispatcher<P, ? extends DataCollectionId> dispatcher;
 
@@ -59,21 +53,6 @@ public class ExecuteSnapshot<P extends Partition> implements Signal.Action<P> {
                 break;
         }
         return true;
-    }
-
-    public static SnapshotType getSnapshotType(Document data) {
-        final String typeStr = data.getString(FIELD_TYPE);
-        SnapshotType type = SnapshotType.INCREMENTAL;
-        if (typeStr != null) {
-            for (SnapshotType option : SnapshotType.values()) {
-                if (option.name().equalsIgnoreCase(typeStr)) {
-                    return option;
-                }
-            }
-            LOGGER.warn("Detected an unexpected snapshot type '{}'", typeStr);
-            return null;
-        }
-        return type;
     }
 
     public static List<String> getDataCollections(Document data) {
