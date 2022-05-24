@@ -18,8 +18,9 @@ ENV KAFKA_HOME=/opt/kafka \
 #
 # Install openjdk-17, iproute and unzip
 #
-RUN dnf -y install java-17-openjdk 
+RUN dnf -y install java-17-openjdk
 RUN dnf -y install unzip
+RUN dnf -y install nmap
 RUN dnf -y install iproute && dnf clean all
 
 #
