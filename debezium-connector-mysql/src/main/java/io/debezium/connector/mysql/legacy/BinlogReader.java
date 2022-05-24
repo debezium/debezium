@@ -82,6 +82,7 @@ import io.debezium.connector.mysql.legacy.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
@@ -317,9 +318,8 @@ public class BinlogReader extends AbstractReader {
 
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client, context, name, changeEventQueueMetrics);
-        heartbeat = Heartbeat.create(context.getConnectorConfig().getHeartbeatInterval(),
-                context.topicSelector().getHeartbeatTopic(), context.getConnectorConfig().getLogicalName(),
-                SchemaNameAdjuster.create());
+        heartbeat = new HeartbeatFactory<TableId>(context.getConnectorConfig(), context.topicSelector(),
+                SchemaNameAdjuster.create()).createHeartbeat();
     }
 
     @Override

@@ -44,7 +44,7 @@ import io.debezium.connector.mysql.legacy.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope;
 import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.function.Predicates;
-import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.StatementFactory;
 import io.debezium.relational.Column;
@@ -738,13 +738,10 @@ public class SnapshotReader extends AbstractReader {
                     // Mark the source as having completed the snapshot. This will ensure the `source` field on records
                     // are not denoted as a snapshot ...
                     source.completeSnapshot();
-                    Heartbeat
-                            .create(
-                                    context.getConnectorConfig().getHeartbeatInterval(),
-                                    context.topicSelector().getHeartbeatTopic(),
-                                    context.getConnectorConfig().getLogicalName(),
-                                    SchemaNameAdjuster.create())
-                            .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
+                    new HeartbeatFactory<TableId>(context.getConnectorConfig(), context.topicSelector(),
+                            SchemaNameAdjuster.create())
+                                    .createHeartbeat()
+                                    .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
                 }
                 finally {
                     // Set the completion flag ...
