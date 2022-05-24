@@ -318,6 +318,57 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public void stopSnapshot(MongoDbPartition partition, List<String> dataCollectionIds, OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
+        if (context.snapshotRunning()) {
+            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+                LOGGER.info("Stopping incremental snapshot.");
+                try {
+                    // This must be called prior to closeWindow to ensure that the correct state is set
+                    // to prevent chunk rads from triggering additional open/close events.
+                    context.stopSnapshot();
+
+                    // Clear the state
+                    window.clear();
+                    closeWindow(partition, context.currentChunkId(), offsetContext);
+
+                    progressListener.snapshotAborted(partition);
+                }
+                catch (InterruptedException e) {
+                    LOGGER.warn("Failed to stop snapshot successfully.", e);
+                }
+            }
+            else {
+                LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionIds);
+                final String rsName = replicaSets.all().get(0).replicaSetName();
+                dataCollectionIds = dataCollectionIds.stream().map(x -> rsName + "." + x).collect(Collectors.toList());
+                for (String dataCollectionId : dataCollectionIds) {
+                    final CollectionId collectionId = CollectionId.parse(dataCollectionId);
+                    if (currentCollection != null && currentCollection.id().equals(collectionId)) {
+                        window.clear();
+                        LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
+
+                        collectionScanCompleted(partition);
+                        nextDataCollection(partition);
+                    }
+                    else {
+                        if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
+                            LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
+                        }
+                        else {
+                            LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            LOGGER.warn("No active incremental snapshot, stop ignored");
+        }
+    }
+
     /**
      * Dispatches the data change events for the records of a single table.
      */

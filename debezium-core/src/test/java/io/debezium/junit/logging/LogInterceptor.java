@@ -110,6 +110,10 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
         return false;
     }
 
+    public void clear() {
+        events.clear();
+    }
+
     private boolean containsMessage(Level level, String text) {
         for (ILoggingEvent event : events) {
             if (event.getLevel().equals(level) && event.getFormattedMessage().toString().contains(text)) {

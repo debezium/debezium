@@ -22,12 +22,14 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.engine.DebeziumEngine;
@@ -35,6 +37,8 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
+import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.signal.StopSnapshot;
 import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
@@ -53,7 +57,19 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract String tableName();
 
+    protected List<String> topicNames() {
+        return List.of(topicName());
+    }
+
+    protected List<String> tableNames() {
+        return List.of(tableName());
+    }
+
     protected abstract String signalTableName();
+
+    protected String signalTableNameSanitized() {
+        return signalTableName();
+    }
 
     protected abstract Configuration.Builder config();
 
@@ -69,6 +85,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return tableName();
     }
 
+    protected List<String> tableDataCollectionIds() {
+        return tableNames();
+    }
+
     protected void populateTable(JdbcConnection connection, String tableName) throws SQLException {
         connection.setAutoCommit(false);
         for (int i = 0; i < ROW_COUNT; i++) {
@@ -82,9 +102,21 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         populateTable(connection, tableName());
     }
 
+    protected void populateTables(JdbcConnection connection) throws SQLException {
+        for (String tableName : tableNames()) {
+            populateTable(connection, tableName);
+        }
+    }
+
     protected void populateTable() throws SQLException {
         try (final JdbcConnection connection = databaseConnection()) {
             populateTable(connection);
+        }
+    }
+
+    protected void populateTables() throws SQLException {
+        try (final JdbcConnection connection = databaseConnection()) {
+            populateTables(connection);
         }
     }
 
@@ -108,14 +140,20 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true, null);
+        return consumeMixedWithIncrementalSnapshot(recordCount, topicName());
+    }
+
+    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, String topicName) throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true, null,
+                topicName);
     }
 
     protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount, Function<SourceRecord, V> valueConverter,
                                                                       Predicate<Map.Entry<Integer, V>> dataCompleted,
-                                                                      Consumer<List<SourceRecord>> recordConsumer)
+                                                                      Consumer<List<SourceRecord>> recordConsumer,
+                                                                      String topicName)
             throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted, k -> k.getInt32(pkFieldName()), valueConverter, topicName(), recordConsumer);
+        return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted, k -> k.getInt32(pkFieldName()), valueConverter, topicName, recordConsumer);
     }
 
     protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount,
@@ -160,20 +198,20 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), x -> true, null);
+        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), x -> true, null, topicName());
     }
 
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, Integer>> dataCompleted,
                                                                         Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
         return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), dataCompleted,
-                recordConsumer);
+                recordConsumer, topicName());
     }
 
     protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, SourceRecord>> dataCompleted,
                                                                                     Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), dataCompleted, recordConsumer);
+        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), dataCompleted, recordConsumer, topicName());
     }
 
     protected String valueFieldName() {
@@ -184,6 +222,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return "pk";
     }
 
+    protected String getSignalTypeFieldName() {
+        return "type";
+    }
+
     protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
         final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
                 .map(x -> '"' + x + '"')
@@ -192,6 +234,27 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             String query = String.format(
                     "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
                     signalTableName(), dataCollectionIdsList);
+            logger.info("Sending signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send signal", e);
+        }
+    }
+
+    protected void sendAdHocSnapshotStopSignal(String... dataCollectionIds) throws SQLException {
+        String collections = "";
+        if (dataCollectionIds.length > 0) {
+            final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
+                    .map(x -> '"' + x + '"')
+                    .collect(Collectors.joining(", "));
+            collections = ",\"data-collections\": [" + dataCollectionIdsList + "]";
+        }
+
+        try (final JdbcConnection connection = databaseConnection()) {
+            String query = String.format(
+                    "INSERT INTO %s VALUES('ad-hoc', 'stop-snapshot', '{\"type\": \"INCREMENTAL\"" + collections + "}')",
+                    signalTableName());
             logger.info("Sending signal with query {}", query);
             connection.execute(query);
         }
@@ -481,6 +544,271 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void stopCurrentIncrementalSnapshotWithoutCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 1 to have very small batches to guarantee that when we stop
+        // we are still within the incremental snapshot rather than it being performed with one
+        // round trip to the database
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+
+        // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
+        sendAdHocSnapshotSignalAndWait();
+
+        // stop ad-hoc snapshot without specifying any collections, canceling the entire incremental snapshot
+        // This waits until we've received the stop signal.
+        sendAdHocSnapshotStopSignalAndWait();
+
+        // Consume any residual left-over events after stopping incremental snapshots such as open/close
+        // and wait for the stop message in the connector logs
+        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+                interceptor, "Stopping incremental snapshot")).isTrue();
+
+        // stop the connector
+        stopConnector((r) -> interceptor.clear());
+
+        // restart the connector
+        // should start with no available records, should not have any incremental snapshot state
+        startConnector();
+        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 1 to have very small batches to guarantee that when we stop
+        // we are still within the incremental snapshot rather than it being performed with one
+        // round trip to the database
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+
+        // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
+        sendAdHocSnapshotSignalAndWait();
+
+        // stop ad-hoc snapshot without specifying any collections, canceling the entire incremental snapshot
+        // This waits until we've received the stop signal.
+        sendAdHocSnapshotStopSignalAndWait(tableDataCollectionId());
+
+        // Consume any residual left-over events after stopping incremental snapshots such as open/close
+        // and wait for the stop message in the connector logs
+        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+                interceptor, "Removing '[" + tableDataCollectionId() + "]' collections from incremental snapshot")).isTrue();
+
+        // stop the connector
+        stopConnector((r) -> interceptor.clear());
+
+        // restart the connector
+        // should start with no available records, should not have any incremental snapshot state
+        startConnector();
+        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 250, this gives us enough granularity with the incremental
+        // snapshot to have a couple round trips for the first table but enough table to trigger
+        // the removal of the second table before it starts being processed.
+        populateTables();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
+
+        final List<String> collectionIds = tableDataCollectionIds();
+        Assertions.assertThat(collectionIds).hasSize(2);
+
+        final List<String> tableNames = tableNames();
+        Assertions.assertThat(tableNames).hasSize(2);
+
+        final List<String> topicNames = topicNames();
+        Assertions.assertThat(topicNames).hasSize(2);
+
+        final String collectionIdToRemove = collectionIds.get(1);
+        final String tableToSnapshot = tableNames.get(0);
+        final String topicToConsume = topicNames.get(0);
+
+        // Send the start signal for all collections and stop for the second collection
+        sendAdHocSnapshotSignal(collectionIds.toArray(new String[0]));
+        sendAdHocSnapshotStopSignal(collectionIdToRemove);
+
+        // Wait until the stop has been processed, verifying it was removed from the snapshot.
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableToSnapshot,
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void removeStartedCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 250, this gives us enough granularity with the incremental
+        // snapshot to have a couple round trips for the first table but enough table to trigger
+        // the removal of the second table before it starts being processed.
+        populateTables();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
+
+        final List<String> collectionIds = tableDataCollectionIds();
+        Assertions.assertThat(collectionIds).hasSize(2);
+
+        final List<String> tableNames = tableNames();
+        Assertions.assertThat(tableNames).hasSize(2);
+
+        final List<String> topicNames = topicNames();
+        Assertions.assertThat(topicNames).hasSize(2);
+
+        final String collectionIdToRemove = collectionIds.get(0);
+        final String tableToSnapshot = tableNames.get(1);
+        final String topicToConsume = topicNames.get(1);
+
+        // Send the start signal for all collections and stop for the second collection
+        sendAdHocSnapshotSignal(collectionIds.toArray(new String[0]));
+        sendAdHocSnapshotStopSignal(collectionIdToRemove);
+
+        // Wait until the stop has been processed, verifying it was removed from the snapshot.
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableToSnapshot,
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {
+        // Sends the adhoc snapshot signal and waits for the signal event to have been received
+        if (collectionIds.length == 0) {
+            sendAdHocSnapshotSignal();
+        }
+        else {
+            sendAdHocSnapshotSignal(collectionIds);
+        }
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            final AtomicBoolean result = new AtomicBoolean(false);
+            consumeAvailableRecords(r -> {
+                if (r.topic().endsWith(signalTableNameSanitized())) {
+                    result.set(true);
+                }
+            });
+            return result.get();
+        });
+    }
+
+    protected void sendAdHocSnapshotStopSignalAndWait(String... collectionIds) throws Exception {
+        sendAdHocSnapshotStopSignal(collectionIds);
+
+        // Wait for stop signal received and at least one incremental snapshot record
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            final AtomicBoolean stopSignal = new AtomicBoolean(false);
+            consumeAvailableRecords(r -> {
+                if (r.topic().endsWith(signalTableNameSanitized())) {
+                    final Struct after = ((Struct) r.value()).getStruct(Envelope.FieldName.AFTER);
+                    if (after != null) {
+                        final String type = after.getString(getSignalTypeFieldName());
+                        if (StopSnapshot.NAME.equals(type)) {
+                            stopSignal.set(true);
+                        }
+                    }
+                }
+            });
+            return stopSignal.get();
+        });
+    }
+
+    protected boolean consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(LogInterceptor interceptor, String stopMessage) throws Exception {
+        // When an incremental snapshot is stopped, there may be some residual open/close events that
+        // have been written concurrently to the signal table after the stop signal. We want to make
+        // sure that those have all been read before stopping the connector.
+        final AtomicBoolean stopMessageFound = new AtomicBoolean(false);
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .pollDelay(5, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    if (interceptor.containsMessage(stopMessage)) {
+                        stopMessageFound.set(true);
+                    }
+                    return consumeAvailableRecords(r -> {
+                    }) == 0;
+                });
+        return stopMessageFound.get();
     }
 
     @Override

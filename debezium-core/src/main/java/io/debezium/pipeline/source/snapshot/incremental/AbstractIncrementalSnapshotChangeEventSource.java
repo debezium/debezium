@@ -434,6 +434,54 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context.snapshotRunning()) {
+            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+                LOGGER.info("Stopping incremental snapshot.");
+                try {
+                    // This must be called prior to closeWindow to ensure the correct state is set
+                    // to prevent chunk reads from triggering additional open/close events.
+                    context.stopSnapshot();
+
+                    // Clear the state
+                    window.clear();
+                    closeWindow(partition, context.currentChunkId(), offsetContext);
+
+                    progressListener.snapshotAborted(partition);
+                }
+                catch (InterruptedException e) {
+                    LOGGER.warn("Failed to stop snapshot successfully.", e);
+                }
+            }
+            else {
+                LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionIds);
+                for (String dataCollectionId : dataCollectionIds) {
+                    final TableId collectionId = TableId.parse(dataCollectionId);
+                    if (currentTable != null && currentTable.id().equals(collectionId)) {
+                        window.clear();
+                        LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
+                        tableScanCompleted(partition);
+                        nextDataCollection(partition);
+                    }
+                    else {
+                        if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
+                            LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
+                        }
+                        else {
+                            LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            LOGGER.warn("No active incremental snapshot, stop ignored");
+        }
+    }
+
     protected void addKeyColumnsToCondition(Table table, StringBuilder sql, String predicate) {
         for (Iterator<Column> i = getKeyMapper().getKeyKolumns(table).iterator(); i.hasNext();) {
             final Column key = i.next();

@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.bson.Document;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
@@ -34,7 +35,11 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
+import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.signal.StopSnapshot;
 import io.debezium.util.Testing;
 
 /**
@@ -49,7 +54,10 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
     private static final String DATABASE_NAME = "dbA";
     private static final String COLLECTION_NAME = "c1";
-    private static final String FULL_COLLECTION_NAME = DATABASE_NAME + "." + "c1";
+    private static final String COLLECTION2_NAME = "c2";
+    private static final String SIGNAL_COLLECTION_NAME = DATABASE_NAME + ".signals";
+    private static final String FULL_COLLECTION_NAME = DATABASE_NAME + "." + COLLECTION_NAME;
+    private static final String FULL_COLLECTION2_NAME = DATABASE_NAME + "." + COLLECTION2_NAME;
 
     private static final String DOCUMENT_ID = "_id";
 
@@ -77,8 +85,8 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return TestHelper.getConfiguration()
                 .edit()
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.signals")
-                .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, "dbA.signals")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2,dbA.signals")
+                .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER);
     }
@@ -87,12 +95,24 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return COLLECTION_NAME;
     }
 
+    protected List<String> dataCollectionNames() {
+        return List.of(COLLECTION_NAME, COLLECTION2_NAME);
+    }
+
     protected String fullDataCollectionName() {
         return FULL_COLLECTION_NAME;
     }
 
+    protected List<String> fullDataCollectionNames() {
+        return List.of(FULL_COLLECTION_NAME, FULL_COLLECTION2_NAME);
+    }
+
     protected String topicName() {
         return "mongo1" + "." + fullDataCollectionName();
+    }
+
+    protected List<String> topicNames() {
+        return fullDataCollectionNames().stream().map(x -> "mongo1." + x).collect(Collectors.toList());
     }
 
     protected void populateDataCollection(MongoPrimary connection, String dataCollectionName) {
@@ -109,18 +129,32 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         populateDataCollection(connection, dataCollectionName());
     }
 
+    protected void populateDataCollections(MongoPrimary connection) {
+        for (String dataCollectionName : dataCollectionNames()) {
+            populateDataCollection(connection, dataCollectionName);
+        }
+    }
+
     protected void populateDataCollection() {
         populateDataCollection(primary());
     }
 
+    protected void populateDataCollections() {
+        populateDataCollections(primary());
+    }
+
     protected void insertAdditionalData() {
+        insertAdditionalData(COLLECTION_NAME);
+    }
+
+    protected void insertAdditionalData(String collectionName) {
         final Document[] documents = new Document[ROW_COUNT];
         for (int i = 0; i < ROW_COUNT; i++) {
             final Document doc = new Document();
             doc.append(DOCUMENT_ID, i + ROW_COUNT + 1).append("aa", i + ROW_COUNT);
             documents[i] = doc;
         }
-        insertDocumentsInTx(DATABASE_NAME, COLLECTION_NAME, documents);
+        insertDocumentsInTx(DATABASE_NAME, collectionName, documents);
     }
 
     protected void updateData(int batchSize) {
@@ -178,12 +212,35 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 new Document[]{ Document.parse("{\"type\": \"execute-snapshot\", \"payload\": \"{\\\"data-collections\\\": [" + dataCollectionIdsList + "]}\"}") });
     }
 
+    protected void sendAdHocSnapshotStopSignal(String... dataCollectionIds) throws SQLException {
+        final String dataCollections;
+        if (dataCollectionIds.length == 0) {
+            dataCollections = "";
+        }
+        else {
+            final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
+                    .map(x -> "\\\"" + x + "\\\"")
+                    .collect(Collectors.joining(", "));
+            dataCollections = ", \\\"data-collections\\\": [" + dataCollectionIdsList + "]";
+        }
+        insertDocuments("dbA", "signals",
+                new Document[]{ Document.parse(
+                        "{\"type\": \"stop-snapshot\", \"payload\": \"{"
+                                + "\\\"type\\\": \\\"INCREMENTAL\\\""
+                                + dataCollections
+                                + "}\"}") });
+    }
+
     protected void sendAdHocSnapshotSignal() throws SQLException {
         sendAdHocSnapshotSignal(fullDataCollectionName());
     }
 
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, this::extractFieldValue, x -> true, null);
+        return consumeMixedWithIncrementalSnapshot(recordCount, topicName());
+    }
+
+    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, String topicName) throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, this::extractFieldValue, x -> true, null, topicName);
     }
 
     protected Integer extractFieldValue(SourceRecord record) {
@@ -196,10 +253,11 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
     protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount, Function<SourceRecord, V> valueConverter,
                                                                       Predicate<Map.Entry<Integer, V>> dataCompleted,
-                                                                      Consumer<List<SourceRecord>> recordConsumer)
+                                                                      Consumer<List<SourceRecord>> recordConsumer,
+                                                                      String topicName)
             throws InterruptedException {
         return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted,
-                k -> Integer.parseInt(k.getString(pkFieldName())), valueConverter, topicName(), recordConsumer);
+                k -> Integer.parseInt(k.getString(pkFieldName())), valueConverter, topicName, recordConsumer);
     }
 
     protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount,
@@ -244,19 +302,19 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), x -> true, null);
+        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), x -> true, null, topicName());
     }
 
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, Integer>> dataCompleted,
                                                                         Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, this::extractFieldValue, dataCompleted, recordConsumer);
+        return consumeMixedWithIncrementalSnapshot(recordCount, this::extractFieldValue, dataCompleted, recordConsumer, topicName());
     }
 
     protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, SourceRecord>> dataCompleted,
                                                                                     Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), dataCompleted, recordConsumer);
+        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), dataCompleted, recordConsumer, topicName());
     }
 
     protected String valueFieldName() {
@@ -423,6 +481,218 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void stopCurrentIncrementalSnapshotWithoutCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 1 to have very small batches to guarantee that when we stop
+        // we are still within the incremental snapshot rather than it being performed with one
+        // round trip to the database
+        populateDataCollection();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+
+        // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
+        sendAdHocSnapshotSignalAndWait();
+
+        // stop ad-hoc snapshot without specifying any collections, canceling the entire incremental snapshot
+        // This waits until we've received the stop signal.
+        sendAdHocSnapshotStopSignalAndWait();
+
+        // Consume any residual left-over events after stopping incremental snapshots such as open/close
+        // and wait for the stop message in the connector logs
+        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+                interceptor, "Stopping incremental snapshot")).isTrue();
+
+        // stop the connector
+        stopConnector((r) -> interceptor.clear());
+
+        // restart the connector
+        // should start with no available records, should not have any incremental snapshot state
+        startConnector();
+        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+
+        sendAdHocSnapshotSignal();
+
+        insertAdditionalData();
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 1 to have very small batches to guarantee that when we stop
+        // we are still within the incremental snapshot rather than it being performed with one
+        // round trip to the database
+        populateDataCollection();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+
+        // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
+        sendAdHocSnapshotSignalAndWait();
+
+        // stop ad-hoc snapshot without specifying any collections, canceling the entire incremental snapshot
+        // This waits until we've received the stop signal.
+        sendAdHocSnapshotStopSignalAndWait(fullDataCollectionName());
+
+        // Consume any residual left-over events after stopping incremental snapshots such as open/close
+        // and wait for the stop message in the connector logs
+        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+                interceptor, "Removing '[" + fullDataCollectionName() + "]' collections from incremental snapshot")).isTrue();
+
+        // stop the connector
+        stopConnector((r) -> interceptor.clear());
+
+        // restart the connector
+        // should start with no available records, should not have any incremental snapshot state
+        startConnector();
+        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+
+        sendAdHocSnapshotSignal();
+
+        insertAdditionalData();
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 250, this gives us enough granularity with the incremental
+        // snapshot to have a couple round trips for the first table but enough table to trigger
+        // the removal of the second table before it starts being processed.
+        populateDataCollections();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
+
+        final List<String> collectionIds = fullDataCollectionNames();
+        Assertions.assertThat(collectionIds).hasSize(2);
+
+        final String collectionIdToRemove = collectionIds.get(1);
+
+        // Send the start signal for all collections and stop for the second collection
+        sendAdHocSnapshotSignal(collectionIds.toArray(new String[0]));
+        sendAdHocSnapshotStopSignal(collectionIdToRemove);
+
+        // Wait until the stop has been processed, verifying it was removed from the snapshot.
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+
+        insertAdditionalData(COLLECTION_NAME);
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicName());
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4271")
+    public void removeStartedCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
+        final LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
+
+        // We will use chunk size of 250, this gives us enough granularity with the incremental
+        // snapshot to have a couple round trips for the first table but enough table to trigger
+        // the removal of the second table before it starts being processed.
+        populateDataCollections();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
+
+        final List<String> collectionIds = fullDataCollectionNames();
+        Assertions.assertThat(collectionIds).hasSize(2);
+
+        final List<String> topicNames = topicNames();
+        Assertions.assertThat(topicNames).hasSize(2);
+
+        final String collectionIdToRemove = collectionIds.get(0);
+
+        // Send the start signal for all collections and stop for the second collection
+        sendAdHocSnapshotSignal(collectionIds.toArray(new String[0]));
+        sendAdHocSnapshotStopSignal(collectionIdToRemove);
+
+        // Wait until the stop has been processed, verifying it was removed from the snapshot.
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+
+        insertAdditionalData(COLLECTION2_NAME);
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicNames.get(1));
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {
+        // Sends the adhoc snapshot signal and waits for the signal event to have been received
+        if (collectionIds.length == 0) {
+            sendAdHocSnapshotSignal();
+        }
+        else {
+            sendAdHocSnapshotSignal(collectionIds);
+        }
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            final AtomicBoolean result = new AtomicBoolean(false);
+            consumeAvailableRecords(r -> {
+                if (r.topic().endsWith(SIGNAL_COLLECTION_NAME)) {
+                    result.set(true);
+                }
+            });
+            return result.get();
+        });
+    }
+
+    protected void sendAdHocSnapshotStopSignalAndWait(String... collectionIds) throws Exception {
+        sendAdHocSnapshotStopSignal(collectionIds);
+
+        // Wait for stop signal received and at least one incremental snapshot record
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            final AtomicBoolean stopSignal = new AtomicBoolean(false);
+            consumeAvailableRecords(r -> {
+                if (r.topic().endsWith(SIGNAL_COLLECTION_NAME)) {
+                    final String after = ((Struct) r.value()).getString(Envelope.FieldName.AFTER);
+                    if (after != null) {
+                        final String type = Document.parse(after).getString("type");
+                        if (StopSnapshot.NAME.equals(type)) {
+                            stopSignal.set(true);
+                        }
+                    }
+                }
+            });
+            return stopSignal.get();
+        });
+    }
+
+    protected boolean consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(LogInterceptor interceptor, String stopMessage) throws Exception {
+        // When an incremental snapshot is stopped, there may be some residual open/close events that
+        // have been written concurrently to the signal table after the stop signal. We want to make
+        // sure that those have all been read before stopping the connector.
+        final AtomicBoolean stopMessageFound = new AtomicBoolean(false);
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .pollDelay(5, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    if (interceptor.containsMessage(stopMessage)) {
+                        stopMessageFound.set(true);
+                    }
+                    return consumeAvailableRecords(r -> {
+                    }) == 0;
+                });
+        return stopMessageFound.get();
     }
 
     @Override
