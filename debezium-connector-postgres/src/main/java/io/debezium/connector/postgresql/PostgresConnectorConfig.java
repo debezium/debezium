@@ -403,7 +403,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         @Deprecated
         WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
                 return new StreamingWal2JsonMessageDecoder();
             }
 
@@ -435,7 +435,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         @Deprecated
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
                 return new StreamingWal2JsonMessageDecoder();
             }
 
@@ -472,7 +472,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         @Deprecated
         WAL2JSON("wal2json") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
                 return new NonStreamingWal2JsonMessageDecoder();
             }
 
@@ -504,7 +504,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         @Deprecated
         WAL2JSON_RDS("wal2json_rds") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderContext config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
                 return new NonStreamingWal2JsonMessageDecoder();
             }
 
