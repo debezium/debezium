@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.ChangeConsumer;
@@ -132,17 +131,14 @@ public class DebeziumServer {
             props.setProperty("transforms", transforms.get());
             configToProperties(config, props, PROP_TRANSFORMS_PREFIX, "transforms.");
         }
-        if (!consumer.supportsTombstoneEvents()) {
-            props.setProperty(CommonConnectorConfig.TOMBSTONES_ON_DELETE.name(), Boolean.FALSE.toString());
-        }
         props.setProperty("name", name);
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
 
         engine = DebeziumEngine.create(keyFormat, valueFormat)
-                .notifying(consumer)
                 .using(props)
                 .using((DebeziumEngine.ConnectorCallback) health)
                 .using((DebeziumEngine.CompletionCallback) health)
+                .notifying(consumer)
                 .build();
 
         executor.execute(() -> {
