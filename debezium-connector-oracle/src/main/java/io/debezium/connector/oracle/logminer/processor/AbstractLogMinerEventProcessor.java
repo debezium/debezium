@@ -729,8 +729,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     LOGGER.warn("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
                     return;
                 default:
-                    // In this case, we explicitly log the situation in "trace" only and not as an error/warn.
-                    LOGGER.trace("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
+                    // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
+                    LOGGER.debug("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
                     return;
             }
         }

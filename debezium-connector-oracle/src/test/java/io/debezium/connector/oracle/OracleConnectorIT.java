@@ -97,6 +97,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     private static final long MICROS_PER_SECOND = TimeUnit.SECONDS.toMicros(1);
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
+    private static final String ERROR_PROCESSING_FAIL_MESSAGE = "Oracle LogMiner is unable to re-construct the SQL for '";
+    private static final String ERROR_PROCESSING_WARN_MESSAGE = "cannot be parsed. This event will be ignored and skipped.";
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
@@ -3634,11 +3636,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
-    private static final String ERROR_PROCESSING_FAIL_MESSAGE = "Oracle LogMiner is unable to re-construct the SQL for '";
-    private static final String ERROR_PROCESSING_WARN_MESSAGE = "cannot be parsed. This event will be ignored and skipped.";
-
     @Test
     @FixFor("DBZ-5147")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to Oracle LogMiner implementation")
     public void shouldStopWhenErrorProcessingFailureHandlingModeIsDefault() throws Exception {
         TestHelper.dropTable(connection, "dbz5147");
         try {
@@ -3694,6 +3694,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5147")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to Oracle LogMiner implementation")
     public void shouldLogWarningAndSkipWhenErrorProcessingFailureHandlingModeIsWarn() throws Exception {
         TestHelper.dropTable(connection, "dbz5147");
         try {
@@ -3754,6 +3755,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5147")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to Oracle LogMiner implementation")
     public void shouldSilentlySkipWhenErrorProcessingFailureHandlingModeIsSkip() throws Exception {
         TestHelper.dropTable(connection, "dbz5147");
         try {
