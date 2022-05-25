@@ -16,7 +16,6 @@ import io.debezium.testing.system.fixtures.connectors.PostgreSqlConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpPostgreSql;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.registry.OcpApicurio;
-import io.debezium.testing.system.tests.mysql.MySqlTests;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -35,7 +34,7 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpPostgreSql.class)
 @Fixture(PostgreSqlConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class OcpAvroPostgreSqlConnectorIT extends MySqlTests {
+public class OcpAvroPostgreSqlConnectorIT extends PostgreSqlTests {
 
     public OcpAvroPostgreSqlConnectorIT(KafkaController kafkaController,
                                         KafkaConnectController connectController,
