@@ -45,6 +45,7 @@ public class LogMinerEventRow {
     private static final int ROW_ID = 11;
     private static final int ROLLBACK_FLAG = 12;
     private static final int RS_ID = 13;
+    private static final int STATUS = 14;
 
     private Scn scn;
     private TableId tableId;
@@ -59,6 +60,7 @@ public class LogMinerEventRow {
     private boolean rollbackFlag;
     private String rsId;
     private String redoSql;
+    private int status;
 
     public Scn getScn() {
         return scn;
@@ -112,6 +114,10 @@ public class LogMinerEventRow {
         return redoSql;
     }
 
+    public int getStatus() {
+        return status;
+    }
+
     /**
      * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
      *
@@ -153,6 +159,7 @@ public class LogMinerEventRow {
         this.rollbackFlag = resultSet.getInt(ROLLBACK_FLAG) == 1;
         this.rsId = resultSet.getString(RS_ID);
         this.redoSql = getSqlRedo(resultSet);
+        this.status = resultSet.getInt(STATUS);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }

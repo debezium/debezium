@@ -719,6 +719,22 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         LOGGER.trace("DML: {}", row);
         LOGGER.trace("\t{}", row.getRedoSql());
 
+        if (row.getStatus() == 2) {
+            // The SQL in the SQL_REDO column is not valid and cannot be parsed.
+            switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                case FAIL:
+                    LOGGER.error("Oracle LogMiner is unable to re-construct the SQL for '{}'", row);
+                    throw new DebeziumException("Oracle failed to re-construct redo SQL '" + row.getRedoSql() + "'");
+                case WARN:
+                    LOGGER.warn("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
+                    return;
+                default:
+                    // In this case, we explicitly log the situation in "trace" only and not as an error/warn.
+                    LOGGER.trace("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
+                    return;
+            }
+        }
+
         counters.dmlCount++;
         switch (row.getEventType()) {
             case INSERT:
