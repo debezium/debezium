@@ -50,6 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Instantiator;
@@ -275,6 +276,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         @Override
         public Builder notifying(DebeziumEngine.ChangeConsumer<SourceRecord> handler) {
             this.handler = handler;
+            if (!config.hasKey(CommonConnectorConfig.TOMBSTONES_ON_DELETE.name()) && !handler.supportsTombstoneEvents()) {
+                LOGGER.info("Consumer doesn't support tombstone events, setting '{}' to false.", CommonConnectorConfig.TOMBSTONES_ON_DELETE.name());
+                config = config.edit().with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false).build();
+            }
             return this;
         }
 

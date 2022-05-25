@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -45,6 +46,7 @@ import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -2480,5 +2482,56 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-5052")
+    public void shouldNotSendTombstonesWhenNotSupportedByHandler() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "c")
+                .build();
+
+        start(MySqlConnector.class, config, new NoTombStonesHandler(consumedLines));
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products VALUES (201,'rubberduck','Rubber Duck',2.12);");
+                connection.execute("DELETE FROM products WHERE name = 'rubberduck'");
+                connection.execute("INSERT INTO products VALUES (201,'rubberduck','Rubber Duck',2.12);");
+                connection.execute("DELETE FROM products WHERE name = 'rubberduck'");
+            }
+        }
+
+        // INSERT is excluded, DELETE generates delete and tombstone event, but tombstones shouldn't be produced, thus 2 events overall.
+        SourceRecords records = consumeRecordsByTopic(2);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("products"));
+
+        assertDelete(changeEvents.get(0), "id", 201);
+        assertDelete(changeEvents.get(1), "id", 201);
+        assertThat(changeEvents.size()).isEqualTo(2);
+
+        stopConnector();
+    }
+
+    private static class NoTombStonesHandler implements DebeziumEngine.ChangeConsumer<SourceRecord> {
+        protected BlockingQueue<SourceRecord> recordQueue;
+
+        public NoTombStonesHandler(BlockingQueue<SourceRecord> recordQueue) {
+            this.recordQueue = recordQueue;
+        }
+
+        public void handleBatch(List<SourceRecord> records, DebeziumEngine.RecordCommitter<SourceRecord> committer) throws InterruptedException {
+            for (SourceRecord r : records) {
+                recordQueue.offer(r);
+                committer.markProcessed(r);
+            }
+        }
+
+        public boolean supportsTombstoneEvents() {
+            return false;
+        }
     }
 }
