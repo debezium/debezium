@@ -7,7 +7,7 @@ RUN curl --retry 7 -Lo /tmp/client-tools.tar.gz "https://mirror.openshift.com/pu
 RUN tar zxf /tmp/client-tools.tar.gz -C /usr/local/bin oc \
     && rm /tmp/client-tools.tar.gz
 
-ARG sdkman_init="/root/.sdkman/bin/sdkman-init.sh"DBZ
+ARG sdkman_init="/root/.sdkman/bin/sdkman-init.sh"
 
 RUN curl -s "https://get.sdkman.io" | bash
 RUN source $sdkman_init &&\
@@ -21,9 +21,10 @@ ARG branch
 RUN git clone --branch $branch $repository /testsuite/debezium
 RUN source $sdkman_init && mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 
-# always rerun steps below
+# always rerun steps below, execute incremental build
 ARG CACHEBUST=1
-RUN git  -C /testsuite/debezium pull $repository $branch
+RUN git -C /testsuite/debezium stash # TODO why doesn't it work without it
+RUN git -C /testsuite/debezium pull $repository $branch
 RUN source $sdkman_init && mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 
 COPY testsuite-deployment.sh /testsuite/testsuite-deployment.sh
