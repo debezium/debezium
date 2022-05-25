@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.time.Instant;
 import java.util.Map;
 
+import io.debezium.connector.common.BaseSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
@@ -64,6 +65,10 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         return offsetContext.getSourceInfo();
     }
 
+    public BaseSourceInfo getSourceInfoObject() {
+        return offsetContext.getSourceInfoObject();
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return offsetContext.isSnapshotRunning();
@@ -72,6 +77,16 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     @Override
     public void markSnapshotRecord() {
         offsetContext.markSnapshotRecord();
+    }
+
+    @Override
+    public void markFirstRecordInDataCollection() {
+        offsetContext.markFirstRecordInDataCollection();
+    }
+
+    @Override
+    public void markFirstSnapshotRecord() {
+        offsetContext.markFirstSnapshotRecord();
     }
 
     @Override

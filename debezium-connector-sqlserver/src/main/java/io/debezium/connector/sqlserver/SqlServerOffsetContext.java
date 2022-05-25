@@ -8,6 +8,8 @@ package io.debezium.connector.sqlserver;
 import java.time.Instant;
 import java.util.Map;
 
+import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.relational.RelationalOffsetContext;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
@@ -20,7 +22,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
-public class SqlServerOffsetContext implements OffsetContext {
+public class SqlServerOffsetContext extends RelationalOffsetContext {
 
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
@@ -82,7 +84,10 @@ public class SqlServerOffsetContext implements OffsetContext {
         return sourceInfoSchema;
     }
 
-    @Override
+    public BaseSourceInfo getSourceInfoObject() {
+        return sourceInfo;
+    }
+
     public Struct getSourceInfo() {
         return sourceInfo.struct();
     }
@@ -127,11 +132,6 @@ public class SqlServerOffsetContext implements OffsetContext {
         snapshotCompleted = true;
     }
 
-    @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
-    }
-
     public static class Loader implements OffsetContext.Loader<SqlServerOffsetContext> {
 
         private final SqlServerConnectorConfig connectorConfig;
@@ -169,21 +169,6 @@ public class SqlServerOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void markSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-    }
-
-    @Override
-    public void markLastRecordInDataCollection() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_DATA_COLLECTION);
-    }
-
-    @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
-    }
-
-    @Override
     public void event(DataCollectionId tableId, Instant timestamp) {
         sourceInfo.setSourceTime(timestamp);
         sourceInfo.setTableId((TableId) tableId);
@@ -192,11 +177,6 @@ public class SqlServerOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

@@ -15,14 +15,16 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.RelationalOffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
-public class MySqlOffsetContext implements OffsetContext {
+public class MySqlOffsetContext extends RelationalOffsetContext {
 
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String EVENTS_TO_SKIP_OFFSET_KEY = "event";
@@ -114,6 +116,10 @@ public class MySqlOffsetContext implements OffsetContext {
         return sourceInfo.struct();
     }
 
+    public BaseSourceInfo getSourceInfoObject() {
+        return sourceInfo;
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
@@ -132,11 +138,6 @@ public class MySqlOffsetContext implements OffsetContext {
     @Override
     public void preSnapshotCompletion() {
         snapshotCompleted = true;
-    }
-
-    @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
     private void setTransactionId() {
@@ -222,21 +223,6 @@ public class MySqlOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void markSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-    }
-
-    @Override
-    public void markLastRecordInDataCollection() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_DATA_COLLECTION);
-    }
-
-    @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
-    }
-
-    @Override
     public void event(DataCollectionId tableId, Instant timestamp) {
         sourceInfo.setSourceTime(timestamp);
         sourceInfo.tableEvent((TableId) tableId);
@@ -257,11 +243,6 @@ public class MySqlOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

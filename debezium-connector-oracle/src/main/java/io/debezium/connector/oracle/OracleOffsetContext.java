@@ -19,10 +19,11 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.RelationalOffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
-public class OracleOffsetContext implements OffsetContext {
+public class OracleOffsetContext extends RelationalOffsetContext {
 
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
@@ -204,7 +205,10 @@ public class OracleOffsetContext implements OffsetContext {
         return sourceInfoSchema;
     }
 
-    @Override
+    public BaseSourceInfo getSourceInfoObject() {
+        return sourceInfo;
+    }
+
     public Struct getSourceInfo() {
         return sourceInfo.struct();
     }
@@ -274,11 +278,6 @@ public class OracleOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
-    }
-
-    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("OracleOffsetContext [scn=").append(getScn());
 
@@ -292,21 +291,6 @@ public class OracleOffsetContext implements OffsetContext {
         sb.append("]");
 
         return sb.toString();
-    }
-
-    @Override
-    public void markSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-    }
-
-    @Override
-    public void markLastRecordInDataCollection() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_DATA_COLLECTION);
-    }
-
-    @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }
 
     @Override
@@ -328,11 +312,6 @@ public class OracleOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

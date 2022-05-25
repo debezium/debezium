@@ -52,7 +52,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O extends OffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
+public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O extends RelationalOffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
@@ -303,6 +303,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         LOGGER.info("Snapshotting contents of {} tables while still in transaction", tableCount);
         for (Iterator<TableId> tableIdIterator = snapshotContext.capturedTables.iterator(); tableIdIterator.hasNext();) {
             final TableId tableId = tableIdIterator.next();
+            snapshotContext.firstTable = tableOrder == 1;
             snapshotContext.lastTable = !tableIdIterator.hasNext();
 
             if (!sourceContext.isRunning()) {
@@ -348,13 +349,19 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final OptionalLong rowCount = rowCountForTable(table.id());
 
         try (Statement statement = readTableStatement(rowCount);
-             ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
+                ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
 
             ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
             snapshotContext.lastRecordInTable = false;
-            snapshotRecord(snapshotContext);
+
+            if (snapshotContext.firstTable) {
+                firstSnapshotRecord(snapshotContext);
+            }
+            else {
+                firstRecordInDataCollection(snapshotContext);
+            }
 
             if (rs.next()) {
                 while (!snapshotContext.lastRecordInTable) {
@@ -378,6 +385,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         }
                         snapshotProgressListener.rowsScanned(snapshotContext.partition, table.id(), rows);
                         logTimer = getTableScanLogTimer();
+                    }
+
+                    if (rows > 1) {
+                        snapshotRecord(snapshotContext);
                     }
 
                     if (snapshotContext.lastRecordInTable) {
@@ -407,6 +418,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     protected void snapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
         snapshotContext.offset.markSnapshotRecord();
+    }
+
+    protected void firstSnapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
+        snapshotContext.offset.markFirstSnapshotRecord();
+    }
+
+    protected void firstRecordInDataCollection(RelationalSnapshotContext<P, O> snapshotContext) {
+        snapshotContext.offset.markFirstRecordInDataCollection();
     }
 
     protected void lastRecordInDataCollection(RelationalSnapshotContext<P, O> snapshotContext) {
@@ -552,6 +571,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         public Set<TableId> capturedTables;
         public Set<TableId> capturedSchemaTables;
+        public boolean firstTable;
         public boolean lastTable;
         public boolean lastRecordInTable;
 
