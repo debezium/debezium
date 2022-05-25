@@ -357,22 +357,7 @@ public abstract class AbstractConnectorTest implements Testing {
         // Create the connector ...
         engine = EmbeddedEngine.create()
                 .using(config)
-                .notifying((record) -> {
-                    if (isStopRecord != null && isStopRecord.test(record)) {
-                        logger.error("Stopping connector after record as requested");
-                        throw new ConnectException("Stopping connector after record as requested");
-                    }
-                    // Test stopped the connector, remaining records are ignored
-                    if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
-                        return;
-                    }
-                    while (!consumedLines.offer(record)) {
-                        if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
-                            return;
-                        }
-                    }
-                    recordArrivedListener.accept(record);
-                })
+                .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
                 .using(wrapperCallback)
                 .using(connectorCallback)
@@ -396,6 +381,25 @@ public abstract class AbstractConnectorTest implements Testing {
                 fail("Interrupted while waiting for engine startup");
             }
         }
+    }
+
+    protected Consumer<SourceRecord> getConsumer(Predicate<SourceRecord> isStopRecord, Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
+        return (record) -> {
+            if (isStopRecord != null && isStopRecord.test(record)) {
+                logger.error("Stopping connector after record as requested");
+                throw new ConnectException("Stopping connector after record as requested");
+            }
+            // Test stopped the connector, remaining records are ignored
+            if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
+                return;
+            }
+            while (!consumedLines.offer(record)) {
+                if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
+                    return;
+                }
+            }
+            recordArrivedListener.accept(record);
+        };
     }
 
     /**
