@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.Network;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
+import io.debezium.testing.system.assertions.PlainKafkaAssertions;
 import io.debezium.testing.system.tools.kafka.DockerKafkaConnectController;
 import io.debezium.testing.system.tools.kafka.DockerKafkaConnectDeployer;
 import io.debezium.testing.system.tools.kafka.DockerKafkaController;
@@ -45,6 +46,7 @@ public class DockerKafka extends TestFixture {
 
         store(KafkaController.class, kafkaController);
         store(KafkaConnectController.class, connectController);
+        store(KafkaAssertions.class, new PlainKafkaAssertions(kafkaController.getDefaultConsumerProperties()));
     }
 
     @Override
