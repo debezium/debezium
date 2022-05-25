@@ -67,6 +67,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -3630,6 +3631,183 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "heartbeat");
             TestHelper.dropTable(connection, "dbz5119");
+        }
+    }
+
+    private static final String ERROR_PROCESSING_FAIL_MESSAGE = "Oracle LogMiner is unable to re-construct the SQL for '";
+    private static final String ERROR_PROCESSING_WARN_MESSAGE = "cannot be parsed. This event will be ignored and skipped.";
+
+    @Test
+    @FixFor("DBZ-5147")
+    public void shouldStopWhenErrorProcessingFailureHandlingModeIsDefault() throws Exception {
+        TestHelper.dropTable(connection, "dbz5147");
+        try {
+            connection.execute("CREATE TABLE dbz5147 (id numeric(9,0) primary key, data varchar2(50))");
+            connection.execute("INSERT INTO dbz5147 VALUES (1, 'test1')");
+            TestHelper.streamTable(connection, "dbz5147");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5147")
+                    // We explicitly use this mode here to enforce the schema evolution issues with DML
+                    // event failures because Oracle LogMiner doesn't track DDL evolution.
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords sourceRecords = consumeRecordsByTopic(1);
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5147");
+            assertThat(records).hasSize(1);
+            VerifyRecord.isValidRead(records.get(0), "ID", 1);
+
+            // We want to stop the connector and perform several DDL operations offline
+            // This will cause some DML events that happen offline to not be parsed by Oracle LogMiner.
+            stopConnector();
+
+            connection.execute("ALTER TABLE dbz5147 add data2 varchar2(50)");
+            connection.execute("INSERT INTO dbz5147 values (2, 'test2a', 'test2b')");
+            connection.execute("ALTER TABLE dbz5147 drop column data2");
+            connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
+
+            final LogInterceptor interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // wait and confirm that the exception is thrown.
+            Awaitility.await()
+                    .atMost(60, TimeUnit.SECONDS)
+                    .until(() -> interceptor.containsErrorMessage(ERROR_PROCESSING_FAIL_MESSAGE));
+
+            // there should be no records to consume since we hard-failed
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5147");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5147")
+    public void shouldLogWarningAndSkipWhenErrorProcessingFailureHandlingModeIsWarn() throws Exception {
+        TestHelper.dropTable(connection, "dbz5147");
+        try {
+            connection.execute("CREATE TABLE dbz5147 (id numeric(9,0) primary key, data varchar2(50))");
+            connection.execute("INSERT INTO dbz5147 VALUES (1, 'test1')");
+            TestHelper.streamTable(connection, "dbz5147");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5147")
+                    .with(OracleConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                    // We explicitly use this mode here to enforce the schema evolution issues with DML
+                    // event failures because Oracle LogMiner doesn't track DDL evolution.
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords sourceRecords = consumeRecordsByTopic(1);
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5147");
+            assertThat(records).hasSize(1);
+            VerifyRecord.isValidRead(records.get(0), "ID", 1);
+
+            // We want to stop the connector and perform several DDL operations offline
+            // This will cause some DML events that happen offline to not be parsed by Oracle LogMiner.
+            stopConnector();
+
+            connection.execute("ALTER TABLE dbz5147 add data2 varchar2(50)");
+            connection.execute("INSERT INTO dbz5147 values (2, 'test2a', 'test2b')");
+            connection.execute("ALTER TABLE dbz5147 drop column data2");
+            connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
+
+            final LogInterceptor interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // wait and confirm that the exception is thrown.
+            Awaitility.await()
+                    .atMost(60, TimeUnit.SECONDS)
+                    .until(() -> interceptor.containsWarnMessage(ERROR_PROCESSING_WARN_MESSAGE));
+
+            // There should only be one record to consume, the valid insert for ID=3.
+            // The record for ID=2 will have yielded a WARN log entry we checked above.
+            sourceRecords = consumeRecordsByTopic(1);
+            records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5147");
+            assertThat(records).hasSize(1);
+            VerifyRecord.isValidInsert(records.get(0), "ID", 3);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5147");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5147")
+    public void shouldSilentlySkipWhenErrorProcessingFailureHandlingModeIsSkip() throws Exception {
+        TestHelper.dropTable(connection, "dbz5147");
+        try {
+            connection.execute("CREATE TABLE dbz5147 (id numeric(9,0) primary key, data varchar2(50))");
+            connection.execute("INSERT INTO dbz5147 VALUES (1, 'test1')");
+            TestHelper.streamTable(connection, "dbz5147");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5147")
+                    .with(OracleConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "skip")
+                    // We explicitly use this mode here to enforce the schema evolution issues with DML
+                    // event failures because Oracle LogMiner doesn't track DDL evolution.
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords sourceRecords = consumeRecordsByTopic(1);
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5147");
+            assertThat(records).hasSize(1);
+            VerifyRecord.isValidRead(records.get(0), "ID", 1);
+
+            // We want to stop the connector and perform several DDL operations offline
+            // This will cause some DML events that happen offline to not be parsed by Oracle LogMiner.
+            stopConnector();
+
+            connection.execute("ALTER TABLE dbz5147 add data2 varchar2(50)");
+            connection.execute("INSERT INTO dbz5147 values (2, 'test2a', 'test2b')");
+            connection.execute("ALTER TABLE dbz5147 drop column data2");
+            connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
+
+            final LogInterceptor interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // There should only be one record to consume, the valid insert for ID=3.
+            // The record for ID=2 will have simply been skipped due to STATUS=2.
+            sourceRecords = consumeRecordsByTopic(1);
+            records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5147");
+            assertThat(records).hasSize(1);
+            VerifyRecord.isValidInsert(records.get(0), "ID", 3);
+
+            // No errors/warnings should have been logged for ID=2 record with STATUS=2.
+            assertThat(interceptor.containsErrorMessage(ERROR_PROCESSING_FAIL_MESSAGE)).isFalse();
+            assertThat(interceptor.containsWarnMessage(ERROR_PROCESSING_WARN_MESSAGE)).isFalse();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5147");
         }
     }
 
