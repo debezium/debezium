@@ -57,8 +57,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected static final int DEFAULT_PORT = 1528;
     protected static final int DEFAULT_LOG_FILE_QUERY_MAX_RETRIES = 5;
 
-    protected static final int DEFAULT_VIEW_FETCH_SIZE = 10_000;
-
     protected final static int DEFAULT_BATCH_SIZE = 20_000;
     protected final static int MIN_BATCH_SIZE = 1_000;
     protected final static int MAX_BATCH_SIZE = 100_000;
@@ -243,14 +241,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 13))
             .withDefault(MAX_BATCH_SIZE)
             .withDescription("The maximum SCN interval size that this connector will use when reading from redo/archive logs.");
-
-    public static final Field LOG_MINING_VIEW_FETCH_SIZE = Field.create("log.mining.view.fetch.size")
-            .withDisplayName("Number of content records that will be fetched.")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(DEFAULT_VIEW_FETCH_SIZE)
-            .withDescription("The number of content records that will be fetched from the LogMiner content view.");
 
     public static final Field LOG_MINING_SLEEP_TIME_MIN_MS = Field.create("log.mining.sleep.time.min.ms")
             .withDisplayName("Minimum sleep time in milliseconds when reading redo/archive logs.")
@@ -562,7 +552,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int logMiningBatchSizeMin;
     private final int logMiningBatchSizeMax;
     private final int logMiningBatchSizeDefault;
-    private final int logMiningViewFetchSize;
     private final Duration logMiningSleepTimeMin;
     private final Duration logMiningSleepTimeMax;
     private final Duration logMiningSleepTimeDefault;
@@ -610,7 +599,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
         this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
         this.logMiningBatchSizeDefault = config.getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
-        this.logMiningViewFetchSize = config.getInteger(LOG_MINING_VIEW_FETCH_SIZE);
         this.logMiningSleepTimeMin = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
         this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
         this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
@@ -1250,14 +1238,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public int getLogMiningBatchSizeMin() {
         return logMiningBatchSizeMin;
-    }
-
-    /**
-     *
-     * @return int Number of actual records that will be fetched from the log mining contents view
-     */
-    public int getLogMiningViewFetchSize() {
-        return logMiningViewFetchSize;
     }
 
     /**
