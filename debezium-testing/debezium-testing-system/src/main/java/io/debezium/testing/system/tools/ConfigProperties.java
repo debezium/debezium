@@ -51,7 +51,7 @@ public final class ConfigProperties {
     // Strimzi configuration
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
     public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
-    public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "v1beta2");
+    public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
     public static final boolean STRIMZI_KC_BUILD = booleanProperty("test.strimzi.kc.build", true);
     public static final String STRIMZI_KC_IMAGE = System.getProperty("test.strimzi.kc.image");
 
