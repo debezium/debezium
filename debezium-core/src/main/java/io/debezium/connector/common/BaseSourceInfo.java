@@ -18,9 +18,7 @@ public abstract class BaseSourceInfo extends AbstractSourceInfo {
     }
 
     public boolean isSnapshot() {
-        return snapshotRecord == SnapshotRecord.TRUE ||
-                snapshotRecord == SnapshotRecord.FIRST || snapshotRecord == SnapshotRecord.FIRST_IN_DATA_COLLECTION ||
-                snapshotRecord == SnapshotRecord.LAST || snapshotRecord == SnapshotRecord.LAST_IN_DATA_COLLECTION;
+        return snapshotRecord != SnapshotRecord.INCREMENTAL && snapshotRecord != SnapshotRecord.FALSE;
     }
 
     /**

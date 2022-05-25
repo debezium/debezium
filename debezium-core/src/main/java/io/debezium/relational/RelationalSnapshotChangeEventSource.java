@@ -356,13 +356,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             Timer logTimer = getTableScanLogTimer();
             snapshotContext.lastRecordInTable = false;
 
-            if (snapshotContext.firstTable) {
-                firstSnapshotRecord(snapshotContext);
-            }
-            else {
-                firstRecordInDataCollection(snapshotContext);
-            }
-
             if (rs.next()) {
                 while (!snapshotContext.lastRecordInTable) {
                     if (!sourceContext.isRunning()) {
@@ -372,7 +365,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     rows++;
                     final Object[] row = jdbcConnection.rowToArray(table, schema(), rs, columnArray);
 
-                    snapshotContext.lastRecordInTable = !rs.next();
                     if (logTimer.expired()) {
                         long stop = clock.currentTimeInMillis();
                         if (rowCount.isPresent()) {
@@ -387,18 +379,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         logTimer = getTableScanLogTimer();
                     }
 
-                    if (rows > 1) {
-                        snapshotRecord(snapshotContext);
-                    }
+                    snapshotContext.firstRecordInTable = rows == 1;
+                    snapshotContext.lastRecordInTable = !rs.next();
+                    setSnapshotMarker(snapshotContext);
 
-                    if (snapshotContext.lastRecordInTable) {
-                        if (snapshotContext.lastTable) {
-                            lastSnapshotRecord(snapshotContext);
-                        }
-                        else {
-                            lastRecordInDataCollection(snapshotContext);
-                        }
-                    }
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
                             getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
                 }
@@ -416,20 +400,23 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
     }
 
-    protected void snapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
-        snapshotContext.offset.markSnapshotRecord();
-    }
-
-    protected void firstSnapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
-        snapshotContext.offset.markFirstSnapshotRecord();
-    }
-
-    protected void firstRecordInDataCollection(RelationalSnapshotContext<P, O> snapshotContext) {
-        snapshotContext.offset.markFirstRecordInDataCollection();
-    }
-
-    protected void lastRecordInDataCollection(RelationalSnapshotContext<P, O> snapshotContext) {
-        snapshotContext.offset.markLastRecordInDataCollection();
+    private void setSnapshotMarker(RelationalSnapshotContext<P, O> snapshotContext) {
+        if (snapshotContext.lastRecordInTable) {
+            if (snapshotContext.lastTable) {
+                lastSnapshotRecord(snapshotContext);
+            }
+            else {
+                snapshotContext.offset.markLastRecordInDataCollection();
+            }
+        } else if (snapshotContext.firstRecordInTable) {
+            if (snapshotContext.firstTable) {
+                snapshotContext.offset.markFirstSnapshotRecord();
+            } else {
+                snapshotContext.offset.markFirstRecordInDataCollection();
+            }
+        } else {
+            snapshotContext.offset.markSnapshotRecord();
+        }
     }
 
     protected void lastSnapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
@@ -572,6 +559,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         public Set<TableId> capturedTables;
         public Set<TableId> capturedSchemaTables;
         public boolean firstTable;
+        public boolean firstRecordInTable;
         public boolean lastTable;
         public boolean lastRecordInTable;
 
