@@ -15,7 +15,6 @@ import io.debezium.testing.system.fixtures.DockerNetwork;
 import io.debezium.testing.system.fixtures.connectors.OracleConnector;
 import io.debezium.testing.system.fixtures.databases.docker.DockerOracle;
 import io.debezium.testing.system.fixtures.kafka.DockerKafka;
-import io.debezium.testing.system.tests.mysql.MySqlTests;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -33,7 +32,7 @@ import fixture5.annotations.Fixture;
 @Fixture(DockerOracle.class)
 @Fixture(OracleConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class DockerRhelOracleConnectorIT extends MySqlTests {
+public class DockerRhelOracleConnectorIT extends OracleTests {
 
     public DockerRhelOracleConnectorIT(KafkaController kafkaController,
                                        KafkaConnectController connectController,

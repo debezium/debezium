@@ -15,7 +15,6 @@ import io.debezium.testing.system.fixtures.DockerNetwork;
 import io.debezium.testing.system.fixtures.connectors.PostgreSqlConnector;
 import io.debezium.testing.system.fixtures.databases.docker.DockerPostgreSql;
 import io.debezium.testing.system.fixtures.kafka.DockerKafka;
-import io.debezium.testing.system.tests.mysql.MySqlTests;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -33,7 +32,7 @@ import fixture5.annotations.Fixture;
 @Fixture(DockerPostgreSql.class)
 @Fixture(PostgreSqlConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class DockerRhelPostgreSqlConnectorIT extends MySqlTests {
+public class DockerRhelPostgreSqlConnectorIT extends PostgreSqlTests {
 
     public DockerRhelPostgreSqlConnectorIT(KafkaController kafkaController,
                                            KafkaConnectController connectController,

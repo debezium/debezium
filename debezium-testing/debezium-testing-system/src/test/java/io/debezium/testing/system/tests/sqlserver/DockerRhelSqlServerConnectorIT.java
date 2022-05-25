@@ -15,7 +15,6 @@ import io.debezium.testing.system.fixtures.DockerNetwork;
 import io.debezium.testing.system.fixtures.connectors.SqlServerConnector;
 import io.debezium.testing.system.fixtures.databases.docker.DockerSqlServer;
 import io.debezium.testing.system.fixtures.kafka.DockerKafka;
-import io.debezium.testing.system.tests.mysql.MySqlTests;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -33,7 +32,7 @@ import fixture5.annotations.Fixture;
 @Fixture(DockerSqlServer.class)
 @Fixture(SqlServerConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class DockerRhelSqlServerConnectorIT extends MySqlTests {
+public class DockerRhelSqlServerConnectorIT extends SqlServerTests {
 
     public DockerRhelSqlServerConnectorIT(KafkaController kafkaController,
                                           KafkaConnectController connectController,
