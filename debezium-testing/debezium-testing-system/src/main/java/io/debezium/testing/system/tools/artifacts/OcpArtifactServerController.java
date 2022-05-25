@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.system.tools.artifacts;
 
+import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
@@ -16,9 +17,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.testing.system.tools.OpenShiftUtils;
+import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -33,6 +39,8 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 
 public class OcpArtifactServerController {
+
+    public static final Logger LOGGER = LoggerFactory.getLogger(OcpArtifactServerController.class);
 
     private final Deployment deployment;
     private final String project;
@@ -125,5 +133,15 @@ public class OcpArtifactServerController {
         List<String> listing = readArtifactListing();
 
         return listing.stream().map(l -> l.split("::", 2)).collect(toMap(e -> e[0], e -> createArtifactUrl(e[1])));
+    }
+
+    public void waitForServer() {
+        LOGGER.info("Waiting for Artifact Server");
+        ocp.apps()
+                .deployments()
+                .inNamespace(project)
+                .withName(deployment.getMetadata().getName())
+                .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), TimeUnit.MINUTES);
+
     }
 }

@@ -77,11 +77,11 @@ public class OcpArtifactServerDeployer extends AbstractOcpDeployer<OcpArtifactSe
         LOGGER.info("Deploying debezium artifact server");
         deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
 
-        ocpUtils.waitForPods(project, deployment.getMetadata().getLabels());
-
         service.getMetadata().setLabels(deployment.getMetadata().getLabels());
         service = ocp.services().inNamespace(project).createOrReplace(service);
 
-        return new OcpArtifactServerController(deployment, service, ocp, http);
+        OcpArtifactServerController controller = new OcpArtifactServerController(deployment, service, ocp, http);
+        controller.waitForServer();
+        return controller;
     }
 }
