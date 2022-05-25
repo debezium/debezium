@@ -2813,6 +2813,11 @@ Use this property to prevent snapshot interruptions when you start multiple conn
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector reads table contents in multiple batches of the specified size.
 
+|[[oracle-property-query-fetch-size]]<<oracle-property-query-fetch-size, `+query.fetch.size+`>>
+|No default
+|Specifies the number of rows that will be fetched for each database round-trip of a given query.
+Defaults to the JDBC driver's default fetch size.
+
 |[[oracle-property-sanitize-field-names]]<<oracle-property-sanitize-field-names, `+sanitize.field.names+`>>
 |`true` when the connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Specifies whether field names are normalized to comply with Avro naming requirements.
@@ -2921,10 +2926,6 @@ By setting this value to something greater than `0`, this specifies the maximum 
 |[[oracle-property-log-mining-sleep-time-increment-ms]]<<oracle-property-log-mining-sleep-time-increment-ms, `+log.mining.sleep.time.increment.ms+`>>
 |`200`
 |The maximum amount of time up or down that the connector uses to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.
-
-|[[oracle-property-log-mining-view-fetch-size]]<<oracle-property-log-mining-view-fetch-size, `+log.mining.view.fetch.size+`>>
-|`10000`
-|The number of content records that the connector fetches from the LogMiner content view.
 
 |[[oracle-property-log-mining-archive-log-hours]]<<oracle-property-log-mining-archive-log-hours, `+log.mining.archive.log.hours+`>>
 |`0`

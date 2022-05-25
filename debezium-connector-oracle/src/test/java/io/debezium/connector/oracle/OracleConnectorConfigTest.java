@@ -151,14 +151,24 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
-    public void validViewFetchSizeDefaults() throws Exception {
-
+    @FixFor("DBZ-5146")
+    public void validQueryFetchSizeDefaults() throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .with(OracleConnectorConfig.SERVER_NAME, "myserver")
                         .build());
+        assertEquals(connectorConfig.getQueryFetchSize(), 0);
+    }
 
-        assertEquals(connectorConfig.getLogMiningViewFetchSize(), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
+    @Test
+    @FixFor("DBZ-5146")
+    public void validQueryFetchSizeAvailable() throws Exception {
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                Configuration.create()
+                        .with(OracleConnectorConfig.SERVER_NAME, "myserver")
+                        .with(OracleConnectorConfig.QUERY_FETCH_SIZE, 10_000)
+                        .build());
+        assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
     }
 
     @Test

@@ -177,7 +177,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         try (PreparedStatement statement = createQueryStatement()) {
             LOGGER.debug("Fetching results for SCN [{}, {}]", startScn, endScn);
-            statement.setFetchSize(getConfig().getLogMiningViewFetchSize());
+            statement.setFetchSize(getConfig().getQueryFetchSize());
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, startScn.toString());
             statement.setString(2, endScn.toString());
