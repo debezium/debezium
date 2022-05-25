@@ -74,8 +74,8 @@ pipeline {
                     stage('Prepare Tests') {
                         steps {
                             script {
-                                env.ORACLE_ARTIFACT_VERSION='21.1.0.0'
-                                env.ORACLE_ARTIFACT_DIR = "${env.HOME}/oracle-libs/21.1.0.0.0"
+                                env.ORACLE_ARTIFACT_VERSION='21.5.0.0'
+                                env.ORACLE_ARTIFACT_DIR = "${env.HOME}/oracle-libs/21.5.0.0.0"
                                 env.MVN_PROP_PDB_NAME = env.ORACLE_VERSION.endsWith('noncbd') ? '-Ddatabase.pdb.name=' : ''
                             }
                             dir(env.ORACLE_ARTIFACT_DIR) {
