@@ -35,6 +35,7 @@ public final class ConfigProperties {
 
     // OpenShift configuration
     public static final String OCP_URL = System.getProperty("test.ocp.url");
+    public static final int OCP_REQUEST_RETRY_BACKOFF_LIMIT = Integer.parseInt(System.getProperty("test.ocp.request.retry.backoff.limit", "5"));
     public static final String OCP_USERNAME = System.getProperty("test.ocp.username");
     public static final String OCP_PASSWORD = System.getProperty("test.ocp.password");
     public static final String OCP_PROJECT_DBZ = System.getProperty("test.ocp.project.debezium");
