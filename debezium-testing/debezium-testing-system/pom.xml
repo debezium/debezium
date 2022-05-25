@@ -38,6 +38,7 @@
     <docker.image.oracle>quay.io/rh_integration/dbz-oracle:19.3.0</docker.image.oracle>
 
     <!--OCP configuration-->
+    <ocp.request.retry.backoff.limit>5</ocp.request.retry.backoff.limit>
     <ocp.project.debezium>debezium</ocp.project.debezium>
     <ocp.project.registry>debezium-registry</ocp.project.registry>
     <ocp.project.mysql>debezium-mysql</ocp.project.mysql>
@@ -456,6 +457,7 @@
 
                 <!--OCP Configuration-->
                 <test.ocp.url>${ocp.url}</test.ocp.url>
+                <test.ocp.request.retry.backoff.limit>${ocp.request.retry.backoff.limit}</test.ocp.request.retry.backoff.limit>
                 <test.ocp.username>${ocp.username}</test.ocp.username>
                 <test.ocp.password>${ocp.password}</test.ocp.password>
                 <test.ocp.pull.secret.paths>${ocp.pull.secret.paths}</test.ocp.pull.secret.paths>

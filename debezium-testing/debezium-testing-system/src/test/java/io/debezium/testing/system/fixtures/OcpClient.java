@@ -31,6 +31,7 @@ public class OcpClient extends TestFixture {
                 .withMasterUrl(ConfigProperties.OCP_URL)
                 .withUsername(ConfigProperties.OCP_USERNAME)
                 .withPassword(ConfigProperties.OCP_PASSWORD)
+                .withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
                 .withTrustCerts(true)
                 .build();
 
