@@ -1,26 +1,35 @@
-FROM registry.access.redhat.com/ubi8/openjdk-17
-USER root
-RUN microdnf install git   
-RUN microdnf install unzip
+FROM fedora:35
 
-ARG MAVEN=3.8.4
+RUN dnf -y install git unzip zip findutils
+
 ARG OCP_CLIENT=3.7.23
-
 RUN curl --retry 7 -Lo /tmp/client-tools.tar.gz "https://mirror.openshift.com/pub/openshift-v3/clients/${OCP_CLIENT}/linux/oc.tar.gz"
-RUN curl --retry 7 -Lo /tmp/maven.tar.gz "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/${MAVEN}/apache-maven-${MAVEN}-bin.tar.gz"
-
-RUN mkdir /opt/maven && tar zxf /tmp/maven.tar.gz -C /opt/maven \
-    && rm /tmp/maven.tar.gz 
-
 RUN tar zxf /tmp/client-tools.tar.gz -C /usr/local/bin oc \
-    && rm /tmp/client-tools.tar.gz 
+    && rm /tmp/client-tools.tar.gz
 
-ENV MAVEN_HOME "/opt/maven/apache-maven-$MAVEN"
-ENV PATH=$MAVEN_HOME/bin:$PATH
+ARG sdkman_init="/root/.sdkman/bin/sdkman-init.sh"DBZ
 
-RUN microdnf clean all 
+RUN curl -s "https://get.sdkman.io" | bash
+RUN source $sdkman_init &&\
+    sdk install java 17.0.2-open&&\
+    sdk install maven
+
+# this runs when only when dbz repo/branch is changed
+ARG repository
+ARG branch
+
+RUN git clone --branch $branch $repository /testsuite/debezium
+RUN source $sdkman_init && mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
+
+# always rerun steps below
+ARG CACHEBUST=1
+RUN git  -C /testsuite/debezium pull $repository $branch
+RUN source $sdkman_init && mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
+
 COPY testsuite-deployment.sh /testsuite/testsuite-deployment.sh
-COPY library.sh /testsuite/library.sh
 RUN chmod a+x /testsuite/testsuite-deployment.sh
 
-ENTRYPOINT /testsuite/testsuite-deployment.sh 
+COPY library.sh /testsuite/library.sh
+COPY mmedek-secret.yml /testsuite/secret.yml
+
+ENTRYPOINT /testsuite/testsuite-deployment.sh
