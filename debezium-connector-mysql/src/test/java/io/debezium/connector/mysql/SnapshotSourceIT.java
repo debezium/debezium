@@ -174,7 +174,16 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             if (i.hasNext()) {
                 final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
                 assertThat(snapshotOffsetField).isEqualTo(true);
-                assertTrue(Objects.equals(snapshotSourceField, "true") || Objects.equals(snapshotSourceField, "last_in_data_collection"));
+
+                if (Objects.equals(snapshotSourceField, "first")) {
+                    assertThat(previousRecordTable).isNull();
+                }
+                else if (Objects.equals(snapshotSourceField, "first_in_data_collection")) {
+                    assertThat(previousRecordTable).isNotEqualTo(currentRecordTable);
+                }
+                else {
+                    assertTrue(Objects.equals(snapshotSourceField, "true") || Objects.equals(snapshotSourceField, "last_in_data_collection"));
+                }
 
                 if (Objects.equals(previousSnapshotSourceField, "last_in_data_collection")) {
                     assertThat(previousRecordTable).isNotEqualTo(currentRecordTable);

@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.debezium.connector.common.BaseSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
@@ -71,6 +72,10 @@ public class MongoDbOffsetContext implements OffsetContext {
         return sourceInfo.struct();
     }
 
+    public BaseSourceInfo getSourceInfoObject() {
+        return sourceInfo;
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && sourceInfo.isSnapshotRunning();
@@ -93,6 +98,16 @@ public class MongoDbOffsetContext implements OffsetContext {
     @Override
     public void markSnapshotRecord() {
         sourceInfo.setSnapshot(SnapshotRecord.TRUE);
+    }
+
+    @Override
+    public void markFirstRecordInDataCollection() {
+        sourceInfo.setSnapshot(SnapshotRecord.FIRST_IN_DATA_COLLECTION);
+    }
+
+    @Override
+    public void markFirstSnapshotRecord() {
+        sourceInfo.setSnapshot(SnapshotRecord.FIRST);
     }
 
     @Override

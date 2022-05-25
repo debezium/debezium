@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
@@ -24,12 +25,13 @@ import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotConte
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.RelationalOffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 
-public class PostgresOffsetContext implements OffsetContext {
+public class PostgresOffsetContext extends RelationalOffsetContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresSnapshotChangeEventSource.class);
 
     public static final String LAST_COMPLETELY_PROCESSED_LSN_KEY = "lsn_proc";
@@ -105,6 +107,10 @@ public class PostgresOffsetContext implements OffsetContext {
         return sourceInfo.struct();
     }
 
+    public BaseSourceInfo getSourceInfoObject() {
+        return sourceInfo;
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot();
@@ -119,11 +125,6 @@ public class PostgresOffsetContext implements OffsetContext {
     @Override
     public void preSnapshotCompletion() {
         lastSnapshotRecord = true;
-    }
-
-    @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
     public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, Long xmin, TableId tableId) {
@@ -259,21 +260,6 @@ public class PostgresOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void markSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-    }
-
-    @Override
-    public void markLastRecordInDataCollection() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_DATA_COLLECTION);
-    }
-
-    @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
-    }
-
-    @Override
     public void event(DataCollectionId tableId, Instant instant) {
         sourceInfo.update(instant, (TableId) tableId);
     }
@@ -281,11 +267,6 @@ public class PostgresOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

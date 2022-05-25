@@ -56,6 +56,16 @@ public interface OffsetContext {
     void markLastRecordInDataCollection();
 
     /**
+     * mark current record as the first one in the snapshot
+     */
+    void markFirstSnapshotRecord();
+
+    /**
+     * mark current record as the first one in the table or collection
+     */
+    void markFirstRecordInDataCollection();
+
+    /**
      * mark current record as the last one in the snapshot
      */
     void markLastSnapshotRecord();
