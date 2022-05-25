@@ -451,13 +451,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             else {
                 final List<String> expandedDataCollectionIds = expandDataCollectionIds(dataCollectionIds);
                 LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
+                // Iterate and remove any collections that are not current.
+                // If current is marked for removal, delay that until after others have been removed.
+                TableId stopCurrentTableId = null;
                 for (String dataCollectionId : expandedDataCollectionIds) {
                     final TableId collectionId = TableId.parse(dataCollectionId);
                     if (currentTable != null && currentTable.id().equals(collectionId)) {
-                        window.clear();
-                        LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
-                        tableScanCompleted(partition);
-                        nextDataCollection(partition);
+                        stopCurrentTableId = currentTable.id();
                     }
                     else {
                         if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
@@ -466,6 +466,21 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         else {
                             LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
                         }
+                    }
+                }
+                // If current is requested to stop, proceed with stopping it.
+                if (stopCurrentTableId != null) {
+                    window.clear();
+                    LOGGER.info("Removed '{}' from incremental snapshot collection list.", stopCurrentTableId);
+                    tableScanCompleted(partition);
+                    // If snapshot has no more collections, abort; otherwise advance to the next collection.
+                    if (!context.snapshotRunning()) {
+                        LOGGER.info("Incremental snapshot has stopped.");
+                        progressListener.snapshotAborted(partition);
+                    }
+                    else {
+                        LOGGER.info("Advancing to next available collection in the incremental snapshot.");
+                        nextDataCollection(partition);
                     }
                 }
             }
