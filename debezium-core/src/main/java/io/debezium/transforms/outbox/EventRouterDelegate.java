@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -175,9 +176,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         final Struct structValue = onlyHeadersInOutputMessage ? null : new Struct(structValueSchema).put(ENVELOPE_PAYLOAD, payload);
 
-        var partition = new Object() {
-            Integer value = null;
-        };
+        AtomicReference<Integer> partition = new AtomicReference<>();
 
         additionalFields.forEach((additionalField -> {
             switch (additionalField.getPlacement()) {
@@ -193,7 +192,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
                             eventValueSchema.field(additionalField.getField()).schema());
                     break;
                 case PARTITION:
-                    partition.value = eventStruct.getInt32(additionalField.getField());
+                    partition.set(eventStruct.getInt32(additionalField.getField()));
             }
         }));
 
@@ -219,7 +218,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField),
-                partition.value,
+                partition.get(),
                 defineRecordKeySchema(fieldEventKey, eventValueSchema, fallbackPayloadIdField),
                 recordKey,
                 updatedSchema,
