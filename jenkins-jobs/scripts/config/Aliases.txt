@@ -135,3 +135,8 @@ wangminchao,Wang Min Chao
 markallanson,Mark Allanson
 AlexMiroshnikov,Alexey Miroshnikov
 Himanshu-LT,Himanshu Mishra
+roeselert,Timo Roeseler
+troeselereos,Timo Roeseler
+Himanshu-LT,Himanshu Mishra
+Chrisss93,Chris Lee
+connorszczepaniak-wk,Connor Szczepaniak
