@@ -3784,8 +3784,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
             // wait and confirm that the exception is thrown.
             Awaitility.await()
                     .atMost(60, TimeUnit.SECONDS)
