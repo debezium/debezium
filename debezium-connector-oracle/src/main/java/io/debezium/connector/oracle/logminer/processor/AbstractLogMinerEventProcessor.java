@@ -50,6 +50,7 @@ import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContex
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 /**
  * An abstract implementation of {@link LogMinerEventProcessor} that all processors should extend.
@@ -719,7 +720,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         LOGGER.trace("DML: {}", row);
         LOGGER.trace("\t{}", row.getRedoSql());
 
-        if (row.getStatus() == 2) {
+        // Oracle LogMiner reports LONG data types as STATUS=2 on UPDATE statements but there is no
+        // value in the INFO column, and the record can be managed by the connector successfully,
+        // so to be backward compatible, we only explicitly trigger this behavior if there is an
+        // error reason for STATUS=2 in the INFO column as well as STATUS=2.
+        if (row.getStatus() == 2 && !Strings.isNullOrBlank(row.getInfo())) {
             // The SQL in the SQL_REDO column is not valid and cannot be parsed.
             switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
                 case FAIL:
