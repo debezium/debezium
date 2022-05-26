@@ -11,14 +11,16 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.AbstractPartition;
 import io.debezium.util.Collect;
 
-public class OraclePartition implements Partition {
+public class OraclePartition extends AbstractPartition implements Partition {
     private static final String SERVER_PARTITION_KEY = "server";
 
     private final String serverName;
 
-    public OraclePartition(String serverName) {
+    public OraclePartition(String serverName, String databaseName) {
+        super(databaseName);
         this.serverName = serverName;
     }
 
@@ -58,7 +60,8 @@ public class OraclePartition implements Partition {
 
         @Override
         public Set<OraclePartition> getPartitions() {
-            return Collections.singleton(new OraclePartition(connectorConfig.getLogicalName()));
+            return Collections.singleton(
+                    new OraclePartition(connectorConfig.getLogicalName(), connectorConfig.getDatabaseName()));
         }
     }
 }

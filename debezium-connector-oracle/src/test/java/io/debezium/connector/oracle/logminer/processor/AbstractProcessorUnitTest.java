@@ -129,7 +129,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     @Test
     public void testCacheIsEmptyWhenTransactionIsCommitted() throws Exception {
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
-        final OraclePartition partition = new OraclePartition(config.getLogicalName());
+        final OraclePartition partition = new OraclePartition(config.getLogicalName(), config.getDatabaseName());
         try (T processor = getProcessor(config)) {
             final LogMinerEventRow insertRow = getInsertLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1);
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(1L), TRANSACTION_ID_1));
@@ -183,7 +183,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     @Test
     public void testCalculateScnWhenTransactionIsCommitted() throws Exception {
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
-        final OraclePartition partition = new OraclePartition(config.getLogicalName());
+        final OraclePartition partition = new OraclePartition(config.getLogicalName(), config.getDatabaseName());
         try (T processor = getProcessor(config)) {
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(1L), TRANSACTION_ID_1));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1));
@@ -196,7 +196,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     @Test
     public void testCalculateScnWhenFirstTransactionIsCommitted() throws Exception {
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
-        final OraclePartition partition = new OraclePartition(config.getLogicalName());
+        final OraclePartition partition = new OraclePartition(config.getLogicalName(), config.getDatabaseName());
         try (T processor = getProcessor(config)) {
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(1L), TRANSACTION_ID_1));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1));
@@ -215,7 +215,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     @Test
     public void testCalculateScnWhenSecondTransactionIsCommitted() throws Exception {
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
-        final OraclePartition partition = new OraclePartition(config.getLogicalName());
+        final OraclePartition partition = new OraclePartition(config.getLogicalName(), config.getDatabaseName());
         try (T processor = getProcessor(config)) {
             processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(1L), TRANSACTION_ID_1));
             processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1));

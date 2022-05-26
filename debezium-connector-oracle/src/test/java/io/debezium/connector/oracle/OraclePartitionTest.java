@@ -11,11 +11,11 @@ public class OraclePartitionTest extends AbstractPartitionTest<OraclePartition> 
 
     @Override
     protected OraclePartition createPartition1() {
-        return new OraclePartition("server1");
+        return new OraclePartition("server1", "testDB");
     }
 
     @Override
     protected OraclePartition createPartition2() {
-        return new OraclePartition("server2");
+        return new OraclePartition("server2", "testDB");
     }
 }
