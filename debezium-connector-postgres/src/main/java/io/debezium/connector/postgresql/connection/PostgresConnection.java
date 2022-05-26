@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -541,7 +542,7 @@ public class PostgresConnection extends JdbcConnection {
     private Optional<ColumnEditor> doReadTableColumn(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnFilter)
             throws SQLException {
         final String columnName = columnMetadata.getString(4);
-        if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
+        if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), Pattern.quote(columnName))) {
             final ColumnEditor column = Column.editor().name(columnName);
             column.type(columnMetadata.getString(6));
 
