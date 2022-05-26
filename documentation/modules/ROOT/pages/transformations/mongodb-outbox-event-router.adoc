@@ -240,26 +240,44 @@ If any extra configuration options are needed by the converter, they can also be
 // Title: Emitting additional fields in {prodname} MongoDB outbox messages
 // ModuleID: emitting-additional-fields-in-debezium-mongodb-outbox-messages
 [[mongodb-outbox-emitting-messages-with-additional-fields]]
-== Emitting messages with additional fields
 
-Your outbox collection might contain fields whose values you want to add to the emitted outbox messages. For example, consider an outbox collection that has a value of `purchase-order` in the `aggregatetype` field and another field, `eventType`, whose possible values are `order-created` and `order-shipped`.
+Your outbox collection might contain fields whose values you want to add to the emitted outbox messages. For example, consider an outbox collection that has a value of `purchase-order` in the `aggregatetype` field and another field, `eventType`, whose possible values are `order-created` and `order-shipped`. Additional fields can be added with the syntax `field:placement:alias`.
+
+The allowed values for `placement` are:
+- `header`
+- `envelope`
+- `partition`
+
 To emit the `eventType` field value in the outbox message header, configure the SMT like this:
 
 [source]
 ----
 transforms=outbox,...
-transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
-transforms.outbox.collection.fields.additional.placement=type:header:eventType
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.fields.additional.placement=eventType:header:type
 ----
+
+The result will be a header on the Kafka message with `type` as its key, and the value of the `eventType` field as its value.
 
 To emit the `eventType` field value in the outbox message envelope, configure the SMT like this:
 
 [source]
 ----
 transforms=outbox,...
-transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
-transforms.outbox.collection.fields.additional.placement=type:envelope:eventType
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.fields.additional.placement=eventType:envelope:type
 ----
+
+To control which partition the outbox message is produced on, configure the SMT like this:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.fields.additional.placement=partitionField:partition
+----
+
+Note that for the `partition` placement, adding an alias will have no effect.
 
 // Type: concept
 // Title: Expanding escaped JSON String as JSON
