@@ -28,6 +28,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
 
 import io.debezium.DebeziumException;
@@ -353,17 +354,9 @@ public class MongoUtil {
 
     protected static ServerAddress getPrimaryAddress(MongoClient client) {
 
-        ClusterDescription clusterDescription = client.getClusterDescription();
+        ClusterDescription clusterDescription = clusterDescription(client);
 
-        if (clusterDescription == null || !clusterDescription.hasReadableServer(ReadPreference.primaryPreferred())) {
-            client.listDatabaseNames().first(); // force connection attempt and make async client wait/block
-            clusterDescription = client.getClusterDescription();
-        }
-
-        if (clusterDescription == null) {
-            throw new DebeziumException("Unable to read cluster description from MongoDB connection.");
-        }
-        else if (!clusterDescription.hasReadableServer(ReadPreference.primaryPreferred())) {
+        if (!clusterDescription.hasReadableServer(ReadPreference.primaryPreferred())) {
             throw new DebeziumException("Unable to use cluster description from MongoDB connection: " + clusterDescription);
         }
 
@@ -375,13 +368,10 @@ public class MongoUtil {
 
         Optional<ServerDescription> primaryDescription = serverDescriptions.stream().filter(ServerDescription::isPrimary).findFirst();
 
-        if (!primaryDescription.isPresent()) {
-            throw new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'");
-        }
-
-        ServerAddress primaryAddress = primaryDescription.get().getAddress();
-
-        return new ServerAddress(primaryAddress.getHost(), primaryAddress.getPort());
+        return primaryDescription
+                .map(ServerDescription::getAddress)
+                .map(address -> new ServerAddress(address.getHost(), address.getPort()))
+                .orElseThrow(() -> new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'"));
     }
 
     /**
