@@ -9,13 +9,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.util.ConnectorUtils;
 
@@ -43,18 +44,22 @@ public class ReplicaSets {
      * @see ReplicaSets#hosts()
      */
     public static ReplicaSets parse(String hosts) {
-        Set<ReplicaSet> replicaSets = new HashSet<>();
-        if (hosts != null) {
-            for (String replicaSetStr : REPLICA_DELIMITER_PATTERN.split(hosts.trim())) {
-                if (!replicaSetStr.isEmpty()) {
-                    ReplicaSet replicaSet = ReplicaSet.parse(replicaSetStr);
-                    if (replicaSetStr != null) {
-                        replicaSets.add(replicaSet);
-                    }
-                }
-            }
-        }
+        Set<ReplicaSet> replicaSets = splitHosts(hosts).stream()
+                .map(ReplicaSet::parse)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
         return new ReplicaSets(replicaSets);
+    }
+
+    public static List<String> splitHosts(String hosts) {
+        if (hosts == null) {
+            return List.of();
+        }
+        return Stream.of(REPLICA_DELIMITER_PATTERN
+                .split(hosts.trim()))
+                .filter(h -> !h.isBlank())
+                .collect(Collectors.toList());
     }
 
     /**
