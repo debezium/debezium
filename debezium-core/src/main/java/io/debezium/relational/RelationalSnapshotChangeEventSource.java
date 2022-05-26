@@ -52,7 +52,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O extends RelationalOffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
+public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O extends CommonOffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
@@ -408,13 +408,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             else {
                 snapshotContext.offset.markLastRecordInDataCollection();
             }
-        } else if (snapshotContext.firstRecordInTable) {
+        }
+        else if (snapshotContext.firstRecordInTable) {
             if (snapshotContext.firstTable) {
                 snapshotContext.offset.markFirstSnapshotRecord();
-            } else {
+            }
+            else {
                 snapshotContext.offset.markFirstRecordInDataCollection();
             }
-        } else {
+        }
+        else {
             snapshotContext.offset.markSnapshotRecord();
         }
     }

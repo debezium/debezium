@@ -8,21 +8,21 @@ package io.debezium.connector.sqlserver;
 import java.time.Instant;
 import java.util.Map;
 
-import io.debezium.connector.common.BaseSourceInfo;
-import io.debezium.relational.RelationalOffsetContext;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.CommonOffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
-public class SqlServerOffsetContext extends RelationalOffsetContext {
+public class SqlServerOffsetContext extends CommonOffsetContext {
 
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 

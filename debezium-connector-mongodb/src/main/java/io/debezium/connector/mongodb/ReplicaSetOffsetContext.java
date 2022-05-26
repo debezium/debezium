@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb;
 import java.time.Instant;
 import java.util.Map;
 
-import io.debezium.connector.common.BaseSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
@@ -17,9 +16,11 @@ import org.bson.BsonTimestamp;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.CommonOffsetContext;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -32,7 +33,7 @@ import io.debezium.schema.DataCollectionId;
  * @author Chris Cranford
  */
 @ThreadSafe
-public class ReplicaSetOffsetContext implements OffsetContext {
+public class ReplicaSetOffsetContext extends CommonOffsetContext {
 
     private final MongoDbOffsetContext offsetContext;
     private final String replicaSetName;
