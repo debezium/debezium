@@ -363,12 +363,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private void addLogFileForMining(OracleConnection connection, Scn startScn) throws SQLException {
-        // If the time of startscn is 30 minutes later than the current time.
+        // If startScn is in archiveLog
         // The catch-up mode will be used. No need to load online redo log
-        final long onlineWindow = TimeUnit.MINUTES.toMillis(30);
-        LocalDateTime currentLocalTime = LocalDateTime.now();
-        Optional<LocalDateTime> startTime = connection.getScnToTimestamp(startScn).map(OffsetDateTime::toLocalDateTime);
-        if (startTime.isPresent() && Duration.between(startTime.get(), currentLocalTime).toMillis() >= onlineWindow) {
+        final boolean inArchive = isStartScnInArchiveLogs(startScn);
+        if (inArchive) {
             currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, true,
                     archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
             currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
