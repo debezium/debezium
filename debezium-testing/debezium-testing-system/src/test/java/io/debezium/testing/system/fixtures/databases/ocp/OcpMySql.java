@@ -14,6 +14,8 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.annotations.FixtureContext;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { SqlDatabaseController.class })
 public class OcpMySql extends OcpDatabaseFixture<SqlDatabaseController> {
 
@@ -28,11 +30,13 @@ public class OcpMySql extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("com.mysql.cj.jdbc.Driver");
+        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
+
         OcpMySqlDeployer deployer = new OcpMySqlDeployer.Deployer()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_MYSQL)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withServices(services)
                 .build();
         return deployer.deploy();
     }

@@ -252,6 +252,26 @@ public class OpenShiftUtils {
         }
     }
 
+    // TODO not sure if it should be here
+    public static boolean isRunningFromOcp() {
+        LOGGER.info("===========================================================");
+        LOGGER.info("===========================================================");
+        LOGGER.info("===========================================================");
+
+        LOGGER.info("== URL: " + ConfigProperties.OCP_URL.orElse("") + "=======================================");
+        LOGGER.info("== URL: " + ConfigProperties.OCP_USERNAME.orElse("") + "=======================================");
+        LOGGER.info("== URL: " + ConfigProperties.OCP_PASSWORD.orElse("") + "=======================================");
+
+
+        LOGGER.info("===========================================================");
+        LOGGER.info("===========================================================");
+        LOGGER.info("===========================================================");
+
+        return ConfigProperties.OCP_URL.isEmpty() ||
+                ConfigProperties.OCP_USERNAME.isEmpty() ||
+                ConfigProperties.OCP_PASSWORD.isEmpty();
+    }
+
     /**
      * Finds the first deployment with name matching given prefixes
      *
