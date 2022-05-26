@@ -234,7 +234,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         // Update the value with the new fields
         Struct updatedValue = new Struct(updatedSchema);
         for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
-            updatedValue.put(field.name(), value.get(field));
+            // We use getWithoutDefault method (instead of get) to get the raw value of the field
+            // Using get method may perform unwanted manipulation for the value (e.g: replacing null value with default value)
+            updatedValue.put(field.name(), value.getWithoutDefault(field.name()));
 
         }
 
@@ -365,10 +367,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         }
 
         Object getValue(Struct originalRecordValue) {
-            Struct parentStruct = struct != null ? (Struct) originalRecordValue.get(struct) : originalRecordValue;
+            Struct parentStruct = struct != null ? (Struct) originalRecordValue.getWithoutDefault(struct) : originalRecordValue;
 
             // transaction is optional; e.g. not present during snapshotting atm.
-            return parentStruct != null ? parentStruct.get(field) : null;
+            return parentStruct != null ? parentStruct.getWithoutDefault(field) : null;
         }
 
         Schema getSchema(Schema originalRecordSchema) {
