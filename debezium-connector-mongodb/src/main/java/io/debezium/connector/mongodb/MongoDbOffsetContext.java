@@ -11,15 +11,15 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import io.debezium.connector.common.BaseSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.CommonOffsetContext;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -27,7 +27,7 @@ import io.debezium.schema.DataCollectionId;
  *
  * @author Chris Cranford
  */
-public class MongoDbOffsetContext implements OffsetContext {
+public class MongoDbOffsetContext extends CommonOffsetContext {
 
     private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
@@ -93,31 +93,6 @@ public class MongoDbOffsetContext implements OffsetContext {
     @Override
     public void postSnapshotCompletion() {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
-    }
-
-    @Override
-    public void markSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-    }
-
-    @Override
-    public void markFirstRecordInDataCollection() {
-        sourceInfo.setSnapshot(SnapshotRecord.FIRST_IN_DATA_COLLECTION);
-    }
-
-    @Override
-    public void markFirstSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.FIRST);
-    }
-
-    @Override
-    public void markLastRecordInDataCollection() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST_IN_DATA_COLLECTION);
-    }
-
-    @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }
 
     @Override

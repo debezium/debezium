@@ -9,7 +9,7 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.pipeline.spi.OffsetContext;
 
-public abstract class RelationalOffsetContext implements OffsetContext {
+public abstract class CommonOffsetContext implements OffsetContext {
 
     public abstract BaseSourceInfo getSourceInfoObject();
 
