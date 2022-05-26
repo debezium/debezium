@@ -126,6 +126,29 @@ public class ExtractNewRecordStateTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
+    private SourceRecord createCreateRecordWithOptionalNull() {
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", SchemaBuilder.string().optional().defaultValue("default_str").build())
+                .build();
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        after.put("id", (byte) 1);
+        after.put("name", null);
+        source.put("lsn", 1234);
+        source.put("ts_ms", 12836);
+        final Struct payload = envelope.create(after, source, Instant.now());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
     private SourceRecord createUpdateRecord() {
         final Struct before = new Struct(recordSchema);
         final Struct after = new Struct(recordSchema);
@@ -270,6 +293,21 @@ public class ExtractNewRecordStateTest {
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
             assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+            assertThat(((Struct) unwrapped.value()).getString("name")).isEqualTo("myRecord");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5166")
+    public void testUnwrapCreateRecordWithOptionalDefaultValue() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecordWithOptionalNull();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+            assertThat(((Struct) unwrapped.value()).getString("name")).isEqualTo(null);
         }
     }
 
