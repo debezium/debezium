@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
