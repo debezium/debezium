@@ -1,5 +1,11 @@
 name: Java Quality Outreach
 on:
+  push:
+    paths:
+      - '.github/workflows/jdk-outreach-workflow.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/jdk-outreach-workflow.yml'
   schedule:
     - cron: 0 22 * * *
 
