@@ -17,10 +17,10 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
-import io.debezium.relational.CommonOffsetContext;
 import io.debezium.schema.DataCollectionId;
 
 /**
