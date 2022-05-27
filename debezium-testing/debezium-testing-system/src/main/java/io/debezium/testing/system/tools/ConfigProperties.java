@@ -57,7 +57,7 @@ public final class ConfigProperties {
     public static final String STRIMZI_KC_IMAGE = System.getProperty("test.strimzi.kc.image");
 
     // Apicurio Registry configuration
-    public static final String APICURIO_CRD_VERSION = System.getProperty("test.apicurio.crd.version", "v1");
+    public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
 
     // MySql Configuration
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");

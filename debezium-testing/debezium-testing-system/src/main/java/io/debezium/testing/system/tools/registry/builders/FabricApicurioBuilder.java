@@ -7,10 +7,14 @@ package io.debezium.testing.system.tools.registry.builders;
 
 import io.apicurio.registry.operator.api.model.ApicurioRegistry;
 import io.apicurio.registry.operator.api.model.ApicurioRegistryBuilder;
+import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 
 public class FabricApicurioBuilder
         extends FabricBuilderWrapper<FabricApicurioBuilder, ApicurioRegistryBuilder, ApicurioRegistry> {
+
+    private static final String DEFAULT_PERSISTENCE_TYPE = "kafkasql";
+
     protected FabricApicurioBuilder(ApicurioRegistryBuilder builder) {
         super(builder);
     }
@@ -39,6 +43,8 @@ public class FabricApicurioBuilder
         builder
                 .editSpec()
                 .withNewConfiguration()
+                .withLogLevel(ConfigProperties.APICURIO_LOG_LEVEL)
+                .withPersistence(DEFAULT_PERSISTENCE_TYPE)
                 .withNewKafkasql()
                 .withBootstrapServers(bootstrap)
                 .endKafkasql()
