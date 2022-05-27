@@ -18,9 +18,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.errors.SchemaBuilderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope;
@@ -405,12 +407,19 @@ public class TableSchemaBuilder {
 
             // if the default value is provided
             if (column.hasDefaultValue() && defaultValue != null) {
-                // if the resolution of the default value resulted in null; there is no need to set it
-                // if the column isn't optional, the schema won't be set as such and therefore trying
-                // to set a null default value on a non-optional field schema will assert.
-                fieldBuilder
-                        .defaultValue(customConverterRegistry.getValueConverter(table.id(), column)
-                                .orElse(ValueConverter.passthrough()).convert(defaultValue));
+                try {
+                    // if the resolution of the default value resulted in null; there is no need to set it
+                    // if the column isn't optional, the schema won't be set as such and therefore trying
+                    // to set a null default value on a non-optional field schema will assert.
+                    fieldBuilder
+                            .defaultValue(customConverterRegistry.getValueConverter(table.id(), column)
+                                    .orElse(ValueConverter.passthrough()).convert(defaultValue));
+                }
+                catch (SchemaBuilderException e) {
+                    throw new DebeziumException("Failed to set field default value for '" + table.id() + "."
+                            + column.name() + "' of type " + column.typeName() + ", the default value is "
+                            + defaultValue + " of type " + defaultValue.getClass(), e);
+                }
             }
 
             builder.field(fieldNamer.fieldNameFor(column), fieldBuilder.build());
