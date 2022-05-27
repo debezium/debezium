@@ -10,6 +10,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.util.Strings;
 
 /**
  * A factory for creating the appropriate {@link Heartbeat} implementation based on the connector
@@ -46,7 +47,7 @@ public class HeartbeatFactory<T extends DataCollectionId> {
 
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig) {
             RelationalDatabaseConnectorConfig relConfig = (RelationalDatabaseConnectorConfig) connectorConfig;
-            if (relConfig.getHeartbeatActionQuery() != null) {
+            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
                 return new DatabaseHeartbeatImpl(
                         connectorConfig.getHeartbeatInterval(),
                         topicSelector.getHeartbeatTopic(),
