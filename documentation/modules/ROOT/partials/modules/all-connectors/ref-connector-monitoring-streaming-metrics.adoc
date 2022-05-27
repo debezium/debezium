@@ -1,11 +1,5 @@
 ifeval::['{context}' == 'mongodb']
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_`.
-
-[NOTE]
-====
-When the connector is configured with `tasks.max` greater than `1`, the MBean name will also include the task identifier.
-As an example, when using a value of `2`, the MBean names will also be suffixed by `,task=0` and `,task=1` respectively.
-====
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_,task=_<task.id>_`.
 endif::[]
 ifeval::['{context}' != 'mongodb']
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_`.

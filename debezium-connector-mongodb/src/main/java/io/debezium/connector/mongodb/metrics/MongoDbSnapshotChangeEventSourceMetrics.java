@@ -27,11 +27,9 @@ public class MongoDbSnapshotChangeEventSourceMetrics extends DefaultSnapshotChan
     private AtomicLong numberOfDisconnects = new AtomicLong();
 
     public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                    EventMetadataProvider metadataProvider, int maxTasks) {
+                                                                                    EventMetadataProvider metadataProvider) {
         super(taskContext, changeEventQueueMetrics, metadataProvider,
-                maxTasks > 1
-                        ? Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId())
-                        : Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName()));
+                Collect.linkMapOf("context", "snapshot", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId()));
     }
 
     @Override

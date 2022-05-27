@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb.metrics;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
@@ -19,23 +18,17 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
  */
 public class MongoDbChangeEventSourceMetricsFactory extends DefaultChangeEventSourceMetricsFactory<MongoDbPartition> {
 
-    private final int maxTasks;
-
-    public MongoDbChangeEventSourceMetricsFactory(MongoDbConnectorConfig connectorConfig) {
-        this.maxTasks = connectorConfig.getConfig().getInteger("tasks.max", 1);
-    }
-
     @Override
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<MongoDbPartition> getSnapshotMetrics(T taskContext,
                                                                                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                                                   EventMetadataProvider eventMetadataProvider) {
-        return new MongoDbSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider, maxTasks);
+        return new MongoDbSnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 
     @Override
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<MongoDbPartition> getStreamingMetrics(T taskContext,
                                                                                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                                                     EventMetadataProvider eventMetadataProvider) {
-        return new MongoDbStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider, maxTasks);
+        return new MongoDbStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 }
