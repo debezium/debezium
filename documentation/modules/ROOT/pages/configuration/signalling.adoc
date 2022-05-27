@@ -283,7 +283,7 @@ endif::community[]
 You must specify the `type` of the signal.
 The `data-collections` field is optional.
 Leave the `data-collections` field blank to request the connector to stop all activity in the current snapshot.
-If you want the incremental snapshot to proceed, but you want to exclude specific collections from the snapshot, provide a comma-separated list of the names of the collections to exclude.
+If you want the incremental snapshot to proceed, but you want to exclude specific collections from the snapshot, provide a comma-separated list of the names of the collections or regular expressions to exclude.
 After the connector processes the signal, the incremental snapshot proceeds, but it excludes data from the collections that you specify.
 
 // Type: concept
