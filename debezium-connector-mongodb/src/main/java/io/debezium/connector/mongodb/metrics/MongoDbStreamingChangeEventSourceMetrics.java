@@ -29,11 +29,9 @@ public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingCh
     private AtomicLong numberOfDisconnects = new AtomicLong();
 
     <T extends CdcSourceTaskContext> MongoDbStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                              EventMetadataProvider eventMetadataProvider, int maxTasks) {
+                                                                              EventMetadataProvider eventMetadataProvider) {
         super(taskContext, changeEventQueueMetrics, eventMetadataProvider,
-                maxTasks > 1
-                        ? Collect.linkMapOf("context", "streaming", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId())
-                        : Collect.linkMapOf("context", "streaming", "server", taskContext.getConnectorName()));
+                Collect.linkMapOf("context", "streaming", "server", taskContext.getConnectorName(), "task", taskContext.getTaskId()));
     }
 
     @Override

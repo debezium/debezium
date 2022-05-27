@@ -51,6 +51,9 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
 
+    // the one and only task we start in the test suite
+    private static final int TASK_ID = 0;
+
     protected Configuration config;
     protected MongoDbTaskContext context;
     protected LogInterceptor logInterceptor;
@@ -307,7 +310,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     }
 
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server) {
-        return getMetricsObjectNameWithTags(connector, Collect.linkMapOf("context", "snapshot", "server", server));
+        return getSnapshotMetricsObjectName(connector, server, TASK_ID);
     }
 
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server, int taskId) {
@@ -324,7 +327,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     }
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server) {
-        return getMetricsObjectNameWithTags(connector, Collect.linkMapOf("context", getStreamingNamespace(), "server", server));
+        return getStreamingMetricsObjectName(connector, server, TASK_ID);
     }
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server, int taskId) {
