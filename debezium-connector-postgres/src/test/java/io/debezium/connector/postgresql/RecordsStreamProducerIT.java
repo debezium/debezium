@@ -60,6 +60,7 @@ import org.postgresql.util.PSQLException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
@@ -2923,7 +2924,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         try {
             executeAndWait(statement);
             SourceRecord record = assertRecordInserted(expectedTopicName, pk != null ? PK_FIELD : null, pk);
-            assertRecordOffsetAndSnapshotSource(record, false, false);
+            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.FALSE);
             assertSourceInfo(record, "postgres", table.schema(), table.table());
             assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.AFTER);
         }
@@ -2941,7 +2942,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         try {
             executeAndWait(statement);
             SourceRecord record = assertRecordDeleted(expectedTopicName, pk != null ? PK_FIELD : null, pk);
-            assertRecordOffsetAndSnapshotSource(record, false, false);
+            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.FALSE);
             assertSourceInfo(record, "postgres", table.schema(), table.table());
             assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.BEFORE);
             assertRecordSchemaAndValues(null, record, Envelope.FieldName.AFTER);

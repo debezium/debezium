@@ -25,9 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -53,7 +53,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O extends CommonOffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
+public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O extends OffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
@@ -402,29 +402,29 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     private void setSnapshotMarker(RelationalSnapshotContext<P, O> snapshotContext) {
+        if (snapshotContext.lastRecordInTable && snapshotContext.lastTable) {
+            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST); // Absolute last record
+            return;
+        }
+
+        if (snapshotContext.firstRecordInTable && snapshotContext.firstTable) {
+            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.FIRST); // Absolute first record
+            return;
+        }
+
         if (snapshotContext.lastRecordInTable) {
-            if (snapshotContext.lastTable) {
-                lastSnapshotRecord(snapshotContext);
-            }
-            else {
-                snapshotContext.offset.markLastRecordInDataCollection();
-            }
+            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST_IN_DATA_COLLECTION);
         }
         else if (snapshotContext.firstRecordInTable) {
-            if (snapshotContext.firstTable) {
-                snapshotContext.offset.markFirstSnapshotRecord();
-            }
-            else {
-                snapshotContext.offset.markFirstRecordInDataCollection();
-            }
+            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.FIRST_IN_DATA_COLLECTION);
         }
         else {
-            snapshotContext.offset.markSnapshotRecord();
+            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.TRUE);
         }
     }
 
     protected void lastSnapshotRecord(RelationalSnapshotContext<P, O> snapshotContext) {
-        snapshotContext.offset.markLastSnapshotRecord();
+        snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST);
     }
 
     /**

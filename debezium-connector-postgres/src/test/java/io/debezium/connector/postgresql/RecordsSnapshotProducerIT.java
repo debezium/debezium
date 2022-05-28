@@ -12,9 +12,11 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
@@ -49,7 +52,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Collect;
-import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link RecordsSnapshotProducerIT}
@@ -83,14 +85,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicName();
-        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
-        Testing.Print.enable();
-        // check the offset information for each record
-        while (!consumer.isEmpty()) {
-            SourceRecord record = consumer.remove();
-            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
+        AtomicInteger totalCount = new AtomicInteger(0);
+        consumer.process(record -> {
+            assertReadRecord(record, expectedValuesByTopicName);
             assertSourceInfo(record);
-        }
+
+            SnapshotRecord expected = expectedSnapshotRecordFromPosition(
+                    totalCount.incrementAndGet(), expectedValuesByTopicName.size(),
+                    1, 1);
+            assertRecordOffsetAndSnapshotSource(record, expected);
+        });
     }
 
     public static class CustomDatatypeConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
@@ -204,13 +208,13 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         SourceRecord first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 2);
         assertEquals(topicName("s1.a"), first.topic());
-        assertRecordOffsetAndSnapshotSource(first, false, false);
+        assertRecordOffsetAndSnapshotSource(first, SnapshotRecord.FALSE);
         assertSourceInfo(first, TestHelper.TEST_DATABASE, "s1", "a");
 
         SourceRecord second = consumer.remove();
         VerifyRecord.isValidInsert(second, PK_FIELD, 2);
         assertEquals(topicName("s2.a"), second.topic());
-        assertRecordOffsetAndSnapshotSource(second, false, false);
+        assertRecordOffsetAndSnapshotSource(second, SnapshotRecord.FALSE);
         assertSourceInfo(second, TestHelper.TEST_DATABASE, "s2", "a");
 
         // now shut down the producers and insert some more records
@@ -231,7 +235,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             int counterVal = counter.getAndIncrement();
             int expectedPk = (counterVal % 3) + 1; // each table has 3 entries keyed 1-3
             VerifyRecord.isValidRead(record, PK_FIELD, expectedPk);
-            assertRecordOffsetAndSnapshotSource(record, true, counterVal == (expectedRecordsCount - 1));
+            SnapshotRecord expectedType = (counterVal % 3) == 0 ? SnapshotRecord.FIRST_IN_DATA_COLLECTION
+                    : (counterVal % 3) == 1 ? SnapshotRecord.TRUE
+                            : (counterVal == expectedRecordsCount - 1) ? SnapshotRecord.LAST : SnapshotRecord.LAST_IN_DATA_COLLECTION;
+            assertRecordOffsetAndSnapshotSource(record, expectedType);
             assertSourceInfo(record);
         });
         consumer.clear();
@@ -244,12 +251,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
         first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 4);
-        assertRecordOffsetAndSnapshotSource(first, false, false);
+        assertRecordOffsetAndSnapshotSource(first, SnapshotRecord.FALSE);
         assertSourceInfo(first, TestHelper.TEST_DATABASE, "s1", "a");
 
         second = consumer.remove();
         VerifyRecord.isValidInsert(second, PK_FIELD, 4);
-        assertRecordOffsetAndSnapshotSource(second, false, false);
+        assertRecordOffsetAndSnapshotSource(second, SnapshotRecord.FALSE);
         assertSourceInfo(second, TestHelper.TEST_DATABASE, "s2", "a");
     }
 
@@ -305,10 +312,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         final SourceRecord first = consumer.remove();
         VerifyRecord.isValidRead(first, PK_FIELD, 1);
-        assertRecordOffsetAndSnapshotSource(first, true, true);
+        assertRecordOffsetAndSnapshotSource(first, SnapshotRecord.LAST);
         final SourceRecord second = consumer.remove();
         assertThat(second.topic()).startsWith("__debezium-heartbeat");
-        assertRecordOffsetAndSnapshotSource(second, false, false);
+        assertRecordOffsetAndSnapshotSource(second, SnapshotRecord.FALSE);
     }
 
     private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTopicName) {
@@ -334,14 +341,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicNameAdaptiveTimeMicroseconds();
-        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
-
-        // check the offset information for each record
-        while (!consumer.isEmpty()) {
-            SourceRecord record = consumer.remove();
-            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
+        AtomicInteger totalCount = new AtomicInteger(0);
+        consumer.process(record -> {
+            assertReadRecord(record, expectedValuesByTopicName);
             assertSourceInfo(record);
-        }
+
+            SnapshotRecord expected = expectedSnapshotRecordFromPosition(
+                    totalCount.incrementAndGet(), expectedValuesByTopicName.size(),
+                    1, 1);
+            assertRecordOffsetAndSnapshotSource(record, expected);
+        });
     }
 
     @Test
@@ -362,14 +371,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicNameStringEncodedDecimals();
-        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
-
-        // check the offset information for each record
-        while (!consumer.isEmpty()) {
-            SourceRecord record = consumer.remove();
-            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
+        consumer.process(record -> {
+            assertReadRecord(record, expectedValuesByTopicName);
             assertSourceInfo(record);
-        }
+
+            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST_IN_DATA_COLLECTION);
+        });
     }
 
     @Test
@@ -407,42 +414,44 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig());
 
-        TestConsumer consumer = testConsumer(1 + 30);
-        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
-
         Set<Integer> ids = new HashSet<>();
 
-        Map<String, Integer> topicCounts = Collect.hashMapOf(
-                "test_server.public.first_table", 0,
+        Map<String, Integer> expectedTopicCounts = Collect.hashMapOf(
+                "test_server.public.first_table", 1,
                 "test_server.public.partitioned", 0,
-                "test_server.public.partitioned_1_100", 0,
-                "test_server.public.partitioned_101_200", 0);
+                "test_server.public.partitioned_1_100", 10,
+                "test_server.public.partitioned_101_200", 20);
+        int expectedTotalCount = expectedTopicCounts.values().stream().mapToInt(Integer::intValue).sum();
+
+        TestConsumer consumer = testConsumer(expectedTotalCount);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        Map<String, Integer> actualTopicCounts = new HashMap<>();
+        AtomicInteger actualTotalCount = new AtomicInteger(0);
 
         consumer.process(record -> {
+            assertSourceInfo(record);
             Struct key = (Struct) record.key();
             if (key != null) {
                 final Integer id = key.getInt32("pk");
                 Assertions.assertThat(ids).excludes(id);
                 ids.add(id);
             }
-            topicCounts.put(record.topic(), topicCounts.get(record.topic()) + 1);
+
+            actualTopicCounts.put(record.topic(), actualTopicCounts.getOrDefault(record.topic(), 0) + 1);
+
+            SnapshotRecord expected = expectedSnapshotRecordFromPosition(
+                    actualTotalCount.incrementAndGet(), expectedTotalCount,
+                    actualTopicCounts.get(record.topic()), expectedTopicCounts.get(record.topic()));
+            assertRecordOffsetAndSnapshotSource(record, expected);
         });
 
         // verify distinct records
-        assertEquals(31, ids.size());
+        assertEquals(expectedTotalCount, actualTotalCount.get());
+        assertEquals(expectedTotalCount, ids.size());
 
         // verify each topic contains exactly the number of input records
-        assertEquals(1, topicCounts.get("test_server.public.first_table").intValue());
-        assertEquals(0, topicCounts.get("test_server.public.partitioned").intValue());
-        assertEquals(10, topicCounts.get("test_server.public.partitioned_1_100").intValue());
-        assertEquals(20, topicCounts.get("test_server.public.partitioned_101_200").intValue());
-
-        // check the offset information for each record
-        while (!consumer.isEmpty()) {
-            SourceRecord record = consumer.remove();
-            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
-            assertSourceInfo(record);
-        }
+        assertTrue("Expected counts per topic don't match", expectedTopicCounts.entrySet().containsAll(actualTopicCounts.entrySet()));
     }
 
     @Test

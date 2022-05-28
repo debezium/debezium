@@ -16,9 +16,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.common.BaseSourceInfo;
-import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.DataCollectionId;
 
@@ -27,7 +26,7 @@ import io.debezium.schema.DataCollectionId;
  *
  * @author Chris Cranford
  */
-public class MongoDbOffsetContext extends CommonOffsetContext {
+public class MongoDbOffsetContext implements OffsetContext {
 
     private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
@@ -72,10 +71,6 @@ public class MongoDbOffsetContext extends CommonOffsetContext {
         return sourceInfo.struct();
     }
 
-    public BaseSourceInfo getSourceInfoObject() {
-        return sourceInfo;
-    }
-
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && sourceInfo.isSnapshotRunning();
@@ -93,6 +88,11 @@ public class MongoDbOffsetContext extends CommonOffsetContext {
     @Override
     public void postSnapshotCompletion() {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
+    }
+
+    @Override
+    public void markSnapshotRecord(SnapshotRecord record) {
+        sourceInfo.setSnapshot(record);
     }
 
     @Override

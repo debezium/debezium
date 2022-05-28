@@ -16,8 +16,7 @@ import org.bson.BsonTimestamp;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.common.BaseSourceInfo;
-import io.debezium.pipeline.CommonOffsetContext;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -33,7 +32,7 @@ import io.debezium.schema.DataCollectionId;
  * @author Chris Cranford
  */
 @ThreadSafe
-public class ReplicaSetOffsetContext extends CommonOffsetContext {
+public class ReplicaSetOffsetContext implements OffsetContext {
 
     private final MongoDbOffsetContext offsetContext;
     private final String replicaSetName;
@@ -66,38 +65,14 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext {
         return offsetContext.getSourceInfo();
     }
 
-    public BaseSourceInfo getSourceInfoObject() {
-        return offsetContext.getSourceInfoObject();
-    }
-
     @Override
     public boolean isSnapshotRunning() {
         return offsetContext.isSnapshotRunning();
     }
 
     @Override
-    public void markSnapshotRecord() {
-        offsetContext.markSnapshotRecord();
-    }
-
-    @Override
-    public void markFirstRecordInDataCollection() {
-        offsetContext.markFirstRecordInDataCollection();
-    }
-
-    @Override
-    public void markFirstSnapshotRecord() {
-        offsetContext.markFirstSnapshotRecord();
-    }
-
-    @Override
-    public void markLastRecordInDataCollection() {
-        offsetContext.markLastRecordInDataCollection();
-    }
-
-    @Override
-    public void markLastSnapshotRecord() {
-        offsetContext.markLastSnapshotRecord();
+    public void markSnapshotRecord(SnapshotRecord record) {
+        offsetContext.markSnapshotRecord(record);
     }
 
     @Override

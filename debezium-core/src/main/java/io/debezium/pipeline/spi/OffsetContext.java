@@ -11,6 +11,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -46,29 +47,9 @@ public interface OffsetContext {
     boolean isSnapshotRunning();
 
     /**
-     * mark current record as a regular snapshot record that is not last in a table or collection
+     * Mark the position of the record in the snapshot.
      */
-    void markSnapshotRecord();
-
-    /**
-     * mark current record as the last one in the table or collection
-     */
-    void markLastRecordInDataCollection();
-
-    /**
-     * mark current record as the first one in the snapshot
-     */
-    void markFirstSnapshotRecord();
-
-    /**
-     * mark current record as the first one in the table or collection
-     */
-    void markFirstRecordInDataCollection();
-
-    /**
-     * mark current record as the last one in the snapshot
-     */
-    void markLastSnapshotRecord();
+    void markSnapshotRecord(SnapshotRecord record);
 
     /**
      * Signals that a snapshot will begin, which should reflect in an updated offset state.

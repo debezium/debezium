@@ -155,7 +155,8 @@ public class SnapshotIT extends AbstractConnectorTest {
         // Ignore initial records
         final SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
         final List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
-        table1.subList(0, INITIAL_RECORDS_PER_TABLE - 1).forEach(record -> {
+        assertThat(((Struct) table1.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("first");
+        table1.subList(1, INITIAL_RECORDS_PER_TABLE - 1).forEach(record -> {
             assertThat(((Struct) record.value()).getStruct("source").getString("snapshot")).isEqualTo("true");
         });
         assertThat(((Struct) table1.get(INITIAL_RECORDS_PER_TABLE - 1).value()).getStruct("source").getString("snapshot")).isEqualTo("last");

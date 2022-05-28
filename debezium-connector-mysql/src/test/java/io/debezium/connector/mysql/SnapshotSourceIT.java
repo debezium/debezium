@@ -8,7 +8,6 @@ package io.debezium.connector.mysql;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -181,11 +180,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                 else if (Objects.equals(snapshotSourceField, "first_in_data_collection")) {
                     assertThat(previousRecordTable).isNotEqualTo(currentRecordTable);
                 }
-                else {
-                    assertTrue(Objects.equals(snapshotSourceField, "true") || Objects.equals(snapshotSourceField, "last_in_data_collection"));
-                }
-
-                if (Objects.equals(previousSnapshotSourceField, "last_in_data_collection")) {
+                else if (Objects.equals(previousSnapshotSourceField, "last_in_data_collection")) {
                     assertThat(previousRecordTable).isNotEqualTo(currentRecordTable);
                 }
             }
