@@ -6,8 +6,8 @@
 package io.debezium.testing.system.tests.db2;
 
 import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_PASSWORD;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_USERNAME;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ_PASSWORD;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
@@ -42,7 +42,7 @@ public abstract class Db2Tests extends ConnectorTest {
                                String firstName, String lastName,
                                String email)
             throws SQLException {
-        SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
+        SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_DB2_USERNAME, DATABASE_DB2_DBZ_PASSWORD);
         String sql = "INSERT INTO DB2INST1.CUSTOMERS(first_name,last_name,email) VALUES  ('" + firstName + "', '" + lastName + "', '" + email + "')";
         client.execute("inventory", sql);
     }

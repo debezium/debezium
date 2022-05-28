@@ -17,13 +17,13 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import fixture5.annotations.FixtureContext;
 
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { SqlDatabaseController.class })
-public class OcpDb2Fixture extends OcpDatabaseFixture<SqlDatabaseController> {
+public class OcpDb2 extends OcpDatabaseFixture<SqlDatabaseController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/db2/deployment.yaml";
     public static final String DB_SERVICE_PATH_LB = "/database-resources/db2/service-lb.yaml";
     public static final String DB_SERVICE_PATH = "/database-resources/db2/service.yaml";
 
-    public OcpDb2Fixture(ExtensionContext.Store store) {
+    public OcpDb2(ExtensionContext.Store store) {
         super(SqlDatabaseController.class, store);
     }
 

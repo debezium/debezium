@@ -26,7 +26,7 @@ public class Db2Connector extends ConnectorFixture<SqlDatabaseController> {
 
     @Override
     public ConnectorConfigBuilder connectorConfig(String connectorName) {
-        return new ConnectorFactories(kafkaController).sqlserver(dbController, connectorName);
+        return new ConnectorFactories(kafkaController).db2(dbController, connectorName);
     }
 
 }
