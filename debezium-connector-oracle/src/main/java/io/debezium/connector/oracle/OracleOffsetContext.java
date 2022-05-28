@@ -16,14 +16,13 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.common.BaseSourceInfo;
-import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
-public class OracleOffsetContext extends CommonOffsetContext {
+public class OracleOffsetContext implements OffsetContext {
 
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
@@ -205,10 +204,7 @@ public class OracleOffsetContext extends CommonOffsetContext {
         return sourceInfoSchema;
     }
 
-    public BaseSourceInfo getSourceInfoObject() {
-        return sourceInfo;
-    }
-
+    @Override
     public Struct getSourceInfo() {
         return sourceInfo.struct();
     }
@@ -278,6 +274,11 @@ public class OracleOffsetContext extends CommonOffsetContext {
     }
 
     @Override
+    public void postSnapshotCompletion() {
+        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("OracleOffsetContext [scn=").append(getScn());
 
@@ -291,6 +292,11 @@ public class OracleOffsetContext extends CommonOffsetContext {
         sb.append("]");
 
         return sb.toString();
+    }
+
+    @Override
+    public void markSnapshotRecord(SnapshotRecord record) {
+        sourceInfo.setSnapshot(record);
     }
 
     @Override
@@ -312,6 +318,11 @@ public class OracleOffsetContext extends CommonOffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
+    }
+
+    @Override
+    public void incrementalSnapshotEvents() {
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

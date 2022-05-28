@@ -17,11 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
-import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -31,7 +29,7 @@ import io.debezium.schema.DataCollectionId;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 
-public class PostgresOffsetContext extends CommonOffsetContext {
+public class PostgresOffsetContext implements OffsetContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresSnapshotChangeEventSource.class);
 
     public static final String LAST_COMPLETELY_PROCESSED_LSN_KEY = "lsn_proc";
@@ -107,10 +105,6 @@ public class PostgresOffsetContext extends CommonOffsetContext {
         return sourceInfo.struct();
     }
 
-    public BaseSourceInfo getSourceInfoObject() {
-        return sourceInfo;
-    }
-
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot();
@@ -125,6 +119,11 @@ public class PostgresOffsetContext extends CommonOffsetContext {
     @Override
     public void preSnapshotCompletion() {
         lastSnapshotRecord = true;
+    }
+
+    @Override
+    public void postSnapshotCompletion() {
+        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
     public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, Long xmin, TableId tableId) {
@@ -260,6 +259,11 @@ public class PostgresOffsetContext extends CommonOffsetContext {
     }
 
     @Override
+    public void markSnapshotRecord(SnapshotRecord record) {
+        sourceInfo.setSnapshot(record);
+    }
+
+    @Override
     public void event(DataCollectionId tableId, Instant instant) {
         sourceInfo.update(instant, (TableId) tableId);
     }
@@ -267,6 +271,11 @@ public class PostgresOffsetContext extends CommonOffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
+    }
+
+    @Override
+    public void incrementalSnapshotEvents() {
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

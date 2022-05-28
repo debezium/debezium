@@ -31,6 +31,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -464,7 +465,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                         snapshotContext.lastRecordInCollection = !cursor.hasNext();
 
                         if (snapshotContext.lastCollection && snapshotContext.lastRecordInCollection) {
-                            snapshotContext.offset.markLastSnapshotRecord();
+                            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST);
                         }
 
                         dispatcher.dispatchSnapshotEvent(snapshotContext.partition, collectionId,
@@ -474,7 +475,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 }
                 else if (snapshotContext.lastCollection) {
                     // if the last collection does not contain any records we still need to mark the last processed event as last one
-                    snapshotContext.offset.markLastSnapshotRecord();
+                    snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST);
                 }
 
                 LOGGER.info("\t Finished snapshotting {} records for collection '{}'; total duration '{}'", docs, collectionId,

@@ -1045,7 +1045,27 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         }
     }
 
-    protected void assertRecordOffsetAndSnapshotSource(SourceRecord record, boolean shouldBeSnapshot, boolean shouldBeLastSnapshotRecord) {
+    protected SnapshotRecord expectedSnapshotRecordFromPosition(int totalPosition, int totalCount, int topicPosition, int topicCount) {
+        if (totalPosition == totalCount) {
+            return SnapshotRecord.LAST;
+        }
+
+        if (totalPosition == 1) {
+            return SnapshotRecord.FIRST;
+        }
+
+        if (topicPosition == topicCount) {
+            return SnapshotRecord.LAST_IN_DATA_COLLECTION;
+        }
+
+        if (topicPosition == 1) {
+            return SnapshotRecord.FIRST_IN_DATA_COLLECTION;
+        }
+
+        return SnapshotRecord.TRUE;
+    }
+
+    protected void assertRecordOffsetAndSnapshotSource(SourceRecord record, SnapshotRecord expectedType) {
         Map<String, ?> offset = record.sourceOffset();
         assertNotNull(offset.get(SourceInfo.TXID_KEY));
         assertNotNull(offset.get(SourceInfo.TIMESTAMP_USEC_KEY));
@@ -1054,9 +1074,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
         Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
 
-        if (shouldBeSnapshot) {
+        if (expectedType != SnapshotRecord.FALSE) {
             assertTrue("Snapshot marker expected but not found", (Boolean) snapshot);
-            assertEquals("Last snapshot record marker mismatch", shouldBeLastSnapshotRecord, lastSnapshotRecord);
         }
         else {
             assertNull("Snapshot marker not expected, but found", snapshot);
@@ -1066,16 +1085,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         if (envelope != null && Envelope.isEnvelopeSchema(envelope.schema())) {
             final Struct source = (Struct) envelope.get("source");
             final SnapshotRecord sourceSnapshot = SnapshotRecord.fromSource(source);
-            if (shouldBeSnapshot) {
-                if (shouldBeLastSnapshotRecord) {
-                    assertEquals("Expected snapshot last record", SnapshotRecord.LAST, sourceSnapshot);
-                }
-                else {
-                    assertEquals("Expected snapshot intermediary record", SnapshotRecord.TRUE, sourceSnapshot);
-                }
+            if (sourceSnapshot != null) {
+                assertEquals("Expected snapshot of type, but found", expectedType, sourceSnapshot);
             }
             else {
-                assertNull("Source snapshot marker not expected, but found", sourceSnapshot);
+                assertEquals("Source snapshot marker not expected, but found", expectedType, SnapshotRecord.FALSE);
             }
         }
     }
