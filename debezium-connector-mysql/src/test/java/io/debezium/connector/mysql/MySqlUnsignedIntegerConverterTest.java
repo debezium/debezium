@@ -43,6 +43,7 @@ public class MySqlUnsignedIntegerConverterTest {
     @Test
     public void shouldConvertSignedBinlogBigintToUnsigned() {
         assertEquals(new BigDecimal("18446744073709551615"), MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("-1")));
+        assertEquals(new BigDecimal("18446744073709551614"), MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("-2")));
         assertEquals(new BigDecimal("18446744073709551615"), MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("18446744073709551615")));
     }
 

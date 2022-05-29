@@ -390,7 +390,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 break;
             case 2:
                 assertThat(after.get("c1")).isEqualTo(new BigDecimal("14446744073709551615"));
-                assertThat(after.get("c2")).isEqualTo(new BigDecimal("14446744073709551615"));
+                assertThat(after.get("c2")).isEqualTo(new BigDecimal("14446744073709551614"));
                 assertThat(after.getInt64("c3")).isEqualTo(-1223372036854775807L);
                 break;
             case 3:
@@ -422,7 +422,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 break;
             case 2:
                 assertThat(after.getInt64("c1")).isEqualTo(-4000000000000000001L);
-                assertThat(after.getInt64("c2")).isEqualTo(-4000000000000000001L);
+                assertThat(after.getInt64("c2")).isEqualTo(-4000000000000000002L);
                 assertThat(after.getInt64("c3")).isEqualTo(-1223372036854775807L);
                 break;
             case 3:
