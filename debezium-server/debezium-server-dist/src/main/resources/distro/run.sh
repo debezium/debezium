@@ -19,4 +19,10 @@ fi
 
 RUNNER=$(ls debezium-server-*runner.jar)
 
-exec "$JAVA_BINARY" $DEBEZIUM_OPTS $JAVA_OPTS -cp "$RUNNER"$PATH_SEP"conf"$PATH_SEP"lib/*" io.debezium.server.Main
+ENABLE_DEBEZIUM_SCRIPTING=${ENABLE_DEBEZIUM_SCRIPTING:-false}
+LIB_PATH="lib/*"
+if [[ "${ENABLE_DEBEZIUM_SCRIPTING}" == "true" ]]; then
+    LIB_PATH=$LIB_PATH$PATH_SEP"lib_opt/*"
+fi
+
+exec "$JAVA_BINARY" $DEBEZIUM_OPTS $JAVA_OPTS -cp "$RUNNER"$PATH_SEP"conf"$PATH_SEP$LIB_PATH io.debezium.server.Main
