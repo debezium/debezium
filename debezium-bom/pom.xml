@@ -530,6 +530,12 @@
                 <artifactId>debezium-scripting</artifactId>
                 <version>${project.version}</version>
             </dependency>
+	    <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-scripting-languages</artifactId>
+		<type>pom</type>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-embedded</artifactId>
