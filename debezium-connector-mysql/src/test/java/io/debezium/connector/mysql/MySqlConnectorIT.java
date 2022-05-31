@@ -133,7 +133,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME, 2);
         assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
@@ -183,7 +182,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
@@ -270,7 +268,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshotOld() throws SQLException, InterruptedException {
-        shouldConsumeAllEventsFromDatabaseUsingSnapshotByField(MySqlConnectorConfig.DATABASE_WHITELIST, 18775);
+        shouldConsumeAllEventsFromDatabaseUsingSnapshotByField(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, 18775);
     }
 
     private void shouldConsumeAllEventsFromDatabaseUsingSnapshotByField(Field dbIncludeListField, int serverId) throws SQLException, InterruptedException {
@@ -1045,7 +1043,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tables = String.format("%s.customers, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, ".*")
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, ".*")
                 .build();
 
         dropDatabases();

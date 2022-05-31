@@ -52,7 +52,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     protected static final String SCHEMA_INCLUDE_LIST_NAME = "schema.include.list";
     protected static final String SCHEMA_EXCLUDE_LIST_NAME = "schema.exclude.list";
-    protected static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     protected static final String DATABASE_INCLUDE_LIST_NAME = "database.include.list";
     protected static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
     protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
@@ -66,7 +65,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final String COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.whitelist\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
     public static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
-    public static final String DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.whitelist\" is already specified";
 
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
     public static final String DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
@@ -384,16 +382,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withValidation(Field::isListOfRegex)
             .withDescription("The databases for which changes are to be captured");
-
-    @Deprecated
-    public static final Field DATABASE_WHITELIST = Field.create(DATABASE_WHITELIST_NAME)
-            .withDisplayName("Deprecated: Include Databases")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex)
-            .withInvisibleRecommender()
-            .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of regular expressions that match database names to be excluded from monitoring.
@@ -790,10 +778,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getFallbackStringPropertyWithWarning(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
+        String includeList = config.getString(DATABASE_INCLUDE_LIST);
         String blacklist = config.getFallbackStringPropertyWithWarning(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
+        if (includeList != null && blacklist != null) {
+            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;

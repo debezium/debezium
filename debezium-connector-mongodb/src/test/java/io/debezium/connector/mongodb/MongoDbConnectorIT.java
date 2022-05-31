@@ -98,7 +98,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_WHITELIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
@@ -225,7 +224,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_WHITELIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);

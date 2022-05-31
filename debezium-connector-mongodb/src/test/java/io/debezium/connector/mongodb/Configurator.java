@@ -46,10 +46,6 @@ public class Configurator {
     }
 
     public Configurator includeDatabases(String regexList) {
-        if (Math.random() >= 0.5) {
-            Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_WHITELIST.name() + "\" config property");
-            return with(MongoDbConnectorConfig.DATABASE_WHITELIST, regexList);
-        }
         Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_INCLUDE_LIST.name() + "\" config property");
         return with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, regexList);
     }

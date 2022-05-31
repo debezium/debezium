@@ -42,7 +42,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static final String COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.include.list\" is already specified";
     protected static final String COLLECTION_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.whitelist\" is already specified";
     protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
-    protected static final String DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.whitelist\" is already specified";
 
     protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
 
@@ -360,20 +359,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured");
 
     /**
-     * Old, backwards-compatible "whitelist" property.
-     */
-    @Deprecated
-    public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
-            .withDisplayName("Deprecated: Include Databases")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex)
-            .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured (deprecated, use \""
-                    + DATABASE_INCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of regular expressions that match the databases to be excluded.
      * Must not be used with {@link #DATABASE_INCLUDE_LIST}.
      */
@@ -589,7 +574,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     SSL_ALLOW_INVALID_HOSTNAMES,
                     CURSOR_MAX_AWAIT_TIME_MS)
             .events(
-                    DATABASE_WHITELIST,
                     DATABASE_INCLUDE_LIST,
                     DATABASE_BLACKLIST,
                     DATABASE_EXCLUDE_LIST,
@@ -712,10 +696,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getFallbackStringPropertyWithWarning(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
+        String whitelist = config.getString(DATABASE_INCLUDE_LIST);
         String blacklist = config.getFallbackStringPropertyWithWarning(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
         if (whitelist != null && blacklist != null) {
-            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
