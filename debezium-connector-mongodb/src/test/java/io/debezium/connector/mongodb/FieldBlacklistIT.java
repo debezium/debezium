@@ -1450,9 +1450,9 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         assertThat(value).isNull();
     }
 
-    private Configuration getConfiguration(String blackList) {
+    private Configuration getConfiguration(String excludeList) {
         return TestHelper.getConfiguration().edit()
-                .with(MongoDbConnectorConfig.FIELD_BLACKLIST, blackList)
+                .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, excludeList)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
                 .build();

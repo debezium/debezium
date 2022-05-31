@@ -66,10 +66,6 @@ public class Configurator {
     }
 
     public Configurator excludeFields(String excludeList) {
-        if (Math.random() >= 0.5) {
-            Testing.debug("Using \"" + MongoDbConnectorConfig.FIELD_BLACKLIST.name() + "\" config property");
-            return with(MongoDbConnectorConfig.FIELD_BLACKLIST, excludeList);
-        }
         Testing.debug("Using \"" + MongoDbConnectorConfig.FIELD_EXCLUDE_LIST.name() + "\" config property");
         return with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, excludeList);
     }
