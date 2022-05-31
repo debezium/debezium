@@ -274,14 +274,6 @@ public class PostgresSchemaIT {
             schema.refresh(connection, false);
             assertColumnsExcluded("s1.a.aa", "s2.a.aa");
         }
-
-        config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.COLUMN_WHITELIST, ".*bb")
-                .build());
-        schema = TestHelper.getSchema(config, typeRegistry);
-        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
-            schema.refresh(connection, false);
-            assertColumnsExcluded("s1.a.aa", "s2.a.aa");
-        }
     }
 
     @Test

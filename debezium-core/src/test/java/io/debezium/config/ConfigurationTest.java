@@ -8,7 +8,6 @@ package io.debezium.config;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_WHITELIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SERVER_NAME;
 import static org.fest.assertions.Assertions.assertThat;
@@ -86,13 +85,13 @@ public class ConfigurationTest {
     @FixFor("DBZ-1962")
     public void shouldThrowValidationOnDuplicateOldColumnFilterConfigurationOld() {
         config = Configuration.create()
-                .with(COLUMN_WHITELIST, ".+aa")
+                .with(COLUMN_INCLUDE_LIST, ".+aa")
                 .with(COLUMN_BLACKLIST, ".+bb")
                 .build();
 
         List<String> errorMessages = config.validate(Field.setOf(COLUMN_BLACKLIST)).get(COLUMN_BLACKLIST.name()).errorMessages();
         assertThat(errorMessages).isNotEmpty();
-        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
+        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
     }
 
     @Test
