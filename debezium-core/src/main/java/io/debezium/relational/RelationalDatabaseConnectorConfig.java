@@ -58,13 +58,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
     protected static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
-    protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
 
     protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
 
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
-    public static final String TABLE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.whitelist\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
     public static final String COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.whitelist\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
@@ -226,19 +224,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
             .withDescription("The tables for which changes are to be captured");
-
-    /**
-     * Old, backwards-compatible "whitelist" property.
-     */
-    @Deprecated
-    public static final Field TABLE_WHITELIST = Field.create(TABLE_WHITELIST_NAME)
-            .withDisplayName("Deprecated: Include Tables")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex)
-            .withInvisibleRecommender()
-            .withDescription("The tables for which changes are to be captured (deprecated, use \"" + TABLE_INCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
@@ -440,7 +425,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
+            .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withValidation(Field::isListOfRegex)
             .withDescription("The databases for which changes are to be captured");
 
@@ -600,7 +585,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     COLUMN_INCLUDE_LIST,
                     COLUMN_BLACKLIST,
                     COLUMN_EXCLUDE_LIST,
-                    TABLE_WHITELIST,
                     TABLE_INCLUDE_LIST,
                     TABLE_BLACKLIST,
                     TABLE_EXCLUDE_LIST,
@@ -725,7 +709,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     public String tableIncludeList() {
-        return getConfig().getFallbackStringProperty(TABLE_INCLUDE_LIST, TABLE_WHITELIST);
+        return getConfig().getString(TABLE_INCLUDE_LIST);
     }
 
     public ColumnNameFilter getColumnFilter() {
@@ -773,18 +757,18 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getFallbackStringPropertyWithWarning(TABLE_INCLUDE_LIST, TABLE_WHITELIST);
+        String includeList = config.getString(TABLE_INCLUDE_LIST);
         String blacklist = config.getFallbackStringPropertyWithWarning(TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
 
-        if (whitelist != null && blacklist != null) {
-            problems.accept(TABLE_BLACKLIST, blacklist, TABLE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
+        if (includeList != null && blacklist != null) {
+            problems.accept(TABLE_BLACKLIST, blacklist, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
     }
 
     private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(TABLE_WHITELIST);
+        String includeList = config.getString(TABLE_INCLUDE_LIST);
         String excludeList = config.getString(TABLE_BLACKLIST);
 
         if (includeList != null && excludeList != null) {

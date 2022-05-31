@@ -126,13 +126,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldApplyTableWhitelistConfiguration() throws Exception {
-        shouldApplyTableInclusionConfiguration(true);
-    }
-
-    @Test
     public void shouldApplyTableIncludeListConfiguration() throws Exception {
-        shouldApplyTableInclusionConfiguration(false);
+        shouldApplyTableInclusionConfiguration();
     }
 
     @Test
@@ -147,14 +142,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3009")
-    public void shouldApplySchemaAndTableWhitelistConfiguration() throws Exception {
-        shouldApplySchemaAndTableInclusionConfiguration(true);
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
     public void shouldApplySchemaAndTableIncludeListConfiguration() throws Exception {
-        shouldApplySchemaAndTableInclusionConfiguration(false);
+        shouldApplySchemaAndTableInclusionConfiguration();
     }
 
     @Test
@@ -297,12 +286,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         }
     }
 
-    private void shouldApplyTableInclusionConfiguration(boolean useLegacyOption) throws Exception {
+    private void shouldApplyTableInclusionConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
-        if (useLegacyOption) {
-            option = OracleConnectorConfig.TABLE_WHITELIST;
-        }
-
         boolean includeDdlChanges = true;
         if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
             // LogMiner currently does not support DDL changes during streaming phase
@@ -363,12 +348,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         }
     }
 
-    private void shouldApplySchemaAndTableInclusionConfiguration(boolean useLegacyOption) throws Exception {
+    private void shouldApplySchemaAndTableInclusionConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
-        if (useLegacyOption) {
-            option = OracleConnectorConfig.TABLE_WHITELIST;
-        }
-
         boolean includeDdlChanges = true;
         if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
             // LogMiner currently does not support DDL changes during streaming phase
