@@ -36,10 +36,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
     public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         // Define the filter that provides the list of tables that could be captured if configured
         final TableSelectionPredicateBuilder eligibleTables = Selectors.tableSelector()
-                .includeDatabases(
-                        config.getFallbackStringProperty(
-                                RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST,
-                                RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
+                .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST))
                 .excludeDatabases(
                         config.getFallbackStringProperty(
                                 RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST,
@@ -76,10 +73,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
 
         // Define the database filter using the include and exclude lists for database names ...
         this.databaseFilter = Selectors.databaseSelector()
-                .includeDatabases(
-                        config.getFallbackStringProperty(
-                                RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST,
-                                RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
+                .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST))
                 .excludeDatabases(
                         config.getFallbackStringProperty(
                                 RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST,

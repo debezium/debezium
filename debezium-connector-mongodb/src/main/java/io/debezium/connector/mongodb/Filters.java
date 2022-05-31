@@ -32,7 +32,7 @@ public final class Filters {
      * @param config the configuration; may not be null
      */
     public Filters(Configuration config) {
-        String dbIncludeList = config.getFallbackStringProperty(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, MongoDbConnectorConfig.DATABASE_WHITELIST);
+        String dbIncludeList = config.getString(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
         String dbExcludeList = config.getFallbackStringProperty(MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST, MongoDbConnectorConfig.DATABASE_BLACKLIST);
         if (dbIncludeList != null && !dbIncludeList.trim().isEmpty()) {
             databaseFilter = Predicates.includes(dbIncludeList);

@@ -289,40 +289,6 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     }
 
     /**
-     * Setup a DATABASE_WHITELIST filter that filters all events.
-     * Verify all events are properly filtered.
-     * Verify numberOfFilteredEvents metric is incremented correctly.
-     */
-    @Test
-    @FixFor("DBZ-1206")
-    public void shouldFilterAllRecordsBasedOnDatabaseWhitelistFilter() throws Exception {
-        // Define configuration that will ignore all events from MySQL source.
-        config = simpleConfig()
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "db-does-not-exist")
-                .build();
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
-
-        // Lets wait for at least 35 events to be filtered.
-        final int expectedFilterCount = 35;
-        final long numberFiltered = filterAtLeast(expectedFilterCount, 20, TimeUnit.SECONDS);
-
-        // All events should have been filtered.
-        assertThat(numberFiltered).isGreaterThanOrEqualTo(expectedFilterCount);
-
-        // There should be no schema changes
-        assertThat(schemaChanges.recordCount()).isEqualTo(0);
-
-        // There should be no records
-        assertThat(store.collectionCount()).isEqualTo(0);
-
-        // There should be no skipped
-        assertThat(getNumberOfSkippedEvents()).isEqualTo(0);
-    }
-
-    /**
      * Setup a DATABASE_INCLUDE_LIST filter that filters all events.
      * Verify all events are properly filtered.
      * Verify numberOfFilteredEvents metric is incremented correctly.
