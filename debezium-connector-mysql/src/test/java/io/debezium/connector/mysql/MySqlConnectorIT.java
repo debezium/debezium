@@ -137,7 +137,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
@@ -189,7 +188,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
@@ -1043,12 +1041,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldHandleWhitelistedTables() throws SQLException, InterruptedException {
+    public void shouldHandleIncludedTables() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
 
         final String tables = String.format("%s.customers, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, ".*")
                 .build();
 

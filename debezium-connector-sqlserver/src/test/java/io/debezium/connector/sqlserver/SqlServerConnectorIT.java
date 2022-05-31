@@ -862,13 +862,13 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void testWhitelistTable() throws Exception {
+    public void testIncludeTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.tableb")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tableb")
                 .build();
         connection.execute(
                 "INSERT INTO tableb VALUES(1, 'b')");

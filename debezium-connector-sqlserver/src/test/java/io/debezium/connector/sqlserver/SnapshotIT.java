@@ -328,7 +328,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.COLUMN_BLACKLIST, "dbo.blacklist_column_table_a.amount")
-                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.blacklist_column_table_a,dbo.blacklist_column_table_b")
+                .with(TABLE_INCLUDE_LIST, "dbo.blacklist_column_table_a,dbo.blacklist_column_table_b")
                 .build();
 
         start(SqlServerConnector.class, config);

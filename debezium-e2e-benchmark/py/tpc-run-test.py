@@ -140,7 +140,7 @@ def main(argv):
     table = tpcconfig['jdbc'][connectiontype].get('table')
     if table == None:
         table = 'TPC.TEST'
-    config['config']['table.whitelist'] = table
+    config['config']['table.include.list'] = table
 
     lowercase = tpcconfig['jdbc'][connectiontype].get('lowercase')
     if lowercase == None:

@@ -702,7 +702,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 24))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
+            .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
 
     /**

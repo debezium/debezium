@@ -681,9 +681,9 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldSnapshotTablesInOrderSpecifiedInTablesWhitelist() throws Exception {
+    public void shouldSnapshotTablesInOrderSpecifiedInTablesIncludeList() throws Exception {
         config = simpleConfig()
-                .with(MySqlConnectorConfig.TABLE_WHITELIST,
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
                         "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
                 .build();
 

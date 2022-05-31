@@ -63,9 +63,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
         // Define the filter using the include and exclude lists for tables and database names ...
         Predicate<TableId> tablePredicate = eligibleTables
                 .includeTables(
-                        config.getFallbackStringProperty(
-                                RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
-                                RelationalDatabaseConnectorConfig.TABLE_WHITELIST),
+                        config.getString(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST),
                         tableIdMapper)
                 .excludeTables(
                         config.getFallbackStringProperty(
