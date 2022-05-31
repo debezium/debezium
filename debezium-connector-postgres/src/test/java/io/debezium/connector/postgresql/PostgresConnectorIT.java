@@ -230,7 +230,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY_PASSWORD, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_ROOT_CERT, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, null);
-        validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_BLACKLIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.TABLE_INCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.TABLE_EXCLUDE_LIST, null);
@@ -1110,7 +1109,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "s2")
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "s2")
                 .with(PostgresConnectorConfig.TABLE_EXCLUDE_LIST, ".+b")
                 .with(PostgresConnectorConfig.COLUMN_BLACKLIST, ".+bb");
 

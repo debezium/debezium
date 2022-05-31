@@ -7,7 +7,6 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
@@ -218,22 +217,7 @@ public class PostgresSchemaIT {
             assertTablesExcluded("s1.a", "s1.b");
         }
 
-        config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_BLACKLIST, "s1").build());
-        schema = TestHelper.getSchema(config, typeRegistry);
-        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
-            schema.refresh(connection, false);
-            assertTablesIncluded("s2.a", "s2.b");
-            assertTablesExcluded("s1.a", "s1.b");
-        }
-
         config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_EXCLUDE_LIST, "s.*").build());
-        schema = TestHelper.getSchema(config, typeRegistry);
-        try (PostgresConnection connection = TestHelper.create()) {
-            schema.refresh(connection, false);
-            assertTablesExcluded("s1.a", "s2.a", "s1.b", "s2.b");
-        }
-
-        config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_BLACKLIST, "s.*").build());
         schema = TestHelper.getSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
@@ -258,17 +242,6 @@ public class PostgresSchemaIT {
 
         config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(SCHEMA_EXCLUDE_LIST, "s2")
-                .with(PostgresConnectorConfig.TABLE_EXCLUDE_LIST, "s1.A")
-                .build());
-        schema = TestHelper.getSchema(config, typeRegistry);
-        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
-            schema.refresh(connection, false);
-            assertTablesIncluded("s1.b");
-            assertTablesExcluded("s1.a", "s2.a", "s2.b");
-        }
-
-        config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(SCHEMA_BLACKLIST, "s2")
                 .with(PostgresConnectorConfig.TABLE_EXCLUDE_LIST, "s1.A")
                 .build());
         schema = TestHelper.getSchema(config, typeRegistry);

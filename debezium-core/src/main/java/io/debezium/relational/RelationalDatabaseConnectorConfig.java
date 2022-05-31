@@ -372,19 +372,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The schemas for which events must not be captured");
 
     /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field SCHEMA_BLACKLIST = Field.create("schema.blacklist")
-            .withDisplayName("Deprecated: Exclude Schemas")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateSchemaBlacklist)
-            .withInvisibleRecommender()
-            .withDescription("The schemas for which events must not be captured (deprecated, use \"" + SCHEMA_EXCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of regular expressions that match database names to be monitored.
      * Must not be used with {@link #DATABASE_BLACKLIST}.
      */
@@ -558,7 +545,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     TABLE_EXCLUDE_LIST,
                     TABLE_IGNORE_BUILTIN,
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST,
                     MSG_KEY_COLUMNS,
                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
@@ -664,7 +650,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     public String schemaExcludeList() {
-        return getConfig().getFallbackStringProperty(SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
+        return getConfig().getString(SCHEMA_EXCLUDE_LIST);
     }
 
     public String schemaIncludeList() {
@@ -780,17 +766,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     schemaNameAdjuster);
         }
         return super.createHeartbeat(topicSelector, schemaNameAdjuster, connectionProvider, errorHandler);
-    }
-
-    private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String includeList = config.getString(SCHEMA_INCLUDE_LIST);
-        String blacklist = config.getFallbackStringPropertyWithWarning(SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
-
-        if (includeList != null && blacklist != null) {
-            problems.accept(SCHEMA_BLACKLIST, blacklist, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {

@@ -953,7 +953,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .name("MySQL")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.SERVER_NAME,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,

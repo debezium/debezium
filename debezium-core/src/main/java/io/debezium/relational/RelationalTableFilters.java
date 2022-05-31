@@ -45,10 +45,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
                                 RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
                 .includeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST))
-                .excludeSchemas(
-                        config.getFallbackStringProperty(
-                                RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST,
-                                RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST));
+                .excludeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST));
         final Predicate<TableId> eligibleTablePredicate = eligibleTables.build();
 
         Predicate<TableId> finalEligibleTablePredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
