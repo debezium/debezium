@@ -483,7 +483,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .name("Oracle")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                     SERVER_NAME)

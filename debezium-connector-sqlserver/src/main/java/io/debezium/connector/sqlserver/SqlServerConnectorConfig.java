@@ -362,7 +362,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST)
             .create();
 
