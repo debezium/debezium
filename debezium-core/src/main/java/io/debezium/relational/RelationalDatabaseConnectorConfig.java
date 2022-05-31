@@ -56,7 +56,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String DATABASE_INCLUDE_LIST_NAME = "database.include.list";
     protected static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
     protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
-    protected static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
 
@@ -238,21 +237,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableExcludeList)
             .withDescription("A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring");
-
-    /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
-            .withDisplayName("Deprecated: Exclude Tables")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableBlacklist)
-            .withInvisibleRecommender()
-            .withDescription(
-                    "A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring (deprecated, use \""
-                            + TABLE_EXCLUDE_LIST.name() + "\" instead)");
 
     public static final Field TABLE_IGNORE_BUILTIN = Field.create("table.ignore.builtin")
             .withDisplayName("Ignore system databases")
@@ -586,7 +570,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     COLUMN_BLACKLIST,
                     COLUMN_EXCLUDE_LIST,
                     TABLE_INCLUDE_LIST,
-                    TABLE_BLACKLIST,
                     TABLE_EXCLUDE_LIST,
                     TABLE_IGNORE_BUILTIN,
                     SCHEMA_WHITELIST,
@@ -705,7 +688,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     public String tableExcludeList() {
-        return getConfig().getFallbackStringProperty(TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
+        return getConfig().getString(TABLE_EXCLUDE_LIST);
     }
 
     public String tableIncludeList() {
@@ -758,10 +741,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(TABLE_INCLUDE_LIST);
-        String blacklist = config.getFallbackStringPropertyWithWarning(TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
+        String excludeList = config.getString(TABLE_EXCLUDE_LIST);
 
-        if (includeList != null && blacklist != null) {
-            problems.accept(TABLE_BLACKLIST, blacklist, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+        if (includeList != null && excludeList != null) {
+            problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -769,7 +752,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(TABLE_INCLUDE_LIST);
-        String excludeList = config.getString(TABLE_BLACKLIST);
+        String excludeList = config.getString(TABLE_EXCLUDE_LIST);
 
         if (includeList != null && excludeList != null) {
             problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);

@@ -131,13 +131,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldApplyTableBlacklistConfiguration() throws Exception {
-        shouldApplyTableExclusionsConfiguration(true);
-    }
-
-    @Test
     public void shouldApplyTableExcludeListConfiguration() throws Exception {
-        shouldApplyTableExclusionsConfiguration(false);
+        shouldApplyTableExclusionsConfiguration();
     }
 
     @Test
@@ -148,14 +143,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3009")
-    public void shouldApplySchemaAndTableBlacklistConfiguration() throws Exception {
-        shouldApplySchemaAndTableExclusionsConfiguration(true);
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
     public void shouldApplySchemaAndTableExcludeListConfiguration() throws Exception {
-        shouldApplySchemaAndTableExclusionsConfiguration(false);
+        shouldApplySchemaAndTableExclusionsConfiguration();
     }
 
     @Test
@@ -427,12 +416,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         }
     }
 
-    private void shouldApplyTableExclusionsConfiguration(boolean useLegacyOption) throws Exception {
+    private void shouldApplyTableExclusionsConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
-        if (useLegacyOption) {
-            option = OracleConnectorConfig.TABLE_BLACKLIST;
-        }
-
         boolean includeDdlChanges = true;
         if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
             // LogMiner currently does not support DDL changes during streaming phase
@@ -493,12 +478,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         }
     }
 
-    private void shouldApplySchemaAndTableExclusionsConfiguration(boolean useLegacyOption) throws Exception {
+    private void shouldApplySchemaAndTableExclusionsConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
-        if (useLegacyOption) {
-            option = OracleConnectorConfig.TABLE_BLACKLIST;
-        }
-
         boolean includeDdlChanges = true;
         boolean isLogMiner = false;
         if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
