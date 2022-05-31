@@ -434,7 +434,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
         if (getTransactionEventCount(transaction) > 0 && !skipExcludedUserName) {
-            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
+            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, transaction.getChangeTime());
         }
         else {
             dispatcher.dispatchHeartbeatEvent(partition, offsetContext);

@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.txmetadata;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,7 @@ public class TransactionMonitor {
     public static final String DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY = "event_count";
     public static final String DEBEZIUM_TRANSACTION_COLLECTION_KEY = "data_collection";
     public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY = "data_collections";
+    public static final String DEBEZIUM_TRANSACTION_TS_MS = "ts_ms";
 
     public static final Schema TRANSACTION_BLOCK_SCHEMA = SchemaBuilder.struct().optional()
             .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
@@ -92,6 +94,7 @@ public class TransactionMonitor {
                 .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
                 .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA).optional().build())
+                .field(DEBEZIUM_TRANSACTION_TS_MS, Schema.INT64_SCHEMA)
                 .build();
 
         this.topicName = connectorConfig.getTransactionTopic();
@@ -115,40 +118,40 @@ public class TransactionMonitor {
             // commit transaction
             if (transactionContext.isTransactionInProgress()) {
                 LOGGER.trace("Transaction was in progress, executing implicit transaction commit");
-                endTransaction(partition, offset);
+                endTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
             }
             return;
         }
 
         if (!transactionContext.isTransactionInProgress()) {
             transactionContext.beginTransaction(txId);
-            beginTransaction(partition, offset);
+            beginTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
         }
         else if (!transactionContext.getTransactionId().equals(txId)) {
-            endTransaction(partition, offset);
+            endTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
             transactionContext.endTransaction();
             transactionContext.beginTransaction(txId);
-            beginTransaction(partition, offset);
+            beginTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
         }
         transactionEvent(offset, source, value);
     }
 
-    public void transactionComittedEvent(Partition partition, OffsetContext offset) throws InterruptedException {
+    public void transactionComittedEvent(Partition partition, OffsetContext offset, Instant timestamp) throws InterruptedException {
         if (!connectorConfig.shouldProvideTransactionMetadata()) {
             return;
         }
         if (offset.getTransactionContext().isTransactionInProgress()) {
-            endTransaction(partition, offset);
+            endTransaction(partition, offset, timestamp);
         }
         offset.getTransactionContext().endTransaction();
     }
 
-    public void transactionStartedEvent(Partition partition, String transactionId, OffsetContext offset) throws InterruptedException {
+    public void transactionStartedEvent(Partition partition, String transactionId, OffsetContext offset, Instant timestamp) throws InterruptedException {
         if (!connectorConfig.shouldProvideTransactionMetadata()) {
             return;
         }
         offset.getTransactionContext().beginTransaction(transactionId);
-        beginTransaction(partition, offset);
+        beginTransaction(partition, offset, timestamp);
     }
 
     private void transactionEvent(OffsetContext offsetContext, DataCollectionId source, Struct value) {
@@ -164,24 +167,26 @@ public class TransactionMonitor {
         value.put(Envelope.FieldName.TRANSACTION, txStruct);
     }
 
-    private void beginTransaction(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    private void beginTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
         final Struct key = new Struct(transactionKeySchema);
         key.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         final Struct value = new Struct(transactionValueSchema);
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.BEGIN.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
+        value.put(DEBEZIUM_TRANSACTION_TS_MS, timestamp.toEpochMilli());
 
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
     }
 
-    private void endTransaction(Partition partition, OffsetContext offsetContext) throws InterruptedException {
+    private void endTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
         final Struct key = new Struct(transactionKeySchema);
         key.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         final Struct value = new Struct(transactionValueSchema);
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.END.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         value.put(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, offsetContext.getTransactionContext().getTotalEventCount());
+        value.put(DEBEZIUM_TRANSACTION_TS_MS, timestamp.toEpochMilli());
 
         final Set<Entry<String, Long>> perTableEventCount = offsetContext.getTransactionContext().getPerTableEventCount().entrySet();
         final List<Struct> valuePerTableCount = new ArrayList<>(perTableEventCount.size());
