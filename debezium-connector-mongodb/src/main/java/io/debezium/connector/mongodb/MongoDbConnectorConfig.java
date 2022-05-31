@@ -372,20 +372,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be excluded");
 
     /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
-            .withDisplayName("Deprecated: Exclude Databases")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseBlacklist)
-            .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be excluded (deprecated, use \""
-                    + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
      * Fully-qualified namespaces for collections are of the form {@code <databaseName>.<collectionName>}.
      * Must not be used with {@link #COLLECTION_EXCLUDE_LIST}.
@@ -575,7 +561,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CURSOR_MAX_AWAIT_TIME_MS)
             .events(
                     DATABASE_INCLUDE_LIST,
-                    DATABASE_BLACKLIST,
                     DATABASE_EXCLUDE_LIST,
                     COLLECTION_WHITELIST,
                     COLLECTION_INCLUDE_LIST,
@@ -690,16 +675,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
         if (includeList != null && excludeList != null) {
             problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
-    }
-
-    private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getString(DATABASE_INCLUDE_LIST);
-        String blacklist = config.getFallbackStringPropertyWithWarning(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;

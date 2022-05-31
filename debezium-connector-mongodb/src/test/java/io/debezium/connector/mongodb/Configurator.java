@@ -51,10 +51,6 @@ public class Configurator {
     }
 
     public Configurator excludeDatabases(String regexList) {
-        if (Math.random() >= 0.5) {
-            Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_BLACKLIST.name() + "\" config property");
-            return with(MongoDbConnectorConfig.DATABASE_BLACKLIST, regexList);
-        }
         Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST.name() + "\" config property");
         return with(MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST, regexList);
     }
