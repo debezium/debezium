@@ -235,11 +235,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                             taskContext.getSlotXmin(connection),
                             null);
                     if (message.getOperation() == Operation.BEGIN) {
-                        dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext);
+                        dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
                     }
                     else if (message.getOperation() == Operation.COMMIT) {
                         commitMessage(partition, offsetContext, lsn);
-                        dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
+                        dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
                     }
                     maybeWarnAboutGrowingWalBacklog(true);
                 }

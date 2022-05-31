@@ -527,13 +527,14 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while recording the DDL statements
      */
     protected void handleQueryEvent(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
+        Instant eventTime = Conversions.toInstantFromMillis(eventTimestamp.toEpochMilli());
         QueryEventData command = unwrapData(event);
         LOGGER.debug("Received query command: {}", event);
         String sql = command.getSql().trim();
         if (sql.equalsIgnoreCase("BEGIN")) {
             // We are starting a new transaction ...
             offsetContext.startNextTransaction();
-            eventDispatcher.dispatchTransactionStartedEvent(partition, offsetContext.getTransactionId(), offsetContext);
+            eventDispatcher.dispatchTransactionStartedEvent(partition, offsetContext.getTransactionId(), offsetContext, eventTime);
             offsetContext.setBinlogThread(command.getThreadId());
             if (initialEventsToSkip != 0) {
                 LOGGER.debug("Restarting partially-processed transaction; change events will not be created for the first {} events plus {} more rows in the next event",
@@ -568,9 +569,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
 
-        Instant schemaTimestamp = Conversions.toInstantFromMillis(eventTimestamp.toEpochMilli());
         final List<SchemaChangeEvent> schemaChangeEvents = taskContext.getSchema().parseStreamingDdl(partition, sql,
-                command.getDatabase(), offsetContext, schemaTimestamp);
+                command.getDatabase(), offsetContext, eventTime);
         try {
             for (SchemaChangeEvent schemaChangeEvent : schemaChangeEvents) {
                 if (taskContext.getSchema().skipSchemaChangeEvent(schemaChangeEvent)) {
@@ -595,7 +595,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     private void handleTransactionCompletion(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         // We are completing the transaction ...
-        eventDispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
+        eventDispatcher.dispatchTransactionCommittedEvent(partition, offsetContext,
+                Conversions.toInstantFromMillis(eventTimestamp.toEpochMilli()));
         offsetContext.commitTransaction();
         offsetContext.setBinlogThread(-1L);
         skipEvent = false;

@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Objects;
@@ -265,15 +266,15 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         }
     }
 
-    public void dispatchTransactionCommittedEvent(P partition, OffsetContext offset) throws InterruptedException {
-        transactionMonitor.transactionComittedEvent(partition, offset);
+    public void dispatchTransactionCommittedEvent(P partition, OffsetContext offset, Instant timestamp) throws InterruptedException {
+        transactionMonitor.transactionComittedEvent(partition, offset, timestamp);
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processTransactionCommittedEvent(partition, offset);
         }
     }
 
-    public void dispatchTransactionStartedEvent(P partition, String transactionId, OffsetContext offset) throws InterruptedException {
-        transactionMonitor.transactionStartedEvent(partition, transactionId, offset);
+    public void dispatchTransactionStartedEvent(P partition, String transactionId, OffsetContext offset, Instant timestamp) throws InterruptedException {
+        transactionMonitor.transactionStartedEvent(partition, transactionId, offset, timestamp);
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processTransactionStartedEvent(partition, offset);
         }
