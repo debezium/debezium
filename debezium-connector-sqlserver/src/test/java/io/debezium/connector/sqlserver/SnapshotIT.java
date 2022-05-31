@@ -315,65 +315,6 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1067")
-    public void testBlacklistColumn() throws Exception {
-        connection.execute(
-                "CREATE TABLE blacklist_column_table_a (id int, name varchar(30), amount integer primary key(id))",
-                "CREATE TABLE blacklist_column_table_b (id int, name varchar(30), amount integer primary key(id))");
-        connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 'some_name', 120)");
-        connection.execute("INSERT INTO blacklist_column_table_b VALUES(11, 'some_name', 447)");
-        TestHelper.enableTableCdc(connection, "blacklist_column_table_a");
-        TestHelper.enableTableCdc(connection, "blacklist_column_table_b");
-
-        final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.COLUMN_BLACKLIST, "dbo.blacklist_column_table_a.amount")
-                .with(TABLE_INCLUDE_LIST, "dbo.blacklist_column_table_a,dbo.blacklist_column_table_b")
-                .build();
-
-        start(SqlServerConnector.class, config);
-        assertConnectorIsRunning();
-
-        final SourceRecords records = consumeRecordsByTopic(2);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.blacklist_column_table_a");
-        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.blacklist_column_table_b");
-
-        Schema expectedSchemaA = SchemaBuilder.struct()
-                .optional()
-                .name("server1.dbo.blacklist_column_table_a.Value")
-                .field("id", Schema.INT32_SCHEMA)
-                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
-                .build();
-        Struct expectedValueA = new Struct(expectedSchemaA)
-                .put("id", 10)
-                .put("name", "some_name");
-
-        Schema expectedSchemaB = SchemaBuilder.struct()
-                .optional()
-                .name("server1.dbo.blacklist_column_table_b.Value")
-                .field("id", Schema.INT32_SCHEMA)
-                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
-                .build();
-        Struct expectedValueB = new Struct(expectedSchemaB)
-                .put("id", 11)
-                .put("name", "some_name")
-                .put("amount", 447);
-
-        Assertions.assertThat(tableA).hasSize(1);
-        SourceRecordAssert.assertThat(tableA.get(0))
-                .valueAfterFieldIsEqualTo(expectedValueA)
-                .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
-
-        Assertions.assertThat(tableB).hasSize(1);
-        SourceRecordAssert.assertThat(tableB.get(0))
-                .valueAfterFieldIsEqualTo(expectedValueB)
-                .valueAfterFieldSchemaIsEqualTo(expectedSchemaB);
-
-        stopConnector();
-    }
-
-    @Test
     @FixFor("DBZ-2456")
     public void shouldSelectivelySnapshotTables() throws SQLException, InterruptedException {
         connection.execute(

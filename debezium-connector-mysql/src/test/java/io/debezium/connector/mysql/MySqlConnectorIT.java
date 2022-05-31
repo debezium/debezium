@@ -137,7 +137,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
@@ -185,7 +184,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MSG_KEY_COLUMNS);

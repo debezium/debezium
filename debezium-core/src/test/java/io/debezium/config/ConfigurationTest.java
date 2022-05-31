@@ -5,7 +5,6 @@
  */
 package io.debezium.config;
 
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
@@ -79,19 +78,6 @@ public class ConfigurationTest {
     public void shouldCreateInternalFields() {
         config = Configuration.create().with(Field.createInternal("a"), "a1").build();
         assertThat(config.getString("internal.a")).isEqualTo("a1");
-    }
-
-    @Test
-    @FixFor("DBZ-1962")
-    public void shouldThrowValidationOnDuplicateOldColumnFilterConfigurationOld() {
-        config = Configuration.create()
-                .with(COLUMN_INCLUDE_LIST, ".+aa")
-                .with(COLUMN_BLACKLIST, ".+bb")
-                .build();
-
-        List<String> errorMessages = config.validate(Field.setOf(COLUMN_BLACKLIST)).get(COLUMN_BLACKLIST.name()).errorMessages();
-        assertThat(errorMessages).isNotEmpty();
-        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
     }
 
     @Test
