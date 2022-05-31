@@ -45,8 +45,7 @@ public final class Filters {
         }
 
         String collectionIncludeList = config.getString(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
-        String collectionExcludeList = config.getFallbackStringProperty(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST,
-                MongoDbConnectorConfig.COLLECTION_BLACKLIST);
+        String collectionExcludeList = config.getString(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST);
         final Predicate<CollectionId> collectionFilter;
         if (collectionIncludeList != null && !collectionIncludeList.trim().isEmpty()) {
             collectionFilter = Predicates.includes(collectionIncludeList, CollectionId::namespace);

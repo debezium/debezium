@@ -61,10 +61,6 @@ public class Configurator {
     }
 
     public Configurator excludeCollections(String regexList) {
-        if (Math.random() >= 0.5) {
-            Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_BLACKLIST.name() + "\" config property");
-            return with(MongoDbConnectorConfig.COLLECTION_BLACKLIST, regexList);
-        }
         Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST.name() + "\" config property");
         return with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, regexList);
     }

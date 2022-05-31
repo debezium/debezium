@@ -396,16 +396,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded");
 
     /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field COLLECTION_BLACKLIST = Field.create("collection.blacklist")
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateCollectionBlacklist)
-            .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded (deprecated, use \""
-                    + COLLECTION_EXCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.
      * Fully-qualified names for fields are of the form {@code
      * <databaseName>.<collectionName>.<fieldName>.<nestedFieldName>}, where {@code <databaseName>} and
@@ -548,7 +538,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     DATABASE_INCLUDE_LIST,
                     DATABASE_EXCLUDE_LIST,
                     COLLECTION_INCLUDE_LIST,
-                    COLLECTION_BLACKLIST,
                     COLLECTION_EXCLUDE_LIST,
                     FIELD_BLACKLIST,
                     FIELD_EXCLUDE_LIST,
@@ -639,16 +628,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String excludeList = config.getString(COLLECTION_EXCLUDE_LIST);
         if (includeList != null && excludeList != null) {
             problems.accept(COLLECTION_EXCLUDE_LIST, excludeList, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
-    }
-
-    private static int validateCollectionBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getString(COLLECTION_INCLUDE_LIST);
-        String blacklist = config.getFallbackStringPropertyWithWarning(COLLECTION_EXCLUDE_LIST, COLLECTION_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(COLLECTION_EXCLUDE_LIST, blacklist, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
