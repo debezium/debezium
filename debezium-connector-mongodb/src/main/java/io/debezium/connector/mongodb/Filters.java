@@ -44,8 +44,7 @@ public final class Filters {
             databaseFilter = (db) -> true;
         }
 
-        String collectionIncludeList = config.getFallbackStringProperty(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST,
-                MongoDbConnectorConfig.COLLECTION_WHITELIST);
+        String collectionIncludeList = config.getString(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
         String collectionExcludeList = config.getFallbackStringProperty(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST,
                 MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         final Predicate<CollectionId> collectionFilter;
