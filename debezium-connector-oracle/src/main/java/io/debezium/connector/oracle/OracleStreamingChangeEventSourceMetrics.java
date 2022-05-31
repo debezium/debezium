@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,6 +26,7 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.util.LRUCacheMap;
 
 /**
  * The metrics implementation for Oracle connector streaming phase.
@@ -38,6 +38,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSourceMetrics.class);
 
     private static final long MILLIS_PER_SECOND = 1000L;
+    private static final int TRANSACTION_ID_SET_SIZE = 10;
 
     private final AtomicReference<Scn> currentScn = new AtomicReference<>();
     private final AtomicInteger logMinerQueryCount = new AtomicInteger();
@@ -79,8 +80,8 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     private final AtomicLong activeTransactions = new AtomicLong();
     private final AtomicLong rolledBackTransactions = new AtomicLong();
     private final AtomicLong committedTransactions = new AtomicLong();
-    private final AtomicReference<Set<String>> abandonedTransactionIds = new AtomicReference<>();
-    private final AtomicReference<Set<String>> rolledBackTransactionIds = new AtomicReference<>();
+    private final AtomicReference<LRUCacheMap<String, String>> abandonedTransactionIds = new AtomicReference<>();
+    private final AtomicReference<LRUCacheMap<String, String>> rolledBackTransactionIds = new AtomicReference<>();
     private final AtomicLong registeredDmlCount = new AtomicLong();
     private final AtomicLong committedDmlCount = new AtomicLong();
     private final AtomicInteger errorCount = new AtomicInteger();
@@ -198,8 +199,8 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
         committedTransactions.set(0);
         registeredDmlCount.set(0);
         committedDmlCount.set(0);
-        abandonedTransactionIds.set(new HashSet<>());
-        rolledBackTransactionIds.set(new HashSet<>());
+        abandonedTransactionIds.set(new LRUCacheMap<>(TRANSACTION_ID_SET_SIZE));
+        rolledBackTransactionIds.set(new LRUCacheMap<>(TRANSACTION_ID_SET_SIZE));
         errorCount.set(0);
         warningCount.set(0);
         scnFreezeCount.set(0);
@@ -557,12 +558,12 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
 
     @Override
     public Set<String> getAbandonedTransactionIds() {
-        return abandonedTransactionIds.get();
+        return abandonedTransactionIds.get().keySet();
     }
 
     @Override
     public Set<String> getRolledBackTransactionIds() {
-        return rolledBackTransactionIds.get();
+        return rolledBackTransactionIds.get().keySet();
     }
 
     @Override
@@ -661,13 +662,13 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
 
     public void addAbandonedTransactionId(String transactionId) {
         if (transactionId != null) {
-            abandonedTransactionIds.get().add(transactionId);
+            abandonedTransactionIds.get().put(transactionId, transactionId);
         }
     }
 
     public void addRolledBackTransactionId(String transactionId) {
         if (transactionId != null) {
-            rolledBackTransactionIds.get().add(transactionId);
+            rolledBackTransactionIds.get().put(transactionId, transactionId);
         }
     }
 
