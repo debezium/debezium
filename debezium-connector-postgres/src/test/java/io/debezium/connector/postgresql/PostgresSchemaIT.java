@@ -248,7 +248,7 @@ public class PostgresSchemaIT {
             assertTablesExcluded("s1.a", "s2.a");
         }
 
-        config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A,s2.A").build());
+        config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_EXCLUDE_LIST, "s1.A,s2.A").build());
         schema = TestHelper.getSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
             schema.refresh(connection, false);
@@ -269,7 +269,7 @@ public class PostgresSchemaIT {
 
         config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(SCHEMA_BLACKLIST, "s2")
-                .with(PostgresConnectorConfig.TABLE_BLACKLIST, "s1.A")
+                .with(PostgresConnectorConfig.TABLE_EXCLUDE_LIST, "s1.A")
                 .build());
         schema = TestHelper.getSchema(config, typeRegistry);
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {

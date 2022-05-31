@@ -66,9 +66,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
                         config.getString(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST),
                         tableIdMapper)
                 .excludeTables(
-                        config.getFallbackStringProperty(
-                                RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
-                                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST),
+                        config.getString(RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST),
                         tableIdMapper)
                 .build();
 
