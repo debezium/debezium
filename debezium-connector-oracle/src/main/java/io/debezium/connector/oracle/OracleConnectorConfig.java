@@ -482,7 +482,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
-                    SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST,

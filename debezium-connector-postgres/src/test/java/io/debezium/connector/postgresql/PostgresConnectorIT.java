@@ -229,7 +229,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY_PASSWORD, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_ROOT_CERT, null);
-        validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_WHITELIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_BLACKLIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, null);
@@ -403,7 +402,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, recordCount / 2)
                 .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 10)
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1");
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1");
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
@@ -1208,7 +1207,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableWhitelistWithWhitespace);
 
         start(PostgresConnector.class, configBuilder.build());
