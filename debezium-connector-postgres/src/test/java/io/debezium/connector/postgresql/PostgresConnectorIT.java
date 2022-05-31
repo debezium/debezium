@@ -233,7 +233,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateConfigField(validatedConfig, PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.TABLE_INCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.TABLE_EXCLUDE_LIST, null);
-        validateConfigField(validatedConfig, PostgresConnectorConfig.COLUMN_BLACKLIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.COLUMN_INCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.MSG_KEY_COLUMNS, null);
@@ -1110,7 +1109,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "s2")
                 .with(PostgresConnectorConfig.TABLE_EXCLUDE_LIST, ".+b")
-                .with(PostgresConnectorConfig.COLUMN_BLACKLIST, ".+bb");
+                .with(PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, ".+bb");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();

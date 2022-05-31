@@ -259,19 +259,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("Regular expressions matching columns to exclude from change events");
 
     /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field COLUMN_BLACKLIST = Field.create("column.blacklist")
-            .withDisplayName("Deprecated: Exclude Columns")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateColumnBlacklist)
-            .withInvisibleRecommender()
-            .withDescription("Regular expressions matching columns to exclude from change events (deprecated, use \"" + COLUMN_EXCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
      * and change messages. The exact form of fully qualified names for columns might vary between connector types.
      * For instance, they could be of the form {@code <databaseName>.<tableName>.<columnName>} or
@@ -500,7 +487,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SNAPSHOT_LOCK_TIMEOUT_MS)
             .events(
                     COLUMN_INCLUDE_LIST,
-                    COLUMN_BLACKLIST,
                     COLUMN_EXCLUDE_LIST,
                     TABLE_INCLUDE_LIST,
                     TABLE_EXCLUDE_LIST,
@@ -550,7 +536,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             this.tableFilters = null;
         }
 
-        String columnExcludeList = config.getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
         String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
 
         if (columnIncludeList != null) {
@@ -632,17 +618,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public Boolean isFullColummnScanRequired() {
         return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
-    }
-
-    private static int validateColumnBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String includeList = config.getString(COLUMN_INCLUDE_LIST);
-        String whitelist = config.getFallbackStringPropertyWithWarning(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
-
-        if (whitelist != null && includeList != null) {
-            problems.accept(COLUMN_BLACKLIST, includeList, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
     }
 
     private static int validateColumnExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
