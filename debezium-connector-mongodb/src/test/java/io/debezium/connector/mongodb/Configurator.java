@@ -56,10 +56,6 @@ public class Configurator {
     }
 
     public Configurator includeCollections(String regexList) {
-        if (Math.random() >= 0.5) {
-            Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_WHITELIST.name() + "\" config property");
-            return with(MongoDbConnectorConfig.COLLECTION_WHITELIST, regexList);
-        }
         Testing.debug("Using \"" + MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST.name() + "\" config property");
         return with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, regexList);
     }

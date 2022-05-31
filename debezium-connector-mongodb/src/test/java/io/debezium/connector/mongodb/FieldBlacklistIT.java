@@ -1453,7 +1453,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
     private Configuration getConfiguration(String blackList) {
         return TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.FIELD_BLACKLIST, blackList)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.c1")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
                 .build();
     }

@@ -40,7 +40,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorConfig.class);
 
     protected static final String COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.include.list\" is already specified";
-    protected static final String COLLECTION_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.whitelist\" is already specified";
     protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
 
     protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
@@ -386,20 +385,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured");
 
     /**
-     * Old, backwards-compatible "whitelist" property.
-     */
-    @Deprecated
-    public static final Field COLLECTION_WHITELIST = Field.create("collection.whitelist")
-            .withDisplayName("Deprecated: Include Collections")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex)
-            .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured (deprecated, use \""
-                    + COLLECTION_INCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be excluded from
      * monitoring. Fully-qualified namespaces for collections are of the form {@code <databaseName>.<collectionName>}.
      * Must not be used with {@link #COLLECTION_INCLUDE_LIST}.
@@ -562,7 +547,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .events(
                     DATABASE_INCLUDE_LIST,
                     DATABASE_EXCLUDE_LIST,
-                    COLLECTION_WHITELIST,
                     COLLECTION_INCLUDE_LIST,
                     COLLECTION_BLACKLIST,
                     COLLECTION_EXCLUDE_LIST,
@@ -661,7 +645,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int validateCollectionBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getFallbackStringPropertyWithWarning(COLLECTION_INCLUDE_LIST, COLLECTION_WHITELIST);
+        String whitelist = config.getString(COLLECTION_INCLUDE_LIST);
         String blacklist = config.getFallbackStringPropertyWithWarning(COLLECTION_EXCLUDE_LIST, COLLECTION_BLACKLIST);
         if (whitelist != null && blacklist != null) {
             problems.accept(COLLECTION_EXCLUDE_LIST, blacklist, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
