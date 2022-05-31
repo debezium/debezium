@@ -411,19 +411,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values");
 
     /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field FIELD_BLACKLIST = Field.create("field.blacklist")
-            .withDisplayName("Deprecated: Exclude Fields")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withInvisibleRecommender()
-            .withDescription("A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values (deprecated, use \""
-                    + FIELD_EXCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change
      * event message values. Fully-qualified replacements for fields are of the form {@code
      * <databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>}, where
@@ -539,7 +526,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     DATABASE_EXCLUDE_LIST,
                     COLLECTION_INCLUDE_LIST,
                     COLLECTION_EXCLUDE_LIST,
-                    FIELD_BLACKLIST,
                     FIELD_EXCLUDE_LIST,
                     FIELD_RENAMES,
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)

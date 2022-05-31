@@ -61,7 +61,7 @@ public final class Filters {
 
         // Define the field selector that provides the field filter to exclude or rename fields in a document ...
         fieldSelector = FieldSelector.builder()
-                .excludeFields(config.getFallbackStringProperty(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, MongoDbConnectorConfig.FIELD_BLACKLIST))
+                .excludeFields(config.getString(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST))
                 .renameFields(config.getString(MongoDbConnectorConfig.FIELD_RENAMES))
                 .build();
     }
