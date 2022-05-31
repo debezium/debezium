@@ -952,7 +952,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MySQL")
             .excluding(
-                    SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST,

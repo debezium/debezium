@@ -65,7 +65,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
     public static final String COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.whitelist\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
-    public static final String SCHEMA_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.whitelist\" is already specified";
     public static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
     public static final String DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.whitelist\" is already specified";
 
@@ -359,20 +358,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The schemas for which events should be captured");
 
     /**
-     * Old, backwards-compatible "whitelist" property.
-     */
-    @Deprecated
-    public static final Field SCHEMA_WHITELIST = Field.create("schema.whitelist")
-            .withDisplayName("Deprecated: Include Schemas")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
-            .withInvisibleRecommender()
-            .withDescription("The schemas for which events should be captured (deprecated, use \"" + SCHEMA_INCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of regular expressions that match schema names to be excluded from monitoring.
      * Must not be used with {@link #SCHEMA_INCLUDE_LIST}.
      */
@@ -572,7 +557,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     TABLE_INCLUDE_LIST,
                     TABLE_EXCLUDE_LIST,
                     TABLE_IGNORE_BUILTIN,
-                    SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_BLACKLIST,
                     SCHEMA_EXCLUDE_LIST,
@@ -684,7 +668,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     public String schemaIncludeList() {
-        return getConfig().getFallbackStringProperty(SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
+        return getConfig().getString(SCHEMA_INCLUDE_LIST);
     }
 
     public String tableExcludeList() {
@@ -799,11 +783,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String whitelist = config.getFallbackStringPropertyWithWarning(SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
+        String includeList = config.getString(SCHEMA_INCLUDE_LIST);
         String blacklist = config.getFallbackStringPropertyWithWarning(SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
 
-        if (whitelist != null && blacklist != null) {
-            problems.accept(SCHEMA_BLACKLIST, blacklist, SCHEMA_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
+        if (includeList != null && blacklist != null) {
+            problems.accept(SCHEMA_BLACKLIST, blacklist, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;

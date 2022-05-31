@@ -44,10 +44,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
                         config.getFallbackStringProperty(
                                 RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
-                .includeSchemas(
-                        config.getFallbackStringProperty(
-                                RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST,
-                                RelationalDatabaseConnectorConfig.SCHEMA_WHITELIST))
+                .includeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST))
                 .excludeSchemas(
                         config.getFallbackStringProperty(
                                 RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST,
