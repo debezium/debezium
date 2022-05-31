@@ -61,7 +61,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
-    public static final String COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.whitelist\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
     public static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
 
@@ -287,19 +286,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isListOfRegex)
             .withDescription("Regular expressions matching columns to include in change events");
 
-    /**
-     * Old, backwards-compatible "whitelist" property.
-     */
-    @Deprecated
-    public static final Field COLUMN_WHITELIST = Field.create("column.whitelist")
-            .withDisplayName("Deprecated: Include Columns")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex)
-            .withInvisibleRecommender()
-            .withDescription("Regular expressions matching columns to include in change events (deprecated, use \"" + COLUMN_INCLUDE_LIST.name() + "\" instead)");
-
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
             .withType(Type.STRING)
@@ -513,7 +499,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     TIME_PRECISION_MODE,
                     SNAPSHOT_LOCK_TIMEOUT_MS)
             .events(
-                    COLUMN_WHITELIST,
                     COLUMN_INCLUDE_LIST,
                     COLUMN_BLACKLIST,
                     COLUMN_EXCLUDE_LIST,
@@ -566,7 +551,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         String columnExcludeList = config.getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
-        String columnIncludeList = config.getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
 
         if (columnIncludeList != null) {
             this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
@@ -650,11 +635,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateColumnBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String blacklist = config.getFallbackStringPropertyWithWarning(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+        String includeList = config.getString(COLUMN_INCLUDE_LIST);
         String whitelist = config.getFallbackStringPropertyWithWarning(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
 
-        if (whitelist != null && blacklist != null) {
-            problems.accept(COLUMN_BLACKLIST, blacklist, COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
+        if (whitelist != null && includeList != null) {
+            problems.accept(COLUMN_BLACKLIST, includeList, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
