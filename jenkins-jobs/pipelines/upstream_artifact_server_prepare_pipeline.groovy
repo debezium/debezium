@@ -52,10 +52,16 @@ pipeline {
                     ORACLE_ARTIFACT_VERSION=$(cat ${WORKSPACE}/debezium/pom.xml | grep "^        <version\\.oracle\\.driver>.*</version\\.oracle\\.driver>$" | awk -F'[><]' '{print $3}')
                     ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
                     
-                    mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get -Dartifact=io.apicurio:apicurio-registry-distro-connect-converter:${APICURIO_ARTIFACT_VERSION}:zip
+                    mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get \\
+                     -Dartifact=io.apicurio:apicurio-registry-distro-connect-converter:${APICURIO_ARTIFACT_VERSION}:zip \\
+                     -Dmaven.repo.local=${WORKSPACE}/debezium/local-maven-repo
                     cd ${ORACLE_ARTIFACT_DIR}
-                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar
-                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar
+                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 \\
+                     -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar \\
+                     -Dmaven.repo.local=${WORKSPACE}/debezium/local-maven-repo
+                    mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams \\
+                     -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar \\
+                     -Dmaven.repo.local=${WORKSPACE}/debezium/local-maven-repo
                     '''
                 }
             }
@@ -67,19 +73,19 @@ pipeline {
                 sh '''
                 set -x
                 cd "${WORKSPACE}/debezium"
-                mvn clean install -DskipTests -DskipITs
+                mvn clean install -DskipTests -DskipITs -Dmaven.repo.local=local-maven-repo
                 '''
 //              Build Oracle connector
                 sh '''
                 set -x
                 cd ${WORKSPACE}/debezium
-                mvn install -Passembly,oracle -DskipTests -DskipITs 
+                mvn install -Passembly,oracle -DskipTests -DskipITs -Dmaven.repo.local=local-maven-repo
                 '''
 //              Build DB2 Connector
                 sh '''
                 set -x
                 cd ${WORKSPACE}/debezium-connector-db2
-                mvn clean install -DskipTests -DskipITs -Passembly
+                mvn clean install -DskipTests -DskipITs -Passembly -Dmaven.repo.local=${WORKSPACE}/debezium/local-maven-repo
                 '''
             }
         }
@@ -116,7 +122,8 @@ pipeline {
                         --dest-login="${QUAY_USERNAME}"                             \\
                         --dest-pass="${QUAY_PASSWORD}"                              \\
                         --img-output="${WORKSPACE}/published_image_dbz.txt"         \\
-                        --oracle-included="${ORACLE_INCLUDED}"
+                        --oracle-included="${ORACLE_INCLUDED}"                      \\
+                        --maven-repo=${WORKSPACE}/debezium/local-maven-repo
                     '''
                 }
             }
