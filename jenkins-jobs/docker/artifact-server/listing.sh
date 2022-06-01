@@ -42,4 +42,11 @@ for driver in **/jdbc/*.{zip,jar}; do
     echo "$artifact::$driver" >> "$OUTPUT"
 done
 
+for groovy_script in **/groovy/*.{zip,jar}; do
+    name=$(echo "$groovy_script" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
+    artifact="$name"
+    echo "$artifact"
+    echo "$artifact::$groovy_script" >> "$OUTPUT"
+done
+
 popd || exit
