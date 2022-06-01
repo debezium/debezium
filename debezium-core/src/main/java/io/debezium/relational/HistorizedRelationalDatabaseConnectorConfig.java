@@ -54,7 +54,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
             .history(
                     DATABASE_HISTORY,
                     DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
-                    DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
                     DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL,
                     KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC,
