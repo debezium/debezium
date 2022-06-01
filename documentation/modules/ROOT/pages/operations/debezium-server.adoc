@@ -362,8 +362,15 @@ The most frequent used are:
 
 |===
 
-JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _conf/application.properties_ file, as demonstrated in the _conf/application.properties.example_ file. 
+JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _conf/application.properties_ file, as demonstrated in the _conf/application.properties.example_ file.
 
+==== Enabling message filtering
+
+Debezium server provide filter STM capability, see xref:transformations/filtering.adoc[Message Filtering] for more details.
+However, for security reasons it's not enabled by default and has to be explicitly enabled when Debezium server is started.
+To enable it, set environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true`.
+This will add `debezium-scripting` jar file and https://jcp.org/en/jsr/detail?id=223[JSR 223] implementations (currently Groovy and graalvm.js) jar files into the server class path.
+These jar files are contained in `opt_lib` directory of the Debezium server distribution.
 
 === Sink configuration
 
