@@ -13,16 +13,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
-public class OracleOffsetContext implements OffsetContext {
+public class OracleOffsetContext extends CommonOffsetContext {
 
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
@@ -157,6 +156,11 @@ public class OracleOffsetContext implements OffsetContext {
     }
 
     @Override
+    public SourceInfo getSourceInfoObject() {
+        return sourceInfo;
+    }
+
+    @Override
     public Map<String, ?> getOffset() {
         if (sourceInfo.isSnapshot()) {
             Map<String, Object> offset = new HashMap<>();
@@ -202,11 +206,6 @@ public class OracleOffsetContext implements OffsetContext {
     @Override
     public Schema getSourceInfoSchema() {
         return sourceInfoSchema;
-    }
-
-    @Override
-    public Struct getSourceInfo() {
-        return sourceInfo.struct();
     }
 
     public void setScn(Scn scn) {
@@ -274,11 +273,6 @@ public class OracleOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
-    }
-
-    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("OracleOffsetContext [scn=").append(getScn());
 
@@ -292,11 +286,6 @@ public class OracleOffsetContext implements OffsetContext {
         sb.append("]");
 
         return sb.toString();
-    }
-
-    @Override
-    public void markSnapshotRecord(SnapshotRecord record) {
-        sourceInfo.setSnapshot(record);
     }
 
     @Override
@@ -318,11 +307,6 @@ public class OracleOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override

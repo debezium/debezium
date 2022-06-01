@@ -9,14 +9,13 @@ import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -32,7 +31,7 @@ import io.debezium.schema.DataCollectionId;
  * @author Chris Cranford
  */
 @ThreadSafe
-public class ReplicaSetOffsetContext implements OffsetContext {
+public class ReplicaSetOffsetContext extends CommonOffsetContext {
 
     private final MongoDbOffsetContext offsetContext;
     private final String replicaSetName;
@@ -45,6 +44,11 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         this.replicaSetName = replicaSet.replicaSetName();
         this.sourceInfo = sourceInfo;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
+    }
+
+    @Override
+    public SourceInfo getSourceInfoObject() {
+        return offsetContext.getSourceInfoObject();
     }
 
     @Override
@@ -61,18 +65,8 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     }
 
     @Override
-    public Struct getSourceInfo() {
-        return offsetContext.getSourceInfo();
-    }
-
-    @Override
     public boolean isSnapshotRunning() {
         return offsetContext.isSnapshotRunning();
-    }
-
-    @Override
-    public void markSnapshotRecord(SnapshotRecord record) {
-        offsetContext.markSnapshotRecord(record);
     }
 
     @Override
@@ -83,11 +77,6 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     @Override
     public void preSnapshotCompletion() {
         offsetContext.preSnapshotCompletion();
-    }
-
-    @Override
-    public void postSnapshotCompletion() {
-        offsetContext.postSnapshotCompletion();
     }
 
     @Override
@@ -128,11 +117,6 @@ public class ReplicaSetOffsetContext implements OffsetContext {
 
     public String lastResumeToken() {
         return sourceInfo.lastResumeToken(replicaSetName);
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        offsetContext.incrementalSnapshotEvents();
     }
 
     @Override
