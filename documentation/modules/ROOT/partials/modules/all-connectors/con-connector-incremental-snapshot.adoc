@@ -159,3 +159,64 @@ If you do not specify a value, the connector runs an incremental snapshot.
 The value for snapshot events is `r`, signifying a `READ` operation.
 
 |===
+
+.Stopping an incremental snapshot
+
+Incremental snapshots can also be stopped by sending a signal to the {data-collection} on the source database.
+You submit signals to the {data-collection} as SQL `INSERT` queries.
+After {prodname} detects the change in the signaling {data-collection}, it reads the signal, and stops the incremental snapshot operation if it's in progress.
+
+The query that you submit specifies the snapshot operation of `incremental`, and, optionally, the {data-collection}s of the current running snapshot to be removed.
+
+.Prerequisites
+
+* xref:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled]. +
+** A signaling data collection exists on the source database and the connector is configured to capture it.
+** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
+
+.Procedure
+
+. Send a SQL query to stop the ad hoc incremental snapshot to the signaling {data-collection}:
++
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO _<signalTable>_ (id, type, data) values (_'<id>'_, 'stop-snapshot', '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"incremental"}');
+----
++
+For example,
++
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, dat) values ('ad-hoc-1', 'stop-snapshot', '{"data-collections": ["schema1.table1", "schema2.table2"],"type":"incremental"}');
+----
+The values of the `id`, `type`, and `data` parameters in the command correspond to the xref:{link-signaling}#debezium-signaling-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
++
+The following {data-collection} describes these parameters:
++
+.Descriptions of fields in a SQL command for sending a stop incremental snapshot signal to the signaling {data-collection}
+[cols="1,4",options="header"]
+|===
+|Value |Description
+
+|`myschema.debezium_signal`
+|Specifies the fully-qualified name of the signaling {data-collection} on the source database
+
+|`ad-hoc-1`
+| The `id` parameter specifies an arbitrary string that is assigned as the `id` identifier for the signal request. +
+Use this string to identify logging messages to entries in the signaling {data-collection}.
+{prodname} does not use this string.
+
+|`stop-snapshot`
+| Specifies `type` parameter specifies the operation that the signal is intended to trigger. +
+
+|`data-collections`
+|An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
+The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
+If this component of the `data` field is omitted, the signal stops the entire incremental snapshot that is in progress.
+
+|`incremental`
+|A required component of the `data` field of a signal that specifies the kind of snapshot operation that is to be stopped. +
+Currently, the only valid option is `incremental`. +
+Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is required. +
+If you do not specify a value, the signal will not stop the incremental snapshot.
+|===
