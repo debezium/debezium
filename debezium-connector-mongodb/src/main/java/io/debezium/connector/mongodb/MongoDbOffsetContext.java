@@ -25,9 +25,8 @@ import io.debezium.schema.DataCollectionId;
  *
  * @author Chris Cranford
  */
-public class MongoDbOffsetContext extends CommonOffsetContext {
+public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
 
-    private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
     private final Map<ReplicaSet, ReplicaSetPartition> replicaSetPartitions = new ConcurrentHashMap<>();
     private final Map<ReplicaSet, ReplicaSetOffsetContext> replicaSetOffsetContexts = new ConcurrentHashMap<>();
@@ -35,7 +34,7 @@ public class MongoDbOffsetContext extends CommonOffsetContext {
 
     public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext,
                                 IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext) {
-        this.sourceInfo = sourceInfo;
+        super(sourceInfo);
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
@@ -52,11 +51,6 @@ public class MongoDbOffsetContext extends CommonOffsetContext {
 
     void stopReplicaSetSnapshot(String replicaSetName) {
         sourceInfo.stopInitialSync(replicaSetName);
-    }
-
-    @Override
-    public SourceInfo getSourceInfoObject() {
-        return sourceInfo;
     }
 
     @Override

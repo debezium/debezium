@@ -31,24 +31,18 @@ import io.debezium.schema.DataCollectionId;
  * @author Chris Cranford
  */
 @ThreadSafe
-public class ReplicaSetOffsetContext extends CommonOffsetContext {
+public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     private final MongoDbOffsetContext offsetContext;
     private final String replicaSetName;
-    private final SourceInfo sourceInfo;
     private final IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext;
 
     public ReplicaSetOffsetContext(MongoDbOffsetContext offsetContext, ReplicaSet replicaSet, SourceInfo sourceInfo,
                                    IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext) {
+        super(sourceInfo);
         this.offsetContext = offsetContext;
         this.replicaSetName = replicaSet.replicaSetName();
-        this.sourceInfo = sourceInfo;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
-    }
-
-    @Override
-    public SourceInfo getSourceInfoObject() {
-        return offsetContext.getSourceInfoObject();
     }
 
     @Override

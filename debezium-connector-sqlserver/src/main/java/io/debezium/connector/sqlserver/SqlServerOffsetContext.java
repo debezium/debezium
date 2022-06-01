@@ -20,12 +20,11 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
-public class SqlServerOffsetContext extends CommonOffsetContext {
+public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
-    private final SourceInfo sourceInfo;
     private boolean snapshotCompleted;
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
@@ -38,7 +37,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext {
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot,
                                   boolean snapshotCompleted, long eventSerialNo, TransactionContext transactionContext,
                                   IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        sourceInfo = new SourceInfo(connectorConfig);
+        super(new SourceInfo(connectorConfig));
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
@@ -58,11 +57,6 @@ public class SqlServerOffsetContext extends CommonOffsetContext {
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
         this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>());
-    }
-
-    @Override
-    public SourceInfo getSourceInfoObject() {
-        return sourceInfo;
     }
 
     @Override
