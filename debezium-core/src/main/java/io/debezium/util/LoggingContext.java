@@ -99,8 +99,12 @@ public class LoggingContext {
         if (taskId != null) {
             MDC.put(TASK_ID, taskId);
         }
-        if (partition != null) {
-            partition.getLoggingContext().forEach(MDC::put);
+        if (partition != null && partition.getLoggingContext() != null) {
+            partition.getLoggingContext().forEach((k, v) -> {
+                if (k != null && v != null) {
+                    MDC.put(k, v);
+                }
+            });
         }
         MDC.put(CONNECTOR_TYPE, connectorType);
         MDC.put(CONNECTOR_NAME, connectorName);
