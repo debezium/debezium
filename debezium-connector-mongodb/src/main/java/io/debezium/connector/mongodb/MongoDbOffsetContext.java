@@ -12,12 +12,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.DataCollectionId;
 
@@ -26,7 +25,7 @@ import io.debezium.schema.DataCollectionId;
  *
  * @author Chris Cranford
  */
-public class MongoDbOffsetContext implements OffsetContext {
+public class MongoDbOffsetContext extends CommonOffsetContext {
 
     private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
@@ -56,6 +55,11 @@ public class MongoDbOffsetContext implements OffsetContext {
     }
 
     @Override
+    public SourceInfo getSourceInfoObject() {
+        return sourceInfo;
+    }
+
+    @Override
     public Map<String, ?> getOffset() {
         // Any common framework API that needs to call this function should be provided with a ReplicaSetOffsetContext
         throw new UnsupportedOperationException();
@@ -64,11 +68,6 @@ public class MongoDbOffsetContext implements OffsetContext {
     @Override
     public Schema getSourceInfoSchema() {
         return sourceInfo.schema();
-    }
-
-    @Override
-    public Struct getSourceInfo() {
-        return sourceInfo.struct();
     }
 
     @Override
@@ -86,23 +85,8 @@ public class MongoDbOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
-    }
-
-    @Override
-    public void markSnapshotRecord(SnapshotRecord record) {
-        sourceInfo.setSnapshot(record);
-    }
-
-    @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 
     @Override
