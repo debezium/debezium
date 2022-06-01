@@ -22,6 +22,6 @@ public class MongoDbConnectorMetadata implements ConnectorMetadata {
     @Override
     public Field.Set getConnectorFields() {
         return MongoDbConnectorConfig.ALL_FIELDS
-                .filtered(f -> f != MongoDbConnectorConfig.POLL_INTERVAL_SEC && f != MongoDbConnectorConfig.MAX_COPY_THREADS);
+                .filtered(f -> f != MongoDbConnectorConfig.POLL_INTERVAL_SEC);
     }
 }
