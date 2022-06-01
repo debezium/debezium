@@ -243,17 +243,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(ReplicaSetDiscovery.ADMIN_DATABASE_NAME)
             .withDescription("Database containing user credentials.");
 
-    @Deprecated
-    public static final Field POLL_INTERVAL_SEC = Field.create("mongodb.poll.interval.sec")
-            .withDisplayName("Replica membership poll interval (sec)")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(30)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription(
-                    "(Deprecated, use mongodb.poll.interval.ms) Interval for looking for new, removed, or changed replica sets, given in seconds. Defaults to 30 seconds.");
-
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
@@ -503,7 +492,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CONNECT_TIMEOUT_MS,
                     SOCKET_TIMEOUT_MS,
                     SERVER_SELECTION_TIMEOUT_MS,
-                    POLL_INTERVAL_SEC,
                     MONGODB_POLL_INTERVAL_MS,
                     MAX_FAILED_CONNECTIONS,
                     AUTO_DISCOVER_MEMBERS,
