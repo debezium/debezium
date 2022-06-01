@@ -3918,6 +3918,103 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5139")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
+    public void shouldDiscardTransactionThatExceedsEventThreshold() throws Exception {
+        TestHelper.dropTable(connection, "dbz5139");
+        try {
+            connection.execute("CREATE TABLE dbz5139 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5139");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5139")
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD, 100)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            assertNoRecordsToConsume();
+
+            // create a transaction that exceeds the threshold
+            for (int i = 0; i < 101; ++i) {
+                connection.executeWithoutCommitting("INSERT INTO dbz5139 (id,data) values (" + i + ", 'Test" + i + "')");
+            }
+            connection.commit();
+
+            // Create a transaction that does not exceed the threshold
+            for (int i = 200; i < 225; ++i) {
+                connection.executeWithoutCommitting("INSERT INTO dbz5139 (id,data) values (" + i + ", 'Test" + i + "')");
+            }
+            connection.commit();
+
+            SourceRecords records = consumeRecordsByTopic(25);
+            List<SourceRecord> table = records.recordsForTopic("server1.DEBEZIUM.DBZ5139");
+            assertThat(table).hasSize(25);
+
+            for (int i = 0; i < 25; ++i) {
+                VerifyRecord.isValidInsert(table.get(i), "ID", 200 + i);
+            }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5139");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5139")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
+    public void shouldNotDiscardTransactionWhenNoEventThresholdSet() throws Exception {
+        TestHelper.dropTable(connection, "dbz5139");
+        try {
+            connection.execute("CREATE TABLE dbz5139 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5139");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5139")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            assertNoRecordsToConsume();
+
+            // create a transaction that exceeds the threshold
+            for (int i = 0; i < 101; ++i) {
+                connection.executeWithoutCommitting("INSERT INTO dbz5139 (id,data) values (" + i + ", 'Test" + i + "')");
+            }
+            connection.commit();
+
+            // Create a transaction that does not exceed the threshold
+            for (int i = 200; i < 225; ++i) {
+                connection.executeWithoutCommitting("INSERT INTO dbz5139 (id,data) values (" + i + ", 'Test" + i + "')");
+            }
+            connection.commit();
+
+            SourceRecords records = consumeRecordsByTopic(126);
+            List<SourceRecord> table = records.recordsForTopic("server1.DEBEZIUM.DBZ5139");
+            assertThat(table).hasSize(126);
+
+            for (int i = 0; i < 101; ++i) {
+                VerifyRecord.isValidInsert(table.get(i), "ID", i);
+            }
+
+            for (int i = 0; i < 25; ++i) {
+                VerifyRecord.isValidInsert(table.get(101 + i), "ID", 200 + i);
+            }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5139");
+        }
+    }
+
     private void testTableWithForwardSlashes(String tableName, String topicTableName) throws Exception {
         final String quotedTableName = "\"" + tableName + "\"";
         TestHelper.dropTable(connection, quotedTableName);

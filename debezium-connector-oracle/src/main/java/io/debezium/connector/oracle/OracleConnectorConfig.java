@@ -345,14 +345,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     System.lineSeparator() +
                     "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.");
 
-    public static final Field LOG_MINING_BUFFER_MEMORY_TRANSACTION_EVENTS_THRESHOLD = Field.create("log.mining.buffer.memory.transaction.events.threshold")
-            .withDisplayName("Transaction events threshold when use log.mining.buffer.type='memory'.")
+    public static final Field LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD = Field.create("log.mining.buffer.transaction.events.threshold")
+            .withDisplayName("The maximum number of events a transaction can have before being discarded.")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_TRANSACTION_EVENTS_THRESHOLD)
-            .withDescription("The transaction events threshold when use log.mining.buffer.type='memory'. " +
-                    "If events count exceeds this threshold the transaction will be abandoned.");
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("The number of events a transaction can include before the transaction is discarded. " +
+                    "This is useful for managing buffer memory and/or space when dealing with very large transactions. " +
+                    "Defaults to 0, meaning that no threshold is applied and transactions can have unlimited events.");
 
     @Deprecated
     public static final Field LOG_MINING_BUFFER_LOCATION = Field.create("log.mining.buffer.location")
@@ -516,6 +518,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
+                    LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD,
                     LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
                     LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS,
@@ -574,7 +577,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningUsernameExcludes;
     private final String logMiningArchiveDestinationName;
     private final LogMiningBufferType logMiningBufferType;
-    private final long logMiningBufferMemoryTransactionEventsThreshold;
+    private final long logMiningBufferTransactionEventsThreshold;
     private final boolean logMiningBufferDropOnStop;
     private final int logMiningScnGapDetectionGapSizeMin;
     private final int logMiningScnGapDetectionTimeIntervalMaxMs;
@@ -620,7 +623,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
-        this.logMiningBufferMemoryTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_MEMORY_TRANSACTION_EVENTS_THRESHOLD);
+        this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
@@ -1359,10 +1362,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return The events count threshold in one transaction when buffer type is 'memory'.
+     * @return the event count threshold for when a transaction should be discarded in the buffer.
      */
-    public long getLogMiningBufferMemoryTransactionEventsThreshold() {
-        return logMiningBufferMemoryTransactionEventsThreshold;
+    public long getLogMiningBufferTransactionEventsThreshold() {
+        return logMiningBufferTransactionEventsThreshold;
     }
 
     /**

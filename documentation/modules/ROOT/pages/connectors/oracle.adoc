@@ -2862,9 +2862,11 @@ Since the buffer state is persisted across restarts, the buffer does not need to
 The infinispan option requires that you specify a cache file directory.
 Use the `log.mining.buffer.location` property to define the location for storing cache files.
 
-|[[oracle-property-log-mining-buffer-memory-transaction-events-threshold]]<<oracle-property-log-mining-buffer-memory-transaction-events-threshold, `+log.mining.buffer.memory.transaction.events.threshold+`>>
+|[[oracle-property-log-mining-buffer-transaction-events-threshold]]<<oracle-property-log-mining-buffer-transaction-events-threshold, `+log.mining.buffer.transaction.events.threshold+`>>
 |`0`
-| The transaction size threshold Debezium is able to handle when `log.mining.buffer.type` = memory. Transaction with event count exceeds this threshold will be abandoned. Value '0' means no limitation. +
+|The maximum number of events a transaction is capable of having in the transaction buffer.
+Transactions with event counts that exceed this threshold not be emitted and will be abandoned.
+The default behavior is there is no transaction event threshold.
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.transactions+`>>
 |No default
@@ -3248,7 +3250,7 @@ See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transa
 
 |[[oracle-streaming-metrics-number-of-oversized-transactions]]<<oracle-streaming-metrics-number-of-oversized-transactions, `+NumberOfOversizedTransactions+`>>
 |`long`
-|The number of oversized transactions in the transaction buffer.
+|The number of transactions that were discarded because their size exceeded <<oracle-property-log-mining-buffer-transaction-events-threshold, `log.mining.buffer.transaction.events.threshold`>>.
 
 |[[oracle-streaming-metrics-number-of-rolledback-transactions]]<<oracle-streaming-metrics-number-of-rolledback-transactions, `+NumberOfRolledBackTransactions+`>>
 |`long`

@@ -1052,6 +1052,20 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         return transactionId.substring(0, 8);
     }
 
+    protected boolean isTransactionOverEventThreshold(T transaction) {
+        if (getConfig().getLogMiningBufferTransactionEventsThreshold() == 0) {
+            return false;
+        }
+        return getTransactionEventCount(transaction) >= getConfig().getLogMiningBufferTransactionEventsThreshold();
+    }
+
+    protected void abandonTransactionOverEventThreshold(T transaction) {
+        LOGGER.warn("Transaction {} exceeds maximum allowed number of events, transaction will be abandoned.", transaction.getTransactionId());
+        metrics.incrementWarningCount();
+        getAndRemoveTransactionFromCache(transaction.getTransactionId());
+        metrics.incrementOversizedTransactions();
+    }
+
     /**
      * Wrapper for all counter variables
      *

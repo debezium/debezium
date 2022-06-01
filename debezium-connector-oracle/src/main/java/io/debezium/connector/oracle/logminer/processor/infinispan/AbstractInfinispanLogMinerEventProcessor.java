@@ -239,6 +239,12 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                 LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
                 transaction = createTransaction(row);
             }
+
+            if (isTransactionOverEventThreshold(transaction)) {
+                abandonTransactionOverEventThreshold(transaction);
+                return;
+            }
+
             String eventKey = transaction.getEventId(transaction.getNextEventId());
             if (!getEventCache().containsKey(eventKey)) {
                 // Add new event at eventId offset
