@@ -442,23 +442,6 @@ To change the topic name, you can: +
 |Indicates whether an empty or `null` payload causes the connector to emit a tombstone event.
 
 ifdef::community[]
-|[[outbox-event-router-property-debezium-op-invalid-behavior]]<<outbox-event-router-property-debezium-op-invalid-behavior, `debezium.op.invalid.behavior`>> +
-_Deprecated_
-|`warn`
-|{prodname}
-a|Determines the behavior of the SMT when there is an `UPDATE` operation on the outbox table. Possible settings are:
-
-* `warn` - The SMT logs a warning and continues to the next outbox table record.
-* `error` - The SMT logs an error and continues to the next outbox table record.
-* `fatal` - The SMT logs an error and the connector stops processing.
-
-All changes in an outbox table are expected to be `INSERT` operations. That is, an outbox table functions as a queue; updates to records in an outbox table are not allowed.
-The SMT automatically filters out `DELETE` operations on an outbox table.
-
-_Use xref:outbox-event-router-property-table-op-invalid-behavior[`table.op.invalid.behavior`] instead_.
-endif::community[]
-
-ifdef::community[]
 |[[outbox-event-router-property-tracing-span-context-field]]<<outbox-event-router-property-tracing-span-context-field, `tracing.span.context.field`>>
 |`tracingspancontext`
 |Tracing

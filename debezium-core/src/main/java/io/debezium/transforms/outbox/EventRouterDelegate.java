@@ -335,8 +335,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         smtManager.validate(config, allFields);
 
         invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
-                config.getFallbackStringPropertyWithWarning(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR,
-                        EventRouterConfigDefinition.DEBEZIUM_OPERATION_INVALID_BEHAVIOR));
+                config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR));
 
         expandJsonPayload = config.getBoolean(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
         if (expandJsonPayload) {
