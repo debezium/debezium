@@ -40,9 +40,6 @@ pipeline {
 //                    Configure images if provided
                     env.IMAGE_TAG_SUFFIX="${BUILD_NUMBER}"
 
-//                    Oracle Configuration
-                    env.ORACLE_ARTIFACT_VERSION='21.1.0.0'
-                    env.ORACLE_ARTIFACT_DIR = "${env.HOME}/oracle-libs/21.1.0.0.0"
 //                    Apicurio version
                     env.APICURIO_ARTIFACT_VERSION="${APICURIO_VERSION}"
                 }
@@ -52,6 +49,9 @@ pipeline {
                 ]) {
                     sh '''
                     set -x
+                    ORACLE_ARTIFACT_VERSION=$(cat ${WORKSPACE}/debezium/pom.xml | grep "^        <version\\.oracle\\.driver>.*</version\\.oracle\\.driver>$" | awk -F'[><]' '{print $3}')
+                    ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
+                    
                     mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get -Dartifact=io.apicurio:apicurio-registry-distro-connect-converter:${APICURIO_ARTIFACT_VERSION}:zip
                     cd ${ORACLE_ARTIFACT_DIR}
                     mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar
