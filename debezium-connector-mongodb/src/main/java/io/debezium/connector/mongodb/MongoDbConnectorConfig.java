@@ -284,17 +284,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("Whether invalid host names are allowed when using SSL. If true the connection will not prevent man-in-the-middle attacks");
 
-    @Deprecated
-    public static final Field MAX_COPY_THREADS = Field.create("initial.sync.max.threads")
-            .withDisplayName("Maximum number of threads for initial sync")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(1)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("(Deprecated) Maximum number of threads used to perform an initial sync of the collections in a replica set. "
-                    + "Defaults to 1.");
-
     public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
             .withDisplayName("Initial delay before reconnection (ms)")
             .withType(Type.LONG)
@@ -530,7 +519,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     FIELD_RENAMES,
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
             .connector(
-                    MAX_COPY_THREADS,
                     SNAPSHOT_MODE,
                     CAPTURE_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE)
@@ -700,15 +688,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int resolveSnapshotMaxThreads(Configuration config) {
-        if (config.hasKey(SNAPSHOT_MAX_THREADS.name())) {
-            return config.getInteger(SNAPSHOT_MAX_THREADS);
-        }
-        else {
-            if (config.hasKey(MAX_COPY_THREADS.name())) {
-                LOGGER.warn("The option '{}' is deprecated.  Use '{}' instead.", MAX_FAILED_CONNECTIONS.name(), SNAPSHOT_MAX_THREADS.name());
-            }
-            return config.getInteger(MAX_COPY_THREADS);
-        }
+        return config.getInteger(SNAPSHOT_MAX_THREADS);
     }
 
     @Override
