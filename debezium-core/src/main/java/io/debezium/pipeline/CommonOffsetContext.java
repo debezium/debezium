@@ -11,27 +11,31 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.pipeline.spi.OffsetContext;
 
-public abstract class CommonOffsetContext implements OffsetContext {
+public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements OffsetContext {
 
-    public abstract BaseSourceInfo getSourceInfoObject();
+    protected final T sourceInfo;
+
+    public CommonOffsetContext(T sourceInfo) {
+        this.sourceInfo = sourceInfo;
+    }
 
     @Override
     public Struct getSourceInfo() {
-        return getSourceInfoObject().struct();
+        return sourceInfo.struct();
     }
 
     @Override
     public void markSnapshotRecord(SnapshotRecord record) {
-        getSourceInfoObject().setSnapshot(record);
+        sourceInfo.setSnapshot(record);
     }
 
     @Override
     public void postSnapshotCompletion() {
-        getSourceInfoObject().setSnapshot(SnapshotRecord.FALSE);
+        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
     @Override
     public void incrementalSnapshotEvents() {
-        getSourceInfoObject().setSnapshot(SnapshotRecord.INCREMENTAL);
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
     }
 }

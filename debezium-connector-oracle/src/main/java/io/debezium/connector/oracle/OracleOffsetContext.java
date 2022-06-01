@@ -21,7 +21,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
-public class OracleOffsetContext extends CommonOffsetContext {
+public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
@@ -29,7 +29,6 @@ public class OracleOffsetContext extends CommonOffsetContext {
 
     private final Schema sourceInfoSchema;
 
-    private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
 
@@ -65,7 +64,7 @@ public class OracleOffsetContext extends CommonOffsetContext {
                                Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        sourceInfo = new SourceInfo(connectorConfig);
+        super(new SourceInfo(connectorConfig));
         sourceInfo.setScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
         sourceInfoSchema = sourceInfo.schema();
@@ -153,11 +152,6 @@ public class OracleOffsetContext extends CommonOffsetContext {
 
     public static Builder create() {
         return new Builder();
-    }
-
-    @Override
-    public SourceInfo getSourceInfoObject() {
-        return sourceInfo;
     }
 
     @Override
