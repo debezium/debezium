@@ -235,16 +235,6 @@ public class EventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Whether or not an empty payload should cause a tombstone event.");
 
-    @Deprecated
-    public static final Field DEBEZIUM_OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
-            .withDisplayName("Behavior when the route fails to apply")
-            .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("While Debezium is capturing changes from the table, it's expecting only to see 'create' row events," +
-                    " in case something else is processed this transform can log it as warning, error or stop the" +
-                    " process.  This option is deprecated, use 'table.op.invalid.behavior' instead.");
-
     public static final Field EXPAND_JSON_PAYLOAD = Field.create("table.expand.json.payload")
             .withDisplayName("Expand Payload escaped string as real JSON")
             .withType(ConfigDef.Type.BOOLEAN)
@@ -268,7 +258,6 @@ public class EventRouterConfigDefinition {
             ROUTE_TOPIC_REGEX,
             ROUTE_TOPIC_REPLACEMENT,
             ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
-            DEBEZIUM_OPERATION_INVALID_BEHAVIOR,
             OPERATION_INVALID_BEHAVIOR,
             EXPAND_JSON_PAYLOAD
     };
@@ -292,10 +281,6 @@ public class EventRouterConfigDefinition {
                 config,
                 "Router",
                 ROUTE_BY_FIELD, ROUTE_TOPIC_REGEX, ROUTE_TOPIC_REPLACEMENT, ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD);
-        Field.group(
-                config,
-                "Debezium",
-                DEBEZIUM_OPERATION_INVALID_BEHAVIOR);
         Field.group(
                 config,
                 "Tracing",
