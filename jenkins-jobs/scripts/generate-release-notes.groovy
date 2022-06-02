@@ -138,7 +138,7 @@ println """
 [[release-${version.toLowerCase().reverse().replaceFirst('\\.', '-').reverse()}]]
 == *Release $version* _(${today()})_
 
-See the https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12377386&version=$versionId[complete list of issues].
+See the https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=$versionId[complete list of issues].
 
 === Kafka compatibility
 
