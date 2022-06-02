@@ -3111,13 +3111,6 @@ become outdated if TOASTable columns are dropped from the table.
 |`10000` (10 seconds)
 |The number of milliseconds to wait between retry attempts when the connector fails to connect to a replication slot.
 
-|[[postgresql-property-toasted-value-placeholder]]<<postgresql-property-toasted-value-placeholder, `+toasted.value.placeholder+`>>
-|`__debezium_unavailable_value`
-|Specifies the constant that the connector provides to indicate that the original value is a toasted value that is not provided by the database.
-If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it is expected that the rest of the string represents hexadecimally encoded octets. See xref:postgresql-toasted-values[toasted values] for additional details. +
- +
-_This option is deprecated, please use `unavailable.value.placeholder` instead._
-
 |[[postgresql-property-unavailable-value-placeholder]]<<postgresql-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is a toasted value that is not provided by the database.
