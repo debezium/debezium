@@ -7,8 +7,13 @@ When the connector is configured with `tasks.max` greater than `1`, the MBean na
 As an example, when using a value of `2`, the MBean names will also be suffixed by `,task=0` and `,task=1` respectively.
 ====
 endif::[]
+ifeval::['{context}' == 'sqlserver']
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<{context}.server.name>_,task=_<task.id>_,context=streaming`.
+endif::[]
 ifeval::['{context}' != 'mongodb']
+ifeval::['{context}' != 'sqlserver']
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_`.
+endif::[]
 endif::[]
 
 The following table lists the streaming metrics that are available.
