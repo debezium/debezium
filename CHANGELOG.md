@@ -2,6 +2,74 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.3.Final
+June 2nd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385477)
+
+### New features since 1.9.2.Final
+
+* Allow mongodb-connector to decode Binary payloads [DBZ-4600](https://issues.redhat.com/browse/DBZ-4600)
+* ORA-04030: out of process memory when trying to allocate 65568 bytes (Logminer LCR c,krvxrib:buffer) [DBZ-4963](https://issues.redhat.com/browse/DBZ-4963)
+* Include heartbeat table to the heartbeat process in the Debezium Oracle Connector [DBZ-5119](https://issues.redhat.com/browse/DBZ-5119)
+* Avoid reading entire schema history file into memory in the test suite [DBZ-5129](https://issues.redhat.com/browse/DBZ-5129)
+* Expose more useful exception info with building the field default value schema [DBZ-5172](https://issues.redhat.com/browse/DBZ-5172)
+
+
+### Breaking changes since 1.9.2.Final
+
+None
+
+
+### Fixes since 1.9.2.Final
+
+* Error and connector stops when DDL contains lateral [DBZ-4780](https://issues.redhat.com/browse/DBZ-4780)
+* Schema changes should flush SCN to offsets if there are no other active transactions [DBZ-4782](https://issues.redhat.com/browse/DBZ-4782)
+* Connector stops streaming after a re-balance [DBZ-4792](https://issues.redhat.com/browse/DBZ-4792)
+* MySQL connector increment snapshot failed parse datetime column lenth when connector set "snapshot.fetch.size": 20000  [DBZ-4939](https://issues.redhat.com/browse/DBZ-4939)
+* [MySQL Debezium] DDL Parsing error - CREATE OR REPLACE TABLE [DBZ-4958](https://issues.redhat.com/browse/DBZ-4958)
+* InstanceAlreadyExistsException during MongoDb connector metrics registration [DBZ-5011](https://issues.redhat.com/browse/DBZ-5011)
+* DateTimeParseException: Text 'infinity' could not be parsed in Postgres connector [DBZ-5014](https://issues.redhat.com/browse/DBZ-5014)
+* Fix inconsistent transaction id when handling transactional messages in Vitess connector [DBZ-5063](https://issues.redhat.com/browse/DBZ-5063)
+* Debezium MCS Error when changing Postgres port [DBZ-5067](https://issues.redhat.com/browse/DBZ-5067)
+* 4 Connections per connector (postgres) [DBZ-5074](https://issues.redhat.com/browse/DBZ-5074)
+* Oracle documentation refers to archive_log_target rather than archive_lag_target [DBZ-5076](https://issues.redhat.com/browse/DBZ-5076)
+* 'ALTER TABLE mytable DROP FOREIGN KEY IF EXISTS mytable_fk' no viable alternative at input 'ALTER TABLE mytable DROP FOREIGN KEY IF' [DBZ-5077](https://issues.redhat.com/browse/DBZ-5077)
+* Oracle Logminer: records missed during switch from snapshot to streaming mode [DBZ-5085](https://issues.redhat.com/browse/DBZ-5085)
+* Interrupting a snapshot process can hang for some JDBC drivers [DBZ-5087](https://issues.redhat.com/browse/DBZ-5087)
+* Debezium fails to undo change event due to transaction id ending in ffffffff with LogMiner [DBZ-5090](https://issues.redhat.com/browse/DBZ-5090)
+* Postgresql connector does not retry one some errors when postgres is taken offline [DBZ-5097](https://issues.redhat.com/browse/DBZ-5097)
+* Parsing zero day fails [DBZ-5099](https://issues.redhat.com/browse/DBZ-5099)
+* Cannot Set debezium.sink.kafka.producer.ssl.endpoint.identification.algorithm to empty value  [DBZ-5105](https://issues.redhat.com/browse/DBZ-5105)
+* Debezium connector failed with create table statement [DBZ-5108](https://issues.redhat.com/browse/DBZ-5108)
+* Current version of surefire/failsafe skips tests on failure in BeforeAll [DBZ-5112](https://issues.redhat.com/browse/DBZ-5112)
+* Test IncrementalSnapshotIT##schemaChanges fails randomly [DBZ-5131](https://issues.redhat.com/browse/DBZ-5131)
+* Cannot parse default value 0.000000000000000000 for bigint column [DBZ-5134](https://issues.redhat.com/browse/DBZ-5134)
+* MilliSecondsBehindSource is not reported by SQL Server connector [DBZ-5137](https://issues.redhat.com/browse/DBZ-5137)
+* Restarting mysql connector task fails with: java.lang.RuntimeException: Unable to register the MBean [DBZ-5138](https://issues.redhat.com/browse/DBZ-5138)
+* No raising of "WARN Event for transaction X has already been processed, skipped." [DBZ-5140](https://issues.redhat.com/browse/DBZ-5140)
+* Oracle connector restarts after ORA-01291 [DBZ-5148](https://issues.redhat.com/browse/DBZ-5148)
+* TestContainers method DebeziumContainer#getConnectorTaskState can raise a NullPointerException [DBZ-5159](https://issues.redhat.com/browse/DBZ-5159)
+* ExtractNewRecordState SMT Replaces Null Value with Column's Default Value [DBZ-5166](https://issues.redhat.com/browse/DBZ-5166)
+* Oracle connector metrics tracking of rollback and abandoned transactions may cause high memory usage [DBZ-5179](https://issues.redhat.com/browse/DBZ-5179)
+* Debezium official documentation typo [DBZ-5040](https://issues.redhat.com/browse/DBZ-5040)
+* Should be sleep with REGISTRATION_RETRY_DELAY when registry MBean failed [DBZ-5141](https://issues.redhat.com/browse/DBZ-5141)
+
+
+### Other changes since 1.9.2.Final
+
+* Restructure documentation for custom converters [DBZ-4588](https://issues.redhat.com/browse/DBZ-4588)
+* Document *xmin.fetch.interval.ms* property for Postgres connector [DBZ-4734](https://issues.redhat.com/browse/DBZ-4734)
+* Add FAQ about ORA-01882 and Oracle 11 to documentation [DBZ-5057](https://issues.redhat.com/browse/DBZ-5057)
+* Rename "Mysql" to "MySql" in related MysqlFieldReader interface [DBZ-5078](https://issues.redhat.com/browse/DBZ-5078)
+* Remove auto-generation and default values for MySQL database.server.id [DBZ-5101](https://issues.redhat.com/browse/DBZ-5101)
+* Upgrade Jackson Databind to 2.13.2.2 [DBZ-5107](https://issues.redhat.com/browse/DBZ-5107)
+* Switch to released version of Fixture5 extension in System testsuite [DBZ-5114](https://issues.redhat.com/browse/DBZ-5114)
+* Use range to activate jdk11 profile [DBZ-5118](https://issues.redhat.com/browse/DBZ-5118)
+* Misc edits to prepare Oracle connector docs for GA [DBZ-5132](https://issues.redhat.com/browse/DBZ-5132)
+* Pro-actively detect issues with LogMiner records [DBZ-5147](https://issues.redhat.com/browse/DBZ-5147)
+* Align Postgresql driver with Quarkus [DBZ-5060](https://issues.redhat.com/browse/DBZ-5060)
+
+
+
 ## 1.9.2.Final
 April 29th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385310)
 
