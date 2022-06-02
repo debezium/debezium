@@ -49,11 +49,6 @@ import io.debezium.schema.DatabaseSchema;
  */
 public class SqlServerConnection extends JdbcConnection {
 
-    /**
-     * @deprecated The connector will determine the database server timezone offset automatically.
-     */
-    @Deprecated
-    public static final String SERVER_TIMEZONE_PROP_NAME = "server.timezone";
     public static final String INSTANCE_NAME = "instance";
 
     private static final String GET_DATABASE_NAME = "SELECT name FROM sys.databases WHERE name = ?";
@@ -129,10 +124,6 @@ public class SqlServerConnection extends JdbcConnection {
                                SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
                                Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode) {
         super(config, createConnectionFactory(multiPartitionMode), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
-
-        if (config().hasKey(SERVER_TIMEZONE_PROP_NAME)) {
-            LOGGER.warn("The '{}' option is deprecated and is not taken into account", SERVER_TIMEZONE_PROP_NAME);
-        }
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
