@@ -2871,19 +2871,6 @@ However, it's best to use the minimum number that are required to specify a uniq
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `none` does not apply any adjustment. +
 
-|[[postgresql-property-truncate-handling-mode]]<<postgresql-property-truncate-handling-mode, `+truncate.handling.mode+`>>
-|skip
-|Specifies how whether `TRUNCATE` events should be propagated or not (only available when using the `pgoutput` plug-in with Postgres 11 or later): +
- +
-`skip` causes those event to be omitted (the default). +
- +
-`include` causes those events to be included. +
- +
-For information about the structure of _truncate_ events and about their ordering semantics, see xref:postgresql-truncate-events[]. +
- +
-This option is deprecated.
-Use xref:postgresql-property-skipped-operations[`skipped.operations`] in its place.
-
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`
 |Specifies how many decimal digits should be used when converting Postgres `money` type to `java.math.BigDecimal`, which represents the values in change events.
