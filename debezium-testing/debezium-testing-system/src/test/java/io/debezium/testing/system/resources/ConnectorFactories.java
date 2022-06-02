@@ -37,7 +37,9 @@ public class ConnectorFactories {
                 .put("database.user", ConfigProperties.DATABASE_MYSQL_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_MYSQL_DBZ_PASSWORD)
                 .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.inventory");
+                .put("database.history.kafka.topic", "schema-changes.inventory")
+                .addOperationRouterForTable("u", "customers");
+
     }
 
     public ConnectorConfigBuilder postgresql(SqlDatabaseController controller, String connectorName) {
@@ -56,7 +58,8 @@ public class ConnectorFactories {
                 .put("database.dbname", ConfigProperties.DATABASE_POSTGRESQL_DBZ_DBNAME)
                 .put("database.dbname", ConfigProperties.DATABASE_POSTGRESQL_DBZ_DBNAME)
                 .put("slot.name", "debezium")
-                .put("plugin.name", "pgoutput");
+                .put("plugin.name", "pgoutput")
+                .addOperationRouterForTable("u", "customers");
     }
 
     public ConnectorConfigBuilder sqlserver(SqlDatabaseController controller, String connectorName) {
@@ -74,7 +77,8 @@ public class ConnectorFactories {
                 .put("database.password", ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD)
                 .put("database.dbname", ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAME)
                 .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.inventory");
+                .put("database.history.kafka.topic", "schema-changes.inventory")
+                .addOperationRouterForTable("u", "customers");
     }
 
     public ConnectorConfigBuilder mongo(MongoDatabaseController controller, String connectorName) {
@@ -88,7 +92,8 @@ public class ConnectorFactories {
                 .put("task.max", 1)
                 .put("mongodb.hosts", "rs0/" + dbHost + ":" + dbPort)
                 .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
-                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD);
+                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
+                .addOperationRouterForTable("u", "customers");
     }
 
     public ConnectorConfigBuilder db2(SqlDatabaseController controller, String connectorName) {
@@ -107,7 +112,8 @@ public class ConnectorFactories {
                 .put("database.dbname", ConfigProperties.DATABASE_DB2_DBZ_DBNAME)
                 .put("database.cdcschema", ConfigProperties.DATABASE_DB2_CDC_SCHEMA)
                 .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.inventory");
+                .put("database.history.kafka.topic", "schema-changes.inventory")
+                .addOperationRouterForTable("u", "CUSTOMERS");
     }
 
     public ConnectorConfigBuilder oracle(SqlDatabaseController controller, String connectorName) {
@@ -130,6 +136,7 @@ public class ConnectorFactories {
                 .put("database.pdb.name", ConfigProperties.DATABASE_ORACLE_PDBNAME)
                 .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
                 .put("database.history.kafka.topic", "schema-changes.oracle")
-                .put("log.mining.strategy", "online_catalog");
+                .put("log.mining.strategy", "online_catalog")
+                .addOperationRouterForTable("u", "CUSTOMERS");
     }
 }

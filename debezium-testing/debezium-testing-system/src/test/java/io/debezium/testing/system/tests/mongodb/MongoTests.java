@@ -18,6 +18,9 @@ import org.bson.Document;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
+
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.tests.ConnectorTest;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseClient;
@@ -40,8 +43,7 @@ public abstract class MongoTests extends ConnectorTest {
         super(kafkaController, connectController, connectorConfig, assertions);
     }
 
-    public void insertCustomer(MongoDatabaseController dbController, String firstName, String lastName, String email)
-            throws SQLException {
+    public void insertCustomer(MongoDatabaseController dbController, String firstName, String lastName, String email) {
         MongoDatabaseClient client = dbController
                 .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
 
@@ -54,8 +56,17 @@ public abstract class MongoTests extends ConnectorTest {
         });
     }
 
+    public void renameCustomer(MongoDatabaseController dbController, String oldName, String newName) {
+        MongoDatabaseClient client = dbController
+                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+
+        client.execute(DATABASE_MONGO_DBZ_DBNAME, "customers", col -> {
+            col.updateOne(Filters.eq("first_name", oldName), Updates.set("first_name", newName));
+        });
+    }
+
     @Test
-    @Order(1)
+    @Order(10)
     public void shouldHaveRegisteredConnector() {
 
         Request r = new Request.Builder().url(connectController.getApiURL().resolve("/connectors")).build();
@@ -68,7 +79,7 @@ public abstract class MongoTests extends ConnectorTest {
     }
 
     @Test
-    @Order(2)
+    @Order(20)
     public void shouldCreateKafkaTopics() {
         String prefix = connectorConfig.getDbServerName();
         assertions.assertTopicsExist(
@@ -78,7 +89,7 @@ public abstract class MongoTests extends ConnectorTest {
     }
 
     @Test
-    @Order(3)
+    @Order(30)
     public void shouldSnapshotChanges() {
         connectController.getMetricsReader().waitForMongoSnapshot(connectorConfig.getDbServerName());
 
@@ -87,7 +98,7 @@ public abstract class MongoTests extends ConnectorTest {
     }
 
     @Test
-    @Order(4)
+    @Order(40)
     public void shouldStreamChanges(MongoDatabaseController dbController) throws SQLException {
         insertCustomer(dbController, "Tom", "Tester", "tom@test.com");
 
@@ -97,7 +108,19 @@ public abstract class MongoTests extends ConnectorTest {
     }
 
     @Test
-    @Order(5)
+    @Order(41)
+    public void shouldRerouteUpdates(MongoDatabaseController dbController) throws SQLException {
+        renameCustomer(dbController, "Tom", "Thomas");
+
+        String prefix = connectorConfig.getDbServerName();
+        String updatesTopic = prefix + ".u.customers";
+        awaitAssert(() -> assertions.assertRecordsCount(prefix + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(updatesTopic, 1));
+        awaitAssert(() -> assertions.assertRecordsContain(updatesTopic, "Thomas"));
+    }
+
+    @Test
+    @Order(50)
     public void shouldBeDown(MongoDatabaseController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
         insertCustomer(dbController, "Jerry", "Tester", "jerry@test.com");
@@ -107,7 +130,7 @@ public abstract class MongoTests extends ConnectorTest {
     }
 
     @Test
-    @Order(6)
+    @Order(60)
     public void shouldResumeStreamingAfterRedeployment() throws Exception {
         connectController.deployConnector(connectorConfig);
 
@@ -117,7 +140,7 @@ public abstract class MongoTests extends ConnectorTest {
     }
 
     @Test
-    @Order(7)
+    @Order(70)
     public void shouldBeDownAfterCrash(MongoDatabaseController dbController) throws SQLException {
         connectController.destroy();
         insertCustomer(dbController, "Nibbles", "Tester", "nibbles@test.com");
@@ -127,7 +150,7 @@ public abstract class MongoTests extends ConnectorTest {
     }
 
     @Test
-    @Order(8)
+    @Order(80)
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         connectController.restore();
 
