@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import java.time.DateTimeException;
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -271,10 +269,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withImportance(Importance.LOW)
             .withDescription("Configures the criteria of the attached timestamp within the source record (ts_ms)." +
                     "Options include:" +
-                    "'" + SourceTimestampMode.COMMIT.getValue() + "', (default) the source timestamp is set to the instant where the record was committed in the database"
-                    +
-                    "'" + SourceTimestampMode.PROCESSING.getValue()
-                    + "', (deprecated) the source timestamp is set to the instant where the record was processed by Debezium.");
+                    "'" + SourceTimestampMode.COMMIT.getValue()
+                    + "', (default) the source timestamp is set to the instant where the record was committed in the database.");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")

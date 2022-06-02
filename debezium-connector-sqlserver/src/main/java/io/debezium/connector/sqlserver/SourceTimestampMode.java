@@ -40,24 +40,6 @@ public enum SourceTimestampMode implements EnumeratedValue {
         protected String lsnTimestampSelectStatement() {
             return ", " + SqlServerConnection.LSN_TIMESTAMP_SELECT_STATEMENT;
         }
-    },
-
-    /**
-     * This mode will set the source timestamp field (ts_ms) of when the record was processed by Debezium.
-     *
-     * @deprecated Use {@link #COMMIT} instead.
-     */
-    @Deprecated
-    PROCESSING("processing") {
-        @Override
-        protected Instant getTimestamp(Clock clock, ResultSet resultSet) {
-            return clock.currentTime();
-        }
-
-        @Override
-        protected String lsnTimestampSelectStatement() {
-            return "";
-        }
     };
 
     private final String value;
