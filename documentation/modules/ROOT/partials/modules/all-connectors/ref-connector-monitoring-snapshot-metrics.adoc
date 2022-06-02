@@ -1,8 +1,13 @@
 ifeval::['{context}' == 'mongodb']
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_,task=_<task.id>_`.
 endif::[]
+ifeval::['{context}' == 'sqlserver']
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<{context}.server.name>_,task=_<task.id>_,context=snapshot`.
+endif::[]
 ifeval::['{context}' != 'mongodb']
+ifeval::['{context}' != 'sqlserver']
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_`.
+endif::[]
 endif::[]
 
 Snapshot metrics are not exposed unless a snapshot operation is active, or if a snapshot has occurred since the last connector start.

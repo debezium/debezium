@@ -1,8 +1,13 @@
 ifeval::['{context}' == 'mongodb']
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_,task=_<task.id>_`.
 endif::[]
+ifeval::['{context}' == 'sqlserver']
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<{context}.server.name>_,task=_<task.id>_,context=streaming`.
+endif::[]
 ifeval::['{context}' != 'mongodb']
+ifeval::['{context}' != 'sqlserver']
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_`.
+endif::[]
 endif::[]
 
 The following table lists the streaming metrics that are available.
