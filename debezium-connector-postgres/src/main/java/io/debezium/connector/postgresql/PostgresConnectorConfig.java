@@ -8,10 +8,8 @@ package io.debezium.connector.postgresql;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -39,7 +37,6 @@ import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
 import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -202,12 +199,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * Perform a snapshot and then stop before attempting to receive any logical changes.
          */
         INITIAL_ONLY("initial_only", (c) -> new InitialOnlySnapshotter()),
-
-        /**
-         * Perform an exported snapshot
-         */
-        @Deprecated
-        EXPORTED("exported", (c) -> new InitialSnapshotter()),
 
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
@@ -704,13 +695,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withValidation((config, field, output) -> {
-                if (config.getString(field).toLowerCase().equals(SnapshotMode.EXPORTED.getValue())) {
-                    LOGGER.warn("Value '{}' of 'snapshot.mode' option is deprecated, use '{}' instead",
-                            SnapshotMode.EXPORTED.getValue(), SnapshotMode.INITIAL.getValue());
-                }
-                return 0;
-            })
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Options include: "
                     + "'always' to specify that the connector run a snapshot each time it starts up; "
