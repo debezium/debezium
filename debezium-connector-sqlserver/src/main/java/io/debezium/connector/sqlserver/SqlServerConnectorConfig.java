@@ -246,30 +246,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(SqlServerConnectorConfig::validateDatabaseNames)
             .withDescription("The names of the databases from which the connector should capture changes");
 
-    /**
-     * @deprecated The connector will determine the database server timezone offset automatically.
-     */
-    @Deprecated
-    public static final Field SERVER_TIMEZONE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.SERVER_TIMEZONE_PROP_NAME)
-            .withDisplayName("Server timezone")
-            .withType(Type.STRING)
-            .withImportance(Importance.LOW)
-            .withValidation((config, field, problems) -> {
-                String value = config.getString(field);
-                if (value != null) {
-                    try {
-                        ZoneId.of(value, ZoneId.SHORT_IDS);
-                    }
-                    catch (DateTimeException e) {
-                        problems.accept(field, value, "The value must be a valid ZoneId");
-                        return 1;
-                    }
-                }
-                return 0;
-            })
-            .withDescription("The timezone of the server used to correctly shift the commit transaction timestamp on the client side"
-                    + "Options include: Any valid Java ZoneId (deprecated, the connector will determine the database server timezone offset automatically)");
-
     public static final Field MAX_LSN_OPTIMIZATION = Field.createInternal("streaming.lsn.optimization")
             .withDisplayName("Max LSN Optimization")
             .withDefault(true)
@@ -348,7 +324,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     PORT,
                     USER,
                     PASSWORD,
-                    SERVER_TIMEZONE,
                     INSTANCE)
             .connector(
                     SNAPSHOT_MODE,
