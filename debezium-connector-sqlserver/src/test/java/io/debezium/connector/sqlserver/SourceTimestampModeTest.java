@@ -22,7 +22,7 @@ public class SourceTimestampModeTest {
     @Test
     @FixFor("DBZ-1988")
     public void shouldReturnOptionFromValidMode() {
-        assertThat(SourceTimestampMode.fromMode("processing")).isEqualTo(SourceTimestampMode.PROCESSING);
+        assertThat(SourceTimestampMode.fromMode("processing")).isEqualTo(SourceTimestampMode.COMMIT);
     }
 
     @Test
