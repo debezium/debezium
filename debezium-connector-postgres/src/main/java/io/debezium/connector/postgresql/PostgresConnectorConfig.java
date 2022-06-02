@@ -424,49 +424,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     /**
-     * The set of predefined TruncateHandlingMode options or aliases
-     *
-     * @deprecated use skipped operations instead.
-     */
-    @Deprecated
-    public enum TruncateHandlingMode implements EnumeratedValue {
-
-        /**
-         * Skip TRUNCATE messages
-         */
-        SKIP("skip"),
-
-        /**
-         * Handle & Include TRUNCATE messages
-         */
-        INCLUDE("include");
-
-        private final String value;
-
-        TruncateHandlingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public static TruncateHandlingMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (TruncateHandlingMode truncateHandlingMode : TruncateHandlingMode.values()) {
-                if (truncateHandlingMode.getValue().equalsIgnoreCase(value)) {
-                    return truncateHandlingMode;
-                }
-            }
-            return null;
-        }
-    }
-
-    /**
      * The set of predefined SchemaRefreshMode options or aliases.
      */
     public enum SchemaRefreshMode implements EnumeratedValue {
@@ -807,22 +764,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "A comma-separated list of regular expressions that match the logical decoding message prefixes to be monitored. All prefixes are monitored by default.");
 
-    /**
-     * @deprecated use skipped operations instead
-     */
-    @Deprecated
-    public static final Field TRUNCATE_HANDLING_MODE = Field.create("truncate.handling.mode")
-            .withDisplayName("Truncate handling mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 23))
-            .withEnum(TruncateHandlingMode.class, TruncateHandlingMode.SKIP)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withValidation(PostgresConnectorConfig::validateTruncateHandlingMode)
-            .withDescription("(Deprecated) Specify how TRUNCATE operations are handled for change events (supported only on pg11+ pgoutput plugin), including: " +
-                    "'skip' to skip / ignore TRUNCATE events (default), " +
-                    "'include' to handle and include TRUNCATE events. " +
-                    "Use 'skipped.operations' instead.");
-
     public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
             .withDisplayName("HStore Handling")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 22))
@@ -936,10 +877,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     // behavior of TruncateHandlingMode. This way we can emit boot-up warnings in preparation of the
     // overall behavior change in a future release.
     public static final Field SKIPPED_OPERATIONS = CommonConnectorConfig.SKIPPED_OPERATIONS
-            .withDefault("t")
-            .withValidation(CommonConnectorConfig::validateSkippedOperation, PostgresConnectorConfig::validateSkippedOperations);
+            .withDefault("t");
 
-    private final TruncateHandlingMode truncateHandlingMode;
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
@@ -955,7 +894,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
                 ColumnFilterMode.SCHEMA);
 
-        this.truncateHandlingMode = TruncateHandlingMode.parse(config.getString(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE));
         this.logicalDecodingMessageFilter = new LogicalDecodingMessageFilter(config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST),
                 config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST));
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
@@ -995,16 +933,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public String publicationName() {
         return getConfig().getString(PUBLICATION_NAME);
-    }
-
-    @Override
-    public EnumSet<Envelope.Operation> getSkippedOperations() {
-        EnumSet<Envelope.Operation> skippedOperations = super.getSkippedOperations();
-        // If user specified TruncateHandlingMode.SKIP we merge that with the existing skipped operations
-        if (TruncateHandlingMode.SKIP.equals(truncateHandlingMode)) {
-            skippedOperations.add(Envelope.Operation.TRUNCATE);
-        }
-        return skippedOperations;
     }
 
     protected AutoCreateMode publicationAutocreateMode() {
@@ -1125,7 +1053,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     INTERVAL_HANDLING_MODE,
                     SCHEMA_REFRESH_MODE,
-                    TRUNCATE_HANDLING_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
                     LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST,
@@ -1153,77 +1080,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
         }
         return errors;
-    }
-
-    private static int validateTruncateHandlingMode(Configuration config, Field field, Field.ValidationOutput problems) {
-        final String value = config.getString(field);
-        int errors = 0;
-        if (value != null) {
-            TruncateHandlingMode truncateHandlingMode = TruncateHandlingMode.parse(value);
-            if (truncateHandlingMode == null) {
-                List<String> validModes = Arrays.stream(TruncateHandlingMode.values()).map(TruncateHandlingMode::getValue).collect(Collectors.toList());
-                String message = String.format("Valid values for %s are %s, but got '%s'", field.name(), validModes, value);
-                problems.accept(field, value, message);
-                errors++;
-                return errors;
-            }
-            if (truncateHandlingMode == TruncateHandlingMode.INCLUDE) {
-                final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
-                if (!logicalDecoder.supportsTruncate()) {
-                    String message = String.format(
-                            "%s '%s' is not supported with configuration %s '%s'",
-                            field.name(), truncateHandlingMode.getValue(), PLUGIN_NAME.name(), logicalDecoder.getValue());
-                    problems.accept(field, value, message);
-                    errors++;
-                }
-            }
-            if (errors == 0) {
-                LOGGER.warn("Configuration property '{}' is deprecated and will be removed in future versions. Please use '{}' instead.",
-                        TRUNCATE_HANDLING_MODE.name(),
-                        SKIPPED_OPERATIONS.name());
-            }
-        }
-        return errors;
-    }
-
-    private static int validateSkippedOperations(Configuration config, Field field, Field.ValidationOutput problems) {
-        // We explicitly use this syntax to get the raw user-supplied value without defaults.
-        // We need to know whether the value is actually supplied without having the default value being enforced.
-        final String value = config.getString(field.name(), (String) null);
-
-        boolean isTruncateSkipped = false;
-        if (value != null) {
-            // A value is provided, verify whether "t" (truncate) is part of the user-supplied value
-            final String[] operations = value.split(",");
-            for (String operation : operations) {
-                if ("t".equals(operation)) {
-                    isTruncateSkipped = true;
-                    break;
-                }
-            }
-        }
-
-        if (!isTruncateSkipped) {
-            // The user did not explicitly configure skipped.operations, or it is configured but the user did
-            // not include the "t" in their explicit configuration value.
-            final LogicalDecoder logicalDecoder = LogicalDecoder.parse(config.getString(PLUGIN_NAME));
-            if (!logicalDecoder.supportsTruncate()) {
-                // if the decoder doesn't support truncate, there is nothing to warn about
-                return 0;
-            }
-            final TruncateHandlingMode truncateHandlingMode = TruncateHandlingMode.parse(config.getString(TRUNCATE_HANDLING_MODE));
-            if (truncateHandlingMode == TruncateHandlingMode.SKIP) {
-                // the user is allowing the legacy configuration option's skip default to be used.
-                // We want to warn about this configuration pair being changed in a future version, urging the user
-                // to explicitly configure skipped.operations if they want to maintain skipped TRUNCATEs.
-                LOGGER.warn("Configuration property '{}' is deprecated and will be removed soon. " +
-                        "If you wish to retain skipped truncate functionality, please configure '{}' with \"{}\".",
-                        TRUNCATE_HANDLING_MODE.name(),
-                        SKIPPED_OPERATIONS.name(),
-                        "t");
-            }
-        }
-        return 0;
     }
 
     private static int validateToastedValuePlaceholder(Configuration config, Field field, Field.ValidationOutput problems) {

@@ -1916,7 +1916,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handles TRUNCATE messages")
     public void shouldProcessTruncateMessages() throws Exception {
         startConnector(builder -> builder
-                .with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "none"));
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
@@ -1942,8 +1942,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handles TRUNCATE messages")
     public void shouldProcessTruncateMessagesWhenSkippedOperationsIsSuppliedWithoutTruncate() throws Exception {
         startConnector(builder -> builder
-                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "u")
-                .with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "u"));
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
@@ -1991,7 +1990,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldProcessTruncateMessagesForMultipleTableTruncateStatement() throws Exception {
         TestHelper.execute("CREATE TABLE test_table_2 (pk SERIAL, text TEXT, PRIMARY KEY(pk));");
 
-        startConnector(builder -> builder.with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
+        startConnector(builder -> builder.with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "none"));
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
