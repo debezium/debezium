@@ -281,7 +281,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("first");
 
         SourceRecord record2 = testTableRecords.get(1);
         VerifyRecord.isValidRead(record2, "ID", 2);
@@ -328,7 +328,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("ID")).isEqualTo(1);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("first");
         assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
         assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
         assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
@@ -345,6 +345,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
+
+        source = (Struct) ((Struct) record2.value()).get("source");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("last");
 
         expectedRecordCount = 0;
         connection.execute("INSERT INTO debezium.customer VALUES (3, 'Brian', 2345.67, null)");
@@ -400,7 +403,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("ID")).isEqualTo(1);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("first");
         assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
         assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
         assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
