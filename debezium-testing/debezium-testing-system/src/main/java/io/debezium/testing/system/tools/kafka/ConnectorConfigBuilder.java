@@ -46,6 +46,10 @@ public class ConnectorConfigBuilder {
         return config;
     }
 
+    public String getAsString(String key) {
+        return String.valueOf(config.get(key));
+    }
+
     public ConnectorConfigBuilder addApicurioAvroSupport(String apicurioUrl) {
         config.put("key.converter", "io.apicurio.registry.utils.converter.AvroConverter");
         config.put("key.converter.apicurio.registry.url", apicurioUrl);
@@ -58,6 +62,29 @@ public class ConnectorConfigBuilder {
         config.put("value.converter.apicurio.registry.find-latest", true);
 
         return this;
+    }
+
+    public ConnectorConfigBuilder addContentBasedRouter(String expression, String topicNamePattern) {
+        config.put("transforms", "route");
+        config.put("transforms.route.type", "io.debezium.transforms.ContentBasedRouter");
+        config.put("transforms.route.language", "jsr223.groovy");
+        config.put("transforms.route.topic.expression", expression);
+        config.put("transforms.route.predicate", "TopicPredicate");
+        config.put("predicates", "TopicPredicate");
+        config.put("predicates.TopicPredicate.type", "org.apache.kafka.connect.transforms.predicates.TopicNameMatches");
+        config.put("predicates.TopicPredicate.pattern", topicNamePattern);
+
+        return this;
+    }
+
+    public ConnectorConfigBuilder addOperationRouter(String op, String targetTopicName, String sourceTopicPattern) {
+        return addContentBasedRouter("value.op == '" + op + "' ? '" + targetTopicName + "' : null", sourceTopicPattern);
+    }
+
+    public ConnectorConfigBuilder addOperationRouterForTable(String op, String tableName) {
+        String serverName = getDbServerName();
+        String targetTopicName = serverName + "." + op + "." + tableName;
+        return addOperationRouter(op, targetTopicName, serverName + ".*\\." + tableName);
     }
 
     /**

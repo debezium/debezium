@@ -47,8 +47,14 @@ public abstract class MySqlTests extends ConnectorTest {
         client.execute("inventory", sql);
     }
 
+    public void renameCustomer(SqlDatabaseController dbController, String oldName, String newName) throws SQLException {
+        SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
+        String sql = "UPDATE customers SET first_name = '" + newName + "' WHERE first_name = '" + oldName + "'";
+        client.execute("inventory", sql);
+    }
+
     @Test
-    @Order(1)
+    @Order(10)
     public void shouldHaveRegisteredConnector() {
 
         Request r = new Request.Builder().url(connectController.getApiURL().resolve("/connectors")).build();
@@ -61,7 +67,7 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
-    @Order(2)
+    @Order(20)
     public void shouldCreateKafkaTopics() {
         String prefix = connectorConfig.getDbServerName();
         assertions.assertTopicsExist(
@@ -70,7 +76,7 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
-    @Order(3)
+    @Order(30)
     public void shouldSnapshotChanges() {
         connectController.getMetricsReader().waitForMySqlSnapshot(connectorConfig.getDbServerName());
 
@@ -79,7 +85,7 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
-    @Order(4)
+    @Order(40)
     public void shouldStreamChanges(SqlDatabaseController dbController) throws SQLException {
         insertCustomer(dbController, "Tom", "Tester", "tom@test.com");
 
@@ -89,7 +95,19 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
-    @Order(5)
+    @Order(41)
+    public void shouldRerouteUpdates(SqlDatabaseController dbController) throws SQLException {
+        renameCustomer(dbController, "Tom", "Thomas");
+
+        String prefix = connectorConfig.getDbServerName();
+        String updatesTopic = prefix + ".u.customers";
+        awaitAssert(() -> assertions.assertRecordsCount(prefix + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(updatesTopic, 1));
+        awaitAssert(() -> assertions.assertRecordsContain(updatesTopic, "Thomas"));
+    }
+
+    @Test
+    @Order(50)
     public void shouldBeDown(SqlDatabaseController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
         insertCustomer(dbController, "Jerry", "Tester", "jerry@test.com");
@@ -99,7 +117,7 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
-    @Order(6)
+    @Order(60)
     public void shouldResumeStreamingAfterRedeployment() throws Exception {
         connectController.deployConnector(connectorConfig);
 
@@ -109,7 +127,7 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
-    @Order(7)
+    @Order(70)
     public void shouldBeDownAfterCrash(SqlDatabaseController dbController) throws SQLException {
         connectController.destroy();
         insertCustomer(dbController, "Nibbles", "Tester", "nibbles@test.com");
@@ -119,7 +137,7 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
-    @Order(8)
+    @Order(80)
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         connectController.restore();
 

@@ -8,11 +8,11 @@ package io.debezium.testing.system.tools.artifacts;
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static org.awaitility.Awaitility.await;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -109,13 +109,28 @@ public class OcpArtifactServerController {
     }
 
     public Plugin createDebeziumPlugin(String database, List<String> extraArtifacts) {
-        List<String> commonArtifacts = List.of("debezium-connector-" + database, "debezium-scripting", "connect-converter");
+        List<String> commonArtifacts = List.of(
+                "debezium-connector-" + database,
+                "debezium-scripting",
+                "connect-converter",
+                "groovy/groovy",
+                "groovy/groovy-json",
+                "groovy/groovy-jsr223");
         List<String> artifacts = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream()).collect(toList());
 
         return createPlugin("debezium-connector-" + database, artifacts);
     }
 
     public List<String> readArtifactListing() throws IOException {
+        return await()
+                .pollInterval(5, TimeUnit.SECONDS)
+                .atMost(scaled(1), TimeUnit.MINUTES)
+                .ignoreExceptions()
+                .until(this::tryReadingArtifactListing, result -> !result.isEmpty());
+    }
+
+    private List<String> tryReadingArtifactListing() throws IOException {
+        LOGGER.info("Trying to read listing from artifact server");
         Pod pod = ocpUtils.podsForDeployment(deployment).get(0);
 
         try (InputStream is = ocp.pods()
@@ -125,7 +140,8 @@ public class OcpArtifactServerController {
                 .file("/opt/plugins/artifacts.txt")
                 .read()) {
 
-            return new BufferedReader(new InputStreamReader(is)).lines().collect(toList());
+            String listing = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            return listing.lines().collect(toList());
         }
     }
 
