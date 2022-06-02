@@ -111,10 +111,10 @@
 
         <!-- Quarkus -->
         <!-- Must be aligned with Apicurio version below -->
-        <quarkus.version>2.8.2.Final</quarkus.version>
+        <quarkus.version>2.9.2.Final</quarkus.version>
 
         <!-- Apicurio -->
-        <version.apicurio>2.2.1.Final</version.apicurio>
+        <version.apicurio>2.2.3.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.3.6</version.postgresql.driver>
