@@ -375,6 +375,18 @@ public class MongoUtil {
         Optional<ServerDescription> primaryDescription = serverDescriptions.stream().filter(ServerDescription::isPrimary).findFirst();
 
         if (!primaryDescription.isPresent()) {
+           for (ServerDescription description : serverDescriptions) {
+               if (!description.getPrimary().isEmpty()) {
+                   String[] address = description.getPrimary().split(":");
+                   if (address.length != 2) {
+                       throw new DebeziumException("Unable to parse primary address, got '" + serverDescriptions + "'");
+                   }
+                   return new ServerAddress(address[0], Integer.parseInt(address[1]));
+               }
+           }
+        }
+
+        if (!primaryDescription.isPresent()) {
             throw new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'");
         }
 
