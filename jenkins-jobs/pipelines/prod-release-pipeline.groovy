@@ -47,12 +47,29 @@ node('Slave') {
                 """, returnStatus: true)
             }
         }
+
         stage ('Build product') {
             sh "java -jar ./bacon.jar pig run ${TEMPORARY_BUILD == 'true' ? '-t' : ''} -e product-version=$PRODUCT_VERSION -e product-version-release=$PRODUCT_VERSION_RELEASE -e debezium-version=$DEBEZIUM_VERSION -e milestone=$PRODUCT_MILESTONE -v debezium-bacon"
         }
+
         stage('Extract connector packages') {
             dir (PACKAGES_DIR) {
                 sh "unzip -j debezium-*-maven-repository.zip '*.zip'"
+            }
+        }
+
+        stage ('Align source code') {
+            dir (PACKAGES_DIR) {
+                sh """
+                    SRC_FILE=debezium-*-src.zip
+                    echo \$SRC_FILE
+                    SRC_DIR=src-tmp
+                    rm -rf \$SRC_DIR && mkdir \$SRC_DIR && cd \$SRC_DIR
+                    unzip ../\$SRC_FILE
+                    sed -i -e 's/<protocVersion>.*<\\/protocVersion>/<protocVersion>2.6.1<\\/protocVersion>/' debezium-*-src/debezium-$DEBEZIUM_VERSION/debezium-connector-postgres/pom.xml
+                    zip -f -r ../\$SRC_FILE
+                    cd .. && rm -rf \$SRC_DIR
+                """
             }
         }
 
