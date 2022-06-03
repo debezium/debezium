@@ -2545,13 +2545,6 @@ Do not also specify a setting for `gtid.source.excludes`.
 |No default
 |A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources that do not match any of these exclude patterns are used. Do not also specify a value for `gtid.source.includes`.
 
-ifdef::community[]
-|[[mysql-property-gtid-new-channel-position]]<<mysql-property-gtid-new-channel-position, `+gtid.new.channel.position+`>> +
-_deprecated and scheduled for removal_
-|`earliest`
-|When set to `latest`, when the connector sees a new GTID channel, it starts consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have an active-passive MySQL setup where {prodname} is connected to the primary server. In this case, during failover, the replica with the new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
-endif::community[]
-
 |[[mysql-property-tombstones-on-delete]]<<mysql-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
 |Controls whether a _delete_ event is followed by a tombstone event. +

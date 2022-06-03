@@ -21,7 +21,6 @@ public class MySqlConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public Field.Set getConnectorFields() {
-        return MySqlConnectorConfig.ALL_FIELDS
-                .filtered(f -> f != MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
+        return MySqlConnectorConfig.ALL_FIELDS;
     }
 }

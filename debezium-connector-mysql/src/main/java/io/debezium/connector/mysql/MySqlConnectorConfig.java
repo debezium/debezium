@@ -508,68 +508,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     }
 
     /**
-     * The set of predefined Gtid New Channel Position options.
-     */
-    public static enum GtidNewChannelPosition implements EnumeratedValue {
-
-        /**
-         * This mode will start reading new gtid channel from mysql servers last_executed position
-         */
-        LATEST("latest"),
-
-        /**
-         * This mode will start reading new gtid channel from earliest available position in server.
-         * This is needed when during active-passive failover the new gtid channel becomes active and receiving writes. #DBZ-923
-         */
-        EARLIEST("earliest");
-
-        private final String value;
-
-        private GtidNewChannelPosition(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static GtidNewChannelPosition parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (GtidNewChannelPosition option : GtidNewChannelPosition.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static GtidNewChannelPosition parse(String value, String defaultValue) {
-            GtidNewChannelPosition mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
-    /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
      */
@@ -739,23 +677,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withDefault(true)
             .withDescription(
                     "If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers with UUIDs matching the filters defined by the gtid.source.includes or gtid.source.excludes configuration options, if they are specified.");
-
-    /**
-     * If set to 'latest', connector when encountering new GTID channel after job restart will start reading it from the
-     * latest executed position (default). When set to 'earliest' the connector will start reading new GTID channels from the first available position.
-     * This is useful when in active-passive mysql setup during failover new GTID channel starts receiving writes, see DBZ-923.
-     *
-     * Defaults to latest.
-     */
-    @Deprecated
-    public static final Field GTID_NEW_CHANNEL_POSITION = Field.create("gtid.new.channel.position")
-            .withDisplayName("GTID start position")
-            .withEnum(GtidNewChannelPosition.class, GtidNewChannelPosition.EARLIEST)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withValidation(MySqlConnectorConfig::validateGtidNewChannelPositionNotSet)
-            .withDescription(
-                    "If set to 'latest', when connector sees new GTID, it will start consuming gtid channel from the server latest executed gtid position. If 'earliest' (the default) connector starts reading channel from first available (not purged) gtid position on the server.");
 
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
             .withDisplayName("Connection Timeout (ms)")
@@ -1026,7 +947,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Configuration config;
     private final SnapshotMode snapshotMode;
     private final SnapshotLockingMode snapshotLockingMode;
-    private final GtidNewChannelPosition gitIdNewChannelPosition;
     private final SnapshotNewTables snapshotNewTables;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final Duration connectionTimeout;
@@ -1052,9 +972,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
-
-        final String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
-        this.gitIdNewChannelPosition = GtidNewChannelPosition.parse(gitIdNewChannelPosition, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
 
         final String snapshotNewTables = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
         this.snapshotNewTables = SnapshotNewTables.parse(snapshotNewTables, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES.defaultValueAsString());
@@ -1085,19 +1002,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         return this.snapshotLockingMode;
     }
 
-    public GtidNewChannelPosition gtidNewChannelPosition() {
-        return gitIdNewChannelPosition;
-    }
-
     public SnapshotNewTables getSnapshotNewTables() {
         return snapshotNewTables;
-    }
-
-    private static int validateGtidNewChannelPositionNotSet(Configuration config, Field field, ValidationOutput problems) {
-        if (config.getString(GTID_NEW_CHANNEL_POSITION.name()) != null) {
-            LOGGER.warn("Configuration option '{}' is deprecated and scheduled for removal", GTID_NEW_CHANNEL_POSITION.name());
-        }
-        return 0;
     }
 
     private static int validateEventDeserializationFailureHandlingModeNotSet(Configuration config, Field field, ValidationOutput problems) {

@@ -69,7 +69,6 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.function.BlockingConsumer;
@@ -1131,22 +1130,15 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
         LOGGER.info("GTID set available on server: {}", availableServerGtidSet);
 
-        GtidSet mergedGtidSet;
+        final GtidSet knownGtidSet = filteredGtidSet;
+        LOGGER.info("Using first available positions for new GTID channels");
+        final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ? availableServerGtidSet.retainAll(gtidSourceFilter) : availableServerGtidSet;
+        LOGGER.info("Relevant GTID set available on server: {}", relevantAvailableServerGtidSet);
 
-        if (connectorConfig.gtidNewChannelPosition() == GtidNewChannelPosition.EARLIEST) {
-            final GtidSet knownGtidSet = filteredGtidSet;
-            LOGGER.info("Using first available positions for new GTID channels");
-            final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ? availableServerGtidSet.retainAll(gtidSourceFilter) : availableServerGtidSet;
-            LOGGER.info("Relevant GTID set available on server: {}", relevantAvailableServerGtidSet);
-
-            mergedGtidSet = relevantAvailableServerGtidSet
-                    .retainAll(uuid -> knownGtidSet.forServerWithId(uuid) != null)
-                    .with(purgedServerGtid)
-                    .with(filteredGtidSet);
-        }
-        else {
-            mergedGtidSet = availableServerGtidSet.with(filteredGtidSet);
-        }
+        GtidSet mergedGtidSet = relevantAvailableServerGtidSet
+                .retainAll(uuid -> knownGtidSet.forServerWithId(uuid) != null)
+                .with(purgedServerGtid)
+                .with(filteredGtidSet);
 
         LOGGER.info("Final merged GTID set to use when connecting to MySQL: {}", mergedGtidSet);
         return mergedGtidSet;
