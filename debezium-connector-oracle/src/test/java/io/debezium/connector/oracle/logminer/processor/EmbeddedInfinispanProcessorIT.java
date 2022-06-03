@@ -33,7 +33,7 @@ public class EmbeddedInfinispanProcessorIT extends AbstractProcessorTest {
 
     @Override
     protected Configuration.Builder getBufferImplementationConfig() {
-        final LogMiningBufferType bufferType = LogMiningBufferType.INFINISPAN;
+        final LogMiningBufferType bufferType = LogMiningBufferType.INFINISPAN_EMBEDDED;
         return TestHelper.withDefaultInfinispanCacheConfigurations(bufferType,
                 TestHelper.defaultConfig()
                         .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferType)

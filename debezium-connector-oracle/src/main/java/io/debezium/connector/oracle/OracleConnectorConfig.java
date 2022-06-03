@@ -1074,25 +1074,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         },
 
-        /**
-         * @deprecated use either {@link #INFINISPAN_EMBEDDED} or {@link #INFINISPAN_REMOTE}.
-         */
-        @Deprecated
-        INFINISPAN("infinispan") {
-            @Override
-            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
-                                                          OracleConnectorConfig connectorConfig,
-                                                          OracleConnection connection,
-                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
-                                                          OraclePartition partition,
-                                                          OracleOffsetContext offsetContext,
-                                                          OracleDatabaseSchema schema,
-                                                          OracleStreamingChangeEventSourceMetrics metrics) {
-                return new EmbeddedInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
-                        partition, offsetContext, schema, metrics);
-            }
-        },
-
         INFINISPAN_EMBEDDED("infinispan_embedded") {
             @Override
             public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
@@ -1148,7 +1129,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         public boolean isInfinispanEmbedded() {
-            return isInfinispan() && (INFINISPAN.equals(this) || INFINISPAN_EMBEDDED.equals(this));
+            return isInfinispan() && INFINISPAN_EMBEDDED.equals(this);
         }
 
         public static LogMiningBufferType parse(String value) {
@@ -1509,12 +1490,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private static int validateLogMiningBufferType(Configuration config, Field field, ValidationOutput problems) {
         final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
-        if (LogMiningBufferType.INFINISPAN.equals(bufferType)) {
-            LOGGER.warn("Value '{}' of configuration option '{}' is deprecated and should be replaced with '{}'",
-                    LogMiningBufferType.INFINISPAN.getValue(),
-                    LOG_MINING_BUFFER_TYPE.name(),
-                    LogMiningBufferType.INFINISPAN_EMBEDDED.getValue());
-        }
         if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
             // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
             final String serverList = config.getString(RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST);

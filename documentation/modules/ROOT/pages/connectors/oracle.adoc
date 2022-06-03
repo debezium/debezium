@@ -2854,13 +2854,10 @@ When this option is active, the buffer state is not persisted across restarts.
 Following a restart, recreate the buffer from the SCN value of the current offset. +
 ifdef::community[]
  +
-`infinispan` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk.
-Choose this option if you expect the connector to process long-running or large transactions.
-When this option is active, the buffer state is persisted across restarts.
-After a restart, there is no need to recreate the buffer.
-Since the buffer state is persisted across restarts, the buffer does not need to be recreated at restart.
-The infinispan option requires that you specify a cache file directory.
-Use the `log.mining.buffer.location` property to define the location for storing cache files.
+`infinispan_embedded` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk.
++
+`infinispan_remote` - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.
+
 
 |[[oracle-property-log-mining-buffer-transaction-events-threshold]]<<oracle-property-log-mining-buffer-transaction-events-threshold, `+log.mining.buffer.transaction.events.threshold+`>>
 |`0`
