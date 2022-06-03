@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -290,32 +289,5 @@ public class OracleConnectorConfigTest {
         // Test rac.nodes using combination of with/without port and no database.port
         config = Configuration.create().with(racNodes, "1.2.3.4,1.2.3.5:1522").build();
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isFalse();
-    }
-
-    @Test
-    @FixFor("DBZ-4169")
-    public void testRaiseErrorWhenSpecifyingInfinispanBufferLocation() throws Exception {
-        final Field bufferLocation = OracleConnectorConfig.LOG_MINING_BUFFER_LOCATION;
-
-        Configuration config = Configuration.create()
-                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.INFINISPAN_EMBEDDED)
-                .with(bufferLocation, "./target/data")
-                .build();
-
-        assertThat(config.validateAndRecord(Collections.singletonList(bufferLocation), LOGGER::error)).isFalse();
-    }
-
-    @Test
-    @FixFor("DBZ-4169")
-    public void testRaiseNoErrorWhenNotSpecifyingInfinispanBufferLocation() throws Exception {
-        final Field bufferLocation = OracleConnectorConfig.LOG_MINING_BUFFER_LOCATION;
-
-        Configuration config = Configuration.create()
-                .with(OracleConnectorConfig.SERVER_NAME, "myserver")
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.INFINISPAN_EMBEDDED)
-                .build();
-
-        assertThat(config.validateAndRecord(Collections.singletonList(bufferLocation), LOGGER::error)).isTrue();
     }
 }
