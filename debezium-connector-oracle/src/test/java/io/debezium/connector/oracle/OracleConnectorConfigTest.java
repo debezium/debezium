@@ -299,7 +299,7 @@ public class OracleConnectorConfigTest {
 
         Configuration config = Configuration.create()
                 .with(OracleConnectorConfig.SERVER_NAME, "myserver")
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.INFINISPAN)
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.INFINISPAN_EMBEDDED)
                 .with(bufferLocation, "./target/data")
                 .build();
 
@@ -313,7 +313,7 @@ public class OracleConnectorConfigTest {
 
         Configuration config = Configuration.create()
                 .with(OracleConnectorConfig.SERVER_NAME, "myserver")
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.INFINISPAN)
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.INFINISPAN_EMBEDDED)
                 .build();
 
         assertThat(config.validateAndRecord(Collections.singletonList(bufferLocation), LOGGER::error)).isTrue();
