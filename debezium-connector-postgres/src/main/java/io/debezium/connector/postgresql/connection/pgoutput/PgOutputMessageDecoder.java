@@ -761,8 +761,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public void close() {
-        if (connection != null) {
-            connection.close();
-        }
+        // Connection is owned by instantiator so we should not close it.
     }
 }
