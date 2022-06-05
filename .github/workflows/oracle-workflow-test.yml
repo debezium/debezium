@@ -38,11 +38,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       # This workflow uses its own dependency cache rather than the main debezium workflow cache because
       # we explicitly want to trigger this build on pushes separate from the other workflow.  
       - name: Cache Maven Repository
@@ -59,7 +54,7 @@ jobs:
 
       - name: Build and Install Debezium dependencies
         run: >
-          mvn clean install -pl debezium-bom,debezium-core,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi -am
+          ./mvnw clean install -pl debezium-bom,debezium-core,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi -am
           -DskipTests=true 
           -DskipITs=true 
           -Dformat.formatter.goal=validate 
@@ -72,7 +67,7 @@ jobs:
           QUAY_IO_USERNAME: ${{ secrets.QUAY_IO_USERNAME }}
           QUAY_IO_PASSWORD: ${{ secrets.QUAY_IO_PASSWORD }}
         run: >
-          mvn clean install -B -pl debezium-connector-oracle -am -Poracle,infinispan-buffer,oracle-ci,oracle-docker 
+          ./mvnw clean install -B -pl debezium-connector-oracle -am -Poracle,infinispan-buffer,oracle-ci,oracle-docker 
           -Ddocker.username="$QUAY_IO_USERNAME" 
           -Ddocker.password="$QUAY_IO_PASSWORD" 
           -Dformat.formatter.goal=validate 
