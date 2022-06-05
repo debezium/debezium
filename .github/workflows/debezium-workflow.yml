@@ -190,7 +190,7 @@ jobs:
       - name: Download dependencies
         if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
-          mvn -B -ntp clean install 
+          ./mvnw -B -ntp clean install 
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }} 
           -Dformat.skip=true 
           -Dcheckstyle.skip=true
@@ -229,7 +229,7 @@ jobs:
       # should always work successfully.
       - name: Checkstyle, Formatting, and Import Order Checks
         run: >
-          mvn -B -ntp process-sources checkstyle:checkstyle 
+          ./mvnw -B -ntp process-sources checkstyle:checkstyle 
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check
@@ -276,7 +276,7 @@ jobs:
 
       - name: Build Debezium Connector MongoDB (Mode ${{ matrix.capture-mode }})
         run: >
-          mvn clean install -B -pl debezium-connector-mongodb -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-mongodb -am -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Drevapi.skip
@@ -315,7 +315,7 @@ jobs:
       - name: Build Debezium Connector MySQL (default)
         if: ${{ matrix.implementation == 'default' }}
         run: >
-          mvn clean install -B -pl debezium-connector-mysql -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn    
@@ -325,7 +325,7 @@ jobs:
       - name: Build Debezium Connector MySQL (legacy)
         if: ${{ matrix.implementation == 'legacy' }}
         run: >
-          mvn clean install -B -pl debezium-connector-mysql -am -Passembly 
+          ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly 
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn     
@@ -361,7 +361,7 @@ jobs:
 
       - name: Build Debezium Connector PostgreSQL (${{ matrix.postgres-plugin }})
         run: >
-          mvn clean install -B -pl debezium-connector-postgres -am -P${{ matrix.postgres-plugin }}
+          ./mvnw clean install -B -pl debezium-connector-postgres -am -P${{ matrix.postgres-plugin }}
           -Ddebezium.test.records.waittime=5
           -Dcheckstyle.skip=true
           -Dformat.skip=true
@@ -397,7 +397,7 @@ jobs:
       - name: Build Debezium Connector Oracle (PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: >
-          mvn clean install -B -pl debezium-connector-oracle -am 
+          ./mvnw clean install -B -pl debezium-connector-oracle -am 
           -DskipITs=true 
           -Dcheckstyle.skip=true
           -Dformat.skip=true
@@ -430,7 +430,7 @@ jobs:
 
       - name: Build Debezium Connector SQL Server
         run: >
-          mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-sqlserver -am -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
@@ -463,7 +463,7 @@ jobs:
 
       - name: Build Debezium Server
         run: >
-          mvn clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd
+          ./mvnw clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dhttp.keepAlive=false
@@ -474,7 +474,7 @@ jobs:
 
       - name: Test Debezium Server
         run: >
-          mvn install -B -pl debezium-server -Pserver-ci -amd 
+          ./mvnw install -B -pl debezium-server -Pserver-ci -amd 
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false 
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
@@ -504,7 +504,7 @@ jobs:
 
       - name: Build Quarkus Outbox
         run: >
-          mvn clean install -B -pl :debezium-quarkus-outbox -am -amd -Passembly 
+          ./mvnw clean install -B -pl :debezium-quarkus-outbox -am -amd -Passembly 
           -Dcheckstyle.skip=true 
           -Dformat.skip=true 
           -Drevapi.skip 
@@ -537,7 +537,7 @@ jobs:
 
       - name: Build Connect REST Extension
         run: >
-          mvn clean install -B -pl debezium-connect-rest-extension -am 
+          ./mvnw clean install -B -pl debezium-connect-rest-extension -am 
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn  
@@ -569,7 +569,7 @@ jobs:
 
       - name: Build Schema Generator
         run: >
-          mvn clean install -B -pl debezium-schema-generator -am 
+          ./mvnw clean install -B -pl debezium-schema-generator -am 
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn       
@@ -601,7 +601,7 @@ jobs:
 
       - name: Build Debezium Testing
         run: >
-          mvn clean install -B -pl debezium-testing,debezium-testing/debezium-testing-testcontainers -am -Passembly 
+          ./mvnw clean install -B -pl debezium-testing,debezium-testing/debezium-testing-testcontainers -am -Passembly 
           -Dcheckstyle.skip=true 
           -Dformat.skip=true 
           -Drevapi.skip 
@@ -645,7 +645,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-          mvn clean install -f core/pom.xml 
+          ./mvnw clean install -f core/pom.xml 
           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
           -am
           -DskipTests=true
@@ -659,7 +659,7 @@ jobs:
 
       - name: Build Debezium Connector Cassandra
         run: >
-          mvn clean install -f cassandra/pom.xml -Passembly
+          ./mvnw clean install -f cassandra/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn   
@@ -702,7 +702,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-           mvn clean install -f core/pom.xml 
+           ./mvnw clean install -f core/pom.xml 
            -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
@@ -716,7 +716,7 @@ jobs:
 
       - name: Build Debezium Connector Db2
         run: >
-          mvn clean install -f db2/pom.xml -Passembly
+          ./mvnw clean install -f db2/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
@@ -759,7 +759,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-           mvn clean install -f core/pom.xml 
+           ./mvnw clean install -f core/pom.xml 
            -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
@@ -773,7 +773,7 @@ jobs:
 
       - name: Build Debezium Connector Vitess
         run: >
-          mvn clean install -f vitess/pom.xml -Passembly
+          ./mvnw clean install -f vitess/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn         
