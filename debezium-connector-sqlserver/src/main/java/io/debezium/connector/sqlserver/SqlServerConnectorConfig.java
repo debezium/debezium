@@ -317,11 +317,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Controls which transaction isolation level is used and how long the connector locks the monitored tables. "
+            .withDescription("Controls which transaction isolation level is used and how long the connector locks the captured tables. "
                     + "The default is '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
                     + "', which means that repeatable read isolation level is used. In addition, exclusive locks are taken only during schema snapshot. "
                     + "Using a value of '" + SnapshotIsolationMode.EXCLUSIVE.getValue()
-                    + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all monitored tables during the entire snapshot duration. "
+                    + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all captured tables during the entire snapshot duration. "
                     + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue()
                     + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
                     + "When '" + SnapshotIsolationMode.READ_COMMITTED.getValue()

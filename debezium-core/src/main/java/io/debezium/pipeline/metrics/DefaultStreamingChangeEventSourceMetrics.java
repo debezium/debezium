@@ -52,16 +52,6 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
         return connectionMeter.isConnected();
     }
 
-    /**
-     * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
-     * Scheduled for removal in a future release.
-     */
-    @Override
-    @Deprecated
-    public String[] getMonitoredTables() {
-        return streamingMeter.getCapturedTables();
-    }
-
     @Override
     public String[] getCapturedTables() {
         return streamingMeter.getCapturedTables();
