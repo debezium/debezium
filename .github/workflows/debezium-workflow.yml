@@ -181,11 +181,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         id: maven-cache-check
         uses: actions/cache@v2
@@ -211,7 +206,7 @@ jobs:
       - name: Download dependencies
         if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
-          mvn -B -ntp clean install -P${{ env.MAVEN_FULL_BUILD_PROFILES }} 
+          ./mvnw -B -ntp clean install -P${{ env.MAVEN_FULL_BUILD_PROFILES }} 
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }} 
           -Dformat.skip=true 
           -Dcheckstyle.skip=true
@@ -234,11 +229,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         id: maven-cache-check
         uses: actions/cache@v2
@@ -255,7 +245,7 @@ jobs:
       # should always work successfully.
       - name: Checkstyle, Formatting, and Import Order Checks
         run: >
-          mvn -B -ntp process-sources checkstyle:checkstyle 
+          ./mvnw -B -ntp process-sources checkstyle:checkstyle 
           -P${{ env.MAVEN_FULL_BUILD_PROFILES }} 
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
           -Dformat.formatter.goal=validate 
@@ -281,11 +271,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -296,7 +281,7 @@ jobs:
 
       - name: Build Debezium Connector MongoDB (Mode ${{ matrix.capture-mode }})
         run: >
-          mvn clean install -B -pl debezium-connector-mongodb -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-mongodb -am -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Drevapi.skip
@@ -320,11 +305,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -335,7 +315,7 @@ jobs:
 
       - name: Build Debezium Connector MySQL
         run: >
-          mvn clean install -B -pl debezium-connector-mysql -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn    
@@ -360,11 +340,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -375,7 +350,7 @@ jobs:
 
       - name: Build Debezium Connector PostgreSQL (${{ matrix.postgres-plugin }})
         run: >
-          mvn clean install -B -pl debezium-connector-postgres -am -P${{ matrix.postgres-plugin }}
+          ./mvnw clean install -B -pl debezium-connector-postgres -am -P${{ matrix.postgres-plugin }}
           -Ddebezium.test.records.waittime=5
           -Dcheckstyle.skip=true
           -Dformat.skip=true
@@ -398,10 +373,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -415,7 +386,7 @@ jobs:
       - name: Build Debezium Connector Oracle (PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: >
-          mvn clean install -B -pl debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency 
+          ./mvnw clean install -B -pl debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency 
           -DskipITs=true 
           -Dcheckstyle.skip=true
           -Dformat.skip=true
@@ -438,11 +409,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -453,7 +419,7 @@ jobs:
 
       - name: Build Debezium Connector SQL Server
         run: >
-          mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-sqlserver -am -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
@@ -476,11 +442,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -491,7 +452,7 @@ jobs:
 
       - name: Build Debezium Server
         run: >
-          mvn clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd
+          ./mvnw clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dhttp.keepAlive=false
@@ -502,7 +463,7 @@ jobs:
 
       - name: Test Debezium Server
         run: >
-          mvn install -B -pl debezium-server -Pserver-ci -amd 
+          ./mvnw install -B -pl debezium-server -Pserver-ci -amd 
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false 
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
@@ -522,11 +483,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -537,7 +493,7 @@ jobs:
 
       - name: Build Quarkus Outbox
         run: >
-          mvn clean install -B -pl :debezium-quarkus-outbox -am -amd -Passembly 
+          ./mvnw clean install -B -pl :debezium-quarkus-outbox -am -amd -Passembly 
           -Dcheckstyle.skip=true 
           -Dformat.skip=true 
           -Drevapi.skip 
@@ -560,11 +516,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -575,7 +526,7 @@ jobs:
 
       - name: Build Connect REST Extension
         run: >
-          mvn clean install -B -pl debezium-connect-rest-extension -am 
+          ./mvnw clean install -B -pl debezium-connect-rest-extension -am 
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn  
@@ -597,11 +548,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -612,7 +558,7 @@ jobs:
 
       - name: Build Schema Generator
         run: >
-          mvn clean install -B -pl debezium-schema-generator -am 
+          ./mvnw clean install -B -pl debezium-schema-generator -am 
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn       
@@ -634,11 +580,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       - name: Cache Maven Repository
         uses: actions/cache@v2
         with:
@@ -649,7 +590,7 @@ jobs:
 
       - name: Build Debezium Testing
         run: >
-          mvn clean install -B -pl debezium-testing,debezium-testing/debezium-testing-testcontainers -am -Passembly 
+          ./mvnw clean install -B -pl debezium-testing,debezium-testing/debezium-testing-testcontainers -am -Passembly 
           -Dcheckstyle.skip=true 
           -Dformat.skip=true 
           -Drevapi.skip 
@@ -674,11 +615,6 @@ jobs:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       # We explicitly use only the hash of the POM files from the core repository by default
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
@@ -698,7 +634,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-          mvn clean install -f core/pom.xml 
+          ./mvnw clean install -f core/pom.xml 
           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
           -am
           -DskipTests=true
@@ -712,7 +648,7 @@ jobs:
 
       - name: Build Debezium Connector Cassandra
         run: >
-          mvn clean install -f cassandra/pom.xml -Passembly
+          ./mvnw clean install -f cassandra/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn   
@@ -742,11 +678,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       # We explicitly use only the hash of the POM files from the core repository by default
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
@@ -760,7 +691,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-           mvn clean install -f core/pom.xml 
+           ./mvnw clean install -f core/pom.xml 
            -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
@@ -774,7 +705,7 @@ jobs:
 
       - name: Build Debezium Connector Db2
         run: >
-          mvn clean install -f db2/pom.xml -Passembly
+          ./mvnw clean install -f db2/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
@@ -804,11 +735,6 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
-
       # We explicitly use only the hash of the POM files from the core repository by default
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
@@ -822,7 +748,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-           mvn clean install -f core/pom.xml 
+           ./mvnw clean install -f core/pom.xml 
            -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
@@ -836,7 +762,7 @@ jobs:
 
       - name: Build Debezium Connector Vitess
         run: >
-          mvn clean install -f vitess/pom.xml -Passembly
+          ./mvnw clean install -f vitess/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn         
@@ -860,11 +786,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 11
-    
-      - name: Set up Maven
-        uses: stCarolas/setup-maven@v4.3
-        with:
-          maven-version: 3.8.4
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
