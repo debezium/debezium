@@ -17,7 +17,7 @@ oc project ${OCP_PROJECT_MONGO} && oc adm policy add-scc-to-user anyuid system:s
 oc project ${OCP_PROJECT_DB2} && oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_DB2}:default && oc adm policy add-scc-to-user privileged system:serviceaccount:${OCP_PROJECT_DB2}:default ; 
 
 pushd debezium ;
-mvn clean install -DskipTests -DskipITs ;
+./mvnw clean install -DskipTests -DskipITs ;
 
 if [ -z ${TEST_VERSION_KAFKA} ] ;
 then 
@@ -31,7 +31,7 @@ then
     TEST_PROPERTIES="$TEST_PROPERTIES -Dimage.fullname=${DBZ_CONNECT_IMAGE}" ;
 fi 
 
-mvn install -pl debezium-testing/debezium-testing-system -PopenshiftITs \
+./mvnw install -pl debezium-testing/debezium-testing-system -PopenshiftITs \
                     -Dtest.ocp.username="${OCP_USERNAME}" \
                     -Dtest.ocp.password="${OCP_PASSWORD}" \
                     -Dtest.ocp.url="${OCP_URL}" \
