@@ -154,11 +154,6 @@ public class MySqlStreamingChangeEventSourceMetrics extends DefaultStreamingChan
     }
 
     @Override
-    public String[] getMonitoredTables() {
-        return schema.capturedTablesAsStringArray();
-    }
-
-    @Override
     public String[] getCapturedTables() {
         return schema.capturedTablesAsStringArray();
     }

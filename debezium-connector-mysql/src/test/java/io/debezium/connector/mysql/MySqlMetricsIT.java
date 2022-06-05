@@ -221,7 +221,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
         // Check snapshot metrics
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalTableCount")).isEqualTo(1);
-        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "MonitoredTables"))
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "CapturedTables"))
                 .isEqualTo(new String[]{ DATABASE.qualifiedTableName("simple") });
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(2L);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "NumberOfEventsFiltered")).isEqualTo(0L);
@@ -258,8 +258,8 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                 .isGreaterThanOrEqualTo(events);
 
         Awaitility.await().atMost(Duration.ofMinutes(1)).until(() -> ((String[]) mBeanServer
-                .getAttribute(getStreamingMetricsObjectName(), "MonitoredTables")).length > 0);
-        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MonitoredTables"))
+                .getAttribute(getStreamingMetricsObjectName(), "CapturedTables")).length > 0);
+        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CapturedTables"))
                 .isEqualTo(new String[]{ DATABASE.qualifiedTableName("simple") });
     }
 

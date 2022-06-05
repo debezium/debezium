@@ -17,12 +17,5 @@ import io.debezium.pipeline.metrics.traits.SchemaMetricsMXBean;
 public interface ChangeEventSourceMetricsMXBean extends CommonEventMetricsMXBean, QueueMetricsMXBean,
         SchemaMetricsMXBean {
 
-    /**
-     * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
-     * Scheduled for removal in a future release.
-     */
-    @Deprecated
-    String[] getMonitoredTables();
-
     void reset();
 }

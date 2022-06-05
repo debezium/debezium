@@ -88,7 +88,7 @@ By default, the connector's snapshot mode is set to `initial`.
 When the snapshot mode is set to the default, the connector completes the following tasks to create a snapshot:
 
 1. Determines the tables to be captured.
-2. Obtains a `ROW SHARE MODE` lock on each of the monitored tables to prevent structural changes from occurring during creation of the snapshot. {prodname} holds the locks for only a short time.
+2. Obtains a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot. {prodname} holds the locks for only a short time.
 3. Reads the current system change number (SCN) position from the server's redo log.
 4. Captures the structure of all relevant tables.
 5. Releases the locks obtained in Step 2.
@@ -2573,13 +2573,13 @@ In environments that use the LogMiner implementation, you must use POSIX regular
 
 |[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `+table.include.list+`>>
 |No default
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be captured.
 Tables that are not included in the include list are excluded from monitoring.
 Each table identifier uses the following format: +
  +
 `__<schema_name>.<table_name>__` +
  +
-By default, the connector monitors every non-system table in each monitored database.
+By default, the connector monitors every non-system table in each captured database.
 Do not use this property in combination with `table.exclude.list`.
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
 
