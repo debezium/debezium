@@ -43,6 +43,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Clock;
 import io.debezium.util.HexConverter;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 /**
@@ -228,6 +229,9 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                         break;
                     }
                 }
+                catch (InterruptedException e) {
+                    throw new DebeziumException("Failed to resolve snapshot offset", e);
+                }
                 finally {
                     stopSession(connection);
                 }
@@ -310,20 +314,27 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 .collect(Collectors.toList());
     }
 
-    private Optional<String> getTransactionIdForScn(Scn scn, OracleConnection connection) throws SQLException {
+    private Optional<String> getTransactionIdForScn(Scn scn, OracleConnection connection) throws SQLException, InterruptedException {
         LOGGER.debug("\tGet transaction id for SCN {}", scn);
         final AtomicReference<String> transactionId = new AtomicReference<>();
-        connection.call("SELECT XID FROM V$LOGMNR_CONTENTS WHERE SCN = ?",
-                s -> s.setLong(1, scn.longValue()),
-                rs -> {
-                    if (rs.next()) {
-                        transactionId.set(HexConverter.convertToHexString(rs.getBytes("XID")));
-                    }
-                });
+        for (int attempt = 1; attempt <= 5; ++attempt) {
+            connection.call("SELECT XID FROM V$LOGMNR_CONTENTS WHERE SCN = ?",
+                    s -> s.setLong(1, scn.longValue()),
+                    rs -> {
+                        if (rs.next()) {
+                            transactionId.set(HexConverter.convertToHexString(rs.getBytes("XID")));
+                        }
+                    });
+            if (!Strings.isNullOrEmpty(transactionId.get())) {
+                break;
+            }
+            LOGGER.debug("\tFailed to find transaction for SCN {}, trying again.", scn);
+            Metronome.sleeper(Duration.ofSeconds(1), Clock.SYSTEM).pause();
+        }
         return Optional.ofNullable(transactionId.get());
     }
 
-    private Scn getTransactionStartScn(String transactionId, Scn currentScn, OracleConnection connection) throws SQLException {
+    private Scn getTransactionStartScn(String transactionId, Scn currentScn, OracleConnection connection) throws SQLException, InterruptedException {
         LOGGER.debug("\tGet start SCN for transaction '{}'", transactionId);
         // We perform this operation a maximum of 5 times before we fail.
         final AtomicReference<Scn> startScn = new AtomicReference<>(Scn.NULL);
@@ -348,6 +359,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
             if (!startScn.get().isNull()) {
                 break;
             }
+            Metronome.sleeper(Duration.ofSeconds(1), Clock.SYSTEM).pause();
         }
         return startScn.get();
     }
