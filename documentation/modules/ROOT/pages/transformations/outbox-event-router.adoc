@@ -378,14 +378,6 @@ This ID will be stored in the emitted event's headers under the `id` key.
 |Table
 |Specifies the outbox table column that contains the event payload.
 
-|[[outbox-event-router-property-table-field-event-payload-id]]<<outbox-event-router-property-table-field-event-payload-id, `table.field.event.payload.id`>>
-|`aggregateid`
-|Table
-|Specifies the outbox table column that contains the payload ID.
-This ID will be used as the emitted event's key. +
- +
-This option is deprecated, use xref:outbox-event-router-property-table-field-event-key[table.field.event.key] instead.
-
 |[[outbox-event-router-property-table-expand-json-payload]]<<outbox-event-router-property-table-expand-json-payload, `table.expand.json.payload`>>
 |`false`
 |Table

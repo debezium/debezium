@@ -46,11 +46,6 @@ public interface EventRouterConfigurationProvider {
     String getFieldPayload();
 
     /**
-     * Get the {@literal FIELD_PAYLOAD_ID} field name
-     */
-    String getFieldPayloadId();
-
-    /**
      * Get the {@literal ROUTE_BY_FIELD} field name
      */
     String getRouteByField();

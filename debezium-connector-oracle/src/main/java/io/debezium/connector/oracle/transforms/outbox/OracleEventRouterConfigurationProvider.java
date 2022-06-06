@@ -54,11 +54,6 @@ public class OracleEventRouterConfigurationProvider implements EventRouterConfig
     }
 
     @Override
-    public String getFieldPayloadId() {
-        return getStringWithUpperCaseDefault(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
-    }
-
-    @Override
     public String getRouteByField() {
         return getStringWithUpperCaseDefault(EventRouterConfigDefinition.ROUTE_BY_FIELD);
     }
