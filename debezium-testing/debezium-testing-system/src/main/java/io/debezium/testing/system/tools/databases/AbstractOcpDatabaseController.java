@@ -47,9 +47,12 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     }
 
     private Service getLoadBalancedService() {
+        // TODO this probably isn't necessary
         if (isRunningFromOcp()) {
+            LOGGER.info("getLoadBalancedService: running from OCP, returning local service");
             return getService();
         }
+        LOGGER.info("getLoadBalancedService: not running from OCP, returning LB service");
         return ocp
                 .services()
                 .inNamespace(project)
@@ -102,6 +105,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     @Override
     public String getPublicDatabaseHostname() {
         if (isRunningFromOcp()) {
+            LOGGER.info("Running from OCP, using local database hostname");
             return getDatabaseHostname();
         }
         awaitIngress();
@@ -112,6 +116,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     @Override
     public int getPublicDatabasePort() {
         if (isRunningFromOcp()) {
+            LOGGER.info("Running from OCP, using local database port");
             return getDatabasePort();
         }
         awaitIngress();

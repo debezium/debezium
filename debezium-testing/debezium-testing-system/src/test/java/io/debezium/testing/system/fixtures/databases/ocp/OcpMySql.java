@@ -30,7 +30,8 @@ public class OcpMySql extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("com.mysql.cj.jdbc.Driver");
-        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
+//        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
+        String[] services = new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
 
         OcpMySqlDeployer deployer = new OcpMySqlDeployer.Deployer()
                 .withOcpClient(ocp)
