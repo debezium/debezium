@@ -124,7 +124,6 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         final String fieldEventId = configProvider.getFieldEventId();
         final String fieldEventKey = configProvider.getFieldEventKey();
         final String fieldPayload = configProvider.getFieldPayload();
-        final String fieldPayloadId = configProvider.getFieldPayloadId();
         final String fieldEventTimestamp = configProvider.getFieldEventTimestamp();
         final String routeByField = configProvider.getRouteByField();
 
@@ -137,8 +136,6 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         Long timestamp = getEventTimestampMs(fieldEventTimestamp, debeziumEventValue, eventStruct);
         Object eventId = eventStruct.get(fieldEventId);
         Object payload = eventStruct.get(fieldPayload);
-        final Field fallbackPayloadIdField = eventValueSchema.field(fieldPayloadId);
-        Object payloadId = fallbackPayloadIdField != null ? eventStruct.get(fieldPayloadId) : null;
 
         final Field eventIdField = eventValueSchema.field(fieldEventId);
         if (eventIdField == null) {
@@ -214,12 +211,12 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             updatedSchema = structValueSchema;
         }
 
-        Object recordKey = defineRecordKey(fieldEventKey, eventStruct, payloadId);
+        Object recordKey = defineRecordKey(fieldEventKey, eventStruct);
 
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField),
                 partition.get(),
-                defineRecordKeySchema(fieldEventKey, eventValueSchema, fallbackPayloadIdField),
+                defineRecordKeySchema(fieldEventKey, eventValueSchema),
                 recordKey,
                 updatedSchema,
                 updatedValue,
@@ -269,7 +266,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         }
     }
 
-    private Schema defineRecordKeySchema(String fieldEventKey, Schema eventStruct, Field fallbackKeyField) {
+    private Schema defineRecordKeySchema(String fieldEventKey, Schema eventStruct) {
         Field eventKeySchema = null;
         if (fieldEventKey != null) {
             eventKeySchema = eventStruct.field(fieldEventKey);
@@ -279,16 +276,11 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             return eventKeySchema.schema();
         }
 
-        return (fallbackKeyField != null) ? fallbackKeyField.schema() : Schema.STRING_SCHEMA;
+        return Schema.STRING_SCHEMA;
     }
 
-    private Object defineRecordKey(String fieldEventKey, Struct eventStruct, Object fallbackKey) {
-        Object eventKey = null;
-        if (fieldEventKey != null) {
-            eventKey = eventStruct.get(fieldEventKey);
-        }
-
-        return (eventKey != null) ? eventKey : fallbackKey;
+    private Object defineRecordKey(String fieldEventKey, Struct eventStruct) {
+        return (fieldEventKey != null) ? eventStruct.get(fieldEventKey) : null;
     }
 
     private void handleUnexpectedOperation(R r) {
@@ -445,7 +437,6 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         private String fieldEventKey;
         private String fieldEventTimestamp;
         private String fieldPayload;
-        private String fieldPayloadId;
         private String routeByField;
 
         @Override
@@ -460,7 +451,6 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
             this.fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
             this.fieldEventTimestamp = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP);
             this.fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
-            this.fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
             this.routeByField = config.getString(EventRouterConfigDefinition.ROUTE_BY_FIELD);
         }
 
@@ -482,11 +472,6 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         @Override
         public String getFieldPayload() {
             return fieldPayload;
-        }
-
-        @Override
-        public String getFieldPayloadId() {
-            return fieldPayloadId;
         }
 
         @Override

@@ -145,6 +145,7 @@ public class EventRouterConfigDefinition {
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
+            .withDefault("aggregateid")
             .withDescription("The column which contains the event key within the outbox table");
 
     public static final Field FIELD_EVENT_TYPE = Field.create("table.field.event.type")
@@ -170,16 +171,6 @@ public class EventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("payload")
             .withDescription("The column which contains the event payload within the outbox table");
-
-    @Deprecated
-    public static final Field FIELD_PAYLOAD_ID = Field.create("table.field.event.payload.id")
-            .withDisplayName("Event Payload ID Field")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withValidation(EventRouterConfigDefinition::validateFieldPayloadId)
-            .withDefault("aggregateid")
-            .withDescription("The column which contains the payload ID within the outbox table; deprecated use 'table.field.event.key' instead.");
 
     public static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("table.fields.additional.placement")
             .withDisplayName("Settings for each additional column in the outbox table")
@@ -250,7 +241,6 @@ public class EventRouterConfigDefinition {
             FIELD_EVENT_KEY,
             FIELD_EVENT_TYPE,
             FIELD_PAYLOAD,
-            FIELD_PAYLOAD_ID,
             FIELD_EVENT_TIMESTAMP,
             FIELDS_ADDITIONAL_PLACEMENT,
             FIELD_SCHEMA_VERSION,
@@ -275,7 +265,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Table",
-                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
+                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
                 FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
         Field.group(
                 config,
