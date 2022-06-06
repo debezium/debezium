@@ -1,9 +1,8 @@
 #! /usr/bin/env bash
-set -x
+set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 DOCKER_FILE=${DIR}/../docker/Dockerfile.Strimzi
 PLUGIN_DIR="plugins"
-
 
 OPTS=$(getopt -o d:f:r:o:t:a: --long dir:,dockerfile:,registry:,organisation:,tags:,auto-tag:,kc-base-tag:,kafka-version:,apicurio-version:,dest-login:,dest-pass:,img-output:,oracle-included:,maven-repo: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
