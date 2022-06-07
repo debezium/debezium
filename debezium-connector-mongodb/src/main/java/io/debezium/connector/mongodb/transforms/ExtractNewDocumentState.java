@@ -152,16 +152,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withDescription("Whether field names will be sanitized to Avro naming conventions")
             .withDefault(Boolean.FALSE);
 
-    public static final Field OPERATION_HEADER = Field.create("operation.header")
-            .withDisplayName("Adds a message header representing the applied operation")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(false)
-            .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
-                    + "Adds the operation type of the change event as a header."
-                    + "Its key is '" + ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY + "'");
-
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<>();
@@ -169,7 +159,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     private MongoDataConverter converter;
     private final Flatten<R> recordFlattener = new Flatten.Value<>();
 
-    private boolean addOperationHeader;
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
     private boolean flattenStruct;
@@ -201,10 +190,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
                 headersToAdd.forEach(h -> record.headers().add(h));
             }
-            else if (addOperationHeader) {
-                LOGGER.warn("operation.header has been deprecated and is scheduled for removal.  Use add.headers instead.");
-                record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, Operation.DELETE.code());
-            }
             return newRecord(record, keyDocument, valueDocument);
         }
 
@@ -218,10 +203,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         if (!additionalHeaders.isEmpty()) {
             Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
             headersToAdd.forEach(h -> record.headers().add(h));
-        }
-        else if (addOperationHeader) {
-            LOGGER.warn("operation.header has been deprecated and is scheduled for removal.  Use add.headers instead.");
-            record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) record.value()).get("op").toString());
         }
 
         // insert
@@ -427,7 +408,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         smtManager = new SmtManager<>(config);
 
         final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
-                OPERATION_HEADER,
                 ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
                 ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
                 ExtractNewRecordStateConfigDefinition.ADD_HEADERS,
@@ -441,8 +421,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         converter = new MongoDataConverter(
                 ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
                 FieldNameSelector.defaultNonRelationalSelector(config.getBoolean(SANITIZE_FIELD_NAMES)), config.getBoolean(SANITIZE_FIELD_NAMES));
-
-        addOperationHeader = config.getBoolean(OPERATION_HEADER);
 
         addFieldsPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
         String addHeadersPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX);
