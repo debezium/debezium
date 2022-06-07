@@ -189,7 +189,7 @@ For example,
 ----
 INSERT INTO myschema.debezium_signal (id, type, dat) values ('ad-hoc-1', 'stop-snapshot', '{"data-collections": ["schema1.table1", "schema2.table2"],"type":"incremental"}');
 ----
-The values of the `id`, `type`, and `data` parameters in the command correspond to the xref:{link-signaling}#debezium-signaling-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
+The values of the `id`, `type`, and `data` parameters in the command correspond to the xref:{link-signalling}#debezium-signaling-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
 +
 The following {data-collection} describes these parameters:
 +
