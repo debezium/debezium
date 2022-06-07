@@ -841,7 +841,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withDisplayName("Inconsistent schema failure handling")
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 2))
-            .withValidation(MySqlConnectorConfig::validateInconsistentSchemaHandlingModeNotIgnore)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription(
@@ -1011,23 +1010,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         if (modeName != null) {
             LOGGER.warn("Configuration option '{}' is renamed to '{}'", EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE.name(),
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE.name());
-            if (EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING.equals(modeName)) {
-                LOGGER.warn("Value '{}' of configuration option '{}' is deprecated and should be replaced with '{}'",
-                        EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING,
-                        EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE.name(),
-                        EventProcessingFailureHandlingMode.SKIP.getValue());
-            }
-        }
-        return 0;
-    }
-
-    private static int validateInconsistentSchemaHandlingModeNotIgnore(Configuration config, Field field, ValidationOutput problems) {
-        final String modeName = config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE);
-        if (EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING.equals(modeName)) {
-            LOGGER.warn("Value '{}' of configuration option '{}' is deprecated and should be replaced with '{}'",
-                    EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING,
-                    INCONSISTENT_SCHEMA_HANDLING_MODE.name(),
-                    EventProcessingFailureHandlingMode.SKIP.getValue());
         }
         return 0;
     }
