@@ -45,3 +45,4 @@ ALTER TABLE B.EXCHANGE_LOG DROP PARTITION FOR (TIMESTAMP '2022-01-28 00:00:00') 
 ALTER TABLE VIDEO ADD (sql_code_injection_check NUMBER GENERATED ALWAYS AS (sdd_avoid_sql_injection(SKRIPT)) VIRTUAL);
 -- Shrink Space
 ALTER TABLE "ODS_XMES_QY"."ORDER_ITEM" shrink space CHECK;
+ALTER TABLE boff_item_jn SET INTERVAL ( numtodsinterval ( 1, 'DAY' ) );
