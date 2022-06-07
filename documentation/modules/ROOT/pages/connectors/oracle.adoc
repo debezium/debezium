@@ -3247,11 +3247,11 @@ See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transa
 |[[oracle-streaming-metrics-number-of-committed-transactions]]<<oracle-streaming-metrics-number-of-committed-transactions, `+NumberOfCommittedTransactions+`>>
 |`long`
 |The number of committed transactions in the transaction buffer.
-
+ifdef::community[]
 |[[oracle-streaming-metrics-number-of-oversized-transactions]]<<oracle-streaming-metrics-number-of-oversized-transactions, `+NumberOfOversizedTransactions+`>>
 |`long`
 |The number of transactions that were discarded because their size exceeded <<oracle-property-log-mining-buffer-transaction-events-threshold, `log.mining.buffer.transaction.events.threshold`>>.
-
+endif::community[]
 |[[oracle-streaming-metrics-number-of-rolledback-transactions]]<<oracle-streaming-metrics-number-of-rolledback-transactions, `+NumberOfRolledBackTransactions+`>>
 |`long`
 |The number of rolled back transactions in the transaction buffer.
