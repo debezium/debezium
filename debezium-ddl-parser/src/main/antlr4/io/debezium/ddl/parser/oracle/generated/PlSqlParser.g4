@@ -3135,13 +3135,13 @@ lob_item
     ;
 
 lob_storage_parameters
-    :  TABLESPACE tablespace | (lob_parameters storage_clause? )
+    :  TABLESPACE tablespace_name=id_expression | (lob_parameters storage_clause? )
     |  storage_clause
     ;
 
 lob_storage_clause
-    : LOB ( '(' lob_item (',' lob_item)* ')' STORE AS ( (SECUREFILE|BASICFILE) | '(' lob_storage_parameters ')' )+
-          | '(' lob_item ')' STORE AS ( (SECUREFILE | BASICFILE) | lob_segname | '(' lob_storage_parameters ')' )+
+    : LOB ( '(' lob_item (',' lob_item)* ')' STORE AS ( (SECUREFILE|BASICFILE) | '(' lob_storage_parameters* ')' )+
+          | '(' lob_item ')' STORE AS ( (SECUREFILE | BASICFILE) | lob_segname | '(' lob_storage_parameters* ')' )+
           )
     ;
 
@@ -5200,6 +5200,7 @@ regular_id
     | YMINTERVAL_UNCONSTRAINED
     | REGR_
     | VAR_
+    | VALUE
     | COVAR_
     ;
 
