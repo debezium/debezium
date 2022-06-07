@@ -1973,7 +1973,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldGenerateRecordForUpdateEventUsingLegacyV1SourceInfo() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, "v1")
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
                 .build();
 

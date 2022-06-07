@@ -421,15 +421,6 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "this setting must be set to specify a list of tables/collections whose snapshot must be taken on creating or restarting the connector.");
 
-    public static final Field SOURCE_STRUCT_MAKER_VERSION = Field.create("source.struct.version")
-            .withDisplayName("Source struct maker version")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 19))
-            .withEnum(Version.class, Version.V2)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withDescription("A version of the format of the publicly visible source part in the message")
-            .withValidation(Field::isClassName);
-
     public static final Field SANITIZE_FIELD_NAMES = Field.create("sanitize.field.names")
             .withDisplayName("Sanitize field names to adhere to Avro naming conventions")
             .withType(Type.BOOLEAN)
@@ -568,7 +559,6 @@ public abstract class CommonConnectorConfig {
                     CUSTOM_CONVERTERS,
                     SANITIZE_FIELD_NAMES,
                     TOMBSTONES_ON_DELETE,
-                    SOURCE_STRUCT_MAKER_VERSION,
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                     SIGNAL_DATA_COLLECTION,
@@ -621,7 +611,7 @@ public abstract class CommonConnectorConfig {
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
-        this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
+        this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));

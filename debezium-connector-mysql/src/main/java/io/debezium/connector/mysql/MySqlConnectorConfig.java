@@ -952,7 +952,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final Predicate<String> ddlFilter;
-    private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean readOnlyConnection;
 
     public MySqlConnectorConfig(Configuration config) {
@@ -989,8 +988,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
-
-        this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
     }
 
     public boolean useCursorFetch() {
@@ -1074,12 +1071,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        switch (version) {
-            case V1:
-                return new LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
-            default:
-                return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
-        }
+        return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
     }
 
     @Override
@@ -1193,11 +1185,5 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      */
     boolean useGlobalLock() {
         return !"true".equals(config.getString(TEST_DISABLE_GLOBAL_LOCKING));
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker() {
-        return sourceInfoStructMaker;
     }
 }
