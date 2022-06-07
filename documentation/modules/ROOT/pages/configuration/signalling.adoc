@@ -244,7 +244,7 @@ endif::community[]
 * xref:{link-postgresql-connector}#postgresql-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
 * xref:{link-sqlserver-connector}#sqlserver-ad-hoc-snapshots[SQL Server connector ad hoc snapshots]
 
-[id="debezium-signaling-stop-ad-hoc-snapshots]
+[id="debezium-signaling-stop-ad-hoc-snapshots"]
 === Ad hoc snapshot stop signals
 
 You can request a connector to stop an in-progress ad hoc snapshot by creating a signal table entry with the `stop-snapshot` signal type.
