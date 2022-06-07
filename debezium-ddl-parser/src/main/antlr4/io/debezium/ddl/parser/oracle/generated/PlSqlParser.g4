@@ -2883,6 +2883,7 @@ alter_table_partitioning
     | truncate_table_partition
     | exchange_table_partition
     | coalesce_table_partition
+    | alter_interval_partition
     ;
 
 add_table_partition
@@ -2921,6 +2922,10 @@ exchange_table_partition
 
 coalesce_table_partition
     : COALESCE PARTITION parallel_clause? (allow_or_disallow CLUSTERING)?
+    ;
+
+alter_interval_partition
+    : SET INTERVAL '(' (constant | expression)? ')'
     ;
 
 partition_extended_names
