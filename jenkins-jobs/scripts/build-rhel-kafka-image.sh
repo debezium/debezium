@@ -49,17 +49,29 @@ for archive in ${ARCHIVE_URLS}; do
     connectors_version=$(echo "$archive" | sed -rn 's|.*AMQ-CDC-(.*)/.*$|\1|p')
 done
 
+connector_dirs=$(ls)
+
 for input in ${EXTRA_LIBS}; do
     echo "[Processing] ${input} "
     lib=$(echo ${input} | awk -F "::"  '{print $1}' | xargs)
     dest=$(echo ${input} |  awk -F "::"  '{print $2}' | xargs)
 
     curl -OJs "${lib}"
-    if [[ "${lib}" =~ ^.*\.zip$ ]] ; then
-        unzip -od ${dest} \*.zip && rm *.zip
-    else
-        mv *.jar "${dest}"
-    fi
+    if [[ "${dest}" == '*' ]] ; then
+            if [[ "${lib}" =~ ^.*\.zip$ ]] ; then
+                echo $connector_dirs | xargs -n 1 unzip -o \*.zip -d
+                rm *.zip
+            else
+                echo $connector_dirs | xargs -n 1 cp *.jar
+                rm *.jar
+            fi
+            continue;
+        fi
+        if [[ "${lib}" =~ ^.*\.zip$ ]] ; then
+            unzip -od "${dest}" \*.zip && rm *.zip
+        else
+            mv *.jar "${dest}"
+        fi
 done
 popd || exit
 
