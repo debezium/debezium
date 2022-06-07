@@ -26,6 +26,7 @@ public class SourceInfo extends BaseSourceInfo {
 
     private Scn scn;
     private Scn commitScn;
+    private Scn eventScn;
     private String lcrPosition;
     private String transactionId;
     private Instant sourceTime;
@@ -43,12 +44,20 @@ public class SourceInfo extends BaseSourceInfo {
         return commitScn;
     }
 
+    public Scn getEventScn() {
+        return eventScn;
+    }
+
     public void setScn(Scn scn) {
         this.scn = scn;
     }
 
     public void setCommitScn(Scn commitScn) {
         this.commitScn = commitScn;
+    }
+
+    public void setEventScn(Scn eventScn) {
+        this.eventScn = eventScn;
     }
 
     public String getLcrPosition() {
