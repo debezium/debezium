@@ -58,13 +58,14 @@ cp "$MAVEN_REPO"/io/apicurio/apicurio-registry-distro-connect-converter/*/apicur
 CONNECTORS='debezium-connector-oracle debezium-connector-db2 debezium-connector-sqlserver'\
 ' debezium-connector-mongodb debezium-connector-postgres debezium-connector-mysql'
 
-# Copy groovy plugins and Apicurio to each connector
+# Copy groovy plugins, Apicurio and debezium scripting to each connector
 for connector in $CONNECTORS
 do
 	unzip -o apicurio-registry-*.zip -d "${connector}/"
 	cp "$MAVEN_REPO"/org/codehaus/groovy/groovy/*/groovy-*.jar "${connector}/"
   cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-json/*/groovy-json-*.jar "${connector}/"
   cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-jsr223/*/groovy-jsr223-*.jar "${connector}/"
+  cp "$MAVEN_REPO"/io/debezium/debezium-scripting/"${project_version}"/debezium-scripting-*.zip "${connector}/"
 done
 
 rm apicurio-registry-*.zip
