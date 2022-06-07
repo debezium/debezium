@@ -23,7 +23,8 @@ RUN source $sdkman_init && mvn clean install -DskipTests -DskipITs -f /testsuite
 
 # always rerun steps below, execute incremental build
 ARG CACHEBUST=1
-RUN git -C /testsuite/debezium stash # TODO why doesn't it work without it
+RUN git -C /testsuite/debezium stash
+RUN git -C /testsuite/debezium reset --hard origin/$branch # TODO why doesn't it work without it
 RUN git -C /testsuite/debezium pull $repository $branch
 RUN source $sdkman_init && mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 
