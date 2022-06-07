@@ -73,7 +73,7 @@ transforms=unwrap,...
 transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
 transforms.unwrap.drop.tombstones=false
 transforms.unwrap.delete.handling.mode=drop
-transforms.unwrap.operation.header=true
+transforms.unwrap.add.headers=op
 ----
 
 === Array encoding

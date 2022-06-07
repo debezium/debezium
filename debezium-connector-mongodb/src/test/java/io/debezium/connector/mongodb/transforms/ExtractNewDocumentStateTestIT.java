@@ -55,7 +55,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     private static final String HANDLE_DELETES = "delete.handling.mode";
     private static final String FLATTEN_STRUCT = "flatten.struct";
     private static final String DELIMITER = "flatten.struct.delimiter";
-    private static final String OPERATION_HEADER = "operation.header";
     private static final String DROP_TOMBSTONE = "drop.tombstones";
     private static final String ADD_HEADERS = "add.headers";
     private static final String ADD_FIELDS = "add.fields";
@@ -409,7 +408,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(OPERATION_HEADER, "true");
+        props.put(ADD_HEADERS, "op");
         transformation.configure(props);
 
         ObjectId objId = new ObjectId();
@@ -519,7 +518,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(OPERATION_HEADER, "true");
+        props.put(ADD_HEADERS, "op");
         transformation.configure(props);
 
         ObjectId objId = new ObjectId();
@@ -738,7 +737,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(OPERATION_HEADER, "true");
+        props.put(ADD_HEADERS, "op");
         props.put(DROP_TOMBSTONE, "false");
         transformation.configure(props);
 
@@ -919,7 +918,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(OPERATION_HEADER, "true");
+        props.put(ADD_HEADERS, "op");
         props.put(HANDLE_DELETES, "none");
         transformation.configure(props);
 
