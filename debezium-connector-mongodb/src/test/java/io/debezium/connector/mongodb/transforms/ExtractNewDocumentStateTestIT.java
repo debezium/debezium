@@ -57,7 +57,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     private static final String DELIMITER = "flatten.struct.delimiter";
     private static final String OPERATION_HEADER = "operation.header";
     private static final String DROP_TOMBSTONE = "drop.tombstones";
-    private static final String ADD_SOURCE_FIELDS = "add.source.fields";
     private static final String ADD_HEADERS = "add.headers";
     private static final String ADD_FIELDS = "add.fields";
     private static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
@@ -313,11 +312,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
     @Test
     @FixFor("DBZ-1442")
-    public void shouldAddSourceFields() throws InterruptedException {
+    public void shouldAddFields() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_SOURCE_FIELDS, "ts_ms,ord , db,rs");
+        props.put(ADD_FIELDS, "ord , db,rs");
         transformation.configure(props);
 
         // insert
@@ -351,7 +350,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // assert source fields' values
         final Struct value = (Struct) transformed.value();
-        assertThat(value.get("__ts_ms")).isEqualTo(source.getInt64("ts_ms"));
         assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
         assertThat(value.get("__db")).isEqualTo(source.getString("db"));
         assertThat(value.get("__rs")).isEqualTo(source.getString("rs"));
@@ -361,11 +359,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
     @Test
     @FixFor("DBZ-1442")
-    public void shouldAddSourceFieldsForRewriteDeleteEvent() throws InterruptedException {
+    public void shouldAddFieldsForRewriteDeleteEvent() throws InterruptedException {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_SOURCE_FIELDS, "ts_ms,ord,db,rs");
+        props.put(ADD_FIELDS, "ord,db,rs");
         props.put(HANDLE_DELETES, "rewrite");
         transformation.configure(props);
 
@@ -399,7 +397,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // assert source fields' values
         final Struct value = (Struct) transformed.value();
-        assertThat(value.get("__ts_ms")).isEqualTo(source.getInt64("ts_ms"));
         assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
         assertThat(value.get("__db")).isEqualTo(source.getString("db"));
         assertThat(value.get("__rs")).isEqualTo(source.getString("rs"));
