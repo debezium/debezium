@@ -106,6 +106,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
 
             offsetContext.setScn(lcrPosition.getScn());
+            offsetContext.setEventScn(lcrPosition.getScn());
             offsetContext.setLcrPosition(lcrPosition.toString());
             offsetContext.setTransactionId(lcr.getTransactionId());
             offsetContext.tableEvent(new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName()),

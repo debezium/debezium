@@ -376,6 +376,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     metrics.setOldestScn(event.getScn());
                 }
 
+                offsetContext.setEventScn(event.getScn());
                 offsetContext.setTransactionId(transactionId);
                 offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 offsetContext.setTableId(event.getTableId());
@@ -433,6 +434,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         lastCommittedScn = Scn.valueOf(commitScn.longValue());
+        offsetContext.setEventScn(commitScn);
         if (getTransactionEventCount(transaction) > 0 && !skipExcludedUserName) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext);
         }
@@ -592,6 +594,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             LOGGER.debug("Schema change advanced offset commit SCN to {}", row.getScn());
             offsetContext.setCommitScn(row.getScn());
 
+            offsetContext.setEventScn(row.getScn());
             dispatcher.dispatchSchemaChangeEvent(partition,
                     tableId,
                     new OracleSchemaChangeEventEmitter(
