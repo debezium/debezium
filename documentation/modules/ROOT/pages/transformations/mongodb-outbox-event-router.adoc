@@ -239,6 +239,7 @@ If any extra configuration options are needed by the converter, they can also be
 // Type: concept
 // Title: Emitting additional fields in {prodname} MongoDB outbox messages
 // ModuleID: emitting-additional-fields-in-debezium-mongodb-outbox-messages
+== Emitting messages with additional fields
 [[mongodb-outbox-emitting-messages-with-additional-fields]]
 
 Your outbox collection might contain fields whose values you want to add to the emitted outbox messages. For example, consider an outbox collection that has a value of `purchase-order` in the `aggregatetype` field and another field, `eventType`, whose possible values are `order-created` and `order-shipped`. Additional fields can be added with the syntax `field:placement:alias`.
