@@ -138,6 +138,7 @@ UNIQUE KEY `UN_member_id` (`member_id`) USING BTREE,
 UNIQUE KEY `UN_product_no` (`product_no`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
+CREATE TABLE `table_default_fn`(`quote_id` varchar(32) NOT NULL,`created_at` bigint(20) NOT NULL DEFAULT unix_timestamp());
 #end
 #begin
 -- Rename table

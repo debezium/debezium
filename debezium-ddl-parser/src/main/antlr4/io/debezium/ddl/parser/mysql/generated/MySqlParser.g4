@@ -2263,6 +2263,7 @@ defaultValue
     | '(' expression ')'
     | (LASTVAL | NEXTVAL) '(' fullId ')' // MariaDB
     | '(' (PREVIOUS | NEXT) VALUE FOR fullId ')' // MariaDB
+    | expression // MariaDB
     ;
 
 currentTimestamp
