@@ -19,7 +19,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
-import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -153,16 +152,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withDescription("Whether field names will be sanitized to Avro naming conventions")
             .withDefault(Boolean.FALSE);
 
-    public static final Field ADD_SOURCE_FIELDS = Field.create("add.source.fields")
-            .withDisplayName("Adds the specified fields from the 'source' field from the payload if they exist.")
-            .withType(ConfigDef.Type.LIST)
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault("")
-            .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
-                    + "Adds each field listed from the 'source' element of the payload, prefixed with __ "
-                    + "Example: 'version,connector' would add __version and __connector fields");
-
     public static final Field OPERATION_HEADER = Field.create("operation.header")
             .withDisplayName("Adds a message header representing the applied operation")
             .withType(Type.BOOLEAN)
@@ -181,7 +170,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     private final Flatten<R> recordFlattener = new Flatten.Value<>();
 
     private boolean addOperationHeader;
-    private List<String> addSourceFields;
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
     private boolean flattenStruct;
@@ -302,10 +290,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 }
             }
 
-            if (addSourceFields != null) {
-                addSourceFieldsSchema(addFieldsPrefix, addSourceFields, record, valueSchemaBuilder);
-            }
-
             if (!additionalFields.isEmpty()) {
                 addAdditionalFieldsSchema(additionalFields, record, valueSchemaBuilder);
             }
@@ -325,10 +309,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 }
             }
 
-            if (addSourceFields != null) {
-                addSourceFieldsValue(addSourceFields, record, finalValueStruct);
-            }
-
             if (!additionalFields.isEmpty()) {
                 addFields(additionalFields, record, finalValueStruct);
             }
@@ -344,29 +324,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         return newRecord;
     }
 
-    private void addSourceFieldsSchema(String fieldPrefix, List<String> addSourceFields, R originalRecord, SchemaBuilder valueSchemaBuilder) {
-        Schema sourceSchema = originalRecord.valueSchema().field("source").schema();
-        for (String sourceField : addSourceFields) {
-            if (sourceSchema.field(sourceField) == null) {
-                throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
-            }
-            valueSchemaBuilder.field(fieldPrefix + sourceField,
-                    sourceSchema.field(sourceField).schema());
-        }
-    }
-
     private void addAdditionalFieldsSchema(List<FieldReference> additionalFields, R originalRecord, SchemaBuilder valueSchemaBuilder) {
         Schema sourceSchema = originalRecord.valueSchema();
         for (FieldReference fieldReference : additionalFields) {
             valueSchemaBuilder.field(fieldReference.newFieldName, fieldReference.getSchema(sourceSchema));
-        }
-    }
-
-    private void addSourceFieldsValue(List<String> addSourceFields, R originalRecord, Struct valueStruct) {
-        Struct sourceValue = ((Struct) originalRecord.value()).getStruct("source");
-        for (String sourceField : addSourceFields) {
-            valueStruct.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
-                    sourceValue.get(sourceField));
         }
     }
 
@@ -467,7 +428,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
                 OPERATION_HEADER,
-                ADD_SOURCE_FIELDS,
                 ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
                 ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
                 ExtractNewRecordStateConfigDefinition.ADD_HEADERS,
@@ -483,8 +443,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 FieldNameSelector.defaultNonRelationalSelector(config.getBoolean(SANITIZE_FIELD_NAMES)), config.getBoolean(SANITIZE_FIELD_NAMES));
 
         addOperationHeader = config.getBoolean(OPERATION_HEADER);
-
-        addSourceFields = determineAdditionalSourceField(config.getString(ADD_SOURCE_FIELDS));
 
         addFieldsPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
         String addHeadersPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX);
