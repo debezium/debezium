@@ -41,7 +41,7 @@ echo "Creating plugin directory ${PLUGIN_DIR}"
 mkdir -p "${PLUGIN_DIR}"
 
 # Get debezium project version from pom.xml
-project_version=$(cat pom.xml | grep "^    <version>.*</version>$" | awk -F'[><]' '{print $3}')
+project_version=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
 
 pushd "${PLUGIN_DIR}" || exit
 cp "$MAVEN_REPO"/io/debezium/debezium-connector-*/"${project_version}"/debezium-connector-*.zip .

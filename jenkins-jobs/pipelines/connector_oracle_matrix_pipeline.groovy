@@ -79,7 +79,7 @@ pipeline {
 
                             sh '''
                             set -x
-                            ORACLE_ARTIFACT_VERSION=$(cat ${WORKSPACE}/debezium/pom.xml | grep "^[[:space:]]*<version\\.oracle\\.driver>.*</version\\.oracle\\.driver>$" | awk -F'[><]' '{print $3}')
+                            ORACLE_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
                             ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
                           
                             cd ${ORACLE_ARTIFACT_DIR}
