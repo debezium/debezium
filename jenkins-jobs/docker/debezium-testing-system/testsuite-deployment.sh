@@ -12,6 +12,11 @@ if [ ! -f "${SECRET_PATH}" ]; then
     exit 1
 fi
 
+#TODO incremental build here
+git -C /testsuite/debezium stash
+git -C /testsuite/debezium pull origin DBZ-5165
+mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
+
 #prepare ocp, run tests
 ${OCP_PROJECTS} --project "${OCP_PROJECT_DEBEZIUM}" --create
 
