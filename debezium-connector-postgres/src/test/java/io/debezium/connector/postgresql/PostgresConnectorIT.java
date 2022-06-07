@@ -61,7 +61,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -313,32 +312,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsAfterInsert(2, 3, 3);
-    }
-
-    @Test
-    @FixFor("DBZ-1174")
-    public void shouldUseMicrosecondsForTransactionCommitTime() throws InterruptedException {
-        TestHelper.execute(SETUP_TABLES_STMT);
-        start(PostgresConnector.class, TestHelper.defaultConfig()
-                .with(CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
-                .build());
-        assertConnectorIsRunning();
-
-        // check records from snapshot
-        Instant inst = Instant.now();
-        // Microseconds since epoch, may overflow
-        final long microsSnapshot = TimeUnit.SECONDS.toMicros(inst.getEpochSecond()) + TimeUnit.NANOSECONDS.toMicros(inst.getNano());
-        SourceRecords actualRecords = consumeRecordsByTopic(2);
-        actualRecords.forEach(sourceRecord -> assertSourceInfoMicrosecondTransactionTimestamp(sourceRecord, microsSnapshot, TimeUnit.MINUTES.toMicros(1L)));
-
-        // insert 2 new records
-        TestHelper.execute(INSERT_STMT);
-        // check records from streaming
-        inst = Instant.now();
-        // Microseconds since epoch, may overflow
-        final long microsStream = TimeUnit.SECONDS.toMicros(inst.getEpochSecond()) + TimeUnit.NANOSECONDS.toMicros(inst.getNano());
-        actualRecords = consumeRecordsByTopic(2);
-        actualRecords.forEach(sourceRecord -> assertSourceInfoMicrosecondTransactionTimestamp(sourceRecord, microsStream, TimeUnit.MINUTES.toMicros(1L)));
     }
 
     @Test
@@ -2735,7 +2708,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldHaveLastCommitLsn() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         start(PostgresConnector.class, TestHelper.defaultConfig()
-                .with(CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V2)
                 .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .build());
@@ -2856,14 +2828,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
         assertThat(recordsForTopicS2.size()).isEqualTo(expectedCountPerSchema);
         IntStream.range(0, expectedCountPerSchema).forEach(i -> VerifyRecord.isValidInsert(recordsForTopicS2.remove(0), PK_FIELD, pks[i]));
-    }
-
-    protected void assertSourceInfoMicrosecondTransactionTimestamp(SourceRecord record, long ts_usec, long tolerance_usec) {
-        assertTrue(record.value() instanceof Struct);
-        Struct source = ((Struct) record.value()).getStruct("source");
-        // 1 minute difference is okay
-        System.out.println("TS_USEC\t" + source.getInt64("ts_usec"));
-        assertTrue(Math.abs(ts_usec - source.getInt64("ts_usec")) < tolerance_usec);
     }
 
     protected void assertSourceInfoMillisecondTransactionTimestamp(SourceRecord record, long ts_ms, long tolerance_ms) {
