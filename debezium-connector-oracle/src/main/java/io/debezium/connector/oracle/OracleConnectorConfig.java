@@ -132,12 +132,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                     + "snapshot is taken.");
 
-    public static final Field ORACLE_VERSION = Field.createInternal("database.oracle.version")
-            .withDisplayName("Oracle version, 11 or 12+")
-            .withType(Type.STRING)
-            .withImportance(Importance.LOW)
-            .withDescription("Deprecated: For default Oracle 12+, use default pos_version value v2, for Oracle 11, use pos_version value v1.");
-
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
@@ -488,8 +482,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     SNAPSHOT_MODE,
                     CONNECTOR_ADAPTER,
                     LOG_MINING_STRATEGY,
-                    URL,
-                    ORACLE_VERSION)
+                    URL)
             .connector(
                     SNAPSHOT_ENHANCEMENT_TOKEN,
                     SNAPSHOT_LOCKING_MODE,
@@ -549,7 +542,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
 
-    private final String oracleVersion;
     private ConnectorAdapter connectorAdapter;
     private final StreamingAdapter streamingAdapter;
     private final String snapshotEnhancementToken;
@@ -593,7 +585,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
-        this.oracleVersion = config.getString(ORACLE_VERSION);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
@@ -663,10 +654,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return snapshotLockingMode;
-    }
-
-    public String getOracleVersion() {
-        return oracleVersion;
     }
 
     @Override
