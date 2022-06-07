@@ -27,7 +27,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 import oracle.sql.NUMBER;
 import oracle.streams.StreamsException;
@@ -172,16 +171,6 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private static int resolvePosVersion(OracleConnection connection, OracleConnectorConfig connectorConfig) {
-        // Option 'internal.database.oracle.version' takes precedence
-        final String oracleVersion = connectorConfig.getOracleVersion();
-        if (!Strings.isNullOrEmpty(oracleVersion)) {
-            if ("11".equals(oracleVersion)) {
-                return XStreamUtility.POS_VERSION_V1;
-            }
-            return XStreamUtility.POS_VERSION_V2;
-        }
-
-        // As fallback, resolve this based on the OracleDatabaseVersion
         final OracleDatabaseVersion databaseVersion = connection.getOracleVersion();
         if (databaseVersion.getMajor() == 11 || (databaseVersion.getMajor() == 12 && databaseVersion.getMaintenance() < 2)) {
             return XStreamUtility.POS_VERSION_V1;
