@@ -35,14 +35,18 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        final String scn = sourceInfo.getScn() == null ? null : sourceInfo.getScn().toString();
         final String commitScn = sourceInfo.getCommitScn() == null ? null : sourceInfo.getCommitScn().toString();
+        final String eventScn = sourceInfo.getEventScn() == null ? null : sourceInfo.getEventScn().toString();
 
         final Struct ret = super.commonStruct(sourceInfo)
                 .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.tableSchema())
                 .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.table())
                 .put(SourceInfo.TXID_KEY, sourceInfo.getTransactionId())
-                .put(SourceInfo.SCN_KEY, scn);
+                // While we reuse the same SCN_KEY here as the one in the connector's offsets, the value we
+                // store here is the per-event SCN. The SCN value stored with this key in the offsets is
+                // the resume SCN, which is where the connector will start from after a restart. The resume
+                // SCN will always be <= to the SCN stored in the source info block here.
+                .put(SourceInfo.SCN_KEY, eventScn);
 
         if (sourceInfo.getLcrPosition() != null) {
             ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());

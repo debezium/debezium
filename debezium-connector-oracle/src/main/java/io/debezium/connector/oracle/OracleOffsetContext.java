@@ -66,6 +66,9 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         super(new SourceInfo(connectorConfig));
         sourceInfo.setScn(scn);
+        // It is safe to set this value to the supplied SCN, specifically for snapshots.
+        // During streaming this value will be updated by the current event handler.
+        sourceInfo.setEventScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
         sourceInfoSchema = sourceInfo.schema();
 
@@ -210,12 +213,20 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setCommitScn(commitScn);
     }
 
+    public void setEventScn(Scn eventScn) {
+        sourceInfo.setEventScn(eventScn);
+    }
+
     public Scn getScn() {
         return sourceInfo.getScn();
     }
 
     public Scn getCommitScn() {
         return sourceInfo.getCommitScn();
+    }
+
+    public Scn getEventScn() {
+        return sourceInfo.getEventScn();
     }
 
     public void setLcrPosition(String lcrPosition) {
