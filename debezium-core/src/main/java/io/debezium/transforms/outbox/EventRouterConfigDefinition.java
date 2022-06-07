@@ -16,7 +16,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
-import io.debezium.util.Strings;
 
 /**
  * Debezium Outbox Transform configuration definition
@@ -293,16 +292,5 @@ public class EventRouterConfigDefinition {
         }
 
         return additionalFields;
-    }
-
-    static int validateFieldPayloadId(Configuration config, Field field, Field.ValidationOutput problems) {
-        final String value = config.getString(field);
-        if (!Strings.isNullOrEmpty(value)) {
-            LOGGER.warn("Configuration option '{}' is deprecated and will be removed in future releases. " +
-                    "Please use '{}' instead.",
-                    field.name(),
-                    FIELD_EVENT_KEY.name());
-        }
-        return 0;
     }
 }
