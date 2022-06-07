@@ -51,6 +51,10 @@ import io.debezium.util.Strings;
  */
 public class LogMinerAdapter extends AbstractStreamingAdapter {
 
+    private static final Duration GET_TRANSACTION_SCN_PAUSE = Duration.ofSeconds(1);
+
+    private static final int GET_TRANSACTION_SCN_ATTEMPTS = 5;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerAdapter.class);
 
     public static final String TYPE = "logminer";
@@ -109,7 +113,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
 
         final Map<String, Scn> pendingTransactions = new LinkedHashMap<>();
         final Optional<Scn> currentScn = getPendingTransactions(latestTableDdlScn, connection, pendingTransactions);
-        if (currentScn.isEmpty()) {
+        if (!currentScn.isPresent()) {
             throw new DebeziumException("Failed to resolve current SCN");
         }
 
@@ -206,7 +210,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                     startSession(connection);
 
                     final Optional<String> transactionId = getTransactionIdForScn(currentScn, connection);
-                    if (transactionId.isEmpty()) {
+                    if (!transactionId.isPresent()) {
                         throw new DebeziumException("Failed to get transaction id for current SCN " + currentScn);
                     }
 
@@ -317,7 +321,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     private Optional<String> getTransactionIdForScn(Scn scn, OracleConnection connection) throws SQLException, InterruptedException {
         LOGGER.debug("\tGet transaction id for SCN {}", scn);
         final AtomicReference<String> transactionId = new AtomicReference<>();
-        for (int attempt = 1; attempt <= 5; ++attempt) {
+        for (int attempt = 1; attempt <= GET_TRANSACTION_SCN_ATTEMPTS; ++attempt) {
             connection.call("SELECT XID FROM V$LOGMNR_CONTENTS WHERE SCN = ?",
                     s -> s.setLong(1, scn.longValue()),
                     rs -> {
@@ -329,7 +333,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 break;
             }
             LOGGER.debug("\tFailed to find transaction for SCN {}, trying again.", scn);
-            Metronome.sleeper(Duration.ofSeconds(1), Clock.SYSTEM).pause();
+            Metronome.sleeper(GET_TRANSACTION_SCN_PAUSE, Clock.SYSTEM).pause();
         }
         return Optional.ofNullable(transactionId.get());
     }
@@ -338,7 +342,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
         LOGGER.debug("\tGet start SCN for transaction '{}'", transactionId);
         // We perform this operation a maximum of 5 times before we fail.
         final AtomicReference<Scn> startScn = new AtomicReference<>(Scn.NULL);
-        for (int attempt = 1; attempt <= 5; ++attempt) {
+        for (int attempt = 1; attempt <= GET_TRANSACTION_SCN_ATTEMPTS; ++attempt) {
             connection.call("SELECT SCN, START_SCN, OPERATION FROM V$LOGMNR_CONTENTS WHERE XID=HEXTORAW(UPPER(?))",
                     s -> s.setString(1, transactionId),
                     rs -> {
@@ -359,7 +363,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
             if (!startScn.get().isNull()) {
                 break;
             }
-            Metronome.sleeper(Duration.ofSeconds(1), Clock.SYSTEM).pause();
+            Metronome.sleeper(GET_TRANSACTION_SCN_PAUSE, Clock.SYSTEM).pause();
         }
         return startScn.get();
     }
