@@ -43,7 +43,7 @@ echo "Creating plugin directory ${PLUGIN_DIR}"
 mkdir -p "${PLUGIN_DIR}"
 
 # Get debezium project version from pom.xml
-project_version=$(cat pom.xml | grep "^    <version>.*</version>$" | awk -F'[><]' '{print $3}')
+project_version=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
 
 # Copy build debezium connectors and extra libs to plugins directory
 pushd "${PLUGIN_DIR}" || exit
@@ -54,6 +54,7 @@ cp "$MAVEN_REPO"/com/ibm/db2/jcc/*/jcc-*.jar debezium-connector-db2/
 cp "$MAVEN_REPO"/com/oracle/database/jdbc/ojdbc8/*/ojdbc8-*.jar debezium-connector-oracle/
 
 cp "$MAVEN_REPO"/io/apicurio/apicurio-registry-distro-connect-converter/*/apicurio-registry-*.zip .
+cp "$MAVEN_REPO"/io/debezium/debezium-scripting/"${project_version}"/debezium-scripting-*.zip .
 
 CONNECTORS='debezium-connector-oracle debezium-connector-db2 debezium-connector-sqlserver'\
 ' debezium-connector-mongodb debezium-connector-postgres debezium-connector-mysql'
@@ -65,10 +66,11 @@ do
 	cp "$MAVEN_REPO"/org/codehaus/groovy/groovy/*/groovy-*.jar "${connector}/"
   cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-json/*/groovy-json-*.jar "${connector}/"
   cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-jsr223/*/groovy-jsr223-*.jar "${connector}/"
-  cp "$MAVEN_REPO"/io/debezium/debezium-scripting/"${project_version}"/debezium-scripting-*.zip "${connector}/"
+  unzip -o debezium-scripting-*.zip -d "${connector}/"
 done
 
 rm apicurio-registry-*.zip
+rm debezium-scripting-*.zip
 
 if [ "${ORACLE}" = "false" ] ; then
   rm -rf debezium-connector-oracle
