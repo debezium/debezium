@@ -55,8 +55,9 @@ The following software is required to work with the Debezium codebase and build 
 
 * [Git](https://git-scm.com) 2.2.1 or later
 * JDK 11 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
-* [Apache Maven](https://maven.apache.org/index.html) 3.6.3 or later
 * [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
+* [Apache Maven](https://maven.apache.org/index.html) 3.8.4 or later  
+  (or invoke the Wrapper with `./mvnw` for Maven commands)
 
 See the links above for installation instructions on your platform. You can verify the versions are installed and running:
 
