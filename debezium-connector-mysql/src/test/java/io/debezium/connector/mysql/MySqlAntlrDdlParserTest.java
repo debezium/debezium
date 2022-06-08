@@ -3151,6 +3151,21 @@ public class MySqlAntlrDdlParserTest {
         assertThat(getColumnSchema(table, "ts_col").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
     }
 
+    @Test
+    @FixFor("DBZ-5201")
+    public void shouldSupportMariaDbCurrentTimestamp() {
+        String ddl = "CREATE TABLE data(id INT, bi BIGINT(20) NOT NULL DEFAULT unix_timestamp(), PRIMARY KEY (id))";
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "data"));
+        assertThat(table.columnWithName("id").isOptional()).isFalse();
+        assertThat(table.columnWithName("id").hasDefaultValue()).isFalse();
+
+        assertThat(table.columnWithName("bi").isOptional()).isFalse();
+        assertThat(table.columnWithName("bi").hasDefaultValue()).isTrue();
+        assertThat(getColumnSchema(table, "bi").defaultValue()).isNull();
+    }
+
     private String toIsoString(String timestamp) {
         return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null);
     }
