@@ -35,7 +35,7 @@ public class OcpPostgreSql extends OcpDatabaseFixture<SqlDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_POSTGRESQL)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withServices(services)
                 .build();
         return deployer.deploy();
     }
