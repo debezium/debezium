@@ -97,6 +97,7 @@ Transaction boundary events contain the following fields:
 
 `status`:: `BEGIN` or `END`.
 `id`:: String representation of the unique transaction identifier.
+`ts_ms`:: The time of `BEGIN` or `END` transaction.
 `event_count` (for `END` events):: Total number of events emitted by the transaction.
 `data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements.
 that indicates the number of events that the connector emits for changes that originate from a data collection.

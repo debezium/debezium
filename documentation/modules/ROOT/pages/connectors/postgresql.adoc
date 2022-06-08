@@ -410,6 +410,7 @@ For every transaction `BEGIN` and `END`, {prodname} generates an event that cont
 
 * `status` - `BEGIN` or `END`
 * `id` - string representation of unique transaction identifier
+* `ts_ms` - The time of `BEGIN` or `END` transaction.
 * `event_count` (for `END` events) - total number of events emitted by the transaction
 * `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection
 
