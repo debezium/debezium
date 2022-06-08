@@ -42,7 +42,7 @@ spec:
             - name: DBZ_CONNECT_IMAGE 
               value: "quay.io/rh_integration/test-strimzi-kafka:strz-latest-kafka-3.1.0-apc-2.2.3.Final-dbz-2.0.0-SNAPSHOT"
             - name: GROUPS
-              value: "mysql & !avro & !docker"
+              value: "postgresql & !avro & !docker"
             - name: DELETE_PROJECTS
               value: "true"
   triggers:

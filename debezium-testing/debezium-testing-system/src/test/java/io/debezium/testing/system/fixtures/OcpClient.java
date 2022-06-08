@@ -7,6 +7,7 @@ package io.debezium.testing.system.fixtures;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
+
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
@@ -25,7 +26,6 @@ public class OcpClient extends TestFixture {
     private DefaultOpenShiftClient client;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpClient.class);
-
 
     public OcpClient(@NotNull ExtensionContext.Store store) {
         super(store);
