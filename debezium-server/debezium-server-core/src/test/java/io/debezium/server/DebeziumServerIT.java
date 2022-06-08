@@ -39,6 +39,9 @@ public class DebeziumServerIT {
     @Inject
     DebeziumServer server;
 
+    @Inject
+    DebeziumMetrics metrics;
+
     {
         Testing.Files.delete(TestConfigSource.OFFSET_STORE_PATH);
     }
@@ -65,5 +68,22 @@ public class DebeziumServerIT {
         Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
         Assertions.assertThat(((String) testConsumer.getValues().get(MESSAGE_COUNT - 1))).contains(
                 "\"after\":{\"id\":1004,\"first_name\":\"Anne\",\"last_name\":\"Kretchmar\",\"email\":\"annek@noanswer.org\"}");
+    }
+
+    @Test
+    public void testDebeziumMetricsWithPostgres() {
+        Testing.Print.enable();
+
+        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
+            try {
+                // snapshot process finished
+                // and consuming events finished!
+                return metrics.snapshotCompleted()
+                        && metrics.streamingQueueCurrentSize() == 0;
+            }
+            catch (Exception e) {
+                return false;
+            }
+        });
     }
 }
