@@ -72,7 +72,6 @@
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-scripting-languages</artifactId>
 		    <type>pom</type>
-		    <scope>import</scope>
                 </dependency>
                 <dependency>
                     <groupId>io.debezium</groupId>
