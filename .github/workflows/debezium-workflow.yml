@@ -645,7 +645,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-          ./mvnw clean install -f core/pom.xml 
+          ./core/mvnw clean install -f core/pom.xml 
           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
           -am
           -DskipTests=true
@@ -659,7 +659,7 @@ jobs:
 
       - name: Build Debezium Connector Cassandra
         run: >
-          ./mvnw clean install -f cassandra/pom.xml -Passembly
+          ./core/mvnw clean install -f cassandra/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn   
@@ -702,7 +702,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-           ./mvnw clean install -f core/pom.xml 
+           ./core/mvnw clean install -f core/pom.xml 
            -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
@@ -716,7 +716,7 @@ jobs:
 
       - name: Build Debezium Connector Db2
         run: >
-          ./mvnw clean install -f db2/pom.xml -Passembly
+          ./core/mvnw clean install -f db2/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
@@ -759,7 +759,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-           ./mvnw clean install -f core/pom.xml 
+           ./core/mvnw clean install -f core/pom.xml 
            -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
@@ -773,7 +773,7 @@ jobs:
 
       - name: Build Debezium Connector Vitess
         run: >
-          ./mvnw clean install -f vitess/pom.xml -Passembly
+          ./core/mvnw clean install -f vitess/pom.xml -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true          
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn         
