@@ -73,7 +73,7 @@ import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.junit.TestLogger;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;

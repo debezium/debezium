@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -43,7 +44,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
      * @param decimalMode
      *            how {@code DECIMAL} and {@code NUMERIC} values should be
      *            treated; may be null if
-     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE}
+     *            {@link DecimalMode#PRECISE}
      *            is to be used
      * @param temporalPrecisionMode
      *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes

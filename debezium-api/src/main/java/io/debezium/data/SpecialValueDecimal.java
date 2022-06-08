@@ -14,7 +14,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.DecimalMode;
 
 /**
  * Extension of plain a {@link BigDecimal} type that adds support for new features

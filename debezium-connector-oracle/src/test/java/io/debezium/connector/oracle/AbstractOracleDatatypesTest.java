@@ -37,7 +37,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTimestamp;

@@ -70,12 +70,6 @@ import io.debezium.util.NumberConversions;
 @Immutable
 public class JdbcValueConverters implements ValueConverterProvider {
 
-    public enum DecimalMode {
-        PRECISE,
-        DOUBLE,
-        STRING;
-    }
-
     public enum BigIntUnsignedMode {
         PRECISE,
         LONG;

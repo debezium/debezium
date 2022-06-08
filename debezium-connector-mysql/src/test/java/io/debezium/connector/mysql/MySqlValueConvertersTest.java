@@ -22,6 +22,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -78,7 +79,7 @@ public class MySqlValueConvertersTest {
     public void testJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
-        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+        MySqlValueConverters converters = new MySqlValueConverters(DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES);
 
         DdlParser parser = new MySqlAntlrDdlParser();
@@ -113,7 +114,7 @@ public class MySqlValueConvertersTest {
         final AtomicInteger errorCount = new AtomicInteger(0);
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
-        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+        MySqlValueConverters converters = new MySqlValueConverters(DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
                 x -> x, (message, exception) -> {
                     errorCount.incrementAndGet();
@@ -142,7 +143,7 @@ public class MySqlValueConvertersTest {
     public void testErrorOnInvalidJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
-        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+        MySqlValueConverters converters = new MySqlValueConverters(DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
                 x -> x, (message, exception) -> {
                     throw new DebeziumException(message, exception);
@@ -165,7 +166,7 @@ public class MySqlValueConvertersTest {
         int scale = 42;
         String sql = "CREATE TABLE DECIMAL_TABLE (A DECIMAL(3, " + scale + ") NOT NULL);";
 
-        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
+        MySqlValueConverters converters = new MySqlValueConverters(DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
                 x -> x, (message, exception) -> {
                     throw new DebeziumException(message, exception);
