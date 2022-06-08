@@ -14,6 +14,8 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.annotations.FixtureContext;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { SqlDatabaseController.class })
 public class OcpPostgreSql extends OcpDatabaseFixture<SqlDatabaseController> {
 
@@ -28,6 +30,7 @@ public class OcpPostgreSql extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("org.postgresql.Driver");
+        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
         OcpPostgreSqlDeployer deployer = new OcpPostgreSqlDeployer.Deployer()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_POSTGRESQL)
