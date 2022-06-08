@@ -401,7 +401,7 @@
         <profile>
             <id>infinispan-buffer</id>
             <properties>
-                <log.mining.buffer.type.name>infinispan</log.mining.buffer.type.name>
+                <log.mining.buffer.type.name>infinispan_embedded</log.mining.buffer.type.name>
             </properties>
             <build>
                 <plugins>
