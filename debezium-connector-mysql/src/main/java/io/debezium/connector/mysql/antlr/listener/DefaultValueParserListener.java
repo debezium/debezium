@@ -68,6 +68,11 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
                 }
             }
         }
+        // Default value is calculated.
+        // We thus handle it as NULL.
+        else if (ctx.expression() != null) {
+            columnEditor.defaultValueExpression(null);
+        }
         exitDefaultValue(true);
         super.enterDefaultValue(ctx);
     }
