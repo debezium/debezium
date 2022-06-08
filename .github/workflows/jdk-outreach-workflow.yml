@@ -26,7 +26,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mysql:
     runs-on: ubuntu-latest
     strategy:
@@ -43,7 +43,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   postgres-pgoutput:
     runs-on: ubuntu-latest
     strategy:
@@ -60,7 +60,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mongodb-40:
     runs-on: ubuntu-latest
     strategy:
@@ -77,7 +77,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   oracle:
     runs-on: ubuntu-latest
     strategy:
@@ -94,7 +94,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   db2:
     runs-on: ubuntu-latest
     strategy:
@@ -117,9 +117,9 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Build Debezium Core
-        run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Db2
-        run: mvn clean install -f db2/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -f db2/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   vitess:
     runs-on: ubuntu-latest
     strategy:
@@ -142,9 +142,9 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Build Debezium Core
-        run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Vitess
-        run: mvn clean install -f vitess/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -f vitess/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   quarkus-outbox:
     runs-on: ubuntu-latest
     strategy:
@@ -161,7 +161,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   rest-extension:
     runs-on: ubuntu-latest
     strategy:
@@ -178,7 +178,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-connect-rest-extension -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connect-rest-extension -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   testing:
     runs-on: ubuntu-latest
     strategy:
@@ -195,7 +195,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-testing -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-testing -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   server:
     runs-on: ubuntu-latest
     strategy:
@@ -212,4 +212,4 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-bom,debezium-server/debezium-server-bom,debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-server/debezium-server-bom,debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
