@@ -14,6 +14,8 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.annotations.FixtureContext;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { MongoDatabaseController.class })
 public class OcpMongo extends OcpDatabaseFixture<MongoDatabaseController> {
 
@@ -27,11 +29,12 @@ public class OcpMongo extends OcpDatabaseFixture<MongoDatabaseController> {
 
     @Override
     protected MongoDatabaseController databaseController() throws Exception {
+        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
         OcpMongoDeployer deployer = new OcpMongoDeployer.Deployer()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_MONGO)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withServices(services)
                 .build();
         return deployer.deploy();
     }
