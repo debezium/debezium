@@ -554,6 +554,34 @@ public class SnapshotIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5198")
+    public void shouldHandleBracketsInSnapshotSelect() throws InterruptedException, SQLException {
+        connection.execute(
+                "CREATE TABLE [user detail] (id int PRIMARY KEY, name varchar(30))",
+                "INSERT INTO [user detail] VALUES(1, 'k')");
+        TestHelper.enableTableCdc(connection, "user detail");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.user detail")
+                .with(SqlServerConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "[dbo].[user detail]")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.dbo.user_detail");
+        assertThat(recordsForTopic.get(0).key()).isNotNull();
+        Struct value = (Struct) ((Struct) recordsForTopic.get(0).value()).get("after");
+        System.out.println("DATA: " + value);
+        Assertions.assertThat(value.get("id")).isEqualTo(1);
+        Assertions.assertThat(value.get("name")).isEqualTo("k");
+
+        stopConnector();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }

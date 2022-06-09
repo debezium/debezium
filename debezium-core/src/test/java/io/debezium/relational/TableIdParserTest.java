@@ -34,6 +34,8 @@ public class TableIdParserTest {
         assertThat(TableIdParser.parse("\"tab\"\"le\"")).containsExactly("tab\"le");
         assertThat(TableIdParser.parse("\"tab\"\"\"\"le\"")).containsExactly("tab\"\"le");
         assertThat(TableIdParser.parse("\"\"\"s\"\"\".\"\"\"a\"\"\"")).containsExactly("\"s\"", "\"a\"");
+        assertThat(TableIdParser.parse("[db].[table]", new TestTableIdPredicates())).containsExactly("db", "table");
+        assertThat(TableIdParser.parse("[db].[table with spaces]", new TestTableIdPredicates())).containsExactly("db", "table with spaces");
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -54,5 +56,17 @@ public class TableIdParserTest {
     @Test(expected = IllegalArgumentException.class)
     public void escapedQuoteDoesntCloseQuotedIdentifier() {
         TableIdParser.parse("\"table\"\"");
+    }
+
+    private static class TestTableIdPredicates implements TableIdPredicates {
+        @Override
+        public boolean isStartDelimiter(char c) {
+            return c == '[';
+        }
+
+        @Override
+        public boolean isEndDelimiter(char c) {
+            return c == ']';
+        }
     }
 }

@@ -7,7 +7,9 @@ package io.debezium.connector.sqlserver;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -478,6 +480,25 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    @Override
+    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
+
+        if (tableValues == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableValues) {
+            snapshotSelectOverridesByTable.put(
+                    TableId.parse(table, new SqlServerTableIdPredicates()),
+                    getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
+        }
+
+        return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
     }
 
     private static int validateDatabaseName(Configuration config, Field field, Field.ValidationOutput problems) {

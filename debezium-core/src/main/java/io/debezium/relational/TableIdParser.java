@@ -30,6 +30,7 @@ class TableIdParser {
         return parse(identifier, new TableIdPredicates() {
         });
     }
+
     public static List<String> parse(String identifier, TableIdPredicates predicates) {
         TokenStream stream = new TokenStream(identifier, new TableIdTokenizer(identifier, predicates), true);
         stream.start();
@@ -99,6 +100,9 @@ class TableIdParser {
                     context.quotingChar = c;
                     return IN_QUOTED_IDENTIFIER;
                 }
+                else if (context.predicates.isStartDelimiter(c)) {
+                    return IN_DELIMITED_IDENTIFIER;
+                }
                 else {
                     return IN_IDENTIFIER;
                 }
@@ -166,6 +170,9 @@ class TableIdParser {
                     context.quotingChar = c;
                     return IN_QUOTED_IDENTIFIER;
                 }
+                else if (context.predicates.isStartDelimiter(c)) {
+                    return IN_DELIMITED_IDENTIFIER;
+                }
                 else {
                     return IN_IDENTIFIER;
                 }
@@ -202,6 +209,32 @@ class TableIdParser {
             @Override
             void doOnExit(ParsingContext context) {
                 context.quotingChar = 0;
+                context.tokens.addToken(
+                        context.input.position(context.startOfLastToken + 1),
+                        context.startOfLastToken + 1,
+                        context.lastIdentifierEnd);
+            }
+        },
+
+        IN_DELIMITED_IDENTIFIER {
+
+            @Override
+            ParsingState handleCharacter(char c, ParsingContext context) {
+                if (context.predicates.isEndDelimiter(c)) {
+                    context.lastIdentifierEnd = context.input.index();
+                    return BEFORE_SEPARATOR;
+                }
+
+                return IN_DELIMITED_IDENTIFIER;
+            }
+
+            @Override
+            void doOnEntry(ParsingContext context) {
+                context.startOfLastToken = context.input.index();
+            }
+
+            @Override
+            void doOnExit(ParsingContext context) {
                 context.tokens.addToken(
                         context.input.position(context.startOfLastToken + 1),
                         context.startOfLastToken + 1,
