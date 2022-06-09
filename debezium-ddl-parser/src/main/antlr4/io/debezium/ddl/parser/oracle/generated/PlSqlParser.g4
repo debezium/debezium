@@ -2912,6 +2912,7 @@ split_table_partition
 
 truncate_table_partition
     : TRUNCATE (partition_extended_names|subpartition_extended_names)
+            ((DROP ALL?|REUSE)? STORAGE)? CASCADE? (update_index_clauses parallel_clause?)?
     ;
 
 exchange_table_partition
