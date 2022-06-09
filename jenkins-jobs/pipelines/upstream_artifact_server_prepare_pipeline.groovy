@@ -49,6 +49,7 @@ pipeline {
                 ]) {
                     sh '''
                     set -x
+                    cd ${WORKSPACE}/debezium
                     ORACLE_ARTIFACT_VERSION=$( mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
                     ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
                     
