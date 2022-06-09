@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.0.Alpha2
+June 9th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385341)
+
+### New features since 2.0.0.Alpha1
+
+* Provide a signal to stop the running incremental snapshot [DBZ-4251](https://issues.redhat.com/browse/DBZ-4251)
+* SQL Server - Fail connector when a user doesn't have the right permission (CDCReader) [DBZ-4346](https://issues.redhat.com/browse/DBZ-4346)
+* Allow mongodb-connector to decode Binary payloads [DBZ-4600](https://issues.redhat.com/browse/DBZ-4600)
+* Add UI backend tests for SQL Server connector [DBZ-4867](https://issues.redhat.com/browse/DBZ-4867)
+* direct usage of debezium engine ignores ChangeConsumer.supportsTombstoneEvents [DBZ-5052](https://issues.redhat.com/browse/DBZ-5052)
+* Config the cache size property for ByLogicalTableRouter caches [DBZ-5072](https://issues.redhat.com/browse/DBZ-5072)
+* Introduce a new extension api for query debezium version [DBZ-5092](https://issues.redhat.com/browse/DBZ-5092)
+* Introduce a new field "ts_ms" to identify the process time for schema change event [DBZ-5098](https://issues.redhat.com/browse/DBZ-5098)
+* MongoDB Connector should use RawBsonDocument instead of Document [DBZ-5113](https://issues.redhat.com/browse/DBZ-5113)
+
+
+### Breaking changes since 2.0.0.Alpha1
+
+* Debezium MySql connector does not capture floating point numbers with the right precision [DBZ-3865](https://issues.redhat.com/browse/DBZ-3865)
+* Remove oplog support from MongoDB connector [DBZ-4951](https://issues.redhat.com/browse/DBZ-4951)
+* Introduce multi-partition/task code to all connectors [DBZ-5042](https://issues.redhat.com/browse/DBZ-5042)
+* Clean-up connector parameters [DBZ-5045](https://issues.redhat.com/browse/DBZ-5045)
+
+
+### Fixes since 2.0.0.Alpha1
+
+* Postgres existing publication is not updated with the new table [DBZ-3921](https://issues.redhat.com/browse/DBZ-3921)
+* Error and connector stops when DDL contains lateral [DBZ-4780](https://issues.redhat.com/browse/DBZ-4780)
+* Schema changes should flush SCN to offsets if there are no other active transactions [DBZ-4782](https://issues.redhat.com/browse/DBZ-4782)
+* Connector stops streaming after a re-balance [DBZ-4792](https://issues.redhat.com/browse/DBZ-4792)
+* MySQL connector increment snapshot failed parse datetime column lenth when connector set "snapshot.fetch.size": 20000  [DBZ-4939](https://issues.redhat.com/browse/DBZ-4939)
+* [MySQL Debezium] DDL Parsing error - CREATE OR REPLACE TABLE [DBZ-4958](https://issues.redhat.com/browse/DBZ-4958)
+* InstanceAlreadyExistsException during MongoDb connector metrics registration [DBZ-5011](https://issues.redhat.com/browse/DBZ-5011)
+* DateTimeParseException: Text 'infinity' could not be parsed in Postgres connector [DBZ-5014](https://issues.redhat.com/browse/DBZ-5014)
+* PostgreSQL ENUM default values are missing from generated schema [DBZ-5038](https://issues.redhat.com/browse/DBZ-5038)
+* Debezium official documentation typo [DBZ-5040](https://issues.redhat.com/browse/DBZ-5040)
+* Fix inconsistent transaction id when handling transactional messages in Vitess connector [DBZ-5063](https://issues.redhat.com/browse/DBZ-5063)
+* 4 Connections per connector (postgres) [DBZ-5074](https://issues.redhat.com/browse/DBZ-5074)
+* Oracle documentation refers to archive_log_target rather than archive_lag_target [DBZ-5076](https://issues.redhat.com/browse/DBZ-5076)
+* 'ALTER TABLE mytable DROP FOREIGN KEY IF EXISTS mytable_fk' no viable alternative at input 'ALTER TABLE mytable DROP FOREIGN KEY IF' [DBZ-5077](https://issues.redhat.com/browse/DBZ-5077)
+* Oracle Logminer: records missed during switch from snapshot to streaming mode [DBZ-5085](https://issues.redhat.com/browse/DBZ-5085)
+* Interrupting a snapshot process can hang for some JDBC drivers [DBZ-5087](https://issues.redhat.com/browse/DBZ-5087)
+* Debezium fails to undo change event due to transaction id ending in ffffffff with LogMiner [DBZ-5090](https://issues.redhat.com/browse/DBZ-5090)
+* Table changes are not filled in schema changes from snapshot [DBZ-5096](https://issues.redhat.com/browse/DBZ-5096)
+* Postgresql connector does not retry one some errors when postgres is taken offline [DBZ-5097](https://issues.redhat.com/browse/DBZ-5097)
+* Parsing zero day fails [DBZ-5099](https://issues.redhat.com/browse/DBZ-5099)
+* Cannot Set debezium.sink.kafka.producer.ssl.endpoint.identification.algorithm to empty value  [DBZ-5105](https://issues.redhat.com/browse/DBZ-5105)
+* Debezium connector failed with create table statement [DBZ-5108](https://issues.redhat.com/browse/DBZ-5108)
+* Current version of surefire/failsafe skips tests on failure in BeforeAll [DBZ-5112](https://issues.redhat.com/browse/DBZ-5112)
+
+
+### Other changes since 2.0.0.Alpha1
+
+* Restructure documentation for custom converters [DBZ-4588](https://issues.redhat.com/browse/DBZ-4588)
+* Document *xmin.fetch.interval.ms* property for Postgres connector [DBZ-4734](https://issues.redhat.com/browse/DBZ-4734)
+* Update to Quarkus 2.9.2.Final [DBZ-4806](https://issues.redhat.com/browse/DBZ-4806)
+* Upgrade Oracle driver to 21.5.0.0 [DBZ-4877](https://issues.redhat.com/browse/DBZ-4877)
+* Execute Debezium UI build when core library is changed [DBZ-4947](https://issues.redhat.com/browse/DBZ-4947)
+* Remove unused Oracle connector code [DBZ-4973](https://issues.redhat.com/browse/DBZ-4973)
+* Links to cassandra 3 and 4 artifacts no longer work for Debezium 1.9+ [DBZ-5055](https://issues.redhat.com/browse/DBZ-5055)
+* Align Postgresql driver with Quarkus [DBZ-5060](https://issues.redhat.com/browse/DBZ-5060)
+* Outdated links in Javadoc documentation [DBZ-5075](https://issues.redhat.com/browse/DBZ-5075)
+* Rename "Mysql" to "MySql" in related MysqlFieldReader interface [DBZ-5078](https://issues.redhat.com/browse/DBZ-5078)
+* Create CI job for maven repository verification [DBZ-5082](https://issues.redhat.com/browse/DBZ-5082)
+* Remove database.server.id default value handler, no longer auto-generated. [DBZ-5100](https://issues.redhat.com/browse/DBZ-5100)
+* Upgrade Jackson Databind to 2.13.2.2 [DBZ-5107](https://issues.redhat.com/browse/DBZ-5107)
+* Switch to released version of Fixture5 extension in System testsuite [DBZ-5114](https://issues.redhat.com/browse/DBZ-5114)
+
+
+
 ## 2.0.0.Alpha1
 April 28th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12380203)
 
