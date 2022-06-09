@@ -2553,6 +2553,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3898")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Tests specific LogMiner features")
     public void shouldIgnoreAllTablesInExcludedSchemas() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz3898");
@@ -2575,9 +2576,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             SourceRecords records = consumeRecordsByTopic(1);
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3898")).hasSize(1);
 
-            // Wait 2 minutes to let the connector run a few cycles
-            // Then check that there is absolutely nothing to consume and that no exceptions are thrown
-            Awaitility.await().atMost(Duration.ofMinutes(3)).pollDelay(Duration.ofMinutes(2)).until(() -> true);
+            // Wait for the connector to run 10 mining cycles
+            // Over the course of these cycles, there should be nothing to be consumed.
+            final long fetchingQueryCount = getStreamingMetric("FetchingQueryCount");
+            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> {
+                final long currentQueryCount = getStreamingMetric("FetchingQueryCount");
+                return currentQueryCount >= fetchingQueryCount + 10L;
+            });
             assertNoRecordsToConsume();
         }
         finally {
