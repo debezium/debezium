@@ -27,7 +27,11 @@ class TableIdParser {
     private static final String BACKTICKS = "``";
 
     public static List<String> parse(String identifier) {
-        TokenStream stream = new TokenStream(identifier, new TableIdTokenizer(identifier), true);
+        return parse(identifier, new TableIdPredicates() {
+        });
+    }
+    public static List<String> parse(String identifier, TableIdPredicates predicates) {
+        TokenStream stream = new TokenStream(identifier, new TableIdTokenizer(identifier, predicates), true);
         stream.start();
 
         // at max three parts - catalog.schema.table
@@ -46,16 +50,18 @@ class TableIdParser {
     private static class TableIdTokenizer implements Tokenizer {
 
         private final String identifier;
+        private final TableIdPredicates predicates;
 
-        public TableIdTokenizer(String identifier) {
+        public TableIdTokenizer(String identifier, TableIdPredicates predicates) {
             this.identifier = identifier;
+            this.predicates = predicates;
         }
 
         @Override
         public void tokenize(CharacterStream input, Tokens tokens) throws ParsingException {
             ParsingState previousState = null;
             ParsingState currentState = ParsingState.INITIAL;
-            ParsingContext parsingContext = new ParsingContext(input, tokens);
+            ParsingContext parsingContext = new ParsingContext(input, tokens, predicates);
 
             currentState.onEntry(parsingContext);
 
@@ -89,7 +95,7 @@ class TableIdParser {
                 else if (c == TableIdParser.SEPARATOR) {
                     throw new IllegalArgumentException("Unexpected input: " + c);
                 }
-                else if (isQuotingChar(c)) {
+                else if (context.predicates.isQuotingChar(c)) {
                     context.quotingChar = c;
                     return IN_QUOTED_IDENTIFIER;
                 }
@@ -156,7 +162,7 @@ class TableIdParser {
                 else if (c == TableIdParser.SEPARATOR) {
                     throw new IllegalArgumentException("Unexpected input: " + c);
                 }
-                else if (isQuotingChar(c)) {
+                else if (context.predicates.isQuotingChar(c)) {
                     context.quotingChar = c;
                     return IN_QUOTED_IDENTIFIER;
                 }
@@ -218,24 +224,22 @@ class TableIdParser {
 
         void doOnExit(ParsingContext context) {
         }
-
-        private static boolean isQuotingChar(char c) {
-            return c == '"' || c == '\'' || c == '`';
-        }
     }
 
     private static class ParsingContext {
         final CharacterStream input;
         final Tokens tokens;
+        final TableIdPredicates predicates;
 
         int startOfLastToken;
         int lastIdentifierEnd;
         boolean escaped;
         char quotingChar;
 
-        public ParsingContext(CharacterStream input, Tokens tokens) {
+        public ParsingContext(CharacterStream input, Tokens tokens, TableIdPredicates predicates) {
             this.input = input;
             this.tokens = tokens;
+            this.predicates = predicates;
         }
     }
 }
