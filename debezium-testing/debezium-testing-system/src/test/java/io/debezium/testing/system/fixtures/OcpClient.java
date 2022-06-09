@@ -5,8 +5,12 @@
  */
 package io.debezium.testing.system.fixtures;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.fabric8.kubernetes.client.Config;
@@ -16,10 +20,6 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.TestFixture;
 import fixture5.annotations.FixtureContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 @FixtureContext(provides = { OpenShiftClient.class })
 public class OcpClient extends TestFixture {
@@ -37,7 +37,8 @@ public class OcpClient extends TestFixture {
         if (isRunningFromOcp()) {
             LOGGER.info("OCP credentials not provided, using default config");
             cfg = new ConfigBuilder().build();
-        } else {
+        }
+        else {
             cfg = new ConfigBuilder()
                     .withMasterUrl(ConfigProperties.OCP_URL.get())
                     .withUsername(ConfigProperties.OCP_USERNAME.get())
