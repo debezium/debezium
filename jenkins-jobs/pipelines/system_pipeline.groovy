@@ -110,9 +110,6 @@ pipeline {
                     env.MVN_VERSION_AS_DEBEZIUM = params.AS_VERSION_DEBEZIUM ? "-Das.debezium.version=${params.AS_VERSION_DEBEZIUM}" : ""
                     env.MVN_VERSION_AS_APICURIO = params.AS_VERSION_APICURIO ? "-Das.apicurio.version=${params.AS_VERSION_APICURIO}" : ""
 
-//                    Oracle Configuration
-                    env.ORACLE_ARTIFACT_VERSION='21.1.0.0'
-                    env.ORACLE_ARTIFACT_DIR = "${env.HOME}/oracle-libs/21.1.0.0.0"
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
@@ -134,6 +131,10 @@ pipeline {
 
                     sh '''
                     set -x
+                    cd ${WORKSPACE}/debezium 
+                    ORACLE_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
+                    ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
+                  
                     cd ${ORACLE_ARTIFACT_DIR}
                     mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar
                     mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar
