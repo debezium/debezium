@@ -14,6 +14,8 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.annotations.FixtureContext;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { SqlDatabaseController.class })
 public class OcpOracle extends OcpDatabaseFixture<SqlDatabaseController> {
 
@@ -28,11 +30,12 @@ public class OcpOracle extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("oracle.jdbc.OracleDriver");
+        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
         OcpOracleDeployer deployer = new OcpOracleDeployer.Builder()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_ORACLE)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withServices(services)
                 .withPullSecrets(ConfigProperties.OCP_PULL_SECRET_PATH.get())
                 .build();
         return deployer.deploy();
