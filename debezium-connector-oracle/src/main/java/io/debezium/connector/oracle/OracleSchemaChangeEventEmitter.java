@@ -136,7 +136,8 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 event.statement(),
                 schema.tableFor(event.tableId()),
                 SchemaChangeEventType.CREATE,
-                false);
+                false,
+                null);
     }
 
     private SchemaChangeEvent alterTableEvent(OraclePartition partition, TableAlteredEvent event) {
@@ -154,7 +155,8 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 event.statement(),
                 schema.tableFor(event.tableId()),
                 SchemaChangeEventType.ALTER,
-                false);
+                false,
+                tableId);
     }
 
     private SchemaChangeEvent dropTableEvent(OraclePartition partition, Table tableSchemaBeforeDrop, TableDroppedEvent event) {
@@ -168,6 +170,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 event.statement(),
                 tableSchemaBeforeDrop,
                 SchemaChangeEventType.DROP,
-                false);
+                false,
+                null);
     }
 }

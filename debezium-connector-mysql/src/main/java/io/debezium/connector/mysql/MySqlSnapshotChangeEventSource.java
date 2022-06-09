@@ -393,7 +393,8 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 null,
                 table,
                 SchemaChangeEventType.CREATE,
-                true);
+                true,
+                null);
     }
 
     @Override

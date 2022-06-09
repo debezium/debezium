@@ -63,7 +63,7 @@ public class SchemaChanges<P extends Partition> implements Signal.Action<P> {
                 dispatcher.dispatchSchemaChangeEvent(signalPayload.partition, tableChange.getId(), emitter -> {
                     emitter.schemaChangeEvent(new SchemaChangeEvent(signalPayload.partition.getSourcePartition(),
                             signalPayload.offsetContext.getOffset(), signalPayload.source, database, schema, null,
-                            tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false));
+                            tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false, tableChange.getPreviousId()));
                 });
             }
             else if (dispatcher.getSchema() instanceof RelationalDatabaseSchema) {
