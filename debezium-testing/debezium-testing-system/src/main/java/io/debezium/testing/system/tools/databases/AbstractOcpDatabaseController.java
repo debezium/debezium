@@ -47,12 +47,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     }
 
     private Service getLoadBalancedService() {
-        // TODO this probably isn't necessary
-        if (isRunningFromOcp()) {
-            LOGGER.info("getLoadBalancedService: running from OCP, returning local service");
-            return getService();
-        }
-        LOGGER.info("getLoadBalancedService: not running from OCP, returning LB service");
         return ocp
                 .services()
                 .inNamespace(project)
