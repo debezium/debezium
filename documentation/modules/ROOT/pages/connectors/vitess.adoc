@@ -3,7 +3,7 @@
 [id="debezium-connector-for-vitess"]
 = {prodname} connector for Vitess
 :context: vitess
-
+:mbean-name: {context}
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -1029,7 +1029,7 @@ xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring docume
 [[vitess-streaming-metrics]]
 ==== Streaming metrics
 
-The *MBean* is `debezium.vitess:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
+include::{partialsdir}/modules/all-connectors/frag-common-streaming-mbean-name.adoc[leveloffset=+1]
 
 [cols="45%a,25%a,30%a",options="header"]
 |===

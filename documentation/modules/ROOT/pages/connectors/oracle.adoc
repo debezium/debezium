@@ -3075,7 +3075,7 @@ Please refer to the xref:{link-debezium-monitoring}#monitoring-debezium[monitori
 === Snapshot Metrics
 
 [[oracle-monitoring-snapshots]]
-
+include::{partialsdir}/modules/all-connectors/frag-common-snapshot-mbean-name.adoc[leveloffset=+1]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
@@ -3087,7 +3087,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 === Streaming Metrics
 
 [[oracle-monitoring-streaming]]
-
+include::{partialsdir}/modules/all-connectors/frag-common-streaming-mbean-name.adoc[leveloffset=+1]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 The {prodname} Oracle connector also provides the following additional streaming metrics:
