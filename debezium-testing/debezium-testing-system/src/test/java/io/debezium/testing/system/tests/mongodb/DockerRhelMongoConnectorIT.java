@@ -26,6 +26,7 @@ import fixture5.annotations.Fixture;
 @Tag("acceptance")
 @Tag("mongo")
 @Tag("openshift")
+@Tag("docker")
 @Fixture(DockerNetwork.class)
 @Fixture(DockerKafka.class)
 @Fixture(DockerMongo.class)
