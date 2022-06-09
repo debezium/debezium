@@ -14,9 +14,6 @@ GIT_CREDENTIALS_ID = 'debezium-github'
 DEBEZIUM_DIR = 'debezium'
 HOME_DIR = '/home/centos'
 
-ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/21.1.0.0.0"
-ORACLE_ARTIFACT_VERSION = '21.1.0.0'
-
 def additionalDirs = []
 node('Slave') {
     try {
@@ -44,6 +41,12 @@ node('Slave') {
                 )
                 additionalDirs << id
             }
+
+            dir(DEBEZIUM_DIR) {
+                ORACLE_ARTIFACT_VERSION = (readFile('pom.xml') =~ /(?ms)<version.oracle.driver>(.+)<\/version.oracle.driver>/)[0][1]
+                ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
+            }
+
             dir(ORACLE_ARTIFACT_DIR) {
                 sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=ojdbc8.jar"
                 sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=xstreams.jar"
