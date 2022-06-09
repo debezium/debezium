@@ -12,9 +12,10 @@ if [ ! -f "${SECRET_PATH}" ]; then
     exit 1
 fi
 
-#TODO incremental build here
 git -C /testsuite/debezium stash
-git -C /testsuite/debezium pull origin DBZ-5165
+git -C /testsuite/debezium pull --rebase origin DBZ-5165
+git -C /testsuite/debezium log -1
+
 mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 
 #prepare ocp, run tests
@@ -37,7 +38,9 @@ if [ -n "${DBZ_CONNECT_IMAGE}" ]; then
   TEST_PROPERTIES="$TEST_PROPERTIES -Dimage.kc=${DBZ_CONNECT_IMAGE}" ;
 fi
 
-mvn install -pl debezium-testing/debezium-testing-system -PsystemITs \
+# TODO install odbc, xstreams??
+
+mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Docp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \
                     -Docp.project.mysql="${OCP_PROJECT_MYSQL}" \
                     -Docp.project.oracle="${OCP_PROJECT_ORACLE}" \
@@ -47,7 +50,7 @@ mvn install -pl debezium-testing/debezium-testing-system -PsystemITs \
                     -Docp.project.db2="${OCP_PROJECT_DB2}" \
                     -Docp.pull.secret.paths="${SECRET_PATH}" \
                     -Dtest.wait.scale="${TEST_WAIT_SCALE}" \
-                    -Dtest.strimzi.kc.build=${PRODUCT_BUILD} \
+                    -Dtest.strimzi.kc.build="${PRODUCT_BUILD}" \
                     -Dimage.kc="${DBZ_CONNECT_IMAGE}" \
                     -Dimage.as="${ARTIFACT_SERVER_IMAGE}" \
                     -Dgroups="${GROUPS}"
