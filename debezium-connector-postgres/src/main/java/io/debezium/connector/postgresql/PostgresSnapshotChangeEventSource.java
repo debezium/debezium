@@ -214,7 +214,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                 null,
                 table,
                 SchemaChangeEventType.CREATE,
-                true);
+                true,
+                null);
     }
 
     @Override

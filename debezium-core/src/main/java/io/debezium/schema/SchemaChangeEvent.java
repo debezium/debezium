@@ -14,6 +14,7 @@ import java.util.Set;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.util.Clock;
 
@@ -37,13 +38,13 @@ public class SchemaChangeEvent {
     private TableChanges tableChanges = new TableChanges();
 
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
-                             SchemaChangeEventType type, boolean isFromSnapshot) {
+                             SchemaChangeEventType type, boolean isFromSnapshot, TableId previousTableId) {
         this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : Collections.emptySet(),
-                type, isFromSnapshot, Clock.SYSTEM.currentTimeAsInstant());
+                type, isFromSnapshot, Clock.SYSTEM.currentTimeAsInstant(), previousTableId);
     }
 
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Set<Table> tables,
-                             SchemaChangeEventType type, boolean isFromSnapshot, Instant timestamp) {
+                             SchemaChangeEventType type, boolean isFromSnapshot, Instant timestamp, TableId previousTableId) {
         this.partition = Objects.requireNonNull(partition, "partition must not be null");
         this.offset = Objects.requireNonNull(offset, "offset must not be null");
         this.source = Objects.requireNonNull(source, "source must not be null");
@@ -61,7 +62,8 @@ public class SchemaChangeEvent {
                 tables.forEach(tableChanges::create);
                 break;
             case ALTER:
-                tables.forEach(tableChanges::alter);
+                // there is only ever 1 table within the set, so it's safe to apply the previousTableId like this
+                tables.forEach(t -> tableChanges.alter(t, previousTableId));
                 break;
             case DROP:
                 tables.forEach(tableChanges::drop);
