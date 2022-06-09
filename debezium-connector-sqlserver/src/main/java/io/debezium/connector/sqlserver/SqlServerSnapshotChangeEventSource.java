@@ -239,7 +239,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                 null,
                 table,
                 SchemaChangeEventType.CREATE,
-                true);
+                true,
+                null);
     }
 
     @Override

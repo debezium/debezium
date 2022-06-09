@@ -250,7 +250,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 jdbcConnection.getTableMetadataDdl(table.id()),
                 table,
                 SchemaChangeEventType.CREATE,
-                true);
+                true,
+                null);
     }
 
     /**

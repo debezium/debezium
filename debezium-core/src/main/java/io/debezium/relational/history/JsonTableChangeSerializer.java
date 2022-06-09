@@ -45,6 +45,9 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
 
         document.setString("type", tableChange.getType().name());
         document.setString("id", tableChange.getId().toDoubleQuotedString());
+        if (tableChange.getPreviousId() != null) {
+            document.setString("previousId", tableChange.getPreviousId().toDoubleQuotedString());
+        }
         document.setDocument("table", toDocument(tableChange.getTable()));
         document.setString("comment", tableChange.getTable().comment());
         return document;
@@ -113,7 +116,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 tableChanges.create(change.getTable());
             }
             else if (change.getType() == TableChangeType.ALTER) {
-                tableChanges.alter(change.getTable());
+                tableChanges.alter(change.getTable(), change.getPreviousId());
             }
             else if (change.getType() == TableChangeType.DROP) {
                 tableChanges.drop(change.getTable());
@@ -199,6 +202,10 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
     public static TableChange fromDocument(Document document, boolean useCatalogBeforeSchema) {
         TableChangeType type = TableChangeType.valueOf(document.getString("type"));
         TableId id = TableId.parse(document.getString("id"), useCatalogBeforeSchema);
+        TableId previousId = null;
+        if (document.has("previousId")) {
+            previousId = TableId.parse(document.getString("previousId"), useCatalogBeforeSchema);
+        }
         Table table = null;
 
         if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {
@@ -207,6 +214,6 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         else {
             table = Table.editor().tableId(id).create();
         }
-        return new TableChange(type, table);
+        return new TableChange(type, table, previousId);
     }
 }

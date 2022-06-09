@@ -119,7 +119,13 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 if (!preferDdl && tableChanges != null && !tableChanges.isEmpty()) {
                     TableChanges changes = tableChangesSerializer.deserialize(tableChanges, useCatalogBeforeSchema);
                     for (TableChange entry : changes) {
-                        if (entry.getType() == TableChangeType.CREATE || entry.getType() == TableChangeType.ALTER) {
+                        if (entry.getType() == TableChangeType.CREATE) {
+                            schema.overwriteTable(entry.getTable());
+                        }
+                        else if (entry.getType() == TableChangeType.ALTER) {
+                            if (entry.getPreviousId() != null) {
+                                schema.removeTable(entry.getPreviousId());
+                            }
                             schema.overwriteTable(entry.getTable());
                         }
                         // DROP

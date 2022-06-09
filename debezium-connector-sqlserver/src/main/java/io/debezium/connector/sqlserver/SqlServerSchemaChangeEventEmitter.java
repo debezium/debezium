@@ -43,7 +43,8 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
                 "N/A",
                 tableSchema,
                 eventType,
-                false);
+                false,
+                null);
 
         receiver.schemaChangeEvent(event);
     }
