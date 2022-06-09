@@ -24,8 +24,8 @@
             <exclude>org.apache.maven:*:*</exclude>
             <exclude>log4j:log4j:*</exclude>
             <exclude>ch.qos.reload4j:reload4j</exclude>
-	    <exclude>io.debezium:debezium-scripting:*</exclude>
-	    <exclude>io.debezium:debezium-scripting-opt-depts:*</exclude>
+    	    <exclude>io.debezium:debezium-scripting</exclude>
+            <exclude>io.debezium:debezium-scripting-opt-depts</exclude>
           </excludes>
       </dependencySet>
       <dependencySet>
