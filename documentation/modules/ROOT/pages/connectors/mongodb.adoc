@@ -1664,6 +1664,7 @@ The xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring do
 [[mongodb-snapshot-metrics]]
 === Snapshot Metrics
 
+include::{partialsdir}/modules/all-connectors/frag-mongodb-snapshot-mbean-name.adoc[leveloffset=+1]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 The {prodname} MongoDB connector also provides the following custom snapshot metrics:
@@ -1684,6 +1685,7 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 [[mongodb-streaming-metrics]]
 === Streaming Metrics
 
+include::{partialsdir}/modules/all-connectors/frag-mongodb-streaming-mbean-name.adoc[leveloffset=+1]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 The {prodname} MongoDB connector also provides the following custom streaming metrics:
