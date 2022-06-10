@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql.converters;
 
+import java.util.List;
 import java.util.Properties;
 import java.util.function.Predicate;
 
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.function.Predicates;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
+import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
 /**
@@ -31,6 +33,8 @@ public class TinyIntOneToBooleanConverter implements CustomConverter<SchemaBuild
 
     public static final String SELECTOR_PROPERTY = "selector";
 
+    private static final List<String> TINYINT_FAMILY = Collect.arrayListOf("TINYINT", "TINYINT UNSIGNED");
+
     private static final Logger LOGGER = LoggerFactory.getLogger(TinyIntOneToBooleanConverter.class);
 
     private Predicate<RelationalColumn> selector = x -> true;
@@ -46,7 +50,7 @@ public class TinyIntOneToBooleanConverter implements CustomConverter<SchemaBuild
 
     @Override
     public void converterFor(RelationalColumn field, ConverterRegistration<SchemaBuilder> registration) {
-        if (!"TINYINT".equalsIgnoreCase(field.typeName()) || field.length().orElse(-1) != 1 || !selector.test(field)) {
+        if (!TINYINT_FAMILY.contains(field.typeName().toUpperCase()) || field.length().orElse(-1) != 1 || !selector.test(field)) {
             return;
         }
         registration.register(SchemaBuilder.bool(), x -> {
