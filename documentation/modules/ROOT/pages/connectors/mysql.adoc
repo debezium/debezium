@@ -1608,7 +1608,7 @@ During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table defini
 
 To enable you to convert source columns to Boolean data types, {prodname} provides a `TinyIntOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
 
-* Map all `TINYINT(1)` columns to `BOOLEAN` types.
+* Map all `TINYINT(1)` or `TINYINT(1) UNSIGNED` columns to `BOOLEAN` types.
 * Enumerate a subset of columns by using a comma-separated list of regular expressions. +
 To use this type of conversion, you must set the xref:mysql-property-converters[`converters`] configuration property with the `selector` parameter, as shown in the following example:
 +
