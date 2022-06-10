@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
@@ -507,11 +508,15 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private List<String> expandDataCollectionIds(List<String> dataCollectionIds) {
         return dataCollectionIds
                 .stream()
-                .flatMap(x -> databaseSchema
-                        .tableIds()
-                        .stream()
-                        .map(TableId::identifier)
-                        .filter(t -> Pattern.compile(x).matcher(t).matches()))
+                .flatMap(x -> {
+                    final List<String> ids = databaseSchema
+                            .tableIds()
+                            .stream()
+                            .map(TableId::identifier)
+                            .filter(t -> Pattern.compile(x).matcher(t).matches())
+                            .collect(Collectors.toList());
+                    return ids.isEmpty() ? Stream.of(x) : ids.stream();
+                })
                 .collect(Collectors.toList());
     }
 
