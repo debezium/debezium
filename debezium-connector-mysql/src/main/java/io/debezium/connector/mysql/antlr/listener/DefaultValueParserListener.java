@@ -88,7 +88,10 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     }
 
     private String unquote(String stringLiteral) {
-        return stringLiteral.substring(1, stringLiteral.length() - 1);
+        if (stringLiteral != null && stringLiteral.startsWith("'") && stringLiteral.endsWith("'")) {
+            return stringLiteral.substring(1, stringLiteral.length() - 1);
+        }
+        return stringLiteral;
     }
 
     private String unquoteBinary(String stringLiteral) {

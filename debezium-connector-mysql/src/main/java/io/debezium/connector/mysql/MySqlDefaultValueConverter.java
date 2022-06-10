@@ -57,6 +57,8 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
 
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
 
+    private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^[_A-Za-z0-9]*'(.*)'$");
+
     @Immutable
     private static final Set<Integer> TRIM_DATA_TYPES = Collect.unmodifiableSet(Types.TINYINT, Types.INTEGER,
             Types.DATE, Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE, Types.TIME, Types.BOOLEAN, Types.BIT,
@@ -128,6 +130,9 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         if (TRIM_DATA_TYPES.contains(column.jdbcType())) {
             value = value.trim();
         }
+
+        // strip character set introducer on default value expressions
+        value = stripCharacterSetIntroducer(value);
 
         // boolean is also INT(1) or TINYINT(1)
         if (NUMBER_DATA_TYPES.contains(column.jdbcType()) && ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))) {
@@ -475,4 +480,8 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         return sb.toString();
     }
 
+    private String stripCharacterSetIntroducer(String value) {
+        final Matcher matcher = CHARSET_INTRODUCER_PATTERN.matcher(value);
+        return !matcher.matches() ? value : matcher.group(1);
+    }
 }
