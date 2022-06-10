@@ -930,4 +930,79 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(change.get("C8")).isEqualTo("0.00");
         assertThat(change.get("C9")).isEqualTo(0L);
     }
+
+    @Test
+    @FixFor("DBZ-5241")
+    public void shouldConvertDefaultWithCharacterSetIntroducer() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ_5241_DEFAULT_CS_INTRO"))
+                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        // Connect to the DB and create our table and insert a value
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                final String createTable = "CREATE TABLE DBZ_5241_DEFAULT_CS_INTRO (\n"
+                        + "ID INT NOT NULL AUTO_INCREMENT PRIMARY KEY, \n"
+                        + "C0 BIGINT NOT NULL, \n"
+                        + "C1 TINYINT(4) UNSIGNED DEFAULT 0, \n"
+                        + "C2 TINYINT(4) UNSIGNED DEFAULT _UTF8MB4'0' COMMENT 'c2', \n"
+                        + "C3 TINYINT(1) NOT NULL DEFAULT _UTF8MB4'0' COMMENT 'c3', \n"
+                        + "C4 VARCHAR(25) DEFAULT _utf8'abc', \n"
+                        + "C5 VARCHAR(25) NOT NULL DEFAULT _utf8'abc', \n"
+                        + "C6 CHAR(25) DEFAULT _utf8'abc', \n"
+                        + "C7 CHAR(25) NOT NULL DEFAULT _utf8'abc', \n"
+                        + "C8 BIGINT UNSIGNED DEFAULT _UTF8MB4'0', \n"
+                        + "C9 BIGINT UNSIGNED NOT NULL DEFAULT _UTF8MB4'0', \n"
+                        + "C10 INT DEFAULT _utf8'0', \n"
+                        + "C11 INT NOT NULL DEFAULT _utf8'0', \n"
+                        + "C12 MEDIUMINT DEFAULT _utf8'0', \n"
+                        + "C13 MEDIUMINT NOT NULL DEFAULT _utf8'0', \n"
+                        + "C14 SMALLINT DEFAULT _utf8'0', \n"
+                        + "C15 SMALLINT NOT NULL DEFAULT _utf8'0', \n"
+                        + "C16 NUMERIC(3, 2) DEFAULT _UTF8MB4'1.23', \n"
+                        + "C17 NUMERIC(3, 2) NOT NULL DEFAULT _UTF8MB4'1.23', \n"
+                        + "C18 REAL DEFAULT _UTF8MB4'3.14', \n"
+                        + "C19 REAL NOT NULL DEFAULT _UTF8MB4'3.14');";
+                connection.execute(createTable);
+                connection.execute("INSERT INTO DBZ_5241_DEFAULT_CS_INTRO (C0) values (1);");
+            }
+        }
+
+        SourceRecords records = consumeRecordsByTopic(100);
+
+        List<SourceRecord> events = records.recordsForTopic(DATABASE.topicForTable("DBZ_5241_DEFAULT_CS_INTRO"));
+        assertThat(events).hasSize(1);
+        SourceRecord record = events.get(0);
+        Struct change = ((Struct) record.value()).getStruct("after");
+        assertFieldDefaultValue(change, "C1", (short) 0);
+        assertFieldDefaultValue(change, "C2", (short) 0);
+        assertFieldDefaultValue(change, "C3", (short) 0);
+        assertFieldDefaultValue(change, "C4", "abc");
+        assertFieldDefaultValue(change, "C5", "abc");
+        assertFieldDefaultValue(change, "C6", "abc");
+        assertFieldDefaultValue(change, "C7", "abc");
+        assertFieldDefaultValue(change, "C8", 0L);
+        assertFieldDefaultValue(change, "C9", 0L);
+        assertFieldDefaultValue(change, "C10", 0);
+        assertFieldDefaultValue(change, "C11", 0);
+        assertFieldDefaultValue(change, "C12", 0);
+        assertFieldDefaultValue(change, "C13", 0);
+        assertFieldDefaultValue(change, "C14", (short) 0);
+        assertFieldDefaultValue(change, "C15", (short) 0);
+        assertFieldDefaultValue(change, "C16", BigDecimal.valueOf(1.23));
+        assertFieldDefaultValue(change, "C17", BigDecimal.valueOf(1.23));
+        assertFieldDefaultValue(change, "C18", 3.14f);
+        assertFieldDefaultValue(change, "C19", 3.14f);
+    }
+
+    private void assertFieldDefaultValue(Struct value, String fieldName, Object defaultValue) {
+        assertThat(value.schema().field(fieldName).schema().defaultValue()).isEqualTo(defaultValue);
+    }
+
 }
