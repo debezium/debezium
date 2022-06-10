@@ -2904,7 +2904,8 @@ The {prodname} MySQL connector provides three types of metrics that are in addit
 [[mysql-snapshot-metrics]]
 === Snapshot metrics
 
-include::{partialsdir}/modules/all-connectors/frag-common-snapshot-mbean-name.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-snapshot]
+
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
@@ -2919,7 +2920,8 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 
 Transaction-related attributes are available only if binlog event buffering is enabled. See xref:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
 
-include::{partialsdir}/modules/all-connectors/frag-common-streaming-mbean-name.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
+
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 The {prodname} MySQL connector also provides the following additional streaming metrics:
