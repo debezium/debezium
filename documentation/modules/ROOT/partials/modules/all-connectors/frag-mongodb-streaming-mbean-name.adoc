@@ -1,1 +1,0 @@
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_,task=_<task.id>_`.

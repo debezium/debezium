@@ -1029,7 +1029,7 @@ xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring docume
 [[vitess-streaming-metrics]]
 ==== Streaming metrics
 
-include::{partialsdir}/modules/all-connectors/frag-common-streaming-mbean-name.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
 
 [cols="45%a,25%a,30%a",options="header"]
 |===

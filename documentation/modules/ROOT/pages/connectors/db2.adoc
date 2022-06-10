@@ -2367,7 +2367,8 @@ The {prodname} Db2 connector provides three types of metrics that are in additio
 [[db2-snapshot-metrics]]
 === Snapshot metrics
 
-include::{partialsdir}/modules/all-connectors/frag-common-snapshot-mbean-name.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-snapshot]
+
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
@@ -2378,7 +2379,8 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 [[db2-streaming-metrics]]
 === Streaming metrics
 
-include::{partialsdir}/modules/all-connectors/frag-common-streaming-mbean-name.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
+
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 // Type: reference
