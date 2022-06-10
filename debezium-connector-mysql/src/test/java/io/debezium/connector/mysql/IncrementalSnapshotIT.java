@@ -36,6 +36,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<MySqlConnector> {
@@ -72,6 +73,29 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(MySqlConnector.IMPLEMENTATION_PROP, "new");
+    }
+
+    @Override
+    protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        final String tableIncludeList;
+        if (signalTableOnly) {
+            tableIncludeList = DATABASE.qualifiedTableName("c") + "," + DATABASE.qualifiedTableName("debezium_signal");
+        }
+        else {
+            tableIncludeList = DATABASE.qualifiedTableName("a") + ", " + DATABASE.qualifiedTableName("c") + "," +
+                    DATABASE.qualifiedTableName("debezium_signal");
+        }
+        return DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+                .with(MySqlConnectorConfig.USER, "mysqluser")
+                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
+                .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
+                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 
     @Override

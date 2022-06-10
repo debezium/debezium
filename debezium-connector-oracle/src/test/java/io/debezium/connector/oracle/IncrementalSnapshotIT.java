@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
@@ -18,6 +19,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 /**
@@ -36,8 +38,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     public void before() throws Exception {
         connection = TestHelper.testConnection();
 
-        TestHelper.dropTable(connection, "a");
-        connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
+        dropTables();
+        createTables();
 
         // todo: creates signal table in the PDB, do we want it to be in the CDB?
         TestHelper.dropTable(connection, "debezium_signal");
@@ -54,7 +56,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     public void after() throws Exception {
         stopConnector();
         if (connection != null) {
-            TestHelper.dropTable(connection, "a");
+            dropTables();
             TestHelper.dropTable(connection, "debezium_signal");
             connection.close();
         }
@@ -74,7 +76,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected void populateTable() throws SQLException {
         super.populateTable();
-        TestHelper.streamTable(connection, "a");
+        // TestHelper.streamTable(connection, "a");
+    }
+
+    @Override
+    protected void populateTables() throws SQLException {
+        super.populateTables();
     }
 
     @Override
@@ -98,6 +105,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     }
 
     @Override
+    protected List<String> tableNames() {
+        return Collect.arrayListOf("DEBEZIUM.A", "DEBEZIUM.B");
+    }
+
+    @Override
     protected String tableDataCollectionId() {
         return TestHelper.getDatabaseName() + ".DEBEZIUM.A";
     }
@@ -117,6 +129,22 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     }
 
     @Override
+    protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        final String tableIncludeList;
+        if (signalTableOnly) {
+            tableIncludeList = "DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL";
+        }
+        else {
+            tableIncludeList = "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL";
+        }
+        return TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, "ORCLPDB1.DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+    }
+
+    @Override
     protected String valueFieldName() {
         return "AA";
     }
@@ -129,5 +157,17 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " ADD col3 INTEGER DEFAULT 0";
+    }
+
+    private void createTables() throws Exception {
+        connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
+        connection.execute("CREATE TABLE b (pk numeric(9,0) primary key, aa numeric(9,0))");
+        TestHelper.streamTable(connection, "a");
+        TestHelper.streamTable(connection, "b");
+    }
+
+    private void dropTables() throws Exception {
+        TestHelper.dropTable(connection, "a");
+        TestHelper.dropTable(connection, "b");
     }
 }

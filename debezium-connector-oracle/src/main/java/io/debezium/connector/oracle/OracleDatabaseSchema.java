@@ -83,7 +83,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             default:
         }
 
-        if (schemaChange.getTables().stream().map(Table::id).anyMatch(getTableFilter()::isIncluded)) {
+        if (!databaseHistory.storeOnlyCapturedTables() ||
+                schemaChange.getTables().stream().map(Table::id).anyMatch(getTableFilter()::isIncluded)) {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
         }

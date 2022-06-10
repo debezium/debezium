@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -144,9 +146,17 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                                       RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                       OracleOffsetContext offsetContext)
             throws SQLException, InterruptedException {
-        Set<String> schemas = snapshotContext.capturedTables.stream()
-                .map(TableId::schema)
-                .collect(Collectors.toSet());
+        Set<TableId> capturedSchemaTables;
+        if (databaseSchema.storeOnlyCapturedTables()) {
+            capturedSchemaTables = snapshotContext.capturedTables;
+            LOGGER.info("Only captured tables schema should be captured, capturing: {}", capturedSchemaTables);
+        }
+        else {
+            capturedSchemaTables = snapshotContext.capturedSchemaTables;
+            LOGGER.info("All eligible tables schema should be captured, capturing: {}", capturedSchemaTables);
+        }
+
+        Set<String> schemas = capturedSchemaTables.stream().map(TableId::schema).collect(Collectors.toSet());
 
         // reading info only for the schemas we're interested in as per the set of captured tables;
         // while the passed table name filter alone would skip all non-included tables, reading the schema
@@ -173,7 +183,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     snapshotContext.tables,
                     null,
                     schema,
-                    connectorConfig.getTableFilters().dataCollectionFilter(),
+                    null,
                     null,
                     false);
             // }
@@ -189,6 +199,42 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotOffset);
         }
         return overriddenSelect;
+    }
+
+    @Override
+    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext,
+                                                     RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                                                     SnapshottingTask snapshottingTask)
+            throws Exception {
+        tryStartingSnapshot(snapshotContext);
+        for (Iterator<TableId> iterator = snapshotContext.capturedSchemaTables.iterator(); iterator.hasNext();) {
+            final TableId tableId = iterator.next();
+            if (!sourceContext.isRunning()) {
+                throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
+            }
+
+            LOGGER.info("Capturing structure of table {}", tableId);
+
+            Table table = snapshotContext.tables.forTable(tableId);
+
+            if (schema().isHistorized()) {
+                snapshotContext.offset.event(tableId, getClock().currentTime());
+
+                // If data are not snapshotted then the last schema change must set last snapshot flag
+                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
+                    lastSnapshotRecord(snapshotContext);
+                }
+
+                dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, table.id(), (receiver) -> {
+                    try {
+                        receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
+                    }
+                    catch (Exception e) {
+                        throw new DebeziumException(e);
+                    }
+                });
+            }
+        }
     }
 
     @Override

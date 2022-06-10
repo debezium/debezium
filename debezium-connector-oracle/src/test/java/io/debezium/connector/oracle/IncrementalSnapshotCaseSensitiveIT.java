@@ -117,6 +117,22 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        final String tableIncludeList;
+        if (signalTableOnly) {
+            tableIncludeList = "DEBEZIUM\\.DEBEZIUM_SIGNAL";
+        }
+        else {
+            tableIncludeList = "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL";
+        }
+        return TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, "ORCLPDB1.DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+    }
+
+    @Override
     protected String valueFieldName() {
         return "AA";
     }
