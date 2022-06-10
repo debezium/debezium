@@ -3134,6 +3134,7 @@ lob_segname
 
 lob_item
     : regular_id
+    | quoted_string
     ;
 
 lob_storage_parameters
