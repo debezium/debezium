@@ -132,12 +132,38 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-5236")
+    public void shouldHandleUnsignedTinyIntOneAsBoolean() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ5236"))
+                .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "boolean")
+                .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        consumeInitial();
+
+        assertUnsignedBooleanChangeRecord();
+
+        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("INSERT INTO DBZ5236 VALUES (DEFAULT, 1, 1, 0)");
+        }
+        assertUnsignedBooleanChangeRecord();
+
+        stopConnector();
+    }
+
     private void consumeInitial() throws InterruptedException {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         final int numDatabase = 2;
-        final int numTables = 4;
+        final int numTables = 6;
         final int numOthers = 2;
         consumeRecords(numDatabase + numTables + numOthers);
     }
@@ -171,5 +197,15 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         Assertions.assertThat(change.getBoolean("b")).isEqualTo(true);
         Assertions.assertThat(change.schema().field("b").schema().defaultValue()).isEqualTo(false);
+    }
+
+    private void assertUnsignedBooleanChangeRecord() throws InterruptedException {
+        final SourceRecord record = consumeRecord();
+        Assertions.assertThat(record).isNotNull();
+        final Struct change = ((Struct) record.value()).getStruct("after");
+
+        Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 1);
+        Assertions.assertThat(change.getBoolean("ti2")).isEqualTo(true);
+        Assertions.assertThat(change.getBoolean("ti3")).isEqualTo(false);
     }
 }
