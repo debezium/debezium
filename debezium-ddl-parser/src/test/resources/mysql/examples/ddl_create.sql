@@ -139,6 +139,15 @@ UNIQUE KEY `UN_product_no` (`product_no`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
 CREATE TABLE `table_default_fn`(`quote_id` varchar(32) NOT NULL,`created_at` bigint(20) NOT NULL DEFAULT unix_timestamp());
+
+CREATE TABLE IF NOT EXISTS `contract_center`.`ent_folder_letter_relationship` (
+`id` BIGINT(19) UNSIGNED NOT NULL COMMENT '唯一标识',
+`layer` TINYINT(4) UNSIGNED DEFAULT _UTF8MB4'0' COMMENT '文档所属层级，0-主关联文档， 1-次关联文档',
+`deleted` TINYINT(1) NOT NULL DEFAULT _UTF8MB4'0' COMMENT '0-有效记录, 1-删除',
+`data_create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT '创建时间',
+`data_update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP() COMMENT '更新时间',
+PRIMARY KEY(`id`)) ENGINE = InnoDB DEFAULT CHARACTER SET = UTF8MB4;
+
 #end
 #begin
 -- Rename table
