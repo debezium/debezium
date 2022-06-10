@@ -66,6 +66,28 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Override
+    protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        final String tableIncludeList;
+        if (signalTableOnly) {
+            tableIncludeList = "s1.b,s1.debezium_signal";
+        }
+        else {
+            tableIncludeList = "s1.a,s1.b,s1.debezium_signal";
+        }
+        return TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                // DBZ-4272 required to allow dropping columns just before an incremental snapshot
+                .with("database.autosave", "conservative");
+    }
+
+    @Override
     protected Class<PostgresConnector> connectorClass() {
         return PostgresConnector.class;
     }

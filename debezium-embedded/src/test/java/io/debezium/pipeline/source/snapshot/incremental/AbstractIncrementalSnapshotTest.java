@@ -69,6 +69,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract Configuration.Builder config();
 
+    protected abstract Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl);
+
     protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " add col3 int default 0";
     }
@@ -264,25 +266,32 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void startConnector(DebeziumEngine.CompletionCallback callback) {
-        startConnector(Function.identity(), callback);
+        startConnector(Function.identity(), callback, true);
     }
 
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
-        startConnector(custConfig, loggingCompletion());
+        startConnector(custConfig, loggingCompletion(), true);
     }
 
-    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig, DebeziumEngine.CompletionCallback callback) {
+    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig,
+                                  DebeziumEngine.CompletionCallback callback, boolean expectNoRecords) {
         final Configuration config = custConfig.apply(config()).build();
         start(connectorClass(), config, callback);
         waitForConnectorToStart();
 
         waitForAvailableRecords(5, TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        if (expectNoRecords) {
+            // there shouldn't be any snapshot records
+            assertNoRecordsToConsume();
+        }
+    }
+
+    protected void startConnectorWithSnapshot(Function<Configuration.Builder, Configuration.Builder> custConfig) {
+        startConnector(custConfig, loggingCompletion(), false);
     }
 
     protected void startConnector() {
-        startConnector(Function.identity(), loggingCompletion());
+        startConnector(Function.identity(), loggingCompletion(), true);
     }
 
     protected void waitForConnectorToStart() {
@@ -746,6 +755,36 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-4834")
+    public void shouldSnapshotNewlyAddedTableToIncludeListAfterRestart() throws Exception {
+        // Populate the second table
+        populateTables();
+
+        // Start connector, wait until we've transitioned to streaming and stop
+        // We only specify the signal table here
+        startConnectorWithSnapshot(x -> mutableConfig(true, false));
+        waitForConnectorToStart();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(ROW_COUNT);
+
+        stopConnector();
+
+        // Restart connector, specifying to include the populated tables
+        startConnector(x -> mutableConfig(false, false));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+
+        stopConnector();
     }
 
     protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {
