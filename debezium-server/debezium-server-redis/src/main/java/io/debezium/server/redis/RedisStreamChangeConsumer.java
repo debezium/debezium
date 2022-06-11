@@ -5,6 +5,7 @@
  */
 package io.debezium.server.redis;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -129,7 +130,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     public void handleBatch(List<ChangeEvent<Object, Object>> records,
                             RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
-        DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+        DelayStrategy delayStrategy = DelayStrategy.exponential(Duration.ofMillis(initialRetryDelay), Duration.ofMillis(maxRetryDelay));
 
         LOGGER.trace("Handling a batch of {} records", records.size());
         batches(records, batchSize).forEach(batch -> {
