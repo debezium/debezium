@@ -6,6 +6,7 @@
 package io.debezium.server.redis;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -84,8 +85,8 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
             .withDescription("Socket timeout (in ms)")
             .withDefault(DEFAULT_SOCKET_TIMEOUT);
 
-    Integer initialRetryDelay;
-    Integer maxRetryDelay;
+    Duration initialRetryDelay;
+    Duration maxRetryDelay;
 
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(PROP_ADDRESS, PROP_USER, PROP_PASSWORD, PROP_KEY);
 
@@ -136,8 +137,8 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
         this.redisKeyName = this.config.getString(PROP_KEY);
         LOGGER.info("rediskeyname:" + this.redisKeyName);
         // load retry settings
-        this.initialRetryDelay = this.config.getInteger(PROP_RETRY_INITIAL_DELAY);
-        this.maxRetryDelay = this.config.getInteger(PROP_RETRY_MAX_DELAY);
+        this.initialRetryDelay = Duration.ofMillis(this.config.getInteger(PROP_RETRY_INITIAL_DELAY));
+        this.maxRetryDelay = Duration.ofMillis(this.config.getInteger(PROP_RETRY_MAX_DELAY));
         // load connection timeout settings
         this.connectionTimeout = this.config.getInteger(PROP_CONNECTION_TIMEOUT);
         this.socketTimeout = this.config.getInteger(PROP_SOCKET_TIMEOUT);

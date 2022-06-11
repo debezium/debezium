@@ -45,8 +45,8 @@ import io.debezium.util.Strings;
 public abstract class BaseSourceTask<P extends Partition, O extends OffsetContext> extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
-    private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
-    private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
+    private static final Duration INITIAL_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.SECONDS.toMillis(5));
+    private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
 
     protected static enum State {
         RUNNING,
@@ -90,7 +90,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
-        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
+        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS , MAX_POLL_PERIOD_IN_MILLIS);
 
         // Initial our poll output delay logic ...
         pollOutputDelay.hasElapsed();

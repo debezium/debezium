@@ -7,6 +7,7 @@ package io.debezium.util;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Before;
@@ -64,7 +65,7 @@ public class ElapsedTimeStrategyTest {
     @Test
     public void testLinearDelay() {
         clock.advanceTo(100);
-        delay = ElapsedTimeStrategy.linear(clock, 100);
+        delay = ElapsedTimeStrategy.linear(clock, Duration.ofMillis(100));
         // Initial call should always be true ...
         assertElapsed();
         // next stop at 100+(100*1)=200
@@ -106,7 +107,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(100);
         // start out before the step ...
         AtomicBoolean step = new AtomicBoolean(false);
-        delay = ElapsedTimeStrategy.step(clock, 10, step::get, 100);
+        delay = ElapsedTimeStrategy.step(clock, Duration.ofMillis(10), step::get, Duration.ofMillis(100));
 
         // Initial call should always be true ...
         assertElapsed();
@@ -169,7 +170,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(100);
         // start out before the step ...
         AtomicBoolean step = new AtomicBoolean(true);
-        delay = ElapsedTimeStrategy.step(clock, 10, step::get, 100);
+        delay = ElapsedTimeStrategy.step(clock, Duration.ofMillis(10), step::get, Duration.ofMillis(100));
 
         // Initial call should always be true ...
         assertElapsed();
@@ -229,7 +230,7 @@ public class ElapsedTimeStrategyTest {
     @Test
     public void testExponentialDelay() {
         clock.advanceTo(100);
-        delay = ElapsedTimeStrategy.exponential(clock, 100, 4000);
+        delay = ElapsedTimeStrategy.exponential(clock, Duration.ofMillis(100), Duration.ofMillis(4000));
         // Initial call should always be true ...
         assertElapsed();
         // next stop at 100+(100)=200

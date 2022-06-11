@@ -5,6 +5,7 @@
  */
 package io.debezium.util;
 
+import java.time.Duration;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -46,10 +47,12 @@ public interface DelayStrategy {
      * Create a delay strategy that applies a constant delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
      *
-     * @param delayInMilliseconds the initial delay; must be positive
+     * @param delay the initial delay; must be positive
      * @return the strategy; never null
      */
-    public static DelayStrategy constant(long delayInMilliseconds) {
+    public static DelayStrategy constant(Duration delay) {
+        long delayInMilliseconds = delay.toMillis();
+
         return (criteria) -> {
             if (!criteria) {
                 return false;
@@ -68,10 +71,11 @@ public interface DelayStrategy {
      * Create a delay strategy that applies an linearly-increasing delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
      *
-     * @param delayInMilliseconds the initial delay; must be positive
+     * @param delay the initial delay; must be positive
      * @return the strategy; never null
      */
-    public static DelayStrategy linear(long delayInMilliseconds) {
+    public static DelayStrategy linear(Duration delay) {
+        long delayInMilliseconds = delay.toMillis();
         if (delayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
         }
@@ -102,12 +106,12 @@ public interface DelayStrategy {
      * Create a delay strategy that applies an exponentially-increasing delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
      *
-     * @param initialDelayInMilliseconds the initial delay; must be positive
-     * @param maxDelayInMilliseconds the maximum delay; must be greater than the initial delay
+     * @param initialDelay the initial delay; must be positive
+     * @param maxDelay the maximum delay; must be greater than the initial delay
      * @return the strategy; never null
      */
-    public static DelayStrategy exponential(long initialDelayInMilliseconds, long maxDelayInMilliseconds) {
-        return exponential(initialDelayInMilliseconds, maxDelayInMilliseconds, 2.0);
+    public static DelayStrategy exponential(Duration initialDelay, Duration maxDelay) {
+        return exponential(initialDelay.toMillis(), maxDelay.toMillis(), 2.0);
     }
 
     /**

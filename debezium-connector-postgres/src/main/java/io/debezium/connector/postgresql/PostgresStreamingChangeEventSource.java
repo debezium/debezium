@@ -89,7 +89,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
-        pauseNoMessage = DelayStrategy.constant(taskContext.getConfig().getPollInterval().toMillis());
+        pauseNoMessage = DelayStrategy.constant(taskContext.getConfig().getPollInterval());
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
         this.replicationConnection = replicationConnection;
