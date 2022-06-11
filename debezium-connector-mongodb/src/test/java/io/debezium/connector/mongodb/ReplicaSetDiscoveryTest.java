@@ -30,7 +30,6 @@ public class ReplicaSetDiscoveryTest {
     private MongoDbTaskContext context;
     private ConnectionContext connectionContext;
     private MongoClient mongoClient;
-    private String seedHosts = "host1:27017,host2:27017";
 
     @Before
     public void setup() {
@@ -38,8 +37,7 @@ public class ReplicaSetDiscoveryTest {
         connectionContext = mock(ConnectionContext.class);
         mongoClient = mock(MongoClient.class);
         when(context.getConnectionContext()).thenReturn(connectionContext);
-        when(connectionContext.hosts()).thenReturn(seedHosts);
-        when(connectionContext.clientFor(seedHosts)).thenReturn(mongoClient);
+        when(connectionContext.clientForSeedConnection()).thenReturn(mongoClient);
         replicaSetDiscovery = new ReplicaSetDiscovery(context);
     }
 

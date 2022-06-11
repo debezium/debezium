@@ -45,7 +45,7 @@ public class ReplicaSetDiscovery {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReplicaSetDiscovery.class);
 
     private final MongoDbTaskContext context;
-    private final String seedAddresses;
+    private final String connectionSeed;
 
     /**
      * Create a cluster component.
@@ -54,7 +54,7 @@ public class ReplicaSetDiscovery {
      */
     public ReplicaSetDiscovery(MongoDbTaskContext context) {
         this.context = context;
-        this.seedAddresses = context.getConnectionContext().hosts();
+        this.connectionSeed = context.getConnectionContext().connectionSeed();
     }
 
     /**
@@ -64,7 +64,8 @@ public class ReplicaSetDiscovery {
      * @return the information about the replica sets; never null but possibly empty
      */
     public ReplicaSets getReplicaSets() {
-        MongoClient client = context.getConnectionContext().clientFor(seedAddresses);
+        ConnectionContext connectionContext = context.getConnectionContext();
+        MongoClient client = connectionContext.clientForSeedConnection();
         Set<ReplicaSet> replicaSetSpecs = new HashSet<>();
 
         final ClusterDescription clusterDescription = MongoUtil.clusterDescription(client);
@@ -74,7 +75,7 @@ public class ReplicaSetDiscovery {
             String shardsCollection = "shards";
             try {
                 MongoUtil.onCollectionDocuments(client, CONFIG_DATABASE_NAME, shardsCollection, doc -> {
-                    LOGGER.info("Checking shard details from configuration replica set {}", seedAddresses);
+                    LOGGER.info("Checking shard details from configuration replica set {}", connectionSeed);
                     String shardName = doc.getString("_id");
                     String hostStr = doc.getString("host");
                     String replicaSetName = MongoUtil.replicaSetUsedIn(hostStr);
@@ -93,7 +94,7 @@ public class ReplicaSetDiscovery {
         }
 
         if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
-            LOGGER.info("Checking current members of replica set at {}", seedAddresses);
+            LOGGER.info("Checking current members of replica set at {}", connectionSeed);
             final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions().stream()
                     .filter(x -> x.getState() == ServerConnectionState.CONNECTED).collect(Collectors.toList());
             if (serverDescriptions.size() == 0) {
@@ -110,7 +111,7 @@ public class ReplicaSetDiscovery {
             // Without a replica sets, we can't do anything ...
             LOGGER.error(
                     "Found no replica sets at {}, so there is nothing to monitor and no connector tasks will be started. Check seed addresses in connector configuration.",
-                    seedAddresses);
+                    connectionSeed);
         }
         return new ReplicaSets(replicaSetSpecs);
     }
