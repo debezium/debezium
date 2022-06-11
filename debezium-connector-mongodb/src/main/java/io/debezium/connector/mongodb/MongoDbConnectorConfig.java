@@ -7,9 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -204,7 +202,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field HOSTS = Field.create("mongodb.hosts")
             .withDisplayName("Hosts")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(MongoDbConnectorConfig::validateHosts)
@@ -226,7 +224,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Database user for connecting to MongoDB, if necessary.");
@@ -234,7 +232,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field PASSWORD = Field.create("mongodb.password")
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Password to be used when connecting to MongoDB, if necessary.");
@@ -242,7 +240,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field CONNECTION_STRING = Field.create("mongodb.connection.string")
             .withDisplayName("Connection String")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(MongoDbConnectorConfig::validateConnectionString)
@@ -259,7 +257,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(30_000L)
@@ -325,11 +323,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
             .withDisplayName("Auto-discovery")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
-            .withValidation(Field::isBoolean)
+            .withValidation(Field::isBoolean, MongoDbConnectorConfig::validateAutodiscovery)
             .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
                     + "used to discover all members of the cluster or replica set ('true'), "
                     + "or whether the address(es) in 'hosts' should be used as is ('false'). "
@@ -504,6 +502,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
+                    CONNECTION_STRING,
                     HOSTS,
                     USER,
                     PASSWORD,
@@ -563,63 +562,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
     }
 
-    public static Configuration translateConfigProperties(Configuration base) {
-        if (!base.hasKey(CONNECTION_STRING)) {
-            return base;
-        }
-
-        String rawConnectionString = base.getString(CONNECTION_STRING);
-        LOGGER.info("Using configuration from connection string '" + rawConnectionString + "'");
-
-        final ConnectionString cs = new ConnectionString(rawConnectionString);
-
-        final String hosts = hostsFromConnectionString(cs);
-        final boolean sslEnabled = Objects.requireNonNullElse(cs.getSslEnabled(), base.getBoolean(SSL_ENABLED));
-        final boolean sslAllowInvalidHostnames = Objects.requireNonNullElse(cs.getSslInvalidHostnameAllowed(), base.getBoolean(SSL_ALLOW_INVALID_HOSTNAMES));
-        final int connectTimeoutMs = Objects.requireNonNullElse(cs.getConnectTimeout(), base.getInteger(CONNECT_TIMEOUT_MS));
-        final int socketTimeoutMs = Objects.requireNonNullElse(cs.getSocketTimeout(), base.getInteger(SOCKET_TIMEOUT_MS));
-        final int serverSelectionTimeoutMs = Objects.requireNonNullElse(cs.getServerSelectionTimeout(), base.getInteger(SERVER_SELECTION_TIMEOUT_MS));
-
-        Configuration.Builder translatedConfig = base.edit()
-                .with(HOSTS, hosts)
-                .with(SSL_ENABLED, sslEnabled)
-                .with(SSL_ALLOW_INVALID_HOSTNAMES, sslAllowInvalidHostnames)
-                .with(CONNECT_TIMEOUT_MS, connectTimeoutMs)
-                .with(SOCKET_TIMEOUT_MS, socketTimeoutMs)
-                .with(SERVER_SELECTION_TIMEOUT_MS, serverSelectionTimeoutMs);
-
-        if (cs.getUsername() != null) {
-            translatedConfig.withDefault(USER, cs.getUsername());
-        }
-        if (cs.getPassword() != null) {
-            translatedConfig.withDefault(PASSWORD, String.valueOf(cs.getPassword()));
-        }
-
-        return translatedConfig.build();
-    }
-
-    private static String hostsFromConnectionString(ConnectionString cs) {
-        String rsName = cs.getRequiredReplicaSetName();
-        String hosts = String.join(",", cs.getHosts());
-
-        if (rsName != null && !rsName.isEmpty()) {
-            return rsName + "/" + hosts;
-        }
-        return hosts;
-    }
-
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
-        if (config.hasKey(CONNECTION_STRING)) {
-            return 0;
-        }
-
         String hosts = config.getString(field);
-        if (hosts == null) {
-            problems.accept(field, hosts, "Host specification is required");
+        String connectionString = config.getString(CONNECTION_STRING);
+
+        if (hosts == null && connectionString == null) {
+            problems.accept(field, hosts, "Host specification or connection string is required");
             return 1;
         }
+
         int count = 0;
-        if (ReplicaSets.parse(hosts).all().isEmpty()) {
+        if (hosts != null && ReplicaSets.parse(hosts).all().isEmpty()) {
             problems.accept(field, hosts, "Invalid host specification");
             ++count;
         }
@@ -627,32 +580,27 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
-        final List<Field> exclusive = List.of(
-                SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES, SOCKET_TIMEOUT_MS, CONNECT_TIMEOUT_MS,
-                SERVER_SELECTION_TIMEOUT_MS, USER, PASSWORD, AUTH_SOURCE);
-
         String value = config.getString(field);
-        Optional<Field> conflict = exclusive.stream().filter(k -> config.keys().contains(k)).findAny();
-
-        if (conflict.isPresent()) {
-            problems.accept(field, value, "Connection string used together with conflicting property");
-            return 1;
-        }
 
         try {
-            ConnectionString cs = new ConnectionString(value);
-            String hosts = hostsFromConnectionString(cs);
-            int count = 0;
-            if (ReplicaSets.parse(hosts).all().isEmpty()) {
-                problems.accept(field, hosts, "Invalid host specification extracted from connection string");
-                ++count;
+            if (value != null) {
+                ConnectionString cs = new ConnectionString(value);
             }
-            return count;
         }
         catch (Exception e) {
             problems.accept(field, value, "Connection string is invalid");
             return 1;
         }
+        return 0;
+    }
+
+    private static int validateAutodiscovery(Configuration config, Field field, ValidationOutput problems) {
+        boolean value = config.getBoolean(field);
+        if (!value && config.hasKey(CONNECTION_STRING)) {
+            problems.accept(field, value, "Connection string requires autodiscovery");
+            return 1;
+        }
+        return 0;
     }
 
     private static int validateFieldExcludeList(Configuration config, Field field, ValidationOutput problems) {

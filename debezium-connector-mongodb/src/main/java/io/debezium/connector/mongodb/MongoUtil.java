@@ -14,7 +14,6 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.mongodb.connection.ClusterType;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.Document;
