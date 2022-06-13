@@ -18,13 +18,23 @@ git -C /testsuite/debezium log -1
 
 mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 
-#prepare ocp, run tests
+# create projects
 ${OCP_PROJECTS} --project "${OCP_PROJECT_DEBEZIUM}" --create
 
+# prepare strimzi
 clone_strimzi --strimzi-repository "${STRZ_GIT_REPOSITORY}" --strimzi-branch "${STRZ_GIT_BRANCH}" --product-build "${PRODUCT_BUILD}" --strimzi-downstream "${OCP_STRIMZI_DOWNSTREAM_URL}";
 sed -i 's/namespace: .*/namespace: '"${OCP_PROJECT_DEBEZIUM}"'/' strimzi/install/cluster-operator/*RoleBinding*.yaml ;
-
 oc create -f strimzi/install/cluster-operator/ -n "${OCP_PROJECT_DEBEZIUM}" ;
+
+#prepare apicurio
+AVRO_PATTERN='.*!avro.*'
+if [[ ! ${GROUPS_ARG} =~ ${AVRO_PATTERN} ]]; then
+  APICURIO_RESOURCE="install/apicurio-registry-operator-1.1.0-dev.yaml"
+
+  clone_apicurio
+  sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${OCP_PROJECT_REGISTRY}/" apicurio/install/*.yaml
+  oc create -f apicurio/${APICURIO_RESOURCE} -n "${OCP_PROJECT_REGISTRY}" ;
+fi
 
 pushd ${DEBEZIUM_LOCATION} || exit 1;
 
@@ -38,22 +48,22 @@ if [ -n "${DBZ_CONNECT_IMAGE}" ]; then
   TEST_PROPERTIES="$TEST_PROPERTIES -Dimage.kc=${DBZ_CONNECT_IMAGE}" ;
 fi
 
-# TODO install odbc, xstreams??
-
 mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Docp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \
+                    -Docp.project.db2="${OCP_PROJECT_DB2}" \
+                    -Docp.project.mongo="${OCP_PROJECT_MONGO}" \
                     -Docp.project.mysql="${OCP_PROJECT_MYSQL}" \
                     -Docp.project.oracle="${OCP_PROJECT_ORACLE}" \
                     -Docp.project.postgresql="${OCP_PROJECT_POSTGRESQL}" \
                     -Docp.project.sqlserver="${OCP_PROJECT_SQLSERVER}" \
-                    -Docp.project.mongo="${OCP_PROJECT_MONGO}" \
-                    -Docp.project.db2="${OCP_PROJECT_DB2}" \
+                    -Docp.project.registry="${OCP_PROJECT_REGISTRY}" \
                     -Docp.pull.secret.paths="${SECRET_PATH}" \
                     -Dtest.wait.scale="${TEST_WAIT_SCALE}" \
-                    -Dtest.strimzi.kc.build="${PRODUCT_BUILD}" \
+                    -Dtest.strimzi.kc.build="${STRIMZI_KC_BUILD}" \
                     -Dimage.kc="${DBZ_CONNECT_IMAGE}" \
                     -Dimage.as="${ARTIFACT_SERVER_IMAGE}" \
-                    -Dgroups="${GROUPS}"
+                    -Das.apicurio.version="${APICURIO_VERSION}" \
+                    -Dgroups="${GROUPS_ARG}"
 
 popd || exit 1;
 
