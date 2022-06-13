@@ -870,6 +870,7 @@ public abstract class CommonConnectorConfig {
                 case "u":
                 case "d":
                 case "t":
+                case "n":
                     operationsSpecified = true;
                     continue;
                 default:
