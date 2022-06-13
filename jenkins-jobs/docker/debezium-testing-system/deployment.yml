@@ -33,20 +33,28 @@ spec:
               value: "debezium-test-postgresql"
             - name: OCP_PROJECT_SQLSERVER
               value: "debezium-test-sqlserver"
+            - name: OCP_PROJECT_REGISTRY
+              value: "debezium-test-registry"
             - name: SECRET_PATH
               value: "/testsuite/secret.yml"
             - name: TEST_WAIT_SCALE
               value: "10"
             - name: PRODUCT_BUILD
               value: "false"
-            - name: DBZ_CONNECT_IMAGE 
+            - name: STRIMZI_KC_BUILD
+              value: "true"
+            - name: DBZ_CONNECT_IMAGE
               value: "quay.io/rh_integration/test-strimzi-kafka:strz-latest-kafka-3.1.0-apc-2.2.3.Final-dbz-2.0.0-SNAPSHOT"
-            - name: GROUPS
-              value: "oracle & !avro & !docker"
+            - name: ARTIFACT_SERVER_IMAGE
+              value: "quay.io/rh_integration/test-artifact-server:2.0.0-SNAPSHOT"
+            - name: APICURIO_VERSION
+              value: "2.2.3.Final"
+            - name: GROUPS_ARG
+              value: "postgresql & !docker"
             - name: DELETE_PROJECTS
               value: "true"
   triggers:
     - type: "ConfigChange" 
   paused: false 
   revisionHistoryLimit: 2 
-  minReadySeconds: 0 
+  minReadySeconds: 0
