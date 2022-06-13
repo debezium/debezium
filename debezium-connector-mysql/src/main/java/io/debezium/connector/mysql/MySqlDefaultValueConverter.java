@@ -57,7 +57,7 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
 
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
 
-    private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^[_A-Za-z0-9]*'(.*)'$");
+    private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^_[A-Za-z0-9]+'(.*)'$");
 
     @Immutable
     private static final Set<Integer> TRIM_DATA_TYPES = Collect.unmodifiableSet(Types.TINYINT, Types.INTEGER,
