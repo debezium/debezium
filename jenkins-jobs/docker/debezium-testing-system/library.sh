@@ -23,7 +23,8 @@ clone_strimzi()
     done
 
     if [ "${PRODUCT_BUILD}" = false ] ;
-    then 
+    then
+      # TODO why clone AND checkout?
         git clone --branch "${STRIMZI_BRANCH}" "${STRIMZI_REPO}" strimzi && git -C strimzi checkout "${STRIMZI_BRANCH}" || exit 2 ;
     elif [ -z "${STRIMZI_DOWNSTREAM_URL}" ] ;
     then 
@@ -33,4 +34,14 @@ clone_strimzi()
         unzip /tmp/strimzi_downstream.zip -d strimzi ;
         rm /tmp/strimzi_downstream.zip ;
     fi ;
-}   
+}
+
+# TODO downstream apicurio?
+clone_apicurio()
+{
+  local APICURIO_REPO="https://github.com/Apicurio/apicurio-registry-operator.git" ;
+  local APICURIO_BRANCH="master" ;
+
+  # TODO why clone AND checkout?
+  git clone --branch "${APICURIO_BRANCH}" "${APICURIO_REPO}" apicurio && git -C apicurio checkout "${APICURIO_BRANCH}" || exit 2 ;
+}
