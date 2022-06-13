@@ -246,7 +246,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 // In this situation if not document is available, we'll pause.
                 final BsonDocument event = cursor.tryNext();
                 if (event != null) {
-                    if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog())) {
+                    if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getDisableOperationFilter())) {
                         // Something happened and we are supposed to stop reading
                         return;
                     }
@@ -431,7 +431,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private boolean handleOplogEvent(ServerAddress primaryAddress, BsonDocument event, BsonDocument masterEvent, long txOrder,
-                                     ReplicaSetOplogContext oplogContext, boolean isRawOplogEnabled) {
+                                     ReplicaSetOplogContext oplogContext, boolean isRawOplogEnabled, boolean disableOperationFilter) {
         String ns = event.getString("ns").getValue();
         BsonDocument object = event.getDocument(OBJECT_FIELD);
         if (Objects.isNull(object)) {
@@ -485,7 +485,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             LOGGER.debug("Skipping record as it is expected to be already processed: {}", change);
                             continue;
                         }
-                        final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, txOrder, oplogContext, connectorConfig.getEnableRawOplog());
+                        final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getDisableOperationFilter());
                         if (!r) {
                             return false;
                         }
@@ -497,7 +497,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             try {
                 dispatcher.dispatchTransactionStartedEvent(oplogContext.getPartition(), getTransactionId(event), oplogContext.getOffset());
                 for (BsonValue change : txChanges) {
-                    final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog());
+                    final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getDisableOperationFilter());
                     if (!r) {
                         return false;
                     }
@@ -512,7 +512,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
 
         final String operation = event.getString(OPERATION_FIELD).getValue();
-        if (!MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
+        if (!disableOperationFilter && !MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
             LOGGER.debug("Skipping event with \"op={}\"", operation);
             return true;
         }
