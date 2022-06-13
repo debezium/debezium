@@ -34,10 +34,18 @@ public class TableChanges implements Iterable<TableChange> {
     }
 
     public TableChanges alter(Table table) {
-        return alter(table, null);
+        changes.add(new TableChange(TableChangeType.ALTER, table));
+        return this;
     }
 
-    public TableChanges alter(Table table, TableId previousId) {
+    public TableChanges alter(TableChange change) {
+        if (change.getPreviousId() == null) {
+            return alter(change.getTable());
+        }
+        return rename(change.getTable(), change.getPreviousId());
+    }
+
+    public TableChanges rename(Table table, TableId previousId) {
         changes.add(new TableChange(TableChangeType.ALTER, table, previousId));
         return this;
     }
@@ -167,6 +175,7 @@ public class TableChanges implements Iterable<TableChange> {
         public String toString() {
             return "TableChange [type=" + type + ", id=" + id + ", previousId=" + previousId + ", table=" + table + "]";
         }
+
     }
 
     /**

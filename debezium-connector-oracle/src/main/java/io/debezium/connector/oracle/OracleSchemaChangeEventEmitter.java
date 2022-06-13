@@ -26,7 +26,6 @@ import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 
@@ -127,17 +126,14 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
 
     private SchemaChangeEvent createTableEvent(OraclePartition partition, TableCreatedEvent event) {
         offsetContext.tableEvent(tableId, changeTime);
-        return new SchemaChangeEvent(
-                partition.getSourcePartition(),
-                offsetContext.getOffset(),
-                offsetContext.getSourceInfo(),
+        return SchemaChangeEvent.ofCreate(
+                partition,
+                offsetContext,
                 tableId.catalog(),
                 tableId.schema(),
                 event.statement(),
                 schema.tableFor(event.tableId()),
-                SchemaChangeEventType.CREATE,
-                false,
-                null);
+                false);
     }
 
     private SchemaChangeEvent alterTableEvent(OraclePartition partition, TableAlteredEvent event) {
@@ -146,31 +142,35 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         tableIds.add(event.tableId());
 
         offsetContext.tableEvent(tableIds, changeTime);
-        return new SchemaChangeEvent(
-                partition.getSourcePartition(),
-                offsetContext.getOffset(),
-                offsetContext.getSourceInfo(),
-                tableId.catalog(),
-                tableId.schema(),
-                event.statement(),
-                schema.tableFor(event.tableId()),
-                SchemaChangeEventType.ALTER,
-                false,
-                tableId);
+        if (tableId == null) {
+            return SchemaChangeEvent.ofAlter(
+                    partition,
+                    offsetContext,
+                    tableId.catalog(),
+                    tableId.schema(),
+                    event.statement(),
+                    schema.tableFor(event.tableId()));
+        }
+        else {
+            return SchemaChangeEvent.ofRename(
+                    partition,
+                    offsetContext,
+                    tableId.catalog(),
+                    tableId.schema(),
+                    event.statement(),
+                    schema.tableFor(event.tableId()),
+                    tableId);
+        }
     }
 
     private SchemaChangeEvent dropTableEvent(OraclePartition partition, Table tableSchemaBeforeDrop, TableDroppedEvent event) {
         offsetContext.tableEvent(tableId, changeTime);
-        return new SchemaChangeEvent(
-                partition.getSourcePartition(),
-                offsetContext.getOffset(),
-                offsetContext.getSourceInfo(),
+        return SchemaChangeEvent.ofDrop(
+                partition,
+                offsetContext,
                 tableId.catalog(),
                 tableId.schema(),
                 event.statement(),
-                tableSchemaBeforeDrop,
-                SchemaChangeEventType.DROP,
-                false,
-                null);
+                tableSchemaBeforeDrop);
     }
 }

@@ -59,7 +59,7 @@ public class OracleDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
                 TestHelper.getDatabaseName(),
                 "DEBEZIUM",
                 "ALTER TABLE DBZ4451A RENAME TO DBZ4451B;",
-                new TableChanges().alter(table, oldTableId),
+                new TableChanges().rename(table, oldTableId),
                 Instant.now());
     }
 
