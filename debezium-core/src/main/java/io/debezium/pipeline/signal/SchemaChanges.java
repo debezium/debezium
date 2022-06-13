@@ -8,7 +8,6 @@ package io.debezium.pipeline.signal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.document.Array;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
@@ -20,7 +19,6 @@ import io.debezium.relational.history.TableChanges;
 import io.debezium.relational.history.TableChanges.TableChangeType;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 
 public class SchemaChanges<P extends Partition> implements Signal.Action<P> {
 
@@ -61,9 +59,13 @@ public class SchemaChanges<P extends Partition> implements Signal.Action<P> {
             if (dispatcher.getHistorizedSchema() != null) {
                 LOGGER.info("Executing schema change for table '{}' requested by signal '{}'", tableChange.getId(), signalPayload.id);
                 dispatcher.dispatchSchemaChangeEvent(signalPayload.partition, tableChange.getId(), emitter -> {
-                    emitter.schemaChangeEvent(new SchemaChangeEvent(signalPayload.partition.getSourcePartition(),
-                            signalPayload.offsetContext.getOffset(), signalPayload.source, database, schema, null,
-                            tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false, tableChange.getPreviousId()));
+                    emitter.schemaChangeEvent(SchemaChangeEvent.ofTableChange(
+                            tableChange,
+                            signalPayload.partition.getSourcePartition(),
+                            signalPayload.offsetContext.getOffset(),
+                            signalPayload.source,
+                            database,
+                            schema));
                 });
             }
             else if (dispatcher.getSchema() instanceof RelationalDatabaseSchema) {
@@ -75,17 +77,5 @@ public class SchemaChanges<P extends Partition> implements Signal.Action<P> {
             }
         }
         return true;
-    }
-
-    private SchemaChangeEvent.SchemaChangeEventType toSchemaChangeEventType(TableChanges.TableChangeType type) {
-        switch (type) {
-            case CREATE:
-                return SchemaChangeEventType.CREATE;
-            case ALTER:
-                return SchemaChangeEventType.ALTER;
-            case DROP:
-                return SchemaChangeEventType.DROP;
-        }
-        throw new DebeziumException("Unknown table change event type " + type);
     }
 }

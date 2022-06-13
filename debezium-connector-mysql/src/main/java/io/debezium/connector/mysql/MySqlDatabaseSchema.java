@@ -291,9 +291,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             else {
                 offset.databaseEvent(databaseName, sourceTime);
                 schemaChangeEvents
-                        .add(new SchemaChangeEvent(partition.getSourcePartition(), offset.getOffset(),
-                                offset.getSourceInfo(), databaseName, null, ddlStatements, (Table) null,
-                                SchemaChangeEventType.DATABASE, snapshot, null));
+                        .add(SchemaChangeEvent.ofDatabase(partition, offset, databaseName, ddlStatements, snapshot));
             }
         }
         else {
@@ -305,8 +303,15 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private void emitChangeEvent(MySqlPartition partition, MySqlOffsetContext offset, List<SchemaChangeEvent> schemaChangeEvents,
                                  final String sanitizedDbName, Event event, TableId tableId, SchemaChangeEventType type,
                                  boolean snapshot) {
-        schemaChangeEvents.add(new SchemaChangeEvent(partition.getSourcePartition(), offset.getOffset(), offset.getSourceInfo(),
-                sanitizedDbName, null, event.statement(), tableId != null ? tableFor(tableId) : null, type, snapshot, null));
+        schemaChangeEvents.add(SchemaChangeEvent.of(
+                type,
+                partition,
+                offset,
+                sanitizedDbName,
+                null,
+                event.statement(),
+                tableId != null ? tableFor(tableId) : null,
+                snapshot));
     }
 
     private boolean acceptableDatabase(final String databaseName) {

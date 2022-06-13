@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import java.time.Instant;
 import java.util.Collections;
-import java.util.Map;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
@@ -25,6 +23,7 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.AbstractDatabaseHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.TableChanges;
+import io.debezium.util.Collect;
 
 import oracle.jdbc.OracleTypes;
 
@@ -38,13 +37,12 @@ public class OracleDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
     @Override
     protected HistoryRecord getRenameCreateHistoryRecord() {
         return new HistoryRecord(
-                Map.of("server", TestHelper.SERVER_NAME),
-                Map.of("snapshot_scn", "1", "snapshot", true, "scn", "1", "snapshot_completed", false),
+                Collect.hashMapOf("server", TestHelper.SERVER_NAME),
+                Collect.hashMapOf("snapshot_scn", "1", "snapshot", true, "scn", "1", "snapshot_completed", false),
                 TestHelper.getDatabaseName(),
                 "DEBEZIUM",
                 "CREATE TABLE \"DEBEZIUM\".\"DBZ4451A\" (\"ID\" NUMBER(9,0), PRIMARY KEY(\"ID\");",
-                new TableChanges().create(getTableToBeRenamed()),
-                Instant.now());
+                new TableChanges().create(getTableToBeRenamed()));
     }
 
     @Override
@@ -54,13 +52,12 @@ public class OracleDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
         final Table table = oldTable.edit().tableId(getRenameTableId()).create();
 
         return new HistoryRecord(
-                Map.of("server", TestHelper.SERVER_NAME),
-                Map.of("snapshot_scn", "2", "scn", "2", "commit_scn", "2"),
+                Collect.hashMapOf("server", TestHelper.SERVER_NAME),
+                Collect.hashMapOf("snapshot_scn", "2", "scn", "2", "commit_scn", "2"),
                 TestHelper.getDatabaseName(),
                 "DEBEZIUM",
                 "ALTER TABLE DBZ4451A RENAME TO DBZ4451B;",
-                new TableChanges().alter(table, oldTableId),
-                Instant.now());
+                new TableChanges().rename(table, oldTableId));
     }
 
     @Override
@@ -70,7 +67,7 @@ public class OracleDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
 
     @Override
     protected Offsets<Partition, OffsetContext> getOffsets() {
-        final OraclePartition source = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.getDatabaseName());
+        final OraclePartition source = new OraclePartition(TestHelper.SERVER_NAME);
         final Configuration config = Configuration.empty()
                 .edit()
                 .with(RelationalDatabaseConnectorConfig.SERVER_NAME, TestHelper.SERVER_NAME)
