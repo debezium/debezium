@@ -25,7 +25,6 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
 /**
@@ -226,17 +225,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                     Table table)
             throws SQLException {
-        return new SchemaChangeEvent(
-                snapshotContext.partition.getSourcePartition(),
-                snapshotContext.offset.getOffset(),
-                snapshotContext.offset.getSourceInfo(),
+        return SchemaChangeEvent.ofCreate(
+                snapshotContext.partition,
+                snapshotContext.offset,
                 snapshotContext.catalogName,
                 table.id().schema(),
                 jdbcConnection.getTableMetadataDdl(table.id()),
                 table,
-                SchemaChangeEventType.CREATE,
-                true,
-                null);
+                true);
     }
 
     /**

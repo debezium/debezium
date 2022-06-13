@@ -26,7 +26,6 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
 public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> {
@@ -205,17 +204,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
                                                     Table table)
             throws SQLException {
-        return new SchemaChangeEvent(
-                snapshotContext.partition.getSourcePartition(),
-                snapshotContext.offset.getOffset(),
-                snapshotContext.offset.getSourceInfo(),
-                snapshotContext.catalogName,
-                table.id().schema(),
-                null,
-                table,
-                SchemaChangeEventType.CREATE,
-                true,
-                null);
+        return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.catalogName, table);
     }
 
     @Override

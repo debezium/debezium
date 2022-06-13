@@ -13,6 +13,9 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.DebeziumException;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges;
@@ -37,14 +40,14 @@ public class SchemaChangeEvent {
     private final Instant timestamp;
     private TableChanges tableChanges = new TableChanges();
 
-    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
-                             SchemaChangeEventType type, boolean isFromSnapshot, TableId previousTableId) {
+    private SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
+                              SchemaChangeEventType type, boolean isFromSnapshot, TableId previousTableId) {
         this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : Collections.emptySet(),
                 type, isFromSnapshot, Clock.SYSTEM.currentTimeAsInstant(), previousTableId);
     }
 
-    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Set<Table> tables,
-                             SchemaChangeEventType type, boolean isFromSnapshot, Instant timestamp, TableId previousTableId) {
+    private SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Set<Table> tables,
+                              SchemaChangeEventType type, boolean isFromSnapshot, Instant timestamp, TableId previousTableId) {
         this.partition = Objects.requireNonNull(partition, "partition must not be null");
         this.offset = Objects.requireNonNull(offset, "offset must not be null");
         this.source = Objects.requireNonNull(source, "source must not be null");
@@ -62,8 +65,13 @@ public class SchemaChangeEvent {
                 tables.forEach(tableChanges::create);
                 break;
             case ALTER:
-                // there is only ever 1 table within the set, so it's safe to apply the previousTableId like this
-                tables.forEach(t -> tableChanges.alter(t, previousTableId));
+                if (previousTableId == null) {
+                    tables.forEach(tableChanges::alter);
+                }
+                else {
+                    // there is only ever 1 table within the set, so it's safe to apply the previousTableId like this
+                    tables.forEach(t -> tableChanges.rename(t, previousTableId));
+                }
                 break;
             case DROP:
                 tables.forEach(tableChanges::drop);
@@ -133,5 +141,208 @@ public class SchemaChangeEvent {
         ALTER,
         DROP,
         DATABASE;
+    }
+
+    /**
+     * Create a schema change event for any event type that does not involve a table rename.
+     *
+     * @param type the schema change event type
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param schemaName the schema name
+     * @param ddl the schema change DDL statement
+     * @param table the affected relational table
+     * @param isFromSnapshot flag indicating whether the change is from snapshot
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent of(SchemaChangeEventType type, Partition partition, OffsetContext offsetContext,
+                                       String databaseName, String schemaName, String ddl, Table table, boolean isFromSnapshot) {
+        return new SchemaChangeEvent(
+                partition.getSourcePartition(),
+                offsetContext.getOffset(),
+                offsetContext.getSourceInfo(),
+                databaseName,
+                schemaName,
+                ddl,
+                table,
+                type,
+                isFromSnapshot,
+                null);
+    }
+
+    /**
+     * Create a schema change event for a {@link io.debezium.relational.history.TableChanges.TableChange}.
+     *
+     * @param change the table change event
+     * @param partition the partition
+     * @param offset the offsets
+     * @param source the source
+     * @param databaseName the database name
+     * @param schemaName the schema name
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofTableChange(TableChanges.TableChange change, Map<String, ?> partition, Map<String, ?> offset,
+                                                  Struct source, String databaseName, String schemaName) {
+        return new SchemaChangeEvent(
+                partition,
+                offset,
+                source,
+                databaseName,
+                schemaName,
+                null,
+                change.getTable(),
+                toSchemaChangeEventType(change.getType()),
+                false,
+                change.getPreviousId());
+    }
+
+    /**
+     * Create a schema change event for a database-specific DDL operation.
+     *
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param ddl the schema change DDL statement
+     * @param isFromSnapshot flag indicating whether the change is from snapshot
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofDatabase(Partition partition, OffsetContext offsetContext, String databaseName,
+                                               String ddl, boolean isFromSnapshot) {
+        return of(
+                SchemaChangeEventType.DATABASE,
+                partition,
+                offsetContext,
+                databaseName,
+                null,
+                ddl,
+                (Table) null,
+                isFromSnapshot);
+    }
+
+    /**
+     * Create a schema change event for a {@code CREATE TABLE} statement without DDL from snapshot phase.
+     *
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param table the affected relational table
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofSnapshotCreate(Partition partition, OffsetContext offsetContext, String databaseName,
+                                                     Table table) {
+        return ofCreate(partition, offsetContext, databaseName, table.id().schema(), null, table, true);
+    }
+
+    /**
+     * Create a schema change event for a {@code CREATE TABLE} statement with DDL.
+     *
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param schemaName the schema name
+     * @param ddl the schema change DDL statement
+     * @param table the affected relational table
+     * @param isFromSnapshot flag indicating whether the change is from snapshot
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofCreate(Partition partition, OffsetContext offsetContext, String databaseName,
+                                             String schemaName, String ddl, Table table, boolean isFromSnapshot) {
+        return of(
+                SchemaChangeEventType.CREATE,
+                partition,
+                offsetContext,
+                databaseName,
+                schemaName,
+                ddl,
+                table,
+                isFromSnapshot);
+    }
+
+    /**
+     * Create a schema change event for a {@code ALTER TABLE} event.
+     *
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param schemaName the schema name
+     * @param ddl the schema change DDL statement
+     * @param table the affected relational table
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofAlter(Partition partition, OffsetContext offsetContext, String databaseName,
+                                            String schemaName, String ddl, Table table) {
+        return of(
+                SchemaChangeEventType.ALTER,
+                partition,
+                offsetContext,
+                databaseName,
+                schemaName,
+                ddl,
+                table,
+                false);
+    }
+
+    /**
+     * Create a schema change event for a {@code ALTER TABLE RENAME} event.
+     *
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param schemaName the schema name
+     * @param ddl the schema change DDL statement
+     * @param table the affected relational table
+     * @param previousTableId the old, previous relational table identifier
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofRename(Partition partition, OffsetContext offsetContext, String databaseName,
+                                             String schemaName, String ddl, Table table, TableId previousTableId) {
+        return new SchemaChangeEvent(
+                partition.getSourcePartition(),
+                offsetContext.getOffset(),
+                offsetContext.getSourceInfo(),
+                databaseName,
+                schemaName,
+                ddl,
+                table,
+                SchemaChangeEventType.ALTER,
+                false,
+                previousTableId);
+    }
+
+    /**
+     * Create a schema change event for a {@code DROP TABLE} event.
+     *
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param schemaName the schema name
+     * @param ddl the schema change DDL statement
+     * @param table the affected relational table
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofDrop(Partition partition, OffsetContext offsetContext, String databaseName,
+                                           String schemaName, String ddl, Table table) {
+        return of(
+                SchemaChangeEventType.DROP,
+                partition,
+                offsetContext,
+                databaseName,
+                schemaName,
+                ddl,
+                table,
+                false);
+    }
+
+    private static SchemaChangeEvent.SchemaChangeEventType toSchemaChangeEventType(TableChanges.TableChangeType type) {
+        switch (type) {
+            case CREATE:
+                return SchemaChangeEventType.CREATE;
+            case ALTER:
+                return SchemaChangeEventType.ALTER;
+            case DROP:
+                return SchemaChangeEventType.DROP;
+        }
+        throw new DebeziumException("Unknown table change event type " + type);
     }
 }
