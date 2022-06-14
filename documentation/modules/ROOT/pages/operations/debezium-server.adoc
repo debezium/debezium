@@ -220,12 +220,12 @@ To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingS
 
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
-|`io.debezium.relational.history.KafkaDatabaseHistory`
+|`io.debezium.storage.kafka.history.KafkaDatabaseHistory`
 |Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) track the database schema evolution over time and stores this data in a database schema history.
 This is by default based on Kafka.
 There are also other options available
 
-* `io.debezium.relational.history.FileDatabaseHistory` for non-Kafka deployments
+* `io.debezium.storage.file.history.FileDatabaseHistory` for non-Kafka deployments
 * `io.debezium.relational.history.MemoryDatabaseHistory` volatile store for test environments
 * `io.debezium.server.redis.RedisDatabaseHistory` volatile store for test environments
 

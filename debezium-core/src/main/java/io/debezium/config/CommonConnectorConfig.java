@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -38,7 +37,6 @@ import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.relational.CustomConverterRegistry;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.spi.converter.ConvertedField;
@@ -879,18 +877,6 @@ public abstract class CommonConnectorConfig {
 
         return CONFLUENT_AVRO_CONVERTER.equals(keyConverter) || CONFLUENT_AVRO_CONVERTER.equals(valueConverter)
                 || APICURIO_AVRO_CONVERTER.equals(keyConverter) || APICURIO_AVRO_CONVERTER.equals(valueConverter);
-    }
-
-    public static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
-        String serverName = config.getString(field);
-        String historyTopicName = config.getString(KafkaDatabaseHistory.TOPIC);
-
-        if (Objects.equals(serverName, historyTopicName)) {
-            problems.accept(field, serverName, "Must not have the same value as " + KafkaDatabaseHistory.TOPIC.name());
-            return 1;
-        }
-
-        return 0;
     }
 
     /**

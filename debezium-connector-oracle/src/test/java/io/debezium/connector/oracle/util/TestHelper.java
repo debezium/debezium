@@ -24,7 +24,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 

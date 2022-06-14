@@ -18,11 +18,11 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -44,7 +44,11 @@ import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 import io.debezium.util.Strings;
 
 /**
@@ -133,7 +137,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "snapshot is taken.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field CONNECTOR_ADAPTER = Field.create(DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")
@@ -1458,6 +1462,31 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public TransactionSnapshotBoundaryMode getLogMiningTransactionSnapshotBoundaryMode() {
         return logMiningTransactionSnapshotBoundaryMode;
+    }
+
+    @Override
+    public DatabaseHistory getDatabaseHistory() {
+        Configuration config = getConfig();
+
+        DatabaseHistory databaseHistory = config.getInstance(OracleConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
+        if (databaseHistory == null) {
+            throw new ConnectException("Unable to instantiate the database history class " +
+                    config.getString(OracleConnectorConfig.DATABASE_HISTORY));
+        }
+
+        // Do not remove the prefix from the subset of config properties ...
+        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+                .edit()
+                .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, OracleConnectorConfig.class.getName())
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, getLogicalName())
+                .build();
+
+        HistoryRecordComparator historyComparator = getHistoryRecordComparator();
+        databaseHistory.configure(dbHistoryConfig, historyComparator,
+                new DatabaseHistoryMetrics(this, multiPartitionMode()), useCatalogBeforeSchema()); // validates
+
+        return databaseHistory;
     }
 
     @Override

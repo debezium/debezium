@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.history;
+package io.debezium.storage.kafka.history;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -58,6 +58,12 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.Validator;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
+import io.debezium.relational.history.AbstractDatabaseHistory;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryException;
+import io.debezium.relational.history.DatabaseHistoryListener;
+import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Collect;
 import io.debezium.util.Threads;
 
@@ -508,7 +514,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         return "Kafka topic";
     }
 
-    protected static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
+    public static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
         return CONSUMER_PREFIX + kafkaConsumerPropertyName;
     }
 

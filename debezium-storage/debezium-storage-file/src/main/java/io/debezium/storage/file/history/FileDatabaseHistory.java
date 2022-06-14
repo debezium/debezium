@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.history;
+package io.debezium.storage.file.history;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -26,6 +26,12 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
+import io.debezium.relational.history.AbstractDatabaseHistory;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryException;
+import io.debezium.relational.history.DatabaseHistoryListener;
+import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
 
@@ -37,7 +43,7 @@ import io.debezium.util.FunctionalReadWriteLock;
 @ThreadSafe
 public final class FileDatabaseHistory extends AbstractDatabaseHistory {
 
-    public static final Field FILE_PATH = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
+    public static final Field FILE_PATH = Field.create(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
             .withDescription("The path to the file that will be used to record the database history")
             .required();
 

@@ -86,7 +86,7 @@ Configuration config = Configuration.create()
         .with("database.server.id", 85744)
         .with("database.server.name", "my-app-connector")
         .with("database.history",
-              "io.debezium.relational.history.FileDatabaseHistory")
+              "io.debezium.storage.file.history.FileDatabaseHistory")
         .with("database.history.file.filename",
               "/path/to/storage/dbhistory.dat")
         .build();
@@ -138,7 +138,7 @@ The next few lines define the fields that are specific to the connector, which i
         .with("database.server.id", 85744)
         .with("database.server.name", "products")
         .with("database.history",
-              "io.debezium.relational.history.FileDatabaseHistory")
+              "io.debezium.storage.file.history.FileDatabaseHistory")
         .with("database.history.file.filename",
               "/path/to/storage/dbhistory.dat")
         .build();

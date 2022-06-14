@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 
 public class SqlServerConnectorConfigTest {
 

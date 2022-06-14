@@ -28,7 +28,7 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**

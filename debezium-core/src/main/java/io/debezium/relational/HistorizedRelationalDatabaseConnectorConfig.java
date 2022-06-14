@@ -19,7 +19,6 @@ import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 
 /**
  * Configuration options shared across the relational CDC connectors which use a persistent database schema history.
@@ -29,6 +28,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 public abstract class HistorizedRelationalDatabaseConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
+    public static final String DEFAULT_DATABASE_HISTORY = "io.debezium.storage.kafka.history.KafkaDatabaseHistory";
 
     private boolean useCatalogBeforeSchema;
     private final String logicalName;
@@ -48,18 +48,13 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
             .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
                     + "The configuration properties for the history are prefixed with the '"
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-            .withDefault(KafkaDatabaseHistory.class.getName());
+            .withDefault(DEFAULT_DATABASE_HISTORY);
 
     protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .history(
                     DATABASE_HISTORY,
-                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
                     DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL,
-                    KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-                    KafkaDatabaseHistory.TOPIC,
-                    KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
-                    KafkaDatabaseHistory.KAFKA_QUERY_TIMEOUT_MS)
+                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS)
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
@@ -100,12 +95,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         }
 
         // Do not remove the prefix from the subset of config properties ...
-        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
-                .edit()
-                .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
-                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
-                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, logicalName)
-                .build();
+        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false);
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
         databaseHistory.configure(dbHistoryConfig, historyComparator,
@@ -116,6 +106,10 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     public boolean useCatalogBeforeSchema() {
         return useCatalogBeforeSchema;
+    }
+
+    public boolean multiPartitionMode() {
+        return multiPartitionMode;
     }
 
     /**
