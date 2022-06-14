@@ -69,7 +69,7 @@ ignatan,Andrey Ignatenko
 zrlurb,Peter Urbanetz
 DLiseichykau,Victar Malinouski
 xuans,Xuan Shen
-kewenchao,WenChao Ke
+kewenchao,柯文超
 mengqiu,Meng Qiu
 wangzheng422,Zheng Wang
 martper2,Martín Pérez

@@ -85,6 +85,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private Scn snapshotScn;
     private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
+    private boolean catchingUp = false;
+    private Scn catchingUpEndScn = Scn.ONE;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                               OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
@@ -174,6 +176,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             continue;
                         }
 
+                        // If endScn exceeds the maximum scn of the current log, give up catch-up
+                        // If catchingUp is set to false then hasLogSwitchOccurred must be true, will reload the log file to logminer
+                        if (catchingUp) {
+                            if (endScn.compareTo(catchingUpEndScn) >= 0) {
+                                catchingUp = false;
+                            }
+                        }
+
                         flushStrategy.flush(jdbcConnection.getCurrentScn());
 
                         boolean restartRequired = false;
@@ -189,7 +199,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             }
                         }
 
-                        if (restartRequired || hasLogSwitchOccurred()) {
+                        if (restartRequired || (!catchingUp && hasLogSwitchOccurred())) {
                             // This is the way to mitigate PGA leaks.
                             // With one mining session, it grows and maybe there is another way to flush PGA.
                             // At this point we use a new mining session
@@ -333,9 +343,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 buildDataDictionary(connection);
             }
             if (!isContinuousMining) {
-                currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+                addLogFileForMining(connection, startScn);
             }
         }
         else {
@@ -343,13 +351,41 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                     buildDataDictionary(connection);
                 }
-                currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+                addLogFileForMining(connection, startScn);
             }
         }
 
         updateRedoLogMetrics();
+    }
+
+    /**
+     *  add logfile for LogMiner
+     *
+     * @param connection database connection, should not be {@code null}
+     * @param startScn mining session's starting system change number (exclusive), should not be {@code null}
+     * @throws SQLException if a database exception occurred
+     */
+    private void addLogFileForMining(OracleConnection connection, Scn startScn) throws SQLException {
+        // If startScn is in archiveLog
+        // The catch-up mode will be used. No need to load online redo log
+        Optional<Scn> minScnInRedo = LogMinerHelper
+                .getLogFilesForOffsetScn(jdbcConnection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName)
+                .stream().filter(x -> x.getType() == LogFile.Type.REDO)
+                .map(LogFile::getFirstScn).min(Scn::compareTo);
+        if (minScnInRedo.isPresent() && startScn.compareTo(minScnInRedo.get()) < 0) {
+            currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, true,
+                    archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
+            currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+            catchingUp = true;
+            catchingUpEndScn = minScnInRedo.get();
+        }
+        else {
+            currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
+                    archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
+            currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+            catchingUp = false;
+            catchingUpEndScn = Scn.ONE;
+        }
     }
 
     /**
