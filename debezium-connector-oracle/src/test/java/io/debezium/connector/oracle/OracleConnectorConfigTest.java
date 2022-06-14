@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.doc.FixFor;
-import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 
 public class OracleConnectorConfigTest {
 

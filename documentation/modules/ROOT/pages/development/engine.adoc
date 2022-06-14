@@ -98,7 +98,7 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("database.server.id", "85744");
     props.setProperty("database.server.name", "my-app-connector");
     props.setProperty("database.history",
-          "io.debezium.relational.history.FileDatabaseHistory");
+          "io.debezium.storage.file.history.FileDatabaseHistory");
     props.setProperty("database.history.file.filename",
           "/path/to/storage/dbhistory.dat");
     
@@ -153,7 +153,7 @@ The next few lines define the fields that are specific to the connector (documen
     props.setProperty("database.server.id", "85744")
     props.setProperty("database.server.name", "my-app-connector")
     props.setProperty("database.history",
-          "io.debezium.relational.history.FileDatabaseHistory")
+          "io.debezium.storage.file.history.FileDatabaseHistory")
     props.setProperty("database.history.file.filename",
           "/path/to/storage/dbhistory.dat")
 ----

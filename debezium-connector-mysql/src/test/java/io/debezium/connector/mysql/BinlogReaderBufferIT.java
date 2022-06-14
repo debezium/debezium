@@ -25,7 +25,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**

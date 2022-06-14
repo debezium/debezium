@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import org.junit.Before;
 
 import io.debezium.config.Configuration;
+import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**

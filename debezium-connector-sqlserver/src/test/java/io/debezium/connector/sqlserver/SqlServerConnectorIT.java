@@ -64,10 +64,10 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.DatabaseHistoryException;
 import io.debezium.relational.history.DatabaseHistoryListener;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**

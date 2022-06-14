@@ -86,8 +86,8 @@ import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.MemoryDatabaseHistory;
+import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**

@@ -14,10 +14,10 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -34,8 +34,10 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 import io.debezium.util.Collect;
 
 /**
@@ -538,7 +540,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                             + "but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field SERVER_ID = Field.create("database.server.id")
             .withDisplayName("Cluster ID")
@@ -918,6 +920,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                     INCONSISTENT_SCHEMA_HANDLING_MODE)
+            .history(KafkaDatabaseHistory.ALL_FIELDS.asArray())
             .create();
 
     protected static ConfigDef configDef() {
@@ -932,6 +935,31 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
+
+    @Override
+    public DatabaseHistory getDatabaseHistory() {
+        Configuration config = getConfig();
+
+        DatabaseHistory databaseHistory = config.getInstance(MySqlConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
+        if (databaseHistory == null) {
+            throw new ConnectException("Unable to instantiate the database history class " +
+                    config.getString(MySqlConnectorConfig.DATABASE_HISTORY));
+        }
+
+        // Do not remove the prefix from the subset of config properties ...
+        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+                .edit()
+                .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, MySqlConnector.class.getName())
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, getLogicalName())
+                .build();
+
+        HistoryRecordComparator historyComparator = getHistoryRecordComparator();
+        databaseHistory.configure(dbHistoryConfig, historyComparator,
+                new DatabaseHistoryMetrics(this, multiPartitionMode()), useCatalogBeforeSchema()); // validates
+
+        return databaseHistory;
+    }
 
     @Override
     public boolean supportsOperationFiltering() {
