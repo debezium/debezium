@@ -262,6 +262,15 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     @Override
+    protected BigDecimal withScaleAdjustedIfNeeded(Column column, BigDecimal data) {
+        // deal with Oracle negative scales
+        if (column.scale().isPresent() && column.scale().get() < data.scale()) {
+            data = data.setScale(column.scale().get());
+        }
+        return super.withScaleAdjustedIfNeeded(column, data);
+    }
+
+    @Override
     protected Object convertString(Column column, Field fieldDefn, Object data) {
         if (data instanceof CHAR) {
             return ((CHAR) data).stringValue();
