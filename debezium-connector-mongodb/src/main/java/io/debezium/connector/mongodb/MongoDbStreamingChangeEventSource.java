@@ -512,6 +512,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
 
         final String operation = event.getString(OPERATION_FIELD).getValue();
+        if (operation.equals("c") && !allowCmdCollection) {
+            LOGGER.debug("Skipping event with \"op=c\" without mongodb.allow_cmd_collection");
+            return true;
+        }
         if (!MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
             LOGGER.debug("Skipping event with \"op={}\"", operation);
             return true;
