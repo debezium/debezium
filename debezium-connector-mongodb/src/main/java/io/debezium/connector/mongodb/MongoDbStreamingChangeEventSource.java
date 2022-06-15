@@ -246,7 +246,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 // In this situation if not document is available, we'll pause.
                 final BsonDocument event = cursor.tryNext();
                 if (event != null) {
-                    if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getDisableOperationFilter())) {
+                    if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getAllowCmdCollection())) {
                         // Something happened and we are supposed to stop reading
                         return;
                     }
@@ -431,7 +431,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private boolean handleOplogEvent(ServerAddress primaryAddress, BsonDocument event, BsonDocument masterEvent, long txOrder,
-                                     ReplicaSetOplogContext oplogContext, boolean isRawOplogEnabled, boolean disableOperationFilter) {
+                                     ReplicaSetOplogContext oplogContext, boolean isRawOplogEnabled, boolean allowCmdCollection) {
         String ns = event.getString("ns").getValue();
         BsonDocument object = event.getDocument(OBJECT_FIELD);
         if (Objects.isNull(object)) {
@@ -485,7 +485,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             LOGGER.debug("Skipping record as it is expected to be already processed: {}", change);
                             continue;
                         }
-                        final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getDisableOperationFilter());
+                        final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getAllowCmdCollection());
                         if (!r) {
                             return false;
                         }
@@ -497,7 +497,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             try {
                 dispatcher.dispatchTransactionStartedEvent(oplogContext.getPartition(), getTransactionId(event), oplogContext.getOffset());
                 for (BsonValue change : txChanges) {
-                    final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getDisableOperationFilter());
+                    final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getAllowCmdCollection());
                     if (!r) {
                         return false;
                     }
@@ -512,7 +512,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
 
         final String operation = event.getString(OPERATION_FIELD).getValue();
-        if (!disableOperationFilter && !MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
+        if (!MongoDbChangeSnapshotOplogRecordEmitter.isValidOperation(operation)) {
             LOGGER.debug("Skipping event with \"op={}\"", operation);
             return true;
         }
@@ -523,7 +523,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
             final String dbName = ns.substring(0, delimIndex);
             final String collectionName = ns.substring(delimIndex + 1);
-            if ("$cmd".equals(collectionName)) {
+            if (!allowCmdCollection && "$cmd".equals(collectionName)) {
                 // This is a command on the database
                 // TODO: Probably want to handle some of these when we track creation/removal of collections
                 LOGGER.debug("Skipping database command event: {}", event.toJson());

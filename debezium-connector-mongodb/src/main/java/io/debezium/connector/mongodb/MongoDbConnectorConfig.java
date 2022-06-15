@@ -539,15 +539,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("If we populate raw_oplog field in the output. Should only use with capture.mode=oplog.");
 
-    public static final Field DISABLE_OPERATION_FILTER = Field.create("mongodb.operation_filter.disable")
-        .withDisplayName("Disable operation filtering for MongoDB")
+    public static final Field ALLOW_CMD_COLLECTION = Field.create("mongodb.allow_cmd_collection")
+        .withDisplayName("Allow $cmd collection for MongoDB")
         .withType(Type.BOOLEAN)
         .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
         .withWidth(Width.SHORT)
         .withImportance(Importance.MEDIUM)
         .withDefault(false)
         .withValidation(Field::isBoolean)
-        .withDescription("Disable operation filtering when capture.mode=oplog.");
+        .withDescription("Allow $cmd collection when capture.mode=oplog.");
 
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
@@ -652,7 +652,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final SnapshotMode snapshotMode;
     private CaptureMode captureMode;
     private final boolean enableRawOplog;
-    private final boolean disableOperationFilter;
+    private final boolean allowCmdCollection;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
 
@@ -665,7 +665,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
         this.enableRawOplog = config.getBoolean(MongoDbConnectorConfig.RAW_OPLOG_ENABLED, false);
-        this.disableOperationFilter = config.getBoolean(MongoDbConnectorConfig.DISABLE_OPERATION_FILTER, false);
+        this.allowCmdCollection = config.getBoolean(MongoDbConnectorConfig.ALLOW_CMD_COLLECTION, false);
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -775,8 +775,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return enableRawOplog;
     }
 
-    public boolean getDisableOperationFilter() {
-        return captureMode == CaptureMode.OPLOG && disableOperationFilter;
+    public boolean getAllowCmdCollection() {
+        LOGGER.debug("isChangeStreams: {} disableOperationFilter {}", captureMode.isChangeStreams(), allowCmdCollection);
+        return !captureMode.isChangeStreams() && allowCmdCollection;
     }
 
     public int getCursorMaxAwaitTime() {

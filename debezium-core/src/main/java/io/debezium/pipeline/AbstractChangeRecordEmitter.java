@@ -37,6 +37,7 @@ public abstract class AbstractChangeRecordEmitter<P extends Partition, T extends
         switch (operation) {
             case CREATE:
             case NOOP:
+            case COMMAND:
                 emitCreateRecord(receiver, (T) schema);
                 break;
             case READ:

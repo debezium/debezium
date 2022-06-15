@@ -56,6 +56,10 @@ public final class Envelope {
          */
         NOOP("n"),
         /**
+         * An operation that resulted in a database command
+         */
+        COMMAND("cmd"),
+        /**
          * An operation that resulted in a generic message
          */
         MESSAGE("m");
