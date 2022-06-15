@@ -1122,16 +1122,17 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             assertNoRecordsToConsume();
 
             // Verify Oracle DDL parser ignores CREATE TABLE with RAW data types
+            final String ignoredTable = TestHelper.getDatabaseName() + ".DEBEZIUM.DBZ4037B";
             connection.execute("CREATE TABLE dbz4037b (id number(9,0), data raw(8), primary key(id))");
             Awaitility.await()
                     .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
-                    .until(() -> createTableinterceptor.containsMessage(getIgnoreCreateTable("ORCLPDB1.DEBEZIUM.DBZ4037B")));
+                    .until(() -> createTableinterceptor.containsMessage(getIgnoreCreateTable(ignoredTable)));
 
             // Verify Oracle DDL parser ignores ALTER TABLE with RAW data types
             connection.execute("ALTER TABLE dbz4037b ADD data2 raw(10)");
             Awaitility.await()
                     .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
-                    .until(() -> alterTableinterceptor.containsMessage(getIgnoreAlterTable("ORCLPDB1.DEBEZIUM.DBZ4037B")));
+                    .until(() -> alterTableinterceptor.containsMessage(getIgnoreAlterTable(ignoredTable)));
 
             // Capture a simple change on different table
             connection.execute("INSERT INTO dbz4037a (id,data) values (1, 'Test')");
