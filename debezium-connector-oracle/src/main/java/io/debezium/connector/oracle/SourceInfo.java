@@ -7,7 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.time.Instant;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -93,7 +93,7 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     public void tableEvent(Set<TableId> tableIds) {
-        this.tableIds = new HashSet<>(tableIds);
+        this.tableIds = new LinkedHashSet<>(tableIds);
     }
 
     public void tableEvent(TableId tableId) {

@@ -583,7 +583,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         // Verify schema change
         record = records.recordsForTopic(TestHelper.SERVER_NAME).get(0);
         assertStreamingSchemaChange(record);
-        assertSourceTableInfo(record, "DEBEZIUM", "TABLEB,TABLEA");
+        assertSourceTableInfo(record, "DEBEZIUM", "TABLEA,TABLEB");
         tableChanges = ((Struct) record.value()).getArray("tableChanges");
         assertThat(tableChanges).hasSize(1);
         assertTableChange(tableChanges.get(0), "ALTER", "DEBEZIUM", "TABLEB");
@@ -652,7 +652,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         // Verify schema change contains no changes
         record = records.recordsForTopic(TestHelper.SERVER_NAME).get(0);
         assertStreamingSchemaChange(record);
-        assertSourceTableInfo(record, "DEBEZIUM", "TABLEB,TABLEA");
+        assertSourceTableInfo(record, "DEBEZIUM", "TABLEA,TABLEB");
         tableChanges = ((Struct) record.value()).getArray("tableChanges");
         assertThat(tableChanges).isEmpty();
 
