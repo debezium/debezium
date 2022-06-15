@@ -22,7 +22,7 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .field(SourceInfo.SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SourceInfo.SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.EVENT_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.COMMIT_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
@@ -42,11 +42,7 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.tableSchema())
                 .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.table())
                 .put(SourceInfo.TXID_KEY, sourceInfo.getTransactionId())
-                // While we reuse the same SCN_KEY here as the one in the connector's offsets, the value we
-                // store here is the per-event SCN. The SCN value stored with this key in the offsets is
-                // the resume SCN, which is where the connector will start from after a restart. The resume
-                // SCN will always be <= to the SCN stored in the source info block here.
-                .put(SourceInfo.SCN_KEY, eventScn);
+                .put(SourceInfo.EVENT_SCN_KEY, eventScn);
 
         if (sourceInfo.getLcrPosition() != null) {
             ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());
