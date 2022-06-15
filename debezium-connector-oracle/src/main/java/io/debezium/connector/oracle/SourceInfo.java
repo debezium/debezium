@@ -20,6 +20,7 @@ public class SourceInfo extends BaseSourceInfo {
 
     public static final String TXID_KEY = "txId";
     public static final String SCN_KEY = "scn";
+    public static final String EVENT_SCN_KEY = "scn";
     public static final String COMMIT_SCN_KEY = "commit_scn";
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
