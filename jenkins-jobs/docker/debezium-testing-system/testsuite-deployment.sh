@@ -12,6 +12,7 @@ if [ ! -f "${SECRET_PATH}" ]; then
     exit 1
 fi
 
+# TODO remove git pull and rebuild once the development is done
 git -C /testsuite/debezium stash
 git -C /testsuite/debezium pull --rebase origin DBZ-5165
 git -C /testsuite/debezium log -1
@@ -22,32 +23,44 @@ mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 ${OCP_PROJECTS} --project "${OCP_PROJECT_DEBEZIUM}" --create
 
 # prepare strimzi
-clone_strimzi --strimzi-repository "${STRZ_GIT_REPOSITORY}" --strimzi-branch "${STRZ_GIT_BRANCH}" --product-build "${PRODUCT_BUILD}" --strimzi-downstream "${OCP_STRIMZI_DOWNSTREAM_URL}";
+# TODO remove the defaults once it's being ran from jenkins?
+if [ -z "${STRZ_GIT_REPOSITORY}" ]; then
+  STRZ_GIT_REPOSITORY="https://github.com/strimzi/strimzi-kafka-operator.git" ;
+fi
+
+if [ -z "${STRZ_GIT_BRANCH}" ]; then
+  STRZ_GIT_BRANCH="main" ;
+fi
+
+clone_component --component strimzi --git-repository "${STRZ_GIT_REPOSITORY}" --git-branch "${STRZ_GIT_BRANCH}" --product-build "${PRODUCT_BUILD}" --downstream-url "${STRZ_DOWNSTREAM_URL}" ;
 sed -i 's/namespace: .*/namespace: '"${OCP_PROJECT_DEBEZIUM}"'/' strimzi/install/cluster-operator/*RoleBinding*.yaml ;
 oc create -f strimzi/install/cluster-operator/ -n "${OCP_PROJECT_DEBEZIUM}" ;
 
-#prepare apicurio
+# prepare apicurio if not disabled
 AVRO_PATTERN='.*!avro.*'
 if [[ ! ${GROUPS_ARG} =~ ${AVRO_PATTERN} ]]; then
-  APICURIO_RESOURCE="install/apicurio-registry-operator-1.1.0-dev.yaml"
 
-  clone_apicurio
-  sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${OCP_PROJECT_REGISTRY}/" apicurio/install/*.yaml
+  # TODO remove the defaults once it's being ran from jenkins?
+  if [ -z "${APIC_GIT_REPOSITORY}" ]; then
+    APIC_GIT_REPOSITORY="https://github.com/Apicurio/apicurio-registry-operator.git" ;
+  fi
+
+  if [ -z "${APIC_GIT_BRANCH}" ]; then
+    APIC_GIT_BRANCH="master" ;
+  fi
+
+  if [ -z "${APICURIO_RESOURCE}" ]; then
+    APICURIO_RESOURCE="install/apicurio-registry-operator-1.1.0-dev.yaml"
+  fi
+
+  clone_component --component apicurio --git-repository "${APIC_GIT_REPOSITORY}" --git-branch "${APIC_GIT_BRANCH}" --product-build "${PRODUCT_BUILD}" --downstream-url "${APIC_DOWNSTREAM_URL}" ;
+  sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${OCP_PROJECT_REGISTRY}/" apicurio/install/*.yaml ;
   oc create -f apicurio/${APICURIO_RESOURCE} -n "${OCP_PROJECT_REGISTRY}" ;
 fi
 
 pushd ${DEBEZIUM_LOCATION} || exit 1;
 
-if [ -z "${TEST_VERSION_KAFKA}" ]; then
-  TEST_PROPERTIES="";
-else 
-  TEST_PROPERTIES="-Dversion.kafka=${TEST_VERSION_KAFKA}" ;
-fi 
-
-if [ -n "${DBZ_CONNECT_IMAGE}" ]; then
-  TEST_PROPERTIES="$TEST_PROPERTIES -Dimage.kc=${DBZ_CONNECT_IMAGE}" ;
-fi
-
+oc project "${OCP_PROJECT_DEBEZIUM}"
 mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Docp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \
                     -Docp.project.db2="${OCP_PROJECT_DB2}" \

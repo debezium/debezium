@@ -39,6 +39,7 @@ pipeline {
                     docker tag testsuite:docker-test quay.io/rh_integration/dbz-testing-system:${TAG}
                     docker login -u ${QUAY_USERNAME} -p ${QUAY_PASSWORD} quay.io
                     docker push quay.io/rh_integration/dbz-testing-system:${TAG}
+                    rm debezium/jenkins-jobs/docker/debezium-testing-system/secret.yml
                 '''
                 }
             }
