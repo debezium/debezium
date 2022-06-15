@@ -7,7 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -140,7 +140,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     }
 
     private SchemaChangeEvent alterTableEvent(OraclePartition partition, TableAlteredEvent event) {
-        final Set<TableId> tableIds = new HashSet<>();
+        final Set<TableId> tableIds = new LinkedHashSet<>();
         tableIds.add(tableId);
         tableIds.add(event.tableId());
 
