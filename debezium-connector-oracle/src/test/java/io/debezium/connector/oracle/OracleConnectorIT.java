@@ -2998,7 +2998,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO dbz3611 values (1, 'snapshot')");
 
             Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.DATABASE_INCLUDE_LIST, "ORCLPDB1")
+                    .with(OracleConnectorConfig.DATABASE_INCLUDE_LIST, TestHelper.getDatabaseName())
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.dbz3611")
                     .build();
 
@@ -3045,7 +3045,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO dbz3611 values (1, 'snapshot')");
 
             Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.DATABASE_EXCLUDE_LIST, "ORCLPDB2")
+                    .with(OracleConnectorConfig.DATABASE_EXCLUDE_LIST, TestHelper.getDatabaseName() + "2")
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.dbz3611")
                     .build();
 
@@ -3231,7 +3231,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // we expect two DDL records (synthetic CREATEs for the final table structure) and three DML records (one for each insert)
             records = consumeRecordsByTopic(5);
-            ddls = records.ddlRecordsForDatabase("ORCLPDB1");
+            ddls = records.ddlRecordsForDatabase(TestHelper.getDatabaseName());
             ddls.forEach(r -> assertThat(((Struct) r.value()).getString("ddl")).contains("CREATE TABLE"));
             assertThat(ddls).hasSize(2);
             ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367").stream()
@@ -3255,7 +3255,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO DBZ4367_EXTRA (ID, DATA, DATA2) VALUES (400, 'second table, post-snapshot post TX', 'something')");
 
             records = consumeRecordsByTopic(6);
-            ddls = records.ddlRecordsForDatabase("ORCLPDB1");
+            ddls = records.ddlRecordsForDatabase(TestHelper.getDatabaseName());
             if (ddls != null) {
                 assertThat(ddls).isEmpty();
             }

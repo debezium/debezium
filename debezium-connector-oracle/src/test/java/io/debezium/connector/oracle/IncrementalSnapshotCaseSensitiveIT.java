@@ -119,12 +119,12 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
 
     @Override
     protected String tableDataCollectionId() {
-        return "ORCLPDB1.DEBEZIUM.A";
+        return TestHelper.getDatabaseName() + ".DEBEZIUM.A";
     }
 
     @Override
     protected List<String> tableDataCollectionIds() {
-        return List.of("ORCLPDB1.DEBEZIUM.A", "ORCLPDB1.DEBEZIUM.B");
+        return List.of(TestHelper.getDatabaseName() + ".DEBEZIUM.A", TestHelper.getDatabaseName() + ".DEBEZIUM.B");
     }
 
     @Override
@@ -136,7 +136,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
-                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, "ORCLPDB1.DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL")
                 .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
