@@ -18,8 +18,8 @@ import com.mongodb.MongoInterruptedException;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
-import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ClusterType;
+import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
 
 import io.debezium.annotation.ThreadSafe;
