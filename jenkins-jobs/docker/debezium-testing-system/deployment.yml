@@ -53,6 +53,18 @@ spec:
               value: "postgresql & !docker"
             - name: DELETE_PROJECTS
               value: "true"
+            - name: STRZ_GIT_REPOSITORY
+              value: ""
+            - name: STRZ_GIT_BRANCH
+              value: ""
+            - name: STRZ_DOWNSTREAM_URL
+              value: ""
+            - name: APIC_GIT_REPOSITORY
+              value: ""
+            - name: APIC_GIT_BRANCH
+              value: ""
+            - name: APIC_DOWNSTREAM_URL
+              value: ""
   triggers:
     - type: "ConfigChange" 
   paused: false 
