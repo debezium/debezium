@@ -454,14 +454,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription(
                     "The maximum number of milliseconds that a LogMiner session lives for before being restarted. Defaults to 0 (indefinite until a log switch occurs)");
 
-    public static final Field LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET = Field.createInternal("log.mining.query.logs.for.snapshot.offset")
-            .withDisplayName("Specifies whether to query transaction logs for snapshot offset position")
-            .withType(Type.BOOLEAN)
+    public static final Field LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE = Field.createInternal("log.mining.transaction.snapshot.boundary.mode")
+            .withEnum(TransactionSnapshotBoundaryMode.class, TransactionSnapshotBoundaryMode.SKIP)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(true)
-            .withDescription(
-                    "When set to true, the transaction logs will be inspected upon a new connector to resolve in-progress transactions. Setting to false disabled this behavior.");
+            .withDescription("Specifies how in-progress transactions are to be handled when resolving the snapshot SCN. " + System.lineSeparator() +
+                    "all - Captures in-progress transactions from both V$TRANSACTION and starting a LogMiner session near the snapshot SCN." + System.lineSeparator() +
+                    "transaction_view_only - Captures in-progress transactions based on data in V$TRANSACTION only. " +
+                    "Recently committed transactions near the flashback query SCN won't be included in the snapshot nor streaming." + System.lineSeparator() +
+                    "skip - Skips gathering any in-progress transactions.");
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
@@ -518,7 +519,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
                     LOG_MINING_SESSION_MAX_MS,
-                    LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET)
+                    LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE)
             .create();
 
     /**
@@ -574,7 +575,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningInitialDelay;
     private final Duration logMiningMaxDelay;
     private final Duration logMiningMaximumSession;
-    private final boolean logMiningQueryLogsForSnapshotOffset;
+    private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config),
@@ -621,7 +622,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningInitialDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS));
         this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
         this.logMiningMaximumSession = Duration.ofMillis(config.getLong(LOG_MINING_SESSION_MAX_MS));
-        this.logMiningQueryLogsForSnapshotOffset = config.getBoolean(LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET);
+        this.logMiningTransactionSnapshotBoundaryMode = TransactionSnapshotBoundaryMode.parse(config.getString(LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE));
     }
 
     private static String toUpperCase(String property) {
@@ -884,6 +885,80 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          */
         public static SnapshotLockingMode parse(String value, String defaultValue) {
             SnapshotLockingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * Controls how in-progress transactions that occur just before and at the snapshot boundary
+     * are to be handled by the connector when transitioning to the streaming phase.
+     */
+    public enum TransactionSnapshotBoundaryMode implements EnumeratedValue {
+        /**
+         * Specifies that the in-progress transaction support at the snapshot boundary should be
+         * skipped and that only transactions committed prior to the snapshot SCN and those that
+         * are started after the snapshot SCN will be captured.
+         */
+        SKIP("skip"),
+
+        /**
+         * Specifies that in-progress transactions that are available in the {@code V$TRANSACTION}
+         * table will be captured and emitted when streaming begins. If a transaction is not in
+         * this view, and its changes were not captured by Oracle Flashback query based on the
+         * snapshot SCN, that transaction will not be captured.
+         */
+        TRANSACTION_VIEW_ONLY("transaction_view_only"),
+
+        /**
+         * Specifies that in-progress transactions identified in the {@code V$TRANSACTION} table as
+         * well as any in-progress transactions as of the current SCN that may have been committed
+         * immediately prior to or at the snapshot SCN will be captured. This is done by starting a
+         * special LogMiner session to gather these transactions prior to starting the snapshot.
+         */
+        ALL("all");
+
+        private final String value;
+
+        private TransactionSnapshotBoundaryMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @return the matching option, or null if no match is found
+         */
+        public static TransactionSnapshotBoundaryMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (TransactionSnapshotBoundaryMode option : TransactionSnapshotBoundaryMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @param defaultValue the default value; may be {@code null}
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static TransactionSnapshotBoundaryMode parse(String value, String defaultValue) {
+            TransactionSnapshotBoundaryMode mode = parse(value);
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
@@ -1379,10 +1454,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return whether the transaction logs should be inspected for the snapshot offset
+     * @return how in-progress transactions are the snapshot boundary are to be handled.
      */
-    public boolean isLogMiningQueryLogsForSnapshotOffset() {
-        return logMiningQueryLogsForSnapshotOffset;
+    public TransactionSnapshotBoundaryMode getLogMiningTransactionSnapshotBoundaryMode() {
+        return logMiningTransactionSnapshotBoundaryMode;
     }
 
     @Override

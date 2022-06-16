@@ -64,6 +64,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.junit.RequireDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
@@ -3125,6 +3126,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367")
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY)
                     .build();
             start(OracleConnector.class, config);
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -3162,6 +3164,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367")
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY)
                     .build();
             start(OracleConnector.class, config);
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -3221,6 +3224,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367,DEBEZIUM\\.DBZ4367_EXTRA")
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY)
                     .build();
             start(OracleConnector.class, config);
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -3293,7 +3297,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
-                    .with(OracleConnectorConfig.LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET, true)
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
                     .build();
 
             start(OracleConnector.class, config);
@@ -3362,7 +3366,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
-                    .with(OracleConnectorConfig.LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET, true)
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
                     .build();
 
             start(OracleConnector.class, config);
