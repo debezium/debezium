@@ -602,9 +602,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private static String getTransactionId(BsonDocument event) {
-        final Long operationId = event.getInt64(SourceInfo.OPERATION_ID).getValue();
-        if (operationId != null && operationId != 0L) {
-            return Long.toString(operationId);
+        if (event.containsKey(SourceInfo.OPERATION_ID)) {
+            final Long operationId = event.getInt64(SourceInfo.OPERATION_ID).getValue();
+            if (operationId != null && operationId != 0L) {
+                return Long.toString(operationId);
+            }
         }
 
         return MongoUtil.getOplogSessionTransactionId(event);
