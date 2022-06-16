@@ -162,8 +162,7 @@ public class TestHelper {
         return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(OracleConnectorConfig.LOG_MINING_QUERY_LOGS_FOR_SNAPSHOT_OFFSET, false);
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     /**

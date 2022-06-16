@@ -25,6 +25,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
@@ -112,7 +113,15 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
         final Scn latestTableDdlScn = getLatestTableDdlScn(ctx, connection).orElse(null);
 
         final Map<String, Scn> pendingTransactions = new LinkedHashMap<>();
-        final Optional<Scn> currentScn = getPendingTransactions(latestTableDdlScn, connection, pendingTransactions);
+
+        final Optional<Scn> currentScn;
+        if (isPendingTransactionSkip(connectorConfig)) {
+            currentScn = getCurrentScn(latestTableDdlScn, connection);
+        }
+        else {
+            currentScn = getPendingTransactions(latestTableDdlScn, connection, pendingTransactions);
+        }
+
         if (!currentScn.isPresent()) {
             throw new DebeziumException("Failed to resolve current SCN");
         }
@@ -132,6 +141,17 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
         else {
             return determineSnapshotOffset(connectorConfig, connection, currentScn.get(), pendingTransactions);
         }
+    }
+
+    private Optional<Scn> getCurrentScn(Scn latestTableDdlScn, OracleConnection connection) throws SQLException {
+        final String query = "SELECT CURRENT_SCN FROM V$DATABASE";
+
+        Scn currentScn;
+        do {
+            currentScn = connection.queryAndMap(query, rs -> rs.next() ? Scn.valueOf(rs.getString(1)) : Scn.NULL);
+        } while (areSameTimestamp(latestTableDdlScn, currentScn, connection));
+
+        return Optional.ofNullable(currentScn);
     }
 
     private Optional<Scn> getPendingTransactions(Scn latestTableDdlScn, OracleConnection connection,
@@ -177,7 +197,10 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                                                         Map<String, Scn> pendingTransactions)
             throws SQLException {
 
-        if (!connectorConfig.isLogMiningQueryLogsForSnapshotOffset()) {
+        if (isPendingTransactionSkip(connectorConfig)) {
+            LOGGER.info("\tNo in-progress transactions will be captured.");
+        }
+        else if (isPendingTransactionViewOnly(connectorConfig)) {
             LOGGER.info("\tSkipping transaction logs for resolving snapshot offset, only using V$TRANSACTION.");
         }
         else {
@@ -247,7 +270,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 LOGGER.info("\tFound in-progress transaction {}, starting at SCN {}", entry.getKey(), entry.getValue());
             }
         }
-        else {
+        else if (!isPendingTransactionSkip(connectorConfig)) {
             LOGGER.info("\tFound no in-progress transactions.");
         }
 
@@ -366,5 +389,13 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
             Metronome.sleeper(GET_TRANSACTION_SCN_PAUSE, Clock.SYSTEM).pause();
         }
         return startScn.get();
+    }
+
+    private boolean isPendingTransactionSkip(OracleConnectorConfig config) {
+        return config.getLogMiningTransactionSnapshotBoundaryMode() == TransactionSnapshotBoundaryMode.SKIP;
+    }
+
+    public boolean isPendingTransactionViewOnly(OracleConnectorConfig config) {
+        return config.getLogMiningTransactionSnapshotBoundaryMode() == TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY;
     }
 }
