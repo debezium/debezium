@@ -130,7 +130,7 @@ public class WalPositionLocator {
         if (passMessages) {
             return false;
         }
-        if (startStreamingLsn == null || startStreamingLsn.equals(lsn)) {
+        if (startStreamingLsn == null || startStreamingLsn.compareTo(lsn) <= 0) {
             LOGGER.info("Message with LSN '{}' arrived, switching off the filtering", lsn);
             passMessages = true;
             return false;
