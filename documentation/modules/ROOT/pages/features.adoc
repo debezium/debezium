@@ -23,7 +23,7 @@ link:https://debezium.io/blog/2018/07/19/advantages-of-log-based-change-data-cap
 
 {prodname} connectors capture data changes with a range of related capabilities and options:
 
-* *Snapshots:* optionally, an initial snapshot of a database's current state can be taken if a connector is started and not all logs still exist. Typically, this is the case when the database has been running for some time and has discarded trannsaction logs that are no longer needed for transaction recovery or replication. There are different modes for performing snapshots, including support for _incremental_ snapshots, which can be triggered at connector runtime. For more details, see the documentation for the connector that you are using.
+* *Snapshots:* optionally, an initial snapshot of a database's current state can be taken if a connector is started and not all logs still exist. Typically, this is the case when the database has been running for some time and has discarded transaction logs that are no longer needed for transaction recovery or replication. There are different modes for performing snapshots, including support for _incremental_ snapshots, which can be triggered at connector runtime. For more details, see the documentation for the connector that you are using.
 * *Filters:* you can configure the set of captured schemas, tables and columns with include/exclude list filters.
 * *Masking:* the values from specific columns can be masked, for example, when they contain sensitive data.
 * *Monitoring:* most connectors can be monitored by using JMX.
