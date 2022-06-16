@@ -145,7 +145,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         final String tableIncludeList;
         if (signalTableOnly) {
-            tableIncludeList = "DEBEZIUM\\.DEBEZIUM_SIGNAL";
+            tableIncludeList = "DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL";
         }
         else {
             tableIncludeList = "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL";
