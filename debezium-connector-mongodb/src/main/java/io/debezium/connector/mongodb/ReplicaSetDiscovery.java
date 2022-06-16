@@ -17,6 +17,7 @@ import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
 
 import io.debezium.annotation.ThreadSafe;
@@ -90,8 +91,9 @@ public class ReplicaSetDiscovery {
             LOGGER.info("Checking current members of replica set at {}", seedAddresses);
             if (clusterDescription != null) {
                 // This is a replica set ...
-                final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
-                if (serverDescriptions == null || serverDescriptions.size() == 0) {
+                final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions().stream()
+                        .filter(x -> x.getState() == ServerConnectionState.CONNECTED).collect(Collectors.toList());
+                if (serverDescriptions.size() == 0) {
                     LOGGER.warn("Server descriptions not available, got '{}'", serverDescriptions);
                 }
                 else {
