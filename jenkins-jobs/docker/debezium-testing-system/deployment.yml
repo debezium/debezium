@@ -19,39 +19,39 @@ spec:
             - containerPort: 8080
               protocol: "TCP"
           env:
-            - name: OCP_PROJECT_DEBEZIUM
+            - name: DBZ_OCP_PROJECT_DEBEZIUM
               value: "debezium-test"
-            - name: OCP_PROJECT_DB2
+            - name: DBZ_OCP_PROJECT_DB2
               value: "debezium-test-db2"              
-            - name: OCP_PROJECT_MONGO
+            - name: DBZ_OCP_PROJECT_MONGO
               value: "debezium-test-mongo"
-            - name: OCP_PROJECT_MYSQL
+            - name: DBZ_OCP_PROJECT_MYSQL
               value: "debezium-test-mysql"
-            - name: OCP_PROJECT_ORACLE
+            - name: DBZ_OCP_PROJECT_ORACLE
               value: "debezium-test-oracle"
-            - name: OCP_PROJECT_POSTGRESQL
+            - name: DBZ_OCP_PROJECT_POSTGRESQL
               value: "debezium-test-postgresql"
-            - name: OCP_PROJECT_SQLSERVER
+            - name: DBZ_OCP_PROJECT_SQLSERVER
               value: "debezium-test-sqlserver"
-            - name: OCP_PROJECT_REGISTRY
+            - name: DBZ_OCP_PROJECT_REGISTRY
               value: "debezium-test-registry"
-            - name: SECRET_PATH
+            - name: DBZ_SECRET_PATH
               value: "/testsuite/secret.yml"
-            - name: TEST_WAIT_SCALE
+            - name: DBZ_TEST_WAIT_SCALE
               value: "10"
-            - name: PRODUCT_BUILD
+            - name: DBZ_PRODUCT_BUILD
               value: "false"
-            - name: STRIMZI_KC_BUILD
+            - name: DBZ_STRIMZI_KC_BUILD
               value: "true"
             - name: DBZ_CONNECT_IMAGE
               value: "quay.io/rh_integration/test-strimzi-kafka:strz-latest-kafka-3.1.0-apc-2.2.3.Final-dbz-2.0.0-SNAPSHOT"
-            - name: ARTIFACT_SERVER_IMAGE
+            - name: DBZ_ARTIFACT_SERVER_IMAGE
               value: "quay.io/rh_integration/test-artifact-server:2.0.0-SNAPSHOT"
-            - name: APICURIO_VERSION
+            - name: DBZ_APICURIO_VERSION
               value: "2.2.3.Final"
-            - name: GROUPS_ARG
+            - name: DBZ_GROUPS_ARG
               value: "postgresql & !docker"
-            - name: DELETE_PROJECTS
+            - name: DBZ_OCP_DELETE_PROJECTS
               value: "true"
             - name: STRZ_GIT_REPOSITORY
               value: ""
