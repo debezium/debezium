@@ -1,8 +1,6 @@
 #!/bin/bash
 
-PULL_SECRET_NAME="aswerf"
-
-OPTS=$(getopt -o h: --long pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,groups-arg:,help  -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h: --long filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,groups-arg:,strz-git-repository:,strz-git-branch:,strz-downstream-url:,apic-git-repository:,apic-git-branch:,apic-downstream-url:,help  -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -10,6 +8,7 @@ echo "${OPTS[@]}"
 
 while true; do
     case "$1" in
+        --filename )              FILENAME=$2;                shift 2;;
         --pull-secret-name )      PULL_SECRET_NAME=$2;        shift 2;;
         --docker-tag )            DOCKER_TAG=$2;              shift 2;;
         --project-name )          PROJECT_NAME=$2;            shift 2;;
@@ -19,6 +18,12 @@ while true; do
         --artifact-server-image ) ARTIFACT_SERVER_IMAGE=$2;   shift 2;;
         --apicurio-version )      APICURIO_VERSION=$2;        shift 2;;
         --groups-arg )            GROUPS_ARG=$2;              shift 2;;
+        --strz-git-repository )   STRZ_GIT_REPOSITORY         shift 2;;
+        --strz-git-branch )       STRZ_GIT_BRANCH             shift 2;;
+        --strz-downstream-url )   STRZ_DOWNSTREAM_URL         shift 2;;
+        --apic-git-repository )   APIC_GIT_REPOSITORY         shift 2;;
+        --apic-git-branch )       APIC_GIT_BRANCH             shift 2;;
+        --apic-downstream-url )   APIC_DOWNSTREAM_URL         shift 2;;
         -h | --help )             PRINT_HELP=true             shift ;;
         -- ) shift; break ;;
         * ) break ;;
@@ -46,40 +51,52 @@ spec:
             - containerPort: 8080
               protocol: \"TCP\"
           env:
-            - name: OCP_PROJECT_DEBEZIUM
+            - name: DBZ_OCP_PROJECT_DEBEZIUM
               value: \"${PROJECT_NAME}\"
-            - name: OCP_PROJECT_DB2
+            - name: DBZ_OCP_PROJECT_DB2
               value: \"${PROJECT_NAME}-db2\"
-            - name: OCP_PROJECT_MONGO
+            - name: DBZ_OCP_PROJECT_MONGO
               value: \"${PROJECT_NAME}-mongo\"
-            - name: OCP_PROJECT_MYSQL
+            - name: DBZ_OCP_PROJECT_MYSQL
               value: \"${PROJECT_NAME}-mysql\"
-            - name: OCP_PROJECT_ORACLE
+            - name: DBZ_OCP_PROJECT_ORACLE
               value: \"${PROJECT_NAME}-oracle\"
-            - name: OCP_PROJECT_POSTGRESQL
+            - name: DBZ_OCP_PROJECT_POSTGRESQL
               value: \"${PROJECT_NAME}-postgresql\"
-            - name: OCP_PROJECT_SQLSERVER
+            - name: DBZ_OCP_PROJECT_SQLSERVER
               value: \"${PROJECT_NAME}-sqlserver\"
-            - name: OCP_PROJECT_REGISTRY
+            - name: DBZ_OCP_PROJECT_REGISTRY
               value: \"${PROJECT_NAME}-registry\"
-            - name: SECRET_PATH
+            - name: DBZ_SECRET_PATH
               value: \"/testsuite/secret.yml\"
-            - name: TEST_WAIT_SCALE
+            - name: DBZ_TEST_WAIT_SCALE
               value: \"10\"
-            - name: PRODUCT_BUILD
+            - name: DBZ_PRODUCT_BUILD
               value: \"${PRODUCT_BUILD}\"
-            - name: STRIMZI_KC_BUILD
+            - name: DBZ_STRIMZI_KC_BUILD
               value: \"${STRIMZI_KC_BUILD}\"
             - name: DBZ_CONNECT_IMAGE
               value: \"${DBZ_CONNECT_IMAGE}\"
-            - name: ARTIFACT_SERVER_IMAGE
+            - name: DBZ_ARTIFACT_SERVER_IMAGE
               value: \"${ARTIFACT_SERVER_IMAGE}\"
-            - name: APICURIO_VERSION
+            - name: DBZ_APICURIO_VERSION
               value: \"${APICURIO_VERSION}\"
-            - name: GROUPS_ARG
+            - name: DBZ_GROUPS_ARG
               value: \"${GROUPS_ARG}\"
-            - name: DELETE_PROJECTS
+            - name: DBZ_OCP_DELETE_PROJECTS
               value: \"true\"
+            - name: STRZ_GIT_REPOSITORY
+              value: \"${STRZ_GIT_REPOSITORY}\"
+            - name: STRZ_GIT_BRANCH
+              value: \"${STRZ_GIT_BRANCH}\"
+            - name: STRZ_DOWNSTREAM_URL
+              value: \"${STRZ_DOWNSTREAM_URL}\"
+            - name: APIC_GIT_REPOSITORY
+              value: \"${APIC_GIT_REPOSITORY}}\"
+            - name: APIC_GIT_BRANCH
+              value: \"${APIC_GIT_BRANCH}}\"
+            - name: APIC_DOWNSTREAM_URL
+              value: \"${APIC_DOWNSTREAM_URL}}\"
   triggers:
     - type: \"ConfigChange\"
   paused: false
@@ -88,4 +105,4 @@ spec:
 "
 
 
-printf "%s" "$output" >> test-job-deployment.yml
+printf "%s" "$output" >> "${FILENAME}.yml"
