@@ -67,6 +67,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final DelayStrategy pauseNoMessage;
     private final ElapsedTimeStrategy connectionProbeTimer;
 
+    // Offset committing is an asynchronous operation.
+    // When connector is restarted we cannot be sure about timing of recovery, offset committing etc.
+    // as this is driven by Kafka Connect. This might be a root cause of DBZ-5163.
+    // This flag will ensure that LSN is flushed only if we are really in message processing mode.
+    private volatile boolean lsnFlushingAllowed = false;
+
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
      * number of event received since last WAL growing warning issued).
@@ -109,6 +115,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             LOGGER.info("Streaming is not enabled in correct configuration");
             return;
         }
+
+        lsnFlushingAllowed = false;
 
         // replication slot could exist at the time of starting Debezium so we will stream from the position in the slot
         // instead of the last position in the database
@@ -285,6 +293,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             if (receivedMessage) {
                 noMessageIterations = 0;
+                lsnFlushingAllowed = true;
             }
             else {
                 if (offsetContext.hasCompletelyProcessedPosition()) {
@@ -388,6 +397,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void commitOffset(Map<String, ?> offset) {
         try {
+            if (!lsnFlushingAllowed) {
+                return;
+            }
+
             ReplicationStream replicationStream = this.replicationStream.get();
             final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
             final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
