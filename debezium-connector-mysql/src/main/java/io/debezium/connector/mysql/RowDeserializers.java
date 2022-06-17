@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,12 +20,18 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.DeleteRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.UpdateRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.WriteRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
+
+import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 
 /**
  * Custom deserializers for the MySQL Binlog Client library.
@@ -47,15 +54,20 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
  */
 public class RowDeserializers {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(RowDeserializers.class);
+
     /**
      * A specialization of {@link DeleteRowsEventDataDeserializer} that converts MySQL {@code DATE}, {@code TIME},
      * {@code DATETIME}, and {@code TIMESTAMP} values to {@link LocalDate}, {@link LocalTime}, {@link LocalDateTime}, and
      * {@link OffsetDateTime} objects, respectively.
      */
     public static class DeleteRowsDeserializer extends DeleteRowsEventDataDeserializer {
+        private EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
 
-        public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
+        public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                      EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode) {
             super(tableMapEventByTableId);
+            this.eventProcessingFailureHandlingMode = eventProcessingFailureHandlingMode;
         }
 
         @Override
@@ -70,17 +82,17 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDate(inputStream);
+            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
         protected Serializable deserializeDatetime(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetime(inputStream);
+            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
         protected Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetimeV2(meta, inputStream);
+            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
@@ -115,9 +127,12 @@ public class RowDeserializers {
      * {@link OffsetDateTime} objects, respectively.
      */
     public static class UpdateRowsDeserializer extends UpdateRowsEventDataDeserializer {
+        private EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
 
-        public UpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
+        public UpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                      EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode) {
             super(tableMapEventByTableId);
+            this.eventProcessingFailureHandlingMode = eventProcessingFailureHandlingMode;
         }
 
         @Override
@@ -132,17 +147,17 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDate(inputStream);
+            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
         protected Serializable deserializeDatetime(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetime(inputStream);
+            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
         protected Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetimeV2(meta, inputStream);
+            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
@@ -177,9 +192,12 @@ public class RowDeserializers {
      * {@link OffsetDateTime} objects, respectively.
      */
     public static class WriteRowsDeserializer extends WriteRowsEventDataDeserializer {
+        private EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
 
-        public WriteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId) {
+        public WriteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                     EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode) {
             super(tableMapEventByTableId);
+            this.eventProcessingFailureHandlingMode = eventProcessingFailureHandlingMode;
         }
 
         @Override
@@ -194,17 +212,17 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDate(inputStream);
+            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
         protected Serializable deserializeDatetime(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetime(inputStream);
+            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
         protected Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetimeV2(meta, inputStream);
+            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode);
         }
 
         @Override
@@ -274,7 +292,9 @@ public class RowDeserializers {
      * @return the {@link LocalDate} object
      * @throws IOException if there is an error reading from the binlog event data
      */
-    protected static Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
+    protected static Serializable deserializeDate(ByteArrayInputStream inputStream,
+                                                  EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode)
+            throws IOException {
         int value = inputStream.readInteger(3);
         int day = value % 32; // 1-based day of the month
         value >>>= 5;
@@ -283,7 +303,12 @@ public class RowDeserializers {
         if (year == 0 || month == 0 || day == 0) {
             return null;
         }
-        return LocalDate.of(year, month, day);
+        try {
+            return LocalDate.of(year, month, day);
+        }
+        catch (DateTimeException e) {
+            return handleException(eventProcessingFailureHandlingMode, "date", e, LocalDate.EPOCH);
+        }
     }
 
     /**
@@ -363,7 +388,9 @@ public class RowDeserializers {
      * @return the {@link LocalDateTime} object
      * @throws IOException if there is an error reading from the binlog event data
      */
-    protected static Serializable deserializeDatetime(ByteArrayInputStream inputStream) throws IOException {
+    protected static Serializable deserializeDatetime(ByteArrayInputStream inputStream,
+                                                      EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode)
+            throws IOException {
         int[] split = split(inputStream.readLong(8), 100, 6);
         int year = split[5];
         int month = split[4]; // 1-based month number
@@ -375,7 +402,13 @@ public class RowDeserializers {
         if (year == 0 || month == 0 || day == 0) {
             return null;
         }
-        return LocalDateTime.of(year, month, day, hours, minutes, seconds, nanoOfSecond);
+        try {
+            return LocalDateTime.of(year, month, day, hours, minutes, seconds, nanoOfSecond);
+        }
+        catch (DateTimeException e) {
+            return handleException(eventProcessingFailureHandlingMode, "datetime", e,
+                    LocalDateTime.of(LocalDate.EPOCH, LocalTime.MIDNIGHT));
+        }
     }
 
     /**
@@ -389,7 +422,9 @@ public class RowDeserializers {
      * @return the {@link LocalDateTime} object
      * @throws IOException if there is an error reading from the binlog event data
      */
-    protected static Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
+    protected static Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream,
+                                                        EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode)
+            throws IOException {
         /*
          * (in big endian)
          *
@@ -416,7 +451,13 @@ public class RowDeserializers {
         if (year == 0 || month == 0 || day == 0) {
             return null;
         }
-        return LocalDateTime.of(year, month, day, hours, minutes, seconds, nanoOfSecond);
+        try {
+            return LocalDateTime.of(year, month, day, hours, minutes, seconds, nanoOfSecond);
+        }
+        catch (DateTimeException e) {
+            return handleException(eventProcessingFailureHandlingMode, "datetimeV2", e,
+                    LocalDateTime.of(LocalDate.EPOCH, LocalTime.MIDNIGHT));
+        }
     }
 
     /**
@@ -598,4 +639,19 @@ public class RowDeserializers {
     private RowDeserializers() {
     }
 
+    private static Serializable handleException(EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                                String columnType, Exception e, Serializable defaultValue) {
+        if (eventProcessingFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+            LOGGER.error("Error while deserializing binlog data of {}: {}", columnType, e.getMessage());
+            throw new DebeziumException("Error while deserializing binlog data of " + columnType + ": " + e.getMessage());
+        }
+        else if (eventProcessingFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+            LOGGER.warn("Error while deserializing binlog data of {}: {}", columnType, e.getMessage());
+            return defaultValue;
+        }
+        else {
+            LOGGER.debug("Error while deserializing binlog data of {}: {}", columnType, e.getMessage());
+            return defaultValue;
+        }
+    }
 }
