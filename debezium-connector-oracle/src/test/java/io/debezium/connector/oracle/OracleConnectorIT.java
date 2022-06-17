@@ -3233,11 +3233,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             List<SourceRecord> ddls;
             List<Integer> ids;
 
-            // we expect two DDL records (synthetic CREATEs for the final table structure) and three DML records (one for each insert)
-            records = consumeRecordsByTopic(5);
+            // we expect six DDL records (synthetic CREATEs for the final table structure) and three DML records (one for each insert)
+            records = consumeRecordsByTopic(9);
             ddls = records.ddlRecordsForDatabase(TestHelper.getDatabaseName());
             ddls.forEach(r -> assertThat(((Struct) r.value()).getString("ddl")).contains("CREATE TABLE"));
-            assertThat(ddls).hasSize(2);
+            assertThat(ddls).hasSize(6);
             ids = records.recordsForTopic("server1.DEBEZIUM.DBZ4367").stream()
                     .map(r -> getAfter(r).getInt32("ID"))
                     .collect(Collectors.toList());
