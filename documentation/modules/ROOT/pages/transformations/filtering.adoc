@@ -41,8 +41,16 @@ For example:
 The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
 {prodname} does not come with any implementations of the JSR 223 API.
-To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language, and add to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
-For example, for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/. The JSR223 implementation for GraalVM JavaScript is available at https://github.com/graalvm/graaljs.
+To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language.
+ifdef::community[]
+For example, for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/.
+The JSR223 implementation for GraalVM JavaScript is available at https://github.com/graalvm/graaljs.
+After you obtain the script engine files, you add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+endif::community[]
+ifdef::product[]
+Depending on the method that you use to deploy {prodname}, you can automatically download the required artifacts from Maven Central,
+or you can manually download the artifacts, and then add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+endif::product[]
 
 // Type: procedure
 // Title: Setting up the {prodname} filter SMT
@@ -52,8 +60,14 @@ For example, for Groovy 3, you can download its JSR 223 implementation from http
 
 For security reasons, the filter SMT is not included with the {prodname} connector archives.
 Instead, it is provided in a separate artifact, `debezium-scripting-{debezium-version}.tar.gz`.
-To use the filter SMT with a {prodname} connector plug-in, you must explicitly add the SMT artifact to your Kafka Connect environment.
 
+ifdef::product[]
+If you deploy the {prodname} connector by building a custom Kafka Connect container image from a Dockerfile, to use the filter SMT, you must explicitly download the SMT archive and deploy the files alongside the connector plug-in.
+When you use {StreamsName} to deploy the connector, it can download the required artifacts automatically based on configuration parameters that you specify in the Kafka Connect custom resource.
+endif::product[]
+ifdef::community[]
+To use the content-based routing SMT with a {prodname} connector plug-in, you must explicitly add the SMT artifact to your Kafka Connect environment.
+endif::community[]
 IMPORTANT: After the filter SMT is present in a Kafka Connect instance, any user who is allowed to add a connector to the instance can run scripting expressions.
 To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the filter SMT.
 
@@ -67,6 +81,9 @@ With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {
 endif::community[]
 
 ifdef::product[]
+The following procedure applies if you build your Kafka Connect container image from a Dockerfile.
+If you use {StreamsName} to create the Kafka Connect image, follow the instructions in the deployment topic for your connector.
+
 .Procedure
 . From a browser, open the link:{DebeziumDownload}, and download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`).
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
