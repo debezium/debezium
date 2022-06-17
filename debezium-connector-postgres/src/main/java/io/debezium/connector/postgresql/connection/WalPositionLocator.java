@@ -130,8 +130,13 @@ public class WalPositionLocator {
         if (passMessages) {
             return false;
         }
-        if (startStreamingLsn == null || startStreamingLsn.compareTo(lsn) <= 0) {
+        if (startStreamingLsn == null || startStreamingLsn.equals(lsn)) {
             LOGGER.info("Message with LSN '{}' arrived, switching off the filtering", lsn);
+            passMessages = true;
+            return false;
+        }
+        if (startStreamingLsn.compareTo(lsn) < 0) {
+            LOGGER.warn("Message with LSN '{}' larger than expected LSN '{}' arrived, switching off the filtering", lsn, startStreamingLsn);
             passMessages = true;
             return false;
         }
