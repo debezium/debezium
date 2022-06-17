@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
@@ -18,6 +19,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 /**
@@ -38,6 +40,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
 
         TestHelper.dropTable(connection, "a");
         connection.execute("CREATE TABLE a (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
+        connection.execute("CREATE TABLE b (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
 
         // todo: creates signal table in the PDB, do we want it to be in the CDB?
         TestHelper.dropTable(connection, "debezium_signal");
@@ -55,6 +58,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         stopConnector();
         if (connection != null) {
             TestHelper.dropTable(connection, "a");
+            TestHelper.dropTable(connection, "b");
             TestHelper.dropTable(connection, "debezium_signal");
             connection.close();
         }
@@ -78,6 +82,13 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected void populateTables() throws SQLException {
+        super.populateTables();
+        TestHelper.streamTable(connection, "a");
+        TestHelper.streamTable(connection, "b");
+    }
+
+    @Override
     protected Class<OracleConnector> connectorClass() {
         return OracleConnector.class;
     }
@@ -95,6 +106,11 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Override
     protected String tableName() {
         return "DEBEZIUM.A";
+    }
+
+    @Override
+    protected List<String> tableNames() {
+        return Collect.arrayListOf("DEBEZIUM.A", "DEBEZIUM.B");
     }
 
     @Override
