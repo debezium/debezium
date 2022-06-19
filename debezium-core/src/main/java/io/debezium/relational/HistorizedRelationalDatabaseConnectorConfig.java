@@ -101,7 +101,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         }
 
         // Do not remove the prefix from the subset of config properties ...
-        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+        Configuration dbHistoryConfig = config.filter(k -> k.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || k.startsWith("debezium.sink."))
                 .edit()
                 .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
                 .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
