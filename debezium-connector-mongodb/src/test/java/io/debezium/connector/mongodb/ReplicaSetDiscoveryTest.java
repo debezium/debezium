@@ -14,15 +14,15 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.MongoException;
+import com.mongodb.MongoSocketOpenException;
+import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterConnectionMode;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
-import com.mongodb.MongoException;
-import com.mongodb.MongoSocketOpenException;
-import com.mongodb.ServerAddress;
-import com.mongodb.client.MongoClient;
 
 public class ReplicaSetDiscoveryTest {
 
