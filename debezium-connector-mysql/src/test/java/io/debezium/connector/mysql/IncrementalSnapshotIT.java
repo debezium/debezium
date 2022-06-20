@@ -10,6 +10,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assume.assumeFalse;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -47,6 +48,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
 
     @Before
     public void before() throws SQLException {
+        // Skip for legacy
+        assumeFalse(MySqlConnector.LEGACY_IMPLEMENTATION.equals(System.getProperty(MySqlConnector.IMPLEMENTATION_PROP)));
+
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
