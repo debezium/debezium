@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisDataException;
 
 /**
  * Establishes a new connection to Redis
@@ -55,7 +56,13 @@ public class RedisConnection {
             client.ping();
         }
 
-        client.clientSetname(clientName);
+        try {
+            client.clientSetname(clientName);
+        }
+        catch (JedisDataException e) {
+            LOGGER.warn("Failed to set client name", e);
+        }
+
         LOGGER.info("Using Jedis '{}'", client);
 
         return client;
