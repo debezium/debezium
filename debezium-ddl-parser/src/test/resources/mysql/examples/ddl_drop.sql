@@ -66,3 +66,8 @@ drop function if exists foo;
 drop function bar;
 
 #end
+#begin
+-- Drop Role
+DROP ROLE 'admin', 'developer';
+DROP ROLE 'webapp'@'localhost';
+#end

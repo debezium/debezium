@@ -63,7 +63,7 @@ ddlStatement
     | dropDatabase | dropEvent | dropIndex
     | dropLogfileGroup | dropProcedure | dropFunction
     | dropServer | dropTable | dropTablespace
-    | dropTrigger | dropView
+    | dropTrigger | dropView | dropRole | setRole
     | renameTable | truncateTable
     ;
 
@@ -183,7 +183,7 @@ createFunction
     ;
 
 createRole
-    : CREATE ROLE (IF NOT EXISTS)? roleName
+    : CREATE ROLE (IF NOT EXISTS)? roleName (',' roleName)*
     ;
 
 createServer
@@ -756,6 +756,15 @@ dropView
       fullId (',' fullId)* dropType=(RESTRICT | CASCADE)?
     ;
 
+dropRole
+    : DROP ROLE ifExists? roleName (',' roleName)*
+    ;
+
+setRole
+    : SET DEFAULT ROLE (NONE | ALL | roleName (',' roleName)*)
+      TO (userName | uid) (',' (userName | uid))*
+    | SET ROLE roleOption
+    ;
 
 //    Other DDL statements
 
@@ -2003,7 +2012,7 @@ tableName
     ;
 
 roleName
-    : uid
+    : userName | uid
     ;
 
 fullColumnName
