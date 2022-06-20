@@ -199,7 +199,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         synchronized (this) {
             while (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
                 // notify poll() to drain queue
-                this.notify();
+                this.notifyAll();
                 // queue size or queue sizeInBytes threshold reached, so wait a bit
                 this.wait(pollInterval.toMillis());
             }
@@ -214,7 +214,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
             if (queue.size() >= maxBatchSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
                 // notify poll() to start draining queue and do not wait
-                this.notify();
+                this.notifyAll();
             }
         }
     }
