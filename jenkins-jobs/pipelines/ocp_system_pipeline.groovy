@@ -46,45 +46,45 @@ pipeline {
                     FILENAME="testsuite-job"
 
                     OPTIONAL_PARAMS=""
-                    if [ ! -z  "${DBZ_CONNECT_IMAGE}"]; then
+                    if [ ! -z  "${DBZ_CONNECT_IMAGE}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --dbz-connect-image ${DBZ_CONNECT_IMAGE}"
                     fi
 
-                    if [ ! -z  "${ARTIFACT_SERVER_IMAGE}"]; then
+                    if [ ! -z  "${ARTIFACT_SERVER_IMAGE}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --artifact-server-image ${ARTIFACT_SERVER_IMAGE}"
                     fi
 
-                    if [ ! -z  "${APICURIO_VERSION}"]; then
+                    if [ ! -z  "${APICURIO_VERSION}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --apicurio-version ${APICURIO_VERSION}"
                     fi
 
-                    if [ ! -z  "${STRZ_GIT_REPOSITORY}"]; then
+                    if [ ! -z  "${STRZ_GIT_REPOSITORY}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --strz-git-repository ${STRZ_GIT_REPOSITORY}"
                     fi
 
-                    if [ ! -z  "${STRZ_GIT_BRANCH}"]; then
+                    if [ ! -z  "${STRZ_GIT_BRANCH}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --strz-git-branch ${STRZ_GIT_BRANCH}"
                     fi
 
-                    if [ ! -z  "${STRZ_DOWNSTREAM_URL}"]; then
+                    if [ ! -z  "${STRZ_DOWNSTREAM_URL}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --strz-downstream-url ${STRZ_DOWNSTREAM_URL}"
                     fi
 
-                    if [ ! -z  "${APIC_GIT_REPOSITORY}"]; then
+                    if [ ! -z  "${APIC_GIT_REPOSITORY}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --apic-git-repository ${APIC_GIT_REPOSITORY}"
                     fi
 
-                    if [ ! -z  "${APIC_GIT_BRANCH}"]; then
+                    if [ ! -z  "${APIC_GIT_BRANCH}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --apic-git-branch ${APIC_GIT_BRANCH}"
                     fi
 
-                    if [ ! -z  "${APIC_DOWNSTREAM_URL}"]; then
+                    if [ ! -z  "${APIC_DOWNSTREAM_URL}" ]; then
                         OPTIONAL_PARAMS="$OPTIONAL_PARAMS --apic-downstream-url ${APIC_DOWNSTREAM_URL}"
                     fi
 
                     cd ${WORKSPACE}/debezium
                     jenkins-jobs/docker/debezium-testing-system/deployment-template.sh --filename "${FILENAME}" \
-                    --pull-secret-name '${PULL_SECRET}' \
+                    --pull-secret-name "${PULL_SECRET_NAME}" \
                     --docker-tag "${DOCKER_TAG}" \
                     --project-name "${OCP_PROJECT_NAME}" \
                     --product-build false \
