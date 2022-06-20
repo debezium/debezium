@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
@@ -22,6 +23,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.util.Collect;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
 
@@ -29,6 +31,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     private static final String SETUP_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" + "CREATE SCHEMA s1; "
             + "CREATE SCHEMA s2; " + "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));"
+            + "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));"
             + "CREATE TABLE s1.a4 (pk1 integer, pk2 integer, pk3 integer, pk4 integer, aa integer, PRIMARY KEY(pk1, pk2, pk3, pk4));"
             + "CREATE TABLE s1.a42 (pk1 integer, pk2 integer, pk3 integer, pk4 integer, aa integer);"
             + "CREATE TABLE s1.anumeric (pk numeric, aa integer, PRIMARY KEY(pk));"
@@ -103,6 +106,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     @Override
     protected String tableName() {
         return "s1.a";
+    }
+
+    @Override
+    protected List<String> tableNames() {
+        return Collect.arrayListOf("s1.a", "s1.b");
     }
 
     @Override

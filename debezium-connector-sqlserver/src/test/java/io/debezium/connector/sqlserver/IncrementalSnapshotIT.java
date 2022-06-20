@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -19,6 +20,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<SqlServerConnector> {
@@ -34,6 +36,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE a (pk int primary key, aa int)",
+                "CREATE TABLE b (pk int primary key, aa int)",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
         TestHelper.enableTableCdc(connection, "debezium_signal");
 
@@ -55,6 +58,13 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     }
 
     @Override
+    protected void populateTables() throws SQLException {
+        super.populateTables();
+        TestHelper.enableTableCdc(connection, "a");
+        TestHelper.enableTableCdc(connection, "b");
+    }
+
+    @Override
     protected Class<SqlServerConnector> connectorClass() {
         return SqlServerConnector.class;
     }
@@ -67,6 +77,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Override
     protected String topicName() {
         return "server1.dbo.a";
+    }
+
+    @Override
+    protected List<String> tableNames() {
+        return Collect.arrayListOf("testDB.dbo.a", "testDB.dbo.b");
     }
 
     @Override

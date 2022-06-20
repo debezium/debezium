@@ -37,6 +37,7 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<MySqlConnector> {
@@ -116,6 +117,13 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Override
     protected String tableName() {
         return TableId.parse(DATABASE.qualifiedTableName("a")).toQuotedString('`');
+    }
+
+    @Override
+    protected List<String> tableNames() {
+        final String tableA = TableId.parse(DATABASE.qualifiedTableName("a")).toQuotedString('`');
+        final String tableB = TableId.parse(DATABASE.qualifiedTableName("c")).toQuotedString('`');
+        return Collect.arrayListOf(tableA, tableB);
     }
 
     @Override
