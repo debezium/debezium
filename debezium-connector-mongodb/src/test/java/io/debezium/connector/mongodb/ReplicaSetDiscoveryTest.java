@@ -14,15 +14,17 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.MongoException;
+import com.mongodb.MongoSocketOpenException;
+import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterConnectionMode;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
-import com.mongodb.MongoException;
-import com.mongodb.MongoSocketOpenException;
-import com.mongodb.ServerAddress;
-import com.mongodb.client.MongoClient;
+
+import io.debezium.util.Collect;
 
 public class ReplicaSetDiscoveryTest {
 
@@ -55,7 +57,7 @@ public class ReplicaSetDiscoveryTest {
         ServerAddress host1Address = new ServerAddress("host1");
         ServerAddress host2Address = new ServerAddress("host2");
 
-        List<ServerDescription> serverDescriptions = List.of(
+        List<ServerDescription> serverDescriptions = Collect.arrayListOf(
                 ServerDescription.builder()
                         .address(host1Address)
                         .state(ServerConnectionState.CONNECTING)
@@ -77,6 +79,6 @@ public class ReplicaSetDiscoveryTest {
         ReplicaSets replicaSets = replicaSetDiscovery.getReplicaSets();
         assertThat(replicaSets.validReplicaSets().size()).isEqualTo(1);
         assertThat(replicaSets.validReplicaSets().get(0).replicaSetName()).isEqualTo("my_rs");
-        assertThat(replicaSets.validReplicaSets().get(0).addresses()).isEqualTo(List.of(host2Address));
+        assertThat(replicaSets.validReplicaSets().get(0).addresses()).isEqualTo(Collect.arrayListOf(host2Address));
     }
 }
