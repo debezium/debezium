@@ -10,6 +10,8 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
+
 /**
  * This class is responsible for finding out a LSN from which Debezium should
  * resume streaming after connector restarts. The LSNs are not guaranteed to be
@@ -136,9 +138,9 @@ public class WalPositionLocator {
             return false;
         }
         if (startStreamingLsn.compareTo(lsn) < 0) {
-            LOGGER.warn("Message with LSN '{}' larger than expected LSN '{}' arrived, switching off the filtering", lsn, startStreamingLsn);
-            passMessages = true;
-            return false;
+            throw new DebeziumException(String.format(
+                    "Message with LSN '%s' larger than expected LSN '%s'. This is unexpected and can lead to an infinite loop or a data loss.",
+                    lsn, startStreamingLsn));
         }
         LOGGER.debug("Message with LSN '{}' filtered", lsn);
         return true;
