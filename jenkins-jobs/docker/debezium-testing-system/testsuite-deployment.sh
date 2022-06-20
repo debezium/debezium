@@ -22,18 +22,12 @@ mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 ${OCP_PROJECTS} --project "${DBZ_OCP_PROJECT_DEBEZIUM}" --create
 
 # prepare strimzi
-# TODO remove the defaults once it's being ran from jenkins?
-if [ -z "${STRZ_GIT_REPOSITORY}" ]; then
-  STRZ_GIT_REPOSITORY="https://github.com/strimzi/strimzi-kafka-operator.git" ;
-fi
-
-if [ -z "${STRZ_GIT_BRANCH}" ]; then
-  STRZ_GIT_BRANCH="main" ;
-fi
-
 clone_component --component strimzi --git-repository "${STRZ_GIT_REPOSITORY}" --git-branch "${STRZ_GIT_BRANCH}" --product-build "${PRODUCT_BUILD}" --downstream-url "${STRZ_DOWNSTREAM_URL}" ;
 sed -i 's/namespace: .*/namespace: '"${DBZ_OCP_PROJECT_DEBEZIUM}"'/' strimzi/install/cluster-operator/*RoleBinding*.yaml ;
 oc create -f strimzi/install/cluster-operator/ -n "${DBZ_OCP_PROJECT_DEBEZIUM}" ;
+
+echo "~~~~~ strimzi prepared ~~~~~"
+
 
 # prepare apicurio if not disabled
 AVRO_PATTERN='.*!avro.*'

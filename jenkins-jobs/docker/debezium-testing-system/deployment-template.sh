@@ -18,13 +18,13 @@ while true; do
         --artifact-server-image ) ARTIFACT_SERVER_IMAGE=$2;   shift 2;;
         --apicurio-version )      APICURIO_VERSION=$2;        shift 2;;
         --groups-arg )            GROUPS_ARG=$2;              shift 2;;
-        --strz-git-repository )   STRZ_GIT_REPOSITORY         shift 2;;
-        --strz-git-branch )       STRZ_GIT_BRANCH             shift 2;;
-        --strz-downstream-url )   STRZ_DOWNSTREAM_URL         shift 2;;
-        --apic-git-repository )   APIC_GIT_REPOSITORY         shift 2;;
-        --apic-git-branch )       APIC_GIT_BRANCH             shift 2;;
-        --apic-downstream-url )   APIC_DOWNSTREAM_URL         shift 2;;
-        -h | --help )             PRINT_HELP=true             shift ;;
+        --strz-git-repository )   STRZ_GIT_REPOSITORY=$2;     shift 2;;
+        --strz-git-branch )       STRZ_GIT_BRANCH=$2;         shift 2;;
+        --strz-downstream-url )   STRZ_DOWNSTREAM_URL=$2;     shift 2;;
+        --apic-git-repository )   APIC_GIT_REPOSITORY=$2;     shift 2;;
+        --apic-git-branch )       APIC_GIT_BRANCH=$2;         shift 2;;
+        --apic-downstream-url )   APIC_DOWNSTREAM_URL=$2;     shift 2;;
+        -h | --help )             PRINT_HELP=true=$2;         shift ;;
         -- ) shift; break ;;
         * ) break ;;
     esac
@@ -92,11 +92,11 @@ spec:
             - name: STRZ_DOWNSTREAM_URL
               value: \"${STRZ_DOWNSTREAM_URL}\"
             - name: APIC_GIT_REPOSITORY
-              value: \"${APIC_GIT_REPOSITORY}}\"
+              value: \"${APIC_GIT_REPOSITORY}\"
             - name: APIC_GIT_BRANCH
-              value: \"${APIC_GIT_BRANCH}}\"
+              value: \"${APIC_GIT_BRANCH}\"
             - name: APIC_DOWNSTREAM_URL
-              value: \"${APIC_DOWNSTREAM_URL}}\"
+              value: \"${APIC_DOWNSTREAM_URL}\"
   triggers:
     - type: \"ConfigChange\"
   paused: false
@@ -105,4 +105,4 @@ spec:
 "
 
 
-printf "%s" "$output" >> "${FILENAME}.yml"
+printf "%s" "${output}" >> "${FILENAME}.yml"
