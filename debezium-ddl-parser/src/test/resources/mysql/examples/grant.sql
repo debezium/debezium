@@ -103,3 +103,11 @@ GRANT FEDERATED_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT READ_ONLY_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT REPLICATION_MASTER_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT REPLICATION REPLICA ON *.* TO 'mysqluser'@'localhost'
+-- Set Role
+SET ROLE DEFAULT;
+SET ROLE 'role1', 'role2';
+SET ROLE ALL;
+SET ROLE ALL EXCEPT 'role1', 'role2';
+-- Set Default Role
+SET DEFAULT ROLE 'admin', 'developer' TO 'joe'@'10.0.0.1';
+SET DEFAULT ROLE `admin`@'%' to `dt_user`@`%`;
