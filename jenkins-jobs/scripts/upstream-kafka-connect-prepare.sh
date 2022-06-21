@@ -72,11 +72,13 @@ done
 rm apicurio-registry-*.zip
 rm debezium-scripting-*.zip
 
+prefix=""
 if [ "${ORACLE}" = "false" ] ; then
   rm -rf debezium-connector-oracle
 else
   echo "Changing quay organisation to private rh_integration since ORACLE connector is included"
   ORGANISATION="rh_integration"
+  prefix="dbz-"
 fi
 
 popd || exit
@@ -84,7 +86,7 @@ popd || exit
 echo "Copying Dockerfile to" "${BUILD_DIR}"
 cp "$DOCKER_FILE" "${BUILD_DIR}/Dockerfile"
 
-image=${REGISTRY}/${ORGANISATION}/test-strimzi-kafka
+image=${REGISTRY}/${ORGANISATION}/${prefix}strimzi-kafka-upstream
 target=${image}:strz-${CONNECT_BASE_TAG}-kafka-${KAFKA_VERSION}-apc-${APICURIO_VERSION}-dbz-${project_version}
 
 pushd "${BUILD_DIR}" || exit
