@@ -35,3 +35,4 @@ gen/
 
 jenkins-jobs/docker/rhel_kafka/plugins
 jenkins-jobs/docker/artifact-server/plugins
+/jenkins-jobs/docker/debezium-testing-system/secret.yml
