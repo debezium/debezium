@@ -2,6 +2,58 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.4.Final
+June 21st 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12389859)
+
+### New features since 1.9.3.Final
+
+* Include event scn in Oracle records [DBZ-5225](https://issues.redhat.com/browse/DBZ-5225)
+* Redis Store does not work with GCP Managed Redis [DBZ-5268](https://issues.redhat.com/browse/DBZ-5268)
+
+
+### Breaking changes since 1.9.3.Final
+
+None
+
+
+### Fixes since 1.9.3.Final
+
+* Incorrect loading of LSN from offsets [DBZ-3942](https://issues.redhat.com/browse/DBZ-3942)
+* Database history recovery will retain old tables after they've been renamed [DBZ-4451](https://issues.redhat.com/browse/DBZ-4451)
+* Adding new table with incremental snapshots not working [DBZ-4834](https://issues.redhat.com/browse/DBZ-4834)
+* BigDecimal has mismatching scale value for given Decimal schema [DBZ-4890](https://issues.redhat.com/browse/DBZ-4890)
+* Debezium has never found starting LSN [DBZ-5031](https://issues.redhat.com/browse/DBZ-5031)
+* Cursor fetch is used for all results during connection [DBZ-5084](https://issues.redhat.com/browse/DBZ-5084)
+* io.debezium.text.ParsingException: DDL statement couldn't be parsed [DBZ-5200](https://issues.redhat.com/browse/DBZ-5200)
+* Debezium does NOT support "unix_timestamp() as DEFAULT value [DBZ-5201](https://issues.redhat.com/browse/DBZ-5201)
+* Oracle io.debezium.DebeziumException: io.debezium.DebeziumException: Failed to get transaction id for current SCN [DBZ-5202](https://issues.redhat.com/browse/DBZ-5202)
+* Debezium Postgres v1.9.3 fails in Materialize CI [DBZ-5204](https://issues.redhat.com/browse/DBZ-5204)
+* Oracle Connector failing due to ALTER TABLE for adding column with foreign key [DBZ-5210](https://issues.redhat.com/browse/DBZ-5210)
+* DDL statement couldn't be parsed - Oracle connector 1.9.3.Final [DBZ-5211](https://issues.redhat.com/browse/DBZ-5211)
+* DDL statement couldn't be parsed 2 - Oracle connector 1.9.3.Final [DBZ-5230](https://issues.redhat.com/browse/DBZ-5230)
+* Cannot convert field type tinyint(1) unsigned to boolean [DBZ-5236](https://issues.redhat.com/browse/DBZ-5236)
+* Oracle unparsable ddl create table [DBZ-5237](https://issues.redhat.com/browse/DBZ-5237)
+* Character set influencers are not properly parsed on default values [DBZ-5241](https://issues.redhat.com/browse/DBZ-5241)
+* Oracle LogMiner may fail with an in-progress transaction in an archive log that has been deleted [DBZ-5256](https://issues.redhat.com/browse/DBZ-5256)
+* Order of source block table names in a rename schema change event is not deterministic [DBZ-5257](https://issues.redhat.com/browse/DBZ-5257)
+* Debezium fails to connect to replicaset if a node is down [DBZ-5260](https://issues.redhat.com/browse/DBZ-5260)
+* io.debezium.text.ParsingException: DDL statement couldn't be parsed [DBZ-5271](https://issues.redhat.com/browse/DBZ-5271)
+* Deadlock during snapshot with Mongo connector [DBZ-5272](https://issues.redhat.com/browse/DBZ-5272)
+* Mysql parser is not able to handle variables in KILL command [DBZ-5273](https://issues.redhat.com/browse/DBZ-5273)
+
+
+### Other changes since 1.9.3.Final
+
+* Confusing example for schema change topic [DBZ-4713](https://issues.redhat.com/browse/DBZ-4713)
+* Update cache-invalidation example [DBZ-4754](https://issues.redhat.com/browse/DBZ-4754)
+* MBean name registrations no longer correct in documentation [DBZ-5153](https://issues.redhat.com/browse/DBZ-5153)
+* Use ubi9 as the base image for Debezium UI [DBZ-5199](https://issues.redhat.com/browse/DBZ-5199)
+* Restore deleted topic heading in mongodb-outbox-event-router.adoc [DBZ-5219](https://issues.redhat.com/browse/DBZ-5219)
+* Create shared adoc fragments for specifying MBean name format in connector metrics sections [DBZ-5233](https://issues.redhat.com/browse/DBZ-5233)
+* Several Oracle tests do not get database name from TestHelper [DBZ-5258](https://issues.redhat.com/browse/DBZ-5258)
+
+
+
 ## 1.9.3.Final
 June 2nd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385477)
 
