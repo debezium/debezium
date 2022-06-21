@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -412,13 +413,14 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 "FROM generate_series(1, 20);");
 
         // then start the producer and validate all records are there
-        buildNoStreamProducer(TestHelper.defaultConfig());
+        Configuration.Builder config = TestHelper.defaultConfig();
+        config.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.first_table, public.partitioned_1_100, public.partitioned_101_200");
+        buildNoStreamProducer(config);
 
         Set<Integer> ids = new HashSet<>();
 
         Map<String, Integer> expectedTopicCounts = Collect.hashMapOf(
                 "test_server.public.first_table", 1,
-                "test_server.public.partitioned", 0,
                 "test_server.public.partitioned_1_100", 10,
                 "test_server.public.partitioned_101_200", 20);
         int expectedTotalCount = expectedTopicCounts.values().stream().mapToInt(Integer::intValue).sum();
@@ -1043,6 +1045,44 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnHex());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-5240")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Primary keys on partitioned tables are supported only on Postgres 11+")
+    public void shouldIncludePartitionedTableIntoSnapshot() throws Exception {
+
+        // create partitioned table
+        TestHelper.dropAllSchemas();
+        TestHelper.execute(
+                "CREATE SCHEMA s1;"
+                        + "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);"
+                        + "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);"
+                        + "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);");
+
+        // insert records
+        TestHelper.execute("INSERT into s1.part VALUES(1, 1)");
+        TestHelper.execute("INSERT into s1.part VALUES(2, 2)");
+        TestHelper.execute("INSERT into s1.part VALUES(3, 700)");
+        TestHelper.execute("INSERT into s1.part VALUES(4, 800)");
+
+        // start connector
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // check the records from the snapshot
+        final int expectedCount = 4;
+        final int[] expectedPks = { 1, 2, 3, 4 };
+        SourceRecords actualRecords = consumeRecordsByTopic(expectedCount);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(expectedCount);
+        List<SourceRecord> recordsForTopicPart = actualRecords.recordsForTopic(topicName("s1.part"));
+        assertThat(recordsForTopicPart.size()).isEqualTo(expectedCount);
+        IntStream.range(0, expectedCount)
+                .forEach(i -> VerifyRecord.isValidRead(recordsForTopicPart.remove(0), PK_FIELD, expectedPks[i]));
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {
