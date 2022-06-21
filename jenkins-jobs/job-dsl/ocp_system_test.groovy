@@ -29,7 +29,7 @@ pipelineJob('ocp-system-test') {
         stringParam('STRZ_DOWNSTREAM_URL', '', 'URL to productised strimzi sources')
 
         stringParam('APIC_GIT_REPOSITORY', 'https://github.com/Apicurio/apicurio-registry-operator.git', 'Repository from which Apicurio is cloned')
-        stringParam('APIC_GIT_BRANCH', 'main', 'A branch/tag from which Apicurio is built')
+        stringParam('APIC_GIT_BRANCH', 'master', 'A branch/tag from which Apicurio is built')
         stringParam('APIC_DOWNSTREAM_URL', '', 'URL to productised apicurio sources')
     }
 
