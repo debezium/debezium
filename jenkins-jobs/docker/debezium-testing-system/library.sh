@@ -23,7 +23,7 @@ clone_component()
       exit 2 ;
     fi ;
 
-    if [ "${PRODUCT_BUILD}" = false ] ;
+    if [ "${PRODUCT_BUILD}" == false ];
     then
         git clone --branch "${GIT_BRANCH}" "${GIT_REPO}" "${COMPONENT}" || exit 2 ;
     elif [ -z "${DOWNSTREAM_URL}" ] ;
