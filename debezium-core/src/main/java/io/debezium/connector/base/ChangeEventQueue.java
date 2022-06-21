@@ -11,6 +11,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -63,6 +67,11 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final int maxBatchSize;
     private final int maxQueueSize;
     private final long maxQueueSizeInBytes;
+
+    private final Lock lock;
+    private final Condition isFull;
+    private final Condition isNotFull;
+
     private final Queue<T> queue;
     private final Supplier<PreviousContext> loggingContextSupplier;
     private final Queue<Long> sizeInBytesQueue;
@@ -86,6 +95,11 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
+
+        this.lock = new ReentrantLock();
+        this.isFull = lock.newCondition();
+        this.isNotFull = lock.newCondition();
+
         this.queue = new ArrayDeque<>(maxQueueSize);
         this.loggingContextSupplier = loggingContextSupplier;
         this.sizeInBytesQueue = new ArrayDeque<>(maxQueueSize);
@@ -196,12 +210,14 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
             LOGGER.debug("Enqueuing source record '{}'", record);
         }
 
-        synchronized (this) {
+        try {
+            this.lock.lock();
+
             while (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
-                // notify poll() to drain queue
-                this.notifyAll();
+                // signal poll() to drain queue
+                this.isFull.signalAll();
                 // queue size or queue sizeInBytes threshold reached, so wait a bit
-                this.wait(pollInterval.toMillis());
+                this.isNotFull.await(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
             }
 
             queue.add(record);
@@ -212,10 +228,14 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
                 currentQueueSizeInBytes += messageSize;
             }
 
+            // batch size or queue sizeInBytes threshold reached
             if (queue.size() >= maxBatchSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
-                // notify poll() to start draining queue and do not wait
-                this.notifyAll();
+                // signal poll() to start draining queue and do not wait
+                this.isFull.signalAll();
             }
+        }
+        finally {
+            this.lock.unlock();
         }
     }
 
@@ -233,26 +253,30 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         try {
             LOGGER.debug("polling records...");
             final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
-            synchronized (this) {
+            try {
+                this.lock.lock();
                 List<T> records = new ArrayList<>(Math.min(maxBatchSize, queue.size()));
                 while (drainRecords(records, maxBatchSize - records.size()) < maxBatchSize
                         && (maxQueueSizeInBytes == 0 || currentQueueSizeInBytes < maxQueueSizeInBytes)
                         && !timeout.expired()) {
                     throwProducerExceptionIfPresent();
 
-                    LOGGER.debug("no records available yet, sleeping a bit...");
+                    LOGGER.debug("no records available or batch size not reached yet, sleeping a bit...");
                     long remainingTimeoutMills = timeout.remaining().toMillis();
                     if (remainingTimeoutMills > 0) {
-                        // notify doEnqueue() to resume processing (if anything is on wait())
-                        this.notify();
-                        // no records yet, so wait a bit
-                        this.wait(remainingTimeoutMills);
+                        // signal doEnqueue() to add more records
+                        this.isNotFull.signalAll();
+                        // no records available or batch size not reached yet, so wait a bit
+                        this.isFull.await(remainingTimeoutMills, TimeUnit.MILLISECONDS);
                     }
                     LOGGER.debug("checking for more records...");
                 }
-                // notify doEnqueue() to resume processing
-                this.notify();
+                // signal doEnqueue() to add more records
+                this.isNotFull.signalAll();
                 return records;
+            }
+            finally {
+                this.lock.unlock();
             }
         }
         finally {
