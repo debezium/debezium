@@ -82,7 +82,7 @@ echo "Copying Dockerfile to" "${BUILD_DIR}"
 cp "$DOCKER_FILE" "$BUILD_DIR"
 
 amq_version=$(echo "${KAFKA_URL}" | sed -rn 's|.*AMQ-STREAMS-(.*)/.*$|\1|p')
-image_dbz=debezium-testing-rhel8
+image_dbz=dbz-rhel-kafka
 target=${REGISTRY}/${ORGANISATION}/${image_dbz}:amq-${amq_version}-dbz-${connectors_version}
 
 pushd "${BUILD_DIR}" || exit

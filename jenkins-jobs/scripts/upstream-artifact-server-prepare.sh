@@ -56,12 +56,14 @@ cp "$MAVEN_REPO"/org/codehaus/groovy/groovy/*/groovy-*.jar groovy/
 cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-json/*/groovy-json-*.jar groovy/
 cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-jsr223/*/groovy-jsr223-*.jar groovy/
 
+prefix=""
 if [ "${ORACLE}" = "false" ] ; then
   rm debezium-connector-oracle*.zip
 else
   cp "$MAVEN_REPO"/com/oracle/database/jdbc/ojdbc8/*/ojdbc8-*.jar jdbc/
   echo "Changing quay organisation to private rh-integration since ORACLE connector is included"
   ORGANISATION="rh_integration"
+  prefix="dbz-"
 fi
 
 popd || exit
@@ -72,7 +74,7 @@ cp "${DIR}"/../docker/artifact-server/* "$BUILD_DIR"
 echo "Copying Dockerfile to" "${BUILD_DIR}"
 cp "$DOCKER_FILE" "$BUILD_DIR"
 
-image=${REGISTRY}/${ORGANISATION}/test-artifact-server
+image=${REGISTRY}/${ORGANISATION}/${prefix}artifact-server-upstream
 target=${image}:${project_version}
 
 pushd "${BUILD_DIR}" || exit
