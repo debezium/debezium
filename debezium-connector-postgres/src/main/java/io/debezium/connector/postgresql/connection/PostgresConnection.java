@@ -661,6 +661,16 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    @Override
+    protected String[] supportedTableTypes() {
+        return new String[]{ "VIEW", "MATERIALIZED VIEW", "TABLE", "PARTITIONED TABLE" };
+    }
+
+    @Override
+    protected boolean isTableType(String tableType) {
+        return "TABLE".equals(tableType) || "PARTITIONED TABLE".equals(tableType);
+    }
+
     @FunctionalInterface
     public interface PostgresValueConverterBuilder {
         PostgresValueConverter build(TypeRegistry registry);

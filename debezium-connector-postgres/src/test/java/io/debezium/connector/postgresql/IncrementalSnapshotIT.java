@@ -6,6 +6,8 @@
 
 package io.debezium.connector.postgresql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
@@ -212,6 +215,64 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5240")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Primary keys on partitioned tables are supported only on Postgres 11+")
+    public void snapshotPartitionedTable() throws Exception {
+
+        // create partitioned table
+        final String SETUP_TABLES = "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);"
+                + "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);"
+                + "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);";
+        TestHelper.execute(SETUP_TABLES);
+
+        // insert records
+        try (final JdbcConnection connection = databaseConnection()) {
+            populateTable(connection, "s1.part");
+        }
+
+        // start connector
+        startConnector(x -> x.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part, s1.part1, s1.part2, s1.debezium_signal"));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.part");
+        sendAdHocSnapshotSignal("s1.part1");
+        sendAdHocSnapshotSignal("s1.part2");
+
+        // check the records from the snapshot
+        final int expectedRecordCount = ROW_COUNT;
+        final int expectedPartRecordCount = ROW_COUNT / 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                "test_server.s1.part",
+                null);
+        final Map<Integer, Integer> dbChangesPart1 = consumeMixedWithIncrementalSnapshot(
+                expectedPartRecordCount,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                "test_server.s1.part1",
+                null);
+        final Map<Integer, Integer> dbChangesPart2 = consumeMixedWithIncrementalSnapshot(
+                expectedPartRecordCount,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                "test_server.s1.part2",
+                null);
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+        for (int i = 0; i < expectedPartRecordCount; i++) {
+            Assertions.assertThat(dbChangesPart1).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChangesPart2).includes(MapAssert.entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
         }
     }
 

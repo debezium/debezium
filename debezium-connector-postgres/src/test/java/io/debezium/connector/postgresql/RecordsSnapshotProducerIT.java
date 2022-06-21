@@ -12,9 +12,11 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -35,6 +38,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
@@ -405,44 +409,47 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 "FROM generate_series(1, 20);");
 
         // then start the producer and validate all records are there
-        buildNoStreamProducer(TestHelper.defaultConfig());
-
-        TestConsumer consumer = testConsumer(1 + 30);
-        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+        Configuration.Builder config = TestHelper.defaultConfig();
+        config.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.first_table, public.partitioned_1_100, public.partitioned_101_200");
+        buildNoStreamProducer(config);
 
         Set<Integer> ids = new HashSet<>();
 
-        Map<String, Integer> topicCounts = Collect.hashMapOf(
-                "test_server.public.first_table", 0,
-                "test_server.public.partitioned", 0,
-                "test_server.public.partitioned_1_100", 0,
-                "test_server.public.partitioned_101_200", 0);
+        Map<String, Integer> expectedTopicCounts = Collect.hashMapOf(
+                "test_server.public.first_table", 1,
+                "test_server.public.partitioned_1_100", 10,
+                "test_server.public.partitioned_101_200", 20);
+        int expectedTotalCount = expectedTopicCounts.values().stream().mapToInt(Integer::intValue).sum();
+
+        TestConsumer consumer = testConsumer(expectedTotalCount);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        Map<String, Integer> actualTopicCounts = new HashMap<>();
+        AtomicInteger actualTotalCount = new AtomicInteger(0);
 
         consumer.process(record -> {
+            assertSourceInfo(record);
             Struct key = (Struct) record.key();
             if (key != null) {
                 final Integer id = key.getInt32("pk");
                 Assertions.assertThat(ids).excludes(id);
                 ids.add(id);
             }
-            topicCounts.put(record.topic(), topicCounts.get(record.topic()) + 1);
+
+            actualTopicCounts.put(record.topic(), actualTopicCounts.getOrDefault(record.topic(), 0) + 1);
+
+            SnapshotRecord expected = expectedSnapshotRecordFromPosition(
+                    actualTotalCount.incrementAndGet(), expectedTotalCount,
+                    actualTopicCounts.get(record.topic()), expectedTopicCounts.get(record.topic()));
+            assertRecordOffsetAndSnapshotSource(record, expected);
         });
 
         // verify distinct records
-        assertEquals(31, ids.size());
+        assertEquals(expectedTotalCount, actualTotalCount.get());
+        assertEquals(expectedTotalCount, ids.size());
 
         // verify each topic contains exactly the number of input records
-        assertEquals(1, topicCounts.get("test_server.public.first_table").intValue());
-        assertEquals(0, topicCounts.get("test_server.public.partitioned").intValue());
-        assertEquals(10, topicCounts.get("test_server.public.partitioned_1_100").intValue());
-        assertEquals(20, topicCounts.get("test_server.public.partitioned_101_200").intValue());
-
-        // check the offset information for each record
-        while (!consumer.isEmpty()) {
-            SourceRecord record = consumer.remove();
-            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
-            assertSourceInfo(record);
-        }
+        assertTrue("Expected counts per topic don't match", expectedTopicCounts.entrySet().containsAll(actualTopicCounts.entrySet()));
     }
 
     @Test
@@ -1034,6 +1041,44 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnHex());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-5240")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Primary keys on partitioned tables are supported only on Postgres 11+")
+    public void shouldIncludePartitionedTableIntoSnapshot() throws Exception {
+
+        // create partitioned table
+        TestHelper.dropAllSchemas();
+        TestHelper.execute(
+                "CREATE SCHEMA s1;"
+                        + "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);"
+                        + "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);"
+                        + "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);");
+
+        // insert records
+        TestHelper.execute("INSERT into s1.part VALUES(1, 1)");
+        TestHelper.execute("INSERT into s1.part VALUES(2, 2)");
+        TestHelper.execute("INSERT into s1.part VALUES(3, 700)");
+        TestHelper.execute("INSERT into s1.part VALUES(4, 800)");
+
+        // start connector
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // check the records from the snapshot
+        final int expectedCount = 4;
+        final int[] expectedPks = { 1, 2, 3, 4 };
+        SourceRecords actualRecords = consumeRecordsByTopic(expectedCount);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(expectedCount);
+        List<SourceRecord> recordsForTopicPart = actualRecords.recordsForTopic(topicName("s1.part"));
+        assertThat(recordsForTopicPart.size()).isEqualTo(expectedCount);
+        IntStream.range(0, expectedCount)
+                .forEach(i -> VerifyRecord.isValidRead(recordsForTopicPart.remove(0), PK_FIELD, expectedPks[i]));
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {
