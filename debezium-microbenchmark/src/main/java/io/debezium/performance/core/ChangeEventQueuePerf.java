@@ -129,9 +129,9 @@ public class ChangeEventQueuePerf {
 
     @Fork(1)
     @State(Scope.Thread)
-    @Warmup(iterations = 2, time = 5)
-    @Measurement(iterations = 2, time = 5)
-    @OutputTimeUnit(TimeUnit.SECONDS)
+    @Warmup(iterations = 5, time = 1)
+    @Measurement(iterations = 5, time = 1)
+    @OutputTimeUnit(TimeUnit.MILLISECONDS)
     @BenchmarkMode({ Mode.AverageTime })
     public static class QueuePerf {
 
@@ -194,6 +194,90 @@ public class ChangeEventQueuePerf {
         @TearDown(Level.Invocation)
         public void teardown() {
             producer.interrupt();
+            consumer.interrupt();
+        }
+
+    }
+
+    @Fork(1)
+    @State(Scope.Thread)
+    @Warmup(iterations = 5, time = 1)
+    @Measurement(iterations = 5, time = 1)
+    @OutputTimeUnit(TimeUnit.MILLISECONDS)
+    @BenchmarkMode({ Mode.AverageTime })
+    public static class MultiWriterQueuePerf {
+
+        private static final String EVENT = "Change Data Capture Even via Debezium";
+        private static final int TOTAL_RECORDS_PER_PRODUCER = 1_000_000;
+        private static final int TOTAL_PRODUCERS = 10;
+
+        @Param({ "10", "50", "500" })
+        long pollIntervalMillis;
+
+        private ChangeEventQueue<String> changeEventQueue;
+        private Thread[] producers;
+        private Thread consumer;
+
+        @Setup(Level.Trial)
+        public void setupInvocation() {
+            changeEventQueue = new ChangeEventQueue.Builder<String>()
+                    .pollInterval(Duration.ofMillis(pollIntervalMillis))
+                    .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
+                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES).build();
+        }
+
+        @Setup(Level.Invocation)
+        public void setup() {
+            producers = new Thread[TOTAL_PRODUCERS];
+            for (int i = 0; i < TOTAL_PRODUCERS; i++) {
+                producers[i] = new Thread(() -> {
+                    try {
+                        for (int j = 0; j < TOTAL_RECORDS_PER_PRODUCER; j++) {
+                            changeEventQueue.enqueue(EVENT);
+                        }
+                    }
+                    catch (InterruptedException ex) {
+                        // exit thread
+                    }
+                });
+            }
+
+            long recordsToPoll = (long) TOTAL_RECORDS_PER_PRODUCER * TOTAL_PRODUCERS;
+            consumer = new Thread(new Runnable() {
+                private long noOfRecords = 0;
+
+                @Override
+                public void run() {
+                    while (noOfRecords < recordsToPoll) {
+                        try {
+                            noOfRecords += changeEventQueue.poll().size();
+                        }
+                        catch (InterruptedException ex) {
+                            // exit thread
+                        }
+                    }
+                }
+            });
+        }
+
+        @Benchmark
+        public void benchmarkChangeEventQueue() throws InterruptedException {
+            for (Thread producer : producers) {
+                producer.start();
+            }
+            consumer.start();
+            for (Thread producer : producers) {
+                producer.join();
+            }
+            consumer.join();
+        }
+
+        @TearDown(Level.Invocation)
+        public void teardown() {
+            for (Thread producer : producers) {
+                producer.interrupt();
+            }
             consumer.interrupt();
         }
 
