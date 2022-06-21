@@ -43,14 +43,19 @@ if [[ ! ${GROUPS_ARG} =~ ${AVRO_PATTERN} ]]; then
     APICURIO_RESOURCE="install/apicurio-registry-operator-1.1.0-dev.yaml"
   fi
 
-  clone_component --component apicurio --git-repository "${APIC_GIT_REPOSITORY}" --git-branch "${APIC_GIT_BRANCH}" --product-build "${PRODUCT_BUILD}" --downstream-url "${APIC_DOWNSTREAM_URL}" ;
+  clone_component --component apicurio --git-repository "${APIC_GIT_REPOSITORY}" --git-branch "${APIC_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" --downstream-url "${APIC_DOWNSTREAM_URL}" ;
   sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${DBZ_OCP_PROJECT_REGISTRY}/" apicurio/install/*.yaml ;
   oc create -f apicurio/${APICURIO_RESOURCE} -n "${DBZ_OCP_PROJECT_REGISTRY}" ;
 fi
 
 pushd ${DEBEZIUM_LOCATION} || exit 1;
 
+if [ "${DBZ_PRODUCT_BUILD}" == true ] ; then
+  MVN_PRODUCT_BUILD="-Pproduct"
+fi
+
 mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
+                    ${MVN_PRODUCT_BUILD} \
                     -Docp.project.debezium="${DBZ_OCP_PROJECT_DEBEZIUM}" \
                     -Docp.project.db2="${DBZ_OCP_PROJECT_DB2}" \
                     -Docp.project.mongo="${DBZ_OCP_PROJECT_MONGO}" \

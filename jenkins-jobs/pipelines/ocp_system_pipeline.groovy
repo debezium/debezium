@@ -87,7 +87,7 @@ pipeline {
                     --pull-secret-name "${PULL_SECRET_NAME}" \
                     --docker-tag "${DOCKER_TAG}" \
                     --project-name "${OCP_PROJECT_NAME}" \
-                    --product-build false \
+                    --product-build "${PRODUCT_BUILD}" \
                     --strimzi-kc-build ${STRIMZI_KC_BUILD} \
                     --apicurio-version "${APICURIO_VERSION}" \
                     --groups-arg "${GROUPS_ARG}" \
