@@ -41,8 +41,6 @@ spec:
         name: \"testsuite\"
     spec:
       restartPolicy: Never
-      imagePullSecrets:
-        - name: ${PULL_SECRET_NAME}
       containers:
         - name: \"dbz-testing-system\"
           image: \"quay.io/rh_integration/dbz-testing-system:${DOCKER_TAG}\"
