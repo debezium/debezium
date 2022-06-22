@@ -31,12 +31,12 @@ public class OcpDb2 extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("com.ibm.db2.jcc.DB2Driver");
-        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
         OcpDB2Deployer deployer = new OcpDB2Deployer.Builder()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_DB2)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(services)
+                .withLocalServices(DB_SERVICE_PATH)
+                .withPublicServices(DB_SERVICE_PATH_LB)
                 .withPullSecrets(OCP_PULL_SECRET_PATH.get())
                 .build();
         return deployer.deploy();

@@ -29,12 +29,12 @@ public class OcpMongo extends OcpDatabaseFixture<MongoDatabaseController> {
 
     @Override
     protected MongoDatabaseController databaseController() throws Exception {
-        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
         OcpMongoDeployer deployer = new OcpMongoDeployer.Deployer()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_MONGO)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(services)
+                .withLocalServices(DB_SERVICE_PATH)
+                .withPublicServices(DB_SERVICE_PATH_LB)
                 .build();
         return deployer.deploy();
     }
