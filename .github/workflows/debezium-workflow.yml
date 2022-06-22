@@ -11,7 +11,6 @@ on:
       - 1.*
 
 env:
-  MAVEN_FULL_BUILD_PROFILES: ""
   MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
 
 jobs:
@@ -191,7 +190,7 @@ jobs:
       - name: Download dependencies
         if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
-          mvn -B -ntp clean install -P${{ env.MAVEN_FULL_BUILD_PROFILES }} 
+          mvn -B -ntp clean install 
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }} 
           -Dformat.skip=true 
           -Dcheckstyle.skip=true
@@ -231,7 +230,6 @@ jobs:
       - name: Checkstyle, Formatting, and Import Order Checks
         run: >
           mvn -B -ntp process-sources checkstyle:checkstyle 
-          -P${{ env.MAVEN_FULL_BUILD_PROFILES }} 
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check
