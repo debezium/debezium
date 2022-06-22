@@ -30,12 +30,12 @@ public class OcpSqlServer extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-        String[] services = isRunningFromOcp() ? new String[]{DB_SERVICE_PATH} : new String[]{DB_SERVICE_PATH, DB_SERVICE_PATH_LB};
         OcpSqlServerDeployer deployer = new OcpSqlServerDeployer.Deployer()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_SQLSERVER)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(services)
+                .withLocalServices(DB_SERVICE_PATH)
+                .withPublicServices(DB_SERVICE_PATH_LB)
                 .build();
         return deployer.deploy();
     }

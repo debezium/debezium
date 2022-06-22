@@ -22,6 +22,8 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 /**
  * @author Jakub Cechacek
  */
@@ -88,7 +90,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
         protected String project;
         protected Deployment deployment;
-        protected List<Service> services;
+        protected List<Service> services = new ArrayList<>();
         protected OpenShiftClient ocpClient;
         protected Secret pullSecret;
 
@@ -107,21 +109,37 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
             return self();
         }
 
-        public B withServices(String... yamlPath) {
+        public B withLocalServices(String... yamlPath) {
             List<Service> services = Arrays.stream(yamlPath)
+                    .filter(p -> !isLbService(p))
+                    .map(p -> YAML.fromResource(p, Service.class))
+                    .collect(Collectors.toList());
+            return withServices(services);
+        }
+
+        public B withPublicServices(String... yamlPath) {
+            if(isRunningFromOcp()) {
+                return self();
+            }
+            List<Service> services = Arrays.stream(yamlPath)
+                    .filter(this::isLbService)
                     .map(p -> YAML.fromResource(p, Service.class))
                     .collect(Collectors.toList());
             return withServices(services);
         }
 
         public B withServices(Collection<Service> services) {
-            this.services = new ArrayList<>(services);
+            this.services.addAll(services);
             return self();
         }
 
         public B withPullSecrets(String yamlPath) {
             this.pullSecret = YAML.from(yamlPath, Secret.class);
             return self();
+        }
+
+        private boolean isLbService(String yamlPath) {
+            return yamlPath.contains("-lb.");
         }
     }
 }
