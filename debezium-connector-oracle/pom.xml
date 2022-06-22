@@ -117,6 +117,12 @@
         <version.oracle.server>19.3.0</version.oracle.server>
 
         <!--
+        By default, the Oracle module's tests are not executed but only compiled.
+        In order to execute tests, the profile "oracle-tests" must be explicitly toggled.
+        -->
+        <skipITs>true</skipITs>
+
+        <!--
         Specify properties that will be used for setting up the integration tests' Docker container.
         Note that the `dockerhost.ip` property is computed from the IP addrses of DOCKER_HOST, which will
         work on all platforms.  We'll set some of these system properties during integration testing.
@@ -158,6 +164,19 @@
         </testResources>
 
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!--
+                    By default we exclude the Xstream sources.
+                    To enable Xstream support, use the "oracle-xstream" profile
+                     -->
+                    <excludes>
+                        <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -209,11 +228,37 @@
     Define several useful profiles
     -->
     <profiles>
+        <!--
+        Profile: oracle-tests
+        This specifically enables the execution of all integration tests.
+        By default, integration tests are only compiled but are not executed.
+        -->
         <profile>
-            <id>xstream-dependency</id>
+            <id>oracle-tests</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <skipITs>false</skipITs>
+            </properties>
+        </profile>
+        <!--
+        Profile: oracle-xstream
+        This is a multi-faceted profile that controls several key points:
+            1. Adds the Oracle Instant Client & Xstream dependencies to the module
+            2. Includes the Xstream sources into the build, which are otherwise excluded
+            3. Enables the ability to execute the test suite for the Xstream adapter
+        -->
+        <profile>
+            <id>oracle-xstream</id>
+            <properties>
+                <!-- Point (3) enables the xstream adapter for tests -->
+                <adapter.name>xstream</adapter.name>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <!-- Point (1) add the Xstream dependencies -->
             <dependencies>
                 <dependency>
                     <groupId>com.oracle.instantclient</groupId>
@@ -221,6 +266,20 @@
                     <scope>provided</scope>
                 </dependency>
             </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <!-- Point (2) add the Xstream sources back into the module -->
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <id>assembly</id>
@@ -236,6 +295,16 @@
             </dependencies>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <!-- include xstream back into the module on assembly builds -->
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
@@ -281,22 +350,12 @@
             </properties>
         </profile>
         <profile>
-            <!-- Allows CI to build Oracle without the xstream.jar dependency -->
             <id>oracle-ci</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
             <build>
                 <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <excludes>
-                                <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
-                            </excludes>
-                        </configuration>
-                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
@@ -391,57 +450,28 @@
                 </plugins>
             </build>
         </profile>
-        <profile>
-            <id>xstream</id>
-            <properties>
-                <adapter.name>xstream</adapter.name>
-            </properties>
-            <dependencies>
-                <dependency>
-                    <groupId>com.oracle.instantclient</groupId>
-                    <artifactId>xstreams</artifactId>
-                    <scope>provided</scope>
-                </dependency>
-            </dependencies>
-        </profile>
         <!-- This profile should be used for testing connector with Infinispan only -->
         <profile>
             <id>infinispan-buffer</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
             <properties>
                 <log.mining.buffer.type.name>infinispan</log.mining.buffer.type.name>
             </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <excludes>
-                                <!-- When compiling with this profile, xstream is not added by default -->
-                                <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
-                            </excludes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
+            <!-- todo: when using this profile, enforce oracle-xstream being mutually exclusive -->
         </profile>
         <profile>
             <id>infinispan-buffer-remote</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
             <properties>
                 <log.mining.buffer.type.name>infinispan_remote</log.mining.buffer.type.name>
             </properties>
+            <!-- todo: when using this profile, enforce oracle-xstream being mutually exclusive -->
             <build>
                 <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <excludes>
-                                <!-- When compiling with this profile, xstream is not added by default -->
-                                <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
-                            </excludes>
-                        </configuration>
-                    </plugin>
                     <plugin>
                         <groupId>io.fabric8</groupId>
                         <artifactId>docker-maven-plugin</artifactId>

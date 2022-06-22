@@ -155,7 +155,9 @@
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
+        <module>debezium-connector-oracle</module>
         <module>debezium-microbenchmark</module>
+        <module>debezium-microbenchmark-oracle</module>
         <module>debezium-quarkus-outbox</module>
         <module>debezium-scripting</module>
         <module>debezium-server</module>
@@ -445,13 +447,6 @@
                 <modules.argline>--illegal-access=permit</modules.argline>
                 <maven.compiler.release>8</maven.compiler.release>
             </properties>
-        </profile>
-        <profile>
-            <id>oracle</id>
-            <modules>
-                <module>debezium-connector-oracle</module>
-                <module>debezium-microbenchmark-oracle</module>
-            </modules>
         </profile>
     </profiles>
 </project>
