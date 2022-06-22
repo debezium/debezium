@@ -149,11 +149,11 @@ Postgres connector支持三个用于从数据库服务器捕获流式数据更�
 
 ### 使用Oracle XStream运行Oracle connector测试
 
-    $ mvn clean install -pl debezium-connector-oracle -Poracle,xstream -Dinstantclient.dir=<path-to-instantclient>
+    $ mvn clean install -pl debezium-connector-oracle -Poracle-xstream,oracle-tests -Dinstantclient.dir=<path-to-instantclient>
 
 ### 使用非CDB数据库运行Oracle connector测试
 
-    $ mvn clean install -pl debezium-connector-oracle -Poracle -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
+    $ mvn clean install -pl debezium-connector-oracle -Poracle-tests -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
 
 ### 使用IDE中的oplog捕获运行MongoDB测试
 
