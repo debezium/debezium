@@ -44,14 +44,14 @@ The Oracle connector can then be built one of two ways, varying on the adapter y
 ### XStreams
 
 ```bash
-mvn clean install -pl debezium-connector-oracle -am -Poracle -Dinstantclient.dir=/path/to/instant-client-dir
+mvn clean install -pl debezium-connector-oracle -am -Poracle-xstream -Dinstantclient.dir=/path/to/instant-client-dir
 ```
 
 <a href="#logminer"></a>
 ### LogMiner
 
 ```bash
-mvn clean install -pl debezium-connector-oracle -am -Poracle,logminer -Dinstantclient.dir=/path/to/instant-client-dir
+mvn clean install -pl debezium-connector-oracle -am
 ```
 
 ## For Oracle 11g
@@ -100,10 +100,18 @@ These commands do not manage the Oracle database Docker container and therefore 
 
 The Debezium Oracle connector test suite assumes that the installed Oracle database is in CDB mode, meaning that the database supported pluggable databases.
 This is the default installation used by Oracle 12 or later.
-In order to run the Debezium Oracle connector tests against a non-CDB installation, the `database.pdb.name` argument must be explicitly specified with an empty value, as shown below:
+In order to run the Debezium Oracle connector tests against a non-CDB installation, the `database.pdb.name` argument must be explicitly specified with an empty value.0
+
+To test with Logminer, use:
 
 ```bash
-mvn clean install -pl debezium-connector-oracle -am -Poracle,logminer -Dinstantclient.dir=/path/to/instant-client-dir -Ddatabase.pdb.name=
+mvn clean install -pl debezium-connector-oracle -am -Poracle-tests -Ddatabase.pdb.name=
+```
+
+To test with Xstream, use:
+
+```bash
+mvn clean install -pl debezium-connector-oracle -am -Poracle-xstream,oracle-tests -Dinstantclient.dir=/path/to/instant-client-dir -Ddatabase.pdb.name=
 ```
 
 The test suite automatically detects the provided `database.pdb.name` parameter with no value and interprets this to mean non-CDB mode.

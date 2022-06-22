@@ -155,11 +155,11 @@ See [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) for details o
 
 ### Running tests of the Oracle connector using Oracle XStream
 
-    $ mvn clean install -pl debezium-connector-oracle -Poracle,xstream -Dinstantclient.dir=<path-to-instantclient>
+    $ mvn clean install -pl debezium-connector-oracle -Poracle-xstream,oracle-tests -Dinstantclient.dir=<path-to-instantclient>
 
 ### Running tests of the Oracle connector with a non-CDB database
 
-    $ mvn clean install -pl debezium-connector-oracle -Poracle -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
+    $ mvn clean install -pl debezium-connector-oracle -Poracle-tests -Dinstantclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
 
 ### Running the tests for MongoDB with oplog capturing from an IDE
 
