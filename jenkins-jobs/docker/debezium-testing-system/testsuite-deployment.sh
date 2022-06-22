@@ -11,6 +11,11 @@ if [ ! -f "${DBZ_SECRET_PATH}" ]; then
     exit 1
 fi
 
+if [ -z "${DBZ_OCP_PROJECT_DEBEZIUM}" ]; then
+    echo "project name is required. Please set DBZ_OCP_PROJECT_DEBEZIUM!"
+    exit 1
+fi
+
 # TODO remove git pull and rebuild once the development is done
 #git -C /testsuite/debezium stash
 #git -C /testsuite/debezium pull --rebase origin DBZ-5165
@@ -28,8 +33,7 @@ oc create -f strimzi/install/cluster-operator/ -n "${DBZ_OCP_PROJECT_DEBEZIUM}" 
 
 # prepare apicurio if not disabled
 AVRO_PATTERN='.*!avro.*'
-if [[ ! ${GROUPS_ARG} =~ ${AVRO_PATTERN} ]]; then
-
+if [[ ! ${DBZ_GROUPS_ARG} =~ ${AVRO_PATTERN} ]]; then
   if [ -z "${APIC_GIT_REPOSITORY}" ]; then
     APIC_GIT_REPOSITORY="https://github.com/Apicurio/apicurio-registry-operator.git" ;
   fi
@@ -38,9 +42,10 @@ if [[ ! ${GROUPS_ARG} =~ ${AVRO_PATTERN} ]]; then
     APIC_GIT_BRANCH="master" ;
   fi
 
-  # TODO what about the resource ?
-  if [ -z "${APICURIO_RESOURCE}" ]; then
+  if [ -z "${APICURIO_RESOURCE}" ] && [ "${DBZ_PRODUCT_BUILD}" == false ]; then
     APICURIO_RESOURCE="install/apicurio-registry-operator-1.1.0-dev.yaml"
+  elif [ -z "${APICURIO_RESOURCE}" ] && [ "${DBZ_PRODUCT_BUILD}" == true ]; then
+    APICURIO_RESOURCE="install/install.yaml"
   fi
 
   clone_component --component apicurio --git-repository "${APIC_GIT_REPOSITORY}" --git-branch "${APIC_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" --downstream-url "${APIC_DOWNSTREAM_URL}" ;
@@ -73,8 +78,6 @@ mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Dgroups="${DBZ_GROUPS_ARG}"
 
 popd || exit 1;
-
-cp debezium/debezium-testing/debezium-testing-system/target/failsafe-reports/*.xml /testsuite/logs
 
 if [ "${DBZ_OCP_DELETE_PROJECTS}" = true ] ;
 then
