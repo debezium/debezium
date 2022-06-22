@@ -11,7 +11,7 @@ on:
       - 1.*
 
 env:
-  MAVEN_FULL_BUILD_PROFILES: "oracle,oracle-ci,-xstream-dependency"
+  MAVEN_FULL_BUILD_PROFILES: ""
   MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
 
 jobs:
@@ -399,7 +399,7 @@ jobs:
       - name: Build Debezium Connector Oracle (PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: >
-          mvn clean install -B -pl debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency 
+          mvn clean install -B -pl debezium-connector-oracle -am 
           -DskipITs=true 
           -Dcheckstyle.skip=true
           -Dformat.skip=true

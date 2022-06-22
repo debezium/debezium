@@ -350,44 +350,6 @@
             </properties>
         </profile>
         <profile>
-            <id>oracle-ci</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <dependencies>
-                            <dependency>
-                                <groupId>io.debezium</groupId>
-                                <artifactId>debezium-assembly-descriptors</artifactId>
-                                <version>${project.version}</version>
-                            </dependency>
-                        </dependencies>
-                        <executions>
-                            <execution>
-                                <id>default</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
-                                    <descriptorRefs>
-                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
-                                    </descriptorRefs>
-                                    <tarLongFileMode>posix</tarLongFileMode>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>oracle-docker</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
