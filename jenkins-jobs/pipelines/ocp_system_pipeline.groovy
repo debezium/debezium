@@ -94,6 +94,31 @@ pipeline {
                     ${OPTIONAL_PARAMS}
                     oc delete -f "${FILENAME}.yml" --ignore-not-found
                     oc create -f "${FILENAME}.yml"
+
+                    oc logs -f ${pod_name}
+
+                    # wait for the job to finish, print logs
+                    pod_name=testsuite
+
+                    oc wait --timeout=10000s --for=condition=Complete job/${pod_name} &
+                    completion_pid=$!
+
+                    # wait for failure as background process - capture PID
+                    kubectl wait --timeout=10000s --for=condition=Failed job/${pod_name} && exit 1 &
+                    failure_pid=$!
+
+                    # capture exit code of the first subprocess to exit
+                    wait -n $completion_pid $failure_pid
+
+                    # store exit code in variable
+                    exit_code=$?
+
+                    if (( $exit_code == 0 )); then
+                      echo "Job completed"
+                    else
+                      echo "Job failed with exit code ${exit_code}"
+                    fi
+
                     '''
                 }
             }
