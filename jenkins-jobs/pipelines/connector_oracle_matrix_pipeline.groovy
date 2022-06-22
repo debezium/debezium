@@ -96,8 +96,7 @@ pipeline {
                             cd ${WORKSPACE}/debezium
                             mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-oracle -am -fae \\
                                 -Ddatabase.hostname=0.0.0.0                 \\
-                                -Ddatabase.admin.hostname=0.0.0.0           \\
-                                -Poracle,logminer                           \\
+                                -Ddatabase.admin.hostname=0.0.0.0           \\                                
                                 -Dinstantclient.dir=${HOME}/oracle-libs     \\
                                 -Dmaven.test.failure.ignore=true            \\
                                 -Dinsecure.repositories=WARN                \\
