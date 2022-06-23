@@ -65,7 +65,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
-import io.debezium.connector.oracle.junit.RequireDatabaseOption;
+import io.debezium.connector.oracle.junit.SkipOnDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -1343,7 +1343,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2683")
-    @RequireDatabaseOption("Partitioning")
+    @SkipOnDatabaseOption(value = "Partitioning", enabled = false)
     public void shouldSnapshotAndStreamChangesFromPartitionedTable() throws Exception {
         TestHelper.dropTable(connection, "players");
         try {
@@ -2551,6 +2551,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3898")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Tests specific LogMiner features")
+    @SkipOnDatabaseOption(value = "Real Application Clusters", enabled = true, reason = "Performance w/CATALOG_IN_REDO on Oracle RAC")
     public void shouldIgnoreAllTablesInExcludedSchemas() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz3898");
