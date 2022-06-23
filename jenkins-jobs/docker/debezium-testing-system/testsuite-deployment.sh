@@ -54,6 +54,12 @@ if [ "${DBZ_PRODUCT_BUILD}" == true ] ; then
   MVN_PRODUCT_BUILD="-Pproduct"
 fi
 
+# copy parent secret to debezium project
+PARENT_SECRET=parent_secret.yml
+oc get secret "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*/namespace: ${DBZ_OCP_PROJECT_DEBEZIUM}/" >> ${PARENT_SECRET}
+oc create -n "${DBZ_OCP_PROJECT_DEBEZIUM}" -f ${PARENT_SECRET}
+rm ${PARENT_SECRET}
+
 mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     ${MVN_PRODUCT_BUILD} \
                     -Docp.project.debezium="${DBZ_OCP_PROJECT_DEBEZIUM}" \
