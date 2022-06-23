@@ -27,6 +27,7 @@ pipeline {
                     oc new-project "${OCP_PROJECT_NAME}-parent" || oc project "${OCP_PROJECT_NAME}-parent"
                     oc adm policy add-cluster-role-to-user cluster-admin "system:serviceaccount:${OCP_PROJECT_NAME}-parent:default"
                     oc apply -f "${SECRET_PATH}"
+                    # TODO parse secret name ?
                     '''
                 }
             }
@@ -42,8 +43,6 @@ pipeline {
                     if [ ${TEST_APICURIO_REGISTRY} == false ]; then
                         GROUPS_ARG="${GROUPS_ARG} & !avro"
                     fi
-
-                    # TODO copy the artifacts to the jenkins node and then to the pod
 
                     FILENAME="testsuite-job"
 

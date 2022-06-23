@@ -41,7 +41,7 @@ public class OcpClient extends TestFixture {
                     .withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
                     .withTrustCerts(true);
         } else {
-            LOGGER.info("OCP credentials not provided, using default config");
+            LOGGER.info("OCP credentials not provided, using default config.");
         }
         client = new DefaultOpenShiftClient(configBuilder.build());
         store(OpenShiftClient.class, client);

@@ -6,22 +6,17 @@ source /testsuite/library.sh
 DEBEZIUM_LOCATION="/testsuite/debezium"
 OCP_PROJECTS="${DEBEZIUM_LOCATION}/jenkins-jobs/scripts/ocp-projects.sh"
 
-if [ ! -f "${DBZ_SECRET_PATH}" ]; then
-    echo "secret ${DBZ_SECRET_PATH} does not  exist!"
-    exit 1
-fi
-
 if [ -z "${DBZ_OCP_PROJECT_DEBEZIUM}" ]; then
     echo "project name is required. Please set DBZ_OCP_PROJECT_DEBEZIUM!"
     exit 1
 fi
 
 # TODO remove git pull and rebuild once the development is done
-#git -C /testsuite/debezium stash
-#git -C /testsuite/debezium pull --rebase origin DBZ-5165
-#git -C /testsuite/debezium log -1
+git -C /testsuite/debezium stash
+git -C /testsuite/debezium pull --rebase origin DBZ-5165
+git -C /testsuite/debezium log -1
 #
-#mvn clean install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
+mvn install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 
 # create projects
 ${OCP_PROJECTS} --project "${DBZ_OCP_PROJECT_DEBEZIUM}" --create

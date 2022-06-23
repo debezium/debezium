@@ -22,7 +22,7 @@ pipelineJob('ocp-debezium-testing-system-image-prepare') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/system_test_image_prepare_pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/upstream_system_test_image_pipeline.groovy'))
         }
     }
 }
