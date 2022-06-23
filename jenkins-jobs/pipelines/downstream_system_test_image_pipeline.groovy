@@ -25,6 +25,8 @@ pipeline {
             }
         }
 
+        # TODO make new dockerfile, include the downstream strimzi/apicurio zips into the image. Modify the testsuite to use included zips.
+
         stage('Build') {
             steps {
                 withCredentials([
