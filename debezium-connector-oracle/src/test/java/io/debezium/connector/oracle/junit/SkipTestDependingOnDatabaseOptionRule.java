@@ -17,7 +17,7 @@ import io.debezium.junit.AnnotationBasedTestRule;
 import io.debezium.util.Strings;
 
 /**
- * JUnit rule that automatically skips a test if the {@link RequireDatabaseOption} annotation at
+ * JUnit rule that automatically skips a test if the {@link SkipOnDatabaseOption} annotation at
  * either the class or test method level if the option specified isn't enabled or available on
  * the test database used by {@link TestHelper#testConnection}.
  *
@@ -25,13 +25,17 @@ import io.debezium.util.Strings;
  */
 public class SkipTestDependingOnDatabaseOptionRule extends AnnotationBasedTestRule {
     private static final String FALSE = "FALSE";
+    private static final String TRUE = "TRUE";
 
     @Override
     public Statement apply(Statement base, Description description) {
-        final RequireDatabaseOption option = hasAnnotation(description, RequireDatabaseOption.class);
+        final SkipOnDatabaseOption option = hasAnnotation(description, SkipOnDatabaseOption.class);
         if (Objects.nonNull(option)) {
             final String optionValue = getDatabaseOptionValue(option.value());
-            if (Strings.isNullOrEmpty(optionValue) || FALSE.equals(optionValue)) {
+            if (option.enabled() && TRUE.equals(optionValue)) {
+                return emptyStatement("Database option '" + optionValue + "' is enabled and available", description);
+            }
+            else if (!option.enabled() && (Strings.isNullOrEmpty(optionValue) || FALSE.equals(optionValue))) {
                 return emptyStatement("Database option '" + optionValue + "' not available", description);
             }
         }
