@@ -14,6 +14,8 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.annotations.FixtureContext;
 
+import static io.debezium.testing.system.tools.ConfigProperties.OCP_PULL_SECRET_NAME;
+import static io.debezium.testing.system.tools.ConfigProperties.OCP_PULL_SECRET_PATH;
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { SqlDatabaseController.class })
@@ -30,14 +32,18 @@ public class OcpOracle extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("oracle.jdbc.OracleDriver");
-        OcpOracleDeployer deployer = new OcpOracleDeployer.Builder()
+        OcpOracleDeployer.Builder deployerBuilder = new OcpOracleDeployer.Builder()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_ORACLE)
                 .withDeployment(DB_DEPLOYMENT_PATH)
                 .withLocalServices(DB_SERVICE_PATH)
-                .withPublicServices(DB_SERVICE_PATH_LB)
-                .withPullSecrets(ConfigProperties.OCP_PULL_SECRET_PATH.get())
-                .build();
-        return deployer.deploy();
+                .withPublicServices(DB_SERVICE_PATH_LB);
+        if (isRunningFromOcp()) {
+            deployerBuilder.withExistingPullSecrets(ocp, OCP_PULL_SECRET_NAME.get());
+        } else {
+            deployerBuilder.withPullSecrets(OCP_PULL_SECRET_PATH.get());
+        }
+
+        return deployerBuilder.build().deploy();
     }
 }

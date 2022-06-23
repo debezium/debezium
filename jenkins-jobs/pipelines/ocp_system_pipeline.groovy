@@ -43,6 +43,8 @@ pipeline {
                         GROUPS_ARG="${GROUPS_ARG} & !avro"
                     fi
 
+                    # TODO copy the artifacts to the jenkins node and then to the pod
+
                     FILENAME="testsuite-job"
 
                     OPTIONAL_PARAMS=""

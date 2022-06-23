@@ -252,7 +252,6 @@ public class OpenShiftUtils {
         }
     }
 
-    // TODO not sure if it should be here
     public static boolean isRunningFromOcp() {
         return ConfigProperties.OCP_URL.isEmpty() ||
                 ConfigProperties.OCP_USERNAME.isEmpty() ||
