@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.debezium.testing.system.tools.ConfigProperties;
+import io.fabric8.kubernetes.api.model.Secret;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,6 +127,12 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     @Override
     public void waitForCluster() throws InterruptedException {
         LOGGER.info("Waiting for Kafka Connect cluster '" + name + "'");
+        Secret secret = ocp.secrets()
+                .inNamespace(project)
+                .withName(ConfigProperties.OCP_PULL_SECRET_NAME.get())
+                .get();
+        LOGGER.info("SECRET: " + secret.getMetadata().getName());
+
         kafkaConnect = Crds.kafkaConnectOperation(ocp).inNamespace(project)
                 .withName(name)
                 .waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
