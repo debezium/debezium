@@ -90,8 +90,8 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             tableEditor.addColumn(columnEditor.create());
             tableEditor.setPrimaryKeyNames(columnEditor.name());
         }
-        defaultValueListener.exitDefaultValue(false);
         parser.runIfNotNull(() -> {
+            defaultValueListener.exitDefaultValue(false);
             listeners.remove(defaultValueListener);
         }, tableEditor);
         super.exitColumnDefinition(ctx);
