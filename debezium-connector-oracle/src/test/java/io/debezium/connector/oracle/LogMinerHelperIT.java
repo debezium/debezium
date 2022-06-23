@@ -72,19 +72,21 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3256")
     public void shouldAddCorrectLogFiles() throws Exception {
+        final int instances = getNumberOfInstances(conn);
+
         // case 1 : oldest scn = current scn
         Scn currentScn = conn.getCurrentScn();
         List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, currentScn, Duration.ofHours(0L), false, null);
-        assertThat(files).hasSize(1); // just the current redo log
+        assertThat(files).hasSize(instances); // just the current redo log
 
         // case 2 : oldest scn = oldest in not cleared archive
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
         files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L), false, null);
-        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size());
+        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size() + instances - 1);
 
         files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L), false, null);
-        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size() + 1);
+        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size() + instances);
     }
 
     @Test
@@ -151,4 +153,15 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         return allArchivedNextScn;
     }
 
+    private static int getNumberOfInstances(OracleConnection connection) throws SQLException {
+        // In an Oracle RAC environment, there will be multiple instances connected to the database.
+        // This information can be queried from GV$INSTANCE.
+        // For non-RAC environments, there will always just be one record here, the standalone instance.
+        return connection.queryAndMap("SELECT COUNT(1) FROM GV$INSTANCE", rs -> {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        });
+    }
 }
