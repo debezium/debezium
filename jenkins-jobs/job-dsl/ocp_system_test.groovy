@@ -12,7 +12,8 @@ pipelineJob('ocp-system-test') {
         stringParam('PULL_SECRET', 'rh-integration-quay-secret', 'Quay.io OpenShift secret')
         stringParam('PULL_SECRET_NAME', 'rh-integration-debezium-pull-secret', 'Quay.io OpenShift secret name')
 
-        stringParam('DOCKER_TAG', 'latest', 'Docker image tag')
+        // TODO change default tag when job is done
+        stringParam('DOCKER_TAG', 'docker-test', 'Docker image tag')
         stringParam('OCP_PROJECT_NAME', 'debezium-test', 'OCP projects name')
         stringParam('OCP_CREDENTIALS', 'openshift-dbz-creds', 'Jenkins credentials id')
         stringParam('OCP_URL', '', 'Ocp url')
