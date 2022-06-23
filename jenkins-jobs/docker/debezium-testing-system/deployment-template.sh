@@ -67,8 +67,8 @@ spec:
               value: \"${PROJECT_NAME}-sqlserver\"
             - name: DBZ_OCP_PROJECT_REGISTRY
               value: \"${PROJECT_NAME}-registry\"
-            - name: DBZ_SECRET_PATH
-              value: \"/testsuite/secret.yml\"
+            - name: DBZ_SECRET_NAME
+              value: \"${PULL_SECRET_NAME}\"
             - name: DBZ_TEST_WAIT_SCALE
               value: \"10\"
             - name: DBZ_PRODUCT_BUILD
@@ -103,6 +103,5 @@ spec:
   revisionHistoryLimit: 2
   minReadySeconds: 0
 "
-
 
 printf "%s" "${output}" >> "${FILENAME}.yml"

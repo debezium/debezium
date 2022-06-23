@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.fabric8.kubernetes.api.model.SecretBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,10 +147,27 @@ public class OperatorController {
         return pullSecret;
     }
 
-    /**
-     * Gets pull secret
-     * @return pull secret associated with this operator
-     */
+    public Secret loadExistingPullSecret(String secretName) {
+        LOGGER.info("~~~~~ Loading existing pull secret ~~~~~");
+
+        this.pullSecret = ocp.secrets()
+                .inNamespace(project)
+                .withName(secretName)
+                .get();
+        if (pullSecret == null) {
+            throw new IllegalStateException("Secret " + secretName + " not found in namespace!");
+        }
+        ocpUtils.linkPullSecret(project, "default", secretName);
+        ocpUtils.linkPullSecret(project, "builder", secretName);
+        setImagePullSecret(secretName);
+
+        return pullSecret;
+    }
+
+        /**
+         * Gets pull secret
+         * @return pull secret associated with this operator
+         */
     public Optional<Secret> getPullSecret() {
         return Optional.ofNullable(pullSecret);
     }

@@ -8,6 +8,7 @@ package io.debezium.testing.system.fixtures.kafka;
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_KC_BUILD;
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_KC_IMAGE;
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_OPERATOR_CONNECTORS;
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -130,7 +131,11 @@ public class OcpKafka extends TestFixture {
         operatorController.setOperandAlwaysPullPolicy();
         operatorController.setSingleReplica();
 
-        ConfigProperties.OCP_PULL_SECRET_PATH.ifPresent(operatorController::deployPullSecret);
+        if (isRunningFromOcp()){
+            ConfigProperties.OCP_PULL_SECRET_NAME.ifPresent(operatorController::loadExistingPullSecret);
+        } else {
+            ConfigProperties.OCP_PULL_SECRET_PATH.ifPresent(operatorController::deployPullSecret);
+        }
 
         operatorController.updateOperator();
 

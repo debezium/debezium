@@ -69,7 +69,7 @@ mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Docp.project.postgresql="${DBZ_OCP_PROJECT_POSTGRESQL}" \
                     -Docp.project.sqlserver="${DBZ_OCP_PROJECT_SQLSERVER}" \
                     -Docp.project.registry="${DBZ_OCP_PROJECT_REGISTRY}" \
-                    -Docp.pull.secret.paths="${DBZ_SECRET_PATH}" \
+                    -Docp.pull.secret.name="${DBZ_SECRET_NAME}" \
                     -Dtest.wait.scale="${DBZ_TEST_WAIT_SCALE}" \
                     -Dtest.strimzi.kc.build="${DBZ_STRIMZI_KC_BUILD}" \
                     -Dimage.kc="${DBZ_CONNECT_IMAGE}" \
