@@ -14,11 +14,14 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
+import org.postgresql.core.ServerVersion;
+import org.postgresql.core.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
@@ -136,6 +139,26 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                                 "Could not fetch roles"))) {
                     final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
                     LOGGER.error(errorMessage);
+                }
+
+                // check for DB version and LogicalDecoder compatibility
+                if (LogicalDecoder.PGOUTPUT.equals(postgresConfig.plugin())) {
+                    final Version dbVersion = ServerVersion.from(
+                        connection.queryAndMap(
+                            "SHOW server_version",
+                            connection.singleResultMapper(
+                                rs -> rs.getString("server_version"),
+                                "Could not fetch db version"
+                            )
+                        )
+                    );
+                    if (ServerVersion.v10.getVersionNum() > dbVersion.getVersionNum()) {
+                        final String errorMessage = "PGOUTPUT plugin is only supported on "
+                                + "postgres server version 10+";
+                        LOGGER.error(errorMessage);
+                        hostnameValue.addErrorMessage(errorMessage);
+                        pluginNameValue.addErrorMessage(errorMessage);
+                    }
                 }
             }
             catch (Exception e) {
