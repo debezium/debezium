@@ -1161,14 +1161,13 @@ public class JdbcConnection implements AutoCloseable {
         final Set<TableId> tableIds = new HashSet<>();
 
         int totalTables = 0;
-        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null,
-                new String[]{ "VIEW", "MATERIALIZED VIEW", "TABLE" })) {
+        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
             while (rs.next()) {
                 final String catalogName = resolveCatalogName(rs.getString(1));
                 final String schemaName = rs.getString(2);
                 final String tableName = rs.getString(3);
                 final String tableType = rs.getString(4);
-                if ("TABLE".equals(tableType)) {
+                if (isTableType(tableType)) {
                     totalTables++;
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
@@ -1214,6 +1213,14 @@ public class JdbcConnection implements AutoCloseable {
             tableIdsBefore.removeAll(columnsByTable.keySet());
             tableIdsBefore.forEach(tables::removeTable);
         }
+    }
+
+    protected String[] supportedTableTypes() {
+        return new String[]{ "VIEW", "MATERIALIZED VIEW", "TABLE" };
+    }
+
+    protected boolean isTableType(String tableType) {
+        return "TABLE".equals(tableType);
     }
 
     protected String resolveCatalogName(String catalogName) {
