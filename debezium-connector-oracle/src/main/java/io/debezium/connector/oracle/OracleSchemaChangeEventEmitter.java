@@ -94,7 +94,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
             }
         }
 
-        if (!ddlChanges.isEmpty() && filters.isIncluded(tableId)) {
+        if (!ddlChanges.isEmpty() && (filters.isIncluded(tableId) || !schema.storeOnlyCapturedTables())) {
             List<SchemaChangeEvent> changeEvents = new ArrayList<>();
             ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
                 events.forEach(event -> {

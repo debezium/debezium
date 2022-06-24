@@ -34,6 +34,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -1384,6 +1385,185 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz4782a");
             TestHelper.dropTable(connection, "dbz4782b");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5285")
+    public void shouldOnlyCaptureSchemaChangesForIncludedTables() throws Exception {
+        TestHelper.dropTable(connection, "dbz5285a");
+        TestHelper.dropTable(connection, "dbz5285b");
+        try {
+            connection.execute("CREATE TABLE dbz5285a (id numeric(9,0) primary key, data varchar2(50))");
+            connection.execute("CREATE TABLE dbz5285b (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5285a");
+            TestHelper.streamTable(connection, "dbz5285b");
+
+            connection.execute("INSERT INTO dbz5285a (id,data) values (1, 'A')");
+            connection.execute("INSERT INTO dbz5285b (id,data) values (2, 'B')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5285A")
+                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Create and Insert into DBZ5285A
+            SourceRecords records = consumeRecordsByTopic(2);
+
+            // Check schema changes from snapshot
+            List<SourceRecord> schemaRecords = records.recordsForTopic("server1");
+            assertThat(schemaRecords).hasSize(1);
+            assertSnapshotSchemaChange(schemaRecords.get(0));
+            List<Struct> tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertTableChange(tableChanges.get(0), "CREATE", "DEBEZIUM", "DBZ5285A");
+
+            // Change state changes from snapshot
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5285A");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidRead(tableRecords.get(0), "ID", 1);
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("A");
+
+            // There should be no records captured for DBZ5285B
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Change table structure and insert more data.
+            connection.execute("ALTER TABLE dbz5285a add data2 varchar2(50)");
+            connection.execute("ALTER TABLE dbz5285b add data2 varchar2(50)");
+            connection.execute("INSERT INTO dbz5285a (id,data,data2) values (3, 'A3', 'D1')");
+            connection.execute("INSERT INTO dbz5285b (id,data,data2) values (4, 'B4', 'D2')");
+
+            // Alter and Insert into DBZ5285A
+            records = consumeRecordsByTopic(2);
+
+            // Check schema changes from streaming
+            schemaRecords = records.recordsForTopic("server1");
+            assertThat(schemaRecords).hasSize(1);
+            assertStreamingSchemaChange(schemaRecords.get(0));
+            tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertTableChange(tableChanges.get(0), "ALTER", "DEBEZIUM", "DBZ5285A");
+
+            // Change state changes from streaming
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5285A");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 3);
+            after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("DATA")).isEqualTo("A3");
+            assertThat(after.get("DATA2")).isEqualTo("D1");
+
+            // There should be no records captured for DBZ5285B
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5285b");
+            TestHelper.dropTable(connection, "dbz5285a");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5285")
+    public void shouldCaptureSchemaChangesForAllTablesRegardlessOfIncludeList() throws Exception {
+        TestHelper.dropTable(connection, "dbz5285a");
+        TestHelper.dropTable(connection, "dbz5285b");
+        try {
+            connection.execute("CREATE TABLE dbz5285a (id numeric(9,0) primary key, data varchar2(50))");
+            connection.execute("CREATE TABLE dbz5285b (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5285a");
+            TestHelper.streamTable(connection, "dbz5285b");
+
+            connection.execute("INSERT INTO dbz5285a (id,data) values (1, 'A')");
+            connection.execute("INSERT INTO dbz5285b (id,data) values (2, 'B')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5285A")
+                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, false)
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Create for both tables and Insert into DBZ5285A
+            SourceRecords records = consumeRecordsByTopic(3);
+
+            // Check schema changes from snapshot
+            List<SourceRecord> schemaRecords = records.recordsForTopic("server1");
+            assertThat(schemaRecords).hasSize(2);
+            assertSnapshotSchemaChange(schemaRecords.get(0));
+            List<Struct> tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertTableChange(tableChanges.get(0), "CREATE", "DEBEZIUM", "DBZ5285A");
+
+            assertSnapshotSchemaChange(schemaRecords.get(1));
+            tableChanges = ((Struct) schemaRecords.get(1).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertTableChange(tableChanges.get(0), "CREATE", "DEBEZIUM", "DBZ5285B");
+
+            // Change state changes from snapshot
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5285A");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidRead(tableRecords.get(0), "ID", 1);
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("A");
+
+            // There should be no data records captured for DBZ5285B
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Change table structure and insert more data.
+            connection.execute("ALTER TABLE dbz5285a add data2 varchar2(50)");
+            connection.execute("ALTER TABLE dbz5285b add data2 varchar2(50)");
+            connection.execute("INSERT INTO dbz5285a (id,data,data2) values (3, 'A3', 'D1')");
+            connection.execute("INSERT INTO dbz5285b (id,data,data2) values (4, 'B4', 'D2')");
+
+            // Alter for both tables and Insert into DBZ5285A
+            records = consumeRecordsByTopic(3);
+
+            // Check schema changes from streaming
+            schemaRecords = records.recordsForTopic("server1");
+            schemaRecords.forEach(System.out::println);
+            assertThat(schemaRecords).hasSize(2);
+            assertStreamingSchemaChange(schemaRecords.get(0));
+            tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertTableChange(tableChanges.get(0), "ALTER", "DEBEZIUM", "DBZ5285A");
+
+            assertStreamingSchemaChange(schemaRecords.get(1));
+            tableChanges = ((Struct) schemaRecords.get(1).value()).getArray("tableChanges");
+            assertThat(tableChanges).isEmpty();
+            assertSourceTableInfo(schemaRecords.get(1), "DEBEZIUM", "DBZ5285B");
+
+            // Change state changes from streaming
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5285A");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 3);
+            after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("DATA")).isEqualTo("A3");
+            assertThat(after.get("DATA2")).isEqualTo("D1");
+
+            // There should be no insert records captured for DBZ5285B
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5285b");
+            TestHelper.dropTable(connection, "dbz5285a");
         }
     }
 
