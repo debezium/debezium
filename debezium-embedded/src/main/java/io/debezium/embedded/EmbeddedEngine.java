@@ -96,6 +96,23 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .required();
 
     /**
+     * An optional field to assign an ID to the embedded engine. An ID is
+     * useful a server is running multiple embedded engines
+     */
+    public static final Field TASK_ID = Field.create("taskId")
+            .withDescription("Unique ID of the task.")
+            .withDefault(0);
+
+    /**
+     * An optional field to specify total number of embedded engines that will
+     * be instantiated. An embedded engine can identify the tasks based on its
+     * taskId and maxTasks
+     */
+    public static final Field MAX_TASKS = Field.create("maxTasks")
+            .withDescription("Total number of tasks instantiated.")
+            .withDefault(1);
+
+    /**
      * An optional field that specifies the name of the class that implements the {@link OffsetBackingStore} interface,
      * and that will be used to store offsets recorded by the connector.
      */
@@ -111,8 +128,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * @see #OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_FILE_FILENAME = Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG)
-            .withDescription("The file where offsets are to be stored. Required when "
-                    + "'offset.storage' is set to the " +
+            .withDescription("The file where offsets are to be stored."
+                    + "Use %d as a placeholder if more than one engine will be instantiated in the same server."
+                    + "Required when 'offset.storage' is set to the " +
                     FileOffsetBackingStore.class.getName() + " class.")
             .withDefault("");
 
@@ -123,6 +141,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     public static final Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
             .withDescription("The name of the Kafka topic where offsets are to be stored. "
+                    + "Use %d as a placeholder if more than one engine will be instantiated in the same server."
                     + "Required with other properties when 'offset.storage' is set to the "
                     + KafkaOffsetBackingStore.class.getName() + " class.")
             .withDefault("");
@@ -565,6 +584,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private SourceTask task;
     private final Transformations transformations;
 
+    private final Integer taskId;
+    private final Integer maxTasks;
+
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, DebeziumEngine.ChangeConsumer<SourceRecord> handler,
                            DebeziumEngine.CompletionCallback completionCallback, DebeziumEngine.ConnectorCallback connectorCallback,
                            OffsetCommitPolicy offsetCommitPolicy) {
@@ -597,11 +619,27 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
         transformations = new Transformations(config);
 
+        this.taskId = config.getInteger(TASK_ID);
+        this.maxTasks = config.getInteger(MAX_TASKS);
+
         // Create the worker config, adding extra fields that are required for validation of a worker config
         // but that are not used within the embedded engine (since the source records are never serialized) ...
         Map<String, String> embeddedConfig = config.asMap(ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+
+        //If multiple engines are started in a server, ensure that the offset
+        //storage does not clash with each other. 
+        if (this.maxTasks != null && this.taskId != null && this.maxTasks > 0) {
+            if (embeddedConfig.containsKey(OFFSET_STORAGE_FILE_FILENAME.name())) {
+                embeddedConfig.replace(OFFSET_STORAGE_FILE_FILENAME.name(), 
+                        String.format(embeddedConfig.get(OFFSET_STORAGE_FILE_FILENAME.name()), this.taskId));
+            } 
+            else if (embeddedConfig.containsKey(OFFSET_STORAGE_KAFKA_TOPIC.name())) {
+                embeddedConfig.replace(OFFSET_STORAGE_KAFKA_TOPIC.name(), 
+                        String.format(embeddedConfig.get(OFFSET_STORAGE_KAFKA_TOPIC.name()), this.taskId));
+            }
+        }
         workerConfig = new EmbeddedConfig(embeddedConfig);
     }
 
@@ -656,6 +694,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
             final String engineName = config.getString(ENGINE_NAME);
             final String connectorClassName = config.getString(CONNECTOR_CLASS);
+
+
+            LOGGER.info("Setting up Task name: {}, id: {}, maxTasks: {}", engineName, taskId, maxTasks);
+
             final Optional<DebeziumEngine.ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
             // Only one thread can be in this part of the method at a time ...
             latch.countUp();
@@ -731,7 +773,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     // Start the connector with the given properties and get the task configurations ...
                     connector.start(workerConfig.originalsStrings());
                     connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
-                    List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
+                    List<Map<String, String>> taskConfigs = connector.taskConfigs(maxTasks);
                     Class<? extends Task> taskClass = connector.taskClass();
                     if (taskConfigs.isEmpty()) {
                         String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
@@ -761,7 +803,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             }
                         };
                         task.initialize(taskContext);
-                        task.start(taskConfigs.get(0));
+                        task.start(taskConfigs.get(taskId));
                         connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
                     }
                     catch (Throwable t) {
