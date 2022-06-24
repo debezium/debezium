@@ -72,7 +72,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCommitConsumer.class);
 
-    private final BlockingConsumer<LogMinerEvent> delegate;
+    private final Handler<LogMinerEvent> delegate;
     private final OracleConnectorConfig connectorConfig;
     private final OracleDatabaseSchema schema;
     private final Map<String, RowState> rows = new HashMap<>();
@@ -81,8 +81,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private String currentLobColumnName;
     private int currentLobColumnPosition = -1;
     private int transactionIndex = 0;
+    private int totalEvents = 0;
 
-    public TransactionCommitConsumer(BlockingConsumer<LogMinerEvent> delegate, OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
+    public TransactionCommitConsumer(Handler<LogMinerEvent> delegate, OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
         this.delegate = delegate;
         this.connectorConfig = connectorConfig;
         this.schema = schema;
@@ -100,6 +101,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     @Override
     public void accept(LogMinerEvent event) throws InterruptedException {
+        // track number of events passed
+        totalEvents++;
+
         if (!connectorConfig.isLobEnabled()) {
             // LOB support is not enabled, perform immediate dispatch
             dispatchChangeEvent(event);
@@ -112,6 +116,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         else {
             acceptLobManipulationEvent(event);
         }
+    }
+
+    public int getTotalEvents() {
+        return totalEvents;
     }
 
     private void acceptDmlEvent(DmlEvent event) throws InterruptedException {
@@ -245,7 +253,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private void dispatchChangeEvent(LogMinerEvent event) throws InterruptedException {
         LOGGER.trace("\tEmitting event {} {}", event.getEventType(), event);
-        delegate.accept(event);
+        delegate.accept(event, totalEvents);
     }
 
     private String rowIdFromEvent(Table table, DmlEvent event) {
@@ -604,5 +612,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             this.event = event;
             this.transactionIndex = transactionIndex;
         }
+    }
+
+    @FunctionalInterface
+    interface Handler<T> {
+        void accept(T event, long eventsProcessed) throws InterruptedException;
     }
 }
