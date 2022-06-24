@@ -606,6 +606,16 @@
                 <artifactId>debezium-schema-generator</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-quarkus-outbox</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-quarkus-outbox-deployment</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Debezium test artifacts -->
             <dependency>
