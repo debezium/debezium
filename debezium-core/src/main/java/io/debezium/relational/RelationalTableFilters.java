@@ -13,6 +13,7 @@ import io.debezium.config.Configuration;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Selectors.TableSelectionPredicateBuilder;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.schema.DataCollectionFilters;
 
 public class RelationalTableFilters implements DataCollectionFilters {
@@ -57,10 +58,6 @@ public class RelationalTableFilters implements DataCollectionFilters {
                         tableIdMapper)
                 .build();
 
-        this.schemaSnapshotFilter = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
-                ? systemTablesFilter::isIncluded
-                : x -> true;
-
         Predicate<TableId> finalTablePredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
                 ? tablePredicate.and(systemTablesFilter::isIncluded)
                 : tablePredicate;
@@ -72,6 +69,14 @@ public class RelationalTableFilters implements DataCollectionFilters {
                 .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST))
                 .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST))
                 .build();
+
+        Predicate<TableId> eligibleSchemaPredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
+                ? systemTablesFilter::isIncluded
+                : x -> true;
+
+        this.schemaSnapshotFilter = config.getBoolean(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL)
+                ? eligibleSchemaPredicate.and(tableFilter::isIncluded)::test
+                : eligibleSchemaPredicate::test;
 
         this.excludeColumns = config.getString(COLUMN_EXCLUDE_LIST);
     }
