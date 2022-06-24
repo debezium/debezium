@@ -281,6 +281,33 @@
                 </plugins>
             </build>
         </profile>
+        <!-- Enables all sources for IDE build -->
+        <profile>
+            <id>oracle-ide</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.oracle.instantclient</groupId>
+                    <artifactId>xstreams</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>assembly</id>
             <activation>
