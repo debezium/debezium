@@ -64,6 +64,7 @@ public class DebeziumServer {
     private static final String PROP_PREFIX = "debezium.";
     private static final String PROP_SOURCE_PREFIX = PROP_PREFIX + "source.";
     private static final String PROP_SINK_PREFIX = PROP_PREFIX + "sink.";
+    private static final String PROP_SERVER_PREFIX = PROP_PREFIX + "server.";
     private static final String PROP_FORMAT_PREFIX = PROP_PREFIX + "format.";
     private static final String PROP_TRANSFORMS_PREFIX = PROP_PREFIX + "transforms.";
     private static final String PROP_KEY_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "key.";
@@ -76,6 +77,9 @@ public class DebeziumServer {
     private static final String PROP_VALUE_FORMAT = PROP_FORMAT_PREFIX + "value";
     private static final String PROP_TERMINATION_WAIT = PROP_PREFIX + "termination.wait";
 
+    private static final String PROP_SERVER_THREADS = PROP_SERVER_PREFIX + "threads";
+    private static final Integer DEFAULT_NUM_THREADS = 1;
+
     private static final String FORMAT_JSON = Json.class.getSimpleName().toLowerCase();
     private static final String FORMAT_CLOUDEVENT = CloudEvents.class.getSimpleName().toLowerCase();
     private static final String FORMAT_AVRO = Avro.class.getSimpleName().toLowerCase();
@@ -83,7 +87,7 @@ public class DebeziumServer {
 
     private static final Pattern SHELL_PROPERTY_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+_+[a-zA-Z0-9_]+$");
 
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private ExecutorService executor;
     private int returnCode = 0;
 
     @Inject
@@ -139,22 +143,33 @@ public class DebeziumServer {
         props.setProperty("name", name);
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
 
-        engine = DebeziumEngine.create(keyFormat, valueFormat)
-                .using(props)
-                .using((DebeziumEngine.ConnectorCallback) health)
-                .using((DebeziumEngine.CompletionCallback) health)
-                .notifying(consumer)
-                .build();
+        Integer numThreads = config.getOptionalValue(PROP_SERVER_THREADS, Integer.class).orElse(DEFAULT_NUM_THREADS);
+        LOGGER.info("Num of threads or engines: {}", numThreads);
 
-        executor.execute(() -> {
-            try {
-                engine.run();
-            }
-            finally {
-                Quarkus.asyncExit(returnCode);
-            }
-        });
-        LOGGER.info("Engine executor started");
+        executor = Executors.newFixedThreadPool(numThreads);
+
+        for (int index = 0; index < numThreads; index++) {
+            props.setProperty("taskId", String.valueOf(index));
+            props.setProperty("maxTasks", String.valueOf(numThreads));
+
+            engine = DebeziumEngine.create(keyFormat, valueFormat)
+                    .using(props)
+                    .using((DebeziumEngine.ConnectorCallback) health)
+                    .using((DebeziumEngine.CompletionCallback) health)
+                    .notifying(consumer)
+                    .build();
+
+            executor.execute(() -> {
+                try {
+                    engine.run();
+                }
+                finally {
+                    Quarkus.asyncExit(returnCode);
+                }
+            });
+        }
+
+       LOGGER.info("Engine executor started");
     }
 
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix, boolean overwrite) {
