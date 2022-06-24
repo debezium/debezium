@@ -44,7 +44,6 @@ import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
 import io.debezium.data.Envelope;
-import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
@@ -365,11 +364,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
 
         final boolean skipExcludedUserName = isTransactionUserExcluded(transaction);
-        BlockingConsumer<LogMinerEvent> delegate = new BlockingConsumer<LogMinerEvent>() {
+        TransactionCommitConsumer.Handler<LogMinerEvent> delegate = new TransactionCommitConsumer.Handler<LogMinerEvent>() {
             private int numEvents = getTransactionEventCount(transaction);
 
             @Override
-            public void accept(LogMinerEvent event) throws InterruptedException {
+            public void accept(LogMinerEvent event, long eventsProcessed) throws InterruptedException {
                 // Update SCN in offset context only if processed SCN less than SCN of other transactions
                 if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
                     offsetContext.setScn(event.getScn());
@@ -380,7 +379,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 offsetContext.setTransactionId(transactionId);
                 offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 offsetContext.setTableId(event.getTableId());
-                if (--numEvents == 0) {
+                if (eventsProcessed == numEvents) {
                     // reached the last event update the commit scn in the offsets
                     offsetContext.setCommitScn(commitScn);
                 }
