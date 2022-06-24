@@ -51,6 +51,11 @@ public class OracleConnection extends JdbcConnection {
     private static final Pattern SYS_NC_PATTERN = Pattern.compile("^SYS_NC(?:_OID|_ROWINFO|[0-9][0-9][0-9][0-9][0-9])\\$$");
 
     /**
+     * Pattern to identify abstract data type indices and column names.
+     */
+    private static final Pattern ADT_INDEX_NAMES_PATTERN = Pattern.compile("^\".*\"\\.\".*\".*");
+
+    /**
      * A field for the raw jdbc url. This field has no default value.
      */
     private static final Field URL = Field.create("url", "Raw JDBC url");
@@ -223,7 +228,7 @@ public class OracleConnection extends JdbcConnection {
     @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
         if (columnName != null) {
-            return !SYS_NC_PATTERN.matcher(columnName).matches();
+            return !SYS_NC_PATTERN.matcher(columnName).matches() && !ADT_INDEX_NAMES_PATTERN.matcher(columnName).matches();
         }
         return false;
     }
