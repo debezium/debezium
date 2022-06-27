@@ -25,6 +25,5 @@ COPY testsuite-deployment.sh /testsuite/testsuite-deployment.sh
 RUN chmod a+x /testsuite/testsuite-deployment.sh
 
 COPY library.sh /testsuite/library.sh
-COPY secret.yml /testsuite/secret.yml
 
 ENTRYPOINT /testsuite/testsuite-deployment.sh

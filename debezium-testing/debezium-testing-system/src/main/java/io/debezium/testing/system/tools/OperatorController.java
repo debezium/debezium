@@ -148,8 +148,6 @@ public class OperatorController {
     }
 
     public Secret loadExistingPullSecret(String secretName) {
-        LOGGER.info("~~~~~ Loading existing pull secret ~~~~~");
-
         this.pullSecret = ocp.secrets()
                 .inNamespace(project)
                 .withName(secretName)
