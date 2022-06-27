@@ -80,7 +80,7 @@ pipeline {
                             sh '''
                             set -x
                             cd ${WORKSPACE}/debezium
-                            ORACLE_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
+                            ORACLE_ARTIFACT_VERSION=$(mvn -s $HOME/.m2/settings-snapshots.xml -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver ${MVN_PROFILE})
                             ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
                           
                             cd ${ORACLE_ARTIFACT_DIR}
