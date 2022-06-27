@@ -12,14 +12,22 @@ if [ -z "${DBZ_OCP_PROJECT_DEBEZIUM}" ]; then
 fi
 
 # TODO remove git pull and rebuild once the development is done
-git -C /testsuite/debezium stash
-git -C /testsuite/debezium pull --rebase origin DBZ-5165
-git -C /testsuite/debezium log -1
-#
-mvn install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
+#git -C /testsuite/debezium stash
+#git -C /testsuite/debezium pull --rebase origin DBZ-5165
+#git -C /testsuite/debezium log -1
+##
+#mvn install -DskipTests -DskipITs -f /testsuite/debezium/pom.xml
 
 # create projects
 ${OCP_PROJECTS} --project "${DBZ_OCP_PROJECT_DEBEZIUM}" --create
+
+# copy parent secret to debezium projects
+PARENT_SECRET=parent_secret.yml
+for project in ${DBZ_OCP_PROJECT_DEBEZIUM} ${DBZ_OCP_PROJECT_REGISTRY} ${DBZ_OCP_PROJECT_DB2} ${DBZ_OCP_PROJECT_ORACLE} ; do
+  oc get secret -n "${DBZ_OCP_PROJECT_DEBEZIUM}-parent" "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*/namespace: ${project}/" >> ${PARENT_SECRET}
+  oc create -n "${project}" -f ${PARENT_SECRET}
+  rm ${PARENT_SECRET}
+done
 
 # prepare strimzi
 clone_component --component strimzi --git-repository "${STRZ_GIT_REPOSITORY}" --git-branch "${STRZ_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" --downstream-url "${STRZ_DOWNSTREAM_URL}" ;
@@ -53,12 +61,6 @@ pushd ${DEBEZIUM_LOCATION} || exit 1;
 if [ "${DBZ_PRODUCT_BUILD}" == true ] ; then
   MVN_PRODUCT_BUILD="-Pproduct"
 fi
-
-# copy parent secret to debezium project
-PARENT_SECRET=parent_secret.yml
-oc get secret "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*/namespace: ${DBZ_OCP_PROJECT_DEBEZIUM}/" >> ${PARENT_SECRET}
-oc create -n "${DBZ_OCP_PROJECT_DEBEZIUM}" -f ${PARENT_SECRET}
-rm ${PARENT_SECRET}
 
 mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     ${MVN_PRODUCT_BUILD} \

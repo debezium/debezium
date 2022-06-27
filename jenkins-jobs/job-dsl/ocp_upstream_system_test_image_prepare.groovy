@@ -17,7 +17,6 @@ pipelineJob('ocp-debezium-testing-system-image-prepare') {
         stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
         stringParam('TAG', 'latest', 'Docker image tag')
         stringParam('QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id')
-        stringParam('PULL_SECRET', 'rh-integration-quay-secret', 'Quay.io OpenShift secret')
     }
 
     definition {
