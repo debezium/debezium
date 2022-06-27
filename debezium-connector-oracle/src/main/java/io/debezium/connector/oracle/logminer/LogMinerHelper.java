@@ -61,7 +61,7 @@ public class LogMinerHelper {
         // Restrict max attempts to 0 or greater values (sanity-check)
         // the code will do at least 1 attempt and up to maxAttempts extra polls based on configuration
         final int maxAttempts = Math.max(maxRetries, 0);
-        final DelayStrategy retryStrategy = DelayStrategy.exponential(initialDelay.toMillis(), maxDelay.toMillis());
+        final DelayStrategy retryStrategy = DelayStrategy.exponential(initialDelay, maxDelay);
 
         // We perform a retry algorithm here as there is a race condition where Oracle may update the V$LOG table
         // but the V$ARCHIVED_LOG lags behind and a single-shot SQL query may return an inconsistent set of results
