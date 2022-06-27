@@ -127,12 +127,6 @@ public class OcpKafkaConnectController implements KafkaConnectController {
     @Override
     public void waitForCluster() throws InterruptedException {
         LOGGER.info("Waiting for Kafka Connect cluster '" + name + "'");
-        Secret secret = ocp.secrets()
-                .inNamespace(project)
-                .withName(ConfigProperties.OCP_PULL_SECRET_NAME.get())
-                .get();
-        LOGGER.info("SECRET: " + secret.getMetadata().getName());
-
         kafkaConnect = Crds.kafkaConnectOperation(ocp).inNamespace(project)
                 .withName(name)
                 .waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
