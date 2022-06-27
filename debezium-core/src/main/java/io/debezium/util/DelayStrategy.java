@@ -111,19 +111,21 @@ public interface DelayStrategy {
      * @return the strategy; never null
      */
     public static DelayStrategy exponential(Duration initialDelay, Duration maxDelay) {
-        return exponential(initialDelay.toMillis(), maxDelay.toMillis(), 2.0);
+        return exponential(initialDelay, maxDelay, 2.0);
     }
 
     /**
      * Create a delay strategy that applies an exponentially-increasing delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
      *
-     * @param initialDelayInMilliseconds the initial delay; must be positive
-     * @param maxDelayInMilliseconds the maximum delay; must be greater than the initial delay
+     * @param initialDelay the initial delay; must be positive
+     * @param maxDelay the maximum delay; must be greater than the initial delay
      * @param backOffMultiplier the factor by which the delay increases each pass
      * @return the strategy
      */
-    public static DelayStrategy exponential(long initialDelayInMilliseconds, long maxDelayInMilliseconds, double backOffMultiplier) {
+    public static DelayStrategy exponential(Duration initialDelay, Duration maxDelay, double backOffMultiplier) {
+        final long initialDelayInMilliseconds = initialDelay.toMillis();
+        final long maxDelayInMilliseconds = maxDelay.toMillis();
         if (backOffMultiplier <= 1.0) {
             throw new IllegalArgumentException("Backup multiplier must be greater than 1");
         }

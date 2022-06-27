@@ -90,7 +90,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
-        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS , MAX_POLL_PERIOD_IN_MILLIS);
+        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
 
         // Initial our poll output delay logic ...
         pollOutputDelay.hasElapsed();
