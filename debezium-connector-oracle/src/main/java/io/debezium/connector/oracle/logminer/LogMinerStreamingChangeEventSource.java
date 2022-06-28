@@ -269,11 +269,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             // Make sure the commit SCN is at least the snapshot SCN - 1.
             // This ensures we'll never emit events for transactions that were complete before the snapshot was
             // taken.
-            Scn originalCommitScn = offsetContext.getCommitScn();
-            if (originalCommitScn == null || originalCommitScn.compareTo(snapshotScn) < 0) {
+            if (offsetContext.getCommitScn().compareTo(snapshotScn) < 0) {
                 LOGGER.info("Setting commit SCN to {} (snapshot SCN - 1) to ensure we don't double-emit events from pre-snapshot transactions.",
                         snapshotScn.subtract(Scn.ONE));
-                offsetContext.setCommitScn(snapshotScn.subtract(Scn.ONE));
+                offsetContext.getCommitScn().setCommitScnOnAllThreads(snapshotScn.subtract(Scn.ONE));
             }
 
             // set start SCN to minScn

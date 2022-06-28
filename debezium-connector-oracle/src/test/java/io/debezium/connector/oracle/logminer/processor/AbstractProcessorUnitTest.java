@@ -27,6 +27,7 @@ import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
@@ -83,6 +84,8 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         this.dispatcher = (EventDispatcher<OraclePartition, TableId>) Mockito.mock(EventDispatcher.class);
         this.partition = Mockito.mock(OraclePartition.class);
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
+        final CommitScn commitScn = CommitScn.valueOf((String) null);
+        Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
         this.connection = createOracleConnection();
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);

@@ -26,12 +26,13 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String SNAPSHOT_KEY = "snapshot";
 
     private Scn scn;
-    private Scn commitScn;
+    private CommitScn commitScn;
     private Scn eventScn;
     private String lcrPosition;
     private String transactionId;
     private Instant sourceTime;
     private Set<TableId> tableIds;
+    private Integer redoThread;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -41,7 +42,7 @@ public class SourceInfo extends BaseSourceInfo {
         return scn;
     }
 
-    public Scn getCommitScn() {
+    public CommitScn getCommitScn() {
         return commitScn;
     }
 
@@ -53,7 +54,7 @@ public class SourceInfo extends BaseSourceInfo {
         this.scn = scn;
     }
 
-    public void setCommitScn(Scn commitScn) {
+    public void setCommitScn(CommitScn commitScn) {
         this.commitScn = commitScn;
     }
 
@@ -108,6 +109,14 @@ public class SourceInfo extends BaseSourceInfo {
 
     public void tableEvent(TableId tableId) {
         this.tableIds = Collections.singleton(tableId);
+    }
+
+    public Integer getRedoThread() {
+        return redoThread;
+    }
+
+    public void setRedoThread(Integer redoThread) {
+        this.redoThread = redoThread;
     }
 
     @Override

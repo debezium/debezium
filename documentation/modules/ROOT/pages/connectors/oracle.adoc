@@ -252,8 +252,11 @@ The message contains a logical representation of the table schema.
       "table": "CUSTOMERS",
       "txId" : null,
       "scn" : "1513734",
-      "commit_scn": "1513734",
-      "lcr_position" : null
+      "commit_scn": "1513754",
+      "lcr_position" : null,
+      "rs_id": "001234.00012345.0124",
+      "ssn": 1,
+      "redo_thread": 1
     },
     "databaseName": "ORCLPDB1", // <1>
     "schemaName": "DEBEZIUM", //
@@ -894,6 +897,21 @@ The following example shows the value of a _create_ event value from the `custom
                         "field": "commit_scn"
                     },
                     {
+                        "type": "string",
+                        "optional": true,
+                        "field": "rs_id"
+                    },
+                    {
+                        "type": "int32",
+                        "optional": true,
+                        "field": "ssn"
+                    },
+                    {
+                        "type": "int32",
+                        "optional": true,
+                        "field": "redo_thread"
+                    },
+                    {
                         "type": "boolean",
                         "optional": true,
                         "field": "snapshot"
@@ -932,6 +950,9 @@ The following example shows the value of a _create_ event value from the `custom
             "txId": "6.28.807",
             "scn": "2122185",
             "commit_scn": "2122185",
+            "rs_id": "001234.00012345.0124",
+            "ssn": 1,
+            "redo_thread": 1,
             "snapshot": false
         },
         "op": "c",
@@ -992,6 +1013,9 @@ The following example shows an _update_ change event that the connector captures
             "txId": "6.9.809",
             "scn": "2125544",
             "commit_scn": "2125544",
+            "rs_id": "001234.00012345.0124",
+            "ssn": 1,
+            "redo_thread": 1,
             "snapshot": false
         },
         "op": "u",
@@ -1050,6 +1074,9 @@ The `schema` portion of the _delete_ event is identical to the `schema` portion 
             "txId": "6.28.807",
             "scn": "2122184",
             "commit_scn": "2122184",
+            "rs_id": "001234.00012345.0124",
+            "ssn": 1,
+            "redo_thread": 1,
             "snapshot": false
         },
         "op": "d",
@@ -1105,7 +1132,10 @@ The message key is `null` in this case, the message value looks like this:
             "txId": "02000a0037030000",
             "scn": "13234397",
             "commit_scn": "13271102",
-            "lcr_position": null
+            "lcr_position": null,
+            "rs_id": "001234.00012345.0124",
+            "ssn": 1,
+            "redo_thread": 1
         },
         "op": "t", // <2>
         "ts_ms": 1638974558961, // <3>

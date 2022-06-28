@@ -73,7 +73,7 @@ public class OracleDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
                 .with(RelationalDatabaseConnectorConfig.SERVER_NAME, TestHelper.SERVER_NAME)
                 .build();
         final OracleOffsetContext position = new OracleOffsetContext(new OracleConnectorConfig(config), Scn.valueOf(999),
-                Scn.valueOf(999), null, Scn.valueOf(999), Collections.emptyMap(), false, true, new TransactionContext(),
+                CommitScn.valueOf(999L), null, Scn.valueOf(999), Collections.emptyMap(), false, true, new TransactionContext(),
                 new SignalBasedIncrementalSnapshotContext<>());
 
         return Offsets.of(source, position);
