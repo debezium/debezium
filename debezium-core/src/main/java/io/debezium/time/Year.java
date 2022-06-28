@@ -8,12 +8,14 @@ package io.debezium.time;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A utility for defining a Kafka Connect {@link Schema} that represents year values.
  *
  * @author Randall Hauch
  */
-public class Year {
+public class Year implements SchemaBuilderFactory {
 
     public static final String SCHEMA_NAME = "io.debezium.time.Year";
 
@@ -27,24 +29,13 @@ public class Year {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.int32()
                 .name(SCHEMA_NAME)
                 .version(1);
     }
 
-    /**
-     * Returns a Schema for a {@link Year} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int32() INT32} for the literal
-     * type storing the year number.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
-    }
-
-    private Year() {
+    public Year() {
     }
 }

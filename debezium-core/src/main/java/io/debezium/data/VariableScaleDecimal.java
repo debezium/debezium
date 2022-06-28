@@ -14,17 +14,19 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * An arbitrary precision decimal value with variable scale.
  *
  * @author Jiri Pechanec
  *
  */
-public class VariableScaleDecimal {
+public class VariableScaleDecimal implements SchemaBuilderFactory {
     public static final String LOGICAL_NAME = "io.debezium.data.VariableScaleDecimal";
     public static final String VALUE_FIELD = "value";
     public static final String SCALE_FIELD = "scale";
-    public static final Struct ZERO = fromLogical(schema(), SpecialValueDecimal.ZERO);
+    public final Struct ZERO = fromLogical(schema(), SpecialValueDecimal.ZERO);
 
     /**
      * Returns a {@link SchemaBuilder} for a VariableScaleDecimal. You can use the resulting SchemaBuilder
@@ -32,33 +34,14 @@ public class VariableScaleDecimal {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.struct()
                 .name(LOGICAL_NAME)
                 .version(1)
                 .doc("Variable scaled decimal")
                 .field(SCALE_FIELD, Schema.INT32_SCHEMA)
                 .field(VALUE_FIELD, Schema.BYTES_SCHEMA);
-    }
-
-    /**
-     * Returns a Schema for a VariableScaleDecimal but with all other default Schema settings.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
-    }
-
-    /**
-     * Returns a Schema for an optional VariableScaleDecimal but with all other default Schema settings.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema optionalSchema() {
-        return builder().optional().build();
     }
 
     /**
@@ -79,7 +62,7 @@ public class VariableScaleDecimal {
      * the scale of the number and a binary representation of the number.
      *
      * @param schema of the encoded value
-     * @param value the value or the decimal
+     * @param decimalValue the value or the decimal
      *
      * @return the encoded value
      */

@@ -25,6 +25,7 @@ import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.doc.FixFor;
 
@@ -44,7 +45,7 @@ public class MongoDataConverterTest {
     public void setup() throws Exception {
         record = getFile("restaurants5.json");
         val = BsonDocument.parse(record);
-        builder = SchemaBuilder.struct().name("pub");
+        builder = new MongoDbSchemaBuilderFactory().builder("pub");
         converter = new MongoDataConverter(ArrayEncoding.ARRAY);
     }
 
@@ -97,10 +98,10 @@ public class MongoDataConverterTest {
         Schema finalSchema = builder.build();
 
         assertThat(finalSchema).isEqualTo(
-                SchemaBuilder.struct().name("pub")
-                        .field("address", SchemaBuilder.struct().name("pub.address").optional()
+                new MongoDbSchemaBuilderFactory().builder("pub")
+                        .field("address", new MongoDbSchemaBuilderFactory().builder("pub.address").optional()
                                 .field("building", Schema.OPTIONAL_STRING_SCHEMA)
-                                .field("floor", SchemaBuilder.struct().name("pub.address.floor").optional()
+                                .field("floor", new MongoDbSchemaBuilderFactory().builder("pub.address.floor").optional()
                                         .field("level", Schema.OPTIONAL_INT32_SCHEMA)
                                         .field("description", Schema.OPTIONAL_STRING_SCHEMA)
                                         .build())
@@ -110,7 +111,7 @@ public class MongoDataConverterTest {
                                 .build())
                         .field("borough", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("cuisine", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("grades", SchemaBuilder.array(SchemaBuilder.struct().name("pub.grades").optional()
+                        .field("grades", SchemaBuilder.array(new MongoDbSchemaBuilderFactory().builder("pub.grades").optional()
                                 .field("date", Timestamp.builder().optional().build())
                                 .field("grade", Schema.OPTIONAL_STRING_SCHEMA)
                                 .field("score", Schema.OPTIONAL_INT32_SCHEMA)
@@ -139,7 +140,7 @@ public class MongoDataConverterTest {
                 "        \"hourId\" : 10\n" +
                 "    }\n" +
                 "}");
-        builder = SchemaBuilder.struct().name("withnull");
+        builder = new MongoDbSchemaBuilderFactory().builder("withnull");
         converter = new MongoDataConverter(ArrayEncoding.ARRAY);
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
@@ -153,9 +154,9 @@ public class MongoDataConverterTest {
         }
 
         assertThat(finalSchema).isEqualTo(
-                SchemaBuilder.struct().name("withnull")
+                new MongoDbSchemaBuilderFactory().builder("withnull")
                         .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("delivery", SchemaBuilder.struct().name("withnull.delivery").optional()
+                        .field("delivery", new MongoDbSchemaBuilderFactory().builder("withnull.delivery").optional()
                                 .field("hour", Schema.OPTIONAL_STRING_SCHEMA)
                                 .field("hourId", Schema.OPTIONAL_INT32_SCHEMA)
                                 .build())
@@ -180,7 +181,7 @@ public class MongoDataConverterTest {
                 "        \"floor\" : 10\n" +
                 "    }\n" +
                 "}");
-        builder = SchemaBuilder.struct().name("withundefined");
+        builder = new MongoDbSchemaBuilderFactory().builder("withundefined");
         converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
@@ -194,9 +195,9 @@ public class MongoDataConverterTest {
         }
 
         assertThat(finalSchema).isEqualTo(
-                SchemaBuilder.struct().name("withundefined")
+                new MongoDbSchemaBuilderFactory().builder("withundefined")
                         .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("address", SchemaBuilder.struct().name("withundefined.address").optional()
+                        .field("address", new MongoDbSchemaBuilderFactory().builder("withundefined.address").optional()
                                 .field("floor", Schema.OPTIONAL_INT32_SCHEMA)
                                 .build())
                         .build());

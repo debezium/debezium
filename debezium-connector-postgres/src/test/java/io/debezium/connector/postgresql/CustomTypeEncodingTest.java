@@ -20,8 +20,9 @@ public class CustomTypeEncodingTest {
 
     @Test
     public void testVariableScaleDecimal() {
+        final VariableScaleDecimal variableScaleDecimal = new VariableScaleDecimal();
         final BigDecimal testValue = new BigDecimal("138.456");
-        final Struct struct = VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), new SpecialValueDecimal(testValue));
+        final Struct struct = VariableScaleDecimal.fromLogical(variableScaleDecimal.schema(), new SpecialValueDecimal(testValue));
         final BigDecimal decodedValue = VariableScaleDecimal.toLogical(struct).getDecimalValue().get();
         assertEquals("Number should be same after serde", testValue, decodedValue);
     }

@@ -13,12 +13,14 @@ import java.time.temporal.ChronoUnit;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A utility representing a duration into a string value formatted using ISO string format.
  *
  * @author Jiri Pechanec (jpechane@redhat.com)
  */
-public class Interval {
+public class Interval implements SchemaBuilderFactory {
 
     public static final String SCHEMA_NAME = "io.debezium.time.Interval";
 
@@ -32,25 +34,14 @@ public class Interval {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.string()
                 .name(SCHEMA_NAME)
                 .version(1);
     }
 
-    /**
-     * Returns a Schema for a {@link Interval} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#string()} STRING} for the literal
-     * type storing the components of the interval.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
-    }
-
-    private Interval() {
+    public Interval() {
     }
 
     /**

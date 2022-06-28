@@ -66,7 +66,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
             case microsoft.sql.Types.MONEY:
                 return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
             case microsoft.sql.Types.DATETIMEOFFSET:
-                return ZonedTimestamp.builder();
+                return new ZonedTimestamp().builder();
             default:
                 return super.schemaBuilder(column);
         }

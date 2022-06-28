@@ -156,7 +156,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             // Single- and multi-bit values ...
             case Types.BIT:
                 if (column.length() > 1) {
-                    return Bits.builder(column.length());
+                    return new Bits().builder(column.length());
                 }
                 // otherwise, it is just one bit so use a boolean ...
             case Types.BOOLEAN:
@@ -213,42 +213,42 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.DATALINK:
                 return SchemaBuilder.string();
             case Types.SQLXML:
-                return Xml.builder();
+                return new Xml().builder();
             // Date and time values
             case Types.DATE:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    return Date.builder();
+                    return new Date().builder();
                 }
                 return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
                 if (adaptiveTimeMicrosecondsPrecisionMode) {
-                    return MicroTime.builder();
+                    return new MicroTime().builder();
                 }
                 if (adaptiveTimePrecisionMode) {
                     if (getTimePrecision(column) <= 3) {
-                        return Time.builder();
+                        return new Time().builder();
                     }
                     if (getTimePrecision(column) <= 6) {
-                        return MicroTime.builder();
+                        return new MicroTime().builder();
                     }
-                    return NanoTime.builder();
+                    return new NanoTime().builder();
                 }
                 return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     if (getTimePrecision(column) <= 3) {
-                        return Timestamp.builder();
+                        return new Timestamp().builder();
                     }
                     if (getTimePrecision(column) <= 6) {
-                        return MicroTimestamp.builder();
+                        return new MicroTimestamp().builder();
                     }
-                    return NanoTimestamp.builder();
+                    return new NanoTimestamp().builder();
                 }
                 return org.apache.kafka.connect.data.Timestamp.builder();
             case Types.TIME_WITH_TIMEZONE:
-                return ZonedTime.builder();
+                return new ZonedTime().builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
-                return ZonedTimestamp.builder();
+                return new ZonedTimestamp().builder();
 
             // Other types ...
             case Types.ROWID:

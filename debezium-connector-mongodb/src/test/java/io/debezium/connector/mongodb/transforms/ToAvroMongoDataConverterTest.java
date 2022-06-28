@@ -25,6 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.confluent.connect.avro.AvroData;
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.doc.FixFor;
 
@@ -45,7 +46,7 @@ public class ToAvroMongoDataConverterTest {
     public void setup() throws Exception {
         record = getFile("complex_objects.json");
         val = BsonDocument.parse(record);
-        builder = SchemaBuilder.struct().name("complex");
+        builder = new MongoDbSchemaBuilderFactory().builder("complex");
         avroData = new AvroData(100);
         converter = new MongoDataConverter(ArrayEncoding.ARRAY);
     }

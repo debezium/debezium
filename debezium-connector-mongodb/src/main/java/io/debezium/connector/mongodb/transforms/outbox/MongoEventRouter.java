@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
 import io.debezium.data.Envelope;
@@ -148,13 +149,13 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
      * @return a Schema object built
      */
     private Schema buildNewAfterSchema(String schemaName, BsonDocument afterBsonDocument) {
-        SchemaBuilder afterSchemaBuilder = SchemaBuilder.struct().name(schemaName);
+        SchemaBuilder afterSchemaBuilder = new MongoDbSchemaBuilderFactory().builder(schemaName);
 
         for (Map.Entry<String, BsonValue> entry : afterBsonDocument.entrySet()) {
             String entryKey = entry.getKey();
 
             if (entryKey.equals(fieldTimestamp)) {
-                afterSchemaBuilder.field(fieldTimestamp, Timestamp.schema());
+                afterSchemaBuilder.field(fieldTimestamp, new Timestamp().schema());
             }
             else if (entryKey.equals(fieldPayload)
                     && !expandPayload
@@ -208,7 +209,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
      * @return a Schema object built
      */
     private Schema buildNewValueSchema(String valueSchemaName, Schema originalValueSchema, Schema afterSchema) {
-        SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(valueSchemaName);
+        SchemaBuilder valueSchemaBuilder = new MongoDbSchemaBuilderFactory().builder(valueSchemaName);
         for (Field field : originalValueSchema.fields()) {
             if (field.name().equals("after")) {
                 continue;

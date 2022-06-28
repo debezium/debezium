@@ -163,10 +163,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
         // Handle a few MySQL-specific types based upon how they are handled by the MySQL binlog client ...
         String typeName = column.typeName().toUpperCase();
         if (matches(typeName, "JSON")) {
-            return Json.builder();
+            return new Json().builder();
         }
         if (matches(typeName, "POINT")) {
-            return io.debezium.data.geometry.Point.builder();
+            return new io.debezium.data.geometry.Point().builder();
         }
         if (matches(typeName, "GEOMETRY")
                 || matches(typeName, "LINESTRING")
@@ -175,18 +175,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 || matches(typeName, "MULTILINESTRING")
                 || matches(typeName, "MULTIPOLYGON")
                 || isGeometryCollection(typeName)) {
-            return io.debezium.data.geometry.Geometry.builder();
+            return new io.debezium.data.geometry.Geometry().builder();
         }
         if (matches(typeName, "YEAR")) {
-            return Year.builder();
+            return new Year().builder();
         }
         if (matches(typeName, "ENUM")) {
             String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
-            return io.debezium.data.Enum.builder(commaSeparatedOptions);
+            return new io.debezium.data.Enum().builder(commaSeparatedOptions);
         }
         if (matches(typeName, "SET")) {
             String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
-            return io.debezium.data.EnumSet.builder(commaSeparatedOptions);
+            return new io.debezium.data.EnumSet().builder(commaSeparatedOptions);
         }
         if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")
                 || matches(typeName, "INT2 UNSIGNED") || matches(typeName, "INT2 UNSIGNED ZEROFILL")) {

@@ -24,6 +24,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
@@ -326,9 +327,9 @@ public class MongoDataConverter {
                 break;
 
             case JAVASCRIPT_WITH_SCOPE:
-                SchemaBuilder jswithscope = SchemaBuilder.struct().name(builder.name() + "." + key);
+                SchemaBuilder jswithscope = new MongoDbSchemaBuilderFactory().builder(builder.name() + "." + key);
                 jswithscope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
-                SchemaBuilder scope = SchemaBuilder.struct().name(jswithscope.name() + ".scope").optional();
+                SchemaBuilder scope = new MongoDbSchemaBuilderFactory().builder(jswithscope.name() + ".scope").optional();
                 BsonDocument jwsDocument = keyValuesforSchema.getValue().asJavaScriptWithScope().getScope().asDocument();
 
                 for (Entry<String, BsonValue> jwsDocumentKey : jwsDocument.entrySet()) {
@@ -341,14 +342,14 @@ public class MongoDataConverter {
                 break;
 
             case REGULAR_EXPRESSION:
-                SchemaBuilder regexwop = SchemaBuilder.struct().name(SCHEMA_NAME_REGEX).optional();
+                SchemaBuilder regexwop = new MongoDbSchemaBuilderFactory().builder(SCHEMA_NAME_REGEX).optional();
                 regexwop.field("regex", Schema.OPTIONAL_STRING_SCHEMA);
                 regexwop.field("options", Schema.OPTIONAL_STRING_SCHEMA);
                 builder.field(key, regexwop.build());
                 break;
 
             case DOCUMENT:
-                SchemaBuilder builderDoc = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                SchemaBuilder builderDoc = new MongoDbSchemaBuilderFactory().builder(builder.name() + "." + key).optional();
                 BsonDocument docs = keyValuesforSchema.getValue().asDocument();
 
                 for (Entry<String, BsonValue> doc : docs.entrySet()) {
@@ -369,7 +370,7 @@ public class MongoDataConverter {
                             builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
                             break;
                         case DOCUMENT:
-                            builder.field(key, SchemaBuilder.struct().name(builder.name() + "." + key).optional().build());
+                            builder.field(key, new MongoDbSchemaBuilderFactory().builder(builder.name() + "." + key).optional().build());
                             break;
                     }
                 }
@@ -383,7 +384,7 @@ public class MongoDataConverter {
                             break;
                         case DOCUMENT:
                             final BsonArray array = keyValuesforSchema.getValue().asArray();
-                            final SchemaBuilder arrayStructBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                            final SchemaBuilder arrayStructBuilder = new MongoDbSchemaBuilderFactory().builder(builder.name() + "." + key).optional();
                             final Map<String, BsonValue> convertedArray = new HashMap<>();
                             for (int i = 0; i < array.size(); i++) {
                                 convertedArray.put(arrayElementStructName(i), array.get(i));
@@ -421,7 +422,7 @@ public class MongoDataConverter {
             case BOOLEAN:
                 return Schema.OPTIONAL_BOOLEAN_SCHEMA;
             case DOCUMENT:
-                final SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                final SchemaBuilder documentSchemaBuilder = new MongoDbSchemaBuilderFactory().builder(builder.name() + "." + key).optional();
                 final Map<String, BsonType> union = new HashMap<>();
                 if (value.isArray()) {
                     for (BsonValue element : value.asArray()) {

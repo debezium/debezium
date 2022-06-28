@@ -12,13 +12,15 @@ import java.time.temporal.ChronoUnit;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A utility representing a duration into a corresponding {@link SchemaBuilder#int64() INT64}
  * number of <em>microsecond</em>, and for defining a Kafka Connect {@link Schema} for duration values.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public class MicroDuration {
+public class MicroDuration implements SchemaBuilderFactory {
 
     /**
      * The approximation used by the plugins when converting a duration to micros
@@ -37,25 +39,14 @@ public class MicroDuration {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.int64()
                 .name(SCHEMA_NAME)
                 .version(1);
     }
 
-    /**
-     * Returns a Schema for a {@link MicroDuration} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#float64()} FLOAT64} for the literal
-     * type storing the number of <em>microseconds</em>.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
-    }
-
-    private MicroDuration() {
+    public MicroDuration() {
     }
 
     /**

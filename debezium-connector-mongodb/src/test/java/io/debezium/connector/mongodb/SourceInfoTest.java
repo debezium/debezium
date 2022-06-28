@@ -11,7 +11,6 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
@@ -239,8 +238,7 @@ public class SourceInfoTest {
 
     @Test
     public void schemaIsCorrect() {
-        final Schema schema = SchemaBuilder.struct()
-                .name("io.debezium.connector.mongo.Source")
+        final Schema schema = new MongoDbSchemaBuilderFactory().builder("io.debezium.connector.mongo.Source")
                 .field("version", Schema.STRING_SCHEMA)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)

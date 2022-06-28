@@ -10,6 +10,7 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
 import io.debezium.util.Strings;
 
 /**
@@ -17,7 +18,7 @@ import io.debezium.util.Strings;
  *
  * @author Randall Hauch
  */
-public class EnumSet {
+public class EnumSet implements SchemaBuilderFactory {
 
     public static final String LOGICAL_NAME = "io.debezium.data.EnumSet";
     public static final String VALUES_FIELD = "allowed";
@@ -29,11 +30,8 @@ public class EnumSet {
      * @param allowedValues the comma separated list of allowed values; may not be null
      * @return the schema builder
      */
-    public static SchemaBuilder builder(String allowedValues) {
-        return SchemaBuilder.string()
-                .name(LOGICAL_NAME)
-                .parameter(VALUES_FIELD, allowedValues)
-                .version(1);
+    public SchemaBuilder builder(String allowedValues) {
+        return builder().parameter(VALUES_FIELD, allowedValues);
     }
 
     /**
@@ -43,7 +41,7 @@ public class EnumSet {
      * @param allowedValues the list of allowed values; may not be null
      * @return the schema builder
      */
-    public static SchemaBuilder builder(List<String> allowedValues) {
+    public SchemaBuilder builder(List<String> allowedValues) {
         if (allowedValues == null) {
             return builder("");
         }
@@ -57,7 +55,7 @@ public class EnumSet {
      * @return the schema
      * @see #builder(String)
      */
-    public static Schema schema(String allowedValues) {
+    public Schema schema(String allowedValues) {
         return builder(allowedValues).build();
     }
 
@@ -68,10 +66,17 @@ public class EnumSet {
      * @return the schema
      * @see #builder(String)
      */
-    public static Schema schema(List<String> allowedValues) {
+    public Schema schema(List<String> allowedValues) {
         if (allowedValues == null) {
             return builder("").build();
         }
         return builder(allowedValues).build();
+    }
+
+    @Override
+    public SchemaBuilder builder() {
+        return SchemaBuilder.string()
+                .name(LOGICAL_NAME)
+                .version(1);
     }
 }

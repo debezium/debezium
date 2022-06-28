@@ -149,19 +149,19 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static final List<SchemaAndValueField> EXPECTED_FP = Arrays.asList(
             new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
             new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
-            new SchemaAndValueField("VAL_F", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("3.33"))),
-            new SchemaAndValueField("VAL_F_10", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("8.888"))),
+            new SchemaAndValueField("VAL_F", new VariableScaleDecimal().optionalSchema(),
+                    VariableScaleDecimal.fromLogical(new VariableScaleDecimal().optionalSchema(), new BigDecimal("3.33"))),
+            new SchemaAndValueField("VAL_F_10", new VariableScaleDecimal().optionalSchema(),
+                    VariableScaleDecimal.fromLogical(new VariableScaleDecimal().optionalSchema(), new BigDecimal("8.888"))),
             new SchemaAndValueField("VAL_NUM", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("4.444400")),
-            new SchemaAndValueField("VAL_DP", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("5.555"))),
-            new SchemaAndValueField("VAL_R", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("6.66"))),
+            new SchemaAndValueField("VAL_DP", new VariableScaleDecimal().optionalSchema(),
+                    VariableScaleDecimal.fromLogical(new VariableScaleDecimal().optionalSchema(), new BigDecimal("5.555"))),
+            new SchemaAndValueField("VAL_R", new VariableScaleDecimal().optionalSchema(),
+                    VariableScaleDecimal.fromLogical(new VariableScaleDecimal().optionalSchema(), new BigDecimal("6.66"))),
             new SchemaAndValueField("VAL_DECIMAL", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("1234.567891")),
             new SchemaAndValueField("VAL_NUMERIC", Decimal.builder(6).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("1234.567891")),
-            new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder().optional().build(),
-                    VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("77.323"))));
+            new SchemaAndValueField("VAL_NUM_VS", new VariableScaleDecimal().optionalSchema(),
+                    VariableScaleDecimal.fromLogical(new VariableScaleDecimal().optionalSchema(), new BigDecimal("77.323"))));
 
     private static final List<SchemaAndValueField> EXPECTED_FP_AS_STRING = Arrays.asList(
             new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
@@ -210,21 +210,21 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_NUMBER_1", Schema.OPTIONAL_INT8_SCHEMA, (byte) 1));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
-            new SchemaAndValueField("VAL_DATE", Timestamp.builder().optional().build(), 1522108800_000l),
-            new SchemaAndValueField("VAL_TS", MicroTimestamp.builder().optional().build(),
+            new SchemaAndValueField("VAL_DATE", new Timestamp().optionalSchema(), 1522108800_000l),
+            new SchemaAndValueField("VAL_TS", new MicroTimestamp().optionalSchema(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890),
-            new SchemaAndValueField("VAL_TS_PRECISION2", Timestamp.builder().optional().build(),
+            new SchemaAndValueField("VAL_TS_PRECISION2", new Timestamp().optionalSchema(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130),
-            new SchemaAndValueField("VAL_TS_PRECISION4", MicroTimestamp.builder().optional().build(),
+            new SchemaAndValueField("VAL_TS_PRECISION4", new MicroTimestamp().optionalSchema(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500),
-            new SchemaAndValueField("VAL_TS_PRECISION9", NanoTimestamp.builder().optional().build(),
+            new SchemaAndValueField("VAL_TS_PRECISION9", new NanoTimestamp().optionalSchema(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 125456789),
-            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
-            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+            new SchemaAndValueField("VAL_TSTZ", new ZonedTimestamp().optionalSchema(), "2018-03-27T01:34:56.00789-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", new ZonedTimestamp().optionalSchema(),
                     LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
                             .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSS'Z'"))),
-            new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+            new SchemaAndValueField("VAL_INT_YTM", new MicroDuration().optionalSchema(), -110451600_000_000L),
+            new SchemaAndValueField("VAL_INT_DTS", new MicroDuration().optionalSchema(), -93784_560_000L));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME_AS_CONNECT = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
@@ -237,12 +237,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                     java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125500 * 1_000).atOffset(ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("VAL_TS_PRECISION9", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125456789).atOffset(ZoneOffset.UTC).toInstant())),
-            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
-            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+            new SchemaAndValueField("VAL_TSTZ", new ZonedTimestamp().optionalSchema(), "2018-03-27T01:34:56.00789-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", new ZonedTimestamp().optionalSchema(),
                     LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
                             .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSS'Z'"))),
-            new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+            new SchemaAndValueField("VAL_INT_YTM", new MicroDuration().optionalSchema(), -110451600_000_000L),
+            new SchemaAndValueField("VAL_INT_DTS", new MicroDuration().optionalSchema(), -93784_560_000L));
 
     private static final String CLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data.json");
     private static final String NCLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data2.json");

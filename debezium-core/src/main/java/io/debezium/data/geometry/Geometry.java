@@ -9,6 +9,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A semantic type for an OGC Simple Features for SQL Geometry.
  * Used to describe geometries on a planar basis (rather than Geography, which is a spherical basis).
@@ -20,7 +22,7 @@ import org.apache.kafka.connect.data.Struct;
  *
  * @author Robert Coup
  */
-public class Geometry {
+public class Geometry implements SchemaBuilderFactory {
 
     public static final String LOGICAL_NAME = "io.debezium.data.geometry.Geometry";
 
@@ -33,7 +35,8 @@ public class Geometry {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.struct()
                 .name(LOGICAL_NAME)
                 .version(1)
@@ -41,16 +44,6 @@ public class Geometry {
                 .optional()
                 .field(WKB_FIELD, Schema.BYTES_SCHEMA)
                 .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
-    }
-
-    /**
-     * Returns a {@link SchemaBuilder} for a Geometry field, with all other default Schema settings.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
     }
 
     /**

@@ -32,6 +32,7 @@ import org.fest.assertions.Assertions;
 import org.junit.Test;
 
 import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SchemaUtil;
@@ -1050,8 +1051,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address").schema()).isEqualTo(
-                SchemaBuilder.struct()
-                        .name(SERVER_NAME + "." + DB_NAME + "." + getCollectionName() + ".address")
+                new MongoDbSchemaBuilderFactory().builder(SERVER_NAME + "." + DB_NAME + "." + getCollectionName() + ".address")
                         .optional()
                         .field("street", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
@@ -1496,7 +1496,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // 4 data fields + 1 __patch
         assertThat(value.schema().fields()).hasSize(4 + 1);
 
-        assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
+        assertThat(value.schema().field("__patch").schema()).isEqualTo(new io.debezium.data.Json().optionalSchema());
         assertThat(value.get("__patch")).isNull();
 
         assertThat(value.get("b")).isEqualTo(2);

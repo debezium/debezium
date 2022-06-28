@@ -18,6 +18,8 @@ import java.time.temporal.TemporalAdjuster;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A utility for converting various Java time representations into the {@link SchemaBuilder#string() STRING} representation of
  * the time and date in a particular time zone, and for defining a Kafka Connect {@link Schema} for zoned timestamp values.
@@ -31,7 +33,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * @see NanoTimestamp
  * @see ZonedTime
  */
-public class ZonedTimestamp {
+public class ZonedTimestamp implements SchemaBuilderFactory {
 
     /**
      * The ISO date-time format includes the date, time (including fractional parts), and offset from UTC, such as
@@ -47,20 +49,11 @@ public class ZonedTimestamp {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.string()
                 .name(SCHEMA_NAME)
                 .version(1);
-    }
-
-    /**
-     * Returns a Schema for a {@link ZonedTimestamp} but with all other default Schema settings.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
     }
 
     /**
@@ -222,6 +215,6 @@ public class ZonedTimestamp {
         return zdt.format(FORMATTER);
     }
 
-    private ZonedTimestamp() {
+    public ZonedTimestamp() {
     }
 }

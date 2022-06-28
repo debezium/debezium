@@ -347,7 +347,7 @@ public class EventRouterTest {
         Long expectedTimestamp = 14222264625338L;
 
         Map<String, Schema> extraFields = new HashMap<>();
-        extraFields.put("event_timestamp", Timestamp.schema());
+        extraFields.put("event_timestamp", new Timestamp().schema());
 
         Map<String, Object> extraValues = new HashMap<>();
         extraValues.put("event_timestamp", expectedTimestamp);

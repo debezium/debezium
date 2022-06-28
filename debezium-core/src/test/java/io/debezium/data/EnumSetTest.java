@@ -18,18 +18,18 @@ import org.junit.Test;
 public class EnumSetTest {
     @Test
     public void shouldCreateSchemaBuilderFromValues() {
-        assertBuilder(EnumSet.builder(Arrays.asList("a", "b", "c")), "a,b,c");
-        assertBuilder(EnumSet.builder(Arrays.asList("a")), "a");
-        assertBuilder(EnumSet.builder(Collections.EMPTY_LIST), "");
-        assertBuilder(EnumSet.builder((List<String>) null), "");
+        assertBuilder(new EnumSet().builder(Arrays.asList("a", "b", "c")), "a,b,c");
+        assertBuilder(new EnumSet().builder(Arrays.asList("a")), "a");
+        assertBuilder(new EnumSet().builder(Collections.EMPTY_LIST), "");
+        assertBuilder(new EnumSet().builder((List<String>) null), "");
     }
 
     @Test
     public void shouldCreateSchemaFromValues() {
-        assertSchema(EnumSet.schema(Arrays.asList("a", "b", "c")), "a,b,c");
-        assertSchema(EnumSet.schema(Arrays.asList("a")), "a");
-        assertSchema(EnumSet.schema(Collections.EMPTY_LIST), "");
-        assertSchema(EnumSet.schema((List<String>) null), "");
+        assertSchema(new EnumSet().schema(Arrays.asList("a", "b", "c")), "a,b,c");
+        assertSchema(new EnumSet().schema(Arrays.asList("a")), "a");
+        assertSchema(new EnumSet().schema(Collections.EMPTY_LIST), "");
+        assertSchema(new EnumSet().schema((List<String>) null), "");
     }
 
     private void assertBuilder(SchemaBuilder builder, String expectedAllowedValues) {

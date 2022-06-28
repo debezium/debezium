@@ -41,6 +41,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
@@ -234,7 +235,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     }
 
     private R newRecord(R record, BsonDocument keyDocument, BsonDocument valueDocument) {
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
+        SchemaBuilder keySchemaBuilder = new MongoDbSchemaBuilderFactory().builder();
         Set<Entry<String, BsonValue>> keyPairs = keyDocument.entrySet();
         for (Entry<String, BsonValue> keyPairsForSchema : keyPairs) {
             converter.addFieldSchema(keyPairsForSchema, keySchemaBuilder);
@@ -255,7 +256,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             if (Envelope.isEnvelopeSchema(newValueSchemaName)) {
                 newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
             }
-            SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
+            SchemaBuilder valueSchemaBuilder = new MongoDbSchemaBuilderFactory().builder(newValueSchemaName);
 
             Set<Entry<String, BsonValue>> valuePairs = valueDocument.entrySet();
             for (Entry<String, BsonValue> valuePairsForSchema : valuePairs) {

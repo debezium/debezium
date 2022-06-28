@@ -9,12 +9,14 @@ package io.debezium.data;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A semantic type for an XML string.
  *
  * @author Horia Chiorean
  */
-public class Xml {
+public class Xml implements SchemaBuilderFactory {
 
     public static final String LOGICAL_NAME = "io.debezium.data.Xml";
 
@@ -24,7 +26,8 @@ public class Xml {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.string()
                 .name(LOGICAL_NAME)
                 .version(1);
@@ -36,7 +39,13 @@ public class Xml {
      * @return the schema
      * @see #builder()
      */
-    public static Schema schema() {
+    @Override
+    public Schema schema() {
         return builder().build();
+    }
+
+    @Override
+    public Schema optionalSchema() {
+        return null;
     }
 }

@@ -11,12 +11,14 @@ import java.time.temporal.ChronoUnit;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A utility representing a duration into a corresponding {@link SchemaBuilder#int64() INT64}
  * number of <em>nanosecond</em>, and for defining a Kafka Connect {@link Schema} for duration values.
  *
  **/
-public class NanoDuration {
+public class NanoDuration implements SchemaBuilderFactory {
 
     public static final String SCHEMA_NAME = "io.debezium.time.NanoDuration";
 
@@ -30,22 +32,11 @@ public class NanoDuration {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.int64()
                 .name(SCHEMA_NAME)
                 .version(1);
-    }
-
-    /**
-     * Returns a Schema for a {@link NanoDuration} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int64()} ()} INT64} for the literal
-     * type storing the number of <em>nanoseconds</em>.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
     }
 
     private NanoDuration() {

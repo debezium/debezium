@@ -30,7 +30,8 @@ public class Geography extends Geometry {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.struct()
                 .name(LOGICAL_NAME)
                 .version(1)

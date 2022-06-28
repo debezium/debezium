@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.data.Envelope;
 import io.debezium.data.Json;
 import io.debezium.data.VerifyRecord;
@@ -86,7 +87,7 @@ public class MongoEventRouterTest {
         Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(Schema.STRING_SCHEMA)
-                .withSource(SchemaBuilder.struct().build())
+                .withSource(new MongoDbSchemaBuilderFactory().builder().build())
                 .build();
         final Struct payload = envelope.delete("{\"_id\": {\"$oid\": \"da8d6de63b7745ff8f4457db\"}}", null, Instant.now());
         final SourceRecord eventRecord = new SourceRecord(
@@ -108,7 +109,7 @@ public class MongoEventRouterTest {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
-        Schema valueSchema = SchemaBuilder.struct()
+        Schema valueSchema = new MongoDbSchemaBuilderFactory().builder()
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .build();
 
@@ -134,8 +135,7 @@ public class MongoEventRouterTest {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
-        Schema valueSchema = SchemaBuilder.struct()
-                .name("io.debezium.connector.common.Heartbeat.Envelope")
+        Schema valueSchema = new MongoDbSchemaBuilderFactory().builder("io.debezium.connector.common.Heartbeat.Envelope")
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .build();
 
@@ -160,8 +160,7 @@ public class MongoEventRouterTest {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
-        Schema valueSchema = SchemaBuilder.struct()
-                .name("io.debezium.connector.common.Heartbeat")
+        Schema valueSchema = new MongoDbSchemaBuilderFactory().builder("io.debezium.connector.common.Heartbeat")
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .build();
 
@@ -187,8 +186,7 @@ public class MongoEventRouterTest {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
-        Schema valueSchema = SchemaBuilder.struct()
-                .name("io.debezium.connector.common.Heartbeat")
+        Schema valueSchema = new MongoDbSchemaBuilderFactory().builder("io.debezium.connector.common.Heartbeat")
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .build();
 
@@ -214,11 +212,11 @@ public class MongoEventRouterTest {
         final Map<String, String> config = new HashMap<>();
         router.configure(config);
 
-        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
+        final Schema recordSchema = new MongoDbSchemaBuilderFactory().builder().field("id", SchemaBuilder.string()).build();
         Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(recordSchema)
-                .withSource(SchemaBuilder.struct().build())
+                .withSource(new MongoDbSchemaBuilderFactory().builder().build())
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
@@ -245,11 +243,11 @@ public class MongoEventRouterTest {
                 EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue());
         router.configure(config);
 
-        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
+        final Schema recordSchema = new MongoDbSchemaBuilderFactory().builder().field("id", SchemaBuilder.string()).build();
         Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(recordSchema)
-                .withSource(SchemaBuilder.struct().build())
+                .withSource(new MongoDbSchemaBuilderFactory().builder().build())
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
@@ -403,6 +401,7 @@ public class MongoEventRouterTest {
 
     @Test
     public void canConfigureEveryTableField() {
+        Json json = new Json();
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "payload_id");
@@ -419,15 +418,14 @@ public class MongoEventRouterTest {
 
         String after = outboxEvent.toJson(COMPACT_JSON_SETTINGS);
 
-        final Schema valueSchema = SchemaBuilder.struct()
-                .name("event.Envelope")
-                .field(Envelope.FieldName.AFTER, Json.builder().optional().build())
+        final Schema valueSchema = new MongoDbSchemaBuilderFactory().builder("event.Envelope")
+                .field(Envelope.FieldName.AFTER, json.optionalSchema())
                 // Oplog fields
-                .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
+                .field(MongoDbFieldName.PATCH, json.optionalSchema())
+                .field(MongoDbFieldName.FILTER, json.optionalSchema())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
-                // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
+                // .field(Envelope.FieldName.SOURCE, new MongoDbSchemaBuilderFactory().builder().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
@@ -451,6 +449,7 @@ public class MongoEventRouterTest {
 
     @Test
     public void canInfluenceDocumentFieldTypes() {
+        final Json json = new Json();
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
         config.put(MongoEventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "payload_id");
@@ -477,15 +476,14 @@ public class MongoEventRouterTest {
 
         String after = outboxEvent.toJson(COMPACT_JSON_SETTINGS);
 
-        final Schema recordSchema = SchemaBuilder.struct()
-                .name("event.Envelope")
-                .field(Envelope.FieldName.AFTER, Json.builder().optional().build())
+        final Schema recordSchema = new MongoDbSchemaBuilderFactory().builder("event.Envelope")
+                .field(Envelope.FieldName.AFTER, json.optionalSchema())
                 // Oplog fields
-                .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
+                .field(MongoDbFieldName.PATCH, json.optionalSchema())
+                .field(MongoDbFieldName.FILTER, json.optionalSchema())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
-                // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
+                // .field(Envelope.FieldName.SOURCE, new MongoDbSchemaBuilderFactory().builder().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
@@ -866,7 +864,7 @@ public class MongoEventRouterTest {
         assertThat(eventRouted).isNotNull();
 
         Schema valueSchema = eventRouted.valueSchema();
-        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+        assertThat(valueSchema.type()).isEqualTo(new MongoDbSchemaBuilderFactory().builder().type());
 
         assertThat(valueSchema.fields().size()).isEqualTo(5);
         assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
@@ -940,6 +938,7 @@ public class MongoEventRouterTest {
                                            Object payloadType,
                                            Object payload,
                                            Map<String, Object> extraValues) {
+        final Json json = new Json();
         Document outboxEvent = new Document()
                 .append("_id", new ObjectId(eventId))
                 .append("aggregatetype", payloadType)
@@ -951,15 +950,14 @@ public class MongoEventRouterTest {
 
         String after = outboxEvent.toJson(COMPACT_JSON_SETTINGS);
 
-        final Schema valueSchema = SchemaBuilder.struct()
-                .name("event.Envelope")
-                .field(Envelope.FieldName.AFTER, Json.builder().optional().build())
+        final Schema valueSchema = new MongoDbSchemaBuilderFactory().builder("event.Envelope")
+                .field(Envelope.FieldName.AFTER, json.optionalSchema())
                 // Oplog fields
-                .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
+                .field(MongoDbFieldName.PATCH, json.optionalSchema())
+                .field(MongoDbFieldName.FILTER, json.optionalSchema())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
-                // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
+                // .field(Envelope.FieldName.SOURCE, new MongoDbSchemaBuilderFactory().builder().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)

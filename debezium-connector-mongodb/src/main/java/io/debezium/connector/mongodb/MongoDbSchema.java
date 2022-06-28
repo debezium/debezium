@@ -36,18 +36,16 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     private static final String SCHEMA_NAME_UPDATED_DESCRIPTION = "io.debezium.connector.mongodb.changestream.updatedescription";
     private static final String SCHEMA_NAME_TRUNCATED_ARRAY = "io.debezium.connector.mongodb.changestream.truncatedarray";
 
-    public static final Schema TRUNCATED_ARRAY_SCHEMA = SchemaBuilder.struct()
-            .name(SCHEMA_NAME_TRUNCATED_ARRAY)
+    public static final Schema TRUNCATED_ARRAY_SCHEMA = new MongoDbSchemaBuilderFactory().builder(SCHEMA_NAME_TRUNCATED_ARRAY)
             .field(MongoDbFieldName.ARRAY_FIELD_NAME, Schema.STRING_SCHEMA)
             .field(MongoDbFieldName.ARRAY_NEW_SIZE, Schema.INT32_SCHEMA)
             .build();
-    public static final Schema UPDATED_DESCRIPTION_SCHEMA = SchemaBuilder.struct()
+    public static final Schema UPDATED_DESCRIPTION_SCHEMA = new MongoDbSchemaBuilderFactory().builder(SCHEMA_NAME_UPDATED_DESCRIPTION)
             .optional()
-            .name(SCHEMA_NAME_UPDATED_DESCRIPTION)
             .field(MongoDbFieldName.REMOVED_FIELDS,
                     SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
             .field(MongoDbFieldName.UPDATED_FIELDS,
-                    Json.builder().optional().build())
+                    new Json().optionalSchema())
             .field(MongoDbFieldName.TRUNCATED_ARRAYS,
                     SchemaBuilder.array(TRUNCATED_ARRAY_SCHEMA).optional().build())
             .build();
@@ -77,17 +75,15 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
             final FieldFilter fieldFilter = filters.fieldFilterFor(id);
             final String topicName = topicSelector.topicNameFor(id);
 
-            final Schema keySchema = SchemaBuilder.struct()
-                    .name(adjuster.adjust(topicName + ".Key"))
+            final Schema keySchema = new MongoDbSchemaBuilderFactory().builder(adjuster.adjust(topicName + ".Key"))
                     .field("id", Schema.STRING_SCHEMA)
                     .build();
 
-            final Schema valueSchema = SchemaBuilder.struct()
-                    .name(adjuster.adjust(Envelope.schemaName(topicName)))
-                    .field(FieldName.AFTER, Json.builder().optional().build())
+            final Schema valueSchema = new MongoDbSchemaBuilderFactory().builder(adjuster.adjust(Envelope.schemaName(topicName)))
+                    .field(FieldName.AFTER, new Json().optionalSchema())
                     // Oplog fields
-                    .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                    .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
+                    .field(MongoDbFieldName.PATCH, new Json().optionalSchema())
+                    .field(MongoDbFieldName.FILTER, new Json().optionalSchema())
                     // Change Streams field
                     .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
                     .field(FieldName.SOURCE, sourceSchema)

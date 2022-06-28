@@ -87,6 +87,8 @@ public class PostgresSchemaIT {
 
     @Test
     public void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
+        final VariableScaleDecimal variableScaleDecimal = new VariableScaleDecimal();
+        final Json json = new Json();
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
@@ -103,10 +105,10 @@ public class PostgresSchemaIT {
             assertTableSchema("public.numeric_decimal_table", "d, dzs, dvs, n, nzs, nvs",
                     Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").optional().build(),
                     Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(),
-                    VariableScaleDecimal.builder().optional().build(),
+                    variableScaleDecimal.optionalSchema(),
                     Decimal.builder(4).parameter(TestHelper.PRECISION_PARAMETER_KEY, "6").optional().build(),
                     Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(),
-                    VariableScaleDecimal.builder().optional().build());
+                    variableScaleDecimal.optionalSchema());
             assertTableSchema("public.string_table", "vc, vcv, ch, c, t, ct",
                     Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
                     Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
@@ -124,7 +126,7 @@ public class PostgresSchemaIT {
                     Date.builder().optional().build(), MicroTime.builder().optional().build(), ZonedTime.builder().optional().build(),
                     MicroDuration.builder().optional().build());
             assertTableSchema("public.text_table", "j, jb, x, u",
-                    Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
+                    json.optionalSchema(), json.optionalSchema(), Xml.builder().optional().build(),
                     Uuid.builder().optional().build());
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
             assertTableSchema("public.range_table", "unbounded_exclusive_tsrange, bounded_inclusive_tsrange," +

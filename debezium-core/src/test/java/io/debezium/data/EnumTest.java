@@ -19,18 +19,18 @@ public class EnumTest {
 
     @Test
     public void shouldCreateSchemaBuilderFromValues() {
-        assertBuilder(Enum.builder(Arrays.asList("a", "b", "c")), "a,b,c");
-        assertBuilder(Enum.builder(Arrays.asList("a")), "a");
-        assertBuilder(Enum.builder(Collections.EMPTY_LIST), "");
-        assertBuilder(Enum.builder((List<String>) null), "");
+        assertBuilder(new EnumSet().builder(Arrays.asList("a", "b", "c")), "a,b,c");
+        assertBuilder(new EnumSet().builder(Arrays.asList("a")), "a");
+        assertBuilder(new EnumSet().builder(Collections.EMPTY_LIST), "");
+        assertBuilder(new EnumSet().builder((List<String>) null), "");
     }
 
     @Test
     public void shouldCreateSchemaFromValues() {
-        assertSchema(Enum.schema(Arrays.asList("a", "b", "c")), "a,b,c");
-        assertSchema(Enum.schema(Arrays.asList("a")), "a");
-        assertSchema(Enum.schema(Collections.EMPTY_LIST), "");
-        assertSchema(Enum.schema((List<String>) null), "");
+        assertSchema(new Enum().schema(Arrays.asList("a", "b", "c")), "a,b,c");
+        assertSchema(new Enum().schema(Arrays.asList("a")), "a");
+        assertSchema(new Enum().schema(Collections.EMPTY_LIST), "");
+        assertSchema(new Enum().schema((List<String>) null), "");
     }
 
     private void assertBuilder(SchemaBuilder builder, String expectedAllowedValues) {

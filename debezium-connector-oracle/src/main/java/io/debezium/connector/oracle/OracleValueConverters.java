@@ -144,10 +144,10 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return SchemaBuilder.float64();
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
-                return ZonedTimestamp.builder();
+                return new ZonedTimestamp().builder();
             case OracleTypes.INTERVALYM:
             case OracleTypes.INTERVALDS:
-                return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
+                return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? new Interval().builder() : new MicroDuration().builder();
             case Types.STRUCT:
                 return SchemaBuilder.string();
             case OracleTypes.ROWID:
@@ -192,7 +192,7 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private SchemaBuilder variableScaleSchema(Column column) {
         if (decimalMode == DecimalMode.PRECISE) {
-            return VariableScaleDecimal.builder();
+            return new VariableScaleDecimal().builder();
         }
         return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElse(-1));
     }

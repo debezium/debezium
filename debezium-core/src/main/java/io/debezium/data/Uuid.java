@@ -6,15 +6,16 @@
 
 package io.debezium.data;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import io.debezium.schema.SchemaBuilderFactory;
 
 /**
  * A semantic type for a Uuid string.
  *
  * @author Horia Chiorean
  */
-public class Uuid {
+public class Uuid implements SchemaBuilderFactory {
 
     public static final String LOGICAL_NAME = "io.debezium.data.Uuid";
 
@@ -24,19 +25,10 @@ public class Uuid {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.string()
                 .name(LOGICAL_NAME)
                 .version(1);
-    }
-
-    /**
-     * Returns a {@link SchemaBuilder} for a Uuid field, with all other default Schema settings.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
     }
 }

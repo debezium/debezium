@@ -841,6 +841,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldReceiveChangesForTypeConstraints() throws Exception {
+        final VariableScaleDecimal variableScaleDecimal = new VariableScaleDecimal();
         // add a new column
         String statements = "ALTER TABLE test_table ADD COLUMN num_val NUMERIC(5,2);" +
                 "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
@@ -885,11 +886,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statements);
         updatedRecord = consumer.remove();
 
-        final Struct dvs = new Struct(VariableScaleDecimal.schema());
+        final Struct dvs = new Struct(variableScaleDecimal.schema());
         dvs.put("scale", 4).put("value", new BigDecimal("123.4567").unscaledValue().toByteArray());
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 3);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", VariableScaleDecimal.builder().optional().build(), dvs)), updatedRecord,
+                Collections.singletonList(new SchemaAndValueField("num_val", variableScaleDecimal.optionalSchema(), dvs)), updatedRecord,
                 Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val TYPE DECIMAL(12,4);" +
@@ -925,11 +926,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statements);
         updatedRecord = consumer.remove();
 
-        final Struct dvs2 = new Struct(VariableScaleDecimal.schema());
+        final Struct dvs2 = new Struct(variableScaleDecimal.schema());
         dvs2.put("scale", 1).put("value", new BigDecimal("1225.1").unscaledValue().toByteArray());
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 6);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", VariableScaleDecimal.builder().optional().build(), dvs2)), updatedRecord,
+                Collections.singletonList(new SchemaAndValueField("num_val", variableScaleDecimal.optionalSchema(), dvs2)), updatedRecord,
                 Envelope.FieldName.AFTER);
 
         statements = "ALTER TABLE test_table ALTER COLUMN num_val SET NOT NULL;" +
@@ -942,7 +943,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         dvs2.put("scale", 0).put("value", new BigDecimal("1976").unscaledValue().toByteArray());
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 7);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("num_val", VariableScaleDecimal.builder().build(), dvs2)), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("num_val", variableScaleDecimal.schema(), dvs2)), updatedRecord, Envelope.FieldName.AFTER);
     }
 
     @Test

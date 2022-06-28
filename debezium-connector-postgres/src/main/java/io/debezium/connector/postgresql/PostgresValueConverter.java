@@ -200,20 +200,20 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
             case PgOid.VARBIT:
-                return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
+                return column.length() > 1 ? new Bits().builder(column.length()) : SchemaBuilder.bool();
             case PgOid.INTERVAL:
-                return intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
+                return intervalMode == IntervalHandlingMode.STRING ? new Interval().builder() : new MicroDuration().builder();
             case PgOid.TIMESTAMPTZ:
                 // JDBC reports this as "timestamp" even though it's with tz, so we can't use the base class...
-                return ZonedTimestamp.builder();
+                return new ZonedTimestamp().builder();
             case PgOid.TIMETZ:
                 // JDBC reports this as "time" but this contains TZ information
-                return ZonedTime.builder();
+                return new ZonedTime().builder();
             case PgOid.OID:
                 return SchemaBuilder.int64();
             case PgOid.JSONB_OID:
             case PgOid.JSON:
-                return Json.builder();
+                return new Json().builder();
             case PgOid.TSRANGE_OID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.DATERANGE_OID:
@@ -226,9 +226,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT8RANGE_OID:
                 return SchemaBuilder.string();
             case PgOid.UUID:
-                return Uuid.builder();
+                return new Uuid().builder();
             case PgOid.POINT:
-                return Point.builder();
+                return new Point().builder();
             case PgOid.MONEY:
                 return moneySchema();
             case PgOid.NUMERIC:
@@ -266,31 +266,31 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
             case PgOid.DATE_ARRAY:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
+                    return SchemaBuilder.array(new io.debezium.time.Date().optionalSchema());
                 }
                 return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
             case PgOid.UUID_ARRAY:
-                return SchemaBuilder.array(Uuid.builder().optional().build());
+                return SchemaBuilder.array(new Uuid().builder().optional().build());
             case PgOid.JSONB_ARRAY:
             case PgOid.JSON_ARRAY:
-                return SchemaBuilder.array(Json.builder().optional().build());
+                return SchemaBuilder.array(new Json().optionalSchema());
             case PgOid.TIME_ARRAY:
-                return SchemaBuilder.array(MicroTime.builder().optional().build());
+                return SchemaBuilder.array(new MicroTime().optionalSchema());
             case PgOid.TIMETZ_ARRAY:
-                return SchemaBuilder.array(ZonedTime.builder().optional().build());
+                return SchemaBuilder.array(new ZonedTime().optionalSchema());
             case PgOid.TIMESTAMP_ARRAY:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     if (getTimePrecision(column) <= 3) {
-                        return SchemaBuilder.array(io.debezium.time.Timestamp.builder().optional().build());
+                        return SchemaBuilder.array(new io.debezium.time.Timestamp().optionalSchema());
                     }
                     if (getTimePrecision(column) <= 6) {
-                        return SchemaBuilder.array(MicroTimestamp.builder().optional().build());
+                        return SchemaBuilder.array(new MicroTimestamp().optionalSchema());
                     }
-                    return SchemaBuilder.array(NanoTime.builder().optional().build());
+                    return SchemaBuilder.array(new NanoTime().optionalSchema());
                 }
                 return SchemaBuilder.array(org.apache.kafka.connect.data.Timestamp.builder().optional().build());
             case PgOid.TIMESTAMPTZ_ARRAY:
-                return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
+                return SchemaBuilder.array(new ZonedTimestamp().optionalSchema());
             case PgOid.OID_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
             case PgOid.BYTEA_ARRAY:
@@ -307,16 +307,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
             default:
                 if (oidValue == typeRegistry.geometryOid()) {
-                    return Geometry.builder();
+                    return new Geometry().builder();
                 }
                 else if (oidValue == typeRegistry.geographyOid()) {
-                    return Geography.builder();
+                    return new Geography().builder();
                 }
                 else if (oidValue == typeRegistry.citextOid()) {
                     return SchemaBuilder.string();
                 }
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
-                    return SchemaBuilder.array(Geometry.builder().optional().build());
+                    return SchemaBuilder.array(new Geometry().optionalSchema());
                 }
                 else if (oidValue == typeRegistry.hstoreOid()) {
                     return hstoreSchema();
@@ -328,7 +328,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     return SchemaBuilder.array(hstoreSchema().optional().build());
                 }
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
-                    return SchemaBuilder.array(Geography.builder().optional().build());
+                    return SchemaBuilder.array(new Geography().optionalSchema());
                 }
                 else if (oidValue == typeRegistry.citextArrayOid()) {
                     return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
@@ -340,12 +340,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
 
                 if (resolvedType.isEnumType()) {
-                    return io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
+                    return new io.debezium.data.Enum().builder(Strings.join(",", resolvedType.getEnumValues()));
                 }
                 else if (resolvedType.isArrayType()) {
                     if (resolvedType.getElementType().isEnumType()) {
                         List<String> enumValues = resolvedType.getElementType().getEnumValues();
-                        return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
+                        return SchemaBuilder.array(new io.debezium.data.Enum().builder(Strings.join(",", enumValues)));
                     }
                     else {
                         // unfortunately, this does not work for array columns of domain types; the element type will have a
@@ -376,14 +376,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private SchemaBuilder numericSchema(Column column) {
         if (decimalMode == DecimalMode.PRECISE && isVariableScaleDecimal(column)) {
-            return VariableScaleDecimal.builder();
+            return new VariableScaleDecimal().builder();
         }
         return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElseGet(() -> 0));
     }
 
     private SchemaBuilder hstoreSchema() {
         if (hStoreMode == PostgresConnectorConfig.HStoreHandlingMode.JSON) {
-            return Json.builder();
+            return new Json().builder();
         }
         else {
             // keys are not nullable, but values are

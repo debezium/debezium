@@ -19,6 +19,7 @@ import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.MongoDbSchemaBuilderFactory;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 
 /**
@@ -78,7 +79,7 @@ public class MongoArrayConverterTest {
 
     @Before
     public void setup() throws Exception {
-        builder = SchemaBuilder.struct().name("array");
+        builder = new MongoDbSchemaBuilderFactory().builder("array");
     }
 
     @Test(expected = ConnectException.class)
@@ -110,9 +111,9 @@ public class MongoArrayConverterTest {
 
         assertThat(finalSchema)
                 .isEqualTo(
-                        SchemaBuilder.struct().name("array")
+                        new MongoDbSchemaBuilderFactory().builder("array")
                                 .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
-                                .field("a1", SchemaBuilder.array(SchemaBuilder.struct().name("array.a1").optional()
+                                .field("a1", SchemaBuilder.array(new MongoDbSchemaBuilderFactory().builder("array.a1").optional()
                                         .field("a", Schema.OPTIONAL_INT32_SCHEMA)
                                         .field("b", Schema.OPTIONAL_STRING_SCHEMA)
                                         .build()).optional().build())
@@ -125,7 +126,7 @@ public class MongoArrayConverterTest {
     public void shouldCreateStructForHomogenousArray() throws Exception {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HOMOGENOUS_ARRAYS);
-        final SchemaBuilder builder = SchemaBuilder.struct().name("array");
+        final SchemaBuilder builder = new MongoDbSchemaBuilderFactory().builder("array");
 
         for (Entry<String, BsonValue> entry : val.entrySet()) {
             converter.addFieldSchema(entry, builder);
@@ -163,7 +164,7 @@ public class MongoArrayConverterTest {
 
         assertThat(arraySchema)
                 .isEqualTo(
-                        SchemaBuilder.struct().name("array")
+                        new MongoDbSchemaBuilderFactory().builder("array")
                                 .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
                                 .field("f", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
                                 .build());
@@ -206,9 +207,9 @@ public class MongoArrayConverterTest {
 
         assertThat(documentSchema)
                 .isEqualTo(
-                        SchemaBuilder.struct().name("array")
+                        new MongoDbSchemaBuilderFactory().builder("array")
                                 .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
-                                .field("f", SchemaBuilder.struct().name("array.f").optional().build())
+                                .field("f", new MongoDbSchemaBuilderFactory().builder("array.f").optional().build())
                                 .build());
     }
 
@@ -245,9 +246,9 @@ public class MongoArrayConverterTest {
 
         assertThat(finalSchema)
                 .isEqualTo(
-                        SchemaBuilder.struct().name("array")
+                        new MongoDbSchemaBuilderFactory().builder("array")
                                 .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
-                                .field("a2", SchemaBuilder.struct().name("array.a2").optional()
+                                .field("a2", new MongoDbSchemaBuilderFactory().builder("array.a2").optional()
                                         .field("_0", Schema.OPTIONAL_INT32_SCHEMA)
                                         .field("_1", Schema.OPTIONAL_STRING_SCHEMA)
                                         .build())
@@ -286,13 +287,13 @@ public class MongoArrayConverterTest {
 
         assertThat(finalSchema)
                 .isEqualTo(
-                        SchemaBuilder.struct().name("array")
+                        new MongoDbSchemaBuilderFactory().builder("array")
                                 .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
-                                .field("a1", SchemaBuilder.struct().name("array.a1").optional()
-                                        .field("_0", SchemaBuilder.struct().name("array.a1._0").optional()
+                                .field("a1", new MongoDbSchemaBuilderFactory().builder("array.a1").optional()
+                                        .field("_0", new MongoDbSchemaBuilderFactory().builder("array.a1._0").optional()
                                                 .field("a", Schema.OPTIONAL_INT32_SCHEMA)
                                                 .build())
-                                        .field("_1", SchemaBuilder.struct().name("array.a1._1").optional()
+                                        .field("_1", new MongoDbSchemaBuilderFactory().builder("array.a1._1").optional()
                                                 .field("a", Schema.OPTIONAL_STRING_SCHEMA)
                                                 .build())
                                         .build())

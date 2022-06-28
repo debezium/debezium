@@ -228,6 +228,9 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             INSERT_ARRAY_TYPES_STMT, INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT,
             INSERT_POSTGIS_TYPES_STMT, INSERT_POSTGIS_ARRAY_TYPES_STMT));
 
+    private static final VariableScaleDecimal variableScaleDecimal = new VariableScaleDecimal();
+    private static final Json json = new Json();
+
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
         final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>();
 
@@ -252,26 +255,26 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForBigDecimalEncodedNumericTypes() {
-        final Struct dvs = new Struct(VariableScaleDecimal.schema());
+        final Struct dvs = new Struct(variableScaleDecimal.schema());
         dvs.put("scale", 4).put("value", new BigDecimal("10.1111").unscaledValue().toByteArray());
-        final Struct nvs = new Struct(VariableScaleDecimal.schema());
+        final Struct nvs = new Struct(variableScaleDecimal.schema());
         nvs.put("scale", 4).put("value", new BigDecimal("22.2222").unscaledValue().toByteArray());
-        final Struct dvs_int = new Struct(VariableScaleDecimal.schema());
+        final Struct dvs_int = new Struct(variableScaleDecimal.schema());
         dvs_int.put("scale", 0).put("value", new BigDecimal("10").unscaledValue().toByteArray());
-        final Struct nvs_int = new Struct(VariableScaleDecimal.schema());
+        final Struct nvs_int = new Struct(variableScaleDecimal.schema());
         nvs_int.put("scale", 0).put("value", new BigDecimal("22").unscaledValue().toByteArray());
         final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
                 new SchemaAndValueField("d", Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").optional().build(), new BigDecimal("1.10")),
                 new SchemaAndValueField("dzs", Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(), new BigDecimal("10")),
-                new SchemaAndValueField("dvs", VariableScaleDecimal.optionalSchema(), dvs),
+                new SchemaAndValueField("dvs", variableScaleDecimal.optionalSchema(), dvs),
                 new SchemaAndValueField("d_nn", Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").build(), new BigDecimal("3.30")),
                 new SchemaAndValueField("n", Decimal.builder(4).parameter(TestHelper.PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("22.2200")),
                 new SchemaAndValueField("nzs", Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(), new BigDecimal("22")),
-                new SchemaAndValueField("nvs", VariableScaleDecimal.optionalSchema(), nvs),
+                new SchemaAndValueField("nvs", variableScaleDecimal.optionalSchema(), nvs),
                 new SchemaAndValueField("d_int", Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").optional().build(), new BigDecimal("1.00")),
-                new SchemaAndValueField("dvs_int", VariableScaleDecimal.optionalSchema(), dvs_int),
+                new SchemaAndValueField("dvs_int", variableScaleDecimal.optionalSchema(), dvs_int),
                 new SchemaAndValueField("n_int", Decimal.builder(4).parameter(TestHelper.PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("22.0000")),
-                new SchemaAndValueField("nvs_int", VariableScaleDecimal.optionalSchema(), nvs_int)));
+                new SchemaAndValueField("nvs_int", variableScaleDecimal.optionalSchema(), nvs_int)));
         return fields;
     }
 
@@ -363,7 +366,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreType() {
         final String expected = "{\"key\":\"val\"}";
-        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
+        return Arrays.asList(new SchemaAndValueField("hs", json.optionalSchema(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues() {
@@ -373,18 +376,18 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 "{\"key6\":\"val6\"}");
 
         return Arrays.asList(
-                new SchemaAndValueField("hs", Json.builder().optional().build(), expected),
-                new SchemaAndValueField("hsarr", SchemaBuilder.array(Json.builder().optional().build()).optional().build(), expectedArray));
+                new SchemaAndValueField("hs", json.optionalSchema(), expected),
+                new SchemaAndValueField("hsarr", SchemaBuilder.array(json.optionalSchema()).optional().build(), expectedArray));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues() {
         final String expected = "{\"key1\":\"val1\",\"key2\":null}";
-        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
+        return Arrays.asList(new SchemaAndValueField("hs", json.optionalSchema(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters() {
         final String expected = "{\"key_#1\":\"val 1\",\"key 2\":\" ##123 78\"}";
-        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
+        return Arrays.asList(new SchemaAndValueField("hs", json.optionalSchema(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForMacaddr8Type() {
@@ -488,8 +491,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForTextTypes() {
-        return Arrays.asList(new SchemaAndValueField("j", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),
-                new SchemaAndValueField("jb", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),
+        return Arrays.asList(new SchemaAndValueField("j", json.optionalSchema(), "{\"bar\": \"baz\"}"),
+                new SchemaAndValueField("jb", json.optionalSchema(), "{\"bar\": \"baz\"}"),
                 new SchemaAndValueField("x", Xml.builder().optional().build(), "<foo>bar</foo><foo>bar</foo>"),
                 new SchemaAndValueField("u", Uuid.builder().optional().build(), "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"));
     }
@@ -729,13 +732,13 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected List<SchemaAndValueField> schemasAndValuesForArrayTypes() {
         Struct element;
         final List<Struct> varnumArray = new ArrayList<>();
-        element = new Struct(VariableScaleDecimal.schema());
+        element = new Struct(variableScaleDecimal.schema());
         element.put("scale", 1).put("value", new BigDecimal("1.1").unscaledValue().toByteArray());
         varnumArray.add(element);
-        element = new Struct(VariableScaleDecimal.schema());
+        element = new Struct(variableScaleDecimal.schema());
         element.put("scale", 2).put("value", new BigDecimal("2.22").unscaledValue().toByteArray());
         varnumArray.add(element);
-        element = new Struct(VariableScaleDecimal.schema());
+        element = new Struct(variableScaleDecimal.schema());
         element.put("scale", 3).put("value", new BigDecimal("3.333").unscaledValue().toByteArray());
         varnumArray.add(element);
 
@@ -771,7 +774,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                                 new BigDecimal("1.20"),
                                 new BigDecimal("3.40"),
                                 new BigDecimal("5.60"))),
-                new SchemaAndValueField("varnumeric_array", SchemaBuilder.array(VariableScaleDecimal.builder().optional().build()).optional().build(),
+                new SchemaAndValueField("varnumeric_array", SchemaBuilder.array(variableScaleDecimal.optionalSchema()).optional().build(),
                         varnumArray),
                 new SchemaAndValueField("citext_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
                         Arrays.asList("four", "five", "six")),
@@ -795,9 +798,9 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                         Arrays.asList("[1000000,6000000)", "[5000,9000)")),
                 new SchemaAndValueField("uuid_array", SchemaBuilder.array(Uuid.builder().optional().build()).optional().build(),
                         Arrays.asList("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")),
-                new SchemaAndValueField("json_array", SchemaBuilder.array(Json.builder().optional().build()).optional().build(),
+                new SchemaAndValueField("json_array", SchemaBuilder.array(json.optionalSchema()).optional().build(),
                         Arrays.asList("{\"bar\": \"baz\"}", "{\"foo\": \"qux\"}")),
-                new SchemaAndValueField("jsonb_array", SchemaBuilder.array(Json.builder().optional().build()).optional().build(),
+                new SchemaAndValueField("jsonb_array", SchemaBuilder.array(json.optionalSchema()).optional().build(),
                         Arrays.asList("{\"bar\": \"baz\"}", "{\"foo\": \"qux\"}")),
                 new SchemaAndValueField("oid_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                         Arrays.asList(3L, 4_000_000_000L)));
@@ -971,8 +974,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("char_alias", SchemaBuilder.STRING_SCHEMA, "a"),
                 new SchemaAndValueField("text_base", SchemaBuilder.STRING_SCHEMA, "Hello World"),
                 new SchemaAndValueField("text_alias", SchemaBuilder.STRING_SCHEMA, "Hello World"),
-                new SchemaAndValueField("json_base", Json.builder().build(), "{\"key\": \"value\"}"),
-                new SchemaAndValueField("json_alias", Json.builder().build(), "{\"key\": \"value\"}"),
+                new SchemaAndValueField("json_base", json.builder(), "{\"key\": \"value\"}"),
+                new SchemaAndValueField("json_alias", json.builder(), "{\"key\": \"value\"}"),
                 new SchemaAndValueField("xml_base", Xml.builder().build(), "<foo>Hello</foo>"),
                 new SchemaAndValueField("xml_alias", Xml.builder().build(), "<foo>Hello</foo>"),
                 new SchemaAndValueField("uuid_base", Uuid.builder().build(), "40e6215d-b5c6-4896-987c-f30f3678f608"),

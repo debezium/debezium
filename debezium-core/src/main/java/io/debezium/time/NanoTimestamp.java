@@ -12,6 +12,8 @@ import java.time.temporal.TemporalAdjuster;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A utility for converting various Java time representations into the signed {@link SchemaBuilder#int64() INT64} number of
  * <em>nanoseconds</em> past epoch, and for defining a Kafka Connect {@link Schema} for timestamp values with no timezone
@@ -22,7 +24,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * @see MicroTimestamp
  * @see ZonedTimestamp
  */
-public class NanoTimestamp {
+public class NanoTimestamp implements SchemaBuilderFactory {
 
     public static final String SCHEMA_NAME = "io.debezium.time.NanoTimestamp";
 
@@ -36,22 +38,11 @@ public class NanoTimestamp {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.int64()
                 .name(SCHEMA_NAME)
                 .version(1);
-    }
-
-    /**
-     * Returns a Schema for a {@link NanoTimestamp} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int64() INT64} for the literal
-     * type storing the number of <em>nanoseconds</em> past midnight.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
     }
 
     /**
@@ -96,6 +87,6 @@ public class NanoTimestamp {
         return epochDay * Conversions.NANOSECONDS_PER_DAY;
     }
 
-    private NanoTimestamp() {
+    public NanoTimestamp() {
     }
 }

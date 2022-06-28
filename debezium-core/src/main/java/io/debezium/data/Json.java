@@ -5,15 +5,16 @@
  */
 package io.debezium.data;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import io.debezium.schema.SchemaBuilderFactory;
 
 /**
  * A semantic type for a JSON string.
  *
  * @author Randall Hauch
  */
-public class Json {
+public class Json implements SchemaBuilderFactory {
 
     public static final String LOGICAL_NAME = "io.debezium.data.Json";
 
@@ -23,19 +24,10 @@ public class Json {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.string()
                 .name(LOGICAL_NAME)
                 .version(1);
-    }
-
-    /**
-     * Returns a {@link SchemaBuilder} for a JSON field, with all other default Schema settings.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
     }
 }

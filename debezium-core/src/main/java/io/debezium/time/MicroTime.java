@@ -11,6 +11,8 @@ import java.time.LocalTime;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaBuilderFactory;
+
 /**
  * A utility for converting various Java time representations into the {@link SchemaBuilder#int64() INT64} number of
  * <em>microseconds</em> since midnight, and for defining a Kafka Connect {@link Schema} for time values with no date or timezone
@@ -20,7 +22,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * @see Time
  * @see NanoTime
  */
-public class MicroTime {
+public class MicroTime implements SchemaBuilderFactory {
 
     public static final String SCHEMA_NAME = "io.debezium.time.MicroTime";
 
@@ -36,22 +38,11 @@ public class MicroTime {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    @Override
+    public SchemaBuilder builder() {
         return SchemaBuilder.int64()
                 .name(SCHEMA_NAME)
                 .version(1);
-    }
-
-    /**
-     * Returns a Schema for a {@link MicroTime} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int64() INT64} for the literal
-     * type storing the number of <em>microseconds</em> past midnight.
-     *
-     * @return the schema
-     * @see #builder()
-     */
-    public static Schema schema() {
-        return builder().build();
     }
 
     /**
@@ -79,6 +70,6 @@ public class MicroTime {
         return Math.floorDiv(time.toNanoOfDay(), Conversions.NANOSECONDS_PER_MICROSECOND);
     }
 
-    private MicroTime() {
+    public MicroTime() {
     }
 }
