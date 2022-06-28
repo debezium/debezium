@@ -1341,7 +1341,7 @@ include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deplo
 endif::product[]
 
 // Type: reference
-// Title: Description of {prodname} Db2 connector configuration properties
+// Title: Description of {prodname} MongoDB connector configuration properties
 [[mongodb-connector-properties]]
 === Connector properties
 
