@@ -25,21 +25,56 @@ pipeline {
             }
         }
 
-        # TODO make new dockerfile, include the downstream strimzi/apicurio zips into the image. Modify the testsuite to use included zips.
+        stage('Copy apicurio artifacts - latest') {
+            when {
+                expression { !params.APICURIO_PREPARE_BUILD_NUMBER }
+            }
+            steps {
+                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' ,filter: 'apicurio-registry-install-examples.zip', selector: lastSuccessful()
+            }
+        }
+        stage('Copy apicurio artifacts') {
+            when {
+                expression { params.APICURIO_PREPARE_BUILD_NUMBER }
+            }
+            steps {
+                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'apicurio-registry-install-examples.zip', selector: params.APICURIO_PREPARE_BUILD_NUMBER
+            }
+        }
+
+        stage('Copy strimzi artifacts - latest') {
+            when {
+                expression { !params.STRIMZI_PREPARE_BUILD_NUMBER }
+            }
+            steps {
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
+            }
+        }
+        stage('Copy strimzi artifacts') {
+            when {
+                expression { params.STRIMZI_PREPARE_BUILD_NUMBER }
+            }
+            steps {
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'amq-streams-install-examples.zip', selector: params.STRIMZI_PREPARE_BUILD_NUMBER
+            }
+        }
 
         stage('Build') {
             steps {
                 withCredentials([
                     usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
                 ]) {
+
                     sh '''
-                    pushd debezium/jenkins-jobs/docker/debezium-testing-system
-                    docker build --build-arg branch=${DBZ_GIT_BRANCH} --build-arg repository=${DBZ_GIT_REPOSITORY} -t testsuite:docker-test .
-                    docker tag testsuite:docker-test quay.io/rh_integration/dbz-testing-system:${TAG}
+                    cd debezium/jenkins-jobs/docker/debezium-testing-system
+                    docker build --build-arg branch=${DBZ_GIT_BRANCH} --build-arg repository=${DBZ_GIT_REPOSITORY} -t testsuite-base:latest .
+
+                    cd downstream
+                    docker build -t testsuite:latest .
+                    docker tag testsuite:latest quay.io/rh_integration/dbz-testing-system:${TAG}
                     docker login -u ${QUAY_USERNAME} -p ${QUAY_PASSWORD} quay.io
                     docker push quay.io/rh_integration/dbz-testing-system:${TAG}
-                    rm debezium/jenkins-jobs/docker/debezium-testing-system/secret.yml
-                '''
+                    '''
                 }
             }
         }

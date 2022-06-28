@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OPTS=$(getopt -o h: --long filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,groups-arg:,strz-git-repository:,strz-git-branch:,strz-downstream-url:,apic-git-repository:,apic-git-branch:,apic-downstream-url:,help  -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h: --long filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,kafka-version:,groups-arg:,strz-git-repository:,strz-git-branch:,strz-downstream-url:,apic-git-repository:,apic-git-branch:,apic-downstream-url:,help  -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -17,6 +17,7 @@ while true; do
         --dbz-connect-image )     DBZ_CONNECT_IMAGE=$2;       shift 2;;
         --artifact-server-image ) ARTIFACT_SERVER_IMAGE=$2;   shift 2;;
         --apicurio-version )      APICURIO_VERSION=$2;        shift 2;;
+        --kafka-version )         KAFKA_VERSION=$2;        shift 2;;
         --groups-arg )            GROUPS_ARG=$2;              shift 2;;
         --strz-git-repository )   STRZ_GIT_REPOSITORY=$2;     shift 2;;
         --strz-git-branch )       STRZ_GIT_BRANCH=$2;         shift 2;;
@@ -81,6 +82,8 @@ spec:
               value: \"${ARTIFACT_SERVER_IMAGE}\"
             - name: DBZ_APICURIO_VERSION
               value: \"${APICURIO_VERSION}\"
+            - name: DBZ_KAFKA_VERSION
+              value: \"${KAFKA_VERSION}\"
             - name: DBZ_GROUPS_ARG
               value: \"${GROUPS_ARG}\"
             - name: DBZ_OCP_DELETE_PROJECTS
@@ -89,14 +92,10 @@ spec:
               value: \"${STRZ_GIT_REPOSITORY}\"
             - name: STRZ_GIT_BRANCH
               value: \"${STRZ_GIT_BRANCH}\"
-            - name: STRZ_DOWNSTREAM_URL
-              value: \"${STRZ_DOWNSTREAM_URL}\"
             - name: APIC_GIT_REPOSITORY
               value: \"${APIC_GIT_REPOSITORY}\"
             - name: APIC_GIT_BRANCH
               value: \"${APIC_GIT_BRANCH}\"
-            - name: APIC_DOWNSTREAM_URL
-              value: \"${APIC_DOWNSTREAM_URL}\"
   triggers:
     - type: \"ConfigChange\"
   paused: false
