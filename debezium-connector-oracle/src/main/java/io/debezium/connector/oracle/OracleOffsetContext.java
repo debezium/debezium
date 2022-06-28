@@ -52,7 +52,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     private boolean snapshotCompleted;
 
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Scn commitScn, String lcrPosition,
+    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, CommitScn commitScn, String lcrPosition,
                                Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
@@ -70,6 +70,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         // During streaming this value will be updated by the current event handler.
         sourceInfo.setEventScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
+        sourceInfo.setCommitScn(CommitScn.valueOf((String) null));
         sourceInfoSchema = sourceInfo.schema();
 
         // Snapshot SCN is a new field and may be null in cases where the offsets are being read from
@@ -184,9 +185,8 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             }
             else {
                 final Scn scn = sourceInfo.getScn();
-                final Scn commitScn = sourceInfo.getCommitScn();
                 offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : null);
-                offset.put(SourceInfo.COMMIT_SCN_KEY, commitScn != null ? commitScn.toString() : null);
+                sourceInfo.getCommitScn().store(offset);
             }
             if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
                 String encoded = snapshotPendingTransactions.entrySet().stream()
@@ -209,10 +209,6 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setScn(scn);
     }
 
-    public void setCommitScn(Scn commitScn) {
-        sourceInfo.setCommitScn(commitScn);
-    }
-
     public void setEventScn(Scn eventScn) {
         sourceInfo.setEventScn(eventScn);
     }
@@ -221,7 +217,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return sourceInfo.getScn();
     }
 
-    public Scn getCommitScn() {
+    public CommitScn getCommitScn() {
         return sourceInfo.getCommitScn();
     }
 
@@ -261,6 +257,14 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.tableEvent(tableId);
     }
 
+    public Integer getRedoThread() {
+        return sourceInfo.getRedoThread();
+    }
+
+    public void setRedoThread(Integer redoThread) {
+        sourceInfo.setRedoThread(redoThread);
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
@@ -286,7 +290,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             sb.append(", snapshot_completed=").append(snapshotCompleted);
         }
 
-        sb.append(", commit_scn=").append(sourceInfo.getCommitScn());
+        sb.append(", commit_scn=").append(sourceInfo.getCommitScn().toString());
 
         sb.append("]");
 

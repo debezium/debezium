@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -74,9 +75,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected final Counters counters;
 
     private Scn currentOffsetScn = Scn.NULL;
-    private Scn currentOffsetCommitScn = Scn.NULL;
-    private Scn lastCommittedScn = Scn.NULL;
-    private Scn maxCommittedScn = Scn.NULL;
+    private Map<Integer, Scn> currentOffsetCommitScns = new HashMap<>();
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
 
@@ -192,11 +191,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 metrics.setLastCapturedDmlCount(counters.dmlCount);
 
                 if (counters.dmlCount > 0 || counters.commitCount > 0 || counters.rollbackCount > 0) {
-                    warnPotentiallyStuckScn(currentOffsetScn, currentOffsetCommitScn);
+                    warnPotentiallyStuckScn(currentOffsetScn, currentOffsetCommitScns);
 
                     currentOffsetScn = offsetContext.getScn();
                     if (offsetContext.getCommitScn() != null) {
-                        currentOffsetCommitScn = offsetContext.getCommitScn();
+                        currentOffsetCommitScns = offsetContext.getCommitScn().getCommitScnForAllRedoThreads();
                     }
                 }
 
@@ -207,7 +206,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         metrics.getMillisecondToSleepBetweenMiningQuery());
 
                 metrics.addProcessedRows(counters.rows);
-                return calculateNewStartScn(endScn, maxCommittedScn);
+                return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
             }
         }
     }
@@ -346,7 +345,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
 
         final Scn commitScn = row.getScn();
-        if (isTransactionAlreadyProcessed(commitScn, offsetContext.getCommitScn())) {
+        if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+            final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
             LOGGER.debug("Transaction {} has already been processed. "
                     + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
                     transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
@@ -379,9 +379,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 offsetContext.setTransactionId(transactionId);
                 offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 offsetContext.setTableId(event.getTableId());
+                offsetContext.setRedoThread(row.getThread());
                 if (eventsProcessed == numEvents) {
                     // reached the last event update the commit scn in the offsets
-                    offsetContext.setCommitScn(commitScn);
+                    offsetContext.getCommitScn().recordCommit(row);
                 }
 
                 final DmlEvent dmlEvent = (DmlEvent) event;
@@ -432,7 +433,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             }
         }
 
-        lastCommittedScn = Scn.valueOf(commitScn.longValue());
         offsetContext.setEventScn(commitScn);
         if (getTransactionEventCount(transaction) > 0 && !skipExcludedUserName) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, transaction.getChangeTime());
@@ -442,9 +442,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         metrics.calculateLagMetrics(row.getChangeTime());
-        if (lastCommittedScn.compareTo(maxCommittedScn) > 0) {
-            maxCommittedScn = lastCommittedScn;
-        }
 
         finalizeTransactionCommit(transactionId, commitScn);
         removeTransactionAndEventsFromCache(transaction);
@@ -455,18 +452,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         metrics.setCommittedScn(commitScn);
         metrics.setOffsetScn(offsetContext.getScn());
         metrics.setLastCommitDuration(Duration.between(start, Instant.now()));
-    }
-
-    /**
-     * Checks whether the transaction commit system change number has already been processed.
-     *
-     * @param commitScn the transaction's commit system change number, should not be {@code null}
-     * @param offsetCommitScn the current offsets commit system change number, should not be {@code null}
-     * @return true if the transaction has been seen based on the offsets, false otherwise
-     */
-    protected boolean isTransactionAlreadyProcessed(Scn commitScn, Scn offsetCommitScn) {
-        return (offsetCommitScn != null && offsetCommitScn.compareTo(commitScn) >= 0)
-                || lastCommittedScn.compareTo(commitScn) > 0;
     }
 
     /**
@@ -559,9 +544,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
-        final Scn commitScn = offsetContext.getCommitScn();
-        if (commitScn != null && commitScn.compareTo(row.getScn()) >= 0) {
-            LOGGER.trace("DDL: SQL '{}' skipped with {} (SCN) <= {} (commit SCN)", row.getRedoSql(), row.getScn(), commitScn);
+        if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+            final Scn commitScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
+            LOGGER.trace("DDL: SQL '{}' skipped with {} (SCN) <= {} (commit SCN for redo thread {})",
+                    row.getRedoSql(), row.getScn(), commitScn, row.getThread());
             return;
         }
 
@@ -590,10 +576,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             }
 
             // Should always advance the commit SCN point with schema changes
-            LOGGER.debug("Schema change advanced offset commit SCN to {}", row.getScn());
-            offsetContext.setCommitScn(row.getScn());
+            LOGGER.debug("Schema change advanced offset commit SCN to {} for thread {}", row.getScn(), row.getThread());
+            offsetContext.getCommitScn().recordCommit(row);
 
             offsetContext.setEventScn(row.getScn());
+            offsetContext.setRedoThread(row.getThread());
             dispatcher.dispatchSchemaChangeEvent(partition,
                     tableId,
                     new OracleSchemaChangeEventEmitter(
@@ -785,19 +772,19 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * while the offset's {@code commit_scn} is changing between sessions.
      *
      * @param previousOffsetScn the previous offset system change number
-     * @param previousOffsetCommitScn the previous offset commit system change number
+     * @param previousOffsetCommitScns the previous offset commit system change number
      */
-    protected void warnPotentiallyStuckScn(Scn previousOffsetScn, Scn previousOffsetCommitScn) {
+    protected void warnPotentiallyStuckScn(Scn previousOffsetScn, Map<Integer, Scn> previousOffsetCommitScns) {
         if (offsetContext != null && offsetContext.getCommitScn() != null) {
             final Scn scn = offsetContext.getScn();
-            final Scn commitScn = offsetContext.getCommitScn();
-            if (previousOffsetScn.equals(scn) && !previousOffsetCommitScn.equals(commitScn)) {
+            final Map<Integer, Scn> commitScns = offsetContext.getCommitScn().getCommitScnForAllRedoThreads();
+            if (previousOffsetScn.equals(scn) && !previousOffsetCommitScns.equals(commitScns)) {
                 counters.stuckCount++;
                 if (counters.stuckCount == 25) {
                     LOGGER.warn("Offset SCN {} has not changed in 25 mining session iterations. " +
-                            "This indicates long running transaction(s) are active.  Commit SCN {}.",
+                            "This indicates long running transaction(s) are active.  Commit SCNs {}.",
                             previousOffsetScn,
-                            previousOffsetCommitScn);
+                            previousOffsetCommitScns);
                     metrics.incrementScnFreezeCount();
                 }
             }

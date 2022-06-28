@@ -42,8 +42,8 @@ public class OracleOffsetContextTest {
     }
 
     @Test
-    @FixFor("DBZ-2994")
-    public void shouldreadScnAndCommitScnAsLongValues() throws Exception {
+    @FixFor({ "DBZ-2994", "DBZ-5245" })
+    public void shouldReadScnAndCommitScnAsLongValues() throws Exception {
         final Map<String, Object> offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, 12345L);
         offsetValues.put(SourceInfo.COMMIT_SCN_KEY, 23456L);
@@ -51,12 +51,12 @@ public class OracleOffsetContextTest {
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
         if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
+            assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
         }
     }
 
     @Test
-    @FixFor("DBZ-2994")
+    @FixFor({ "DBZ-2994", "DBZ-5245" })
     public void shouldReadScnAndCommitScnAsStringValues() throws Exception {
         final Map<String, Object> offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, "12345");
@@ -65,12 +65,12 @@ public class OracleOffsetContextTest {
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
         if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
+            assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
         }
     }
 
     @Test
-    @FixFor("DBZ-2994")
+    @FixFor({ "DBZ-2994", "DBZ-5245" })
     public void shouldHandleNullScnAndCommitScnValues() throws Exception {
         final Map<String, Object> offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, null);
@@ -78,11 +78,11 @@ public class OracleOffsetContextTest {
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isNull();
-        assertThat(offsetContext.getCommitScn()).isNull();
+        assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.NULL);
     }
 
     @Test
-    @FixFor("DBZ-4937")
+    @FixFor({ "DBZ-4937", "DBZ-5245" })
     public void shouldCorrectlySerializeOffsetsWithSnapshotBasedKeysFromOlderOffsets() throws Exception {
         // Offsets from Debezium 1.8
         final Map<String, Object> offsetValues = new HashMap<>();
@@ -95,7 +95,7 @@ public class OracleOffsetContextTest {
         // Write values out as Debezium 1.9
         Map<String, ?> writeValues = offsetContext.getOffset();
         assertThat(writeValues.get(SourceInfo.SCN_KEY)).isEqualTo("745688898023");
-        assertThat(writeValues.get(SourceInfo.COMMIT_SCN_KEY)).isEqualTo("745688898024");
+        assertThat(writeValues.get(SourceInfo.COMMIT_SCN_KEY)).isEqualTo("745688898024::0:1");
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY)).isNull();
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isNull();
 
@@ -105,7 +105,7 @@ public class OracleOffsetContextTest {
         // Write values out as Debezium 1.9
         writeValues = offsetContext.getOffset();
         assertThat(writeValues.get(SourceInfo.SCN_KEY)).isEqualTo("745688898023");
-        assertThat(writeValues.get(SourceInfo.COMMIT_SCN_KEY)).isEqualTo("745688898024");
+        assertThat(writeValues.get(SourceInfo.COMMIT_SCN_KEY)).isEqualTo("745688898024::0:1");
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY)).isNull();
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isNull();
     }
