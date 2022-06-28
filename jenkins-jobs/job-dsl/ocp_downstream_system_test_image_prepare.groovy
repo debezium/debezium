@@ -1,5 +1,5 @@
-pipelineJob('ocp-debezium-testing-system-image-prepare') {
-    displayName('Debezium TestSuite Image Prepare')
+pipelineJob('ocp-debezium-testing-downstream-system-image-prepare') {
+    displayName('Debezium TestSuite Image Prepare - Downstream')
     description('Creates a testsuite docker image and uploads it to quay')
 
     properties {
@@ -17,7 +17,10 @@ pipelineJob('ocp-debezium-testing-system-image-prepare') {
         stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
         stringParam('TAG', 'latest', 'Docker image tag')
         stringParam('QUAY_CREDENTIALS', 'rh-integration-quay-creds', 'Quay.io credentials id')
-        stringParam('PULL_SECRET', 'rh-integration-quay-secret', 'Quay.io OpenShift secret')
+
+        stringParam('APICURIO_PREPARE_BUILD_NUMBER', '', 'Build from which apicurio operator zip is used. Default lastSuccessful')
+        stringParam('STRIMZI_PREPARE_BUILD_NUMBER', '', 'Build from which strimzi operator zip is used. Default lastSuccessful')
+
     }
 
     definition {

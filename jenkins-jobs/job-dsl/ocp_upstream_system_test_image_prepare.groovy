@@ -1,5 +1,5 @@
-pipelineJob('ocp-debezium-testing-system-image-prepare') {
-    displayName('Debezium TestSuite Image Prepare')
+pipelineJob('ocp-debezium-testing-upstream-system-image-prepare') {
+    displayName('Debezium TestSuite Image Prepare - Upstream')
     description('Creates a testsuite docker image and uploads it to quay')
 
     properties {

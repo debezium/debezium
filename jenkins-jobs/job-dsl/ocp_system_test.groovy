@@ -24,6 +24,7 @@ pipelineJob('ocp-system-test') {
         stringParam('DBZ_CONNECT_IMAGE', 'quay.io/rh_integration/test-strimzi-kafka:strz-latest-kafka-3.1.0-apc-2.2.3.Final-dbz-2.0.0-SNAPSHOT', 'Debezium connect image')
         stringParam('ARTIFACT_SERVER_IMAGE', 'quay.io/rh_integration/test-artifact-server:2.0.0-SNAPSHOT', 'Artifact server image')
         stringParam('APICURIO_VERSION', '2.2.3.Final', 'Apicurio version')
+        stringParam('KAFKA_VERSION', '', 'Kafka version')
 
         stringParam('STRZ_GIT_REPOSITORY', 'https://github.com/strimzi/strimzi-kafka-operator.git', 'Repository from which Strimzi is cloned')
         stringParam('STRZ_GIT_BRANCH', 'main', 'A branch/tag from which Strimzi is built')

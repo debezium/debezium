@@ -91,19 +91,23 @@ pipeline {
                     --product-build "${PRODUCT_BUILD}" \
                     --strimzi-kc-build ${STRIMZI_KC_BUILD} \
                     --apicurio-version "${APICURIO_VERSION}" \
+                    --kafka-version "${KAFKA_VERSION}" \
                     --groups-arg "${GROUPS_ARG}" \
                     ${OPTIONAL_PARAMS}
                     oc delete -f "${FILENAME}.yml" --ignore-not-found
                     oc create -f "${FILENAME}.yml"
 
 
-                    # wait for the job to finish, print logs
-                    oc logs -f testsuite
+                    # wait for the job to finish, print logs. Only one running testsuite expected
+                    pod_name=$(oc get pods | grep testsuite | head -n1| awk '{print $1;}')
+
+                    # TODO wait for running
+                    oc wait --for=condition=Ready ${pod_name}
+
+                    oc logs -f ${pod_name}
                     '''
                 }
             }
         }
-
     }
-
 }

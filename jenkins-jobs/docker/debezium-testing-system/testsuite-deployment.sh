@@ -3,6 +3,8 @@
 source /root/.sdkman/bin/sdkman-init.sh
 source /testsuite/library.sh
 
+set -x
+
 DEBEZIUM_LOCATION="/testsuite/debezium"
 OCP_PROJECTS="${DEBEZIUM_LOCATION}/jenkins-jobs/scripts/ocp-projects.sh"
 
@@ -30,7 +32,7 @@ for project in ${DBZ_OCP_PROJECT_DEBEZIUM} ${DBZ_OCP_PROJECT_REGISTRY} ${DBZ_OCP
 done
 
 # prepare strimzi
-clone_component --component strimzi --git-repository "${STRZ_GIT_REPOSITORY}" --git-branch "${STRZ_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" --downstream-url "${STRZ_DOWNSTREAM_URL}" ;
+clone_component --component strimzi --git-repository "${STRZ_GIT_REPOSITORY}" --git-branch "${STRZ_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" ;
 sed -i 's/namespace: .*/namespace: '"${DBZ_OCP_PROJECT_DEBEZIUM}"'/' strimzi/install/cluster-operator/*RoleBinding*.yaml ;
 oc create -f strimzi/install/cluster-operator/ -n "${DBZ_OCP_PROJECT_DEBEZIUM}" ;
 
@@ -51,7 +53,7 @@ if [[ ! ${DBZ_GROUPS_ARG} =~ ${AVRO_PATTERN} ]]; then
     APICURIO_RESOURCE="install/install.yaml"
   fi
 
-  clone_component --component apicurio --git-repository "${APIC_GIT_REPOSITORY}" --git-branch "${APIC_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" --downstream-url "${APIC_DOWNSTREAM_URL}" ;
+  clone_component --component apicurio --git-repository "${APIC_GIT_REPOSITORY}" --git-branch "${APIC_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" ;
   sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${DBZ_OCP_PROJECT_REGISTRY}/" apicurio/install/*.yaml ;
   oc create -f apicurio/${APICURIO_RESOURCE} -n "${DBZ_OCP_PROJECT_REGISTRY}" ;
 fi
@@ -78,6 +80,7 @@ mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Dimage.kc="${DBZ_CONNECT_IMAGE}" \
                     -Dimage.as="${DBZ_ARTIFACT_SERVER_IMAGE}" \
                     -Das.apicurio.version="${DBZ_APICURIO_VERSION}" \
+                    -Dversion.kafka="${DBZ_KAFKA_VERSION}" \
                     -Dgroups="${DBZ_GROUPS_ARG}"
 
 popd || exit 1;
