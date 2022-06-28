@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -17,15 +18,16 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
 
     public OracleSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
-        schema = commonSchemaBuilder()
+        final SchemaBuilder schemaBuilder = commonSchemaBuilder()
                 .name("io.debezium.connector.oracle.Source")
                 .field(SourceInfo.SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.EVENT_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.COMMIT_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .build();
+                .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA);
+
+        this.schema = CommitScn.schemaBuilder(schemaBuilder).build();
     }
 
     @Override
@@ -35,7 +37,6 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        final String commitScn = sourceInfo.getCommitScn() == null ? null : sourceInfo.getCommitScn().toString();
         final String eventScn = sourceInfo.getEventScn() == null ? null : sourceInfo.getEventScn().toString();
 
         final Struct ret = super.commonStruct(sourceInfo)
@@ -47,9 +48,12 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
         if (sourceInfo.getLcrPosition() != null) {
             ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());
         }
+
+        final CommitScn commitScn = sourceInfo.getCommitScn();
         if (commitScn != null) {
-            ret.put(SourceInfo.COMMIT_SCN_KEY, commitScn);
+            commitScn.store(sourceInfo, ret);
         }
+
         return ret;
     }
 }

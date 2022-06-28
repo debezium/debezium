@@ -62,6 +62,9 @@ public class SourceInfoTest {
                 .field("scn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("commit_scn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("lcr_position", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("rs_id", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("ssn", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("redo_thread", Schema.OPTIONAL_INT32_SCHEMA)
                 .build();
 
         VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);

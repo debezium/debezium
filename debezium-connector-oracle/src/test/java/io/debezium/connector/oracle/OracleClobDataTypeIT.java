@@ -2012,12 +2012,12 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             assertThat(after.get("DATA")).isNotNull();
 
             Struct source = ((Struct) tableRecords.get(0).value()).getStruct("source");
-            assertThat(source.get("commit_scn")).isNotNull();
-            assertThat(source.get("scn")).isNotNull();
+            assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.COMMIT_SCN_KEY)).isNotNull();
 
-            final long commitScn = Scn.valueOf(source.getString("commit_scn")).longValue();
-            final long scn = Scn.valueOf(source.getString("scn")).longValue();
-            assertThat(commitScn).isGreaterThanOrEqualTo(scn);
+            final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+            final String scn = source.getString(SourceInfo.SCN_KEY);
+            assertThat(Scn.valueOf(commitScn).longValue()).isGreaterThanOrEqualTo(Scn.valueOf(scn).longValue());
         }
         finally {
             TestHelper.dropTable(connection, "dbz5266");
@@ -2054,12 +2054,12 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             assertThat(after.get("DATA")).isNotNull();
 
             Struct source = ((Struct) tableRecords.get(0).value()).getStruct("source");
-            assertThat(source.get("commit_scn")).isNotNull();
-            assertThat(source.get("scn")).isNotNull();
+            assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.COMMIT_SCN_KEY)).isNotNull();
 
-            final long commitScn = Scn.valueOf(source.getString("commit_scn")).longValue();
-            final long scn = Scn.valueOf(source.getString("scn")).longValue();
-            assertThat(commitScn).isGreaterThanOrEqualTo(scn);
+            final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+            final String scn = source.getString(SourceInfo.SCN_KEY);
+            assertThat(Scn.valueOf(commitScn).longValue()).isGreaterThanOrEqualTo(Scn.valueOf(scn).longValue());
         }
         finally {
             TestHelper.dropTable(connection, "dbz5266");
@@ -2096,12 +2096,12 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             assertThat(after.get("DATA")).isNotNull();
 
             Struct source = ((Struct) tableRecords.get(0).value()).getStruct("source");
-            assertThat(source.get("commit_scn")).isNotNull();
-            assertThat(source.get("scn")).isNotNull();
+            assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.COMMIT_SCN_KEY)).isNotNull();
 
-            final long commitScn = Scn.valueOf(source.getString("commit_scn")).longValue();
-            final long scn = Scn.valueOf(source.getString("scn")).longValue();
-            assertThat(commitScn).isGreaterThanOrEqualTo(scn);
+            final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+            final String scn = source.getString(SourceInfo.SCN_KEY);
+            assertThat(Scn.valueOf(commitScn).longValue()).isGreaterThanOrEqualTo(Scn.valueOf(scn).longValue());
         }
         finally {
             TestHelper.dropTable(connection, "dbz5266");
