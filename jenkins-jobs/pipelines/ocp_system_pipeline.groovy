@@ -24,8 +24,8 @@ pipeline {
                 ]) {
                     sh '''
                     oc login -u "${OCP_USERNAME}" -p "${OCP_PASSWORD}" --insecure-skip-tls-verify=true "${OCP_URL}"
-                    oc new-project "${OCP_PROJECT_NAME}-parent" || oc project "${OCP_PROJECT_NAME}-parent"
-                    oc adm policy add-cluster-role-to-user cluster-admin "system:serviceaccount:${OCP_PROJECT_NAME}-parent:default"
+                    oc new-project "${OCP_PROJECT_NAME}-testsuite" || oc project "${OCP_PROJECT_NAME}-testsuite"
+                    oc adm policy add-cluster-role-to-user cluster-admin "system:serviceaccount:${OCP_PROJECT_NAME}-testsuite:default"
                     oc apply -f "${SECRET_PATH}"
                     # TODO parse secret name ?
                     '''
@@ -97,12 +97,10 @@ pipeline {
                     oc delete -f "${FILENAME}.yml" --ignore-not-found
                     oc create -f "${FILENAME}.yml"
 
-
                     # wait for the job to finish, print logs. Only one running testsuite expected
                     pod_name=$(oc get pods | grep testsuite | head -n1| awk '{print $1;}')
 
-                    # TODO wait for running
-                    oc wait --for=condition=Ready ${pod_name}
+                    oc wait --timeout=300s pod/${pod_name}
 
                     oc logs -f ${pod_name}
                     '''
