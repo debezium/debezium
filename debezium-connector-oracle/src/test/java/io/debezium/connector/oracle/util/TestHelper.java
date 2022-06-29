@@ -155,7 +155,7 @@ public class TestHelper {
         // the test suite will then assume default CDB mode and apply the default PDB name. If
         // the environment wishes to use non-CDB mode, the database.pdb.name setting should be
         // given but without a value.
-        if (!Configuration.fromSystemProperties(DATABASE_PREFIX).asMap().containsKey(PDB_NAME)) {
+        if (isUsingPdb()) {
             builder.withDefault(OracleConnectorConfig.PDB_NAME, DATABASE);
         }
 
@@ -173,6 +173,24 @@ public class TestHelper {
         Configuration config = defaultConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
         return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), true);
+    }
+
+    /**
+     * Obtain a connection using the default configuration.
+     *
+     * Note that the returned connection will automatically switch to the container database root
+     * if {@code switchToRoot} is specified as {@code true}.  If the connection is not configured
+     * to use pluggable databases or pluggable databases are not enabled, the argument has no
+     * effect on the returned connection.
+     */
+    public static OracleConnection defaultConnection(boolean switchToRoot) {
+        Configuration config = defaultConfig().build();
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
+        final OracleConnection connection = createConnection(config, JdbcConfiguration.adapt(jdbcConfig), true);
+        if (switchToRoot && isUsingPdb()) {
+            connection.resetSessionToCdb();
+        }
+        return connection;
     }
 
     /**
@@ -263,11 +281,33 @@ public class TestHelper {
     /**
      * Return a connection that is suitable for performing test database changes that require
      * an administrator role permission.
+     *
+     * Additionally, the connection returned will be associated to the configured pluggable
+     * database if one is configured otherwise the root database.
      */
     public static OracleConnection adminConnection() {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
         return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), false);
+    }
+
+    /**
+     * Return a connection that is suitable for performing test database changes that require
+     * an administrator role permission.
+     *
+     * Note that the returned connection will automatically switch to the container database root
+     * if {@code switchToRoot} is specified as {@code true}.  If the connection is not configured
+     * to use pluggable databases or pluggable databases are not enabled, the argument has no
+     * effect on the returned connection.
+     */
+    public static OracleConnection adminConnection(boolean switchToRoot) {
+        Configuration config = adminConfig().build();
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
+        final OracleConnection connection = createConnection(config, JdbcConfiguration.adapt(jdbcConfig), false);
+        if (switchToRoot && isUsingPdb()) {
+            connection.resetSessionToCdb();
+        }
+        return connection;
     }
 
     /**
@@ -472,12 +512,12 @@ public class TestHelper {
         try (OracleConnection connection = testConnection()) {
             connection.query("SELECT TABLE_NAME FROM USER_TABLES", rs -> {
                 while (rs.next()) {
-                    connection.execute("DROP TABLE " + rs.getString(1));
+                    dropTable(connection, SCHEMA_USER + "." + rs.getString(1));
                 }
             });
         }
         catch (SQLException e) {
-            throw new RuntimeException("Failed to clean database");
+            throw new RuntimeException("Failed to clean database", e);
         }
     }
 
@@ -544,5 +584,18 @@ public class TestHelper {
         // by exactly the sleep time and the condition always return true and so the extended atMost
         // value is irrelevant and only used to satisfy Awaitility's need for atMost > pollDelay.
         Awaitility.await().atMost(duration + 1, units).pollDelay(duration, units).until(() -> true);
+    }
+
+    /**
+     * Returns whether the connection is using a pluggable database configuration.
+     */
+    public static boolean isUsingPdb() {
+        final Map<String, String> properties = Configuration.fromSystemProperties(DATABASE_PREFIX).asMap();
+        if (properties.containsKey(PDB_NAME)) {
+            // if the property is specified and is not null/empty, we are using PDB mode.
+            return !Strings.isNullOrEmpty(properties.get(PDB_NAME));
+        }
+        // if the property is not specified, we default to using PDB mode.
+        return Strings.isNullOrEmpty(properties.get(PDB_NAME));
     }
 }

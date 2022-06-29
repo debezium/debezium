@@ -3075,10 +3075,20 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-4376")
     public void shouldNotRaiseNullPointerExceptionWithNonUppercaseDatabaseName() throws Exception {
         // the snapshot process would throw a NPE due to a lowercase PDB or DBNAME setup
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.PDB_NAME, TestHelper.getDatabaseName().toLowerCase())
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
-                .build();
+        final Configuration config;
+        if (TestHelper.isUsingPdb()) {
+            config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.PDB_NAME, TestHelper.getDatabaseName().toLowerCase())
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                    .build();
+        }
+        else {
+            config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.DATABASE_NAME, TestHelper.getDatabaseName().toLowerCase())
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                    .build();
+        }
+
         connection.execute("INSERT INTO debezium.customer (id,name) values (1, 'Bugs Bunny')");
         start(OracleConnector.class, config);
 
@@ -3468,7 +3478,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         try {
 
             // Setup a special directory reference used by the BFILENAME arguments
-            try (OracleConnection admin = TestHelper.adminConnection()) {
+            try (OracleConnection admin = TestHelper.adminConnection(false)) {
                 admin.execute("CREATE OR REPLACE DIRECTORY DIR_DBZ4852 AS '/home/oracle'");
             }
 
@@ -4091,8 +4101,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
-        try (OracleConnection admin = TestHelper.adminConnection()) {
-            admin.resetSessionToCdb();
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
             Awaitility.await()
                     .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
