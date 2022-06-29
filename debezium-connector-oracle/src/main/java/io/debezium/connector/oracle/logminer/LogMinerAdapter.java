@@ -126,20 +126,17 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
             throw new DebeziumException("Failed to resolve current SCN");
         }
 
-        // The supplied connection already has an in-progress transaction with a save point that will
-        // prevent us from switching from the PDB to the root CDB when PDB configuration is enabled.
-        // To resolve the correct in-progress transactions and starting SCN, a separate connection is
-        // required.
-        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-            try (OracleConnection conn = new OracleConnection(connection.config(), () -> getClass().getClassLoader(), false)) {
-                conn.setAutoCommit(false);
+        // The provided snapshot connection already has an in-progress transaction with a save point
+        // that prevents switching from a PDB to the root CDB and if invoking the LogMiner APIs on
+        // such a connection, the use of commit/rollback by LogMiner will drop/invalidate the save
+        // point as well. A separate connection is necessary to preserve the save point.
+        try (OracleConnection conn = new OracleConnection(connection.config(), () -> getClass().getClassLoader(), false)) {
+            conn.setAutoCommit(false);
+            if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
                 // The next stage cannot be run within the PDB, reset the connection to the CDB.
                 conn.resetSessionToCdb();
-                return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions);
             }
-        }
-        else {
-            return determineSnapshotOffset(connectorConfig, connection, currentScn.get(), pendingTransactions);
+            return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions);
         }
     }
 
