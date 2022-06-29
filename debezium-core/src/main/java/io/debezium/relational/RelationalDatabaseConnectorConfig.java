@@ -281,10 +281,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.MEDIUM)
             .withValidation(RelationalDatabaseConnectorConfig::validateMessageKeyColumnsField)
             .withDescription("A semicolon-separated list of expressions that match fully-qualified tables and column(s) to be used as message key. "
-                    + "Each expression must match the pattern '<fully-qualified table name>:<key columns>',"
-                    + "where the table names could be defined as (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the specific connector,"
+                    + "Each expression must match the pattern '<fully-qualified table name>:<key columns>', "
+                    + "where the table names could be defined as (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the specific connector, "
                     + "and the key columns are a comma-separated list of columns representing the custom key. "
-                    + "For any table without an explicit key configuration the table's primary key column(s) will be used as message key."
+                    + "For any table without an explicit key configuration the table's primary key column(s) will be used as message key. "
                     + "Example: dbserver1.inventory.orderlines:orderId,orderLineId;dbserver1.inventory.orders:id");
 
     public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
@@ -293,7 +293,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
+            .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including: "
                     + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                     + "'string' uses string to represent values; "
                     + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
@@ -304,7 +304,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 8))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the"
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the "
                     +
                     "specific connectors. Select statements for the individual tables are " +
                     "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]' or "
@@ -374,9 +374,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
+            .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including: "
                     + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
-                    + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
+                    + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision; "
                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                     + "which uses millisecond precision regardless of the database columns' precision .");
 
@@ -400,7 +400,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
                     + "the same name as the database server ID. Each schema change will be recorded using a key that "
-                    + "contains the database name and whose value include logical description of the new schema and optionally the DDL statement(s)."
+                    + "contains the database name and whose value include logical description of the new schema and optionally the DDL statement(s). "
                     + "The default is 'true'. This is independent of how the connector internally records database history.")
             .withDefault(true);
 
@@ -411,7 +411,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isBoolean)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Whether the connector parse table and column's comment to metadata object."
+            .withDescription("Whether the connector parse table and column's comment to metadata object. "
                     + "Note: Enable this option will bring the implications on memory usage. The number and size of ColumnImpl objects is what largely impacts "
                     + "how much memory is consumed by the Debezium connectors, and adding a String to each of them can potentially be quite heavy. "
                     + "The default is 'false'.")
@@ -447,7 +447,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 15))
             .withValidation(Field::isListOfRegex)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that "
-                    + " adds the column’s original type and original length as parameters to the corresponding field schemas in the emitted change records.");
+                    + "adds the column’s original type and original length as parameters to the corresponding field schemas in the emitted change records.");
 
     public static final Field PROPAGATE_DATATYPE_SOURCE_TYPE = Field.create("datatype.propagate.source.type")
             .withDisplayName("Propagate Source Types by Data Type")
@@ -465,7 +465,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.LOW)
             .withDescription("Restore pre 1.5 behaviour and scan all tables to discover columns."
                     + " If you are excluding one table then turning this on may improve performance."
-                    + " If you are excluding a lot of tables the default behavour should work well.")
+                    + " If you are excluding a lot of tables the default behavior should work well.")
             .withDefault(false);
 
     public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = Field.create("unavailable.value.placeholder")

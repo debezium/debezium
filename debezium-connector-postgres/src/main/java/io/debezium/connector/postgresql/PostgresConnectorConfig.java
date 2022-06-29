@@ -493,7 +493,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
             .withValidation(PostgresConnectorConfig::validateReplicationSlotName)
-            .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin." +
+            .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin. " +
                     "Defaults to 'debezium");
 
     public static final Field DROP_SLOT_ON_STOP = Field.create("slot.drop.on.stop")
@@ -503,7 +503,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(false)
             .withImportance(Importance.MEDIUM)
             .withDescription(
-                    "Whether or not to drop the logical replication slot when the connector finishes orderly" +
+                    "Whether or not to drop the logical replication slot when the connector finishes orderly. " +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
@@ -513,7 +513,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDefault(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME)
-            .withDescription("The name of the Postgres 10+ publication used for streaming changes from a plugin." +
+            .withDescription("The name of the Postgres 10+ publication used for streaming changes from a plugin. " +
                     "Defaults to '" + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + "'");
 
     public enum AutoCreateMode implements EnumeratedValue {
@@ -631,7 +631,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withDescription("A semicolon separated list of SQL statements to be executed when a JDBC connection to the database is established. "
-                    + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration"
+                    + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration "
                     + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
                     + "and not as a delimiter.");
 
@@ -641,11 +641,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Whether to use an encrypted connection to Postgres. Options include"
+            .withDescription("Whether to use an encrypted connection to Postgres. Options include: "
                     + "'disable' (the default) to use an unencrypted connection; "
                     + "'require' to use a secure (encrypted) connection, and fail if one cannot be established; "
                     + "'verify-ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
-                    + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
+                    + "(CA) certificates, or fail if no valid matching CA certificates are found; or "
                     + "'verify-full' like 'verify-ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
 
     public static final Field SSL_CLIENT_CERT = Field.create(DATABASE_CONFIG_PREFIX + "sslcert")
@@ -718,7 +718,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return 0;
             })
             .withDescription(
-                    "When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
+                    "When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader). "
                             + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
 
     /**
@@ -754,8 +754,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("Specify how HSTORE columns should be represented in change events, including:"
-                    + "'json' represents values as string-ified JSON (default)"
+            .withDescription("Specify how HSTORE columns should be represented in change events, including: "
+                    + "'json' represents values as string-ified JSON (default); "
                     + "'map' represents values as a key/value map");
 
     public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
@@ -764,8 +764,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
-                    + "'string' represents values as an exact ISO formatted string"
+            .withDescription("Specify how INTERVAL columns should be represented in change events, including: "
+                    + "'string' represents values as an exact ISO formatted string; "
                     + "'numeric' (default) represents values using the inexact conversion into microseconds");
 
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
@@ -795,7 +795,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(false)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Specify whether the fields of data type not supported by Debezium should be processed:"
+            .withDescription("Specify whether the fields of data type not supported by Debezium should be processed: "
                     + "'false' (the default) omits the fields; "
                     + "'true' converts the field into an implementation dependent binary representation.");
 

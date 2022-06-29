@@ -104,8 +104,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 6))
-            .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
-                    + "'string' represents values as an exact ISO formatted string"
+            .withDescription("Specify how INTERVAL columns should be represented in change events, including: "
+                    + "'string' represents values as an exact ISO formatted string; "
                     + "'numeric' (default) represents values using the inexact conversion into microseconds");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
@@ -180,7 +180,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(0)
             .withValidation(Field::isNonNegativeInteger)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 18))
-            .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions.  By default, all transactions are retained.");
+            .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions. By default, all transactions are retained.");
 
     public static final Field RAC_NODES = Field.create("rac.nodes")
             .withDisplayName("Oracle RAC nodes")
@@ -208,7 +208,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 10))
             .withDefault(0)
-            .withDescription("The number of hours in the past from SYSDATE to mine archive logs.  Using 0 mines all available archive logs");
+            .withDescription("The number of hours in the past from SYSDATE to mine archive logs. Using 0 mines all available archive logs");
 
     public static final Field LOG_MINING_BATCH_SIZE_MIN = Field.create("log.mining.batch.size.min")
             .withDisplayName("Minimum batch size for reading redo/archive logs.")
@@ -285,8 +285,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 9))
             .withDefault(false)
-            .withDescription("When set to `false`, the default, the connector will mine both archive log and redo logs to emit change events. " +
-                    "When set to `true`, the connector will only mine archive logs. There are circumstances where its advantageous to only " +
+            .withDescription("When set to 'false', the default, the connector will mine both archive log and redo logs to emit change events. " +
+                    "When set to 'true', the connector will only mine archive logs. There are circumstances where its advantageous to only " +
                     "mine archive logs and accept latency in event emission due to frequent revolving redo logs.");
 
     public static final Field LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS = Field.create("log.mining.archive.log.only.scn.poll.interval.ms")
@@ -305,7 +305,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 21))
             .withDefault(false)
-            .withDescription("When set to `false`, the default, LOB fields will not be captured nor emitted. When set to `true`, the connector " +
+            .withDescription("When set to 'false', the default, LOB fields will not be captured nor emitted. When set to 'true', the connector " +
                     "will capture LOB fields and emit changes for those fields like any other column type.");
 
     public static final Field LOG_MINING_USERNAME_EXCLUDE_LIST = Field.create("log.mining.username.exclude.list")

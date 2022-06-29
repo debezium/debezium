@@ -534,7 +534,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withDescription(
                     "A semicolon separated list of SQL statements to be executed when a JDBC connection (not binlog reading connection) to the database is established. "
-                            + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only,"
+                            + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only, "
                             + "but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
@@ -571,7 +571,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Whether to use an encrypted connection to MySQL. Options include"
+            .withDescription("Whether to use an encrypted connection to MySQL. Options include: "
                     + "'disabled' (the default) to use an unencrypted connection; "
                     + "'preferred' to establish a secure (encrypted) connection if the server supports secure connections, "
                     + "but fall back to an unencrypted connection otherwise; "
@@ -799,8 +799,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("BETA FEATURE: On connector restart, the connector will check if there have been any new tables added to the configuration, "
-                    + "and snapshot them. There is presently only two options:"
-                    + "'off': Default behavior. Do not snapshot new tables."
+                    + "and snapshot them. There is presently only two options: "
+                    + "'off': Default behavior. Do not snapshot new tables. "
                     + "'parallel': The snapshot of the new tables will occur in parallel to the continued binlog reading of the old tables. When the snapshot "
                     + "completes, an independent binlog reader will begin reading the events for the new tables until it catches up to present time. At this "
                     + "point, both old and new binlog readers will be momentarily halted and new binlog reader will start that will read the binlog for all "
@@ -810,8 +810,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 26))
             .withValidation(MySqlConnectorConfig::validateTimePrecisionMode)
-            .withDescription("Time, date and timestamps can be represented with different kinds of precisions, including:"
-                    + "'adaptive_time_microseconds': the precision of date and timestamp values is based the database column's precision; but time fields always use microseconds precision;"
+            .withDescription("Time, date and timestamps can be represented with different kinds of precisions, including: "
+                    + "'adaptive_time_microseconds': the precision of date and timestamp values is based the database column's precision; but time fields always use microseconds precision; "
                     + "'connect': always represents time, date and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                     + "which uses millisecond precision regardless of the database columns' precision.");
 
@@ -821,7 +821,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 27))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Specify how BIGINT UNSIGNED columns should be represented in change events, including:"
+            .withDescription("Specify how BIGINT UNSIGNED columns should be represented in change events, including: "
                     + "'precise' uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                     + "'long' (the default) represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
 
@@ -832,9 +832,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withValidation(MySqlConnectorConfig::validateEventDeserializationFailureHandlingModeNotSet)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Specify how failures during deserialization of binlog events (i.e. when encountering a corrupted event) should be handled, including:"
+            .withDescription("Specify how failures during deserialization of binlog events (i.e. when encountering a corrupted event) should be handled, including: "
                     + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
-                    + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
+                    + "'warn' the problematic event and its binlog position will be logged and the event will be skipped; "
                     + "'ignore' the problematic event will be skipped.");
 
     public static final Field INCONSISTENT_SCHEMA_HANDLING_MODE = Field.create("inconsistent.schema.handling.mode")
@@ -844,9 +844,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription(
-                    "Specify how binlog events that belong to a table missing from internal schema representation (i.e. internal representation is not consistent with database) should be handled, including:"
+                    "Specify how binlog events that belong to a table missing from internal schema representation (i.e. internal representation is not consistent with database) should be handled, including: "
                             + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
-                            + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
+                            + "'warn' the problematic event and its binlog position will be logged and the event will be skipped; "
                             + "'skip' the problematic event will be skipped.");
 
     public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")

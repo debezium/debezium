@@ -251,7 +251,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(30_000L)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Interval for looking for new, removed, or changed replica sets, given in milliseconds.  Defaults to 30 seconds (30,000 ms).");
+            .withDescription("Interval for looking for new, removed, or changed replica sets, given in milliseconds. Defaults to 30 seconds (30,000 ms).");
 
     public static final Field SSL_ENABLED = Field.create("mongodb.ssl.enabled")
             .withDisplayName("Enable SSL connection to MongoDB")
