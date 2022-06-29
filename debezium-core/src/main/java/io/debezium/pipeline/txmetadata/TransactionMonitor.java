@@ -14,7 +14,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -28,6 +27,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.schema.SchemaBuilderFactory;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -61,16 +61,9 @@ public class TransactionMonitor {
     public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY = "data_collections";
     public static final String DEBEZIUM_TRANSACTION_TS_MS = "ts_ms";
 
-    public static final Schema TRANSACTION_BLOCK_SCHEMA = SchemaBuilder.struct().optional()
-            .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-            .field(DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, Schema.INT64_SCHEMA)
-            .field(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, Schema.INT64_SCHEMA)
-            .build();
+    public static final Schema TRANSACTION_BLOCK_SCHEMA = SchemaBuilderFactory.transactionBlockSchema();
 
-    private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = SchemaBuilder.struct()
-            .field(DEBEZIUM_TRANSACTION_COLLECTION_KEY, Schema.STRING_SCHEMA)
-            .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.INT64_SCHEMA)
-            .build();
+    private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = SchemaBuilderFactory.transactionEventCountPerDataCollectionSchema();
 
     private final Schema transactionKeySchema;
     private final Schema transactionValueSchema;
@@ -84,19 +77,9 @@ public class TransactionMonitor {
                               String topicName) {
         Objects.requireNonNull(eventMetadataProvider);
 
-        transactionKeySchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataKey"))
-                .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-                .build();
+        transactionKeySchema = SchemaBuilderFactory.transactionKeySchema(schemaNameAdjuster);
 
-        transactionValueSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataValue"))
-                .field(DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
-                .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-                .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA).optional().build())
-                .field(DEBEZIUM_TRANSACTION_TS_MS, Schema.INT64_SCHEMA)
-                .build();
+        transactionValueSchema = SchemaBuilderFactory.transactionValueSchema(schemaNameAdjuster);
 
         this.topicName = topicName;
         this.eventMetadataProvider = eventMetadataProvider;
