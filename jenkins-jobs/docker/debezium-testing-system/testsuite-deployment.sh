@@ -23,13 +23,11 @@ fi
 # create projects
 ${OCP_PROJECTS} --project "${DBZ_OCP_PROJECT_DEBEZIUM}" --create
 
-# copy parent secret to debezium projects
-PARENT_SECRET=parent_secret.yml
-for project in ${DBZ_OCP_PROJECT_DEBEZIUM} ${DBZ_OCP_PROJECT_REGISTRY} ${DBZ_OCP_PROJECT_DB2} ${DBZ_OCP_PROJECT_ORACLE} ; do
-  oc get secret -n "${DBZ_OCP_PROJECT_DEBEZIUM}-parent" "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*/namespace: ${project}/" >> ${PARENT_SECRET}
-  oc create -n "${project}" -f ${PARENT_SECRET}
-  rm ${PARENT_SECRET}
-done
+# TODO fix copy secret
+# copy secret to debezium project
+TESTSUITE_SECRET=/testsuite/testsuite_secret.yml
+oc get secret -n "${DBZ_OCP_PROJECT_DEBEZIUM}-testsuite" "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*//" >> ${TESTSUITE_SECRET}
+oc create -n "${DBZ_OCP_PROJECT_DEBEZIUM}" -f "${TESTSUITE_SECRET}"
 
 # prepare strimzi
 clone_component --component strimzi --git-repository "${STRZ_GIT_REPOSITORY}" --git-branch "${STRZ_GIT_BRANCH}" --product-build "${DBZ_PRODUCT_BUILD}" ;
@@ -60,12 +58,17 @@ fi
 
 pushd ${DEBEZIUM_LOCATION} || exit 1;
 
+
+OPTIONAL_ARGS=""
 if [ "${DBZ_PRODUCT_BUILD}" == true ] ; then
-  MVN_PRODUCT_BUILD="-Pproduct"
+  OPTIONAL_ARGS="-Pproduct"
+fi
+
+if [ -n "${DBZ_KAFKA_VERSION}" ] ; then
+  OPTIONAL_ARGS="${OPTIONAL_ARGS} -Dversion.kafka=${DBZ_KAFKA_VERSION}"
 fi
 
 mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
-                    ${MVN_PRODUCT_BUILD} \
                     -Docp.project.debezium="${DBZ_OCP_PROJECT_DEBEZIUM}" \
                     -Docp.project.db2="${DBZ_OCP_PROJECT_DB2}" \
                     -Docp.project.mongo="${DBZ_OCP_PROJECT_MONGO}" \
@@ -74,14 +77,15 @@ mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Docp.project.postgresql="${DBZ_OCP_PROJECT_POSTGRESQL}" \
                     -Docp.project.sqlserver="${DBZ_OCP_PROJECT_SQLSERVER}" \
                     -Docp.project.registry="${DBZ_OCP_PROJECT_REGISTRY}" \
-                    -Docp.pull.secret.name="${DBZ_SECRET_NAME}" \
+                    -Docp.pull.secret.paths="${TESTSUITE_SECRET}" \
                     -Dtest.wait.scale="${DBZ_TEST_WAIT_SCALE}" \
                     -Dtest.strimzi.kc.build="${DBZ_STRIMZI_KC_BUILD}" \
                     -Dimage.kc="${DBZ_CONNECT_IMAGE}" \
                     -Dimage.as="${DBZ_ARTIFACT_SERVER_IMAGE}" \
                     -Das.apicurio.version="${DBZ_APICURIO_VERSION}" \
-                    -Dversion.kafka="${DBZ_KAFKA_VERSION}" \
                     -Dgroups="${DBZ_GROUPS_ARG}"
+                    # TODO
+#                    "${OPTIONAL_ARGS}" \
 
 popd || exit 1;
 
