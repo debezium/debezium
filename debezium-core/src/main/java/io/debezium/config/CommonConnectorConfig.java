@@ -324,8 +324,8 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(true)
             .withValidation(Field::isBoolean)
-            .withDescription("Whether delete operations should be represented by a delete event and a subsquent" +
-                    "tombstone event (true) or only by a delete event (false). Emitting the tombstone event (the" +
+            .withDescription("Whether delete operations should be represented by a delete event and a subsequent" +
+                    " tombstone event (true) or only by a delete event (false). Emitting the tombstone event (the" +
                     " default behavior) allows Kafka to completely delete all events pertaining to the given key once" +
                     " the source record got deleted.");
 
@@ -387,7 +387,7 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 3))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
+            .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot.")
             .withValidation(Field::isNonNegativeInteger);
 
     public static final Field INCREMENTAL_SNAPSHOT_CHUNK_SIZE = Field.create("incremental.snapshot.chunk.size")
@@ -419,7 +419,7 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex)
             .withDescription(
-                    "this setting must be set to specify a list of tables/collections whose snapshot must be taken on creating or restarting the connector.");
+                    "This setting must be set to specify a list of tables/collections whose snapshot must be taken on creating or restarting the connector.");
 
     public static final Field SANITIZE_FIELD_NAMES = Field.create("sanitize.field.names")
             .withDisplayName("Sanitize field names to adhere to Avro naming conventions")
@@ -445,9 +445,9 @@ public abstract class CommonConnectorConfig {
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Specify how failures during processing of events (i.e. when encountering a corrupted event) should be handled, including:"
+            .withDescription("Specify how failures during processing of events (i.e. when encountering a corrupted event) should be handled, including: "
                     + "'fail' (the default) an exception indicating the problematic event and its position is raised, causing the connector to be stopped; "
-                    + "'warn' the problematic event and its position will be logged and the event will be skipped;"
+                    + "'warn' the problematic event and its position will be logged and the event will be skipped; "
                     + "'ignore' the problematic event will be skipped.");
 
     public static final Field CUSTOM_CONVERTERS = Field.create("converters")
@@ -476,9 +476,9 @@ public abstract class CommonConnectorConfig {
             .withEnum(BinaryHandlingMode.class, BinaryHandlingMode.BYTES)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("Specify how binary (blob, binary, etc.) columns should be represented in change events, including:"
-                    + "'bytes' represents binary data as byte array (default)"
-                    + "'base64' represents binary data as base64-encoded string"
+            .withDescription("Specify how binary (blob, binary, etc.) columns should be represented in change events, including: "
+                    + "'bytes' represents binary data as byte array (default); "
+                    + "'base64' represents binary data as base64-encoded string; "
                     + "'hex' represents binary data as hex-encoded (base16) string");
 
     public static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
@@ -487,8 +487,8 @@ public abstract class CommonConnectorConfig {
             .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.AVRO)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including:"
-                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
+            .withDescription("Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including: "
+                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default); "
                     + "'none' does not apply any adjustment");
 
     public static final Field QUERY_FETCH_SIZE = Field.create("query.fetch.size")
@@ -497,7 +497,7 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 13))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The maximum number of records that should be loaded into memory while streaming.  A value of `0` uses the default JDBC fetch size.")
+            .withDescription("The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size.")
             .withValidation(Field::isNonNegativeInteger)
             .withDefault(DEFAULT_QUERY_FETCH_SIZE);
 
@@ -509,7 +509,7 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(1)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("The maximum number of threads used to perform the snapshot.  Defaults to 1.");
+            .withDescription("The maximum number of threads used to perform the snapshot. Defaults to 1.");
 
     public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
             .withDisplayName("Signaling data collection")

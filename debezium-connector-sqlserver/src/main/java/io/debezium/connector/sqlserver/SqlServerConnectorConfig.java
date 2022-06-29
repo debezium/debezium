@@ -267,8 +267,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Configures the criteria of the attached timestamp within the source record (ts_ms)." +
-                    "Options include:" +
+            .withDescription("Configures the criteria of the attached timestamp within the source record (ts_ms). " +
+                    "Options include: " +
                     "'" + SourceTimestampMode.COMMIT.getValue()
                     + "', (default) the source timestamp is set to the instant where the record was committed in the database.");
 
