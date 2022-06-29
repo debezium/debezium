@@ -44,14 +44,11 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
 
     @BeforeClass
     public static void beforeSuperClass() throws SQLException {
-        try (OracleConnection adminConnection = TestHelper.adminConnection()) {
-            adminConnection.resetSessionToCdb();
+        try (OracleConnection adminConnection = TestHelper.adminConnection(true)) {
             LogMinerHelper.removeLogFilesFromMining(adminConnection);
         }
 
-        conn = TestHelper.defaultConnection();
-        conn.resetSessionToCdb();
-
+        conn = TestHelper.defaultConnection(true);
         TestHelper.forceFlushOfRedoLogsToArchiveLogs();
     }
 
@@ -111,8 +108,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     @FixFor("DBZ-3661")
     public void shouldGetArchiveLogsWithDestinationSpecified() throws Exception {
         // First force all redo logs to be flushed to archives to guarantee there will be some.
-        try (OracleConnection admin = TestHelper.adminConnection()) {
-            admin.resetSessionToCdb();
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
             admin.execute("ALTER SYSTEM SWITCH ALL LOGFILE");
             // Wait 5 seconds to give Oracle time to toggle the ARC process
             Thread.sleep(5000);

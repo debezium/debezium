@@ -129,22 +129,19 @@ public class FlushStrategyIT extends AbstractConnectorTest {
     }
 
     private void assertFlushTableHasExactlyOneRow() throws SQLException {
-        try (OracleConnection conn = TestHelper.defaultConnection()) {
-            conn.resetSessionToCdb();
+        try (OracleConnection conn = TestHelper.defaultConnection(true)) {
             assertThat(conn.getRowCount(getFlushTableName())).isEqualTo(1L);
         }
     }
 
     private void dropFlushTable() throws SQLException {
-        try (OracleConnection admin = TestHelper.adminConnection()) {
-            admin.resetSessionToCdb();
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
             TestHelper.dropTable(admin, getFlushTableName());
         }
     }
 
     private void insertFlushTable(String scnValue) throws SQLException {
-        try (OracleConnection conn = TestHelper.defaultConnection()) {
-            conn.resetSessionToCdb();
+        try (OracleConnection conn = TestHelper.defaultConnection(true)) {
             conn.execute("INSERT INTO " + getFlushTableName() + " values (" + scnValue + ")");
         }
     }

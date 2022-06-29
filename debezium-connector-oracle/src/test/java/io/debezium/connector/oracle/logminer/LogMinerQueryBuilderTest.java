@@ -38,6 +38,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.util.Strings;
 
 /**
  * Unit test for the {@link LogMinerQueryBuilder}.
@@ -67,11 +68,11 @@ public class LogMinerQueryBuilderTest {
             "OPERATION_CODE IN (6,7,34,36) OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM') " +
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
-            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
-            "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')) ) " +
+            "AND ${pdbPredicate}" +
+            "(TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')) ) " +
             "OR (OPERATION_CODE IN ${operationCodes} " +
-            "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' " +
-            "AND TABLE_NAME != '" + LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE + "' " +
+            "AND ${pdbPredicate}" +
+            "TABLE_NAME != '" + LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE + "' " +
             "${schemaPredicate}" +
             "${tablePredicate}" +
             "))";
@@ -87,7 +88,7 @@ public class LogMinerQueryBuilderTest {
             "AND ((" +
             "OPERATION_CODE IN (6,7,34,36)) OR " +
             "(" +
-            "SRC_CON_NAME = '" + TestHelper.DATABASE + "' AND " +
+            "AND ${pdbPredicate}" +
             "(OPERATION_CODE IN ${operationCodes} OR " +
             "(OPERATION_CODE = 5 AND USERNAME NOT IN ('SYS','SYSTEM') " +
             "AND INFO NOT LIKE 'INTERNAL DDL%' " +
@@ -282,6 +283,7 @@ public class LogMinerQueryBuilderTest {
         query = query.replace("${operationCodes}", config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED : OPERATION_CODES_LOB_DISABLED);
         query = query.replace("${schemaPredicate}", schemaReplacement == null ? "" : schemaReplacement);
         query = query.replace("${tablePredicate}", tableReplacement == null ? "" : tableReplacement);
+        query = query.replace("${pdbPredicate}", getPdbPredicate(config));
         return query;
     }
 
@@ -295,5 +297,12 @@ public class LogMinerQueryBuilderTest {
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
 
         return new OracleDatabaseSchema(connectorConfig, converters, defaultValueConverter, schemaNameAdjuster, topicSelector, tableNameSensitivity);
+    }
+
+    private String getPdbPredicate(OracleConnectorConfig config) {
+        if (!Strings.isNullOrBlank(config.getPdbName())) {
+            return "SRC_CON_NAME = '" + TestHelper.DATABASE + "' AND ";
+        }
+        return "";
     }
 }
