@@ -1973,6 +1973,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5266")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
     public void shouldUpdateCommitScnOnLobTransaction() throws Exception {
         TestHelper.dropTable(connection, "dbz5266");
         try {
@@ -2025,6 +2026,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5266")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
     public void shouldUpdateCommitScnOnNonLobTransactionWithLobEnabled() throws Exception {
         TestHelper.dropTable(connection, "dbz5266");
         try {
@@ -2066,6 +2068,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5266")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
     public void shouldUpdateCommitScnOnNonLobTransactionWithLobDisabled() throws Exception {
         TestHelper.dropTable(connection, "dbz5266");
         try {
