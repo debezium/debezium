@@ -9,7 +9,7 @@ pipeline {
                 axes {
                     axis {
                         name 'ORACLE_VERSION'
-                        values '21.3.0', '19.3.0', '12.2.0.1'
+                        values '21.3.0', '19.3.0', '19.3.0-noncdb', '12.2.0.1'
                     }
                 }
 
@@ -39,7 +39,7 @@ pipeline {
                         }
                         steps {
                             script {
-                                env.MVN_PROFILE = '-Ppnc'
+                                env.MVN_PROFILE = ',pnc'
                                 env.MAVEN_OPTS = '-Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true'
                             }
 
@@ -74,7 +74,9 @@ pipeline {
                     stage('Prepare Tests') {
                         steps {
                             script {
-                                env.MVN_PROP_PDB_NAME = env.ORACLE_VERSION.endsWith('noncbd') ? '-Ddatabase.pdb.name=' : ''
+                                env.MVN_PROP_PDB_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? '-Ddatabase.pdb.name=' : ''
+                                env.MVN_PROP_DATABASE_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? '-Ddatabase.dbname=ORCLCDB' : ''
+                                env.MVN_PROP_USER_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? 'dbzuser' : 'c##dbzuser'
                             }
 
                             sh '''
@@ -100,8 +102,10 @@ pipeline {
                                 -Dinstantclient.dir=${HOME}/oracle-libs     \\
                                 -Dmaven.test.failure.ignore=true            \\
                                 -Dinsecure.repositories=WARN                \\
+                                -Ddatabase.user=${MVN_PROP_USER_NAME}       \\
                                 ${MVN_PROP_PDB_NAME}                        \\
-                                ${MVN_PROFILE}
+                                ${MVN_PROP_DATABASE_NAME}                   \\
+                                -Poracle-tests${MVN_PROFILE}
                             '''
                         }
                     }
