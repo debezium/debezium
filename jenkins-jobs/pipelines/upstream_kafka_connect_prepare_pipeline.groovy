@@ -80,7 +80,7 @@ pipeline {
                 sh '''
                 set -x
                 cd ${WORKSPACE}/debezium
-                mvn install -Passembly,oracle -DskipTests -DskipITs -Dmaven.repo.local=local-maven-repo
+                mvn install -Passembly,oracle-all -DskipTests -DskipITs -Dmaven.repo.local=local-maven-repo
                 '''
 //              Build DB2 Connector
                 sh '''

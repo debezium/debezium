@@ -427,13 +427,13 @@ node('Slave') {
         stage('Prepare release') {
             dir(DEBEZIUM_DIR) {
                 sh "git checkout -b $CANDIDATE_BRANCH"
-                sh "mvn clean install -DskipTests -DskipITs -Poracle-xstream"
+                sh "mvn clean install -DskipTests -DskipITs -Poracle-all"
                 modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
                     it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', "<version.debezium.connector>$RELEASE_VERSION</version.debezium.connector>")
                 }
                 sh "git commit -a -m '[release] Stable $RELEASE_VERSION for testing module deps'"
             }
-            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH, '-Poracle-xstream')
+            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH, '-Poracle-all')
             dir(DEBEZIUM_DIR) {
                 modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
                     it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
