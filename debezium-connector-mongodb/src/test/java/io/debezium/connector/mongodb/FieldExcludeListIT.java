@@ -1542,6 +1542,51 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
+    @Test
+    @FixFor("DBZ-4846")
+    public void shouldExcludeFieldsIncludingSameNamesForReadEvent() throws InterruptedException {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+
+        // @formatter:off
+        String expected = "{"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"scores\": [1.2,3.4,5.6]"
+                + "}";
+        // @formatter:on
+
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "*.c1.name,*.c1.active,*.c2.name,*.c2.active")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1,dbA.c2")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .build();
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        storeDocuments(DATABASE_NAME, COLLECTION_NAME, obj);
+        storeDocuments(DATABASE_NAME, "c2", obj);
+
+        start(MongoDbConnector.class, config);
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+        assertThat(snapshotRecords.topics().size()).isEqualTo(2);
+        assertThat(snapshotRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        SourceRecord record1 = snapshotRecords.allRecordsInOrder().get(0);
+        Struct value1 = getValue(record1);
+        SourceRecord record2 = snapshotRecords.allRecordsInOrder().get(0);
+        Struct value2 = getValue(record2);
+
+        assertThat(value1.get(AFTER)).isEqualTo(expected);
+        assertThat(value2.get(AFTER)).isEqualTo(expected);
+    }
+
     private Configuration getConfiguration(String blackList) {
         return getConfiguration(blackList, DATABASE_NAME, COLLECTION_NAME);
     }
