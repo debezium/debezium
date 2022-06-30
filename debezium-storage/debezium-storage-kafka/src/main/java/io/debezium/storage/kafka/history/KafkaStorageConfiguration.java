@@ -11,6 +11,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 
 public class KafkaStorageConfiguration {
+
     public static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, Field.ValidationOutput problems) {
         String serverName = config.getString(field);
         String historyTopicName = config.getString(KafkaDatabaseHistory.TOPIC);

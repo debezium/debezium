@@ -40,6 +40,24 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
+    // Required for unified thread creation
+    public static final Field INTERNAL_CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
+            .withDisplayName("Debezium connector class")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("The class of the Debezium database connector")
+            .withNoValidation();
+
+    // Required for unified thread creation
+    public static final Field INTERNAL_CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
+            .withDisplayName("Debezium connector identifier")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("The unique identifier of the Debezium connector")
+            .withNoValidation();
+
     // Temporary preference for DDL over logical schema due to DBZ-32
     public static final Field INTERNAL_PREFER_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "prefer.ddl")
             .withDisplayName("Prefer DDL for schema recovery")
@@ -50,6 +68,9 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
             .withDescription("Prefer DDL for schema recovery in case logical schema is present")
             .withInvisibleRecommender()
             .withNoValidation();
+
+    public static Field.Set ALL_FIELDS = Field.setOf(DatabaseHistory.NAME, INTERNAL_CONNECTOR_CLASS,
+            INTERNAL_CONNECTOR_ID);
 
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;

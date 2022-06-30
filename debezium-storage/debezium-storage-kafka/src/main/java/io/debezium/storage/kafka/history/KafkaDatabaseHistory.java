@@ -144,24 +144,6 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withDefault(100)
             .withValidation(Field::isInteger);
 
-    // Required for unified thread creation
-    public static final Field INTERNAL_CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
-            .withDisplayName("Debezium connector class")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withDescription("The class of the Debezium database connector")
-            .withNoValidation();
-
-    // Required for unified thread creation
-    public static final Field INTERNAL_CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
-            .withDisplayName("Debezium connector identifier")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("The unique identifier of the Debezium connector")
-            .withNoValidation();
-
     public static final Field KAFKA_QUERY_TIMEOUT_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.query.timeout.ms")
             .withDisplayName("Kafka admin client query timeout (ms)")
             .withType(Type.LONG)
