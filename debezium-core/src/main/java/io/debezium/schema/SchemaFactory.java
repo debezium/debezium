@@ -19,7 +19,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Anisha Mohanty
  */
 
-public class SchemaBuilderFactory {
+public class SchemaFactory {
 
     /*
      * Heartbeat schemas
@@ -45,11 +45,13 @@ public class SchemaBuilderFactory {
     private static final String TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_NAME = "event.collection";
     private static final int TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_VERSION = 1;
 
-    private SchemaBuilderFactory() {
+    private static final SchemaFactory schemaFactoryObject = new SchemaFactory();
+
+    private SchemaFactory() {
     }
 
-    public static SchemaBuilderFactory getInstance() {
-        return new SchemaBuilderFactory();
+    public static SchemaFactory get() {
+        return schemaFactoryObject;
     }
 
     public Schema heartbeatKeySchema(SchemaNameAdjuster adjuster) {
