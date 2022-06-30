@@ -2054,7 +2054,7 @@ The PostgreSQL connector works with one of {prodname}'s supported logical decodi
 The `pgoutput` plugin comes out-of-the-box with the PostgreSQL database.
 For more details on using Protobuf via the `decoderbufs` plug-in, see the plug-in link:https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[`documentation`] which discusses its requirements, limitations, and how to compile it.
 
-For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/docker-images/tree/main/postgres/13[use this image] as an example of the detailed steps required for the installation.
+For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/container-images/tree/main/postgres/13[use this image] as an example of the detailed steps required for the installation.
 
 [WARNING]
 ====
