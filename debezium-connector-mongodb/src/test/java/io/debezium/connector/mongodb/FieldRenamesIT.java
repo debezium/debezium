@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.logging.LogInterceptor;
 
 /**
@@ -1659,6 +1660,145 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         Struct value = (Struct) record.value();
         assertThat(value).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-5328")
+    public void shouldRenameFieldsIncludingDashesForReadEvent() throws Exception {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("new-active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+
+        // @formatter:off
+        String expected = "{"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"scores\": [1.2,3.4,5.6],"
+                +     "\"new-name\": \"Sally\","
+                +     "\"new_active\": true"
+                + "}";
+        // @formatter:on
+
+        SourceRecord record = getReadRecord("db-A", COLLECTION_NAME, "db-A.c1.name:new-name,*.c1.new-active:new_active", obj);
+
+        Struct value = (Struct) record.value();
+        assertThat(value.get(AFTER)).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("DBZ-5328")
+    public void shouldRenameFieldsIncludingDashesForInsertEvent() throws Exception {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("new-active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+
+        // @formatter:off
+        String expected = "{"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"scores\": [1.2,3.4,5.6],"
+                +     "\"new-name\": \"Sally\","
+                +     "\"new_active\": true"
+                + "}";
+        // @formatter:on
+
+        SourceRecord record = getInsertRecord("db-A", COLLECTION_NAME, "db-A.c1.name:new-name,*.c1.new-active:new_active", obj);
+
+        Struct value = (Struct) record.value();
+        assertThat(value.get(AFTER)).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("DBZ-5328")
+    public void shouldRenameNestedFieldsIncludingDashesForInsertEvent() throws Exception {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("address", new Document()
+                        .append("number", 34L)
+                        .append("street", "Claude Debussylaan")
+                        .append("city", "Amsterdam"))
+                .append("new-active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+
+        // @formatter:off
+        String expected = "{"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"address\": {"
+                +         "\"street\": \"Claude Debussylaan\","
+                +         "\"city\": \"Amsterdam\","
+                +         "\"new-number\": {\"$numberLong\": \"34\"}"
+                +     "},"
+                +     "\"scores\": [1.2,3.4,5.6],"
+                +     "\"new-name\": \"Sally\","
+                +     "\"new_active\": true"
+                + "}";
+        // @formatter:on
+
+        SourceRecord record = getInsertRecord("db-A", COLLECTION_NAME,
+                "*.c1.name:new-name,*.c1.new-active:new_active,*.c1.address.number:new-number", obj);
+
+        Struct value = (Struct) record.value();
+        assertThat(value.get(AFTER)).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("DBZ-5328")
+    public void shouldRenameFieldsIncludingDashesForUpdateEvent() throws Exception {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally May")
+                .append("phone", 456L)
+                .append("new-active", false)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6, 7.8));
+
+        Document updateObj = new Document()
+                .append("$set", new Document()
+                        .append("name", "Sally")
+                        .append("phone", 123L)
+                        .append("new-active", true)
+                        .append("scores", Arrays.asList(1.2, 3.4, 5.6)));
+
+        // @formatter:off
+        String patch = "{"
+                +     "\"$v\": 1,"
+                +     "\"$set\": {"
+                +          "\"phone\": {\"$numberLong\": \"123\"},"
+                +          "\"scores\": [1.2,3.4,5.6],"
+                +          "\"new-name\": \"Sally\","
+                +          "\"new_active\": true"
+                +     "}"
+                + "}";
+        String full = "{"
+                +    "\"_id\": {\"$oid\": \"<OID>\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"scores\": [1.2, 3.4, 5.6], "
+                +    "\"new-name\": \"Sally\", "
+                +    "\"new_active\": true"
+                + "}";
+        final String updated = "{"
+                +             "\"phone\": 123, "
+                +             "\"scores\": [1.2, 3.4, 5.6], "
+                +             "\"new-name\": \"Sally\", "
+                +             "\"new_active\": true"
+                + "}";
+        // @formatter:on
+
+        SourceRecord record = getUpdateRecord("db-A", COLLECTION_NAME, "*.c1.name:new-name,*.c1.new-active:new_active", obj, updateObj);
+
+        assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
     private static Document getFilterFromId(ObjectId id) {
