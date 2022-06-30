@@ -52,7 +52,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.storage.file.history.FileDatabaseHistory
+import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.IoUtil;
 
 /**
