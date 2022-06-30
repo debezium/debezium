@@ -334,7 +334,7 @@ node('Slave') {
 
     stage ('Prepare release') {
         dir(DEBEZIUM_DIR) {
-            sh "mvn clean install -DskipTests -DskipITs -Poracle-xstream"
+            sh "mvn clean install -DskipTests -DskipITs -Poracle-all"
         }
         STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, DEBEZIUM_BRANCH)
         ADDITIONAL_REPOSITORIES.each { id, repo ->

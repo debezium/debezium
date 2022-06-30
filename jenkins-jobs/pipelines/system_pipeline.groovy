@@ -206,7 +206,7 @@ pipeline {
                 sh '''
                 set -x
                 cd ${WORKSPACE}/debezium
-                mvn install -Passembly,oracle -DskipTests -DskipITs 
+                mvn install -Passembly,oracle-all -DskipTests -DskipITs 
                 '''
             }
         }
