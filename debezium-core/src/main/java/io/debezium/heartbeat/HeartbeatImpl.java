@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.function.BlockingConsumer;
-import io.debezium.schema.SchemaBuilderFactory;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Threads;
@@ -53,16 +53,16 @@ public class HeartbeatImpl implements Heartbeat {
 
     private volatile Timer heartbeatTimeout;
 
-    private static final SchemaBuilderFactory schemaBuilderFactoryObject = SchemaBuilderFactory.getInstance();
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     public HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
         this.topicName = topicName;
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;
 
-        keySchema = schemaBuilderFactoryObject.heartbeatKeySchema(schemaNameAdjuster);
+        keySchema = schemaFactoryObject.heartbeatKeySchema(schemaNameAdjuster);
 
-        valueSchema = schemaBuilderFactoryObject.heartbeatValueSchema(schemaNameAdjuster);
+        valueSchema = schemaFactoryObject.heartbeatValueSchema(schemaNameAdjuster);
 
         heartbeatTimeout = resetHeartbeat();
     }

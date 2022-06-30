@@ -27,7 +27,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.schema.SchemaBuilderFactory;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -61,11 +61,11 @@ public class TransactionMonitor {
     public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY = "data_collections";
     public static final String DEBEZIUM_TRANSACTION_TS_MS = "ts_ms";
 
-    private static final SchemaBuilderFactory schemaBuilderFactoryObject = SchemaBuilderFactory.getInstance();
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
-    public static final Schema TRANSACTION_BLOCK_SCHEMA = schemaBuilderFactoryObject.transactionBlockSchema();
+    public static final Schema TRANSACTION_BLOCK_SCHEMA = schemaFactoryObject.transactionBlockSchema();
 
-    private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = schemaBuilderFactoryObject.transactionEventCountPerDataCollectionSchema();
+    private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = schemaFactoryObject.transactionEventCountPerDataCollectionSchema();
 
     private final Schema transactionKeySchema;
     private final Schema transactionValueSchema;
@@ -79,9 +79,9 @@ public class TransactionMonitor {
                               String topicName) {
         Objects.requireNonNull(eventMetadataProvider);
 
-        transactionKeySchema = schemaBuilderFactoryObject.transactionKeySchema(schemaNameAdjuster);
+        transactionKeySchema = schemaFactoryObject.transactionKeySchema(schemaNameAdjuster);
 
-        transactionValueSchema = schemaBuilderFactoryObject.transactionValueSchema(schemaNameAdjuster);
+        transactionValueSchema = schemaFactoryObject.transactionValueSchema(schemaNameAdjuster);
 
         this.topicName = topicName;
         this.eventMetadataProvider = eventMetadataProvider;
