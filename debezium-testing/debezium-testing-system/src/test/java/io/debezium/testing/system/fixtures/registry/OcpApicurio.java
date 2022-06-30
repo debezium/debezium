@@ -6,7 +6,6 @@
 package io.debezium.testing.system.fixtures.registry;
 
 import static io.debezium.testing.system.tools.ConfigProperties.OCP_PROJECT_REGISTRY;
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -62,11 +61,8 @@ public class OcpApicurio extends TestFixture {
     private void updateApicurioOperator() {
         ApicurioOperatorController operatorController = ApicurioOperatorController.forProject(project, ocp);
 
-        if (isRunningFromOcp()){
-            ConfigProperties.OCP_PULL_SECRET_NAME.ifPresent(operatorController::loadExistingPullSecret);
-        } else {
-            ConfigProperties.OCP_PULL_SECRET_PATH.ifPresent(operatorController::deployPullSecret);
-        }
+        ConfigProperties.OCP_PULL_SECRET_PATH.ifPresent(operatorController::deployPullSecret);
+
         operatorController.updateOperator();
     }
 }

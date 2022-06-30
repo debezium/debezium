@@ -461,7 +461,6 @@
                 <test.ocp.username>${ocp.username}</test.ocp.username>
                 <test.ocp.password>${ocp.password}</test.ocp.password>
                 <test.ocp.pull.secret.paths>${ocp.pull.secret.paths}</test.ocp.pull.secret.paths>
-                <test.ocp.pull.secret.name>${ocp.pull.secret.name}</test.ocp.pull.secret.name>
                 <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
                 <test.ocp.project.registry>${ocp.project.registry}</test.ocp.project.registry>
                 <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
