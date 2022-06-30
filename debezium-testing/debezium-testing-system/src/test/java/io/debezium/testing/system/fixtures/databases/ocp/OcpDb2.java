@@ -5,7 +5,6 @@
  */
 package io.debezium.testing.system.fixtures.databases.ocp;
 
-import static io.debezium.testing.system.tools.ConfigProperties.OCP_PULL_SECRET_NAME;
 import static io.debezium.testing.system.tools.ConfigProperties.OCP_PULL_SECRET_PATH;
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
@@ -32,19 +31,14 @@ public class OcpDb2 extends OcpDatabaseFixture<SqlDatabaseController> {
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
         Class.forName("com.ibm.db2.jcc.DB2Driver");
-        OcpDB2Deployer.Builder deployerBuilder = new OcpDB2Deployer.Builder()
+        OcpDB2Deployer deployer = new OcpDB2Deployer.Builder()
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_DB2)
                 .withDeployment(DB_DEPLOYMENT_PATH)
                 .withLocalServices(DB_SERVICE_PATH)
-                .withPublicServices(DB_SERVICE_PATH_LB);
-
-        if (isRunningFromOcp()) {
-            deployerBuilder.withExistingPullSecrets(ocp, OCP_PULL_SECRET_NAME.get());
-        } else {
-            deployerBuilder.withPullSecrets(OCP_PULL_SECRET_PATH.get());
-        }
-
-        return deployerBuilder.build().deploy();
+                .withPublicServices(DB_SERVICE_PATH_LB)
+                .withPullSecrets(OCP_PULL_SECRET_PATH.get())
+                .build();
+        return deployer.deploy();
     }
 }
