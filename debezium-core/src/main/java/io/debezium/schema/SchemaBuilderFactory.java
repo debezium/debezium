@@ -21,20 +21,29 @@ import io.debezium.util.SchemaNameAdjuster;
 
 public class SchemaBuilderFactory {
 
-    private static final int HEARTBEAT_KEY_SCHEMA_VERSION = 1;
-    private static final int HEARTBEAT_VALUE_SCHEMA_VERSION = 1;
-    private static final int TRANSACTION_KEY_SCHEMA_VERSION = 1;
-    private static final int TRANSACTION_VALUE_SCHEMA_VERSION = 1;
-    private static final int TRANSACTION_BLOCK_SCHEMA_VERSION = 1;
-    private static final int TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_VERSION = 1;
-
+    /*
+     * Heartbeat schemas
+     */
     private static final String HEARTBEAT_KEY_SCHEMA_NAME = "io.debezium.connector.common.ServerNameKey";
+    private static final int HEARTBEAT_KEY_SCHEMA_VERSION = 1;
+
     private static final String HEARTBEAT_VALUE_SCHEMA_NAME = "io.debezium.connector.common.Heartbeat";
+    private static final int HEARTBEAT_VALUE_SCHEMA_VERSION = 1;
+
+    /*
+     * Transaction-related schemas
+     */
+    private static final String TRANSACTION_METADATA_KEY_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataKey";
+    private static final int TRANSACTION_METADATA_KEY_SCHEMA_VERSION = 1;
+
+    private static final String TRANSACTION_METADATA_VALUE_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataValue";
+    private static final int TRANSACTION_METADATA_VALUE_SCHEMA_VERSION = 1;
 
     private static final String TRANSACTION_BLOCK_SCHEMA_NAME = "event.block";
+    private static final int TRANSACTION_BLOCK_SCHEMA_VERSION = 1;
+
     private static final String TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_NAME = "event.collection";
-    private static final String TRANSACTION_METADATA_KEY_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataKey";
-    private static final String TRANSACTION_METADATA_VALUE_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataValue";
+    private static final int TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_VERSION = 1;
 
     private SchemaBuilderFactory() {
     }
@@ -81,7 +90,7 @@ public class SchemaBuilderFactory {
     public Schema transactionKeySchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(TRANSACTION_METADATA_KEY_SCHEMA_NAME))
-                .version(TRANSACTION_KEY_SCHEMA_VERSION)
+                .version(TRANSACTION_METADATA_KEY_SCHEMA_VERSION)
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
                 .build();
     }
@@ -89,7 +98,7 @@ public class SchemaBuilderFactory {
     public Schema transactionValueSchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(TRANSACTION_METADATA_VALUE_SCHEMA_NAME))
-                .version(TRANSACTION_VALUE_SCHEMA_VERSION)
+                .version(TRANSACTION_METADATA_VALUE_SCHEMA_VERSION)
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
