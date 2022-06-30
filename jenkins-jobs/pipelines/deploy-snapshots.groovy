@@ -55,7 +55,7 @@ node('Slave') {
 
         stage('Build and deploy Debezium') {
             dir(DEBEZIUM_DIR) {
-                sh "mvn clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,oracle,docs  -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
+                sh "mvn clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,oracle-all,docs  -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
             }
         }
 

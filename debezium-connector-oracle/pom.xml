@@ -281,9 +281,9 @@
                 </plugins>
             </build>
         </profile>
-        <!-- Enables all sources for IDE build -->
+        <!-- Enables all sources, useful for IDE build or releases -->
         <profile>
-            <id>oracle-ide</id>
+            <id>oracle-all</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
