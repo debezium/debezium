@@ -53,14 +53,16 @@ public class HeartbeatImpl implements Heartbeat {
 
     private volatile Timer heartbeatTimeout;
 
+    private static final SchemaBuilderFactory schemaBuilderFactoryObject = SchemaBuilderFactory.getInstance();
+
     public HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
         this.topicName = topicName;
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;
 
-        keySchema = SchemaBuilderFactory.heartbeatKeySchema(schemaNameAdjuster);
+        keySchema = schemaBuilderFactoryObject.heartbeatKeySchema(schemaNameAdjuster);
 
-        valueSchema = SchemaBuilderFactory.heartbeatValueSchema(schemaNameAdjuster);
+        valueSchema = schemaBuilderFactoryObject.heartbeatValueSchema(schemaNameAdjuster);
 
         heartbeatTimeout = resetHeartbeat();
     }
