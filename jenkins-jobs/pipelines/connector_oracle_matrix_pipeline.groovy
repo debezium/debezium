@@ -39,7 +39,7 @@ pipeline {
                         }
                         steps {
                             script {
-                                env.MVN_PROFILE = ',pnc'
+                                env.MVN_PROFILE = '-Ppnc'
                                 env.MAVEN_OPTS = '-Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true'
                             }
 
@@ -97,6 +97,7 @@ pipeline {
                             sh '''
                             cd ${WORKSPACE}/debezium
                             mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-oracle -am -fae \\
+                                -Poracle-tests                              \\
                                 -Ddatabase.hostname=0.0.0.0                 \\
                                 -Ddatabase.admin.hostname=0.0.0.0           \\
                                 -Dinstantclient.dir=${HOME}/oracle-libs     \\
@@ -105,7 +106,7 @@ pipeline {
                                 -Ddatabase.user=${MVN_PROP_USER_NAME}       \\
                                 ${MVN_PROP_PDB_NAME}                        \\
                                 ${MVN_PROP_DATABASE_NAME}                   \\
-                                -Poracle-tests${MVN_PROFILE}
+                                ${MVN_PROFILE}
                             '''
                         }
                     }
