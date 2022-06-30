@@ -56,19 +56,11 @@ mvn clean install -pl debezium-connector-oracle -am
 
 ## For Oracle 11g
 
-To run the Debezium Oracle connector with Oracle 11g, there are several additional parameters required.
-It's important to remember, these are only required for Oracle 11 and should not be used with any other version.
-
-```json
-"database.tablename.case.insensitive": "true",
-```
-
 Additionally, the connector ignores several built-in tables and schemas in Oracle 12+ but those tables differ in Oracle 11.
-When using Debezium Oracle connector with Oracle 11, its important to specify the `table.include.list` and to avoid problems with those tables.
-Remember, specify your values here in lowercase, as shown below:
+When using Debezium Oracle connector with Oracle 11, its important to specify the `table.include.list`, as shown below:
 
 ```json
-"table.include.list": "orcl\\\\.debezium\\\\.(.*)"
+"table.include.list": "ORCL\\\\.DEBEZIUM\\\\.(.*)"
 ```
 
 ## Testing
