@@ -138,14 +138,6 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
             return self();
         }
 
-        public B withExistingPullSecrets(OpenShiftClient ocp, String secretName) {
-            this.pullSecret = ocp.secrets()
-                    .inNamespace(project)
-                    .withName(secretName)
-                    .get();
-            return self();
-        }
-
         private boolean isLbService(String yamlPath) {
             return yamlPath.contains("-lb.");
         }
