@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.history.TableChanges.TableChange;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -48,9 +49,11 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     public static final String DEFAULT_VALUE_EXPRESSION = "defaultValueExpression";
     public static final String ENUM_VALUES = "enumValues";
 
-    private final Schema columnSchema;
-    private final Schema tableSchema;
-    private final Schema changeSchema;
+    private Schema columnSchema;
+    private Schema tableSchema;
+    private Schema changeSchema;
+
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     public ConnectTableChangeSerializer(SchemaNameAdjuster schemaNameAdjuster) {
         columnSchema = SchemaBuilder.struct()
@@ -86,6 +89,12 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
                 .field(ID_KEY, Schema.STRING_SCHEMA)
                 .field(TABLE_KEY, tableSchema)
                 .build();
+
+        columnSchema = schemaFactoryObject.connectTableChangeSerializerColumnSchema(schemaNameAdjuster);
+
+        tableSchema = schemaFactoryObject.connectTableChangeSerializerTableSchema(schemaNameAdjuster);
+
+        changeSchema = schemaFactoryObject.connectTableChangeSerializerChangeSchema(schemaNameAdjuster);
     }
 
     public Schema getChangeSchema() {

@@ -13,7 +13,6 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
@@ -47,6 +46,7 @@ import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -82,6 +82,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final ConnectTableChangeSerializer tableChangesSerializer;
     private final Signal<P> signal;
     private IncrementalSnapshotChangeEventSource<P, T> incrementalSnapshotChangeEventSource;
+
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -126,19 +128,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.signal = new Signal<>(connectorConfig, this);
         this.heartbeat = heartbeat;
 
-        schemaChangeKeySchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector." + connectorConfig.getConnectorName() + ".SchemaChangeKey"))
-                .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
-                .build();
-        schemaChangeValueSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector." + connectorConfig.getConnectorName() + ".SchemaChangeValue"))
-                .field(Fields.SOURCE, connectorConfig.getSourceInfoStructMaker().schema())
-                .field(Fields.TIMESTAMP, Schema.INT64_SCHEMA)
-                .field(Fields.DATABASE_NAME, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(Fields.SCHEMA_NAME, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(Fields.TABLE_CHANGES, SchemaBuilder.array(tableChangesSerializer.getChangeSchema()).build())
-                .build();
+        schemaChangeKeySchema = schemaFactoryObject.eventDispatcherKeySchema(schemaNameAdjuster, connectorConfig);
+
+        schemaChangeValueSchema = schemaFactoryObject.eventDispatcherValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
     }
 
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
