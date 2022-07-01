@@ -10,7 +10,6 @@ pipelineJob('ocp-system-test') {
         stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
 
         stringParam('PULL_SECRET', 'rh-integration-quay-secret', 'Quay.io OpenShift secret')
-        stringParam('PULL_SECRET_NAME', 'rh-integration-debezium-pull-secret', 'Quay.io OpenShift secret name')
 
         // TODO change default tag when job is done
         stringParam('DOCKER_TAG', 'docker-test', 'Docker image tag')
@@ -28,11 +27,9 @@ pipelineJob('ocp-system-test') {
 
         stringParam('STRZ_GIT_REPOSITORY', 'https://github.com/strimzi/strimzi-kafka-operator.git', 'Repository from which Strimzi is cloned')
         stringParam('STRZ_GIT_BRANCH', 'main', 'A branch/tag from which Strimzi is built')
-        stringParam('STRZ_DOWNSTREAM_URL', '', 'URL to productised strimzi sources')
 
         stringParam('APIC_GIT_REPOSITORY', 'https://github.com/Apicurio/apicurio-registry-operator.git', 'Repository from which Apicurio is cloned')
         stringParam('APIC_GIT_BRANCH', 'master', 'A branch/tag from which Apicurio is built')
-        stringParam('APIC_DOWNSTREAM_URL', '', 'URL to productised apicurio sources')
     }
 
     definition {
