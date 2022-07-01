@@ -90,11 +90,11 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
                 .field(TABLE_KEY, tableSchema)
                 .build();
 
-        columnSchema = schemaFactoryObject.connectTableChangeSerializerColumnSchema(schemaNameAdjuster);
+        columnSchema = schemaFactoryObject.schemaHistoryColumnSchema(schemaNameAdjuster);
 
-        tableSchema = schemaFactoryObject.connectTableChangeSerializerTableSchema(schemaNameAdjuster);
+        tableSchema = schemaFactoryObject.schemaHistoryTableSchema(schemaNameAdjuster);
 
-        changeSchema = schemaFactoryObject.connectTableChangeSerializerChangeSchema(schemaNameAdjuster);
+        changeSchema = schemaFactoryObject.schemaHistoryChangeSchema(schemaNameAdjuster);
     }
 
     public Schema getChangeSchema() {

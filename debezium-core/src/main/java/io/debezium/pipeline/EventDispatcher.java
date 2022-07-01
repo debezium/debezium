@@ -128,9 +128,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.signal = new Signal<>(connectorConfig, this);
         this.heartbeat = heartbeat;
 
-        schemaChangeKeySchema = schemaFactoryObject.eventDispatcherKeySchema(schemaNameAdjuster, connectorConfig);
+        schemaChangeKeySchema = schemaFactoryObject.schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
 
-        schemaChangeValueSchema = schemaFactoryObject.eventDispatcherValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
+        schemaChangeValueSchema = schemaFactoryObject.schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
     }
 
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
