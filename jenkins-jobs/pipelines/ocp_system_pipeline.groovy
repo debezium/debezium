@@ -100,7 +100,7 @@ pipeline {
                     # wait for the job to finish, print logs. Only one running testsuite expected
                     pod_name=$(oc get pods | grep testsuite | head -n1| awk '{print $1;}')
 
-                    oc wait --timeout=300s pod/${pod_name}
+                    oc wait --timeout=300s --for=condition=Running pod/${pod_name}
 
                     oc logs -f ${pod_name}
                     '''

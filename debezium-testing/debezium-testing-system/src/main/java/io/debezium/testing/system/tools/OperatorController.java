@@ -147,21 +147,6 @@ public class OperatorController {
         return pullSecret;
     }
 
-    public Secret loadExistingPullSecret(String secretName) {
-        this.pullSecret = ocp.secrets()
-                .inNamespace(project)
-                .withName(secretName)
-                .get();
-        if (pullSecret == null) {
-            throw new IllegalStateException("Secret " + secretName + " not found in namespace!");
-        }
-        ocpUtils.linkPullSecret(project, "default", secretName);
-        ocpUtils.linkPullSecret(project, "builder", secretName);
-        setImagePullSecret(secretName);
-
-        return pullSecret;
-    }
-
         /**
          * Gets pull secret
          * @return pull secret associated with this operator

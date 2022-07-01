@@ -18,8 +18,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.debezium.testing.system.tools.ConfigProperties;
-import io.fabric8.kubernetes.api.model.Secret;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
