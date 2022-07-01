@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'NodeXL'
+        label 'Slave'
     }
 
     stages {
@@ -38,7 +38,7 @@ pipeline {
                 expression { params.APICURIO_PREPARE_BUILD_NUMBER }
             }
             steps {
-                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'apicurio-registry-install-examples.zip', selector: params.APICURIO_PREPARE_BUILD_NUMBER
+                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'apicurio-registry-install-examples.zip', selector: specific(params.APICURIO_PREPARE_BUILD_NUMBER)
             }
         }
 
@@ -55,7 +55,7 @@ pipeline {
                 expression { params.STRIMZI_PREPARE_BUILD_NUMBER }
             }
             steps {
-                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'amq-streams-install-examples.zip', selector: params.STRIMZI_PREPARE_BUILD_NUMBER
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'amq-streams-install-examples.zip', selector: specific(params.STRIMZI_PREPARE_BUILD_NUMBER)
             }
         }
 

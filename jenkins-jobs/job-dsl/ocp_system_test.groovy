@@ -11,15 +11,14 @@ pipelineJob('ocp-system-test') {
 
         stringParam('PULL_SECRET', 'rh-integration-quay-secret', 'Quay.io OpenShift secret')
 
-        // TODO change default tag when job is done
-        stringParam('DOCKER_TAG', 'docker-test', 'Docker image tag')
+        stringParam('DOCKER_TAG', 'latest', 'Docker image tag')
         stringParam('OCP_PROJECT_NAME', 'debezium-test', 'OCP projects name')
         stringParam('OCP_CREDENTIALS', 'openshift-dbz-creds', 'Jenkins credentials id')
         stringParam('OCP_URL', '', 'Ocp url')
 
         booleanParam('TEST_APICURIO_REGISTRY', false, 'Run tests with Apicurio Registry and Avro serialization')
 
-        booleanParam('STRIMZI_KC_BUILD', false, 'Use connect image instead of artifact server')
+        booleanParam('STRIMZI_KC_BUILD', false, 'True -> use artifact server, false -> dbz connect image')
         stringParam('DBZ_CONNECT_IMAGE', 'quay.io/rh_integration/test-strimzi-kafka:strz-latest-kafka-3.1.0-apc-2.2.3.Final-dbz-2.0.0-SNAPSHOT', 'Debezium connect image')
         stringParam('ARTIFACT_SERVER_IMAGE', 'quay.io/rh_integration/test-artifact-server:2.0.0-SNAPSHOT', 'Artifact server image')
         stringParam('APICURIO_VERSION', '2.2.3.Final', 'Apicurio version')

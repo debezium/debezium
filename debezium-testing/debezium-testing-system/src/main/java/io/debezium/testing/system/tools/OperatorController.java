@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.fabric8.kubernetes.api.model.SecretBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,10 +146,10 @@ public class OperatorController {
         return pullSecret;
     }
 
-        /**
-         * Gets pull secret
-         * @return pull secret associated with this operator
-         */
+    /**
+     * Gets pull secret
+     * @return pull secret associated with this operator
+     */
     public Optional<Secret> getPullSecret() {
         return Optional.ofNullable(pullSecret);
     }
