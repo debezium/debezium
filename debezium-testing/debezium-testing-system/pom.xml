@@ -464,7 +464,6 @@
                 <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
                 <test.ocp.project.registry>${ocp.project.registry}</test.ocp.project.registry>
                 <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
-                <test.ocp.project.oracle>${ocp.project.oracle}</test.ocp.project.oracle>
                 <test.ocp.project.postgresql>${ocp.project.postgresql}</test.ocp.project.postgresql>
                 <test.ocp.project.mongo>${ocp.project.mongo}</test.ocp.project.mongo>
                 <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
