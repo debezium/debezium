@@ -130,7 +130,8 @@ public class SchemaFactory {
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(transactionEventCountPerDataCollectionSchema()))
+                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY,
+                        SchemaBuilder.array(transactionEventCountPerDataCollectionSchema()).optional().build())
                 .field(TransactionMonitor.DEBEZIUM_TRANSACTION_TS_MS, Schema.INT64_SCHEMA)
                 .build();
     }
