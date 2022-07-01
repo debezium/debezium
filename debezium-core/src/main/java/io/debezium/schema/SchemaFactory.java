@@ -49,27 +49,24 @@ public class SchemaFactory {
     private static final int TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_VERSION = 1;
 
     /*
-     * Connect Table schemas
+     * Schema history schemas
      */
-    private static final String CONNECT_TABLE_CHANGE_SERIALIZER_COLUMN_SCHEMA_NAME = "io.debezium.connector.schema.Column";
-    private static final int CONNECT_TABLE_CHANGE_SERIALIZER_COLUMN_SCHEMA_VERSION = 1;
+    private static final String SCHEMA_HISTORY_CONNECTOR_SCHEMA_NAME_PREFIX = "io.debezium.connector.";
 
-    private static final String CONNECT_TABLE_CHANGE_SERIALIZER_TABLE_SCHEMA_NAME = "io.debezium.connector.schema.Table";
-    private static final int CONNECT_TABLE_CHANGE_SERIALIZER_TABLE_SCHEMA_VERSION = 1;
+    private static final String SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_NAME_SUFFIX = ".SchemaChangeKey";
+    private static final int SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_VERSION = 1;
 
-    private static final String CONNECT_TABLE_CHANGE_SERIALIZER_CHANGE_SCHEMA_NAME = "io.debezium.connector.schema.Change";
-    private static final int CONNECT_TABLE_CHANGE_SERIALIZER_CHANGE_SCHEMA_VERSION = 1;
+    private static final String SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_NAME_SUFFIX = ".SchemaChangeValue";
+    private static final int SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_VERSION = 1;
 
-    /*
-     * Event Dispatcher schemas
-     */
-    private static final String EVENT_DISPATCHER_SCHEMA_NAME_PREFIX = "io.debezium.connector.";
+    private static final String SCHEMA_HISTORY_TABLE_SCHEMA_NAME = "io.debezium.connector.schema.Table";
+    private static final int SCHEMA_HISTORY_TABLE_SCHEMA_VERSION = 1;
 
-    private static final String EVENT_DISPATCHER_KEY_SCHEMA_NAME_SUFFIX = ".SchemaChangeKey";
-    private static final int EVENT_DISPATCHER_KEY_SCHEMA_VERSION = 1;
+    private static final String SCHEMA_HISTORY_COLUMN_SCHEMA_NAME = "io.debezium.connector.schema.Column";
+    private static final int SCHEMA_HISTORY_COLUMN_SCHEMA_VERSION = 1;
 
-    private static final String EVENT_DISPATCHER_VALUE_SCHEMA_NAME_SUFFIX = ".SchemaChangeValue";
-    private static final int EVENT_DISPATCHER_VALUE_SCHEMA_VERSION = 1;
+    private static final String SCHEMA_HISTORY_CHANGE_SCHEMA_NAME = "io.debezium.connector.schema.Change";
+    private static final int SCHEMA_HISTORY_CHANGE_SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = new SchemaFactory();
 
@@ -136,10 +133,10 @@ public class SchemaFactory {
                 .build();
     }
 
-    public Schema connectTableChangeSerializerColumnSchema(SchemaNameAdjuster adjuster) {
+    public Schema schemaHistoryColumnSchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
-                .name(adjuster.adjust(CONNECT_TABLE_CHANGE_SERIALIZER_COLUMN_SCHEMA_NAME))
-                .version(CONNECT_TABLE_CHANGE_SERIALIZER_COLUMN_SCHEMA_VERSION)
+                .name(adjuster.adjust(SCHEMA_HISTORY_COLUMN_SCHEMA_NAME))
+                .version(SCHEMA_HISTORY_COLUMN_SCHEMA_VERSION)
                 .field(ConnectTableChangeSerializer.NAME_KEY, Schema.STRING_SCHEMA)
                 .field(ConnectTableChangeSerializer.JDBC_TYPE_KEY, Schema.INT32_SCHEMA)
                 .field(ConnectTableChangeSerializer.NATIVE_TYPE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
@@ -156,39 +153,41 @@ public class SchemaFactory {
                 .build();
     }
 
-    public Schema connectTableChangeSerializerTableSchema(SchemaNameAdjuster adjuster) {
+    public Schema schemaHistoryTableSchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
-                .name(adjuster.adjust(CONNECT_TABLE_CHANGE_SERIALIZER_TABLE_SCHEMA_NAME))
-                .version(CONNECT_TABLE_CHANGE_SERIALIZER_TABLE_SCHEMA_VERSION)
+                .name(adjuster.adjust(SCHEMA_HISTORY_TABLE_SCHEMA_NAME))
+                .version(SCHEMA_HISTORY_TABLE_SCHEMA_VERSION)
                 .field(ConnectTableChangeSerializer.DEFAULT_CHARSET_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(ConnectTableChangeSerializer.PRIMARY_KEY_COLUMN_NAMES_KEY, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-                .field(ConnectTableChangeSerializer.COLUMNS_KEY, SchemaBuilder.array(connectTableChangeSerializerColumnSchema(adjuster)).build())
+                .field(ConnectTableChangeSerializer.COLUMNS_KEY, SchemaBuilder.array(schemaHistoryColumnSchema(adjuster)).build())
                 .field(ConnectTableChangeSerializer.COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 
-    public Schema connectTableChangeSerializerChangeSchema(SchemaNameAdjuster adjuster) {
+    public Schema schemaHistoryChangeSchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
-                .name(adjuster.adjust(CONNECT_TABLE_CHANGE_SERIALIZER_CHANGE_SCHEMA_NAME))
-                .version(CONNECT_TABLE_CHANGE_SERIALIZER_CHANGE_SCHEMA_VERSION)
+                .name(adjuster.adjust(SCHEMA_HISTORY_CHANGE_SCHEMA_NAME))
+                .version(SCHEMA_HISTORY_CHANGE_SCHEMA_VERSION)
                 .field(ConnectTableChangeSerializer.TYPE_KEY, Schema.STRING_SCHEMA)
                 .field(ConnectTableChangeSerializer.ID_KEY, Schema.STRING_SCHEMA)
-                .field(ConnectTableChangeSerializer.TABLE_KEY, connectTableChangeSerializerTableSchema(adjuster))
+                .field(ConnectTableChangeSerializer.TABLE_KEY, schemaHistoryTableSchema(adjuster))
                 .build();
     }
 
-    public Schema eventDispatcherKeySchema(SchemaNameAdjuster adjuster, CommonConnectorConfig config) {
+    public Schema schemaHistoryConnectorKeySchema(SchemaNameAdjuster adjuster, CommonConnectorConfig config) {
         return SchemaBuilder.struct()
-                .name(adjuster.adjust(String.format("%s%s%s", EVENT_DISPATCHER_SCHEMA_NAME_PREFIX, config.getConnectorName(), EVENT_DISPATCHER_KEY_SCHEMA_NAME_SUFFIX)))
-                .version(EVENT_DISPATCHER_KEY_SCHEMA_VERSION)
+                .name(adjuster.adjust(
+                        String.format("%s%s%s", SCHEMA_HISTORY_CONNECTOR_SCHEMA_NAME_PREFIX, config.getConnectorName(), SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_NAME_SUFFIX)))
+                .version(SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_VERSION)
                 .field(HistoryRecord.Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
                 .build();
     }
 
-    public Schema eventDispatcherValueSchema(SchemaNameAdjuster adjuster, CommonConnectorConfig config, ConnectTableChangeSerializer serializer) {
+    public Schema schemaHistoryConnectorValueSchema(SchemaNameAdjuster adjuster, CommonConnectorConfig config, ConnectTableChangeSerializer serializer) {
         return SchemaBuilder.struct()
-                .name(adjuster.adjust(String.format("%s%s%s", EVENT_DISPATCHER_SCHEMA_NAME_PREFIX, config.getConnectorName(), EVENT_DISPATCHER_VALUE_SCHEMA_NAME_SUFFIX)))
-                .version(EVENT_DISPATCHER_VALUE_SCHEMA_VERSION)
+                .name(adjuster.adjust(String.format("%s%s%s", SCHEMA_HISTORY_CONNECTOR_SCHEMA_NAME_PREFIX, config.getConnectorName(),
+                        SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_NAME_SUFFIX)))
+                .version(SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_VERSION)
                 .field(HistoryRecord.Fields.SOURCE, config.getSourceInfoStructMaker().schema())
                 .field(HistoryRecord.Fields.TIMESTAMP, Schema.INT64_SCHEMA)
                 .field(HistoryRecord.Fields.DATABASE_NAME, Schema.OPTIONAL_STRING_SCHEMA)
