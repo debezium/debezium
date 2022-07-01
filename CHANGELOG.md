@@ -2,6 +2,77 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.0.Alpha3
+July 1st 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385342)
+
+### New features since 2.0.0.Alpha2
+
+* Mysql Commit Timestamp [DBZ-5170](https://issues.redhat.com/browse/DBZ-5170)
+* Include event scn in Oracle records [DBZ-5225](https://issues.redhat.com/browse/DBZ-5225)
+* Redis Store does not work with GCP Managed Redis [DBZ-5268](https://issues.redhat.com/browse/DBZ-5268)
+
+
+### Breaking changes since 2.0.0.Alpha2
+
+None
+
+
+### Fixes since 2.0.0.Alpha2
+
+* Incorrect loading of LSN from offsets [DBZ-3942](https://issues.redhat.com/browse/DBZ-3942)
+* Database history recovery will retain old tables after they've been renamed [DBZ-4451](https://issues.redhat.com/browse/DBZ-4451)
+* Adding new table with incremental snapshots not working [DBZ-4834](https://issues.redhat.com/browse/DBZ-4834)
+* BigDecimal has mismatching scale value for given Decimal schema [DBZ-4890](https://issues.redhat.com/browse/DBZ-4890)
+* Debezium has never found starting LSN [DBZ-5031](https://issues.redhat.com/browse/DBZ-5031)
+* Data duplication problem using postgresql source on debezium server [DBZ-5070](https://issues.redhat.com/browse/DBZ-5070)
+* Cursor fetch is used for all results during connection [DBZ-5084](https://issues.redhat.com/browse/DBZ-5084)
+* Debezuim connector fails at parsing select statement overrides when table name has space [DBZ-5198](https://issues.redhat.com/browse/DBZ-5198)
+* DDL statement couldn't be parsed 2 - Oracle connector 1.9.3.Final [DBZ-5230](https://issues.redhat.com/browse/DBZ-5230)
+* Debezium server duplicates scripting jar files [DBZ-5232](https://issues.redhat.com/browse/DBZ-5232)
+* Cannot convert field type tinyint(1) unsigned to boolean [DBZ-5236](https://issues.redhat.com/browse/DBZ-5236)
+* Oracle unparsable ddl create table [DBZ-5237](https://issues.redhat.com/browse/DBZ-5237)
+* Postgres Incremental Snapshot on parent partitioned table not working [DBZ-5240](https://issues.redhat.com/browse/DBZ-5240)
+* Character set influencers are not properly parsed on default values [DBZ-5241](https://issues.redhat.com/browse/DBZ-5241)
+* Dupicate SCNs on Oracle RAC installations incorrectly processed [DBZ-5245](https://issues.redhat.com/browse/DBZ-5245)
+* NPE when using Debezium Embedded in Quarkus [DBZ-5251](https://issues.redhat.com/browse/DBZ-5251)
+* Oracle LogMiner may fail with an in-progress transaction in an archive log that has been deleted [DBZ-5256](https://issues.redhat.com/browse/DBZ-5256)
+* Order of source block table names in a rename schema change event is not deterministic [DBZ-5257](https://issues.redhat.com/browse/DBZ-5257)
+* Debezium fails to connect to replicaset if a node is down [DBZ-5260](https://issues.redhat.com/browse/DBZ-5260)
+* No changes to commit_scn when oracle-connector got new lob data [DBZ-5266](https://issues.redhat.com/browse/DBZ-5266)
+* Invalid date 'SEPTEMBER 31' [DBZ-5267](https://issues.redhat.com/browse/DBZ-5267)
+* database.history.store.only.captured.tables.ddl not suppressing logs [DBZ-5270](https://issues.redhat.com/browse/DBZ-5270)
+* io.debezium.text.ParsingException: DDL statement couldn't be parsed [DBZ-5271](https://issues.redhat.com/browse/DBZ-5271)
+* Deadlock during snapshot with Mongo connector [DBZ-5272](https://issues.redhat.com/browse/DBZ-5272)
+* Mysql parser is not able to handle variables in KILL command [DBZ-5273](https://issues.redhat.com/browse/DBZ-5273)
+* Debezium server fail when connect to Azure Event Hubs [DBZ-5279](https://issues.redhat.com/browse/DBZ-5279)
+* ORA-01086 savepoint never established raised when database history topic cannot be created or does not exist [DBZ-5281](https://issues.redhat.com/browse/DBZ-5281)
+* Enabling database.history.store.only.captured.tables.ddl does not restrict history topic records [DBZ-5285](https://issues.redhat.com/browse/DBZ-5285)
+
+
+### Other changes since 2.0.0.Alpha2
+
+* Add script SMT test case to OCP test suite [DBZ-2581](https://issues.redhat.com/browse/DBZ-2581)
+* Confusing example for schema change topic [DBZ-4713](https://issues.redhat.com/browse/DBZ-4713)
+* Update cache-invalidation example [DBZ-4754](https://issues.redhat.com/browse/DBZ-4754)
+* Switch from static yaml descriptors to dynamic objects [DBZ-4830](https://issues.redhat.com/browse/DBZ-4830)
+* Verify that snapshot deployments build and deploy javadocs [DBZ-4875](https://issues.redhat.com/browse/DBZ-4875)
+* DelayStrategy should accept Duration rather than long ms [DBZ-4902](https://issues.redhat.com/browse/DBZ-4902)
+* Use maven 3.8.4 version with enforcer plugin [DBZ-5069](https://issues.redhat.com/browse/DBZ-5069)
+* Add option for '*' wildcard usage testsuite preparation jenkins jobs [DBZ-5190](https://issues.redhat.com/browse/DBZ-5190)
+* Use the Maven wrapper in the Github and Jenkins workflows [DBZ-5207](https://issues.redhat.com/browse/DBZ-5207)
+* Improve performance of OracleConnectorIT shouldIgnoreAllTablesInExcludedSchemas test [DBZ-5226](https://issues.redhat.com/browse/DBZ-5226)
+* Document use of JAR artifact to build Debezium scripting SMT into Kafka Connect [DBZ-5227](https://issues.redhat.com/browse/DBZ-5227)
+* Create shared adoc fragments for specifying MBean name format in connector metrics sections [DBZ-5233](https://issues.redhat.com/browse/DBZ-5233)
+* Build Oracle connector by default without Maven profiles [DBZ-5234](https://issues.redhat.com/browse/DBZ-5234)
+* Remove reference to removed case insensitive option in Oracle README.md [DBZ-5250](https://issues.redhat.com/browse/DBZ-5250)
+* Several Oracle tests do not get database name from TestHelper [DBZ-5258](https://issues.redhat.com/browse/DBZ-5258)
+* Upgrade to Quarkus 2.10.0.Final [DBZ-5259](https://issues.redhat.com/browse/DBZ-5259)
+* Upgrade PostgreSQL driver to 42.4.0 [DBZ-5261](https://issues.redhat.com/browse/DBZ-5261)
+* Refactor ChangeEventQueue to better support n:1 threads [DBZ-5277](https://issues.redhat.com/browse/DBZ-5277)
+* Upgrade MongoDB driver to 4.6.1 [DBZ-5287](https://issues.redhat.com/browse/DBZ-5287)
+
+
+
 ## 2.0.0.Alpha2
 June 9th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385341)
 
