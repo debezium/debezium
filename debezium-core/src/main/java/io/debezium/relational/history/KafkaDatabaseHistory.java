@@ -5,33 +5,17 @@
  */
 package io.debezium.relational.history;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.Config;
-import org.apache.kafka.clients.admin.DescribeTopicsResult;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.admin.TopicDescription;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import io.debezium.DebeziumException;
+import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.config.Field.Validator;
+import io.debezium.document.DocumentReader;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
+import io.debezium.util.Collect;
+import io.debezium.util.Threads;
+import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -51,15 +35,15 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
-import io.debezium.annotation.NotThreadSafe;
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.config.Field.Validator;
-import io.debezium.document.DocumentReader;
-import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
-import io.debezium.util.Collect;
-import io.debezium.util.Threads;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * A {@link DatabaseHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
@@ -117,7 +101,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withValidation(KafkaDatabaseHistory.forKafka(Field::isRequired));
 
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
-            + "kafka.recovery.poll.interval.ms")
+                    + "kafka.recovery.poll.interval.ms")
             .withDisplayName("Poll interval during database history recovery (ms)")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 1))
@@ -194,8 +178,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         try {
             NewTopic.class.getConstructor(String.class, Optional.class, Optional.class);
             return true;
-        }
-        catch (NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException nsme) {
             return false;
         }
     }
@@ -231,7 +214,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 .withDefault(ProducerConfig.CLIENT_ID_CONFIG, dbHistoryName)
                 .withDefault(ProducerConfig.ACKS_CONFIG, 1)
                 .withDefault(ProducerConfig.RETRIES_CONFIG, 1) // may result in duplicate messages, but that's
-                                                               // okay
+                // okay
                 .withDefault(ProducerConfig.BATCH_SIZE_CONFIG, 1024 * 32) // 32KB
                 .withDefault(ProducerConfig.LINGER_MS_CONFIG, 0)
                 .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
@@ -250,8 +233,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnector>) Class.forName(connectorClassname),
                         config.getString(INTERNAL_CONNECTOR_ID), "db-history-config-check", true);
             }
-        }
-        catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) {
             throw new DebeziumException(e);
         }
     }
@@ -280,13 +262,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 LOGGER.debug("Stored record in topic '{}' partition {} at offset {} ",
                         metadata.topic(), metadata.partition(), metadata.offset());
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             LOGGER.trace("Interrupted before record was written into database history: {}", record);
             Thread.currentThread().interrupt();
             throw new DatabaseHistoryException(e);
-        }
-        catch (ExecutionException e) {
+        } catch (ExecutionException e) {
             throw new DatabaseHistoryException(e);
         }
     }
@@ -322,16 +302,14 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                             if (record.value() == null) {
                                 LOGGER.warn("Skipping null database history record. " +
                                         "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", topicName);
-                            }
-                            else {
+                            } else {
                                 HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
                                 LOGGER.trace("Recovering database history: {}", recordObj);
                                 if (recordObj == null || !recordObj.isValid()) {
                                     LOGGER.warn("Skipping invalid database history record '{}'. " +
-                                            "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
+                                                    "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
                                             recordObj, topicName);
-                                }
-                                else {
+                                } else {
                                     records.accept(recordObj);
                                     LOGGER.trace("Recovered database history: {}", recordObj);
                                 }
@@ -339,11 +317,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                             lastProcessedOffset = record.offset();
                             ++numRecordsProcessed;
                         }
-                    }
-                    catch (final IOException e) {
+                    } catch (final IOException e) {
                         LOGGER.error("Error while deserializing history record '{}'", record, e);
-                    }
-                    catch (final Exception e) {
+                    } catch (final Exception e) {
                         LOGGER.error("Unexpected exception while processing record '{}'", record, e);
                         throw e;
                     }
@@ -351,8 +327,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 if (numRecordsProcessed == 0) {
                     LOGGER.debug("No new records found in the database history; will retry");
                     recoveryAttempts++;
-                }
-                else {
+                } else {
                     LOGGER.debug("Processed {} records from database history", numRecordsProcessed);
                 }
             } while (lastProcessedOffset < endOffset - 1);
@@ -466,8 +441,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 }
 
                 LOGGER.info("Database history topic '{}' has correct settings", topicName);
-            }
-            catch (Throwable e) {
+            } catch (Throwable e) {
                 LOGGER.info("Attempted to validate database history topic but failed", e);
             }
             stopCheckTopicSettingsExecutor();
@@ -481,13 +455,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             if (this.producer != null) {
                 try {
                     this.producer.flush();
-                }
-                finally {
+                } finally {
                     this.producer.close(Duration.ofSeconds(30));
                 }
             }
-        }
-        finally {
+        } finally {
             this.producer = null;
             super.stop();
         }
@@ -527,8 +499,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 if (USE_KAFKA_24_NEW_TOPIC_CONSTRUCTOR) {
                     topic = new NewTopic(topicName, Optional.of(PARTITION_COUNT), Optional.empty());
                 }
-            }
-            catch (Exception ex) {
+            } catch (Exception ex) {
                 if (!(ex.getCause() instanceof UnsupportedVersionException)) {
                     throw ex;
                 }
@@ -547,8 +518,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             admin.createTopics(Collections.singleton(topic));
 
             LOGGER.info("Database history topic '{}' created", topic);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new ConnectException("Creation of database history topic failed, please create the topic manually", e);
         }
     }
@@ -562,8 +532,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             if (defaultReplicationFactorValue != null) {
                 return Short.parseShort(defaultReplicationFactorValue);
             }
-        }
-        catch (ExecutionException ex) {
+        } catch (ExecutionException ex) {
             // ignore UnsupportedVersionException, e.g. due to older broker version
             if (!(ex.getCause() instanceof UnsupportedVersionException)) {
                 throw ex;
