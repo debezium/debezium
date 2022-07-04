@@ -158,6 +158,7 @@
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>
         <module>debezium-schema-generator</module>
+        <module>debezium-history-compaction-tool</module>
     </modules>
 
     <distributionManagement>
