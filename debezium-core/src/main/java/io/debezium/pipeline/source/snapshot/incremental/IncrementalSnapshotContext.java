@@ -13,11 +13,11 @@ import io.debezium.relational.Table;
 
 public interface IncrementalSnapshotContext<T> {
 
-    T currentDataCollectionId();
+    DataCollection<T> currentDataCollectionId();
 
-    T nextDataCollection();
+    DataCollection<T> nextDataCollection();
 
-    List<T> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds);
+    List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition);
 
     int dataCollectionsToBeSnapshottedCount();
 

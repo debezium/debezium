@@ -5,6 +5,9 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -12,6 +15,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -111,6 +115,23 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         try (final JdbcConnection connection = databaseConnection()) {
             populateTable(connection);
         }
+    }
+
+    protected void populateTableWithSpecificValue(int startRow, int count, int value) throws SQLException {
+        try (final JdbcConnection connection = databaseConnection()) {
+            populateTableWithSpecificValue(connection, tableName(), startRow, count, value);
+        }
+    }
+
+    private void populateTableWithSpecificValue(JdbcConnection connection, String tableName, int startRow, int count, int value)
+            throws SQLException {
+        connection.setAutoCommit(false);
+        for (int i = startRow + 1; i <= startRow + count; i++) {
+            connection.executeWithoutCommitting(
+                    String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                            tableName, connection.quotedColumnIdString(pkFieldName()), count + i, value));
+        }
+        connection.commit();
     }
 
     protected void populateTables() throws SQLException {
@@ -226,13 +247,25 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.empty(), dataCollectionIds);
+    }
+
+    protected void sendAdHocSnapshotSignalWithAdditionalCondition(Optional<String> additionalCondition, String... dataCollectionIds) {
         final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
                 .map(x -> '"' + x + '"')
                 .collect(Collectors.joining(", "));
         try (final JdbcConnection connection = databaseConnection()) {
-            String query = String.format(
-                    "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
-                    signalTableName(), dataCollectionIdsList);
+            String query;
+            if (additionalCondition.isPresent()) {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s], \"additional-condition\": %s}')",
+                        signalTableName(), dataCollectionIdsList, additionalCondition.get());
+            }
+            else {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
+                        signalTableName(), dataCollectionIdsList);
+            }
             logger.info("Sending signal with query {}", query);
             connection.execute(query);
         }
@@ -848,6 +881,82 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
             }
         }
+    }
+
+    @Test
+    public void snapshotWithAdditionalCondition() throws Exception {
+        // Testing.Print.enable();
+
+        int expectedCount = 10, expectedValue = Integer.MAX_VALUE;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of(String.format("\"aa = %s\"", expectedValue)),
+                tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, null);
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> (((Struct) v.value()).getStruct("after")
+                .getInt32(valueFieldName())).equals(expectedValue)));
+    }
+
+    @Test
+    public void shouldExecuteRegularSnapshotWhenAdditionalConditionEmpty() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        final int recordsCount = ROW_COUNT;
+
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of("\"\""), tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(recordsCount,
+                x -> true, null);
+        assertEquals(recordsCount, dbChanges.size());
+    }
+
+    @Test
+    public void snapshotWithAdditionalConditionWithRestart() throws Exception {
+        // Testing.Print.enable();
+
+        int expectedCount = 1000, expectedValue = Integer.MAX_VALUE;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of(String.format("\"aa = %s\"", expectedValue)),
+                tableDataCollectionId());
+
+        final AtomicInteger recordCounter = new AtomicInteger();
+        final AtomicBoolean restarted = new AtomicBoolean();
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, x -> {
+                    if (recordCounter.addAndGet(x.size()) > 50 && !restarted.get()) {
+                        stopConnector();
+                        assertConnectorNotRunning();
+
+                        start(connectorClass(), config);
+                        waitForConnectorToStart();
+                        restarted.set(true);
+                    }
+                });
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> v.equals(expectedValue)));
     }
 
     protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {
