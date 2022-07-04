@@ -513,6 +513,10 @@ See the next section for more details.
 | An array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
 The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
+|`additional-condition`
+|Optional.Empty
+| An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
+subset of the contents of the {data-collection}(s).
 |===
 
 An example of the execute-snapshot Kafka message:
@@ -521,6 +525,39 @@ An example of the execute-snapshot Kafka message:
 Key = `test_connector`
 
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
+----
+
+==== Ad hoc read-only incremental snapshots with additional-condition
+
+* `additional-condition` is used to select a subset of a {data-collection}'s content.
+
+* To give an analogy how `additional-condition` is used:
+
+** For a snapshot, the SQL query executed behind the scenes is something like:
++
+SELECT * FROM _<tableName>_ ....
+
+** For a snapshot with a `additional-condition`, the `additional-condition` is appended to the SQL query, something like:
++
+SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....
+
+* Suppose there is a `products` {data-collection} with columns `id` (primary key), `color` and `brand`.
++
+To snapshot just the content of the `products` {data-collection} where `color=blue`
++
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue"}}`
+----
+
+* `additional-condition` can be used to pass condition based on multiple columns.
+Using the same `products` {data-collection}, to snapshot content of the `products` {data-collection} where `color=blue` and `brand=foo`
++
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=foo"}}`
 ----
 
 ==== Stopping an Ad hoc read-only incremental snapshot

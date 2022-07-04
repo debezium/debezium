@@ -6,6 +6,7 @@
 package io.debezium.pipeline.signal;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -45,11 +46,13 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
             return false;
         }
         SnapshotType type = getSnapshotType(signalPayload.data);
-        LOGGER.info("Requested '{}' snapshot of data collections '{}'", type, dataCollections);
+        Optional<String> additionalCondition = getAdditionalCondition(signalPayload.data);
+        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}'", type, dataCollections,
+                additionalCondition.orElse("No condition passed"));
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
-                        signalPayload.partition, dataCollections, signalPayload.offsetContext);
+                        signalPayload.partition, dataCollections, additionalCondition, signalPayload.offsetContext);
                 break;
         }
         return true;
@@ -68,4 +71,8 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                 .collect(Collectors.toList());
     }
 
+    public static Optional<String> getAdditionalCondition(Document data) {
+        String additionalCondition = data.getString(FIELD_ADDITIONAL_CONDITION);
+        return (additionalCondition == null || additionalCondition.trim().isEmpty()) ? Optional.empty() : Optional.of(additionalCondition);
+    }
 }

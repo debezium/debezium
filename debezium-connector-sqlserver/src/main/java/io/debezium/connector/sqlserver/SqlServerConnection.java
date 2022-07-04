@@ -534,7 +534,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     @Override
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
-                                           String orderBy) {
+                                           Optional<String> additionalCondition, String orderBy) {
         final StringBuilder sql = new StringBuilder("SELECT TOP ");
         sql
                 .append(limit)
@@ -546,6 +546,14 @@ public class SqlServerConnection extends JdbcConnection {
             sql
                     .append(" WHERE ")
                     .append(condition.get());
+            if (additionalCondition.isPresent()) {
+                sql.append(" AND ");
+                sql.append(additionalCondition.get());
+            }
+        }
+        else if (additionalCondition.isPresent()) {
+            sql.append(" WHERE ");
+            sql.append(additionalCondition.get());
         }
         sql
                 .append(" ORDER BY ")

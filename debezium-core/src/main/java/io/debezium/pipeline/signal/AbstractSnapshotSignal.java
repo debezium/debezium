@@ -19,6 +19,7 @@ public abstract class AbstractSnapshotSignal<P extends Partition> implements Sig
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotSignal.class);
     protected static final String FIELD_DATA_COLLECTIONS = "data-collections";
     protected static final String FIELD_TYPE = "type";
+    protected static final String FIELD_ADDITIONAL_CONDITION = "additional-condition";
 
     public enum SnapshotType {
         INCREMENTAL

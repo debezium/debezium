@@ -128,7 +128,53 @@ The array lists regular expressions which match {data-collection}s by their full
 Currently, the only valid option is the default value, `incremental`. +
 Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is optional. +
 If you do not specify a value, the connector runs an incremental snapshot.
+
+ifeval::['{context}' != 'mongodb']
+|`additional-condition`
+| An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
+subset of the contents of the {data-collection}s.
+endif::[]
 |===
+
+ifeval::['{context}' != 'mongodb']
++
+.Ad hoc incremental snapshots with additional-condition
+
+* `additional-condition` is used to select a subset of a {data-collection}'s content.
+
+* To give an analogy how `additional-condition` is used:
+
+** For a snapshot, the SQL query executed behind the scenes is something like:
++
+SELECT * FROM _<tableName>_ ....
+
+** For a snapshot with a `additional-condition`, the `additional-condition` is appended to the SQL query, something like:
++
+SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....
+
+** Send a SQL query to add the ad hoc incremental snapshot request to the signaling {data-collection}:
+[source,sql,indent=0,subs="+attributes"]
++
+----
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_"}');
+----
+* Suppose there is a `products` {data-collection} with columns `id` (primary key), `color` and `brand`.
++
+To snapshot just the content of the `products` {data-collection} where `color=blue`
++
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additonal-condition":"color=blue"}');
+----
+
+* `additional-condition` can be used to pass condition based on multiple columns.
+Using the same `products` {data-collection}, to snapshot content of the `products` {data-collection} where `color=blue` and `brand=foo`
++
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additonal-condition":"color=blue AND brand=foo"}');
+----
+endif::[]
 
 The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
 
