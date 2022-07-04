@@ -44,6 +44,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
+    public static final String ADDITIONAL_CONDITION_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_additional_condition";
 
     /**
      * @code(true) if window is opened and deduplication should be executed
@@ -59,6 +60,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     // incrementalSnapshotWindow{String from, String to}
     // State to be stored and recovered from offsets
     private final Queue<T> dataCollectionsToSnapshot = new LinkedList<>();
+
+    private Optional<String> additionalConditionToSnapshot = Optional.empty();
 
     private final boolean useCatalogBeforeSchema;
     /**
@@ -159,6 +162,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
+        if (additionalConditionToSnapshot != null && additionalConditionToSnapshot.isPresent()) {
+            offset.put(ADDITIONAL_CONDITION_SNAPSHOT_KEY, additionalConditionToSnapshot.get());
+        }
         return offset;
     }
 
@@ -173,6 +179,16 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         return newDataCollectionIds;
+    }
+
+    @Override
+    public void addAdditionalConditionToSnapshot(Optional<String> additionalCondition) {
+        additionalConditionToSnapshot = additionalCondition;
+    }
+
+    @Override
+    public Optional<String> getAdditionalConditionToSnapshot() {
+        return additionalConditionToSnapshot;
     }
 
     @Override
@@ -201,6 +217,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         if (dataCollectionsStr != null) {
             context.addDataCollectionNamesToSnapshot(context.stringToDataCollections(dataCollectionsStr));
         }
+        String additionalCondition = (String) offsets.get(ADDITIONAL_CONDITION_SNAPSHOT_KEY);
+        context.additionalConditionToSnapshot = Optional.ofNullable(additionalCondition);
         return context;
     }
 
@@ -289,6 +307,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return "IncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
                 + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + dataCollectionsToSnapshot
                 + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
-                + Arrays.toString(maximumKey) + "]";
+                + Arrays.toString(maximumKey) + ", additionalConditionToSnapshot="
+                + additionalConditionToSnapshot + "]";
     }
 }

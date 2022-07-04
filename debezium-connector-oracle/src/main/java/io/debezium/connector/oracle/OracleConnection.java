@@ -343,6 +343,7 @@ public class OracleConnection extends JdbcConnection {
                                            int limit,
                                            String projection,
                                            Optional<String> condition,
+                                           Optional<String> additionalCondition,
                                            String orderBy) {
         final TableId table = new TableId(null, tableId.schema(), tableId.table());
         final StringBuilder sql = new StringBuilder("SELECT ");
@@ -354,6 +355,14 @@ public class OracleConnection extends JdbcConnection {
             sql
                     .append(" WHERE ")
                     .append(condition.get());
+            if (additionalCondition.isPresent()) {
+                sql.append(" AND ");
+                sql.append(additionalCondition.get());
+            }
+        }
+        else if (additionalCondition.isPresent()) {
+            sql.append(" WHERE ");
+            sql.append(additionalCondition.get());
         }
         if (getOracleVersion().getMajor() < 12) {
             sql

@@ -283,6 +283,16 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         LOGGER.info("Incremental snapshot's schema verification passed = {}, schema = {}", schemaVerificationPassed, schema);
     }
 
+    @Override
+    public void addAdditionalConditionToSnapshot(Optional<String> additionalCondition) {
+        throw new UnsupportedOperationException("Not supported for MongoDB");
+    }
+
+    @Override
+    public Optional<String> getAdditionalConditionToSnapshot() {
+        throw new UnsupportedOperationException("Not supported for MongoDB");
+    }
+
     public static <U> MongoDbIncrementalSnapshotContext<U> load(Map<String, ?> offsets, boolean useCatalogBeforeSchema) {
         final MongoDbIncrementalSnapshotContext<U> context = new MongoDbIncrementalSnapshotContext<>(useCatalogBeforeSchema);
         init(context, offsets);

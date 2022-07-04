@@ -9,6 +9,7 @@ import static io.debezium.connector.mysql.GtidSet.GTID_DELIMITER;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -142,8 +143,8 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
         return snapshotOffset;
     }
 
-    public void enqueueDataCollectionsToSnapshot(List<String> dataCollectionIds, long signalOffset) {
-        executeSnapshotSignals.add(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset));
+    public void enqueueDataCollectionsToSnapshot(List<String> dataCollectionIds, long signalOffset, Optional<String> additionalCondition) {
+        executeSnapshotSignals.add(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset, additionalCondition));
     }
 
     public ExecuteSnapshotKafkaSignal getExecuteSnapshotSignals() {

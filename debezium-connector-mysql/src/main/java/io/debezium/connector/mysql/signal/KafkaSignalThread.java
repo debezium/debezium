@@ -8,6 +8,7 @@ package io.debezium.connector.mysql.signal;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
@@ -159,9 +160,11 @@ public class KafkaSignalThread<T extends DataCollectionId> {
         final List<String> dataCollections = ExecuteSnapshot.getDataCollections(data);
         if (dataCollections != null) {
             ExecuteSnapshot.SnapshotType snapshotType = ExecuteSnapshot.getSnapshotType(data);
-            LOGGER.info("Requested '{}' snapshot of data collections '{}'", snapshotType, dataCollections);
+            Optional<String> additionalCondition = ExecuteSnapshot.getAdditionalCondition(data);
+            LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}'", snapshotType, dataCollections,
+                    additionalCondition.orElse("No condition passed"));
             if (snapshotType == ExecuteSnapshot.SnapshotType.INCREMENTAL) {
-                eventSource.enqueueDataCollectionNamesToSnapshot(dataCollections, signalOffset);
+                eventSource.enqueueDataCollectionNamesToSnapshot(dataCollections, signalOffset, additionalCondition);
             }
         }
     }

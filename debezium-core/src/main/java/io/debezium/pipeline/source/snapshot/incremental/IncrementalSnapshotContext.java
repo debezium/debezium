@@ -57,6 +57,10 @@ public interface IncrementalSnapshotContext<T> {
 
     void setSchemaVerificationPassed(boolean schemaVerificationPassed);
 
+    void addAdditionalConditionToSnapshot(Optional<String> additionalCondition);
+
+    Optional<String> getAdditionalConditionToSnapshot();
+
     void stopSnapshot();
 
     boolean removeDataCollectionFromSnapshot(String dataCollectionId);
