@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
@@ -136,6 +137,38 @@ public class ColumnMappersTest {
         assertThat(converter).isNotNull();
         assertThat(converter.convert("1234")).isEqualTo("12341234");
         assertThat(converter.convert("a")).isEqualTo("aa");
+        assertThat(converter.convert(null)).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-5366")
+    public void shouldMaskStringsToMaskHashV1Column() {
+        String maskValue = "5944c66655670e4ce234df8529d452ba1cae10a641b9cd1583abf62585b8515a";
+
+        Configuration config = Configuration.create()
+                .with("column.mask.hash.SHA-256.with.salt.salt123", fullyQualifiedNames)
+                .build();
+
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0)); // exact case
+        converter = mappers.mappingConverterFor(tableId, column);
+        assertThat(converter).isNotNull();
+        assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
+        assertThat(converter.convert(null)).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-5366")
+    public void shouldMaskStringsToMaskHashV2Column() {
+        String maskValue = "b65875d34a3dedf070f3a012970bf3b5da424560d7be3d2c23b986b525d2d7f3";
+
+        Configuration config = Configuration.create()
+                .with("column.mask.hash.v2.SHA-256.with.salt.salt123", fullyQualifiedNames)
+                .build();
+
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0)); // exact case
+        converter = mappers.mappingConverterFor(tableId, column);
+        assertThat(converter).isNotNull();
+        assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
         assertThat(converter.convert(null)).isNull();
     }
 
