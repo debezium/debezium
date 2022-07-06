@@ -52,7 +52,7 @@ public class LogMinerQueryBuilderTest {
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private static final String OPERATION_CODES_LOB_ENABLED = "(1,2,3,9,10,11,29)";
-    private static final String OPERATION_CODES_LOB_DISABLED = "(1,2,3)";
+    private static final String OPERATION_CODES_LOB_DISABLED = "(1,2,3,255)";
 
     private OracleDatabaseSchema schema;
 
