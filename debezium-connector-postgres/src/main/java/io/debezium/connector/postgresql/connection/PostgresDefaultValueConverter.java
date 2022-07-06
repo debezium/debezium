@@ -42,7 +42,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresDefaultValueConverter.class);
 
     private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'(.*?)'");
-    private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_]+\\((?:.+(?:, ?.+)*)?\\)");
+    private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_.]+\\((?:.+(?:, ?.+)*)?\\)");
     private static final Set<String> TRIM_DATA_TYPES = Collect.unmodifiableSet("bit", "varbit", "bool", "numeric",
             "float4", "float8", "int2", "int4", "serial", "int8", "bigserial", "smallserial", "uuid", "date", "time",
             "timestamp", "timestamptz", "interval");
