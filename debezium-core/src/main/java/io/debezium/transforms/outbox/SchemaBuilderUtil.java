@@ -75,7 +75,8 @@ public class SchemaBuilderUtil {
                 }
                 return Schema.OPTIONAL_FLOAT64_SCHEMA;
             case ARRAY:
-                return SchemaBuilder.array(findArrayMemberSchema((ArrayNode) node)).optional().build();
+                ArrayNode arrayNode = (ArrayNode) node;
+                return arrayNode.isEmpty() ? null : SchemaBuilder.array(findArrayMemberSchema(arrayNode)).optional().build();
             case OBJECT:
                 return jsonNodeToSchema(node);
             default:
@@ -108,10 +109,6 @@ public class SchemaBuilderUtil {
     }
 
     private static Schema findArrayMemberSchema(ArrayNode array) throws ConnectException {
-        if (array.isEmpty()) {
-            return Schema.OPTIONAL_STRING_SCHEMA;
-        }
-
         final JsonNode sample = getFirstArrayElement(array);
         if (sample.isObject()) {
             return buildDocumentUnionSchema(array);
