@@ -20,38 +20,19 @@ public class SqlServerConnectorConfigTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfigTest.class);
 
     @Test
-    public void noDatabaseName() {
+    public void emptyDatabaseNames() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig().build());
         assertFalse(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
-    public void onlyDatabaseName() {
+    public void nonEmptyDatabaseNames() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
-                        .with(SqlServerConnectorConfig.DATABASE_NAME, "testDB")
+                        .with(SqlServerConnectorConfig.DATABASE_NAMES, "testDB1")
                         .build());
         assertTrue(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
-    }
-
-    @Test
-    public void onlyDatabaseNames() {
-        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
-                defaultConfig()
-                        .with(SqlServerConnectorConfig.DATABASE_NAMES, "testDB")
-                        .build());
-        assertTrue(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
-    }
-
-    @Test
-    public void databaseNameAndDatabaseNames() {
-        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
-                defaultConfig()
-                        .with(SqlServerConnectorConfig.DATABASE_NAME, "testDB")
-                        .with(SqlServerConnectorConfig.DATABASE_NAMES, "testDB")
-                        .build());
-        assertFalse(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     private Configuration.Builder defaultConfig() {

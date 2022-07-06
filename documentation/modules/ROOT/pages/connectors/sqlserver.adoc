@@ -204,10 +204,10 @@ _tableName_:: The name of the database table in which the change event occurred.
 For example, if `fulfillment` is the server name, and `dbo` is the schema name, and the database contains tables with the names `products`, `products_on_hand`, `customers`, and `orders`,
 the connector would stream change event records to the following Kafka topics:
 
-* `fulfillment.dbo.products`
-* `fulfillment.dbo.products_on_hand`
-* `fulfillment.dbo.customers`
-* `fulfillment.dbo.orders`
+* `fulfillment.testDB.dbo.products`
+* `fulfillment.testDB.dbo.products_on_hand`
+* `fulfillment.testDB.dbo.customers`
+* `fulfillment.testDB.dbo.orders`
 
 The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-sqlserver-connector-schema-change-topic[schema change topics], and xref:sqlserver-transaction-metadata[transaction metadata topics].
 
@@ -539,7 +539,7 @@ Every change event that captures a change to the `customers` table has the same 
             }
         ],
         "optional": false, // <3>
-        "name": "server1.dbo.customers.Key" // <4>
+        "name": "server1.testDB.dbo.customers.Key" // <4>
     },
     "payload": { // <5>
         "id": 1004
@@ -565,7 +565,7 @@ Every change event that captures a change to the `customers` table has the same 
 |Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
 
 |4
-|`server1.dbo.customers.Key`
+|`server1.dbo.testDB.customers.Key`
 a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-schema-name_._table-name_.`Key`. In this example: +
 
 * `server1` is the name of the connector that generated this event. +
@@ -657,7 +657,7 @@ The following example shows the value portion of a change event that the connect
           }
         ],
         "optional": true,
-        "name": "server1.dbo.customers.Value", // <2>
+        "name": "server1.dbo.testDB.customers.Value", // <2>
         "field": "before"
       },
       {
@@ -685,7 +685,7 @@ The following example shows the value portion of a change event that the connect
           }
         ],
         "optional": true,
-        "name": "server1.dbo.customers.Value",
+        "name": "server1.dbo.testDB.customers.Value",
         "field": "after"
       },
       {
@@ -764,7 +764,7 @@ The following example shows the value portion of a change event that the connect
       }
     ],
     "optional": false,
-    "name": "server1.dbo.customers.Envelope" // <4>
+    "name": "server1.dbo.testDB.customers.Envelope" // <4>
   },
   "payload": { // <5>
     "before": null, // <6>
@@ -807,7 +807,7 @@ The following example shows the value portion of a change event that the connect
 |`name`
 a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. +
  +
-`server1.dbo.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. +
+`server1.dbo.testDB.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. +
  +
  Names of schemas for `before` and `after` fields are of the form `_logicalName_._database-schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database.
  This means that when using the xref:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
@@ -818,7 +818,7 @@ a|`io.debezium.connector.sqlserver.Source` is the schema for the payload's `sour
 
 |4
 |`name`
-a|`server1.dbo.customers.Envelope` is the schema for the overall structure of the payload, where `server1` is the connector name, `dbo` is the database schema name, and `customers` is the table.
+a|`server1.dbo.testDB.customers.Envelope` is the schema for the overall structure of the payload, where `server1` is the connector name, `dbo` is the database schema name, and `customers` is the table.
 
 |5
 |`payload`
@@ -1094,11 +1094,11 @@ The following example shows a typical transaction boundary message:
   "event_count": 2,
   "data_collections": [
     {
-      "data_collection": "testDB.dbo.tablea",
+      "data_collection": "testDB.dbo.testDB.tablea",
       "event_count": 1
     },
     {
-      "data_collection": "testDB.dbo.tableb",
+      "data_collection": "testDB.dbo.testDB.tableb",
       "event_count": 1
     }
   ]
@@ -2060,12 +2060,6 @@ Can be omitted when using Kerberos authentication, which can be configured using
 |No default
 |Password to use when connecting to the SQL Server database server.
 
-|[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbname+`>>
-|No default
-|The name of the SQL Server database from which to stream the changes.
-ifdef::community[]
-Must not be used with `database.names`.
-endif::community[]
 |[[sqlserver-property-database-instance]] <<sqlserver-property-database-instance, `+database.instance+`>>
 |No default
 |Specifies the instance name of the link:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/database-engine-instances-sql-server?view=sql-server-latest#instances[SQL Server named instance].
@@ -2074,15 +2068,6 @@ ifdef::community[]
 |[[sqlserver-property-database-names]]<<sqlserver-property-database-names, `+database.names+`>>
 |No default
 |The comma-separated list of the SQL Server database names from which to stream the changes.
-Currently, only one database name is supported. Must not be used with `database.dbname`.
-
-This option is *experimental* and must not be used in production. Using it will make the behavior of the connector
-incompatible with the default configuration with no upgrade or downgrade path:
-
-* The connector will use different keys for its committed offset messages.
-* The SQL statements used in `snapshot.select.statement.overrides` will have to use the database name
-  as part of the fully-qualified table name.
-* The structure of the exposed connector metrics will be different.
 endif::community[]
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |No default

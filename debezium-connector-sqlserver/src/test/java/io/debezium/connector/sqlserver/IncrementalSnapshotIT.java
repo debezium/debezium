@@ -75,27 +75,27 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
 
     @Override
     protected String topicName() {
-        return "server1.dbo.a";
+        return "server1.testDB1.dbo.a";
     }
 
     @Override
     protected List<String> topicNames() {
-        return List.of("server1.dbo.a", "server1.dbo.b");
+        return List.of("server1.testDB1.dbo.a", "server1.testDB1.dbo.b");
     }
 
     @Override
     protected String tableName() {
-        return "testDB.dbo.a";
+        return "testDB1.dbo.a";
     }
 
     @Override
     protected List<String> tableNames() {
-        return List.of("testDB.dbo.a", "testDB.dbo.b");
+        return List.of("testDB1.dbo.a", "testDB1.dbo.b");
     }
 
     @Override
     protected String tableName(String table) {
-        return "testDB.dbo." + table;
+        return "testDB1.dbo." + table;
     }
 
     @Override
@@ -149,7 +149,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     protected Builder config() {
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB.dbo.debezium_signal")
+                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB1.dbo.debezium_signal")
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true);
     }
@@ -165,7 +165,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         }
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB.dbo.debezium_signal")
+                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB1.dbo.debezium_signal")
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
