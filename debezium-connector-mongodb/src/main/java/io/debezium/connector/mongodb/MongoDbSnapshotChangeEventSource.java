@@ -26,6 +26,8 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoQueryException;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -254,9 +256,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 // There is no ongoing snapshot, so look to see if our last recorded offset still exists in the oplog.
                 BsonTimestamp lastRecordedTs = offsetContext.lastOffsetTimestamp();
                 BsonTimestamp firstAvailableTs = primaryClient.execute("get oplog position", primary -> {
-                    MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                    Document firstEvent = oplog.find().sort(new Document("$natural", 1)).limit(1).first();
-                    return SourceInfo.extractEventTimestamp(firstEvent);
+                    return SourceInfo.extractEventTimestamp(getOplogEntry(primary, 1));
                 });
 
                 if (firstAvailableTs == null) {
@@ -293,9 +293,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             if (primaryClient != null) {
                 try {
                     primaryClient.execute("get oplog position", primary -> {
-                        MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-                        Document last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
-                        positions.put(replicaSet, last);
+                        positions.put(replicaSet, getOplogEntry(primary, -1));
                     });
                 }
                 finally {
@@ -307,6 +305,22 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         ctx.offset = new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false), positions);
+    }
+
+    private Document getOplogEntry(MongoClient primary, int sortOrder) throws MongoQueryException {
+        try {
+            MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs", Document.class);
+            return oplog.find().sort(new Document("$natural", sortOrder)).limit(1).first();
+        }
+        catch (MongoQueryException e) {
+            if (e.getMessage().contains("$natural:") && e.getMessage().contains("is not supported")) {
+                final String sortOrderType = sortOrder == -1 ? "descending" : "ascending";
+                // Amazon DocumentDB does not support $natural, assume no oplog entries when this occurs
+                LOGGER.info("Natural {} sort is not supported on oplog, treating situation as no oplog entry exists.", sortOrderType);
+                return null;
+            }
+            throw e;
+        }
     }
 
     private void createDataEvents(ChangeEventSourceContext sourceContext, MongoDbSnapshotContext snapshotContext, ReplicaSet replicaSet,
