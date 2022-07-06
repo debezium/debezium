@@ -103,7 +103,6 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
 
-    private final boolean multiPartitionMode;
     private final String getAllChangesForTable;
     private final int queryFetchSize;
 
@@ -122,8 +121,8 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
                                SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
-                               Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode) {
-        super(config, createConnectionFactory(multiPartitionMode), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
+                               Set<Envelope.Operation> skippedOperations) {
+        super(config, createConnectionFactory(), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
@@ -159,7 +158,6 @@ public class SqlServerConnection extends JdbcConnection {
 
         getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
                 Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement()));
-        this.multiPartitionMode = multiPartitionMode;
 
         this.optionRecompile = false;
     }
@@ -176,23 +174,14 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
                                SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
-                               Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode, boolean optionRecompile) {
-        this(config, sourceTimestampMode, valueConverters, classLoaderSupplier, skippedOperations, multiPartitionMode);
+                               Set<Envelope.Operation> skippedOperations, boolean optionRecompile) {
+        this(config, sourceTimestampMode, valueConverters, classLoaderSupplier, skippedOperations);
 
         this.optionRecompile = optionRecompile;
     }
 
-    private static String createUrlPattern(boolean multiPartitionMode) {
-        String pattern = URL_PATTERN;
-        if (!multiPartitionMode) {
-            pattern += ";databaseName=${" + JdbcConfiguration.DATABASE + "}";
-        }
-
-        return pattern;
-    }
-
-    private static ConnectionFactory createConnectionFactory(boolean multiPartitionMode) {
-        return JdbcConnection.patternBasedFactory(createUrlPattern(multiPartitionMode),
+    private static ConnectionFactory createConnectionFactory() {
+        return JdbcConnection.patternBasedFactory(URL_PATTERN,
                 SQLServerDriver.class.getName(),
                 SqlServerConnection.class.getClassLoader(),
                 JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
@@ -204,7 +193,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
-        return connectionString(createUrlPattern(multiPartitionMode));
+        return connectionString(URL_PATTERN);
     }
 
     @Override
@@ -349,11 +338,11 @@ public class SqlServerConnection extends JdbcConnection {
      * access to CDC table.
      *
      * @return boolean indicating the presence/absence of access
-     * @throws SQLException
      */
-    public boolean checkIfConnectedUserHasAccessToCDCTable() throws SQLException {
+    public boolean checkIfConnectedUserHasAccessToCDCTable(String databaseName) throws SQLException {
         final AtomicBoolean userHasAccess = new AtomicBoolean();
-        this.query("EXEC sys.sp_cdc_help_change_data_capture", rs -> userHasAccess.set(rs.next()));
+        final String query = replaceDatabaseNamePlaceholder("EXEC [#db].sys.sp_cdc_help_change_data_capture", databaseName);
+        this.query(query, rs -> userHasAccess.set(rs.next()));
         return userHasAccess.get();
     }
 
