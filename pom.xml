@@ -95,7 +95,7 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.1.0</version.kafka>
+        <version.kafka>3.2.0</version.kafka>
         <version.zookeeper>3.6.3</version.zookeeper>
         <!-- Kafka uses 2.12.3 but we need to bump due to CVE-2020-36518 before Kafka fixes it -->
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
