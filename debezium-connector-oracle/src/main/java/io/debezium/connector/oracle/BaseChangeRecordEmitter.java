@@ -29,7 +29,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
-import oracle.jdbc.OracleTypes;
 
 /**
  * Base class to emit change data based on a single entry event.
@@ -39,17 +38,20 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseChangeRecordEmitter.class);
 
     private final OracleConnectorConfig connectorConfig;
-    private final byte[] unavailableValuePlaceholderBinary;
+    private final ByteBuffer unavailableValuePlaceholderBinary;
     private final String unavailableValuePlaceholderString;
     private final Object[] oldColumnValues;
     private final Object[] newColumnValues;
+    private final OracleDatabaseSchema schema;
     protected final Table table;
 
     protected BaseChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset,
-                                      Table table, Clock clock, Object[] oldColumnValues, Object[] newColumnValues) {
+                                      OracleDatabaseSchema schema, Table table, Clock clock, Object[] oldColumnValues,
+                                      Object[] newColumnValues) {
         super(partition, offset, clock);
         this.connectorConfig = connectorConfig;
-        this.unavailableValuePlaceholderBinary = connectorConfig.getUnavailableValuePlaceholder();
+        this.schema = schema;
+        this.unavailableValuePlaceholderBinary = ByteBuffer.wrap(connectorConfig.getUnavailableValuePlaceholder());
         this.unavailableValuePlaceholderString = new String(connectorConfig.getUnavailableValuePlaceholder());
         this.oldColumnValues = oldColumnValues;
         this.newColumnValues = newColumnValues;
@@ -120,21 +122,14 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
      * @return list of columns that should be reselected, which can be empty
      */
     private List<Column> getReselectColumns(Struct newValue) {
-        // todo: eventually move this to the relational model to avoid needing to perform this iteration per change event
         final List<Column> reselectColumns = new ArrayList<>();
-        for (Column column : table.columns()) {
-            switch (column.jdbcType()) {
-                case OracleTypes.CLOB:
-                case OracleTypes.NCLOB:
-                    if (newValue.get(column.name()).equals(unavailableValuePlaceholderString)) {
-                        reselectColumns.add(column);
-                    }
-                    break;
-                case OracleTypes.BLOB:
-                    if (newValue.get(column.name()).equals(ByteBuffer.wrap(unavailableValuePlaceholderBinary))) {
-                        reselectColumns.add(column);
-                    }
-                    break;
+        for (Column column : schema.getLobColumnsForTable(table.id())) {
+            final Object value = newValue.get(column.name());
+            if (OracleDatabaseSchema.isClobColumn(column) && unavailableValuePlaceholderString.equals(value)) {
+                reselectColumns.add(column);
+            }
+            else if (OracleDatabaseSchema.isBlobColumn(column) && unavailableValuePlaceholderBinary.equals(value)) {
+                reselectColumns.add(column);
             }
         }
         return reselectColumns;
