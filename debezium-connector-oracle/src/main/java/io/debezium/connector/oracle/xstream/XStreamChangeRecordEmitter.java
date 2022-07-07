@@ -32,7 +32,7 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
                                       Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
                                       Table table, OracleDatabaseSchema schema, Clock clock) {
         super(connectorConfig, partition, offset, schema, table, clock, getColumnValues(table, lcr.getOldValues(), oldChunkValues),
-              getColumnValues(table, lcr.getNewValues(), newChunkValues));
+                getColumnValues(table, lcr.getNewValues(), newChunkValues));
         this.lcr = lcr;
     }
 
