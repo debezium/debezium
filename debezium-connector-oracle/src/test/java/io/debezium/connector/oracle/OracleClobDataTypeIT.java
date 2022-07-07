@@ -649,7 +649,6 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         // 2 deletes + 2 tombstones
         records = consumeRecordsByTopic(4);
         assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(4);
-        records.forEach(System.out::println);
 
         record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
@@ -1649,7 +1648,6 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             // but not merged since event merging happens only when LOB is enabled. Xstream handles
             // this automatically hence the reason why it has 1 less event in the stream.
             sourceRecords = consumeRecordsByTopic(logMinerAdapter ? 4 : 3);
-            sourceRecords.allRecordsInOrder().forEach(System.out::println);
             table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
             VerifyRecord.isValidDelete(table.get(0), "ID", 5);
             VerifyRecord.isValidTombstone(table.get(1), "ID", 5);
