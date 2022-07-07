@@ -6,12 +6,11 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
-
-import oracle.jdbc.OracleTypes;
 
 /**
  * A simple DML parser implementation specifically for Oracle LogMiner.
@@ -672,13 +671,10 @@ public class LogMinerDmlParser implements DmlParser {
             return value;
         }
 
-        switch (column.jdbcType()) {
-            case OracleTypes.CLOB:
-            case OracleTypes.NCLOB:
-            case OracleTypes.BLOB:
-                return OracleValueConverters.UNAVAILABLE_VALUE;
-            default:
-                return null;
+        if (OracleDatabaseSchema.isClobColumn(column) || OracleDatabaseSchema.isBlobColumn(column)) {
+            return OracleValueConverters.UNAVAILABLE_VALUE;
         }
+
+        return null;
     }
 }

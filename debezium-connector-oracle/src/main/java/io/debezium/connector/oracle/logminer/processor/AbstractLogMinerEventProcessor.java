@@ -402,6 +402,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                 dmlEvent.getDmlEntry().getOldValues(),
                                 dmlEvent.getDmlEntry().getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
+                                getSchema(),
                                 Clock.system());
                     }
                     else {
@@ -413,6 +414,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                 dmlEvent.getDmlEntry().getOldValues(),
                                 dmlEvent.getDmlEntry().getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
+                                getSchema(),
                                 Clock.system());
                     }
                     dispatcher.dispatchDataChangeEvent(partition, event.getTableId(), logMinerChangeRecordEmitter);
