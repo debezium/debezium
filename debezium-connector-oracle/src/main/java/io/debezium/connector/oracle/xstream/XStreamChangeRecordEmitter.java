@@ -9,6 +9,7 @@ import java.util.Map;
 
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
@@ -29,8 +30,8 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
     public XStreamChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
                                       Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
-                                      Table table, Clock clock) {
-        super(connectorConfig, partition, offset, table, clock, getColumnValues(table, lcr.getOldValues(), oldChunkValues),
+                                      Table table, OracleDatabaseSchema schema, Clock clock) {
+        super(connectorConfig, partition, offset, schema, table, clock, getColumnValues(table, lcr.getOldValues(), oldChunkValues),
               getColumnValues(table, lcr.getNewValues(), newChunkValues));
         this.lcr = lcr;
     }
