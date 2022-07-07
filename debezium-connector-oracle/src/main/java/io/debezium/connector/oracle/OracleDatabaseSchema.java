@@ -26,6 +26,7 @@ import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
+
 import oracle.jdbc.OracleTypes;
 
 /**

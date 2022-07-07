@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
-
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.logminer.events.EventType;

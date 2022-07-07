@@ -76,12 +76,13 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
 
     @Override
     protected void emitUpdateAsPrimaryKeyChangeRecord(Receiver receiver, TableSchema tableSchema, Struct oldKey,
-            Struct newKey, Struct oldValue, Struct newValue) throws InterruptedException {
+                                                      Struct newKey, Struct oldValue, Struct newValue)
+            throws InterruptedException {
         if (connectorConfig.isLobEnabled()) {
             final List<Column> reselectColumns = getReselectColumns(newValue);
             if (!reselectColumns.isEmpty()) {
                 LOGGER.info("Table '{}' primary key changed from '{}' to '{}' via an UPDATE, re-selecting LOB columns {} out of bands.",
-                            table.id(), oldKey, newKey, reselectColumns.stream().map(Column::name).collect(Collectors.toList()));
+                        table.id(), oldKey, newKey, reselectColumns.stream().map(Column::name).collect(Collectors.toList()));
 
                 final String query = getReselectQuery(reselectColumns, table);
                 final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
@@ -90,8 +91,8 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
                         connection.setSessionToPdb(connectorConfig.getPdbName());
                     }
                     connection.prepareQuery(query,
-                                            ps -> prepareReselectQueryStatement(ps, table, newKey),
-                                            rs -> updateNewValuesFromReselectQueryResults(rs, reselectColumns));
+                            ps -> prepareReselectQueryStatement(ps, table, newKey),
+                            rs -> updateNewValuesFromReselectQueryResults(rs, reselectColumns));
 
                     // newColumnValues have been updated via re-select, re-create the event's value
                     //
@@ -108,7 +109,6 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
         }
         super.emitUpdateAsPrimaryKeyChangeRecord(receiver, tableSchema, oldKey, newKey, oldValue, newValue);
     }
-
 
     /**
      * Returns a list of columns that should be reselected.
@@ -147,7 +147,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
         final TableId id = new TableId(null, table.id().schema(), table.id().table());
         final StringBuilder query = new StringBuilder("SELECT ")
                 .append(reselectColumns.stream().map(c -> '"' + c.name() + '"').collect(Collectors.joining(", ")))
-                .append(" FROM " )
+                .append(" FROM ")
                 .append(id.toDoubleQuotedString())
                 .append(" WHERE ");
 
