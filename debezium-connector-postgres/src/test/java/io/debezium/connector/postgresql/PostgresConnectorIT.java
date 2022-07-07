@@ -38,6 +38,7 @@ import java.util.stream.IntStream;
 
 import javax.management.InstanceNotFoundException;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -2840,6 +2841,58 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(recordsForTopic).hasSize(1);
         assertInsert(recordsForTopic.get(0), PK_FIELD, 1);
         System.out.println(recordsForTopic.get(0));
+    }
+
+    @Test
+    @FixFor("DBZ-5295")
+    public void shouldReselectToastColumnsOnPrimaryKeyChange() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+
+        final String toastValue1 = RandomStringUtils.randomAlphanumeric(10000);
+        final String toastValue2 = RandomStringUtils.randomAlphanumeric(10000);
+
+        TestHelper.execute("CREATE TABLE s1.dbz5295 (pk serial, data text, data2 text, primary key(pk));");
+        TestHelper.execute("ALTER TABLE s1.dbz5295 REPLICA IDENTITY FULL;");
+        TestHelper.execute("INSERT INTO s1.dbz5295 (pk,data,data2) values (1,'" + toastValue1 + "','" + toastValue2 + "');");
+
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz5295"));
+        assertThat(recordsForTopic).hasSize(1);
+
+        SourceRecord record = recordsForTopic.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("pk")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(toastValue1);
+        assertThat(after.get("data2")).isEqualTo(toastValue2);
+
+        TestHelper.execute("UPDATE s1.dbz5295 SET pk = 2 WHERE pk = 1;");
+
+        // The update of the primary key causes a DELETE and a CREATE, mingled with a TOMBSTONE
+        records = consumeRecordsByTopic(3);
+        recordsForTopic = records.recordsForTopic(topicName("s1.dbz5295"));
+        assertThat(recordsForTopic).hasSize(3);
+
+        // First event: DELETE
+        record = recordsForTopic.get(0);
+        VerifyRecord.isValidDelete(record, "pk", 1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after).isNull();
+
+        // Second event: TOMBSTONE
+        record = recordsForTopic.get(1);
+        VerifyRecord.isValidTombstone(record);
+
+        // Third event: CREATE
+        record = recordsForTopic.get(2);
+        VerifyRecord.isValidInsert(record, "pk", 2);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("pk")).isEqualTo(2);
+        assertThat(after.get("data")).isEqualTo(toastValue1);
+        assertThat(after.get("data2")).isEqualTo(toastValue2);
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
