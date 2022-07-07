@@ -223,7 +223,13 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         dispatcher.dispatchDataChangeEvent(
                 partition,
                 tableId,
-                new XStreamChangeRecordEmitter(partition, offsetContext, lcr, oldChunkValues, chunkValues,
+                new XStreamChangeRecordEmitter(
+                        connectorConfig,
+                        partition,
+                        offsetContext,
+                        lcr,
+                        oldChunkValues,
+                        chunkValues,
                         schema.tableFor(tableId), clock));
     }
 

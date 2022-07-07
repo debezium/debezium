@@ -396,6 +396,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         // a truncate event is seen by logminer as a DDL event type.
                         // So force this here to be a Truncate Operation.
                         logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                                connectorConfig,
                                 partition,
                                 offsetContext,
                                 Envelope.Operation.TRUNCATE,
@@ -406,6 +407,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     }
                     else {
                         logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                                connectorConfig,
                                 partition,
                                 offsetContext,
                                 dmlEvent.getEventType(),
