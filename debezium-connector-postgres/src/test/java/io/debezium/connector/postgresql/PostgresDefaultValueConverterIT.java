@@ -5,7 +5,11 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.SQLException;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -17,8 +21,13 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 
 public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
 
@@ -128,5 +137,43 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         Assertions.assertThat(valueSchema.field("after").schema().field("dvc4").schema().defaultValue()).isEqualTo("NULL");
         Assertions.assertThat(valueSchema.field("after").schema().field("dvc5").schema().defaultValue()).isEqualTo("NULL::character varying");
         Assertions.assertThat(valueSchema.field("after").schema().field("dvc6").schema().defaultValue()).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-5340")
+    @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 13, reason = "gen_random_uuid() available on PG13+ without explicitly using pgcrypto")
+    public void testShouldHandleDefaultValueFunctionsWithSchemaPrefixes() throws Exception {
+        final String ddl = "DROP SCHEMA IF EXISTS s1 CASCADE;"
+                + "CREATE SCHEMA s1;"
+                + "CREATE SCHEMA s2;"
+                + "CREATE OR REPLACE FUNCTION s2.tst_generate_random_uuid() returns uuid as 'select gen_random_uuid()' language sql;"
+                + "CREATE TABLE s1.dbz5340 (id uuid default s2.tst_generate_random_uuid() not null, data text);"
+                + "ALTER TABLE s1.dbz5340 REPLICA IDENTITY FULL;";
+
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresDefaultValueConverter.class);
+
+        TestHelper.execute(ddl);
+
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        assertThat(logInterceptor.containsMessage("Cannot parse column default value 's2.tst_generate_random_uuid()' to type 'uuid'")).isFalse();
+
+        // Verify default value sets the right schema value
+        TestHelper.execute("INSERT INTO s1.dbz5340 (data) values ('test');");
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz5340"));
+
+        assertThat(recordsForTopic).hasSize(1);
+
+        final Struct after = ((Struct) recordsForTopic.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("id")).isNotNull();
+        assertThat(after.get("data")).isEqualTo("test");
+
+        final Object defaultValue = after.schema().field("id").schema().defaultValue();
+        assertThat(defaultValue).isEqualTo("00000000-0000-0000-0000-000000000000");
     }
 }
