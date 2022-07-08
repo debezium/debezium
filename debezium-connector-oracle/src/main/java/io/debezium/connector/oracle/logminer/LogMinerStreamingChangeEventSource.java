@@ -77,6 +77,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final OracleTaskContext taskContext;
     private final ErrorHandler errorHandler;
     private final boolean isContinuousMining;
+    private final boolean committedDataOnly;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final OracleConnectorConfig connectorConfig;
     private final Duration archiveLogRetention;
@@ -98,6 +99,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.connectorConfig = connectorConfig;
         this.strategy = connectorConfig.getLogMiningStrategy();
         this.isContinuousMining = connectorConfig.isContinuousMining();
+        this.committedDataOnly = connectorConfig.isCommittedDataOnly();
         this.errorHandler = errorHandler;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
@@ -174,7 +176,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 currentRedoLogSequences = getCurrentRedoLogSequences();
                             }
 
-                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics);
+                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics, committedDataOnly);
 
                             stopwatch.start();
                             miningView.setFetchSize(connectorConfig.getMaxQueueSize());

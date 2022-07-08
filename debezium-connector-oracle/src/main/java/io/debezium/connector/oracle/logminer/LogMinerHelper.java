@@ -5,6 +5,21 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.Scn;
+import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -24,22 +39,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.JdbcConnection;
-import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
-import io.debezium.util.Strings;
 
 /**
  * This class contains methods to configure and manage LogMiner utility
@@ -237,6 +236,41 @@ public class LogMinerHelper {
             streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
         }
         catch (SQLException e) {
+            // Capture database state before throwing exception
+            logDatabaseState(connection);
+            throw e;
+        }
+        // todo dbms_logmnr.STRING_LITERALS_IN_STMT?
+        // todo If the log file is corrupted/bad, logmnr will not be able to access it, we have to switch to another one?
+    }
+
+    /**
+     * This method builds mining view to query changes from.
+     * This view is built for online redo log files.
+     * It starts log mining session.
+     * It uses data dictionary objects, incorporated in previous steps.
+     * It tracks DDL changes and mines committed data only.
+     *
+     * @param connection container level database connection
+     * @param startScn   the SCN to mine from
+     * @param endScn     the SCN to mine to
+     * @param strategy this is about dictionary location
+     * @param isContinuousMining works < 19 version only
+     * @param streamingMetrics the streaming metrics
+     * @throws SQLException if anything unexpected happens
+     */
+    static void startLogMining(OracleConnection connection, Scn startScn, Scn endScn,
+                               OracleConnectorConfig.LogMiningStrategy strategy
+            , boolean isContinuousMining, OracleStreamingChangeEventSourceMetrics streamingMetrics
+            , boolean committedDataOnly)
+            throws SQLException {
+        LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
+        String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining, committedDataOnly);
+        try {
+            Instant start = Instant.now();
+            executeCallableStatement(connection, statement);
+            streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
+        } catch (SQLException e) {
             // Capture database state before throwing exception
             logDatabaseState(connection);
             throw e;

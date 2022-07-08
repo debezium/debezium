@@ -212,6 +212,38 @@ public class SqlUtils {
                 "END;";
     }
 
+    // ***** LogMiner methods ***
+    /**
+     * This returns statement to build LogMiner view for online redo log files
+     * @param startScn mine from
+     * @param endScn mine till
+     * @param strategy Log Mining strategy
+     * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
+     */
+    static String startLogMinerStatement(Scn startScn, Scn endScn
+            , OracleConnectorConfig.LogMiningStrategy strategy
+            , boolean isContinuousMining
+            , boolean committedDataOnly) {
+        String miningStrategy;
+        if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
+            miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
+        } else {
+            miningStrategy = "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
+        }
+        if (isContinuousMining) {
+            miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
+        }
+        if (committedDataOnly){
+            miningStrategy += " + DBMS_LOGMNR.COMMITTED_DATA_ONLY ";
+        }
+            return "BEGIN sys.dbms_logmnr.start_logmnr(" +
+                    "startScn => '" + startScn + "', " +
+                    "endScn => '" + endScn + "', " +
+                    "OPTIONS => " + miningStrategy +
+                    " + DBMS_LOGMNR.NO_ROWID_IN_STMT);" +
+                    "END;";
+    }
+
     /**
      * This is the query from the LogMiner view to get changes.
      *
