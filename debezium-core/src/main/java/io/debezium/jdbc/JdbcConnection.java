@@ -1319,6 +1319,7 @@ public class JdbcConnection implements AutoCloseable {
 
     public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> uniqueIndexColumnNames = new ArrayList<>();
+        final List<String> excludedIndexNames = new ArrayList<>();
         try (ResultSet rs = metadata.getIndexInfo(id.catalog(), id.schema(), id.table(), true, true)) {
             String firstIndexName = null;
             while (rs.next()) {
@@ -1328,10 +1329,20 @@ public class JdbcConnection implements AutoCloseable {
                 if (firstIndexName == null) {
                     firstIndexName = indexName;
                 }
-                if (!isTableUniqueIndexIncluded(indexName, columnName)) {
-                    continue;
+                if (indexName != null) {
+                    boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
+                    if (!indexIncluded && !excludedIndexNames.contains(indexName)) {
+                        excludedIndexNames.add(indexName);
+                    }
+                    if (excludedIndexNames.contains(indexName)) {
+                        // index has been excluded, skip further processing
+                        if (!uniqueIndexColumnNames.isEmpty()) {
+                            uniqueIndexColumnNames.clear();
+                        }
+                        continue;
+                    }
                 }
-                // Only first unique index is taken into consideration
+                // Only first non-excluded unique index is taken into consideration
                 if (indexName != null && !indexName.equals(firstIndexName)) {
                     return uniqueIndexColumnNames;
                 }
