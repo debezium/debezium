@@ -4176,6 +4176,30 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5356")
+    public void shouldUniqueIndexWhenAtLeastOneColumnIsExcluded() throws Exception {
+        TestHelper.dropTable(connection, "dbz5356");
+        try {
+            connection.execute("CREATE TABLE dbz5356 (id numeric(9,0), data varchar2(50))");
+            connection.execute("CREATE UNIQUE INDEX dbz5356_idx ON dbz5356 (upper(data), id)");
+            TestHelper.streamTable(connection, "dbz5356");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5356")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5356");
+        }
+    }
+
     private void testTableWithForwardSlashes(String tableName, String topicTableName) throws Exception {
         final String quotedTableName = "\"" + tableName + "\"";
         TestHelper.dropTable(connection, quotedTableName);

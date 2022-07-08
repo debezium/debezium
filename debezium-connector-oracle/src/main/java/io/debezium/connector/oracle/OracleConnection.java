@@ -56,6 +56,11 @@ public class OracleConnection extends JdbcConnection {
     private static final Pattern ADT_INDEX_NAMES_PATTERN = Pattern.compile("^\".*\"\\.\".*\".*");
 
     /**
+     * Pattern to identify a hidden column based on redefining a table with the {@code ROWID} option.
+     */
+    private static final Pattern MROW_PATTERN = Pattern.compile("^M_ROW\\$\\$");
+
+    /**
      * A field for the raw jdbc url. This field has no default value.
      */
     private static final Field URL = Field.create("url", "Raw JDBC url");
@@ -228,7 +233,9 @@ public class OracleConnection extends JdbcConnection {
     @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
         if (columnName != null) {
-            return !SYS_NC_PATTERN.matcher(columnName).matches() && !ADT_INDEX_NAMES_PATTERN.matcher(columnName).matches();
+            return !SYS_NC_PATTERN.matcher(columnName).matches()
+                    && !ADT_INDEX_NAMES_PATTERN.matcher(columnName).matches()
+                    && !MROW_PATTERN.matcher(columnName).matches();
         }
         return false;
     }
