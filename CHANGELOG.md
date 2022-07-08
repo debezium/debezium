@@ -2,6 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.5.Final
+July 8th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12390730)
+
+### New features since 1.9.4.Final
+
+* Correct documentation of Event Router in expand.json mode [DBZ-5296](https://issues.redhat.com/browse/DBZ-5296)
+* Allow the maven version is greater than the current 3.8.4 [DBZ-5299](https://issues.redhat.com/browse/DBZ-5299)
+
+
+### Breaking changes since 1.9.4.Final
+
+None
+
+
+### Fixes since 1.9.4.Final
+
+* Data duplication problem using postgresql source on debezium server [DBZ-5070](https://issues.redhat.com/browse/DBZ-5070)
+* Dupicate SCNs on Oracle RAC installations incorrectly processed [DBZ-5245](https://issues.redhat.com/browse/DBZ-5245)
+* NPE when using Debezium Embedded in Quarkus [DBZ-5251](https://issues.redhat.com/browse/DBZ-5251)
+* No changes to commit_scn when oracle-connector got new lob data [DBZ-5266](https://issues.redhat.com/browse/DBZ-5266)
+* database.history.store.only.captured.tables.ddl not suppressing logs [DBZ-5270](https://issues.redhat.com/browse/DBZ-5270)
+* Debezium server fail when connect to Azure Event Hubs [DBZ-5279](https://issues.redhat.com/browse/DBZ-5279)
+* ORA-01086 savepoint never established raised when database history topic cannot be created or does not exist [DBZ-5281](https://issues.redhat.com/browse/DBZ-5281)
+* Enabling database.history.store.only.captured.tables.ddl does not restrict history topic records [DBZ-5285](https://issues.redhat.com/browse/DBZ-5285)
+* Snapshot fails when table's relational model is created using an abstract data type as unique index [DBZ-5300](https://issues.redhat.com/browse/DBZ-5300)
+* Incremental Snapshot: Oracle table name parsing does not support periods in DB name [DBZ-5336](https://issues.redhat.com/browse/DBZ-5336)
+* Support PostgreSQL default value function calls with schema prefixes [DBZ-5340](https://issues.redhat.com/browse/DBZ-5340)
+* Log a warning when an unsupported LogMiner operation is detected for a captured table [DBZ-5351](https://issues.redhat.com/browse/DBZ-5351)
+* MySQL Connector column hash v2 does not work [DBZ-5366](https://issues.redhat.com/browse/DBZ-5366)
+* Outbox JSON expansion fails when nested arrays contain no elements [DBZ-5367](https://issues.redhat.com/browse/DBZ-5367)
+* docker-maven-plugin needs to be upgraded for Mac Apple M1 [DBZ-5369](https://issues.redhat.com/browse/DBZ-5369)
+
+
+### Other changes since 1.9.4.Final
+
+* Document use of JAR artifact to build Debezium scripting SMT into Kafka Connect [DBZ-5227](https://issues.redhat.com/browse/DBZ-5227)
+* Build Oracle connector by default without Maven profiles [DBZ-5234](https://issues.redhat.com/browse/DBZ-5234)
+* Remove reference to removed case insensitive option in Oracle README.md [DBZ-5250](https://issues.redhat.com/browse/DBZ-5250)
+* LogMinerHelperIT tests fail when executed against a multi-node Oracle RAC cluster [DBZ-5301](https://issues.redhat.com/browse/DBZ-5301)
+* Support skipping tests based on whether V$OPTION is enabled or disabled [DBZ-5303](https://issues.redhat.com/browse/DBZ-5303)
+* Upgrade to Apache Kafka 3.2.0 [DBZ-5346](https://issues.redhat.com/browse/DBZ-5346)
+* Oracle GitHub actions workflow no longer run tests on pushes [DBZ-5349](https://issues.redhat.com/browse/DBZ-5349)
+
+
+
 ## 1.9.4.Final
 June 21st 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12389859)
 
