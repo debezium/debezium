@@ -35,11 +35,11 @@
             <artifactId>ojdbc8</artifactId>
             <scope>provided</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>com.oracle.instantclient</groupId>-->
-<!--            <artifactId>xstreams</artifactId>-->
-<!--            <scope>provided</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.oracle.instantclient</groupId>
+            <artifactId>xstreams</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
               <groupId>org.antlr</groupId>
               <artifactId>antlr4-runtime</artifactId>
