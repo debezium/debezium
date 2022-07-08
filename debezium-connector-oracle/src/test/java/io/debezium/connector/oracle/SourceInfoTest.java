@@ -59,6 +59,7 @@ public class SourceInfoTest {
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
                 .field("txId", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("userName", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("scn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("commit_scn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("lcr_position", Schema.OPTIONAL_STRING_SCHEMA)

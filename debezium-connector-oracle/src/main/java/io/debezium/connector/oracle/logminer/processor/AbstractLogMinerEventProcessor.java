@@ -380,6 +380,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 offsetContext.setEventScn(event.getScn());
                 offsetContext.setTransactionId(transactionId);
+                offsetContext.setUserName(transaction.getUserName());
                 offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 offsetContext.setTableId(event.getTableId());
                 offsetContext.setRedoThread(row.getThread());
