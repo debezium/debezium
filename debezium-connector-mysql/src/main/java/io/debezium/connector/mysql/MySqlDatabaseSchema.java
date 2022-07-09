@@ -291,15 +291,30 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private void emitChangeEvent(MySqlPartition partition, MySqlOffsetContext offset, List<SchemaChangeEvent> schemaChangeEvents,
                                  final String sanitizedDbName, Event event, TableId tableId, SchemaChangeEventType type,
                                  boolean snapshot) {
-        schemaChangeEvents.add(SchemaChangeEvent.of(
-                type,
-                partition,
-                offset,
-                sanitizedDbName,
-                null,
-                event.statement(),
-                tableId != null ? tableFor(tableId) : null,
-                snapshot));
+        SchemaChangeEvent schemaChangeEvent;
+        if (type.equals(SchemaChangeEventType.ALTER) && event instanceof TableAlteredEvent
+                && ((TableAlteredEvent) event).previousTableId() != null) {
+            schemaChangeEvent = SchemaChangeEvent.ofRename(
+                    partition,
+                    offset,
+                    sanitizedDbName,
+                    null,
+                    event.statement(),
+                    tableId != null ? tableFor(tableId) : null,
+                    ((TableAlteredEvent) event).previousTableId());
+        }
+        else {
+            schemaChangeEvent = SchemaChangeEvent.of(
+                    type,
+                    partition,
+                    offset,
+                    sanitizedDbName,
+                    null,
+                    event.statement(),
+                    tableId != null ? tableFor(tableId) : null,
+                    snapshot);
+        }
+        schemaChangeEvents.add(schemaChangeEvent);
     }
 
     private boolean acceptableDatabase(final String databaseName) {
