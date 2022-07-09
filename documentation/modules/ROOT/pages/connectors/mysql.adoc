@@ -1614,6 +1614,15 @@ converters=boolean
 boolean.type=io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter
 boolean.selector=db1.table1.*, db1.table2.column1
 ----
+* NOTE: MySQL8 not showing the length of `tinyint unsigned` type when snapshot executes `SHOW CREATE TABLE`, which means this converter doesn't work. The new option `length.checker` can solve this issue, the default value is `true`. Disable the `length.checker` and specify the columns that need to be converted to `selector` property instead of converting all columns based on type, as shown in the following example:
++
+[source]
+----
+converters=boolean
+boolean.type=io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter
+boolean.length.checker=false
+boolean.selector=db1.table1.*, db1.table2.column1
+----
 
 [id="mysql-spatial-types"]
 === Spatial types

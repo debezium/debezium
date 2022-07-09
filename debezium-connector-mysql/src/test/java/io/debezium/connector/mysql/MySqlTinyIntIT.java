@@ -158,6 +158,35 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-5343")
+    public void shouldHandleMySQL8TinyIntAsBoolean() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, "none")
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ5236"))
+                .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "boolean")
+                .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .with("boolean.length.checker", "false")
+                .with("boolean.selector", ".*DBZ5236.ti2,.*DBZ5236.ti3")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        consumeInitial();
+
+        assertUnsignedBooleanChangeRecord();
+
+        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("INSERT INTO DBZ5236 VALUES (DEFAULT, 1, 1, 0)");
+        }
+        assertUnsignedBooleanChangeRecord();
+
+        stopConnector();
+    }
+
     private void consumeInitial() throws InterruptedException {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
