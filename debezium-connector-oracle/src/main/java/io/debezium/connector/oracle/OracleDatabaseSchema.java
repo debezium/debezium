@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +41,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private final OracleDdlParser ddlParser;
     private final ConcurrentMap<TableId, List<Column>> lobColumnsByTableId = new ConcurrentHashMap<>();
+    private final OracleValueConverters valueConverters;
 
     private boolean storageInitializationExecuted = false;
 
@@ -59,6 +61,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper());
 
+        this.valueConverters = valueConverters;
         this.ddlParser = new OracleDdlParser(
                 true,
                 false,
@@ -69,6 +72,10 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public Tables getTables() {
         return tables();
+    }
+
+    public OracleValueConverters getValueConverters() {
+        return valueConverters;
     }
 
     @Override
@@ -145,16 +152,36 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
+     * Returns whether the specified value is the unavailable value placeholder for an LOB column.
+     */
+    public boolean isColumnUnavailableValuePlaceholder(Column column, Object value) {
+        if (isClobColumn(column)) {
+            return valueConverters.getUnavailableValuePlaceholderString().equals(value);
+        }
+        else if (isBlobColumn(column)) {
+            return ByteBuffer.wrap(valueConverters.getUnavailableValuePlaceholderBinary()).equals(value);
+        }
+        return false;
+    }
+
+    /**
+     * Return whether the provided relational column model is a LOB data type.
+     */
+    public static boolean isLobColumn(Column column) {
+        return isClobColumn(column) || isBlobColumn(column);
+    }
+
+    /**
      * Returns whether the provided relational column model is a CLOB or NCLOB data type.
      */
-    public static boolean isClobColumn(Column column) {
+    private static boolean isClobColumn(Column column) {
         return column.jdbcType() == OracleTypes.CLOB || column.jdbcType() == OracleTypes.NCLOB;
     }
 
     /**
      * Returns whether the provided relational column model is a CLOB data type.
      */
-    public static boolean isBlobColumn(Column column) {
+    private static boolean isBlobColumn(Column column) {
         return column.jdbcType() == OracleTypes.BLOB;
     }
 

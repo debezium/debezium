@@ -667,14 +667,9 @@ public class LogMinerDmlParser implements DmlParser {
     }
 
     private Object getColumnUnavailableValue(Object value, Column column) {
-        if (value != null) {
-            return value;
-        }
-
-        if (OracleDatabaseSchema.isClobColumn(column) || OracleDatabaseSchema.isBlobColumn(column)) {
+        if (value == null && OracleDatabaseSchema.isLobColumn(column)) {
             return OracleValueConverters.UNAVAILABLE_VALUE;
         }
-
-        return null;
+        return value;
     }
 }
