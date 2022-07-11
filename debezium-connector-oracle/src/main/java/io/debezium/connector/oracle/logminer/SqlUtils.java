@@ -237,7 +237,8 @@ public class SqlUtils {
         String miningStrategy;
         if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
-        } else {
+        }
+        else {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
         }
         if (isContinuousMining) {

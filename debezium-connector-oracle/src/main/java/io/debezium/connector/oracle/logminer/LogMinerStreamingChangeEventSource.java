@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -83,6 +84,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final OracleConnectorConfig connectorConfig;
     private final Duration archiveLogRetention;
 
+    private Scn initScn;
+
     private Scn startScn;
     private Scn endScn;
     private List<BigInteger> currentRedoLogSequences;
@@ -102,6 +105,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.isContinuousMining = connectorConfig.isContinuousMining();
         this.committedDataOnly = connectorConfig.isCommittedDataOnly();
         this.extOptions = connectorConfig.getExtOptions();
+        this.initScn = connectorConfig.getInitScn() == 0 ? null : new Scn(BigInteger.valueOf(connectorConfig.getInitScn()));
         this.errorHandler = errorHandler;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
@@ -124,7 +128,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     public void execute(ChangeEventSourceContext context) {
         try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(schema, clock, errorHandler, streamingMetrics)) {
             try {
-                startScn = offsetContext.getScn();
+                startScn = Objects.isNull(initScn) ? offsetContext.getScn() : initScn;
                 createFlushTable(jdbcConnection);
 
                 if (!isContinuousMining && startScn.compareTo(getFirstOnlineLogScn(jdbcConnection, archiveLogRetention)) < 0) {
@@ -178,8 +182,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 currentRedoLogSequences = getCurrentRedoLogSequences();
                             }
 
-                            startLogMining(jdbcConnection, startScn, endScn, strategy
-                                    , isContinuousMining, streamingMetrics, committedDataOnly, extOptions);
+                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics, committedDataOnly, extOptions);
 
                             stopwatch.start();
                             miningView.setFetchSize(connectorConfig.getMaxQueueSize());

@@ -265,13 +265,13 @@ public class LogMinerHelper {
                                boolean committedDataOnly, String extOptions)
             throws SQLException {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
-        String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy
-                , isContinuousMining, committedDataOnly, extOptions);
+        String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining, committedDataOnly, extOptions);
         try {
             Instant start = Instant.now();
             executeCallableStatement(connection, statement);
             streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             // Capture database state before throwing exception
             logDatabaseState(connection);
             throw e;
