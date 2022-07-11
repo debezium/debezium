@@ -21,6 +21,7 @@ class TableEditorImpl implements TableEditor {
     private boolean uniqueValues = false;
     private String defaultCharsetName;
     private String comment;
+    private LinkedHashMap<String, Attribute> attributes = new LinkedHashMap<>();
 
     protected TableEditorImpl() {
     }
@@ -232,6 +233,40 @@ class TableEditorImpl implements TableEditor {
         return this;
     }
 
+    @Override
+    public List<Attribute> attributes() {
+        return Collections.unmodifiableList(new ArrayList<>(attributes.values()));
+    }
+
+    @Override
+    public Attribute attributeWithName(String attributeName) {
+        return attributes.get(attributeName.toLowerCase());
+    }
+
+    @Override
+    public TableEditor addAttribute(Attribute attribute) {
+        if (attribute != null) {
+            attributes.put(attribute.name().toLowerCase(), attribute);
+        }
+        return this;
+    }
+
+    @Override
+    public TableEditor addAttributes(List<Attribute> attributes) {
+        for (Attribute attribute : attributes) {
+            addAttribute(attribute);
+        }
+        return this;
+    }
+
+    @Override
+    public TableEditor removeAttribute(String attributeName) {
+        if (attributeName != null) {
+            attributes.remove(attributeName.toLowerCase());
+        }
+        return this;
+    }
+
     protected void updatePositions() {
         AtomicInteger position = new AtomicInteger(1);
         sortedColumns.replaceAll((name, defn) -> {
@@ -265,6 +300,7 @@ class TableEditorImpl implements TableEditor {
             columns.add(column);
         });
         updatePrimaryKeys();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment);
+        List<Attribute> attributes = new ArrayList<>(this.attributes.values());
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes);
     }
 }

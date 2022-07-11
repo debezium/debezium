@@ -217,7 +217,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                             .collect(Collectors.toList());
 
                     snapshotContext.tables.overwriteTable(sourceTable.id(), cdcEnabledSourceColumns,
-                            cdcEnabledPkColumns, sourceTable.defaultCharsetName());
+                            cdcEnabledPkColumns, sourceTable.defaultCharsetName(), sourceTable.attributes());
                 }
             });
         }

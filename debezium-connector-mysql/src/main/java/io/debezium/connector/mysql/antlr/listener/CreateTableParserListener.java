@@ -81,7 +81,7 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         TableId originalTableId = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
         Table original = parser.databaseTables().forTable(originalTableId);
         if (original != null) {
-            parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName());
+            parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName(), original.attributes());
             parser.signalCreateTable(tableId, ctx);
         }
         super.exitCopyCreateTable(ctx);

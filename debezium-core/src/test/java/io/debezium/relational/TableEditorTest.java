@@ -21,12 +21,14 @@ public class TableEditorTest {
     private TableEditor editor;
     private Table table;
     private ColumnEditor columnEditor;
+    private AttributeEditor attributeEditor;
 
     @Before
     public void beforeEach() {
         editor = Table.editor();
         table = null;
         columnEditor = Column.editor();
+        attributeEditor = Attribute.editor();
     }
 
     @Test
@@ -34,6 +36,12 @@ public class TableEditorTest {
         assertThat(editor.columnWithName("any")).isNull();
         assertThat(editor.columns()).isEmpty();
         assertThat(editor.primaryKeyColumnNames()).isEmpty();
+    }
+
+    @Test
+    public void shouldNotHaveAnyAttributesIfEmpty() {
+        assertThat(editor.attributeWithName("any")).isNull();
+        assertThat(editor.attributes()).isEmpty();
     }
 
     @Test(expected = IllegalStateException.class)

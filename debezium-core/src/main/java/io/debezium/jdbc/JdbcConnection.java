@@ -54,6 +54,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -1160,6 +1161,8 @@ public class JdbcConnection implements AutoCloseable {
         final Set<TableId> viewIds = new HashSet<>();
         final Set<TableId> tableIds = new HashSet<>();
 
+        Map<TableId, List<Attribute>> attributesByTable = new HashMap<>();
+
         int totalTables = 0;
         try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
             while (rs.next()) {
@@ -1172,11 +1175,13 @@ public class JdbcConnection implements AutoCloseable {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
+                        attributesByTable.putAll(getAttributeDetails(tableId));
                     }
                 }
                 else {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     viewIds.add(tableId);
+                    attributesByTable.putAll(getAttributeDetails(tableId));
                 }
             }
         }
@@ -1205,7 +1210,8 @@ public class JdbcConnection implements AutoCloseable {
             List<Column> columns = tableEntry.getValue();
             Collections.sort(columns);
             String defaultCharsetName = null; // JDBC does not expose character sets
-            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName);
+            List<Attribute> attributes = attributesByTable.getOrDefault(tableEntry.getKey(), Collections.emptyList());
+            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName, attributes);
         }
 
         if (removeTablesNotFoundInJdbc) {
@@ -1254,6 +1260,11 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return columnsByTable;
+    }
+
+    protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId) {
+        // no-op, allows connectors to populate table attributes during relational table creation
+        return Collections.emptyMap();
     }
 
     /**

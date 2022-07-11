@@ -18,6 +18,7 @@ import org.junit.Test;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -73,6 +74,8 @@ public class HistoryRecordTest {
                         .create())
                 .setPrimaryKeyNames("first")
                 .setComment("table comment")
+                .addAttribute(Attribute.editor().name("object_id").value("12345").create())
+                .addAttribute(Attribute.editor().name("other").value("test").create())
                 .create();
 
         TableChanges tableChanges = new TableChanges().create(table);
