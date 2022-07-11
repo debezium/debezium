@@ -24,7 +24,7 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String COMMIT_SCN_KEY = "commit_scn";
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
-    public static final String USERNAME_KEY = "userName";
+    public static final String USERNAME_KEY = "user_name";
 
     private Scn scn;
     private CommitScn commitScn;
