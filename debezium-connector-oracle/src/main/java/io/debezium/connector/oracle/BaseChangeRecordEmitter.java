@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -38,8 +37,6 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseChangeRecordEmitter.class);
 
     private final OracleConnectorConfig connectorConfig;
-    private final ByteBuffer unavailableValuePlaceholderBinary;
-    private final String unavailableValuePlaceholderString;
     private final Object[] oldColumnValues;
     private final Object[] newColumnValues;
     private final OracleDatabaseSchema schema;
@@ -51,8 +48,6 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
         super(partition, offset, clock);
         this.connectorConfig = connectorConfig;
         this.schema = schema;
-        this.unavailableValuePlaceholderBinary = ByteBuffer.wrap(connectorConfig.getUnavailableValuePlaceholder());
-        this.unavailableValuePlaceholderString = new String(connectorConfig.getUnavailableValuePlaceholder());
         this.oldColumnValues = oldColumnValues;
         this.newColumnValues = newColumnValues;
         this.table = table;
@@ -84,9 +79,9 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
                 LOGGER.info("Table '{}' primary key changed from '{}' to '{}' via an UPDATE, re-selecting LOB columns {} out of bands.",
                         table.id(), oldKey, newKey, reselectColumns.stream().map(Column::name).collect(Collectors.toList()));
 
-                final String query = getReselectQuery(reselectColumns, table);
                 final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
                 try (OracleConnection connection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader(), false)) {
+                    final String query = getReselectQuery(reselectColumns, table, connection);
                     if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
                         connection.setSessionToPdb(connectorConfig.getPdbName());
                     }
@@ -125,10 +120,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
         final List<Column> reselectColumns = new ArrayList<>();
         for (Column column : schema.getLobColumnsForTable(table.id())) {
             final Object value = newValue.get(column.name());
-            if (OracleDatabaseSchema.isClobColumn(column) && unavailableValuePlaceholderString.equals(value)) {
-                reselectColumns.add(column);
-            }
-            else if (OracleDatabaseSchema.isBlobColumn(column) && unavailableValuePlaceholderBinary.equals(value)) {
+            if (schema.isColumnUnavailableValuePlaceholder(column, value)) {
                 reselectColumns.add(column);
             }
         }
@@ -141,12 +133,13 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
      *
      * @param reselectColumns the columns that should be reselected, should never be null or empty
      * @param table the relational table model
+     * @param connection the database connection
      * @return the query string for the reselect query
      */
-    private String getReselectQuery(List<Column> reselectColumns, Table table) {
+    private String getReselectQuery(List<Column> reselectColumns, Table table, OracleConnection connection) {
         final TableId id = new TableId(null, table.id().schema(), table.id().table());
         final StringBuilder query = new StringBuilder("SELECT ")
-                .append(reselectColumns.stream().map(c -> '"' + c.name() + '"').collect(Collectors.joining(", ")))
+                .append(reselectColumns.stream().map(c -> connection.quotedColumnIdString(c.name())).collect(Collectors.joining(", ")))
                 .append(" FROM ")
                 .append(id.toDoubleQuotedString())
                 .append(" WHERE ");
@@ -155,7 +148,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
             if (i > 0) {
                 query.append(" AND ");
             }
-            query.append('"').append(table.primaryKeyColumnNames().get(i)).append("\"=?");
+            query.append(connection.quotedColumnIdString(table.primaryKeyColumnNames().get(i))).append("=?");
         }
 
         return query.toString();

@@ -123,6 +123,14 @@ public class OracleValueConverters extends JdbcValueConverters {
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
     }
 
+    public byte[] getUnavailableValuePlaceholderBinary() {
+        return unavailableValuePlaceholderBinary;
+    }
+
+    public String getUnavailableValuePlaceholderString() {
+        return unavailableValuePlaceholderString;
+    }
+
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         logger.debug("Building schema for column {} of type {} named {} with constraints ({},{})",
