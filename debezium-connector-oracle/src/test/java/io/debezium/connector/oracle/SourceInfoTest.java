@@ -59,13 +59,13 @@ public class SourceInfoTest {
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
                 .field("txId", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("userName", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("scn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("commit_scn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("lcr_position", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("rs_id", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("ssn", Schema.OPTIONAL_INT32_SCHEMA)
                 .field("redo_thread", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("user_name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
 
         VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);
