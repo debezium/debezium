@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoIterable;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
@@ -224,10 +225,14 @@ public class MongoDbConnector extends SourceConnector {
             // Try to connect to the database ...
             try (ConnectionContext connContext = new ConnectionContext(config)) {
                 try (MongoClient client = connContext.clientFor(connContext.hosts())) {
-                    client.listDatabaseNames();
+                    final MongoIterable<String> databaseNames = client.listDatabaseNames();
+                    // Can't use 'local' database through mongos
+                    final String databaseName = MongoUtil.contains(databaseNames, ReplicaSetDiscovery.CONFIG_DATABASE_NAME)
+                            ? ReplicaSetDiscovery.CONFIG_DATABASE_NAME
+                            : "local";
                     // Oplog mode is not supported for MongoDB 5+
                     // The version string format is not guaranteed so defensive measures are in place
-                    final Document versionDocument = client.getDatabase("local")
+                    final Document versionDocument = client.getDatabase(databaseName)
                             .runCommand(new Document("buildInfo", 1));
                     if (versionDocument != null) {
                         final String versionString = versionDocument.getString("version");

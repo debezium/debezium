@@ -10,11 +10,21 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
+import org.awaitility.Awaitility;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.Before;
@@ -30,6 +40,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -45,7 +56,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     protected LogInterceptor logInterceptor;
 
     @Before
-    public void beforEach() {
+    public void beforeEach() {
         Testing.Debug.disable();
         Testing.Print.disable();
         stopConnector();
@@ -293,5 +304,72 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             assertThat(doc.size()).isGreaterThan(0);
             collection.insertOne(doc, insertOptions);
         });
+    }
+
+    public static ObjectName getSnapshotMetricsObjectName(String connector, String server) {
+        return getMetricsObjectNameWithTags(connector, Collect.linkMapOf("context", "snapshot", "server", server));
+    }
+
+    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, int taskId) {
+        return getMetricsObjectNameWithTags(connector,
+                Collect.linkMapOf("context", "snapshot", "server", server, "task", String.valueOf(taskId)));
+    }
+
+    public static void waitForSnapshotToBeCompleted(String connector, String server) {
+        waitForSnapshotToBeCompleted(getSnapshotMetricsObjectName(connector, server));
+    }
+
+    public static void waitForSnapshotToBeCompleted(String connector, String server, int taskId) {
+        waitForSnapshotToBeCompleted(getSnapshotMetricsObjectName(connector, server, taskId));
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server) {
+        return getMetricsObjectNameWithTags(connector, Collect.linkMapOf("context", getStreamingNamespace(), "server", server));
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, int taskId) {
+        return getMetricsObjectNameWithTags(connector,
+                Collect.linkMapOf("context", getStreamingNamespace(), "server", server, "task", String.valueOf(taskId)));
+    }
+
+    public static void waitForStreamingRunning(String connector, String server) {
+        waitForStreamingRunning(getStreamingMetricsObjectName(connector, server));
+    }
+
+    public static void waitForStreamingRunning(String connector, String server, int taskId) {
+        waitForStreamingRunning(getStreamingMetricsObjectName(connector, server, taskId));
+    }
+
+    private static void waitForSnapshotToBeCompleted(ObjectName objectName) {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> (boolean) mbeanServer.getAttribute(objectName, "SnapshotCompleted"));
+    }
+
+    private static void waitForStreamingRunning(ObjectName objectName) {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> (boolean) mbeanServer.getAttribute(objectName, "Connected"));
+    }
+
+    private static ObjectName getMetricsObjectNameWithTags(String connector, Map<String, String> tags) {
+        try {
+            return new ObjectName("debezium." + connector + ":type=connector-metrics,"
+                    + tags.entrySet()
+                            .stream()
+                            .map(e -> e.getKey() + "=" + e.getValue())
+                            .collect(Collectors.joining(",")));
+        }
+        catch (MalformedObjectNameException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
