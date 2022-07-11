@@ -1,5 +1,5 @@
 pipelineJob('ocp-downstream-apicurio-prepare-job') {
-    displayName('Apicurio deployment preparation')
+    displayName('Apicurio Preparation - Downstream')
     description('Republishes apicurio registry images to quay.io and replaces them in deployment descriptor')
 
     properties {
