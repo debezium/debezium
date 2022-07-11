@@ -178,6 +178,20 @@ public class CommitScn implements Comparable<Scn> {
         return sourceInfoStruct;
     }
 
+    /**
+     * Returns a loggable string representing the commit scn
+     */
+    public String toLoggableFormat() {
+        final StringBuilder sb = new StringBuilder("[");
+        if (!redoThreadCommitScns.isEmpty()) {
+            sb.append(redoThreadCommitScns.values().stream()
+                    .map(v -> '"' + v.getFormattedString() + '"')
+                    .collect(Collectors.joining(",")));
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
     @Override
     public String toString() {
         return "CommitScn [redoThreadCommitScns=" + redoThreadCommitScns + "]";
@@ -328,6 +342,16 @@ public class CommitScn implements Comparable<Scn> {
                 return new RedoThreadCommitScn(thread, scn, rsId, ssn);
             }
             throw new DebeziumException("An unexpected redo thread commit scn entry: '" + value + "'");
+        }
+
+        @Override
+        public String toString() {
+            return "RedoThreadCommitScn{" +
+                    "thread=" + thread +
+                    ", commitScn=" + commitScn +
+                    ", rsId='" + rsId + '\'' +
+                    ", ssn=" + ssn +
+                    '}';
         }
     }
 }

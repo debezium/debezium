@@ -294,7 +294,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             sb.append(", snapshot_completed=").append(snapshotCompleted);
         }
 
-        sb.append(", commit_scn=").append(sourceInfo.getCommitScn().toString());
+        sb.append(", commit_scn=").append(sourceInfo.getCommitScn().toLoggableFormat());
 
         sb.append("]");
 
