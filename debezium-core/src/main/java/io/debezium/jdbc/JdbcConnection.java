@@ -1326,33 +1326,50 @@ public class JdbcConnection implements AutoCloseable {
 
     public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> uniqueIndexColumnNames = new ArrayList<>();
-        final List<String> excludedIndexNames = new ArrayList<>();
+        final Set<String> excludedIndexNames = new HashSet<>();
         try (ResultSet rs = metadata.getIndexInfo(id.catalog(), id.schema(), id.table(), true, true)) {
             String firstIndexName = null;
             while (rs.next()) {
                 final String indexName = rs.getString(6);
                 final String columnName = rs.getString(9);
                 final int columnIndex = rs.getInt(8);
-                if (firstIndexName == null) {
-                    firstIndexName = indexName;
+
+                // Some databases return a null index name record, often as the first row.
+                // This index should be ignored, as should any row with an index that has been marked excluded
+                if (indexName == null || excludedIndexNames.contains(indexName)) {
+                    continue;
                 }
-                if (indexName != null) {
-                    boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
-                    if (!indexIncluded && !excludedIndexNames.contains(indexName)) {
-                        excludedIndexNames.add(indexName);
-                    }
-                    if (excludedIndexNames.contains(indexName)) {
-                        // index has been excluded, skip further processing
-                        if (!uniqueIndexColumnNames.isEmpty()) {
-                            uniqueIndexColumnNames.clear();
-                        }
+
+                // Check whether the index and/or its column is included by the connector
+                boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
+                if (!indexIncluded) {
+                    // The connector considered the index and/or its column to be excluded.
+                    // Register the index as an excluded index.
+                    excludedIndexNames.add(indexName);
+
+                    if (firstIndexName == null || indexName.equals(firstIndexName)) {
+                        // We either have not yet found a valid first index or the index is the same as the
+                        // current index we have processed a column for. The later can happen when any
+                        // column after the first is seen as an excluded pattern, and in this case the
+                        // entire index state should be discarded and any future rows related to it will
+                        // also be discarded.
+                        firstIndexName = null;
+                        uniqueIndexColumnNames.clear();
                         continue;
                     }
                 }
-                // Only first non-excluded unique index is taken into consideration
-                if (indexName != null && !indexName.equals(firstIndexName)) {
+
+                if (firstIndexName == null) {
+                    firstIndexName = indexName;
+                }
+
+                if (!indexName.equals(firstIndexName)) {
+                    // This means we've reached a point in the result set where we've processed two index
+                    // mappings and both are included by the connector, so we return the first index we
+                    // completely mapped.
                     return uniqueIndexColumnNames;
                 }
+
                 if (columnName != null) {
                     // The returned columnIndex is 0 when columnName is null. These are related
                     // to table statistics that get returned as part of the index descriptors
