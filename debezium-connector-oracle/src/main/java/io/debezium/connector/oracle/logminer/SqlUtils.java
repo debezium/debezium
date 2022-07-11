@@ -213,17 +213,27 @@ public class SqlUtils {
     }
 
     // ***** LogMiner methods ***
+
     /**
      * This returns statement to build LogMiner view for online redo log files
+     *
      * @param startScn mine from
-     * @param endScn mine till
+     * @param endScn   mine till
      * @param strategy Log Mining strategy
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Scn startScn, Scn endScn
-            , OracleConnectorConfig.LogMiningStrategy strategy
-            , boolean isContinuousMining
-            , boolean committedDataOnly) {
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining,
+                                         boolean committedDataOnly, String extOptions) {
+        final String miningStrategy = getMiningStrategy(strategy, isContinuousMining, committedDataOnly, extOptions);
+        return "BEGIN sys.dbms_logmnr.start_logmnr(" +
+                "startScn => '" + startScn + "', " +
+                "endScn => '" + endScn + "', " +
+                "OPTIONS => " + miningStrategy +
+                " + DBMS_LOGMNR.NO_ROWID_IN_STMT);" +
+                "END;";
+    }
+
+    private static String getMiningStrategy(OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining, boolean committedDataOnly, String extOptions) {
         String miningStrategy;
         if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
@@ -233,15 +243,13 @@ public class SqlUtils {
         if (isContinuousMining) {
             miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
         }
-        if (committedDataOnly){
+        if (committedDataOnly) {
             miningStrategy += " + DBMS_LOGMNR.COMMITTED_DATA_ONLY ";
         }
-            return "BEGIN sys.dbms_logmnr.start_logmnr(" +
-                    "startScn => '" + startScn + "', " +
-                    "endScn => '" + endScn + "', " +
-                    "OPTIONS => " + miningStrategy +
-                    " + DBMS_LOGMNR.NO_ROWID_IN_STMT);" +
-                    "END;";
+        if (extOptions != null && (!extOptions.isEmpty())) {
+            miningStrategy += extOptions.toUpperCase();
+        }
+        return miningStrategy;
     }
 
     /**

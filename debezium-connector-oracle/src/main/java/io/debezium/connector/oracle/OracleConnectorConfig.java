@@ -141,13 +141,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("If true, CONTINUOUS_MINE option will be added to the log mining session. This will manage log files switches seamlessly.");
 
     public static final Field COMMITTED_DATA_ONLY = Field.create("log.mining.committed.data.only")
-            .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
+            .withDisplayName("Should log mining session configured with COMMITTED_DATA_ONLY setting?")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(false)
             .withValidation(Field::isBoolean)
             .withDescription("If true, COMMITTED_DATA_ONLY option will be added to the log mining session. This will manage log files switches seamlessly.");
+
+    public static final Field EXT_OPTIONS = Field.create("log.mining.ext.options")
+            .withDisplayName("Should log mining session configured with EXT_OPTIONS setting?")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("If true, EXT_OPTIONS option will be added to the log mining session. This will manage log files switches seamlessly.");
 
 
     public static final Field SNAPSHOT_ENHANCEMENT_TOKEN = Field.create("snapshot.enhance.predicate.scn")
@@ -365,6 +372,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> racNodes;
     private final boolean logMiningContinuousMine;
     private final boolean committedDataOnly;
+
+    private final String extOptions;
     private final Duration logMiningArchiveLogRetention;
     private final int logMiningBatchSizeMin;
     private final int logMiningBatchSizeMax;
@@ -397,7 +406,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningHistoryRetentionHours = config.getLong(LOG_MINING_HISTORY_RETENTION);
         this.racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
         this.logMiningContinuousMine = config.getBoolean(CONTINUOUS_MINE);
-        this.committedDataOnly = config.getBoolean(CONTINUOUS_MINE);
+        this.committedDataOnly = config.getBoolean(COMMITTED_DATA_ONLY);
+        this.extOptions = config.getString(EXT_OPTIONS);
         this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
         this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
@@ -829,14 +839,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningContinuousMine;
     }
 
-
     /**
-     * whether to parse only submitted data
+     * whether only parse commit data
      *
      * @return
      */
     public boolean isCommittedDataOnly() {
         return committedDataOnly;
+    }
+
+    /**
+     * log mining ext options
+     *
+     * @return
+     */
+    public String getExtOptions() {
+        return extOptions;
     }
 
     /**

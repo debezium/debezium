@@ -5,21 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.JdbcConnection;
-import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
-import io.debezium.util.Strings;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -39,6 +24,22 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.Scn;
+import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 
 /**
  * This class contains methods to configure and manage LogMiner utility
@@ -260,12 +261,12 @@ public class LogMinerHelper {
      * @throws SQLException if anything unexpected happens
      */
     static void startLogMining(OracleConnection connection, Scn startScn, Scn endScn,
-                               OracleConnectorConfig.LogMiningStrategy strategy
-            , boolean isContinuousMining, OracleStreamingChangeEventSourceMetrics streamingMetrics
-            , boolean committedDataOnly)
+                               OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining, OracleStreamingChangeEventSourceMetrics streamingMetrics,
+                               boolean committedDataOnly, String extOptions)
             throws SQLException {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
-        String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining, committedDataOnly);
+        String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy
+                , isContinuousMining, committedDataOnly, extOptions);
         try {
             Instant start = Instant.now();
             executeCallableStatement(connection, statement);
