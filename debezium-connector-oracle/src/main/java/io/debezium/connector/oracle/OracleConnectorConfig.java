@@ -5,20 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
@@ -40,6 +26,19 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Strings;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Connector configuration for Oracle.
@@ -163,6 +162,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(0)
             .withImportance(Importance.MEDIUM)
             .withDescription("If true, INIT_SCN option will be added to the log mining session. This will manage log files switches seamlessly.");
+
+    public static final Field BIG_TRANSACTIONAL_CACHE_PATH = Field.create("log.mining.big.transactional.cache.path")
+            .withDisplayName("Should log mining session configured with BIG_TRANSACTIONAL_CACHE_PATH setting?")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("If true, BIG_TRANSACTIONAL_CACHE_PATH option will be added to the log mining session. This will manage log files switches seamlessly.");
+
+    public static final Field BIG_TRANSACTIONAL_LIMIT_COUNT = Field.create("log.mining.big.transactional.limit.count")
+            .withDisplayName("Should log mining session configured with BIG_TRANSACTIONAL_LIMIT_COUNT setting?")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withDefault(0)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("If true, BIG_TRANSACTIONAL_LIMIT_COUNT option will be added to the log mining session. This will manage log files switches seamlessly.");
 
     public static final Field SNAPSHOT_ENHANCEMENT_TOKEN = Field.create("snapshot.enhance.predicate.scn")
             .withDisplayName("A string to replace on snapshot predicate enhancement")
@@ -381,6 +395,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean committedDataOnly;
     private final String extOptions;
     private final long initScn;
+
+    private final String bigTransactionalCachePath;
+
+    private final int bigTransactionalLimitCount;
+
     private final Duration logMiningArchiveLogRetention;
     private final int logMiningBatchSizeMin;
     private final int logMiningBatchSizeMax;
@@ -416,6 +435,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.committedDataOnly = config.getBoolean(COMMITTED_DATA_ONLY);
         this.extOptions = config.getString(EXT_OPTIONS);
         this.initScn = config.getLong(INIT_SCN);
+        this.bigTransactionalCachePath = config.getString(BIG_TRANSACTIONAL_CACHE_PATH);
+        this.bigTransactionalLimitCount = config.getInteger(BIG_TRANSACTIONAL_LIMIT_COUNT);
         this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
         this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
@@ -867,6 +888,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public long getInitScn() {
         return initScn;
+    }
+
+    public String getBigTransactionalCachePath() {
+        return bigTransactionalCachePath;
+    }
+
+    public int getBigTransactionalLimitCount() {
+        return bigTransactionalLimitCount;
     }
 
     /**

@@ -5,22 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
-import org.apache.kafka.connect.errors.DataException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -32,6 +16,27 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import org.apache.kafka.connect.errors.DataException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Buffer that stores transactions and related callbacks that will be executed when a transaction commits or discarded
@@ -44,6 +49,8 @@ public final class TransactionalBuffer implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionalBuffer.class);
 
+    private static final String ORACLE_BIG_TRANSACTIONAL = "oracle_big_transactional";
+
     private final Map<String, Transaction> transactions;
     private final OracleDatabaseSchema schema;
     private final Clock clock;
@@ -51,6 +58,9 @@ public final class TransactionalBuffer implements AutoCloseable {
     private final Set<String> abandonedTransactionIds;
     private final Set<String> rolledBackTransactionIds;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+
+    private String bigTransactionalCachePath;
+    private int bigTransactionalLimitCount;
 
     private Scn lastCommittedScn;
 
@@ -60,7 +70,23 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param errorHandler the connector error handler
      * @param streamingMetrics the streaming metrics
      */
-    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler
+            , OracleStreamingChangeEventSourceMetrics streamingMetrics
+            , String bigTransactionalCachePath, int bigTransactionalLimitCount) {
+        this.transactions = new HashMap<>();
+        this.schema = schema;
+        this.clock = clock;
+        this.errorHandler = errorHandler;
+        this.lastCommittedScn = Scn.NULL;
+        this.abandonedTransactionIds = new HashSet<>();
+        this.rolledBackTransactionIds = new HashSet<>();
+        this.streamingMetrics = streamingMetrics;
+        this.bigTransactionalCachePath = bigTransactionalCachePath;
+        this.bigTransactionalLimitCount = bigTransactionalLimitCount;
+    }
+
+    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler
+            , OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.transactions = new HashMap<>();
         this.schema = schema;
         this.clock = clock;
@@ -99,12 +125,87 @@ public final class TransactionalBuffer implements AutoCloseable {
             return;
         }
 
-        Transaction transaction = transactions.computeIfAbsent(transactionId, s -> new Transaction(transactionId, scn));
-        transaction.events.add(new DmlEvent(operation, parseEntry, scn, tableId, rowId));
+        initOrFillTransaction(operation, transactionId, scn, tableId, parseEntry, changeTime, rowId);
 
         streamingMetrics.setActiveTransactions(transactions.size());
         streamingMetrics.incrementRegisteredDmlCount();
         streamingMetrics.calculateLagMetrics(changeTime);
+    }
+
+    private void initOrFillTransaction(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry, Instant changeTime, String rowId) {
+        try {
+            final Transaction transaction = transactions.computeIfAbsent(transactionId, s -> new Transaction(transactionId, scn));
+//        如果大事物限制没有开启，或者没满足大事物条件，则直接add
+            if (transaction.getFileOutputStream() == null &&
+                    (bigTransactionalLimitCount < 1 || (transaction.events.size() + 1) < bigTransactionalLimitCount)) {
+                transaction.events.add(new DmlEvent(operation, parseEntry, scn, tableId, rowId));
+                return;
+            }
+//            初始化写出文件流
+            initFileOutputStream(transaction, getCachePath(), String.join("_", tableId.catalog(), tableId.schema(), tableId.table()
+                    , transactionId, String.valueOf(scn.longValue()), String.valueOf(changeTime.toEpochMilli())));
+//            写出事件
+            writeOutEvents(transaction, new DmlEvent(operation, parseEntry, scn, tableId, rowId));
+        } catch (Exception e) {
+            throw new RuntimeException("qgg exception", e);
+        }
+    }
+
+    private void writeOutEvents(Transaction transaction, DmlEvent dmlEvent) throws IOException {
+//        判断是否为首次写出
+        if (transaction.events.isEmpty()) {
+            transaction.getFileOutputStream().write(generateEventRecord(dmlEvent));
+            transaction.getFileOutputStream().flush();
+            return;
+        }
+        for (DmlEvent oldEvent : transaction.events) {
+            transaction.getFileOutputStream().write(generateEventRecord(oldEvent));
+        }
+        transaction.getFileOutputStream().write(generateEventRecord(dmlEvent));
+        transaction.getFileOutputStream().flush();
+        transaction.events.clear();
+    }
+
+    private byte[] generateEventRecord(DmlEvent dmlEvent) {
+        final String join = String.join(" ", dmlEvent.getTableId().catalog(), dmlEvent.getTableId().schema(), dmlEvent.getTableId().table()
+                , dmlEvent.getEntry().getTransactionId(), String.valueOf(dmlEvent.getScn().longValue()), dmlEvent.getRowId());
+        return (join + System.getProperty("line.separator")).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private void initFileOutputStream(Transaction transaction, String cachePath, String cacheFileName) throws Exception {
+        if (transaction.getFileOutputStream() != null) {
+            return;
+        }
+        final File cacheDir = new File(cachePath);
+        if (!cacheDir.exists()) {
+            cacheDir.mkdirs();
+        }else {
+            clearExpiredFile(cacheDir);
+        }
+        final String cacheFilePath = cachePath + File.separator + cacheFileName;
+        final File cacheFile = new File(cacheFilePath);
+        if (!cacheFile.exists()) {
+            cacheFile.createNewFile();
+        }
+        transaction.setCacheFilePath(cacheFilePath);
+        transaction.setFileOutputStream(new FileOutputStream(cacheFile));
+    }
+
+    private void clearExpiredFile(File cacheDir) {
+        for (File file : cacheDir.listFiles()) {
+            final LocalDateTime lastModified = LocalDateTime.ofInstant(Instant.ofEpochMilli(file.lastModified()), ZoneId.systemDefault());
+            if (lastModified.plusDays(7).compareTo(LocalDateTime.now()) > 0) {
+                continue;
+            }
+            file.delete();
+        }
+    }
+
+    private String getCachePath() {
+        if (bigTransactionalCachePath == null || bigTransactionalCachePath.isEmpty()) {
+            return System.getProperty("user.dir") + File.separator + ORACLE_BIG_TRANSACTIONAL;
+        }
+        return bigTransactionalCachePath + File.separator + ORACLE_BIG_TRANSACTIONAL;
     }
 
     /**
@@ -144,13 +245,15 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @return true if committed transaction is in the buffer, was not processed yet and processed now
      */
     boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
-                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId> dispatcher) {
+                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId> dispatcher) throws IOException {
 
         Instant start = Instant.now();
         Transaction transaction = transactions.remove(transactionId);
         if (transaction == null) {
             return false;
         }
+
+        preCommit(transactionId, scn, timestamp, debugMessage, transaction);
 
         Scn smallestScn = calculateSmallestScn();
 
@@ -170,6 +273,18 @@ public final class TransactionalBuffer implements AutoCloseable {
         commit(context, offsetContext, start, transaction, timestamp, smallestScn, scn, dispatcher);
 
         return true;
+    }
+
+    private void preCommit(String transactionId, Scn scn, Timestamp timestamp, String debugMessage, Transaction transaction) throws IOException {
+        if (transaction.getFileOutputStream() == null) {
+            return;
+        }
+        final String commitMessage = "transaction commit, transactionId=" + transactionId + ", scn=" + scn.longValue()
+                + ", timestamp=" + timestamp.getTime() + ", debugMessage=" + debugMessage;
+        transaction.getFileOutputStream().write(commitMessage.getBytes(StandardCharsets.UTF_8));
+        transaction.getFileOutputStream().flush();
+        transaction.getFileOutputStream().close();
+        throw new RuntimeException("exist big transaction, transactionId=" + transactionId + ", transaction_file=" + transaction.getCacheFilePath());
     }
 
     private void commit(ChangeEventSource.ChangeEventSourceContext context, OracleOffsetContext offsetContext, Instant start,
@@ -232,11 +347,13 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param debugMessage  message
      * @return true if the rollback is for a transaction in the buffer
      */
-    boolean rollback(String transactionId, String debugMessage) {
+    boolean rollback(String transactionId, String debugMessage) throws Exception {
 
         Transaction transaction = transactions.get(transactionId);
         if (transaction != null) {
             LOGGER.debug("Transaction rolled back: {}", debugMessage);
+
+            preRollback(transactionId, debugMessage, transaction);
 
             transactions.remove(transactionId);
             abandonedTransactionIds.remove(transactionId);
@@ -251,6 +368,17 @@ public final class TransactionalBuffer implements AutoCloseable {
 
         return false;
     }
+
+    private void preRollback(String transactionId, String debugMessage, Transaction transaction) throws IOException {
+        if (transaction.getFileOutputStream() == null) {
+            return;
+        }
+        transaction.getFileOutputStream().write(("transaction rollback, transactionId=" + transactionId + ", debugMessage=" + debugMessage)
+                .getBytes(StandardCharsets.UTF_8));
+        transaction.getFileOutputStream().flush();
+        transaction.getFileOutputStream().close();
+    }
+
 
     /**
      * If for some reason the connector got restarted, the offset will point to the beginning of the oldest captured transaction.
@@ -339,11 +467,31 @@ public final class TransactionalBuffer implements AutoCloseable {
         private Scn lastScn;
         private final List<DmlEvent> events;
 
+        private String cacheFilePath;
+
+        private FileOutputStream fileOutputStream;
+
         private Transaction(String transactionId, Scn firstScn) {
             this.transactionId = transactionId;
             this.firstScn = firstScn;
             this.events = new ArrayList<>();
             this.lastScn = firstScn;
+        }
+
+        public void setFileOutputStream(FileOutputStream fileOutputStream) {
+            this.fileOutputStream = fileOutputStream;
+        }
+
+        public FileOutputStream getFileOutputStream() {
+            return fileOutputStream;
+        }
+
+        public String getCacheFilePath() {
+            return cacheFilePath;
+        }
+
+        public void setCacheFilePath(String cacheFilePath) {
+            this.cacheFilePath = cacheFilePath;
         }
 
         @Override

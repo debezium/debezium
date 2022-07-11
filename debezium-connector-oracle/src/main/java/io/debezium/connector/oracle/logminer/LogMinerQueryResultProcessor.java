@@ -93,7 +93,7 @@ class LogMinerQueryResultProcessor {
      * @return number of processed DMLs from the given resultSet
      * @throws SQLException thrown if any database exception occurs
      */
-    void processResult(ResultSet resultSet) throws SQLException {
+    void processResult(ResultSet resultSet) throws Exception {
         int dmlCounter = 0, insertCounter = 0, updateCounter = 0, deleteCounter = 0;
         int commitCounter = 0;
         int rollbackCounter = 0;
