@@ -291,6 +291,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             case DELETE:
                 handleDataEvent(row);
                 break;
+            case UNSUPPORTED:
+                handleUnsupportedEvent(row);
+                break;
         }
     }
 
@@ -377,6 +380,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 offsetContext.setEventScn(event.getScn());
                 offsetContext.setTransactionId(transactionId);
+                offsetContext.setUserName(transaction.getUserName());
                 offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 offsetContext.setTableId(event.getTableId());
                 offsetContext.setRedoThread(row.getThread());
@@ -765,6 +769,16 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         });
 
         metrics.incrementRegisteredDmlCount();
+    }
+
+    protected void handleUnsupportedEvent(LogMinerEventRow row) {
+        if (!Strings.isNullOrEmpty(row.getTableName())) {
+            LOGGER.warn("An unsupported operation detected for table '{}' in transaction {} with SCN {} on redo thread {}.",
+                    row.getTableId(),
+                    row.getTransactionId(),
+                    row.getScn(),
+                    row.getThread());
+        }
     }
 
     /**

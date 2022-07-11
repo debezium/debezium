@@ -98,7 +98,9 @@ public class LogMinerQueryBuilder {
                 query.append(") OR (OPERATION_CODE IN (1,2,3,9,10,11,29) ");
             }
             else {
-                query.append(") OR (OPERATION_CODE IN (1,2,3) ");
+                // Only capture UNSUPPORTED operations (255) when LOB is disabled to avoid
+                // the logging handler writing duplicate entries due to re-mining strategy
+                query.append(") OR (OPERATION_CODE IN (1,2,3,255) ");
             }
             if (pdbPredicate != null) {
                 // Restrict Insert, Update, Delete, and optionally SelectLob, LobWrite, LobTrim, and LobErase by PDB
@@ -118,7 +120,9 @@ public class LogMinerQueryBuilder {
                 query.append("(OPERATION_CODE IN (1,2,3,9,10,11,29) ");
             }
             else {
-                query.append("(OPERATION_CODE IN (1,2,3) ");
+                // Only capture UNSUPPORTED operations (255) when LOB is disabled to avoid
+                // the logging handler writing duplicate entries due to re-mining strategy
+                query.append("(OPERATION_CODE IN (1,2,3,255) ");
             }
             // In this mode, the connector will filter DDL operations based on the table inclusion/exclusion lists
             // We pass "null" to the DDL predicate because we will have added the predicate earlier as a part of

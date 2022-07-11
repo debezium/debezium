@@ -249,6 +249,10 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setTransactionId(transactionId);
     }
 
+    public void setUserName(String userName) {
+        sourceInfo.setUserName(userName);
+    }
+
     public void setSourceTime(Instant instant) {
         sourceInfo.setSourceTime(instant);
     }

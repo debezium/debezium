@@ -256,7 +256,8 @@ The message contains a logical representation of the table schema.
       "lcr_position" : null,
       "rs_id": "001234.00012345.0124",
       "ssn": 1,
-      "redo_thread": 1
+      "redo_thread": 1,
+      "user_name": "user"
     },
     "ts_ms": 1588252618953, // <1>
     "databaseName": "ORCLPDB1", // <2>
@@ -430,11 +431,12 @@ Database transactions are represented by a statement block that is enclosed betw
 {prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
 Transaction boundary events contain the following fields:
 
-`status`:: `BEGIN` or `END`
-`id`:: String representation of unique transaction identifier.
-`ts_ms`:: The time of `BEGIN` or `END` transaction.
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier.
+`ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
 `event_count` (for `END` events):: Total number of events emmitted by the transaction.
-`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates number of events that the connector emits for changes that originate from a data collection.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
 
 The following example shows a typical transaction boundary message:
 
@@ -445,6 +447,7 @@ The following example shows a typical transaction boundary message:
 {
   "status": "BEGIN",
   "id": "5.6.641",
+  "ts_ms": 1486500577125,
   "event_count": null,
   "data_collections": null
 }
@@ -452,6 +455,7 @@ The following example shows a typical transaction boundary message:
 {
   "status": "END",
   "id": "5.6.641",
+  "ts_ms": 1486500577691,
   "event_count": 2,
   "data_collections": [
     {
@@ -779,6 +783,7 @@ In the case of the Oracle connector, the structure includes the following fields
 * The transaction id (not includes for snapshots).
 * The SCN of the change.
 * A timestamp that indicates when the record in the source database changed (for snapshots, the timestamp indicates when the snapshot occurred).
+* Username who made the change
 +
 [TIP]
 ====
@@ -787,6 +792,13 @@ ifdef::community[]
 This field is only present when using the LogMiner connection adapter.
 endif::community[]
 ====
+ifdef::community[]
++
+[TIP]
+====
+The `user_name` field is only populated when using the LogMiner connection adapter.
+====
+endif::community[]
 
 `ts_ms`:: An optional field that, if present, contains the time (based on the system clock in the JVM that runs the Kafka Connect task) at which the connector processed the event.
 
@@ -920,6 +932,11 @@ The following example shows the value of a _create_ event value from the `custom
                         "field": "redo_thread"
                     },
                     {
+                        "type": "string",
+                        "optional": true,
+                        "field": "user_name"
+                    },
+                    {
                         "type": "boolean",
                         "optional": true,
                         "field": "snapshot"
@@ -961,6 +978,7 @@ The following example shows the value of a _create_ event value from the `custom
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
+            "user_name": "user",
             "snapshot": false
         },
         "op": "c",
@@ -1024,6 +1042,7 @@ The following example shows an _update_ change event that the connector captures
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
+            "user_name": "user",
             "snapshot": false
         },
         "op": "u",
@@ -1085,6 +1104,7 @@ The `schema` portion of the _delete_ event is identical to the `schema` portion 
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
+            "user_name": "user",
             "snapshot": false
         },
         "op": "d",
@@ -1143,7 +1163,8 @@ The message key is `null` in this case, the message value looks like this:
             "lcr_position": null,
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
-            "redo_thread": 1
+            "redo_thread": 1,
+            "user_name": "user"
         },
         "op": "t", // <2>
         "ts_ms": 1638974558961, // <3>
@@ -1169,6 +1190,7 @@ a|Mandatory field that describes the source metadata for the event. In a _trunca
 * ID of the transaction in which the operation was performed
 * SCN of the operation
 * Timestamp for when the change was made in the database
+* Username who performed the change
 
 |2
 |`op`

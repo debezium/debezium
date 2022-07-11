@@ -20,6 +20,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
 /**
@@ -134,6 +136,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5236")
+    @SkipWhenDatabaseVersion(check = EqualityCheck.GREATER_THAN_OR_EQUAL, major = 8, minor = 0, reason = "MySQL 8 does not provide unsigned tinyint length (DBZ-5343)")
     public void shouldHandleUnsignedTinyIntOneAsBoolean() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
@@ -141,6 +144,35 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ5236"))
                 .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "boolean")
                 .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        consumeInitial();
+
+        assertUnsignedBooleanChangeRecord();
+
+        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("INSERT INTO DBZ5236 VALUES (DEFAULT, 1, 1, 0)");
+        }
+        assertUnsignedBooleanChangeRecord();
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-5343")
+    public void shouldHandleMySQL8TinyIntAsBoolean() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, "none")
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ5236"))
+                .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "boolean")
+                .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .with("boolean.length.checker", "false")
+                .with("boolean.selector", ".*DBZ5236.ti2,.*DBZ5236.ti3")
                 .build();
 
         // Start the connector ...

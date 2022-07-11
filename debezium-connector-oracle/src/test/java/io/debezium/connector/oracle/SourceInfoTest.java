@@ -65,6 +65,7 @@ public class SourceInfoTest {
                 .field("rs_id", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("ssn", Schema.OPTIONAL_INT32_SCHEMA)
                 .field("redo_thread", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("user_name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
 
         VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);

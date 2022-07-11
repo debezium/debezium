@@ -153,7 +153,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         LOGGER.debug("Processing DML event {}", lcr);
 
         if (RowLCR.COMMIT.equals(lcr.getCommandType())) {
-            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, Instant.now());
+            final Instant commitTimestamp = lcr.getSourceTime().timestampValue().toInstant();
+            dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, commitTimestamp);
             return;
         }
 
