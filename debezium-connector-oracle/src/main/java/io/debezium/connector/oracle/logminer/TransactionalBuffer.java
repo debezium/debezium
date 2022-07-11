@@ -5,21 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
-import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.spi.ChangeEventSource;
-import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
-import org.apache.kafka.connect.errors.DataException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -37,6 +22,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import org.apache.kafka.connect.errors.DataException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
+import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.ChangeEventSource;
+import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
 
 /**
  * Buffer that stores transactions and related callbacks that will be executed when a transaction commits or discarded
@@ -70,9 +71,8 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param errorHandler the connector error handler
      * @param streamingMetrics the streaming metrics
      */
-    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler
-            , OracleStreamingChangeEventSourceMetrics streamingMetrics
-            , String bigTransactionalCachePath, int bigTransactionalLimitCount) {
+    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics,
+                        String bigTransactionalCachePath, int bigTransactionalLimitCount) {
         this.transactions = new HashMap<>();
         this.schema = schema;
         this.clock = clock;
@@ -85,8 +85,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         this.bigTransactionalLimitCount = bigTransactionalLimitCount;
     }
 
-    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler
-            , OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.transactions = new HashMap<>();
         this.schema = schema;
         this.clock = clock;
@@ -135,24 +134,25 @@ public final class TransactionalBuffer implements AutoCloseable {
     private void initOrFillTransaction(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry, Instant changeTime, String rowId) {
         try {
             final Transaction transaction = transactions.computeIfAbsent(transactionId, s -> new Transaction(transactionId, scn));
-//        如果大事物限制没有开启，或者没满足大事物条件，则直接add
+            // 如果大事物限制没有开启，或者没满足大事物条件，则直接add
             if (transaction.getFileOutputStream() == null &&
                     (bigTransactionalLimitCount < 1 || (transaction.events.size() + 1) < bigTransactionalLimitCount)) {
                 transaction.events.add(new DmlEvent(operation, parseEntry, scn, tableId, rowId));
                 return;
             }
-//            初始化写出文件流
-            initFileOutputStream(transaction, getCachePath(), String.join("_", tableId.catalog(), tableId.schema(), tableId.table()
-                    , transactionId, String.valueOf(scn.longValue()), String.valueOf(changeTime.toEpochMilli())));
-//            写出事件
+            // 初始化写出文件流
+            initFileOutputStream(transaction, getCachePath(), String.join("_", tableId.catalog(), tableId.schema(), tableId.table(), transactionId,
+                    String.valueOf(scn.longValue()), String.valueOf(changeTime.toEpochMilli())));
+            // 写出事件
             writeOutEvents(transaction, new DmlEvent(operation, parseEntry, scn, tableId, rowId));
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException("qgg exception", e);
         }
     }
 
     private void writeOutEvents(Transaction transaction, DmlEvent dmlEvent) throws IOException {
-//        判断是否为首次写出
+        // 判断是否为首次写出
         if (transaction.events.isEmpty()) {
             transaction.getFileOutputStream().write(generateEventRecord(dmlEvent));
             transaction.getFileOutputStream().flush();
@@ -167,8 +167,8 @@ public final class TransactionalBuffer implements AutoCloseable {
     }
 
     private byte[] generateEventRecord(DmlEvent dmlEvent) {
-        final String join = String.join(" ", dmlEvent.getTableId().catalog(), dmlEvent.getTableId().schema(), dmlEvent.getTableId().table()
-                , dmlEvent.getEntry().getTransactionId(), String.valueOf(dmlEvent.getScn().longValue()), dmlEvent.getRowId());
+        final String join = String.join(" ", dmlEvent.getTableId().catalog(), dmlEvent.getTableId().schema(), dmlEvent.getTableId().table(),
+                dmlEvent.getEntry().getTransactionId(), String.valueOf(dmlEvent.getScn().longValue()), dmlEvent.getRowId());
         return (join + System.getProperty("line.separator")).getBytes(StandardCharsets.UTF_8);
     }
 
@@ -179,7 +179,8 @@ public final class TransactionalBuffer implements AutoCloseable {
         final File cacheDir = new File(cachePath);
         if (!cacheDir.exists()) {
             cacheDir.mkdirs();
-        }else {
+        }
+        else {
             clearExpiredFile(cacheDir);
         }
         final String cacheFilePath = cachePath + File.separator + cacheFileName;
@@ -245,7 +246,8 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @return true if committed transaction is in the buffer, was not processed yet and processed now
      */
     boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
-                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId> dispatcher) throws IOException {
+                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId> dispatcher)
+            throws IOException {
 
         Instant start = Instant.now();
         Transaction transaction = transactions.remove(transactionId);
@@ -378,7 +380,6 @@ public final class TransactionalBuffer implements AutoCloseable {
         transaction.getFileOutputStream().flush();
         transaction.getFileOutputStream().close();
     }
-
 
     /**
      * If for some reason the connector got restarted, the offset will point to the beginning of the oldest captured transaction.

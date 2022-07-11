@@ -132,7 +132,7 @@ public class TransactionalBufferTest {
     }
 
     @Test
-    public void testIsEmptyWhenTransactionIsCommitted() throws InterruptedException {
+    public void testIsEmptyWhenTransactionIsCommitted() throws Exception {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (LcrPosition) null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
@@ -140,14 +140,14 @@ public class TransactionalBufferTest {
     }
 
     @Test
-    public void testIsEmptyWhenTransactionIsRolledBack() {
+    public void testIsEmptyWhenTransactionIsRolledBack() throws Exception {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         transactionalBuffer.rollback(TRANSACTION_ID, "");
         assertThat(transactionalBuffer.isEmpty()).isTrue();
     }
 
     @Test
-    public void testNonEmptyFirstTransactionIsRolledBack() {
+    public void testNonEmptyFirstTransactionIsRolledBack() throws Exception {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
         transactionalBuffer.rollback(TRANSACTION_ID, "");
@@ -157,7 +157,7 @@ public class TransactionalBufferTest {
     }
 
     @Test
-    public void testNonEmptySecondTransactionIsRolledBack() {
+    public void testNonEmptySecondTransactionIsRolledBack() throws Exception {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
         transactionalBuffer.rollback(OTHER_TRANSACTION_ID, "");
@@ -167,7 +167,7 @@ public class TransactionalBufferTest {
     }
 
     @Test
-    public void testCalculateScnWhenTransactionIsCommitted() throws InterruptedException {
+    public void testCalculateScnWhenTransactionIsCommitted() throws Exception {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
@@ -176,7 +176,7 @@ public class TransactionalBufferTest {
     }
 
     @Test
-    public void testCalculateScnWhenFirstTransactionIsCommitted() throws InterruptedException {
+    public void testCalculateScnWhenFirstTransactionIsCommitted() throws Exception {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
         offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, null, false, true, new TransactionContext());
@@ -191,7 +191,7 @@ public class TransactionalBufferTest {
     }
 
     @Test
-    public void testCalculateScnWhenSecondTransactionIsCommitted() throws InterruptedException {
+    public void testCalculateScnWhenSecondTransactionIsCommitted() throws Exception {
         registerDmlOperation(TRANSACTION_ID, SCN, ROW_ID);
         registerDmlOperation(OTHER_TRANSACTION_ID, OTHER_SCN, OTHER_ROW_ID);
         offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN, OTHER_SCN, null, false, true, new TransactionContext());
