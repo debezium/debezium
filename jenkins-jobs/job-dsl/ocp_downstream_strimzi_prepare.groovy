@@ -1,5 +1,5 @@
 pipelineJob('ocp-downstream-strimzi-prepare-job') {
-    displayName('AMQ Stream Deployment Preparation')
+    displayName('Strimzi Preparation - Downstream')
     description('Prepares images and deployment descriptor for AMQ Streams')
 
     properties {

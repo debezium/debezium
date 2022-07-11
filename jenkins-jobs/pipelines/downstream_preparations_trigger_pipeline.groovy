@@ -18,8 +18,8 @@ pipeline {
                             string(name: 'DBZ_GIT_BRANCH', value: params.DBZ_GIT_BRANCH),
                             text(name: 'DBZ_EXTRA_LIBS', value: params.AS_DBZ_EXTRA_LIBS ),
                             text(name: 'EXTRA_IMAGE_TAGS', value: params.AS_EXTRA_IMAGE_TAGS),
-                            booleanParam(name: 'AUTO_TAG', value: params.AS_AUTO_TAG),
-                            text(name: 'DBZ_CONNECTOR_ARCHIVE_URLS', value: params.AS_DBZ_CONNECTOR_ARCHIVE_URLS),
+                            booleanParam(name: 'AUTO_TAG', value: params.AUTO_TAG),
+                            text(name: 'DBZ_CONNECTOR_ARCHIVE_URLS', value: params.DBZ_CONNECTOR_ARCHIVE_URLS),
                         ]
                         copyArtifacts(projectName: 'ocp-downstream-artifact-server-prepare-job', selector: lastCompleted())
                     }
@@ -40,7 +40,7 @@ pipeline {
                              string(name: 'DBZ_GIT_REPOSITORY', value: params.DBZ_GIT_REPOSITORY),
                              string(name: 'DBZ_GIT_BRANCH', value: params.DBZ_GIT_BRANCH),
                              booleanParam(name: 'DBZ_CONNECT_BUILD', value: params.STRZ_DBZ_CONNECT_BUILD),
-                             text(name: 'DBZ_CONNECTOR_ARCHIVE_URLS', value: params.STRZ_DBZ_CONNECTOR_ARCHIVE_URLS),
+                             text(name: 'DBZ_CONNECTOR_ARCHIVE_URLS', value: params.DBZ_CONNECTOR_ARCHIVE_URLS),
                              text(name: 'DBZ_EXTRA_LIBS', value: params.STRZ_DBZ_EXTRA_LIBS),
                          ]
                          copyArtifacts(projectName: 'ocp-downstream-strimzi-prepare-job', selector: lastCompleted())
@@ -83,7 +83,7 @@ pipeline {
                             string(name: 'DBZ_GIT_BRANCH', value: params.DBZ_GIT_BRANCH),
                             booleanParam(name: 'AUTO_TAG', value: params.AUTO_TAG),
                             text(name: 'EXTRA_IMAGE_TAGS', value: params.EXTRA_IMAGE_TAGS),
-                            text(name: 'DBZ_CONNECTOR_ARCHIVE_URLS', value: params.STRZ_DBZ_CONNECTOR_ARCHIVE_URLS),
+                            text(name: 'DBZ_CONNECTOR_ARCHIVE_URLS', value: params.DBZ_CONNECTOR_ARCHIVE_URLS),
                             text(name: 'DBZ_EXTRA_LIBS', value: params.STRZ_DBZ_EXTRA_LIBS),
                         ]
                         copyArtifacts(projectName: 'rhel-downstream-prepare-job', selector: lastCompleted())
