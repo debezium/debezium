@@ -14,8 +14,6 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.annotations.FixtureContext;
 
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
-
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { SqlDatabaseController.class })
 public class OcpSqlServer extends OcpDatabaseFixture<SqlDatabaseController> {
 

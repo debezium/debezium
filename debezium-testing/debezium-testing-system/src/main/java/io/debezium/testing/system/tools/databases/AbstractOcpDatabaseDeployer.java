@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.system.tools.databases;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -21,8 +23,6 @@ import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
-
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 /**
  * @author Jakub Cechacek
@@ -118,7 +118,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
         }
 
         public B withPublicServices(String... yamlPath) {
-            if(isRunningFromOcp()) {
+            if (isRunningFromOcp()) {
                 return self();
             }
             List<Service> services = Arrays.stream(yamlPath)
