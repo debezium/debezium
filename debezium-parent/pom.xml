@@ -379,4 +379,22 @@
             </properties>
         </profile>
     </profiles>
+
+
+    <distributionManagement>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots</name>
+            <url>http://maven.qiangungun.com:8081/nexus/content/repositories/snapshots/</url>
+        </repository>
+        <snapshotRepository>
+            <id>snapshots</id>
+            <url>http://maven.qiangungun.com:8081/nexus/content/repositories/snapshots/</url>
+        </snapshotRepository>
+        <!--        <repository>-->
+        <!--            <id>oss</id>-->
+        <!--            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>-->
+        <!--        </repository>-->
+
+    </distributionManagement>
 </project>
