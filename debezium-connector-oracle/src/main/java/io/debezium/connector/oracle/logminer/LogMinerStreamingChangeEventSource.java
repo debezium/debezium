@@ -5,41 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.buildDataDictionary;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.createFlushTable;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.flushLogWriter;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getFirstOnlineLogScn;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToAbandon;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getSystime;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.instantiateFlushConnections;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.setNlsSessionParameters;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.setRedoLogFilesForMining;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
-
-import java.math.BigInteger;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
@@ -57,6 +22,43 @@ import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.math.BigInteger;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.buildDataDictionary;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.createFlushTable;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.flushLogWriter;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getFirstOnlineLogScn;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToAbandon;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getSystime;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.instantiateFlushConnections;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.setNlsSessionParameters;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.setRedoLogFilesForMining;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
@@ -94,6 +96,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     private final int bigTransactionalLimitCount;
 
+    private final Map<String, Long> bigTransactionalSkipId;
+
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
                                               OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
@@ -122,6 +126,15 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
         this.bigTransactionalCachePath = connectorConfig.getBigTransactionalCachePath();
         this.bigTransactionalLimitCount = connectorConfig.getBigTransactionalLimitCount();
+        this.bigTransactionalSkipId = bigTransactionalSkipIdParse(connectorConfig.getBigTransactionalSkipId());
+    }
+
+    private Map<String, Long> bigTransactionalSkipIdParse(String bigTransactionalSkipId) {
+        if (bigTransactionalSkipId == null || bigTransactionalSkipId.isEmpty()) {
+            return new HashMap<>(0);
+        }
+        return Stream.of(bigTransactionalSkipId.split(":")).map(String::trim)
+                .filter(transactionalId -> !transactionalId.isEmpty()).distinct().collect(Collectors.toMap(id -> id, id -> 0L));
     }
 
     /**
@@ -132,6 +145,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     @Override
     public void execute(ChangeEventSourceContext context) {
+        bigTransactionalFileSearch();
         try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(schema, clock, errorHandler, streamingMetrics, bigTransactionalCachePath,
                 bigTransactionalLimitCount)) {
             try {
@@ -156,7 +170,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                     final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context, jdbcConnection,
                             connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
-                            clock, historyRecorder);
+                            clock, historyRecorder, bigTransactionalSkipId);
 
                     final String query = SqlUtils.logMinerContentsQuery(connectorConfig, jdbcConnection.username());
                     try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
@@ -228,6 +242,24 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
             }
         }
+    }
+
+    /**
+     * 防重启
+     * 检索大事物文件，如果文件夹不为空，则不允许启动
+     *
+     * @return
+     */
+    private void bigTransactionalFileSearch() {
+        final File file = new File(TransactionalBuffer.getCachePath(bigTransactionalCachePath));
+        if (!file.exists()) {
+            return;
+        }
+        final File[] files = file.listFiles();
+        if (files == null || files.length == 0) {
+            return;
+        }
+        throw new RuntimeException("big transactional directory is not null, please solve the big transactional first");
     }
 
     private void abandonOldTransactionsIfExist(OracleConnection connection, TransactionalBuffer transactionalBuffer) {

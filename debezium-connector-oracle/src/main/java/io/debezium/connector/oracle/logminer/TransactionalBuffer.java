@@ -5,6 +5,22 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
+import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.ChangeEventSource;
+import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
+import org.apache.kafka.connect.errors.DataException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -22,23 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-import org.apache.kafka.connect.errors.DataException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
-import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.spi.ChangeEventSource;
-import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
 
 /**
  * Buffer that stores transactions and related callbacks that will be executed when a transaction commits or discarded
@@ -142,7 +141,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                 return;
             }
             // 初始化写出文件流
-            initFileOutputStream(transaction, getCachePath(), getCacheFileName(transactionId, scn, tableId, changeTime));
+            initFileOutputStream(transaction, getCachePath(bigTransactionalCachePath), getCacheFileName(transactionId, scn, tableId, changeTime));
             // 写出事件
             writeOutEvents(transaction, new DmlEvent(operation, parseEntry, scn, tableId, rowId));
         }
@@ -310,7 +309,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         }
     }
 
-    private String getCachePath() {
+    public static String getCachePath(String bigTransactionalCachePath) {
         if (bigTransactionalCachePath == null || bigTransactionalCachePath.isEmpty()) {
             return System.getProperty("user.dir") + File.separator + ORACLE_BIG_TRANSACTIONAL;
         }
@@ -487,6 +486,10 @@ public final class TransactionalBuffer implements AutoCloseable {
                 .getBytes(StandardCharsets.UTF_8));
         transaction.getFileOutputStream().flush();
         transaction.getFileOutputStream().close();
+        final File file = new File(transaction.getCacheFilePath());
+        if (file.exists()){
+            file.delete();
+        }
     }
 
     /**
