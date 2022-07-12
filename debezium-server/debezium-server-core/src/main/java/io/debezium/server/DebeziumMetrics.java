@@ -13,12 +13,10 @@ import javax.enterprise.context.Dependent;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.CommonConnectorConfig;
 
 /**
  * Reads debezium source pipeline metrics.
@@ -33,8 +31,6 @@ public class DebeziumMetrics {
     protected static final Logger LOGGER = LoggerFactory.getLogger(DebeziumMetrics.class);
     public static final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
-    @ConfigProperty(name = "debezium.source.max.queue.size", defaultValue = CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE + "")
-    int maxQueueSize;
     private ObjectName snapshotMetricsObjectName;
     private ObjectName streamingMetricsObjectName;
 
@@ -77,7 +73,12 @@ public class DebeziumMetrics {
     }
 
     public int maxQueueSize() {
-        return maxQueueSize;
+        try {
+            return (int) mbeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueTotalCapacity");
+        }
+        catch (Exception e) {
+            throw new DebeziumException(e);
+        }
     }
 
     public boolean snapshotRunning() {
@@ -108,7 +109,7 @@ public class DebeziumMetrics {
     }
 
     public int streamingQueueCurrentSize() {
-        return maxQueueSize - streamingQueueRemainingCapacity();
+        return maxQueueSize() - streamingQueueRemainingCapacity();
     }
 
     public long streamingMilliSecondsBehindSource() {
