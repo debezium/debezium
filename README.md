@@ -9,7 +9,7 @@ Copyright Debezium Authors.
 Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 The Antlr grammars within the debezium-ddl-parser module are licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-English | [Chinese](README_ZH.md) | [Japanese](README_JA.md)
+English | [Chinese](README_ZH.md) | [Japanese](README_JA.md) | [Korean](README_KO.md)
 
 # Debezium
 
