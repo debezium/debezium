@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
@@ -79,7 +80,8 @@ public class DebeziumServerIT {
                 // snapshot process finished
                 // and consuming events finished!
                 return metrics.snapshotCompleted()
-                        && metrics.streamingQueueCurrentSize() == 0;
+                        && metrics.streamingQueueCurrentSize() == 0
+                        && metrics.maxQueueSize() == CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
             }
             catch (Exception e) {
                 return false;
