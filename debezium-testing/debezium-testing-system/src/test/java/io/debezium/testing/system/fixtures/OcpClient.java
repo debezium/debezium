@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.ConfigProperties;
-import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -40,7 +39,8 @@ public class OcpClient extends TestFixture {
                     .withPassword(ConfigProperties.OCP_PASSWORD.get())
                     .withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
                     .withTrustCerts(true);
-        } else {
+        }
+        else {
             LOGGER.info("OCP credentials not provided, using default config.");
         }
         client = new DefaultOpenShiftClient(configBuilder.build());

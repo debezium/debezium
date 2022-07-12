@@ -6,7 +6,6 @@
 package io.debezium.testing.system.fixtures.databases.ocp;
 
 import static io.debezium.testing.system.tools.ConfigProperties.OCP_PULL_SECRET_PATH;
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 
