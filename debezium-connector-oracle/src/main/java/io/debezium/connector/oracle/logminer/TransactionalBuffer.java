@@ -32,6 +32,7 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -141,14 +142,18 @@ public final class TransactionalBuffer implements AutoCloseable {
                 return;
             }
             // 初始化写出文件流
-            initFileOutputStream(transaction, getCachePath(), String.join("_", tableId.catalog(), tableId.schema(), tableId.table(), transactionId,
-                    String.valueOf(scn.longValue()), String.valueOf(changeTime.toEpochMilli())));
+            initFileOutputStream(transaction, getCachePath(), getCacheFileName(transactionId, scn, tableId, changeTime));
             // 写出事件
             writeOutEvents(transaction, new DmlEvent(operation, parseEntry, scn, tableId, rowId));
         }
         catch (Exception e) {
             throw new RuntimeException("qgg exception", e);
         }
+    }
+
+    private String getCacheFileName(String transactionId, Scn scn, TableId tableId, Instant changeTime) {
+        return String.join("_", tableId.catalog(), tableId.schema(), tableId.table(), transactionId,
+                String.valueOf(scn.longValue()), String.valueOf(changeTime.toEpochMilli()));
     }
 
     private void writeOutEvents(Transaction transaction, DmlEvent dmlEvent) throws IOException {
@@ -167,9 +172,112 @@ public final class TransactionalBuffer implements AutoCloseable {
     }
 
     private byte[] generateEventRecord(DmlEvent dmlEvent) {
-        final String join = String.join(" ", dmlEvent.getTableId().catalog(), dmlEvent.getTableId().schema(), dmlEvent.getTableId().table(),
-                dmlEvent.getEntry().getTransactionId(), String.valueOf(dmlEvent.getScn().longValue()), dmlEvent.getRowId());
-        return (join + System.getProperty("line.separator")).getBytes(StandardCharsets.UTF_8);
+        final StringBuilder record = new StringBuilder();
+        final String lineSeparator = System.getProperty("line.separator");
+        record.append("-- ")
+                .append(String.join(" ", String.valueOf(dmlEvent.getOperation()), dmlEvent.getEntry().getCommandType().name(), dmlEvent.getTableId().catalog(),
+                        dmlEvent.getTableId().schema(), dmlEvent.getTableId().table(), dmlEvent.getEntry().getTransactionId(),
+                        String.valueOf(dmlEvent.getScn().longValue()), dmlEvent.getRowId()))
+                .append(lineSeparator)
+                .append(parseCreateDml(dmlEvent))
+                .append(lineSeparator);
+        return record.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String parseCreateDml(DmlEvent dmlEvent) {
+        final LogMinerDmlEntry dmlEntry = dmlEvent.getEntry();
+        if (dmlEntry == null) {
+            return "null dmlEntry";
+        }
+        switch (dmlEntry.getCommandType()) {
+            case READ:
+                return "read event not support";
+            case CREATE:
+                return insertDml(dmlEntry);
+            case UPDATE:
+                return updateDml(dmlEntry);
+            case DELETE:
+                return deleteDml(dmlEntry);
+            case TRUNCATE:
+                return "truncate event not support";
+            default:
+                return "noMatchingEventTypeFound";
+        }
+    }
+
+    private String deleteDml(LogMinerDmlEntry dmlEntry) {
+        final StringBuilder deleteDml = new StringBuilder();
+        deleteDml.append("delete from ")
+                .append(dmlEntry.getObjectOwner())
+                .append(".")
+                .append(dmlEntry.getObjectName())
+                .append(" where ");
+        for (LogMinerColumnValue oldValue : dmlEntry.getOldValues()) {
+            deleteDml.append(" ")
+                    .append(oldValue.getColumnName())
+                    .append("=")
+                    .append(oldValue.getColumnData())
+                    .append(" and");
+        }
+        if (deleteDml.lastIndexOf("and") == deleteDml.length() - 3) {
+            deleteDml.delete(deleteDml.length() - 3, deleteDml.length());
+        }
+        deleteDml.append(";");
+        return deleteDml.toString();
+    }
+
+    private String updateDml(LogMinerDmlEntry dmlEntry) {
+        final StringBuilder updateDml = new StringBuilder();
+        updateDml.append("-- old: ");
+        for (LogMinerColumnValue oldValue : dmlEntry.getOldValues()) {
+            updateDml.append(oldValue.getColumnName())
+                    .append("=")
+                    .append(oldValue.getColumnData())
+                    .append(" ");
+        }
+        updateDml.append(System.getProperty("line.separator"))
+                .append(insertDml(dmlEntry));
+        return updateDml.toString();
+    }
+
+    private String insertDml(LogMinerDmlEntry dmlEntry) {
+        final StringBuilder createDml = new StringBuilder();
+        createDml.append("insert into ")
+                .append(dmlEntry.getObjectOwner())
+                .append(".")
+                .append(dmlEntry.getObjectName())
+                .append(valueJoin(dmlEntry))
+                .append(";");
+        return createDml.toString();
+    }
+
+    private String valueJoin(LogMinerDmlEntry dmlEntry) {
+        final StringBuilder name = new StringBuilder(" (");
+        final StringBuilder value = new StringBuilder(" VALUES (");
+        for (LogMinerColumnValue newValue : dmlEntry.getNewValues()) {
+            valueJoinAsItem(name, value, newValue);
+        }
+        if (name.lastIndexOf(",") == name.length() - 1) {
+            name.deleteCharAt(name.length() - 1);
+        }
+        if (value.lastIndexOf(",") == value.length() - 1) {
+            value.deleteCharAt(value.length() - 1);
+        }
+        name.append(")").append(value).append(")");
+        return name.toString();
+    }
+
+    private void valueJoinAsItem(StringBuilder name, StringBuilder value, LogMinerColumnValue newValue) {
+        if (newValue == null || newValue.getColumnName() == null) {
+            return;
+        }
+        name.append(newValue.getColumnName()).append(",");
+        if (newValue.getColumnData() == null || (!(newValue.getColumnData() instanceof String))) {
+            value.append(newValue.getColumnData());
+        }
+        else {
+            value.append("'").append(newValue.getColumnData()).append("'").append(",");
+        }
     }
 
     private void initFileOutputStream(Transaction transaction, String cachePath, String cacheFileName) throws Exception {
@@ -281,7 +389,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         if (transaction.getFileOutputStream() == null) {
             return;
         }
-        final String commitMessage = "transaction commit, transactionId=" + transactionId + ", scn=" + scn.longValue()
+        final String commitMessage = "-- transaction commit, transactionId=" + transactionId + ", scn=" + scn.longValue()
                 + ", timestamp=" + timestamp.getTime() + ", debugMessage=" + debugMessage;
         transaction.getFileOutputStream().write(commitMessage.getBytes(StandardCharsets.UTF_8));
         transaction.getFileOutputStream().flush();
@@ -375,7 +483,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         if (transaction.getFileOutputStream() == null) {
             return;
         }
-        transaction.getFileOutputStream().write(("transaction rollback, transactionId=" + transactionId + ", debugMessage=" + debugMessage)
+        transaction.getFileOutputStream().write(("-- transaction rollback, transactionId=" + transactionId + ", debugMessage=" + debugMessage)
                 .getBytes(StandardCharsets.UTF_8));
         transaction.getFileOutputStream().flush();
         transaction.getFileOutputStream().close();
