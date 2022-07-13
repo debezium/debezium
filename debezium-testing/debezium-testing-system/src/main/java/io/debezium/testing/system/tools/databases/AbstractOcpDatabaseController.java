@@ -99,7 +99,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     @Override
     public String getPublicDatabaseHostname() {
         if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using local database hostname");
+            LOGGER.info("Running from OCP, using internal database hostname");
             return getDatabaseHostname();
         }
         awaitIngress();
@@ -110,7 +110,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     @Override
     public int getPublicDatabasePort() {
         if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using local database port");
+            LOGGER.info("Running from OCP, using internal database port");
             return getDatabasePort();
         }
         awaitIngress();

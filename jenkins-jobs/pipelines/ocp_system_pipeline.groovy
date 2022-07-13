@@ -44,7 +44,7 @@ pipeline {
                     fi
 
                     FILENAME="testsuite-job"
-                    SECRET_NAME=$(cat ${SECRET_PATH} | grep name | awk '{print $2;}')
+                    PULL_SECRET_NAME=$(cat ${SECRET_PATH} | grep name | awk '{print $2;}')
 
                     cd ${WORKSPACE}/debezium
                     jenkins-jobs/docker/debezium-testing-system/deployment-template.sh --filename "${FILENAME}" \

@@ -14,8 +14,8 @@ pipeline {
             steps {
                 checkout([
                         $class           : 'GitSCM',
-                        branches         : [[name: "${PARENT_DBZ_GIT_BRANCH}"]],
-                        userRemoteConfigs: [[url: "${PARENT_DBZ_GIT_REPOSITORY}"]],
+                        branches         : [[name: "${DBZ_GIT_BRANCH}"]],
+                        userRemoteConfigs: [[url: "${DBZ_GIT_REPOSITORY}"]],
                         extensions       : [[$class           : 'RelativeTargetDirectory',
                                              relativeTargetDir: 'debezium']],
                 ])
@@ -30,7 +30,7 @@ pipeline {
                 expression { !params.APICURIO_PREPARE_BUILD_NUMBER }
             }
             steps {
-                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' ,filter: 'apicurio-registry-install-examples.zip', selector: lastSuccessful()
+                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system' ,filter: 'apicurio-registry-install-examples.zip', selector: lastSuccessful()
             }
         }
         stage('Copy apicurio artifacts') {
@@ -38,7 +38,7 @@ pipeline {
                 expression { params.APICURIO_PREPARE_BUILD_NUMBER }
             }
             steps {
-                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'apicurio-registry-install-examples.zip', selector: specific(params.APICURIO_PREPARE_BUILD_NUMBER)
+                copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system' , filter: 'apicurio-registry-install-examples.zip', selector: specific(params.APICURIO_PREPARE_BUILD_NUMBER)
             }
         }
 
@@ -47,7 +47,7 @@ pipeline {
                 expression { !params.STRIMZI_PREPARE_BUILD_NUMBER }
             }
             steps {
-                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system' , filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
             }
         }
         stage('Copy strimzi artifacts') {
@@ -55,7 +55,7 @@ pipeline {
                 expression { params.STRIMZI_PREPARE_BUILD_NUMBER }
             }
             steps {
-                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system/downstream' , filter: 'amq-streams-install-examples.zip', selector: specific(params.STRIMZI_PREPARE_BUILD_NUMBER)
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: 'debezium/jenkins-jobs/docker/debezium-testing-system' , filter: 'amq-streams-install-examples.zip', selector: specific(params.STRIMZI_PREPARE_BUILD_NUMBER)
             }
         }
 
@@ -67,13 +67,10 @@ pipeline {
 
                     sh '''
                     cd debezium/jenkins-jobs/docker/debezium-testing-system
-                    docker build --build-arg branch=${DBZ_GIT_BRANCH} --build-arg repository=${DBZ_GIT_REPOSITORY} -t testsuite-base:latest .
-
-                    cd downstream
-                    docker build -t testsuite:latest .
-                    docker tag testsuite:latest quay.io/rh_integration/dbz-testing-system:${TAG}
+                    DOCKER_IMAGE=quay.io/rh_integration/dbz-testing-system:${TAG}
+                    docker build --build-arg branch=${DBZ_GIT_BRANCH} --build-arg repository=${DBZ_GIT_REPOSITORY} --target downstream -t ${DOCKER_IMAGE} .
                     docker login -u ${QUAY_USERNAME} -p ${QUAY_PASSWORD} quay.io
-                    docker push quay.io/rh_integration/dbz-testing-system:${TAG}
+                    docker push ${DOCKER_IMAGE}
                     '''
                 }
             }

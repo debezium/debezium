@@ -14,8 +14,8 @@ pipeline {
             steps {
                 checkout([
                         $class           : 'GitSCM',
-                        branches         : [[name: "${PARENT_DBZ_GIT_BRANCH}"]],
-                        userRemoteConfigs: [[url: "${PARENT_DBZ_GIT_REPOSITORY}"]],
+                        branches         : [[name: "${DBZ_GIT_BRANCH}"]],
+                        userRemoteConfigs: [[url: "${DBZ_GIT_REPOSITORY}"]],
                         extensions       : [[$class           : 'RelativeTargetDirectory',
                                              relativeTargetDir: 'debezium']],
                 ])
@@ -32,10 +32,10 @@ pipeline {
                 ]) {
                     sh '''
                     pushd debezium/jenkins-jobs/docker/debezium-testing-system
-                    docker build --build-arg branch=${DBZ_GIT_BRANCH} --build-arg repository=${DBZ_GIT_REPOSITORY} -t testsuite:upstream .
-                    docker tag testsuite:upstream quay.io/rh_integration/dbz-testing-system:${TAG}
+                    DOCKER_IMAGE=quay.io/rh_integration/dbz-testing-system:${TAG}
+                    docker build --build-arg branch=${DBZ_GIT_BRANCH} --build-arg repository=${DBZ_GIT_REPOSITORY} --target base -t ${DOCKER_IMAGE} .
                     docker login -u ${QUAY_USERNAME} -p ${QUAY_PASSWORD} quay.io
-                    docker push quay.io/rh_integration/dbz-testing-system:${TAG}
+                    docker push ${DOCKER_IMAGE}
                 '''
                 }
             }

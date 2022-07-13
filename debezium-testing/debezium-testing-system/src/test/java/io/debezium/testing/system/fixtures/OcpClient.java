@@ -34,15 +34,14 @@ public class OcpClient extends TestFixture {
     public void setup() {
         ConfigBuilder configBuilder = new ConfigBuilder();
         if (!isRunningFromOcp()) {
+            LOGGER.info("Running outside OCP, using OCP credentials passed from parameters");
             configBuilder.withMasterUrl(ConfigProperties.OCP_URL.get())
                     .withUsername(ConfigProperties.OCP_USERNAME.get())
-                    .withPassword(ConfigProperties.OCP_PASSWORD.get())
-                    .withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
-                    .withTrustCerts(true);
+                    .withPassword(ConfigProperties.OCP_PASSWORD.get());
         }
-        else {
-            LOGGER.info("OCP credentials not provided, using default config.");
-        }
+        configBuilder.withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
+                .withTrustCerts(true);
+
         client = new DefaultOpenShiftClient(configBuilder.build());
         store(OpenShiftClient.class, client);
     }
