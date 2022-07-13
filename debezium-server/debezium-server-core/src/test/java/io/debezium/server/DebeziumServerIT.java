@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
@@ -38,6 +39,9 @@ public class DebeziumServerIT {
     private static final int MESSAGE_COUNT = 4;
     @Inject
     DebeziumServer server;
+
+    @Inject
+    DebeziumMetrics metrics;
 
     {
         Testing.Files.delete(TestConfigSource.OFFSET_STORE_PATH);
@@ -65,5 +69,23 @@ public class DebeziumServerIT {
         Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
         Assertions.assertThat(((String) testConsumer.getValues().get(MESSAGE_COUNT - 1))).contains(
                 "\"after\":{\"id\":1004,\"first_name\":\"Anne\",\"last_name\":\"Kretchmar\",\"email\":\"annek@noanswer.org\"}");
+    }
+
+    @Test
+    public void testDebeziumMetricsWithPostgres() {
+        Testing.Print.enable();
+
+        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
+            try {
+                // snapshot process finished
+                // and consuming events finished!
+                return metrics.snapshotCompleted()
+                        && metrics.streamingQueueCurrentSize() == 0
+                        && metrics.maxQueueSize() == CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
+            }
+            catch (Exception e) {
+                return false;
+            }
+        });
     }
 }

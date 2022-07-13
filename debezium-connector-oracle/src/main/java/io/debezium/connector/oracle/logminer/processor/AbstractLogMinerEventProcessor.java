@@ -396,22 +396,26 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         // a truncate event is seen by logminer as a DDL event type.
                         // So force this here to be a Truncate Operation.
                         logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                                connectorConfig,
                                 partition,
                                 offsetContext,
                                 Envelope.Operation.TRUNCATE,
                                 dmlEvent.getDmlEntry().getOldValues(),
                                 dmlEvent.getDmlEntry().getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
+                                getSchema(),
                                 Clock.system());
                     }
                     else {
                         logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                                connectorConfig,
                                 partition,
                                 offsetContext,
                                 dmlEvent.getEventType(),
                                 dmlEvent.getDmlEntry().getOldValues(),
                                 dmlEvent.getDmlEntry().getNewValues(),
                                 getSchema().tableFor(event.getTableId()),
+                                getSchema(),
                                 Clock.system());
                     }
                     dispatcher.dispatchDataChangeEvent(partition, event.getTableId(), logMinerChangeRecordEmitter);

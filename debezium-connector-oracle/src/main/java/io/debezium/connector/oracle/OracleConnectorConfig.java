@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -45,6 +44,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 import io.debezium.util.Strings;
 
 /**
@@ -133,7 +133,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "snapshot is taken.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field CONNECTOR_ADAPTER = Field.create(DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")

@@ -677,7 +677,7 @@ node('Slave') {
                 if (!DRY_RUN) {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         sh """
-                            git commit -a -m "Updated Docker images for release $RELEASE_VERSION" && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${
+                            git commit -a -m "Updated container images for release $RELEASE_VERSION" && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${
                             IMAGES_REPOSITORY
                         } HEAD:$IMAGES_BRANCH
                             git tag $VERSION_TAG && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${IMAGES_REPOSITORY} $VERSION_TAG

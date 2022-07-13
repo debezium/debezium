@@ -17,7 +17,6 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -35,7 +34,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 import io.debezium.util.Collect;
 
 /**
@@ -538,7 +538,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                             + "but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field SERVER_ID = Field.create("database.server.id")
             .withDisplayName("Cluster ID")

@@ -18,6 +18,14 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-file</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-ddl-parser</artifactId>
         </dependency>
         <dependency>

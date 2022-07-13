@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.history;
+package io.debezium.storage.kafka.history;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -58,6 +58,12 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.Validator;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
+import io.debezium.relational.history.AbstractDatabaseHistory;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryException;
+import io.debezium.relational.history.DatabaseHistoryListener;
+import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Collect;
 import io.debezium.util.Threads;
 
@@ -137,24 +143,6 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     + "The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).")
             .withDefault(100)
             .withValidation(Field::isInteger);
-
-    // Required for unified thread creation
-    public static final Field INTERNAL_CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
-            .withDisplayName("Debezium connector class")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withDescription("The class of the Debezium database connector")
-            .withNoValidation();
-
-    // Required for unified thread creation
-    public static final Field INTERNAL_CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
-            .withDisplayName("Debezium connector identifier")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("The unique identifier of the Debezium connector")
-            .withNoValidation();
 
     public static final Field KAFKA_QUERY_TIMEOUT_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.query.timeout.ms")
             .withDisplayName("Kafka admin client query timeout (ms)")
@@ -508,7 +496,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         return "Kafka topic";
     }
 
-    protected static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
+    public static String consumerConfigPropertyName(String kafkaConsumerPropertyName) {
         return CONSUMER_PREFIX + kafkaConsumerPropertyName;
     }
 

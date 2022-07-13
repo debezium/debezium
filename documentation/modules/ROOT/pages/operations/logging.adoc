@@ -144,7 +144,7 @@ log4j.logger.io.debezium.connector.mysql=DEBUG, stdout  // <1>
 log4j.logger.io.debezium.relational.history=DEBUG, stdout  // <2>
 
 log4j.additivity.io.debezium.connector.mysql=false  // <3>
-log4j.additivity.io.debezium.relational.history=false  // <3>
+log4j.additivity.io.debezium.storage.kafka.history=false  // <3>
 ...
 ----
 <1> Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
@@ -189,7 +189,7 @@ log4j.logger.io.debezium.connector.mysql.BinlogReader=DEBUG, stdout
 log4j.logger.io.debezium.relational.history=INFO, stdout
 
 log4j.additivity.io.debezium.connector.mysql=false
-log4j.additivity.io.debezium.relational.history=false
+log4j.additivity.io.debezium.storage.kafka.history=false
 log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 ...
 ----

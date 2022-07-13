@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileDatabaseHistory;
 
 /**
  * Create and populate a unique instance of a MySQL database for each run of JUnit test. A user of class

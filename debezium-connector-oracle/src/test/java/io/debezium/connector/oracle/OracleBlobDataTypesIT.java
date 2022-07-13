@@ -533,7 +533,6 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         // 2 deletes + 2 tombstones
         records = consumeRecordsByTopic(4);
         assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(4);
-        records.forEach(System.out::println);
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
@@ -687,7 +686,6 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         // 2 deletes + 2 tombstones
         records = consumeRecordsByTopic(4);
         assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(4);
-        records.forEach(System.out::println);
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
@@ -875,7 +873,6 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         // 2 deletes + 2 tombstones
         records = consumeRecordsByTopic(4);
         assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(4);
-        records.forEach(System.out::println);
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
         VerifyRecord.isValidDelete(record, "ID", 2);
@@ -1686,6 +1683,135 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz4366");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5295")
+    public void shouldReselectBlobAfterPrimaryKeyChange() throws Exception {
+        TestHelper.dropTable(connection, "dbz5295");
+        try {
+            connection.execute("create table dbz5295 (id numeric(9,0) primary key, data blob)");
+            TestHelper.streamTable(connection, "dbz5295");
+
+            Blob blob = createBlob(part(BIN_DATA, 0, 1024));
+            connection.prepareQuery("INSERT INTO dbz5295 (id,data) values (1,?)", ps -> ps.setBlob(1, blob), null);
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5295")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("DBZ5295"));
+            assertThat(recordsForTopic).hasSize(1);
+
+            SourceRecord record = recordsForTopic.get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob));
+
+            connection.execute("UPDATE dbz5295 set id = 2 where id = 1");
+
+            // The update of the primary key causes a DELETE and a CREATE
+            records = consumeRecordsByTopic(3);
+            recordsForTopic = records.recordsForTopic(topicName("DBZ5295"));
+            assertThat(recordsForTopic).hasSize(3);
+
+            // First event is a delete
+            record = recordsForTopic.get(0);
+            VerifyRecord.isValidDelete(record, "ID", 1);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after).isNull();
+
+            // Second event is the tombstone
+            record = recordsForTopic.get(1);
+            VerifyRecord.isValidTombstone(record);
+
+            // Third event is the create
+            record = recordsForTopic.get(2);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob));
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5295");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5295")
+    public void shouldReselectBlobAfterPrimaryKeyChangeWithRowDeletion() throws Exception {
+        TestHelper.dropTable(connection, "dbz5295");
+        try {
+            connection.execute("create table dbz5295 (id numeric(9,0) primary key, data blob)");
+            TestHelper.streamTable(connection, "dbz5295");
+
+            Blob blob = createBlob(part(BIN_DATA, 0, 1024));
+            connection.prepareQuery("INSERT INTO dbz5295 (id,data) values (1,?)", ps -> ps.setBlob(1, blob), null);
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5295")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("DBZ5295"));
+            assertThat(recordsForTopic).hasSize(1);
+
+            SourceRecord record = recordsForTopic.get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob));
+
+            // Update the PK and then delete the row within the same transaction
+            connection.executeWithoutCommitting("UPDATE dbz5295 set id = 2 where id = 1");
+            connection.execute("DELETE FROM dbz5295 where id = 2");
+
+            // The update of the primary key causes a DELETE and a CREATE, mingled with a TOMBSTONE
+            records = consumeRecordsByTopic(4);
+            recordsForTopic = records.recordsForTopic(topicName("DBZ5295"));
+            assertThat(recordsForTopic).hasSize(4);
+
+            // First event: DELETE
+            record = recordsForTopic.get(0);
+            VerifyRecord.isValidDelete(record, "ID", 1);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after).isNull();
+
+            // Second event: TOMBSTONE
+            record = recordsForTopic.get(1);
+            VerifyRecord.isValidTombstone(record);
+
+            // Third event: CREATE
+            record = recordsForTopic.get(2);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+            // Fourth event: DELETE
+            record = recordsForTopic.get(3);
+            VerifyRecord.isValidDelete(record, "ID", 2);
+            Struct before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.get("ID")).isEqualTo(2);
+            assertThat(before.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5295");
         }
     }
 

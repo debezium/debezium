@@ -31,7 +31,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-import oracle.jdbc.OracleTypes;
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.DefaultRowLCR;
@@ -205,26 +204,29 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         // is not explicitly provided in the map is initialized with the unavailable value
         // marker object so its transformed correctly by the value converters.
 
-        // todo: would be useful in the future to track some type of "has-lob" flag on the table
-        // such a flag would allow us to conditionalize this loop and only apply it to tables
-        // which have LOB columns.
-        for (Column column : table.columns()) {
-            if (isLobColumn(column)) {
-                // again Xstream doesn't supply before state for LOB values; explicitly use unavailable value
-                oldChunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
-                if (!chunkValues.containsKey(column.name())) {
-                    // Column not supplied, initialize with unavailable value marker
-                    LOGGER.trace("\tColumn '{}' not supplied, initialized with unavailable value", column.name());
-                    chunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
-                }
+        for (Column column : schema.getLobColumnsForTable(table.id())) {
+            // again Xstream doesn't supply before state for LOB values; explicitly use unavailable value
+            oldChunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
+            if (!chunkValues.containsKey(column.name())) {
+                // Column not supplied, initialize with unavailable value marker
+                LOGGER.trace("\tColumn '{}' not supplied, initialized with unavailable value", column.name());
+                chunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
             }
         }
 
         dispatcher.dispatchDataChangeEvent(
                 partition,
                 tableId,
-                new XStreamChangeRecordEmitter(partition, offsetContext, lcr, oldChunkValues, chunkValues,
-                        schema.tableFor(tableId), clock));
+                new XStreamChangeRecordEmitter(
+                        connectorConfig,
+                        partition,
+                        offsetContext,
+                        lcr,
+                        oldChunkValues,
+                        chunkValues,
+                        schema.tableFor(tableId),
+                        schema,
+                        clock));
     }
 
     private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) throws InterruptedException {
@@ -349,10 +351,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     @Override
     public ChunkColumnValue createChunk() throws StreamsException {
         throw new UnsupportedOperationException("Should never be called");
-    }
-
-    private boolean isLobColumn(Column column) {
-        return column.jdbcType() == OracleTypes.CLOB || column.jdbcType() == OracleTypes.NCLOB || column.jdbcType() == OracleTypes.BLOB;
     }
 
     private void resolveAndDispatchCurrentChunkedRow() {

@@ -54,9 +54,9 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.FileDatabaseHistory;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**

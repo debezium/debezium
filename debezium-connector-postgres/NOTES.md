@@ -1,4 +1,4 @@
-This module uses the [debezium/postgres:9.6](https://github.com/debezium/docker-images/tree/main/postgres/9.6) Docker image maintained by the Debezium team. This image uses a default PostgreSQL 9.6 image on top of which it installs the [Debezium Logical Decoding plugin](https://github.com/debezium/postgres-decoderbufs) which is required in order to be able to receive database events.  
+This module uses the [debezium/postgres:9.6](https://github.com/debezium/container-images/tree/main/postgres/9.6) Docker image maintained by the Debezium team. This image uses a default PostgreSQL 9.6 image on top of which it installs the [Debezium Logical Decoding plugin](https://github.com/debezium/postgres-decoderbufs) which is required in order to be able to receive database events.  
 
 ## Using the PostgreSQL Server
 
@@ -18,4 +18,4 @@ Although using the Maven command is far simpler, the Maven command really just r
 
     $ docker run -it -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres debezium/postgres:9.6 postgres
 
-This will use the `debezium/postgres:9.6` image to start a new container where the PostgreSQL instance uses the settings from [the docker image](https://github.com/debezium/docker-images/blob/main/postgres/9.6/postgresql.conf.sample) 
+This will use the `debezium/postgres:9.6` image to start a new container where the PostgreSQL instance uses the settings from [the docker image](https://github.com/debezium/container-images/blob/main/postgres/9.6/postgresql.conf.sample) 

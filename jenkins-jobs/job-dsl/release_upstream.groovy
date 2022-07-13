@@ -21,7 +21,7 @@ pipelineJob('release-debezium-upstream') {
                 'db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main',
                 'A space separated list of additional repositories from which Debezium incubating components are built (id#repo#branch)'
         )
-        stringParam('IMAGES_REPOSITORY', 'github.com/debezium/docker-images.git', 'Repository from which Debezium images are built')
+        stringParam('IMAGES_REPOSITORY', 'github.com/debezium/container-images.git', 'Repository from which Debezium images are built')
         stringParam('IMAGES_BRANCH', 'main', 'A branch from which Debezium images are built')
         stringParam('POSTGRES_DECODER_REPOSITORY', 'github.com/debezium/postgres-decoderbufs.git', 'Repository from which PostgreSQL decoder plugin is built')
         stringParam('POSTGRES_DECODER_BRANCH', 'main', 'A branch from which Debezium images are built PostgreSQL decoder plugin is built')

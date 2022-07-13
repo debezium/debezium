@@ -42,6 +42,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;

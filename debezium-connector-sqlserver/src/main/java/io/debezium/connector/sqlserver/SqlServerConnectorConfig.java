@@ -18,7 +18,6 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -32,6 +31,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 
 /**
  * The list of configuration options for SQL Server connector
@@ -223,7 +223,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDefault(DEFAULT_PORT);
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field INSTANCE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
