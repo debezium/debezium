@@ -10,20 +10,18 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-import io.debezium.util.Strings;
-
 /**
- * A semantic type for a set of enumerated values, where the string values contain comma-separated values from an enumeration.
+ * A semantic type for an enumeration, where the string values are one of the enumeration's values.
  *
  * @author Randall Hauch
  */
-public class EnumSet {
+public class Enum {
 
-    public static final String LOGICAL_NAME = "io.debezium.data.EnumSet";
+    public static final String LOGICAL_NAME = "io.debezium.data.Enum";
     public static final String VALUES_FIELD = "allowed";
 
     /**
-     * Returns a {@link SchemaBuilder} for a set of enumerated values. You can use the resulting SchemaBuilder
+     * Returns a {@link SchemaBuilder} for an enumeration. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
      *
      * @param allowedValues the comma separated list of allowed values; may not be null
@@ -37,7 +35,7 @@ public class EnumSet {
     }
 
     /**
-     * Returns a {@link SchemaBuilder} for a set of enumerated values. You can use the resulting SchemaBuilder
+     * Returns a {@link SchemaBuilder} for an enumeration. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
      *
      * @param allowedValues the list of allowed values; may not be null
@@ -47,11 +45,11 @@ public class EnumSet {
         if (allowedValues == null) {
             return builder("");
         }
-        return builder(Strings.join(",", allowedValues));
+        return builder(String.join(",", allowedValues));
     }
 
     /**
-     * Returns a {@link Schema} for a set of enumerated values, with all other default Schema settings.
+     * Returns a {@link SchemaBuilder} for an enumeration, with all other default Schema settings.
      *
      * @param allowedValues the comma separated list of allowed values; may not be null
      * @return the schema
@@ -62,7 +60,7 @@ public class EnumSet {
     }
 
     /**
-     * Returns a {@link Schema} for a set of enumerated values, with all other default Schema settings.
+     * Returns a {@link SchemaBuilder} for an enumeration, with all other default Schema settings.
      *
      * @param allowedValues the list of allowed values; may not be null
      * @return the schema
@@ -72,6 +70,6 @@ public class EnumSet {
         if (allowedValues == null) {
             return builder("").build();
         }
-        return builder(allowedValues).build();
+        return builder(String.join(",", allowedValues)).build();
     }
 }

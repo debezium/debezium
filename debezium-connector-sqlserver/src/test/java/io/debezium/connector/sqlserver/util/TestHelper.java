@@ -36,9 +36,9 @@ import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.connector.sqlserver.SqlServerValueConverters;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -243,7 +243,7 @@ public class TestHelper {
 
     public static SqlServerConnection adminConnection() {
         return new SqlServerConnection(TestHelper.defaultJdbcConfig(), SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                new SqlServerValueConverters(DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet(), true);
     }
 
@@ -269,7 +269,7 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(JdbcConfiguration config) {
         return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                new SqlServerValueConverters(DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet(), true);
     }
 
@@ -280,7 +280,7 @@ public class TestHelper {
                 .build());
 
         return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                new SqlServerValueConverters(DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet(), true, true);
     }
 

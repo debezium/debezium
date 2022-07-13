@@ -27,7 +27,7 @@ import org.junit.Test;
 
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
@@ -209,7 +209,7 @@ public class SqlServerConnectionIT {
             Table table = connection.getTableSchemaFromTable(TestHelper.TEST_DATABASE, changeTable);
 
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
-                    new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
+                    new SqlServerValueConverters(DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
 
@@ -379,7 +379,7 @@ public class SqlServerConnectionIT {
             Table table = connection.getTableSchemaFromTable(TestHelper.TEST_DATABASE, changeTable);
 
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
-                    new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
+                    new SqlServerValueConverters(DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
 

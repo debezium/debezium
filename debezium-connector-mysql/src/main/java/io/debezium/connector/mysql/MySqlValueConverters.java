@@ -43,6 +43,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.data.Json;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -122,7 +123,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * <p>
      *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
-     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
+     *            {@link DecimalMode#PRECISE} is to be used
      * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
@@ -139,7 +140,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * <p>
      *
      * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
-     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
+     *            {@link DecimalMode#PRECISE} is to be used
      * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used

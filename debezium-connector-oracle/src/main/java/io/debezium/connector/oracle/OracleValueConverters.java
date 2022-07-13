@@ -32,6 +32,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.ResultReceiver;
 import io.debezium.relational.Column;

@@ -25,6 +25,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
+import io.debezium.jdbc.DecimalMode;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.CustomConverterRegistry;
@@ -50,7 +51,7 @@ public class MySqlDefaultValueTest {
 
     @Before
     public void beforeEach() {
-        converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+        converters = new MySqlValueConverters(DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES);
@@ -189,7 +190,7 @@ public class MySqlDefaultValueTest {
 
     @Test
     public void parseUnsignedBigIntDefaultValueToBigDecimal() {
-        final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+        final MySqlValueConverters converters = new MySqlValueConverters(DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
                 BinaryHandlingMode.BYTES);
@@ -346,7 +347,7 @@ public class MySqlDefaultValueTest {
 
     @Test
     public void parseNumericAndDecimalToDecimalDefaultValue() {
-        final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
+        final MySqlValueConverters converters = new MySqlValueConverters(DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES);
