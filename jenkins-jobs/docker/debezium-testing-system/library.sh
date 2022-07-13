@@ -19,6 +19,7 @@ clone_component()
 
     if [ "${COMPONENT}" != "apicurio" ] && [ "${COMPONENT}" != "strimzi" ] ;
     then
+      echo "unknown component: ${COMPONENT}"
       exit 2 ;
     fi ;
 

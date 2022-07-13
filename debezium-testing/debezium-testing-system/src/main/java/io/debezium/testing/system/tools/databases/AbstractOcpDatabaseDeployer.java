@@ -139,7 +139,8 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
         }
 
         private boolean isLbService(String yamlPath) {
-            return yamlPath.contains("-lb.");
+            Service service = YAML.fromResource(yamlPath, Service.class);
+            return "LoadBalancer".equals(service.getSpec().getType());
         }
     }
 }

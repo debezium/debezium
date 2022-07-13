@@ -253,9 +253,7 @@ public class OpenShiftUtils {
     }
 
     public static boolean isRunningFromOcp() {
-        return ConfigProperties.OCP_URL.isEmpty() ||
-                ConfigProperties.OCP_USERNAME.isEmpty() ||
-                ConfigProperties.OCP_PASSWORD.isEmpty();
+        return ConfigProperties.OCP_URL.isEmpty();
     }
 
     /**

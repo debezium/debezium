@@ -19,8 +19,8 @@ pipelineJob('ocp-system-test') {
         booleanParam('TEST_APICURIO_REGISTRY', false, 'Run tests with Apicurio Registry and Avro serialization')
 
         booleanParam('STRIMZI_KC_BUILD', false, 'True -> use artifact server, false -> dbz connect image')
-        stringParam('DBZ_CONNECT_IMAGE', 'quay.io/rh_integration/test-strimzi-kafka:strz-latest-kafka-3.1.0-apc-2.2.3.Final-dbz-2.0.0-SNAPSHOT', 'Debezium connect image')
-        stringParam('ARTIFACT_SERVER_IMAGE', 'quay.io/rh_integration/test-artifact-server:2.0.0-SNAPSHOT', 'Artifact server image')
+        stringParam('DBZ_CONNECT_IMAGE', '', 'Debezium connect image')
+        stringParam('ARTIFACT_SERVER_IMAGE', '', 'Artifact server image')
         stringParam('APICURIO_VERSION', '2.2.3.Final', 'Apicurio version')
         stringParam('KAFKA_VERSION', '', 'Kafka version')
 
