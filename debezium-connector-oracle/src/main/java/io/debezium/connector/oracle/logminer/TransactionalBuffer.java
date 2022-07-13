@@ -475,6 +475,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                 final InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, "UTF-8");
                 final BufferedReader bufferedReader = new BufferedReader(inputStreamReader);) {
             long counter = transaction.getCount();
+            LOGGER.info("big transaction file dispatch start, counter = {}, file={}", counter, transaction.getCacheFilePath());
             while (counter > 0) {
                 final String line = bufferedReader.readLine();
                 if ((!line.startsWith("--")) || line.startsWith("--end")) {
@@ -512,6 +513,7 @@ public final class TransactionalBuffer implements AutoCloseable {
             if (!transaction.events.isEmpty()) {
                 dispatcher.dispatchTransactionCommittedEvent(offsetContext);
             }
+            LOGGER.info("big transaction file dispatch end, counter = {}, file={}", counter, transaction.getCacheFilePath());
         }
         catch (InterruptedException e) {
             LogMinerHelper.logError(streamingMetrics, "Thread interrupted during running", e);

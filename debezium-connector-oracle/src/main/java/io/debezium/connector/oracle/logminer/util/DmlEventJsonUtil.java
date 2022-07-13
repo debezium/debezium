@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.oracle.logminer.util;
 
 import java.math.BigInteger;
@@ -25,7 +30,7 @@ import io.debezium.relational.TableId;
 /**
  * @author csz
  * @version 1.0
- * @date 2022/7/13 17:49
+ * {@code @date} 2022/7/13 17:49
  **/
 public class DmlEventJsonUtil {
 
