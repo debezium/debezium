@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -171,7 +172,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         result.put("date", (c, v) -> timestampUtils.toLocalDateTime(extractDefault(v, "1970-01-01")));
         result.put("time", (c, v) -> timestampUtils.toLocalTime(extractDefault(v, "00:00")));
         result.put("timestamp", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
-        result.put("timestamptz", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
+        result.put("timestamptz", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")).atZoneSameInstant(ZoneOffset.UTC));
         result.put("interval", (c, v) -> new PGInterval(extractDefault(v, "epoch")));
 
         // Register any existing enum types
