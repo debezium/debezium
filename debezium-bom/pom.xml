@@ -17,7 +17,6 @@
 
         <!-- Connectors -->
         <version.dropwizard>4.0.1</version.dropwizard>
-        <version.guava>30.1.1-jre</version.guava>
         <version.jaxb>2.3.1</version.jaxb>
         <version.jetty>9.4.12.v20180830</version.jetty>
 
@@ -399,11 +398,6 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-servlet</artifactId>
                 <version>${version.jetty}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.guava</groupId>
-                <artifactId>guava</artifactId>
-                <version>${version.guava}</version>
             </dependency>
             <dependency>
                 <groupId>javax.xml.bind</groupId>
