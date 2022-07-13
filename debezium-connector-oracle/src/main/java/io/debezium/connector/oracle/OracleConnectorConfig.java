@@ -185,7 +185,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withDefault(100000)
             .withImportance(Importance.MEDIUM)
-            .withDescription("If true, BIG_TRANSACTIONAL_SHUTDOWN_LIMIT_COUNT option will be added to the log mining session. This will manage log files switches seamlessly.");
+            .withDescription(
+                    "If true, BIG_TRANSACTIONAL_SHUTDOWN_LIMIT_COUNT option will be added to the log mining session. This will manage log files switches seamlessly.");
 
     public static final Field BIG_TRANSACTIONAL_SKIP_ID = Field.create("log.mining.big.transactional.skip.id")
             .withDisplayName("Should log mining session configured with BIG_TRANSACTIONAL_SKIP_ID setting?")

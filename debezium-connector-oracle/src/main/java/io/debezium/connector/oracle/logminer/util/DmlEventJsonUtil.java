@@ -1,17 +1,5 @@
 package io.debezium.connector.oracle.logminer.util;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.TransactionalBuffer;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
-import io.debezium.data.Envelope;
-import io.debezium.relational.TableId;
-
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -21,13 +9,25 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+
+import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.TransactionalBuffer;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
+import io.debezium.data.Envelope;
+import io.debezium.relational.TableId;
+
 /**
  * @author csz
  * @version 1.0
  * @date 2022/7/13 17:49
  **/
 public class DmlEventJsonUtil {
-
 
     public static String serialization(TransactionalBuffer.DmlEvent dmlEvent) {
         final JSONObject dmlEventObject = new JSONObject();
@@ -56,9 +56,8 @@ public class DmlEventJsonUtil {
         if (tableIdJsonObject == null) {
             return null;
         }
-        final TableId tableId = new TableId(tableIdJsonObject.getString("catalogName")
-                , tableIdJsonObject.getString("schemaName")
-                , tableIdJsonObject.getString("tableName"));
+        final TableId tableId = new TableId(tableIdJsonObject.getString("catalogName"), tableIdJsonObject.getString("schemaName"),
+                tableIdJsonObject.getString("tableName"));
         tableId.setId(tableIdJsonObject.getString("id"));
         return tableId;
     }
@@ -67,9 +66,9 @@ public class DmlEventJsonUtil {
         if (entryJsonObject == null) {
             return null;
         }
-        final LogMinerDmlEntry logMinerDmlEntry = new LogMinerDmlEntryImpl(deSerializationAsEntryAsCommandType(entryJsonObject.getString("commandType"))
-                , deSerializationAsEntryAsColumnValueList(entryJsonObject.getJSONArray("newLmColumnValues"))
-                , deSerializationAsEntryAsColumnValueList(entryJsonObject.getJSONArray("oldLmColumnValues")));
+        final LogMinerDmlEntry logMinerDmlEntry = new LogMinerDmlEntryImpl(deSerializationAsEntryAsCommandType(entryJsonObject.getString("commandType")),
+                deSerializationAsEntryAsColumnValueList(entryJsonObject.getJSONArray("newLmColumnValues")),
+                deSerializationAsEntryAsColumnValueList(entryJsonObject.getJSONArray("oldLmColumnValues")));
         logMinerDmlEntry.setObjectOwner(entryJsonObject.getString("objectOwner"));
         logMinerDmlEntry.setObjectName(entryJsonObject.getString("objectName"));
         final Long sourceTime = entryJsonObject.getLong("sourceTime");
@@ -99,8 +98,7 @@ public class DmlEventJsonUtil {
             return null;
         }
         final LogMinerColumnValueImpl logMinerColumnValue = new LogMinerColumnValueImpl(
-                columnValueJsonObject.getString("columnName")
-                , columnValueJsonObject.getIntValue("columnType"));
+                columnValueJsonObject.getString("columnName"), columnValueJsonObject.getIntValue("columnType"));
         logMinerColumnValue.setColumnData(columnValueJsonObject.get("columnData"));
         return logMinerColumnValue;
     }
@@ -120,7 +118,6 @@ public class DmlEventJsonUtil {
         return scn == null ? Scn.NULL : new Scn(scn);
     }
 
-
     private static Map<String, Object> serializationAsTableId(TableId tableId) {
         if (tableId == null) {
             return null;
@@ -132,7 +129,6 @@ public class DmlEventJsonUtil {
         tableIdMap.put("id", tableId.identifier());
         return tableIdMap;
     }
-
 
     private static Map<String, Object> serializationAsEntry(LogMinerDmlEntry entry) {
         if (entry == null) {
@@ -151,7 +147,6 @@ public class DmlEventJsonUtil {
         entryMap.put("rowId", entry.getRowId());
         return entryMap;
     }
-
 
     private static Map<String, Object> serializationAsScn(Scn scn) {
         if (scn == null) {
