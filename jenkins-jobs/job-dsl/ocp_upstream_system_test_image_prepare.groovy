@@ -11,8 +11,6 @@ pipelineJob('ocp-debezium-testing-upstream-system-image-prepare') {
     }
 
     parameters {
-        stringParam('PARENT_DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository used to build the docker image')
-        stringParam('PARENT_DBZ_GIT_BRANCH', 'main')
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned into docker image')
         stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
         stringParam('TAG', 'latest', 'Docker image tag')

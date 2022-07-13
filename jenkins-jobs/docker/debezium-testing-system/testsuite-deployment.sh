@@ -59,7 +59,7 @@ if [ -n "${DBZ_KAFKA_VERSION}" ] ; then
   OPTIONAL_ARGS+=("-Dversion.kafka=${DBZ_KAFKA_VERSION}")
 fi
 
-mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
+./mvnw install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \
                     -Docp.project.debezium="${DBZ_OCP_PROJECT_DEBEZIUM}" \
                     -Docp.project.db2="${DBZ_OCP_PROJECT_DB2}" \
                     -Docp.project.mongo="${DBZ_OCP_PROJECT_MONGO}" \
