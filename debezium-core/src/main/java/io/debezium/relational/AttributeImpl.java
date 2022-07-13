@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Objects;
 
 /**
@@ -30,6 +32,46 @@ final class AttributeImpl implements Attribute {
     @Override
     public String value() {
         return value;
+    }
+
+    @Override
+    public String asString() {
+        return value;
+    }
+
+    @Override
+    public Integer asInteger() {
+        return value == null ? null : Integer.parseInt(value);
+    }
+
+    @Override
+    public Long asLong() {
+        return value == null ? null : Long.parseLong(value);
+    }
+
+    @Override
+    public Boolean asBoolean() {
+        return value == null ? null : Boolean.parseBoolean(value);
+    }
+
+    @Override
+    public BigInteger asBigInteger() {
+        return value == null ? null : new BigInteger(value);
+    }
+
+    @Override
+    public BigDecimal asBigDecimal() {
+        return value == null ? null : new BigDecimal(value);
+    }
+
+    @Override
+    public Float asFloat() {
+        return value == null ? null : Float.parseFloat(value);
+    }
+
+    @Override
+    public Double asDouble() {
+        return value == null ? null : Double.parseDouble(value);
     }
 
     @Override

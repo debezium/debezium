@@ -5,6 +5,9 @@
  */
 package io.debezium.relational;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import io.debezium.annotation.NotThreadSafe;
 
 /**
@@ -29,6 +32,63 @@ public interface AttributeEditor {
     String value();
 
     /**
+     * Get the attribute value as a string value.
+     *
+     * @return the attribute value converted to a {@link String}, may be null
+     */
+    String asString();
+
+    /**
+     * Get the attribute value as an integer value.
+     *
+     * @return the attribute value converted to an {@link Integer}, may be null
+     */
+    Integer asInteger();
+
+    /**
+     * Get the attribute value as a long value.
+     *
+     * @return the attribute value converted to a {@link Long}, may be null
+     */
+    Long asLong();
+
+    /**
+     * Get the attribute value as a boolean value.
+     * This conversion is based on {@link Boolean#parseBoolean(String)} semantics.
+     *
+     * @return the attribute value converted to a {@link Boolean}, may be null
+     */
+    Boolean asBoolean();
+
+    /**
+     * Get the attribute value as a big integer value.
+     *
+     * @return the attribute value converted to a {@link BigInteger}, may be null
+     */
+    BigInteger asBigInteger();
+
+    /**
+     * Get the attribute value as a big decimal value.
+     *
+     * @return the attribute value converted to a {@link BigDecimal}, may be null
+     */
+    BigDecimal asBigDecimal();
+
+    /**
+     * Get the attribute value as a float value.
+     *
+     * @return the attribute value converted to a {@link Float}, may be null
+     */
+    Float asFloat();
+
+    /**
+     * Get the attribute value as a double value.
+     *
+     * @return the attribute value converted to a {@link Double}, may be null
+     */
+    Double asDouble();
+
+    /**
      * Set the name of the attribute.
      *
      * @param name the attribute name
@@ -42,7 +102,7 @@ public interface AttributeEditor {
      * @param value the attribute value
      * @return this editor so callers can chain methods together
      */
-    AttributeEditor value(String value);
+    AttributeEditor value(Object value);
 
     /**
      * Obtain an immutable attribute definition representing the current state of this editor.
