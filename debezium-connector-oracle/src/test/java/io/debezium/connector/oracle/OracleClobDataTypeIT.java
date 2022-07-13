@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.apache.kafka.clients.admin.internals.AdminApiHandler.ApiResult.failed;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.Fail.fail;
 
 import java.io.File;
 import java.io.FileReader;
@@ -1998,7 +1998,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 connection.commit();
             }
             catch (Exception e) {
-                failed("Insert of clob data failed to happen", e);
+                fail("Insert of clob data failed to happen", e);
             }
 
             SourceRecords records = consumeRecordsByTopic(1);
