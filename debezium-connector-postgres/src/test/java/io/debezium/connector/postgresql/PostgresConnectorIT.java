@@ -2845,6 +2845,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5295")
+    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "schema gets refreshed and causes create to be emitted without toast columns present")
     public void shouldReselectToastColumnsOnPrimaryKeyChange() throws Exception {
         TestHelper.execute(CREATE_TABLES_STMT);
 
