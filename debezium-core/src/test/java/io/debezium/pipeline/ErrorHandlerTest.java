@@ -47,7 +47,7 @@ public class ErrorHandlerTest {
 
     @Test
     public void noError() throws Exception {
-        final ChangeEventQueue<Object> queue = queue();
+        final ChangeEventQueue<DataChangeEvent> queue = queue();
 
         poll(queue);
     }
@@ -56,7 +56,7 @@ public class ErrorHandlerTest {
     public void nonRetriableByDefault() throws Exception {
         final Configuration config = Configuration.empty();
 
-        final ChangeEventQueue<Object> queue = queue();
+        final ChangeEventQueue<DataChangeEvent> queue = queue();
 
         final ErrorHandler errorHandler = errorHandler(config, queue);
         final Exception error = new IllegalArgumentException("This is my error");
@@ -70,7 +70,7 @@ public class ErrorHandlerTest {
         }
     }
 
-    private void poll(final ChangeEventQueue<Object> queue) throws InterruptedException {
+    private void poll(final ChangeEventQueue<DataChangeEvent> queue) throws InterruptedException {
         for (int i = 0; i < 10; i++) {
             queue.poll();
             Thread.sleep(100);
@@ -82,7 +82,7 @@ public class ErrorHandlerTest {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.CUSTOM_RETRIABLE_EXCEPTION, ".*my error.*")
                 .build();
-        final ChangeEventQueue<Object> queue = queue();
+        final ChangeEventQueue<DataChangeEvent> queue = queue();
 
         final ErrorHandler errorHandler = errorHandler(config, queue);
         final Exception error = new IllegalArgumentException("This is my error to retry");
@@ -101,7 +101,7 @@ public class ErrorHandlerTest {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.CUSTOM_RETRIABLE_EXCEPTION, ".*not my error.*")
                 .build();
-        final ChangeEventQueue<Object> queue = queue();
+        final ChangeEventQueue<DataChangeEvent> queue = queue();
 
         final ErrorHandler errorHandler = errorHandler(config, queue);
         final Exception error = new IllegalArgumentException("This is my error to retry");
@@ -120,7 +120,7 @@ public class ErrorHandlerTest {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.CUSTOM_RETRIABLE_EXCEPTION, ".*my error.*")
                 .build();
-        final ChangeEventQueue<Object> queue = queue();
+        final ChangeEventQueue<DataChangeEvent> queue = queue();
 
         final ErrorHandler errorHandler = errorHandler(config, queue);
         final Exception error = new IllegalArgumentException("This is my error to retry");
@@ -134,14 +134,14 @@ public class ErrorHandlerTest {
         }
     }
 
-    private ErrorHandler errorHandler(final Configuration config, final ChangeEventQueue<Object> queue) {
+    private ErrorHandler errorHandler(final Configuration config, final ChangeEventQueue<DataChangeEvent> queue) {
         final ErrorHandler errorHandler = new ErrorHandler(SourceConnector.class, new TestConnectorConfig(config),
                 queue);
         return errorHandler;
     }
 
-    private ChangeEventQueue<Object> queue() {
-        final ChangeEventQueue<Object> queue = new ChangeEventQueue.Builder<>()
+    private ChangeEventQueue<DataChangeEvent> queue() {
+        final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<>()
                 .pollInterval(Duration.ofMillis(1))
                 .maxBatchSize(1000)
                 .maxQueueSize(1000)

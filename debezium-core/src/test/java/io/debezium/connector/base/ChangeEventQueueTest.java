@@ -10,9 +10,12 @@ import static org.junit.Assert.assertEquals;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,12 +23,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.util.LoggingContext;
 
 @RunWith(Parameterized.class)
 public class ChangeEventQueueTest {
 
-    private static final String EVENT = "Change Data Capture Even via Debezium";
+    private static final DataChangeEvent EVENT = new DataChangeEvent(new SourceRecord(Collections.emptyMap(),
+            Collections.emptyMap(), "dummy", Schema.STRING_SCHEMA, "Change Data Capture Even via Debezium"));
 
     private final int noOfWriters;
     private final int noOfReaders;
@@ -62,7 +67,7 @@ public class ChangeEventQueueTest {
 
     @Before
     public void setup() {
-        ChangeEventQueue<String> queue = new ChangeEventQueue.Builder<String>()
+        ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .maxBatchSize(8192)
                 .maxQueueSize(8192 * 2)
                 .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
@@ -108,7 +113,7 @@ public class ChangeEventQueueTest {
         }
     }
 
-    private static Thread getWriter(ChangeEventQueue<String> queue, int noOfEvents) {
+    private static Thread getWriter(ChangeEventQueue<DataChangeEvent> queue, int noOfEvents) {
         return new Thread(() -> {
             for (int i = 0; i < noOfEvents; i++) {
                 try {
@@ -121,7 +126,7 @@ public class ChangeEventQueueTest {
         });
     }
 
-    private static Thread getReader(ChangeEventQueue<String> queue, long totalNoOfEvents, AtomicLong recordsRead) {
+    private static Thread getReader(ChangeEventQueue<DataChangeEvent> queue, long totalNoOfEvents, AtomicLong recordsRead) {
         return new Thread(() -> {
             while (recordsRead.get() < totalNoOfEvents) {
                 try {
