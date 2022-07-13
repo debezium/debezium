@@ -243,11 +243,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
                     final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
                     snapshotContext.offset.event(tableId, getClock().currentTime());
-
-                    if (!i.hasNext()) {
-                        super.lastSnapshotRecord(snapshotContext);
-                    }
-
                     dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> receiver.schemaChangeEvent(event));
                 }
 
@@ -540,23 +535,11 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
             final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
             snapshotContext.offset.event(tableId, getClock().currentTime());
-
-            // If data are not snapshotted then the last schema change must set last snapshot flag
-            if (!snapshottingTask.snapshotData() && !i.hasNext()) {
-                lastSnapshotRecord(snapshotContext);
-            }
             dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> receiver.schemaChangeEvent(event));
         }
 
         // Make schema available for snapshot source
         databaseSchema.tableIds().forEach(x -> snapshotContext.tables.overwriteTable(databaseSchema.tableFor(x)));
-    }
-
-    @Override
-    protected void lastSnapshotRecord(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext) {
-        if (delayedSchemaSnapshotTables.isEmpty()) {
-            super.lastSnapshotRecord(snapshotContext);
-        }
     }
 
     @Override
