@@ -250,6 +250,14 @@ CREATE TABLE "APPLSYS"."FND_SEC_GUIDELINES_TL"
   STORAGE(INITIAL 4096 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
   PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT))
 ;
+CREATE TABLE "t_ddl_0027"(
+    "PID" INT,
+    "FID" INT,
+    "NAME" VARCHAR(50) DEFAULT 'Tom',
+    "ADDRESS" VARCHAR(50) NOT NULL,
+    "DEPT" VARCHAR(50),
+    CONSTRAINT "PK_ID" PRIMARY KEY("PID"),
+    CONSTRAINT "CK_DEPT" CHECK ("DEPT" IN('IT', 'SALES', 'MANAGER')));
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);

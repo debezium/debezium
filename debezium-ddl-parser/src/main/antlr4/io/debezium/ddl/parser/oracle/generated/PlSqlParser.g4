@@ -1855,10 +1855,10 @@ relational_table
     ;
 
 relational_property
-    : (column_definition
-        | virtual_column_definition
-        | out_of_line_constraint
+    : ( out_of_line_constraint
         | out_of_line_ref_constraint
+        | column_definition
+        | virtual_column_definition
         | supplemental_logging_props
         )
     ;
