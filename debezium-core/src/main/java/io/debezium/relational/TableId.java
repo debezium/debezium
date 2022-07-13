@@ -72,7 +72,7 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     private final String catalogName;
     private final String schemaName;
     private final String tableName;
-    private final String id;
+    private String id;
 
     /**
      * Create a new table identifier.
@@ -135,6 +135,10 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     @Override
     public String identifier() {
         return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     @Override

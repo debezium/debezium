@@ -186,7 +186,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.MEDIUM)
             .withDescription("If true, BIG_TRANSACTIONAL_SKIP_ID option will be added to the log mining session. This will manage log files switches seamlessly.");
 
-
     public static final Field SNAPSHOT_ENHANCEMENT_TOKEN = Field.create("snapshot.enhance.predicate.scn")
             .withDisplayName("A string to replace on snapshot predicate enhancement")
             .withType(Type.STRING)

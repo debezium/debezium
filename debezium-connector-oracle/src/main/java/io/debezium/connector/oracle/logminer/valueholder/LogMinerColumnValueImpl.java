@@ -35,6 +35,11 @@ public class LogMinerColumnValueImpl implements LogMinerColumnValue {
     }
 
     @Override
+    public int getColumnType() {
+        return columnType;
+    }
+
+    @Override
     public void setColumnData(Object columnData) {
         if (columnData instanceof String) {
             this.columnData = ParserUtils.replaceDoubleBackSlashes((String) columnData);

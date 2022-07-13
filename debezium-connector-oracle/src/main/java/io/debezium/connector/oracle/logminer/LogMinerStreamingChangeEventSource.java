@@ -5,25 +5,21 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import io.debezium.DebeziumException;
-import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.OracleTaskContext;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
-import io.debezium.util.Stopwatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.buildDataDictionary;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.createFlushTable;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.flushLogWriter;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getFirstOnlineLogScn;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToAbandon;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getSystime;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.instantiateFlushConnections;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.setNlsSessionParameters;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.setRedoLogFilesForMining;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
 
 import java.io.File;
 import java.math.BigInteger;
@@ -44,21 +40,26 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.buildDataDictionary;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSupplementalLogging;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.createFlushTable;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.flushLogWriter;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getFirstOnlineLogScn;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToAbandon;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getSystime;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.instantiateFlushConnections;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.setNlsSessionParameters;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.setRedoLogFilesForMining;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumException;
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.OracleTaskContext;
+import io.debezium.connector.oracle.Scn;
+import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
+import io.debezium.util.Stopwatch;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.

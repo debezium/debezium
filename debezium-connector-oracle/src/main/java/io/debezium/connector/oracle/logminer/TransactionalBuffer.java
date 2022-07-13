@@ -5,11 +5,13 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import com.alibaba.fastjson.JSON;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.util.DmlEventJsonUtil;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.pipeline.ErrorHandler;
@@ -173,10 +175,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     private byte[] generateEventRecord(DmlEvent dmlEvent) {
         final StringBuilder record = new StringBuilder();
         final String lineSeparator = System.getProperty("line.separator");
-        record.append("-- ")
-                .append(String.join(" ", String.valueOf(dmlEvent.getOperation()), dmlEvent.getEntry().getCommandType().name(), dmlEvent.getTableId().catalog(),
-                        dmlEvent.getTableId().schema(), dmlEvent.getTableId().table(), dmlEvent.getEntry().getTransactionId(),
-                        String.valueOf(dmlEvent.getScn().longValue()), dmlEvent.getRowId()))
+        record.append("-- ").append(DmlEventJsonUtil.serialization(dmlEvent))
                 .append(lineSeparator)
                 .append(parseCreateDml(dmlEvent))
                 .append(lineSeparator);
@@ -388,7 +387,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         if (transaction.getFileOutputStream() == null) {
             return;
         }
-        final String commitMessage = "-- transaction commit, transactionId=" + transactionId + ", scn=" + scn.longValue()
+        final String commitMessage = "--end transaction commit, transactionId=" + transactionId + ", scn=" + scn.longValue()
                 + ", timestamp=" + timestamp.getTime() + ", debugMessage=" + debugMessage;
         transaction.getFileOutputStream().write(commitMessage.getBytes(StandardCharsets.UTF_8));
         transaction.getFileOutputStream().flush();
@@ -482,12 +481,12 @@ public final class TransactionalBuffer implements AutoCloseable {
         if (transaction.getFileOutputStream() == null) {
             return;
         }
-        transaction.getFileOutputStream().write(("-- transaction rollback, transactionId=" + transactionId + ", debugMessage=" + debugMessage)
+        transaction.getFileOutputStream().write(("--end transaction rollback, transactionId=" + transactionId + ", debugMessage=" + debugMessage)
                 .getBytes(StandardCharsets.UTF_8));
         transaction.getFileOutputStream().flush();
         transaction.getFileOutputStream().close();
         final File file = new File(transaction.getCacheFilePath());
-        if (file.exists()){
+        if (file.exists()) {
             file.delete();
         }
     }
@@ -619,7 +618,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     /**
      * Represents a DML event for a given table row.
      */
-    private static class DmlEvent {
+    public static class DmlEvent {
         private final int operation;
         private final LogMinerDmlEntry entry;
         private final Scn scn;

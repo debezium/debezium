@@ -19,6 +19,13 @@ public interface LogMinerColumnValue {
     String getColumnName();
 
     /**
+     * 返回列类型
+     *
+     * @return
+     */
+    int getColumnType();
+
+    /**
      * This sets the database record value with the exception of LOBs
      * @param columnData data
      */

@@ -5,6 +5,16 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
@@ -24,15 +34,6 @@ import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContex
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
 
 /**
  * This class process entries obtained from LogMiner view.
@@ -119,7 +120,7 @@ class LogMinerQueryResultProcessor {
             boolean isDml = false;
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.UPDATE || operationCode == RowMapper.DELETE) {
                 isDml = true;
-//                跳过判断：步骤一
+                // 跳过判断：步骤一
                 final Long skipIdCount = bigTransactionalSkipId.get(txId);
                 if (skipIdCount != null) {
                     bigTransactionalSkipId.put(txId, skipIdCount + 1);
@@ -141,9 +142,9 @@ class LogMinerQueryResultProcessor {
 
             // Commit
             if (operationCode == RowMapper.COMMIT) {
-//                跳过判断：步骤二
+                // 跳过判断：步骤二
                 final Long skipIdCount = bigTransactionalSkipId.get(txId);
-                if (skipIdCount != null){
+                if (skipIdCount != null) {
                     LOGGER.warn("big transactional[{}] skip success: commit", txId);
                     bigTransactionalSkipId.remove(txId);
                     continue;
@@ -160,9 +161,9 @@ class LogMinerQueryResultProcessor {
 
             // Rollback
             if (operationCode == RowMapper.ROLLBACK) {
-//                跳过判断：步骤三
+                // 跳过判断：步骤三
                 final Long skipIdCount = bigTransactionalSkipId.get(txId);
-                if (skipIdCount != null){
+                if (skipIdCount != null) {
                     LOGGER.warn("big transactional[{}] skip success: rollback", txId);
                     bigTransactionalSkipId.remove(txId);
                     continue;
