@@ -175,9 +175,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDisplayName("Should log mining session configured with BIG_TRANSACTIONAL_LIMIT_COUNT setting?")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
-            .withDefault(0)
+            .withDefault(10000)
             .withImportance(Importance.MEDIUM)
             .withDescription("If true, BIG_TRANSACTIONAL_LIMIT_COUNT option will be added to the log mining session. This will manage log files switches seamlessly.");
+
+    public static final Field BIG_TRANSACTIONAL_SHUTDOWN_LIMIT_COUNT = Field.create("log.mining.big.transactional.shutdown.limit.count")
+            .withDisplayName("Should log mining session configured with BIG_TRANSACTIONAL_SHUTDOWN_LIMIT_COUNT setting?")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withDefault(100000)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("If true, BIG_TRANSACTIONAL_SHUTDOWN_LIMIT_COUNT option will be added to the log mining session. This will manage log files switches seamlessly.");
 
     public static final Field BIG_TRANSACTIONAL_SKIP_ID = Field.create("log.mining.big.transactional.skip.id")
             .withDisplayName("Should log mining session configured with BIG_TRANSACTIONAL_SKIP_ID setting?")
@@ -408,6 +416,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final int bigTransactionalLimitCount;
 
+    private final int bigTransactionalShutdownLimitCount;
+
     private final String bigTransactionalSkipId;
 
     private final Duration logMiningArchiveLogRetention;
@@ -447,6 +457,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.initScn = config.getLong(INIT_SCN);
         this.bigTransactionalCachePath = config.getString(BIG_TRANSACTIONAL_CACHE_PATH);
         this.bigTransactionalLimitCount = config.getInteger(BIG_TRANSACTIONAL_LIMIT_COUNT);
+        this.bigTransactionalShutdownLimitCount = config.getInteger(BIG_TRANSACTIONAL_SHUTDOWN_LIMIT_COUNT);
         this.bigTransactionalSkipId = config.getString(BIG_TRANSACTIONAL_SKIP_ID);
         this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
@@ -907,6 +918,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public int getBigTransactionalLimitCount() {
         return bigTransactionalLimitCount;
+    }
+
+    public int getBigTransactionalShutdownLimitCount() {
+        return bigTransactionalShutdownLimitCount;
     }
 
     public String getBigTransactionalSkipId() {

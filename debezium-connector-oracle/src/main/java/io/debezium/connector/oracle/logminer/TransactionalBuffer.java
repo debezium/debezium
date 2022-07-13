@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import com.alibaba.fastjson.JSON;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -23,9 +22,12 @@ import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -65,6 +67,8 @@ public final class TransactionalBuffer implements AutoCloseable {
     private String bigTransactionalCachePath;
     private int bigTransactionalLimitCount;
 
+    private int bigTransactionalShutdownLimitCount;
+
     private Scn lastCommittedScn;
 
     /**
@@ -74,7 +78,7 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param streamingMetrics the streaming metrics
      */
     TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics,
-                        String bigTransactionalCachePath, int bigTransactionalLimitCount) {
+                        String bigTransactionalCachePath, int bigTransactionalLimitCount, int bigTransactionalShutdownLimitCount) {
         this.transactions = new HashMap<>();
         this.schema = schema;
         this.clock = clock;
@@ -85,6 +89,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         this.streamingMetrics = streamingMetrics;
         this.bigTransactionalCachePath = bigTransactionalCachePath;
         this.bigTransactionalLimitCount = bigTransactionalLimitCount;
+        this.bigTransactionalShutdownLimitCount = bigTransactionalShutdownLimitCount;
     }
 
     TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
@@ -136,6 +141,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     private void initOrFillTransaction(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry, Instant changeTime, String rowId) {
         try {
             final Transaction transaction = transactions.computeIfAbsent(transactionId, s -> new Transaction(transactionId, scn));
+            transaction.countPlusOne();
             // 如果大事物限制没有开启，或者没满足大事物条件，则直接add
             if (transaction.getFileOutputStream() == null &&
                     (bigTransactionalLimitCount < 1 || (transaction.events.size() + 1) < bigTransactionalLimitCount)) {
@@ -361,7 +367,7 @@ public final class TransactionalBuffer implements AutoCloseable {
             return false;
         }
 
-        preCommit(transactionId, scn, timestamp, debugMessage, transaction);
+        final boolean useFile = preCommitAndVerifyWhetherUseFile(transactionId, scn, timestamp, debugMessage, transaction);
 
         Scn smallestScn = calculateSmallestScn();
 
@@ -378,22 +384,36 @@ public final class TransactionalBuffer implements AutoCloseable {
         }
 
         LOGGER.trace("COMMIT, {}, smallest SCN: {}", debugMessage, smallestScn);
-        commit(context, offsetContext, start, transaction, timestamp, smallestScn, scn, dispatcher);
+        selectCommit(context, offsetContext, start, transaction, timestamp, smallestScn, scn, dispatcher, useFile);
 
         return true;
     }
 
-    private void preCommit(String transactionId, Scn scn, Timestamp timestamp, String debugMessage, Transaction transaction) throws IOException {
+    private boolean preCommitAndVerifyWhetherUseFile(String transactionId, Scn scn, Timestamp timestamp, String debugMessage, Transaction transaction) throws IOException {
         if (transaction.getFileOutputStream() == null) {
-            return;
+            return false;
         }
         final String commitMessage = "--end transaction commit, transactionId=" + transactionId + ", scn=" + scn.longValue()
                 + ", timestamp=" + timestamp.getTime() + ", debugMessage=" + debugMessage;
         transaction.getFileOutputStream().write(commitMessage.getBytes(StandardCharsets.UTF_8));
         transaction.getFileOutputStream().flush();
         transaction.getFileOutputStream().close();
+        if (bigTransactionalShutdownLimitCount > transaction.getCount()){
+            return true;
+        }
         throw new RuntimeException("exist big transaction, transactionId=" + transactionId + ", transaction_file=" + transaction.getCacheFilePath());
     }
+
+
+    private void selectCommit(ChangeEventSource.ChangeEventSourceContext context, OracleOffsetContext offsetContext, Instant start
+            , Transaction transaction, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<TableId> dispatcher, boolean useFile) {
+        if (useFile) {
+            commitAsFile(context, offsetContext, start, transaction, timestamp, smallestScn, scn, dispatcher);
+            return;
+        }
+        commit(context, offsetContext, start, transaction, timestamp, smallestScn, scn, dispatcher);
+    }
+
 
     private void commit(ChangeEventSource.ChangeEventSourceContext context, OracleOffsetContext offsetContext, Instant start,
                         Transaction transaction, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<TableId> dispatcher) {
@@ -430,21 +450,78 @@ public final class TransactionalBuffer implements AutoCloseable {
             if (!transaction.events.isEmpty()) {
                 dispatcher.dispatchTransactionCommittedEvent(offsetContext);
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             LogMinerHelper.logError(streamingMetrics, "Thread interrupted during running", e);
             Thread.currentThread().interrupt();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             errorHandler.setProducerThrowable(e);
-        }
-        finally {
+        } finally {
             streamingMetrics.incrementCommittedTransactions();
             streamingMetrics.setActiveTransactions(transactions.size());
             streamingMetrics.incrementCommittedDmlCount(transaction.events.size());
             streamingMetrics.setCommittedScn(scn);
             streamingMetrics.setOffsetScn(offsetContext.getScn());
             streamingMetrics.setLastCommitDuration(Duration.between(start, Instant.now()));
+        }
+    }
+
+    private void commitAsFile(ChangeEventSource.ChangeEventSourceContext context, OracleOffsetContext offsetContext, Instant start,
+                              Transaction transaction, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<TableId> dispatcher) {
+        final File file = new File(transaction.getCacheFilePath());
+        try (final FileInputStream fileInputStream = new FileInputStream(file);
+             final InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream, "UTF-8");
+             final BufferedReader bufferedReader = new BufferedReader(inputStreamReader);) {
+            long counter = transaction.getCount();
+            while (counter > 0) {
+                final String line = bufferedReader.readLine();
+                if ((!line.startsWith("--")) || line.startsWith("--end")) {
+                    continue;
+                }
+                final DmlEvent event = DmlEventJsonUtil.deSerialization(line.substring(3));
+
+                if (!context.isRunning()) {
+                    return;
+                }
+
+                // Update SCN in offset context only if processed SCN less than SCN among other transactions
+                if (smallestScn == null || scn.compareTo(smallestScn) < 0) {
+                    offsetContext.setScn(event.getScn());
+                    streamingMetrics.setOldestScn(event.getScn());
+                }
+                offsetContext.setTransactionId(transaction.transactionId);
+                offsetContext.setSourceTime(timestamp.toInstant());
+                offsetContext.setTableId(event.getTableId());
+                if (--counter == 0) {
+                    offsetContext.setCommitScn(scn);
+                }
+
+                LOGGER.trace("Processing DML event {} with SCN {}", event.getEntry(), event.getScn());
+                dispatcher.dispatchDataChangeEvent(event.getTableId(),
+                        new LogMinerChangeRecordEmitter(
+                                offsetContext,
+                                event.getEntry(),
+                                schema.tableFor(event.getTableId()),
+                                clock));
+            }
+
+            lastCommittedScn = Scn.valueOf(scn.longValue());
+
+            if (!transaction.events.isEmpty()) {
+                dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+            }
+        } catch (InterruptedException e) {
+            LogMinerHelper.logError(streamingMetrics, "Thread interrupted during running", e);
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            errorHandler.setProducerThrowable(e);
+        } finally {
+            streamingMetrics.incrementCommittedTransactions();
+            streamingMetrics.setActiveTransactions(transactions.size());
+            streamingMetrics.incrementCommittedDmlCount(transaction.events.size());
+            streamingMetrics.setCommittedScn(scn);
+            streamingMetrics.setOffsetScn(offsetContext.getScn());
+            streamingMetrics.setLastCommitDuration(Duration.between(start, Instant.now()));
+            file.delete();
         }
     }
 
@@ -582,6 +659,8 @@ public final class TransactionalBuffer implements AutoCloseable {
 
         private FileOutputStream fileOutputStream;
 
+        private long count = 0L;
+
         private Transaction(String transactionId, Scn firstScn) {
             this.transactionId = transactionId;
             this.firstScn = firstScn;
@@ -603,6 +682,14 @@ public final class TransactionalBuffer implements AutoCloseable {
 
         public void setCacheFilePath(String cacheFilePath) {
             this.cacheFilePath = cacheFilePath;
+        }
+
+        public void countPlusOne(){
+            this.count++;
+        }
+
+        public long getCount() {
+            return count;
         }
 
         @Override

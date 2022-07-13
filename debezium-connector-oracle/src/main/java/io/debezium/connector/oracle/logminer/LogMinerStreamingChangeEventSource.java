@@ -97,6 +97,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     private final int bigTransactionalLimitCount;
 
+    private final int bigTransactionalShutdownLimitCount;
     private final Map<String, Long> bigTransactionalSkipId;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
@@ -127,6 +128,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
         this.bigTransactionalCachePath = connectorConfig.getBigTransactionalCachePath();
         this.bigTransactionalLimitCount = connectorConfig.getBigTransactionalLimitCount();
+        this.bigTransactionalShutdownLimitCount = connectorConfig.getBigTransactionalShutdownLimitCount();
         this.bigTransactionalSkipId = bigTransactionalSkipIdParse(connectorConfig.getBigTransactionalSkipId());
     }
 
@@ -148,7 +150,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     public void execute(ChangeEventSourceContext context) {
         bigTransactionalFileSearch();
         try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(schema, clock, errorHandler, streamingMetrics, bigTransactionalCachePath,
-                bigTransactionalLimitCount)) {
+                bigTransactionalLimitCount, bigTransactionalShutdownLimitCount)) {
             try {
                 startScn = Objects.isNull(initScn) ? offsetContext.getScn() : initScn;
                 createFlushTable(jdbcConnection);
