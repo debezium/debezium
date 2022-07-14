@@ -182,7 +182,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     private byte[] generateEventRecord(DmlEvent dmlEvent) {
         final StringBuilder record = new StringBuilder();
         final String lineSeparator = System.getProperty("line.separator");
-        record.append("-- ").append(DmlEventJsonUtil.serialization(dmlEvent))
+        record.append("--@ ").append(DmlEventJsonUtil.serialization(dmlEvent))
                 .append(lineSeparator)
                 .append(parseCreateDml(dmlEvent))
                 .append(lineSeparator);
@@ -468,10 +468,10 @@ public final class TransactionalBuffer implements AutoCloseable {
             LOGGER.info("big transaction file dispatch start, counter = {}, file={}", counter, transaction.getCacheFilePath());
             while (counter > 0) {
                 final String line = bufferedReader.readLine();
-                if ((!line.startsWith("--")) || line.startsWith("--end")) {
+                if ((!line.startsWith("--@")) || line.startsWith("--end")) {
                     continue;
                 }
-                final DmlEvent event = DmlEventJsonUtil.deSerialization(line.substring(3));
+                final DmlEvent event = DmlEventJsonUtil.deSerialization(line.substring(4));
 
                 if (!context.isRunning()) {
                     return;
