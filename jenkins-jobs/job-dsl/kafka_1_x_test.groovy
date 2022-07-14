@@ -42,7 +42,7 @@ freeStyleJob('debezium-kafka-1.x-test') {
 
     steps {
         maven {
-            goals('clean install -U -s $HOME/.m2/settings-snapshots.xml -fae -pl \\!:debezium-connect-rest-extension -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.kafka=2.8.1 -Dversion.zookeeper=3.5.9 -Dversion.confluent.platform=6.2.4 -Dmysql.port=33306 -Dmysql.gtid.port=33306 -Dmysql.gtid.replica.port=33306 -Dmysql.replica.port=33306')
+            goals('clean install -U -s $HOME/.m2/settings-snapshots.xml -fae -pl -debezium-connect-rest-extension -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.kafka=2.8.1 -Dversion.zookeeper=3.5.9 -Dversion.confluent.platform=6.2.4 -Dmysql.port=33306 -Dmysql.gtid.port=33306 -Dmysql.gtid.replica.port=33306 -Dmysql.replica.port=33306')
         }
     }
 }
