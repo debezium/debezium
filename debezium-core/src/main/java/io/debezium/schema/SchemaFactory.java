@@ -10,6 +10,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.data.*;
+import io.debezium.data.Enum;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
@@ -67,6 +69,45 @@ public class SchemaFactory {
 
     private static final String SCHEMA_HISTORY_CHANGE_SCHEMA_NAME = "io.debezium.connector.schema.Change";
     private static final int SCHEMA_HISTORY_CHANGE_SCHEMA_VERSION = 1;
+
+    /*
+     * Datatype schemas
+     */
+
+    /*
+     * Bits schema
+     */
+    private static final int BITS_SCHEMA_VERSION = 1;
+
+    /*
+     * Enum schema
+     */
+    private static final int ENUM_SCHEMA_VERSION = 1;
+
+    /*
+     * EnumSet schema
+     */
+    private static final int ENUM_SET_SCHEMA_VERSION = 1;
+
+    /*
+     * Json schema
+     */
+    private static final int JSON_SCHEMA_VERSION = 1;
+
+    /*
+     * Uuid schema
+     */
+    private static final int UUID_SCHEMA_VERSION = 1;
+
+    /*
+     * Variable Scale Decimal schema
+     */
+    private static final int VARIABLE_SCALE_DECIMAL_SCHEMA_VERSION = 1;
+
+    /*
+     * Xml schema
+     */
+    private static final int XML_SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = new SchemaFactory();
 
@@ -195,5 +236,53 @@ public class SchemaFactory {
                 .field(HistoryRecord.Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(HistoryRecord.Fields.TABLE_CHANGES, SchemaBuilder.array(serializer.getChangeSchema()).build())
                 .build();
+    }
+
+    public SchemaBuilder datatypeBitsSchema(int length) {
+        return SchemaBuilder.bytes()
+                .name(Bits.BITS_SCHEMA_NAME)
+                .version(BITS_SCHEMA_VERSION)
+                .parameter(Bits.BITS_LENGTH_FIELD, Integer.toString(length));
+    }
+
+    public SchemaBuilder datatypeEnumSchema(String allowedValues) {
+        return SchemaBuilder.string()
+                .name(Enum.ENUM_SCHEMA_NAME)
+                .version(ENUM_SCHEMA_VERSION)
+                .parameter(Enum.ENUM_VALUES_FIELD, allowedValues);
+    }
+
+    public SchemaBuilder datatypeEnumSetSchema(String allowedValues) {
+        return SchemaBuilder.string()
+                .name(EnumSet.ENUM_SET_SCHEMA_NAME)
+                .version(ENUM_SET_SCHEMA_VERSION)
+                .parameter(EnumSet.ENUM_SET_VALUES_FIELD, allowedValues);
+    }
+
+    public SchemaBuilder datatypeJsonSchema() {
+        return SchemaBuilder.string()
+                .name(Json.JSON_SCHEMA_NAME)
+                .version(JSON_SCHEMA_VERSION);
+    }
+
+    public SchemaBuilder datatypeUuidSchema() {
+        return SchemaBuilder.string()
+                .name(Uuid.UUID_SCHEMA_NAME)
+                .version(UUID_SCHEMA_VERSION);
+    }
+
+    public SchemaBuilder datatypeVariableScaleDecimalSchema() {
+        return SchemaBuilder.struct()
+                .name(VariableScaleDecimal.VARIABLE_SCALE_DECIMAL_SCHEMA_NAME)
+                .version(VARIABLE_SCALE_DECIMAL_SCHEMA_VERSION)
+                .doc("Variable scaled decimal")
+                .field(VariableScaleDecimal.VARIABLE_SCALE_DECIMAL_SCALE_FIELD, Schema.INT32_SCHEMA)
+                .field(VariableScaleDecimal.VARIABLE_SCALE_DECIMAL_VALUE_FIELD, Schema.BYTES_SCHEMA);
+    }
+
+    public SchemaBuilder datatypeXmlSchema() {
+        return SchemaBuilder.string()
+                .name(Xml.XML_SCHEMA_NAME)
+                .version(XML_SCHEMA_VERSION);
     }
 }

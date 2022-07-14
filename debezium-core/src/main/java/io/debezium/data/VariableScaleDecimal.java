@@ -14,6 +14,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.schema.SchemaFactory;
+
 /**
  * An arbitrary precision decimal value with variable scale.
  *
@@ -21,10 +23,12 @@ import org.apache.kafka.connect.data.Struct;
  *
  */
 public class VariableScaleDecimal {
-    public static final String LOGICAL_NAME = "io.debezium.data.VariableScaleDecimal";
-    public static final String VALUE_FIELD = "value";
-    public static final String SCALE_FIELD = "scale";
+    public static final String VARIABLE_SCALE_DECIMAL_SCHEMA_NAME = "io.debezium.data.VariableScaleDecimal";
+    public static final String VARIABLE_SCALE_DECIMAL_VALUE_FIELD = "value";
+    public static final String VARIABLE_SCALE_DECIMAL_SCALE_FIELD = "scale";
     public static final Struct ZERO = fromLogical(schema(), SpecialValueDecimal.ZERO);
+
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     /**
      * Returns a {@link SchemaBuilder} for a VariableScaleDecimal. You can use the resulting SchemaBuilder
@@ -33,12 +37,7 @@ public class VariableScaleDecimal {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
-                .name(LOGICAL_NAME)
-                .version(1)
-                .doc("Variable scaled decimal")
-                .field(SCALE_FIELD, Schema.INT32_SCHEMA)
-                .field(VALUE_FIELD, Schema.BYTES_SCHEMA);
+        return schemaFactoryObject.datatypeVariableScaleDecimalSchema();
     }
 
     /**
@@ -66,7 +65,7 @@ public class VariableScaleDecimal {
      * the scale of the number and a binary representation of the number.
      *
      * @param schema of the encoded value
-     * @param value the value or the decimal
+     * @param decimalValue the value or the decimal
      *
      * @return the encoded value
      */
@@ -87,8 +86,8 @@ public class VariableScaleDecimal {
         Objects.requireNonNull(decimalValue, "decimalValue may not be null");
 
         Struct result = new Struct(schema);
-        result.put(VALUE_FIELD, decimalValue.unscaledValue().toByteArray());
-        result.put(SCALE_FIELD, decimalValue.scale());
+        result.put(VARIABLE_SCALE_DECIMAL_VALUE_FIELD, decimalValue.unscaledValue().toByteArray());
+        result.put(VARIABLE_SCALE_DECIMAL_SCALE_FIELD, decimalValue.scale());
 
         return result;
     }
@@ -100,6 +99,7 @@ public class VariableScaleDecimal {
      * @return the decoded value
      */
     public static SpecialValueDecimal toLogical(final Struct value) {
-        return new SpecialValueDecimal(new BigDecimal(new BigInteger(value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
+        return new SpecialValueDecimal(
+                new BigDecimal(new BigInteger(value.getBytes(VARIABLE_SCALE_DECIMAL_VALUE_FIELD)), value.getInt32(VARIABLE_SCALE_DECIMAL_SCALE_FIELD)));
     }
 }

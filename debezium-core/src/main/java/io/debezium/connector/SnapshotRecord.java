@@ -45,7 +45,7 @@ public enum SnapshotRecord {
 
     public static SnapshotRecord fromSource(Struct source) {
         if (source.schema().field(AbstractSourceInfo.SNAPSHOT_KEY) != null
-                && io.debezium.data.Enum.LOGICAL_NAME.equals(source.schema().field(AbstractSourceInfo.SNAPSHOT_KEY).schema().name())) {
+                && io.debezium.data.Enum.ENUM_SCHEMA_NAME.equals(source.schema().field(AbstractSourceInfo.SNAPSHOT_KEY).schema().name())) {
             final String snapshotString = source.getString(AbstractSourceInfo.SNAPSHOT_KEY);
             if (snapshotString != null) {
                 return SnapshotRecord.valueOf(snapshotString.toUpperCase());
