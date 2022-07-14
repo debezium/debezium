@@ -281,6 +281,11 @@ The message contains a logical representation of the table schema.
                 "autoIncremented": false,
                 "generated": false
             }
+          ],
+          "attributes": [ <11>
+            {
+              "customAttribute": "attributeValue"
+            }
           ]
         }
       }
@@ -351,6 +356,10 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 |10
 |`columns`
 |Metadata for each column in the changed table.
+
+|11
+|`attributes`
+|Custom attribute metadata for each table change.
 
 |===
 
