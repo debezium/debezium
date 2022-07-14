@@ -73,12 +73,6 @@ pipeline {
 
                     stage('Prepare Tests') {
                         steps {
-                            script {
-                                env.MVN_PROP_PDB_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? '-Ddatabase.pdb.name=' : ''
-                                env.MVN_PROP_DATABASE_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? '-Ddatabase.dbname=ORCLCDB' : ''
-                                env.MVN_PROP_USER_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? 'dbzuser' : 'c##dbzuser'
-                            }
-
                             sh '''
                             set -x
                             cd ${WORKSPACE}/debezium
@@ -94,6 +88,12 @@ pipeline {
 
                     stage('Run Test') {
                         steps {
+                            script {
+                                env.MVN_PROP_PDB_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? '-Ddatabase.pdb.name=' : ''
+                                env.MVN_PROP_DATABASE_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? '-Ddatabase.dbname=ORCLCDB' : ''
+                                env.MVN_PROP_USER_NAME = env.ORACLE_VERSION.endsWith('noncdb') ? 'dbzuser' : 'c##dbzuser'
+                            }
+
                             sh '''
                             cd ${WORKSPACE}/debezium
                             mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-oracle -am -fae \\
