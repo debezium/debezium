@@ -1022,10 +1022,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         assertRecordsFromSnapshot(2, 1, 1);
 
+        // DBZ-5408 make sure regular streaming is fully running
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
+
         // kill all opened connections to the database
         TestHelper.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE backend_type='walsender'");
         TestHelper.execute(INSERT_STMT);
-        assertRecordsAfterInsert(2, 2, 2);
+        assertRecordsAfterInsert(2, 3, 3);
     }
 
     @Test
