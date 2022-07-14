@@ -26,8 +26,8 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.schema.SchemaFactory;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**

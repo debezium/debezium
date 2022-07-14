@@ -18,7 +18,8 @@ import io.debezium.schema.SchemaFactory;
  */
 public class Xml {
 
-    public static final String XML_SCHEMA_NAME = "io.debezium.data.Xml";
+    public static final String LOGICAL_NAME = "io.debezium.data.Xml";
+    public static final int SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 

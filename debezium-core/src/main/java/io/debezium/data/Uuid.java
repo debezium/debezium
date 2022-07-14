@@ -18,7 +18,8 @@ import io.debezium.schema.SchemaFactory;
  */
 public class Uuid {
 
-    public static final String UUID_SCHEMA_NAME = "io.debezium.data.Uuid";
+    public static final String LOGICAL_NAME = "io.debezium.data.Uuid";
+    public static final int SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 

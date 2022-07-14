@@ -17,7 +17,8 @@ import io.debezium.schema.SchemaFactory;
  */
 public class Json {
 
-    public static final String JSON_SCHEMA_NAME = "io.debezium.data.Json";
+    public static final String LOGICAL_NAME = "io.debezium.data.Json";
+    public static final int SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 

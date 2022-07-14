@@ -35,12 +35,12 @@ public class EnumSetTest {
     private void assertBuilder(SchemaBuilder builder, String expectedAllowedValues) {
         assertThat(builder).isNotNull();
         assertThat(builder.parameters()).isNotNull();
-        assertThat(builder.parameters().get(EnumSet.ENUM_SET_VALUES_FIELD)).isEqualTo(expectedAllowedValues);
+        assertThat(builder.parameters().get(EnumSet.VALUES_FIELD)).isEqualTo(expectedAllowedValues);
     }
 
     private void assertSchema(Schema schema, String expectedAllowedValues) {
         assertThat(schema).isNotNull();
         assertThat(schema.parameters()).isNotNull();
-        assertThat(schema.parameters().get(EnumSet.ENUM_SET_VALUES_FIELD)).isEqualTo(expectedAllowedValues);
+        assertThat(schema.parameters().get(EnumSet.VALUES_FIELD)).isEqualTo(expectedAllowedValues);
     }
 }
