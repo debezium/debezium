@@ -10,6 +10,8 @@ import java.util.BitSet;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaFactory;
+
 /**
  * A set of bits of arbitrary length.
  *
@@ -17,8 +19,10 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  */
 public class Bits {
 
-    public static final String LOGICAL_NAME = "io.debezium.data.Bits";
-    public static final String LENGTH_FIELD = "length";
+    public static final String BITS_SCHEMA_NAME = "io.debezium.data.Bits";
+    public static final String BITS_LENGTH_FIELD = "length";
+
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     /**
      * Returns a {@link SchemaBuilder} for a Bits. You can use the resulting SchemaBuilder
@@ -28,10 +32,7 @@ public class Bits {
      * @return the schema builder
      */
     public static SchemaBuilder builder(int length) {
-        return SchemaBuilder.bytes()
-                .name(LOGICAL_NAME)
-                .parameter(LENGTH_FIELD, Integer.toString(length))
-                .version(1);
+        return schemaFactoryObject.datatypeBitsSchema(length);
     }
 
     /**

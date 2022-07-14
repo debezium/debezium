@@ -8,6 +8,8 @@ package io.debezium.data;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaFactory;
+
 /**
  * A semantic type for a JSON string.
  *
@@ -15,7 +17,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  */
 public class Json {
 
-    public static final String LOGICAL_NAME = "io.debezium.data.Json";
+    public static final String JSON_SCHEMA_NAME = "io.debezium.data.Json";
+
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     /**
      * Returns a {@link SchemaBuilder} for a JSON field. You can use the resulting SchemaBuilder
@@ -24,9 +28,7 @@ public class Json {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return SchemaBuilder.string()
-                .name(LOGICAL_NAME)
-                .version(1);
+        return schemaFactoryObject.datatypeJsonSchema();
     }
 
     /**

@@ -9,6 +9,8 @@ package io.debezium.data;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaFactory;
+
 /**
  * A semantic type for a Uuid string.
  *
@@ -16,7 +18,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  */
 public class Uuid {
 
-    public static final String LOGICAL_NAME = "io.debezium.data.Uuid";
+    public static final String UUID_SCHEMA_NAME = "io.debezium.data.Uuid";
+
+    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     /**
      * Returns a {@link SchemaBuilder} for a Uuid field. You can use the resulting SchemaBuilder
@@ -25,9 +29,7 @@ public class Uuid {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return SchemaBuilder.string()
-                .name(LOGICAL_NAME)
-                .version(1);
+        return schemaFactoryObject.datatypeUuidSchema();
     }
 
     /**

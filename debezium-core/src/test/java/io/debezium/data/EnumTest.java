@@ -36,12 +36,12 @@ public class EnumTest {
     private void assertBuilder(SchemaBuilder builder, String expectedAllowedValues) {
         assertThat(builder).isNotNull();
         assertThat(builder.parameters()).isNotNull();
-        assertThat(builder.parameters().get(Enum.VALUES_FIELD)).isEqualTo(expectedAllowedValues);
+        assertThat(builder.parameters().get(Enum.ENUM_VALUES_FIELD)).isEqualTo(expectedAllowedValues);
     }
 
     private void assertSchema(Schema schema, String expectedAllowedValues) {
         assertThat(schema).isNotNull();
         assertThat(schema.parameters()).isNotNull();
-        assertThat(schema.parameters().get(Enum.VALUES_FIELD)).isEqualTo(expectedAllowedValues);
+        assertThat(schema.parameters().get(Enum.ENUM_VALUES_FIELD)).isEqualTo(expectedAllowedValues);
     }
 }
