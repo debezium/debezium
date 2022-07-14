@@ -232,17 +232,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     }
 
     private String updateDml(LogMinerDmlEntry dmlEntry) {
-        final StringBuilder updateDml = new StringBuilder();
-        updateDml.append("-- old: ");
-        for (LogMinerColumnValue oldValue : dmlEntry.getOldValues()) {
-            updateDml.append(oldValue.getColumnName())
-                    .append("=")
-                    .append(oldValue.getColumnData())
-                    .append(" ");
-        }
-        updateDml.append(System.getProperty("line.separator"))
-                .append(insertDml(dmlEntry));
-        return updateDml.toString();
+        return insertDml(dmlEntry);
     }
 
     private String insertDml(LogMinerDmlEntry dmlEntry) {
