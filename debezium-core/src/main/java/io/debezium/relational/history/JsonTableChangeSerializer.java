@@ -52,13 +52,6 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         document.setDocument("table", toDocument(tableChange.getTable()));
         document.setString("comment", tableChange.getTable().comment());
 
-        List<Document> attributes = tableChange.getTable().attributes()
-                .stream()
-                .map(this::toDocument)
-                .collect(Collectors.toList());
-
-        document.setArray("attributes", Array.create(attributes));
-
         return document;
     }
 
@@ -74,6 +67,13 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 .collect(Collectors.toList());
 
         document.setArray("columns", Array.create(columns));
+
+        List<Document> attributes = table.attributes()
+                .stream()
+                .map(this::toDocument)
+                .collect(Collectors.toList());
+
+        document.setArray("attributes", Array.create(attributes));
 
         return document;
     }
