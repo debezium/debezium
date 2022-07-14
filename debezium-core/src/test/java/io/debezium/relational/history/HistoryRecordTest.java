@@ -108,7 +108,15 @@ public class HistoryRecordTest {
                 .get(1).asDocument();
 
         assertThat(secondColumn.get("defaultValueExpression")).isEqualTo("1");
-        // System.out.println(record);
+
+        Document firstAttribute = deserialized.tableChanges()
+                .get(0).asDocument()
+                .getDocument("table")
+                .getArray("attributes")
+                .get(0).asDocument();
+
+        assertThat(firstAttribute.get("name")).isEqualTo("object_id");
+        assertThat(firstAttribute.get("value")).isEqualTo("12345");
 
         final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
         assertThat((Object) tableChangesSerializer.deserialize(deserialized.tableChanges(), true)).isEqualTo(tableChanges);
