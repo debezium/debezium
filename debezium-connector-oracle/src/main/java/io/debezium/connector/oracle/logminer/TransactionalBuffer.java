@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import io.debezium.data.Json;
 import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -268,7 +269,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         }
         name.append(newValue.getColumnName()).append(",");
         if (newValue.getColumnData() == null || (!(newValue.getColumnData() instanceof String))) {
-            value.append(newValue.getColumnData());
+            value.append(newValue.getColumnData()).append(",");
         }
         else {
             value.append("'").append(newValue.getColumnData()).append("'").append(",");
