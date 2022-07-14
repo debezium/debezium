@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import static io.debezium.data.Enum.ENUM_SCHEMA_NAME;
-import static io.debezium.data.Enum.ENUM_VALUES_FIELD;
+import static io.debezium.data.Enum.LOGICAL_NAME;
+import static io.debezium.data.Enum.VALUES_FIELD;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -81,8 +81,8 @@ public class MySqlEnumColumnIT extends AbstractConnectorTest {
         Schema schemaBeforeAlter = records.allRecordsInOrder().get(2).valueSchema().field(FieldName.AFTER).schema();
         Schema schemaAfterAlter = records.allRecordsInOrder().get(4).valueSchema().field(FieldName.AFTER).schema();
 
-        String allowedBeforeAlter = schemaBeforeAlter.field("type").schema().parameters().get(ENUM_VALUES_FIELD);
-        String allowedAfterAlter = schemaAfterAlter.field("type").schema().parameters().get(ENUM_VALUES_FIELD);
+        String allowedBeforeAlter = schemaBeforeAlter.field("type").schema().parameters().get(VALUES_FIELD);
+        String allowedAfterAlter = schemaAfterAlter.field("type").schema().parameters().get(VALUES_FIELD);
 
         assertThat(allowedBeforeAlter).isEqualTo("station,post_office");
         assertThat(allowedAfterAlter).isEqualTo("station,post_office,plane,ahihi_dongok,now,test,a\\,b,c\\,'d,g\\,'h");
@@ -106,7 +106,7 @@ public class MySqlEnumColumnIT extends AbstractConnectorTest {
         Schema schemaBeforeAlter = recordBefore.valueSchema().field(FieldName.AFTER).schema();
 
         Schema typeBeforeSchema = schemaBeforeAlter.field("type").schema();
-        assertThat(typeBeforeSchema.name()).isEqualTo(ENUM_SCHEMA_NAME);
+        assertThat(typeBeforeSchema.name()).isEqualTo(LOGICAL_NAME);
 
         Map<String, String> beforeParameters = typeBeforeSchema.parameters();
         assertThat(beforeParameters.get(TYPE_NAME_PARAMETER_KEY)).isEqualTo("ENUM");
@@ -117,7 +117,7 @@ public class MySqlEnumColumnIT extends AbstractConnectorTest {
         Schema schemaAfterAlter = recordAfter.valueSchema().field(FieldName.AFTER).schema();
 
         Schema typeAfterSchema = schemaAfterAlter.field("type").schema();
-        assertThat(typeAfterSchema.name()).isEqualTo(ENUM_SCHEMA_NAME);
+        assertThat(typeAfterSchema.name()).isEqualTo(LOGICAL_NAME);
 
         Map<String, String> afterParameters = schemaAfterAlter.field("type").schema().parameters();
         assertThat(afterParameters.get(TYPE_NAME_PARAMETER_KEY)).isEqualTo("ENUM");

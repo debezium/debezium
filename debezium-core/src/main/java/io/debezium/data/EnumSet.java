@@ -20,8 +20,9 @@ import io.debezium.util.Strings;
  */
 public class EnumSet {
 
-    public static final String ENUM_SET_SCHEMA_NAME = "io.debezium.data.EnumSet";
-    public static final String ENUM_SET_VALUES_FIELD = "allowed";
+    public static final String LOGICAL_NAME = "io.debezium.data.EnumSet";
+    public static final String VALUES_FIELD = "allowed";
+    public static final int SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 

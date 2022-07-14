@@ -20,8 +20,9 @@ import io.debezium.util.Strings;
  */
 public class Enum {
 
-    public static final String ENUM_SCHEMA_NAME = "io.debezium.data.Enum";
-    public static final String ENUM_VALUES_FIELD = "allowed";
+    public static final String LOGICAL_NAME = "io.debezium.data.Enum";
+    public static final String VALUES_FIELD = "allowed";
+    public static final int SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 

@@ -44,9 +44,9 @@ import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.schema.SchemaFactory;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**

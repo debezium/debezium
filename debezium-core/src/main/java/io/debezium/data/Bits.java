@@ -19,8 +19,9 @@ import io.debezium.schema.SchemaFactory;
  */
 public class Bits {
 
-    public static final String BITS_SCHEMA_NAME = "io.debezium.data.Bits";
-    public static final String BITS_LENGTH_FIELD = "length";
+    public static final String LOGICAL_NAME = "io.debezium.data.Bits";
+    public static final String LENGTH_FIELD = "length";
+    public static final int SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
