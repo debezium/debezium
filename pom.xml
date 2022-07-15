@@ -126,13 +126,14 @@
 
     <distributionManagement>
         <repository>
-            <id>snapshots</id>
-            <name>snapshots</name>
-            <url>http://maven.qiangungun.com:8081/nexus/content/repositories/snapshots/</url>
+            <id>ossrh</id>
+            <name>Sonatype Staging Repository</name>
+            <url>${release.endpoint}/service/local/staging/deploy/maven2</url>
         </repository>
         <snapshotRepository>
-            <id>snapshots</id>
-            <url>http://maven.qiangungun.com:8081/nexus/content/repositories/snapshots/</url>
+            <id>ossrh</id>
+            <name>OSS Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
     </distributionManagement>
 
