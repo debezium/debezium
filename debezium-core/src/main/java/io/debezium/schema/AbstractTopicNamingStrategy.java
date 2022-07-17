@@ -14,6 +14,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -23,10 +24,11 @@ import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.Strings;
 
 /**
- * An abstract implementation of {@link io.debezium.spi.topic.TopicNamingStrategy}
+ * An abstract implementation of {@link TopicNamingStrategy}.
  *
  * @author Harvey Yue
  */
+@Incubating
 public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> implements TopicNamingStrategy<I> {
     protected static final String LOGIC_NAME_PLACEHOLDER = "${logical.name}";
     public static final String DEFAULT_HEARTBEAT_TOPIC_PREFIX = "__debezium-heartbeat";
@@ -47,7 +49,7 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(LOGIC_NAME_PLACEHOLDER)
             .withDescription("The name of the prefix to be used for all topics, the placeholder " + LOGIC_NAME_PLACEHOLDER +
-                    "can be used for referring to the connector's logical name as default value.");
+                    " can be used for referring to the connector's logical name as default value.");
 
     public static final Field TOPIC_CACHE_SIZE = Field.create("topic.cache.size")
             .withDisplayName("Topic cache size")

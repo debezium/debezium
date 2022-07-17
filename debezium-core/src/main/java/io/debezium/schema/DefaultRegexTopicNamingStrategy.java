@@ -13,12 +13,19 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
+/**
+ * Implement a regex expression strategy to determine data event topic names using {@link DataCollectionId#databaseParts()}.
+ *
+ * @author Harvey Yue
+ */
+@Incubating
 public class DefaultRegexTopicNamingStrategy extends AbstractTopicNamingStrategy<DataCollectionId> {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRegexTopicNamingStrategy.class);
 

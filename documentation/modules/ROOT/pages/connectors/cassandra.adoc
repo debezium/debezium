@@ -155,7 +155,7 @@ By default, Cassandra connector will delete commit logs which have been processe
 === Topics names
 
 The Cassandra connector writes events for all insert, update, and delete uperations on a single table to a single Kafka topic. The name of the Kafka topics always take the form
-_clusterName_._keyspaceName_._tableName_, where _clusterName_ is the logical name of the connector as specified with the `kafka.topic.prefix` configuraiton property, _keyspaceName_ is the name of the keyspace where the operation occurred, and _tableName_ is the name of the table on which the operation occurred.
+_clusterName_._keyspaceName_._tableName_, where _clusterName_ is the logical name of the connector as specified with the xref:cassandra-property-topic-prefix[`topic.prefix`] configuration property, _keyspaceName_ is the name of the keyspace where the operation occurred, and _tableName_ is the name of the table on which the operation occurred.
 
 For example, consider a Cassandra installation with an `inventory` keyspace that contains four tables: `products`, `products_on_hand`, `customers`, and `orders`. If the connector monitoring this database were given a logical server name of `fulfillment`, then the connector would produce events on these four Kafka topics:
 
@@ -807,7 +807,7 @@ cassandra.port=9042
 kafka.producer.bootstrap.servers=127.0.0.1:9092
 kafka.producer.retries=3
 kafka.producer.retry.backoff.ms=1000
-kafka.topic.prefix=test_prefix
+topic.prefix=test_prefix
 
 key.converter=io.confluent.connect.avro.AvroConverter
 key.converter.schema.registry.url: http://localhost:8081
@@ -1054,6 +1054,37 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
+
+|[[cassandra-property-topic-naming-strategy]]<<cassandra-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[cassandra-property-topic-delimiter]]<<cassandra-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[cassandra-property-topic-prefix]]<<cassandra-property-topic-prefix, `topic.prefix`>>
+|No default
+|The name of the prefix to be used for all topics. +
+ +
+[WARNING]
+====
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+The connector is also unable to recover its database history topic.
+====
+
+|[[cassandra-property-topic-cache-size]]<<cassandra-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[cassandra-property-topic-heartbeat-prefix]]<<cassandra-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |===
 

@@ -1105,8 +1105,8 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-Unless overridden via the xref:{link-sqlserver-connector}#sqlserver-property-transaction-topic[`transaction.topic`] option,
-transaction events are written to the topic named `_database.server.name_.transaction`.
+Unless overridden via the xref:sqlserver-property-topic-transaction[`topic.transaction`] option,
+transaction events are written to the topic named xref:sqlserver-property-database-server-name[`_<database.server.name>_`]`.transaction`.
 
 //Type: concept
 //ModuleID: change-data-event-enrichment
@@ -2088,8 +2088,8 @@ endif::community[]
 |No default
 |Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture.
 The logical name should be unique across all other connectors, since it is used as the prefix for all Kafka topic names that receive records from this connector.
-Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
-+
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
@@ -2371,11 +2371,6 @@ This may result in more change events to be re-sent after a connector restart.
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|[[sqlserver-property-heartbeat-topics-prefix]]<<sqlserver-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Controls the naming of the topic to which heartbeat messages are sent. +
-The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
-
 |[[sqlserver-property-snapshot-delay-ms]]<<sqlserver-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
@@ -2444,12 +2439,6 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-|[[sqlserver-property-transaction-topic]]<<sqlserver-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
-
-For more information, see xref:sqlserver-transaction-metadata[Transaction Metadata].
-
 |[[sqlserver-property-retriable-restart-connector-wait-ms]]<<sqlserver-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
 |The number of milli-seconds to wait before restarting a connector after a retriable error occurs.
@@ -2488,6 +2477,45 @@ When set to a value greater than zero, the connector uses the n-th LSN specified
 |[[sqlserver-property-incremental-snapshot-option-recompile]]<<sqlserver-property-incremental-snapshot-option-recompile, `+incremental.snapshot.option.recompile+`>>
 |`false`
 |Uses OPTION(RECOMPILE) query option to all SELECT statements used during an incremental snapshot. This can help to solve parameter sniffing issues that may occur but can cause increased CPU load on the source database, depending on the frequency of query execution.
+
+|[[sqlserver-property-topic-naming-strategy]]<<sqlserver-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[sqlserver-property-topic-delimiter]]<<sqlserver-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[sqlserver-property-topic-prefix]]<<sqlserver-property-topic-prefix, `topic.prefix`>>
+|`${database.server.name}`
+|The name of the prefix to be used for all topics, defaults to xref:sqlserver-property-database-server-name[`${database.server.name}`].
+[NOTE]
+====
+Once specify the prefix value to this property, the xref:sqlserver-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
+====
+
+|[[sqlserver-property-topic-cache-size]]<<sqlserver-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[sqlserver-property-topic-heartbeat-prefix]]<<sqlserver-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[sqlserver-property-topic-transaction]]<<sqlserver-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+
+For more information, see xref:sqlserver-transaction-metadata[Transaction Metadata].
+
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]

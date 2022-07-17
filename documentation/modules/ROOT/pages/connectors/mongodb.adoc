@@ -387,8 +387,8 @@ The following example shows a typical message:
 }
 ----
 
-Unless overridden via the xref:{link-mongodb-connector}#mongodb-property-transaction-topic[`transaction.topic`] option,
-transaction events are written to the topic named `_database.server.name_.transaction`.
+Unless overridden via the xref:{link-mongodb-connector}#mongodb-property-topic-transaction[`topic.transaction`] option,
+transaction events are written to the topic named xref:mongodb-property-mongodb-name[`_<mongodb.name>_`]`.transaction`.
 
 .Change data event enrichment
 When transaction metadata is enabled, the data message `Envelope` is enriched with a new `transaction` field.
@@ -1369,8 +1369,8 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `+mongodb.hosts+`>>
 |
-|The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. If `mongodb.members.auto.discover` is set to `false`, then the host and port pair should be prefixed with the replica set name (e.g., `rs0/localhost:27017`).
-+
+|The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. If `mongodb.members.auto.discover` is set to `false`, then the host and port pair should be prefixed with the replica set name (e.g., `rs0/localhost:27017`). +
+ +
 [NOTE]
 ====
 It is mandatory to provide the current primary address.
@@ -1382,8 +1382,8 @@ This limitation will be removed in the next {prodname} release.
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors.
 Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
 Use only alphanumeric characters, hyphens, dots and underscores to form the name.
-The logical name should be unique across all other connectors, because the name is used as the prefix in naming the Kafka topics that receive records from this connector.
-+
+The logical name should be unique across all other connectors, because the name is used as the prefix in naming the Kafka topics that receive records from this connector. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
@@ -1563,11 +1563,6 @@ This will cause the oplog files to be rotated out but connector will not notice 
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|[[mongodb-property-heartbeat-topics-prefix]]<<mongodb-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Controls the naming of the topic to which heartbeat messages are sent. +
-The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
-
 |[[mongodb-property-sanitize-field-names]]<<mongodb-property-sanitize-field-names, `+sanitize.field.names+`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names are sanitized to adhere to Avro naming requirements.
@@ -1593,10 +1588,6 @@ For each collection that you specify, also specify another configuration propert
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See xref:{link-mongodb-connector}#mongodb-transaction-metadata[Transaction Metadata] for additional details.
-
-|[[mongodb-property-transaction-topic]]<<mongodb-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name (see xref:mongodb-logical-connector-name[]); defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 |[[mongodb-property-retriable-restart-connector-wait-ms]]<<mongodb-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>>
 |10000 (10 seconds)
@@ -1642,6 +1633,42 @@ Adjust the chunk size to a value that provides the best performance in your envi
 ifdef::product[]
 Incremental snapshots is a Technology Preview feature for the {prodname} MongoDB connector.
 endif::product[]
+
+|[[mongodb-property-topic-naming-strategy]]<<mongodb-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.DefaultTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `DefaultTopicNamingStrategy`.
+
+|[[mongodb-property-topic-delimiter]]<<mongodb-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `topic.prefix`>>
+|`${mongodb.name}`
+|The name of the prefix to be used for all topics, defaults to xref:mongodb-property-mongodb-name[`${mongodb.name}`].
+[NOTE]
+====
+Once specify the prefix value to this property, the xref:mongodb-property-mongodb-name[`${mongodb.name}`] will not play the prefix role of all topics.
+====
+
+|[[mongodb-property-topic-cache-size]]<<mongodb-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[mongodb-property-topic-heartbeat-prefix]]<<mongodb-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[mongodb-property-topic-transaction]]<<mongodb-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 

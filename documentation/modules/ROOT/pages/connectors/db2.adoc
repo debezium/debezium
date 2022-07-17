@@ -482,7 +482,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 }
 ----
 
-Unless overridden via the xref:db2-property-transaction-topic[`transaction.topic`] option,
+Unless overridden via the xref:db2-property-topic-transaction[`topic.transaction`] option,
 the connector emits transaction events to the xref:db2-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 .Data change event enrichment
@@ -2022,8 +2022,8 @@ The following configuration properties are _required_ unless a default value is 
 |No default
 |Logical name that identifies and provides a namespace for the particular Db2 database server that hosts the database for which {prodname} is capturing changes.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
-The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
-+
+The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
@@ -2256,10 +2256,6 @@ Heartbeat messages are useful for monitoring whether the connector is receiving 
  +
 Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that the connector has few opportunities to send the latest offset to Kafka. Sending heartbeat messages enables the connector to send the latest offset to Kafka.
 
-|[[db2-property-heartbeat-topics-prefix]]<<db2-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Specifies the prefix for the name of the topic to which the connector sends heartbeat messages. The format for this topic name is  `<heartbeat.topics.prefix>.<server.name>`.
-
 |[[db2-property-snapshot-delay-ms]]<<db2-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
@@ -2315,10 +2311,6 @@ In the resulting snapshot, the connector includes only the records for which `de
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-db2-connector}#db2-transaction-metadata[Transaction metadata] for details.
 
-|[[db2-property-transaction-topic]]<<db2-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
-
 |[[db2-property-skipped-operations]]<<db2-property-skipped-operations, `+skipped.operations+`>>
 |No default
 | comma-separated list of operation types that will be skipped during streaming.
@@ -2337,6 +2329,42 @@ Use the following format to specify the collection name: +
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
+
+|[[db2-property-topic-naming-strategy]]<<db2-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[db2-property-topic-delimiter]]<<db2-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[db2-property-topic-prefix]]<<db2-property-topic-prefix, `topic.prefix`>>
+|`${database.server.name}`
+|The name of the prefix to be used for all topics, defaults to xref:db2-property-database-server-name[`${database.server.name}`].
+[NOTE]
+====
+Once specify the prefix value to this property, the xref:db2-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
+====
+
+|[[db2-property-topic-cache-size]]<<db2-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[db2-property-topic-heartbeat-prefix]]<<db2-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[db2-property-topic-transaction]]<<db2-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 

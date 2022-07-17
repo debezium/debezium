@@ -470,7 +470,7 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-Unless overridden via the xref:oracle-property-transaction-topic[`transaction.topic`] option,
+Unless overridden via the xref:oracle-property-topic-transaction[`topic.transaction`] option,
 the connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 // Type: concept
@@ -2519,8 +2519,8 @@ endif::product[]
 |Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 The value that you set is used as a prefix for all Kafka topic names that the connector emits.
 Specify a logical name that is unique among all connectors in your {prodname} environment.
-The following characters are valid: alphanumeric characters, hyphens, dots, and underscores.
-+
+The following characters are valid: alphanumeric characters, hyphens, dots, and underscores. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
@@ -2851,11 +2851,6 @@ The connector runs the query after it emits a xref:oracle-property-heartbeat-int
 Set this property and create a heartbeat table to receive the heartbeat messages to resolve situations in which xref:low-change-frequency-offset-management[{prodname} fails to synchronize offsets on low-traffic databases that are on the same host as a high-traffic database].
 After the connector inserts records into the configured table, it is able to receive changes from the low-traffic database and acknowledge SCN changes in the database, so that offsets can be synchronized with the broker.
 
-|[[oracle-property-heartbeat-topics-prefix]]<<oracle-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Specifies the string that prefixes the name of the topic to which the connector sends heartbeat messages. +
-The topic is named according to the pattern `_<heartbeat.topics.prefix>.<serverName>_`.
-
 |[[oracle-property-snapshot-delay-ms]]<<oracle-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |Specifies an interval in milliseconds that the connector waits after it starts before it takes a snapshot. +
@@ -2881,10 +2876,6 @@ For more information, see xref:{link-avro-serialization}#avro-naming[Avro naming
 |Set the property to `true` if you want {prodname} to generate events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See xref:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
-
-|[[oracle-property-transaction-topic]]<<oracle-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`redo_log_catalog`
@@ -3107,6 +3098,42 @@ Use the following format to specify the collection name: +
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
+
+|[[oracle-property-topic-naming-strategy]]<<oracle-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[oracle-property-topic-delimiter]]<<oracle-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `topic.prefix`>>
+|`${database.server.name}`
+|The name of the prefix to be used for all topics, defaults to xref:oracle-property-database-server-name[`${database.server.name}`].
+[NOTE]
+====
+Once specify the prefix value to this property, the xref:oracle-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
+====
+
+|[[oracle-property-topic-cache-size]]<<oracle-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[oracle-property-topic-heartbeat-prefix]]<<oracle-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[oracle-property-topic-transaction]]<<oracle-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 
