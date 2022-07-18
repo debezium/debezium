@@ -1709,14 +1709,20 @@ endif::product[]
 [id="compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types"]
 === Compatibility with Oracle installation types
 
-ifdef::community[]
+
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
 The {prodname} Oracle connector is compatible with both types of installation.
-endif::community[]
-ifdef::product[]
-The {prodname} Oracle connector is compatible with Oracle installed as a standalone instance.
-endif::product[]
 
+ifdef::product[]
+[IMPORTANT]
+====
+Using the connector in a RAC environment is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
 // Type: concept
 // Title: Schemas that the {prodname} Oracle connector excludes when capturing change events
 [id="schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events"]
@@ -1787,7 +1793,7 @@ ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
 ----
 
 // Type: concept
-// Title: Resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
+// Title: Resizing Oracle redo logs to accommodate the data dictionary
 // ModuleID: resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
 [id="oracle-redo-log-sizing"]
 === Redo log sizing
@@ -2289,7 +2295,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <12> The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 In the previous example, the `database.hostname` and `database.port` properties are used to define the connection to the database host.
-However, in more complex Oracle deployments, or in deployments that use TNS names, you can use an alternative method in which you specify a JDBC URL.
+However, in more complex Oracle deployments, or in deployments that use Transparent Network Substrate (TNS) names, you can use an alternative method in which you specify a JDBC URL.
 
 The following JSON example shows the same configuration as in the preceding example, except that it uses a JDBC URL to connect to the database.
 
@@ -2314,71 +2320,6 @@ The following JSON example shows the same configuration as in the preceding exam
 ----
 endif::community[]
 
-// Type: concept
-// ModuleID: configuration-of-container-databases-and-non-container-databases
-// Title: Configuration of container databases and non-container-databases
-[[pluggable-vs-non-pluggable-databases]]
-=== Pluggable vs Non-Pluggable databases
-[[oracle-database-mode]]
-
-
-Oracle Database supports the following deployment types:
-
-Container database (CDB):: A database that can contain multiple pluggable databases (PDBs).
-Database clients connect to each PDB as if it were a standard, non-CDB database.
-
-Non-container database (non-CDB):: A standard Oracle database, which does not support the creation of pluggable databases.
-
-
-ifdef::community[]
-
-
-.Example: {prodname} connector configuration for CDB deployments
-[source,json,indent=0]
-----
-{
-  "config": {
-    "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-    "tasks.max" : "1",
-    "database.server.name" : "server1",
-    "database.hostname" : "<oracle ip>",
-    "database.port" : "1521",
-    "database.user" : "c##dbzuser",
-    "database.password" : "dbz",
-    "database.dbname" : "ORCLCDB",
-    "database.pdb.name" : "ORCLPDB1",
-    "database.history.kafka.bootstrap.servers" : "kafka:9092",
-    "database.history.kafka.topic": "schema-changes.inventory"
-  }
-}
-----
-
-[IMPORTANT]
-====
-When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.name`, which names the PDB that you want the connector to capture changes from.
-For non-CDB installation, do *not* specify the `database.pdb.name` property.
-====
-
-.Example: {prodname} Oracle connector configuration for non-CDB deployments
-[source,json,indent=0]
-----
-{
-    "config": {
-        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-        "tasks.max" : "1",
-        "database.server.name" : "server1",
-        "database.hostname" : "<oracle ip>",
-        "database.port" : "1521",
-        "database.user" : "c##dbzuser",
-        "database.password" : "dbz",
-        "database.dbname" : "ORCLCDB",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory"
-    }
-}
-----
-
-endif::community[]
 
 For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:{link-oracle-connector}#oracle-connector-properties[Oracle connector properties].
 
@@ -2412,6 +2353,71 @@ endif::community[]
 After the connector starts, it xref:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
+// Type: concept
+// ModuleID: configuration-of-container-databases-and-non-container-databases
+// Title: Configuration of container databases and non-container-databases
+[[pluggable-vs-non-pluggable-databases]]
+=== Pluggable vs Non-Pluggable databases
+[[oracle-database-mode]]
+
+
+Oracle Database supports the following deployment types:
+
+Container database (CDB):: A database that can contain multiple pluggable databases (PDBs).
+Database clients connect to each PDB as if it were a standard, non-CDB database.
+
+Non-container database (non-CDB):: A standard Oracle database, which does not support the creation of pluggable databases.
+
+
+ifdef::community[]
+
+
+.Example: {prodname} connector configuration for CDB deployments
+[source,json,indent=0]
+----
+{
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+
+[IMPORTANT]
+====
+When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.name`, which names the PDB that you want the connector to capture changes from.
+For non-CDB installation, do *not* specify the `database.pdb.name` property.
+====
+
+.Example: {prodname} Oracle connector configuration for non-CDB deployments
+[source,json,indent=0]
+----
+{
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+
+endif::community[]
 ifdef::product[]
 // Type: procedure
 [id="verifying-that-the-debezium-oracle-connector-is-running"]
@@ -2503,11 +2509,10 @@ For example, to define a `selector` parameter that specifies the subset of colum
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
 |Specifies the raw database JDBC URL. Use this property to provide flexibility in defining that database connection.
-ifdef::community[]
 Valid values include raw TNS names and RAC connection strings.
-endif::community[]
 ifdef::product[]
-Valid values include raw TNS names connection strings.
+[NOTE]
+Using the connector in a RAC environment is a Technology Preview feature.
 endif::product[]
 
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
@@ -2650,9 +2655,9 @@ If you use the LogMiner implementation, use only POSIX regular expressions with 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
-Fully-qualified names for columns use the following format: `_+
+Fully-qualified names for columns use the following format: +
  +
-`<Schema_name>.<table_name>.<column_name>_` +
+`_<Schema_name>.<table_name>.<column_name>_` +
  +
 The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value.
 If you include this property in the configuration, do not also set the `column.exclude.list` property.
@@ -3038,17 +3043,23 @@ By default, change events have large object columns, but the columns contain no 
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
 
+ifdef::product[]
 NOTE: Use of large object data types is a Technology Preview feature.
+endif::product[]
 
 |[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is unchanged and not provided by the database.
 
-ifdef::community[]
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |No default
 |A comma-separated list of Oracle Real Application Clusters (RAC) node host names or addresses.
-This field is required to enable Oracle RAC support.
+This field is required to enable compatibility with an Oracle RAC deployment.
+ifdef::product[]
+[NOTE]
+Using the connector in a RAC environment is a Technology Preview feature.
+endif::product[]
+
 Specify the list of RAC nodes by using one of the following methods:
 
 * Specify a value for xref:oracle-property-database-port[`database.port`], and use the specified port value for each address in the `rac.nodes` list.
@@ -3071,7 +3082,7 @@ rac.nodes=192.168.1.100,192.168.1.101:1522
 ----
 
 If you supply a raw JDBC URL for the database by using the xref:oracle-property-database-url[`database.url`] property, instead of defining a value for `database.port`, each RAC node entry must explicitly specify a port value.
-endif::community[]
+
 
 |[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
 |No default
