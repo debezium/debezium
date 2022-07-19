@@ -40,13 +40,13 @@
     <!--OCP configuration-->
     <ocp.request.retry.backoff.limit>5</ocp.request.retry.backoff.limit>
     <ocp.project.debezium>debezium</ocp.project.debezium>
-    <ocp.project.registry>debezium-registry</ocp.project.registry>
-    <ocp.project.mysql>debezium-mysql</ocp.project.mysql>
-    <ocp.project.postgresql>debezium-postgresql</ocp.project.postgresql>
-    <ocp.project.mongo>debezium-mongo</ocp.project.mongo>
-    <ocp.project.sqlserver>debezium-sqlserver</ocp.project.sqlserver>
-    <ocp.project.db2>debezium-db2</ocp.project.db2>
-    <ocp.project.oracle>debezium-oracle</ocp.project.oracle>
+    <ocp.project.registry>${ocp.project.debezium}-registry</ocp.project.registry>
+    <ocp.project.mysql>${ocp.project.debezium}-mysql</ocp.project.mysql>
+    <ocp.project.postgresql>${ocp.project.debezium}-postgresql</ocp.project.postgresql>
+    <ocp.project.mongo>${ocp.project.debezium}-mongo</ocp.project.mongo>
+    <ocp.project.sqlserver>${ocp.project.debezium}-sqlserver</ocp.project.sqlserver>
+    <ocp.project.db2>${ocp.project.debezium}-db2</ocp.project.db2>
+    <ocp.project.oracle>${ocp.project.debezium}-oracle</ocp.project.oracle>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
     <ocp.image.postgresql>quay.io/debezium/example-postgres-ocp:latest</ocp.image.postgresql>

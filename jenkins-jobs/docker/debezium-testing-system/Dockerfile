@@ -14,20 +14,8 @@ RUN source $sdkman_init &&\
     sdk install java 17.0.2-open
 
 # this runs when only when dbz repo/branch is changed
-ARG repository
-ARG branch
 
-RUN git clone --branch $branch $repository /testsuite/debezium
-RUN source $sdkman_init && pushd /testsuite/debezium && ./mvnw clean install -DskipTests -DskipITs
+COPY testsuite.sh /testsuite/testsuite.sh
+RUN chmod a+x /testsuite/testsuite.sh
 
-COPY testsuite-deployment.sh /testsuite/testsuite-deployment.sh
-RUN chmod a+x /testsuite/testsuite-deployment.sh
-
-COPY library.sh /testsuite/library.sh
-
-ENTRYPOINT /testsuite/testsuite-deployment.sh
-
-FROM base AS downstream
-
-COPY apicurio-registry-install-examples.zip /testsuite/apicurio.zip
-COPY amq-streams-install-examples.zip /testsuite/strimzi.zip
+ENTRYPOINT /testsuite/testsuite.sh
