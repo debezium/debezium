@@ -37,6 +37,7 @@ jobs:
       mysql-ddl-parser-changed: ${{ steps.changed-files-mysql-ddl-parser.outputs.any_changed }}
       oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
+      storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed}}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
@@ -186,6 +187,13 @@ jobs:
         with:
           files: |
             documentation/**
+
+      - name: Get modified files (Storage)
+        id: changed-files-storage
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-storage/**
 
   build_cache:
     name: "Dependency Cache"
@@ -620,6 +628,38 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
+  build_storage:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.storage-changed == 'true' }}
+    name: "Storage"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v2
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Storage
+        run: >
+          ./mvnw clean install -B -f debezium-storage/pom.xml -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
   build_cassandra:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
@@ -714,7 +754,7 @@ jobs:
       - name: Build Debezium (Core)
         run: >
            ./core/mvnw clean install -f core/pom.xml 
-           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-storage-redis,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
            -DskipITs=true
