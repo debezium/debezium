@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OPTS=$(getopt -o h: --long filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,kafka-version:,groups-arg:,strz-git-repository:,strz-git-branch:,apic-git-repository:,apic-git-branch:,help  -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h: --long dbz-git-repository:,dbz-git-branch:,filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,kafka-version:,groups-arg:,help  -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -8,6 +8,8 @@ echo "${OPTS[@]}"
 
 while true; do
     case "$1" in
+        --dbz-git-repository )   DBZ_GIT_REPOSITORY=$2;     shift 2;;
+        --dbz-git-branch )       DBZ_GIT_BRANCH=$2;         shift 2;;
         --filename )              FILENAME=$2;                shift 2;;
         --pull-secret-name )      PULL_SECRET_NAME=$2;        shift 2;;
         --docker-tag )            DOCKER_TAG=$2;              shift 2;;
@@ -19,10 +21,6 @@ while true; do
         --apicurio-version )      APICURIO_VERSION=$2;        shift 2;;
         --kafka-version )         KAFKA_VERSION=$2;        shift 2;;
         --groups-arg )            GROUPS_ARG=$2;              shift 2;;
-        --strz-git-repository )   STRZ_GIT_REPOSITORY=$2;     shift 2;;
-        --strz-git-branch )       STRZ_GIT_BRANCH=$2;         shift 2;;
-        --apic-git-repository )   APIC_GIT_REPOSITORY=$2;     shift 2;;
-        --apic-git-branch )       APIC_GIT_BRANCH=$2;         shift 2;;
         -h | --help )             PRINT_HELP=true=$2;         shift ;;
         -- ) shift; break ;;
         * ) break ;;
@@ -50,22 +48,12 @@ spec:
             - containerPort: 8080
               protocol: \"TCP\"
           env:
+            - name: DBZ_GIT_REPOSITORY
+              value: \"${DBZ_GIT_REPOSITORY}\"
+            - name: DBZ_GIT_BRANCH
+              value: \"${DBZ_GIT_BRANCH}\"
             - name: DBZ_OCP_PROJECT_DEBEZIUM
               value: \"${PROJECT_NAME}\"
-            - name: DBZ_OCP_PROJECT_DB2
-              value: \"${PROJECT_NAME}-db2\"
-            - name: DBZ_OCP_PROJECT_MONGO
-              value: \"${PROJECT_NAME}-mongo\"
-            - name: DBZ_OCP_PROJECT_MYSQL
-              value: \"${PROJECT_NAME}-mysql\"
-            - name: DBZ_OCP_PROJECT_ORACLE
-              value: \"${PROJECT_NAME}-oracle\"
-            - name: DBZ_OCP_PROJECT_POSTGRESQL
-              value: \"${PROJECT_NAME}-postgresql\"
-            - name: DBZ_OCP_PROJECT_SQLSERVER
-              value: \"${PROJECT_NAME}-sqlserver\"
-            - name: DBZ_OCP_PROJECT_REGISTRY
-              value: \"${PROJECT_NAME}-registry\"
             - name: DBZ_SECRET_NAME
               value: \"${PULL_SECRET_NAME}\"
             - name: DBZ_TEST_WAIT_SCALE
@@ -86,14 +74,6 @@ spec:
               value: \"${GROUPS_ARG}\"
             - name: DBZ_OCP_DELETE_PROJECTS
               value: \"true\"
-            - name: STRZ_GIT_REPOSITORY
-              value: \"${STRZ_GIT_REPOSITORY}\"
-            - name: STRZ_GIT_BRANCH
-              value: \"${STRZ_GIT_BRANCH}\"
-            - name: APIC_GIT_REPOSITORY
-              value: \"${APIC_GIT_REPOSITORY}\"
-            - name: APIC_GIT_BRANCH
-              value: \"${APIC_GIT_BRANCH}\"
   triggers:
     - type: \"ConfigChange\"
   paused: false
