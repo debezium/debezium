@@ -12,7 +12,6 @@ pipelineJob('ocp-system-test') {
         stringParam('PULL_SECRET', 'rh-integration-quay-secret', 'Quay.io OpenShift secret')
 
         stringParam('DOCKER_TAG', 'latest', 'Docker image tag')
-        stringParam('OCP_PROJECT_NAME', 'debezium-test', 'OCP projects name')
         stringParam('OCP_CREDENTIALS', 'openshift-dbz-creds', 'Jenkins credentials id')
         stringParam('OCP_URL', '', 'Ocp url')
 
@@ -26,9 +25,11 @@ pipelineJob('ocp-system-test') {
 
         stringParam('STRZ_GIT_REPOSITORY', 'https://github.com/strimzi/strimzi-kafka-operator.git', 'Repository from which Strimzi is cloned')
         stringParam('STRZ_GIT_BRANCH', 'main', 'A branch/tag from which Strimzi is built')
+        stringParam('STRIMZI_PREPARE_BUILD_NUMBER', '', 'Product build - Build from which strimzi operator zip is used. Default lastSuccessful')
 
         stringParam('APIC_GIT_REPOSITORY', 'https://github.com/Apicurio/apicurio-registry-operator.git', 'Repository from which Apicurio is cloned')
         stringParam('APIC_GIT_BRANCH', 'master', 'A branch/tag from which Apicurio is built')
+        stringParam('APICURIO_PREPARE_BUILD_NUMBER', '', 'Product build - Build from which apicurio operator zip is used. Default lastSuccessful')
     }
 
     definition {
