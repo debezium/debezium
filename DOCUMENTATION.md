@@ -73,10 +73,8 @@ The current `antora.yml` component descriptor looks similar to the following:
 asciidoc:
   attributes:
     debezium-version: '1.1.0.Final'
-    debezium-dev-version: '1.2'
     debezium-kafka-version: '2.4.0'
     debezium-docker-label: '1.1'
-    install-version: '1.1'
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-connector-plugin-download: 'https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.1.0.Final/debezium-connector-mysql-1.1.0.Final-plugin.tar.gz'
