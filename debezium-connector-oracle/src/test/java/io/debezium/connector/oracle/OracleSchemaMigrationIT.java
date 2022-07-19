@@ -1608,7 +1608,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
     private static void assertSourceTableInfo(SourceRecord record, String schema, String table) {
         final Struct source = ((Struct) record.value()).getStruct("source");
-        assertThat(source.get("db")).isEqualTo(TestHelper.DATABASE);
+        assertThat(source.get("db")).isEqualTo(TestHelper.getDatabaseName());
         assertThat(source.get("schema")).isEqualTo(schema);
         assertThat(source.get("table")).isEqualTo(table);
     }
