@@ -18,6 +18,10 @@ public interface SnapshotProgressListener<P extends Partition> {
 
     void snapshotStarted(P partition);
 
+    void snapshotPaused(P partition);
+
+    void snapshotResumed(P partition);
+
     void monitoredDataCollectionsDetermined(P partition, Iterable<? extends DataCollectionId> dataCollectionIds);
 
     void snapshotCompleted(P partition);
@@ -37,6 +41,14 @@ public interface SnapshotProgressListener<P extends Partition> {
 
             @Override
             public void snapshotStarted(P partition) {
+            }
+
+            @Override
+            public void snapshotPaused(P partition) {
+            }
+
+            @Override
+            public void snapshotResumed(P partition) {
             }
 
             @Override

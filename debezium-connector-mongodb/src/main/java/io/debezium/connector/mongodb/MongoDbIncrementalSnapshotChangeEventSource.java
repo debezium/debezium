@@ -107,6 +107,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
+            progressListener.snapshotPaused(partition);
         }
     }
 
@@ -115,6 +116,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
+            progressListener.snapshotResumed(partition);
             window.clear();
             context.revertChunk();
             readChunk(partition);
