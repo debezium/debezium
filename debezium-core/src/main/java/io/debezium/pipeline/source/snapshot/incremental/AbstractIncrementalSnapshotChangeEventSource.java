@@ -107,6 +107,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
+            progressListener.snapshotPaused(partition);
         }
     }
 
@@ -115,6 +116,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
+            progressListener.snapshotResumed(partition);
             readChunk(partition);
         }
     }
