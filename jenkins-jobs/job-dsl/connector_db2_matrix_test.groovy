@@ -36,7 +36,7 @@ matrixJob('connector-debezium-db2-matrix-test') {
     publishers {
         archiveJunit('**/target/surefire-reports/*.xml')
         archiveJunit('**/target/failsafe-reports/*.xml')
-        mailer('jpechane@redhat.com', false, true)
+        mailer('debezium-qe@redhat.com', false, true)
     }
 
     logRotator {

@@ -14,7 +14,6 @@ matrixJob('connector-debezium-oracle-matrix-test') {
 
 
     parameters {
-        stringParam('MAIL_TO', 'debezium-qe@redhat.com')
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
         stringParam('BRANCH', 'main', 'A branch/tag from which Debezium is built')
 //          QUAY CONFIG
@@ -43,7 +42,7 @@ matrixJob('connector-debezium-oracle-matrix-test') {
     publishers {
         archiveJunit('**/target/surefire-reports/*.xml')
         archiveJunit('**/target/failsafe-reports/*.xml')
-        mailer('jpechane@redhat.com', false, true)
+        mailer('debezium-qe@redhat.com', false, true)
     }
 
     logRotator {
