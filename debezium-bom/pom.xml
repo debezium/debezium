@@ -40,6 +40,10 @@
         <version.groovy>3.0.7</version.groovy>
         <version.graalvm.js>20.0.0</version.graalvm.js>
 
+        <!-- S3 Storage -->
+        <version.s3>2.17.241</version.s3>
+        <version.s3mock>2.4.14</version.s3mock>
+
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
         <version.fest>1.4</version.fest>
@@ -423,6 +427,21 @@
                 <scope>provided</scope>
             </dependency>
 
+            <!-- S3 Storage -->
+            <!-- https://mvnrepository.com/artifact/software.amazon.awssdk/s3 -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3</artifactId>
+                <version>${version.s3}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.adobe.testing</groupId>
+                <artifactId>s3mock-testcontainers</artifactId>
+                <version>${version.s3mock}</version>
+                <scope>test</scope>
+            </dependency>
+
+
             <!-- Testing utilities -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
@@ -522,6 +541,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-kafka</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-s3</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

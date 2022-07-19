@@ -14,6 +14,7 @@
     <modules>
         <module>debezium-storage-kafka</module>
         <module>debezium-storage-file</module>
+        <module>debezium-storage-s3</module>
     </modules>
 </project>
 

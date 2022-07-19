@@ -276,7 +276,9 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
+                                       <descriptorRef>${assembly.descriptor.storage.kafka}</descriptorRef>
+                                       <descriptorRef>${assembly.descriptor.storage.file}</descriptorRef>
+                                       <descriptorRef>${assembly.descriptor.storage.s3}</descriptorRef>
                                     </descriptorRefs>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>

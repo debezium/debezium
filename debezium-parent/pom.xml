@@ -52,7 +52,9 @@
         <test.argline />
 
         <!-- Assembly configuration -->
-        <assembly.descriptor>connector-distribution</assembly.descriptor>
+        <assembly.descriptor.storage.kafka>connector-distribution-kafka-storage</assembly.descriptor.storage.kafka>
+        <assembly.descriptor.storage.file>connector-distribution-file-storage</assembly.descriptor.storage.file>
+        <assembly.descriptor.storage.s3>connector-distribution-s3-storage</assembly.descriptor.storage.s3>
 
         <!-- Needed for pre jdk 9 -->
         <useSystemClassLoader>true</useSystemClassLoader>
