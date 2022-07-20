@@ -9,6 +9,7 @@ package io.debezium.connector.mysql.antlr;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -288,7 +289,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
-     * Parse column names for primary index from {@link MySqlParser.IndexColumnNamesContext}. This method will updates
+     * Parse column names for primary index from {@link MySqlParser.IndexColumnNamesContext}. This method will update
      * column to be not optional and set primary key column names to table.
      *
      * @param indexColumnNamesContext primary key index column names context.
@@ -302,8 +303,11 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     if (indexColumnNameContext.uid() != null) {
                         columnName = parseName(indexColumnNameContext.uid());
                     }
-                    else {
+                    else if (indexColumnNameContext.STRING_LITERAL() != null) {
                         columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                    }
+                    else {
+                        columnName = indexColumnNameContext.expression().getText();
                     }
                     Column column = tableEditor.columnWithName(columnName);
                     if (column != null && column.isOptional()) {
@@ -318,6 +322,31 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 .collect(Collectors.toList());
 
         tableEditor.setPrimaryKeyNames(pkColumnNames);
+    }
+
+    /**
+     * Determine if a table's unique index should be included when parsing relative unique index statement.
+     *
+     * @param indexColumnNamesContext unique index column names context.
+     * @param tableEditor editor for table where unique index is parsed.
+     * @return true if the index is to be included; false otherwise.
+     */
+    public boolean isTableUniqueIndexIncluded(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        return indexColumnNamesContext.indexColumnName().stream()
+                .map(indexColumnNameContext -> {
+                    String columnName;
+                    if (indexColumnNameContext.uid() != null) {
+                        columnName = parseName(indexColumnNameContext.uid());
+                    }
+                    else if (indexColumnNameContext.STRING_LITERAL() != null) {
+                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                    }
+                    else {
+                        columnName = indexColumnNameContext.expression().getText();
+                    }
+                    return tableEditor.columnWithName(columnName);
+                })
+                .filter(Objects::isNull).count() == 0;
     }
 
     /**

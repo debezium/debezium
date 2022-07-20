@@ -307,7 +307,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterAlterByAddUniqueKey(MySqlParser.AlterByAddUniqueKeyContext ctx) {
         parser.runIfNotNull(() -> {
-            if (!tableEditor.hasPrimaryKey()) {
+            if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
                 // this may eventually get overwritten by a real PK
                 parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
             }
