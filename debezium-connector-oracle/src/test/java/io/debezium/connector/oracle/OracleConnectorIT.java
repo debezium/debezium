@@ -4268,7 +4268,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
                     .until(() -> {
                         final String scnValue = getStreamingMetric("CurrentScn");
-                        if (scnValue == null) {
+                        if (scnValue == null || "null".equals(scnValue)) {
                             return false;
                         }
                         return Scn.valueOf(scnValue).compareTo(scn) > 0;
