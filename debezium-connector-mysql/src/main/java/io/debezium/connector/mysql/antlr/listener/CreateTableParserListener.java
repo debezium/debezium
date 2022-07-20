@@ -122,7 +122,7 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
         parser.runIfNotNull(() -> {
-            if (!tableEditor.hasPrimaryKey()) {
+            if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
                 parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
             }
         }, tableEditor);

@@ -85,6 +85,40 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-5424")
+    public void shouldProcessNoPrimaryKeyForTable() {
+        String ddl = "create table if not exists tbl_without_pk(\n"
+                + "id bigint(20) NOT Null,\n"
+                + "c1 bigint not null,\n"
+                + "c2 int not null,\n"
+                + "unique key (c1, (c2*2))\n"
+                + ");";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "tbl_without_pk");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+
+        String createTable = "drop table if exists tbl_without_pk;\n"
+                + "create table if not exists tbl_without_pk(\n"
+                + "id bigint(20) NOT Null,\n"
+                + "c1 bigint not null,\n"
+                + "c2 int not null\n"
+                + ");\n";
+        parser.parse(createTable, tables);
+        parser.parse("alter table tbl_without_pk add unique key uk_func(id, (c2*2));", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        table = tables.forTable(null, null, "tbl_without_pk");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+
+        parser.parse(createTable, tables);
+        parser.parse("create unique index uk_func_2 on tbl_without_pk(id, (c2*2));", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        table = tables.forTable(null, null, "tbl_without_pk");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-4583")
     public void shouldProcessLargeColumn() {
         String ddl = "create table if not exists tbl_large_col(\n"
