@@ -89,7 +89,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         Awaitility.await()
                 .alias("Found warning message in logs")
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+                .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS).until(() -> {
                     return logInterceptor.containsWarnMessage("Error while processing event at offset {");
                 });
     }
@@ -151,7 +151,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         Awaitility.await()
                 .alias("Found error message in logs")
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+                .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS).until(() -> {
                     boolean foundErrorMessageInLogs = logInterceptor.containsStacktraceElement("Error while processing event at offset {");
                     return foundErrorMessageInLogs && !engine.isRunning();
                 });
