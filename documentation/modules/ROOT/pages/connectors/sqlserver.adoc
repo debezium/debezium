@@ -2328,7 +2328,7 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 `skip` will cause the problematic event to be skipped.
 
 |[[sqlserver-property-poll-interval-ms]]<<sqlserver-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
+|`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
 
 |[[sqlserver-property-max-queue-size]]<<sqlserver-property-max-queue-size, `+max.queue.size+`>>

@@ -2235,7 +2235,7 @@ For example, +
 `skip` - The connector skips the problematic event and continues processing with the next event.
 
 |[[db2-property-poll-interval-ms]]<<db2-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
+|`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
 |[[db2-property-max-batch-size]]<<db2-property-max-batch-size, `+max.batch.size+`>>

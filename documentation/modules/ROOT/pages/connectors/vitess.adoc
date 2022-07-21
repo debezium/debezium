@@ -1278,7 +1278,7 @@ Events that are held in the queue are disregarded when the connector periodicall
 Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
 
 |[[vitess-property-max-batch-size]]<<vitess-property-max-batch-size, `+max.batch.size+`>>
-|`10240`
+|`2048`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
 |[[vitess-property-max-queue-size-in-bytes]]<<vitess-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
@@ -1290,7 +1290,7 @@ If xref:vitess-property-max-queue-size[`max.queue.size`] is also set, writing to
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[vitess-property-poll-interval-ms]]<<vitess-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
+|`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
 |[[vitess-property-sanitize-field-names]]<<vitess-property-sanitize-field-names, `+sanitize.field.names+`>>
