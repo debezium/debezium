@@ -3006,7 +3006,7 @@ In the resulting snapshot, the connector includes only the records for which `de
 `skip` skips the problematic event and continues processing.
 
 |[[postgresql-property-max-batch-size]]<<postgresql-property-max-batch-size, `+max.batch.size+`>>
-|`10240`
+|`2048`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
 |[[postgresql-property-max-queue-size]]<<postgresql-property-max-queue-size, `+max.queue.size+`>>
@@ -3027,7 +3027,7 @@ If xref:postgresql-property-max-queue-size[`max.queue.size`] is also set, writin
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[postgresql-property-poll-interval-ms]]<<postgresql-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
+|`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
 |[[postgresql-property-include-unknown-datatypes]]<<postgresql-property-include-unknown-datatypes, `+include.unknown.datatypes+`>>

@@ -2769,7 +2769,7 @@ If xref:oracle-property-max-queue-size[`max.queue.size`] is also set, writing to
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[oracle-property-poll-interval-ms]]<<oracle-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000` (1 second)
+|`500` (0.5 second)
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear.
 
 |[[oracle-property-tombstones-on-delete]]<<oracle-property-tombstones-on-delete, `+tombstones.on.delete+`>>
