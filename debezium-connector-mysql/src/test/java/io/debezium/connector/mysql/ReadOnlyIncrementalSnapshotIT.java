@@ -7,8 +7,11 @@ package io.debezium.connector.mysql;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -17,6 +20,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.AfterClass;
@@ -26,6 +30,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
@@ -94,6 +99,18 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         String signalValue = String.format(
                 "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
                 fullTableNames);
+        sendKafkaSignal(signalValue);
+    }
+
+    protected void sendPauseSnapshotKafkaSignal() throws ExecutionException, InterruptedException {
+        sendKafkaSignal("{\"type\":\"pause-snapshot\",\"data\": {\"type\": \"INCREMENTAL\"}}");
+    }
+
+    protected void sendResumeSnapshotKafkaSignal() throws ExecutionException, InterruptedException {
+        sendKafkaSignal("{\"type\":\"resume-snapshot\",\"data\": {\"type\": \"INCREMENTAL\"}}");
+    }
+
+    protected void sendKafkaSignal(String signalValue) throws ExecutionException, InterruptedException {
         final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(getSignalsTopic(), PARTITION_NO, SERVER_NAME, signalValue);
 
         final Configuration signalProducerConfig = Configuration.create()
@@ -218,6 +235,39 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         final Throwable e = exception.get();
         if (e != null) {
             throw (RuntimeException) e;
+        }
+    }
+
+    @Test
+    public void testPauseDuringSnapshotKafkaSignal() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendExecuteSnapshotKafkaSignal();
+
+        List<SourceRecord> records = new ArrayList<>();
+        String topicName = topicName();
+        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(100);
+
+        sendPauseSnapshotKafkaSignal();
+
+        consumeAvailableRecords(record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+        });
+        int beforeResume = records.size() + dbChanges.size();
+
+        sendResumeSnapshotKafkaSignal();
+
+        dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT - beforeResume);
+        for (int i = beforeResume + 1; i < ROW_COUNT; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
     }
 
