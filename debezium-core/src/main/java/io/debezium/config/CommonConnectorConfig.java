@@ -38,6 +38,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.pipeline.notification.SnapshotStatusNotifications;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.converter.ConvertedField;
@@ -731,6 +732,12 @@ public abstract class CommonConnectorConfig {
 
     public int getIncrementalSnashotChunkSize() {
         return incrementalSnapshotChunkSize;
+    }
+
+    public SnapshotStatusNotifications getSnapshotStatusNotifications() {
+        SnapshotStatusNotifications notifications = config.getInstance(SnapshotStatusNotifications.SNAPSHOT_NOTIFICATIONS_CLASS, SnapshotStatusNotifications.class);
+        notifications.configure(config);
+        return notifications;
     }
 
     public boolean shouldProvideTransactionMetadata() {

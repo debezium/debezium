@@ -20,6 +20,11 @@ public class DataCollection<T> {
 
     private Optional<String> additionalCondition;
 
+    public DataCollection(T id) {
+        this.id = id;
+        this.additionalCondition = Optional.empty();
+    }
+
     public DataCollection(T id, Optional<String> additionalCondition) {
         this.id = id;
         this.additionalCondition = additionalCondition == null ? Optional.empty() : additionalCondition;

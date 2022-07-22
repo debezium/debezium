@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -195,7 +197,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         try {
             List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
             List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
-                    .map(x -> new DataCollection<T>((T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)), null))
+                    .map(x -> new DataCollection<T>((T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID))))
                     .filter(x -> x.getId() != null)
                     .collect(Collectors.toList());
             return dataCollectionsList;
@@ -226,11 +228,16 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     @SuppressWarnings("unchecked")
     public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> _additionalCondition) {
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> new DataCollection<T>((T) CollectionId.parse(x), null))
+                .map(x -> new DataCollection<T>((T) CollectionId.parse(x)))
                 .filter(x -> x.getId() != null) // Remove collections with incorrectly formatted name
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         return newDataCollectionIds;
+    }
+
+    @Override
+    public Collection<DataCollection<T>> getDataCollectionsToSnapshot() {
+        return Collections.unmodifiableCollection(dataCollectionsToSnapshot);
     }
 
     @Override
@@ -240,9 +247,11 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
+    public Collection<DataCollection<T>> removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) CollectionId.parse(dataCollectionId);
-        return dataCollectionsToSnapshot.remove(new DataCollection<T>(collectionId, null));
+        DataCollection<T> dataCollection = new DataCollection<>(collectionId);
+        dataCollectionsToSnapshot.remove(dataCollection);
+        return Collections.singletonList(dataCollection);
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {

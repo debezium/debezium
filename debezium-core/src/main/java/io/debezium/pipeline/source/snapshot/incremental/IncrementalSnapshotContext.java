@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +64,9 @@ public interface IncrementalSnapshotContext<T> {
 
     void setSchemaVerificationPassed(boolean schemaVerificationPassed);
 
+    Collection<DataCollection<T>> getDataCollectionsToSnapshot();
+
     void stopSnapshot();
 
-    boolean removeDataCollectionFromSnapshot(String dataCollectionId);
+    Collection<DataCollection<T>> removeDataCollectionFromSnapshot(String dataCollectionId);
 }

@@ -1,0 +1,41 @@
+{prodname} provides a set of `snapshot.status.notifications.*` properties that allow to configure notifications for incremental snapshots.
+
+The following table describes the `snapshot.status.notifications` properties for configuring the {prodname} connector.
+
+.Connector snapshot status notifications configuration properties
+[cols="33%a,17%a,50%a",options="header",subs="+attributes"]
+|===
+|Property |Default |Description
+|[[{context}-property-snapshot-status-notifications-class]]<<{context}-property-snapshot-status-notifications-class, `+snapshot.status.notifications.class+`>>
+|`io.debezium.pipeline.notification.LogSnapshotStatusNotifications`
+|The SnapshotStatusNotifications implementation that should be used to output the snapshot status updates. The default is `io.debezium.pipeline.notification.LogSnapshotStatusNotifications` which writes snapshot statuses into connector's log.  Alternative implementation is `io.debezium.pipeline.notification.KafkaSnapshotStatusNotifications` which writes snapshot statuses into a Kafka topic.
+
+|[[{context}-property-snapshot-status-notifications-kafka-topic]]<<{context}-property-snapshot-status-notifications-kafka-topic, `+snapshot.status.notifications.kafka.topic+`>>
+|
+|The full name of the Kafka topic where the connector writes the snapshot status notifications.
+
+|[[{context}-property-snapshot-status-notifications-kafka-bootstrap-servers]]<<{context}-property-snapshot-status-notifications-kafka-bootstrap-servers, `+snapshot.status.notifications.kafka.bootstrap.servers+`>>
+|
+|A list of host/port pairs that the connector uses for establishing connection to the Kafka cluster. This connection is used for writing snapshot status notifications. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
+|===
+
+[id="{context}-pass-through-snapshot-status-notifications-properties-for-configuring-producer"]
+.Pass-through snapshot status notifications properties for configuring Kafka producer
+{empty} +
+{prodname} relies on a Kafka producer to write snapshot status notifications to the Kafka topic.
+You can define the configuration for the Kafka producer by assigning values to a set of pass-through configuration properties that begin with the `snapshot.status.notifications.producer.\*` prefix.
+The pass-through producer properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
+
+[source,indent=0]
+----
+snapshot.status.notifications.producer.security.protocol=SSL
+snapshot.status.notifications.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+snapshot.status.notifications.producer.ssl.keystore.password=test1234
+snapshot.status.notifications.producer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+snapshot.status.notifications.producer.ssl.truststore.password=test1234
+snapshot.status.notifications.producer.ssl.key.password=test1234
+----
+
+{prodname} strips the prefix from the property name before it passes the property to the Kafka client.
+
+See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties].

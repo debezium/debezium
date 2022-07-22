@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -234,6 +236,10 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return newDataCollectionIds;
     }
 
+    public Collection<DataCollection<T>> getDataCollectionsToSnapshot() {
+        return Collections.unmodifiableCollection(dataCollectionsToSnapshot);
+    }
+
     @Override
     public void stopSnapshot() {
         this.dataCollectionsToSnapshot.clear();
@@ -241,9 +247,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
+    public List<DataCollection<T>> removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId, null)));
+        DataCollection<T> dataCollection = new DataCollection<>(collectionId);
+        List<DataCollection<T>> dataCollectionsToStop = dataCollectionsToSnapshot.stream()
+                .filter(dataCollection::equals)
+                .collect(Collectors.toList());
+        dataCollectionsToSnapshot.removeAll(dataCollectionsToStop);
+        return dataCollectionsToStop;
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {

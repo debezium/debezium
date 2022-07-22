@@ -2554,6 +2554,11 @@ For more information, see xref:sqlserver-transaction-metadata[Transaction Metada
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
+[id="debezium-sqlserver-connector-snapshot-status-notifications-properties"]
+==== {prodname} SQL Server connector snapshot status notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-snapshot-status-notifications-properties.adoc[leveloffset=+1]
+
 [id="debezium-sqlserver-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} SQL Server connector pass-through database driver configuration properties
 

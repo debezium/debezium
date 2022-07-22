@@ -273,3 +273,18 @@ Currently, the only valid option is `incremental`. +
 Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is required. +
 If you do not specify a value, the signal will not stop the incremental snapshot.
 |===
+
+==== Snapshot status notifications
+
+It's possible to configure connector to send incremental snapshot completion notifications into a Kafka topic.
+See xref:debezium-{context}-connector-snapshot-status-notifications-properties[snapshot status notifications configuration properties]
+
+Notifications format:
+
+----
+Key = `test_connector`
+
+Value = `{"id" : "1b8d98f4-53ec-4beb-aa14-73ea35f185e7", "type":"incremental-snapshot", "data-collections": "schema1.table1", "additional-condition" : "updated_at>='2022-09-20'", "status" : "SUCCEEDED"}`
+----
+
+All status values are defined in link:https://github.com/debezium/debezium/blob/main/debezium-core/src/main/java/io/debezium/pipeline/notification/SnapshotCompletionStatus.java[SnapshotCompletionStatus enum].

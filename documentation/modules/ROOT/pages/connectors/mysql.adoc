@@ -2958,6 +2958,11 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
+[id="debezium-mysql-connector-snapshot-status-notifications-properties"]
+==== {prodname} connector snapshot status notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-snapshot-status-notifications-properties.adoc[leveloffset=+1]
+
 [id="debezium-{context}-connector-kafka-signals-configuration-properties"]
 ==== {prodname} connector Kafka signals configuration properties
 

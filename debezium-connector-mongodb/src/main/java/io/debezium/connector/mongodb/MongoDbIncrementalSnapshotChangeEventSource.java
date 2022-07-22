@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -387,10 +388,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                         nextDataCollection(partition);
                     }
                     else {
-                        if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
-                            LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
+                        Collection<DataCollection<CollectionId>> removedDataCollections = context.removeDataCollectionFromSnapshot(dataCollectionId);
+                        for (DataCollection<CollectionId> removedDataCollection : removedDataCollections) {
+                            LOGGER.info("Removed '{}' from incremental snapshot collection list.", removedDataCollection.getId());
                         }
-                        else {
+                        if (removedDataCollections.isEmpty()) {
                             LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
                         }
                     }

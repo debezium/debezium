@@ -5,11 +5,19 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static io.debezium.pipeline.notification.SnapshotCompletionStatus.EMPTY;
+import static io.debezium.pipeline.notification.SnapshotCompletionStatus.NO_PRIMARY_KEY;
+import static io.debezium.pipeline.notification.SnapshotCompletionStatus.SQL_EXCEPTION;
+import static io.debezium.pipeline.notification.SnapshotCompletionStatus.STOPPED;
+import static io.debezium.pipeline.notification.SnapshotCompletionStatus.SUCCEEDED;
+import static io.debezium.pipeline.notification.SnapshotCompletionStatus.UNKNOWN_SCHEMA;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -30,6 +38,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.SnapshotStatusNotifications;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -65,6 +74,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private final Clock clock;
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener<P> progressListener;
+    private final SnapshotStatusNotifications<T> snapshotStatusNotifications;
     private final DataChangeEventListener<P> dataListener;
     private long totalRowsScanned = 0;
 
@@ -88,6 +98,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         this.databaseSchema = (RelationalDatabaseSchema) databaseSchema;
         this.clock = clock;
         this.progressListener = progressListener;
+        this.snapshotStatusNotifications = config.getSnapshotStatusNotifications();
         this.dataListener = dataChangeEventListener;
     }
 
@@ -324,6 +335,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         maximumKey = jdbcConnection.queryAndMap(
                                 buildMaxPrimaryKeyQuery(currentTable, context.currentDataCollectionId().getAdditionalCondition()), rs -> {
                                     if (!rs.next()) {
+
                                         return null;
                                     }
                                     return keyFromRow(jdbcConnection.rowToArray(currentTable, rs,
@@ -333,6 +345,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                     catch (SQLException e) {
                         LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
+                        snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), context.currentDataCollectionId(), SQL_EXCEPTION);
                         nextDataCollection(partition);
                         continue;
                     }
@@ -340,6 +353,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
                                 currentTableId);
+                        snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), context.currentDataCollectionId(), EMPTY);
                         nextDataCollection(partition);
                         continue;
                     }
@@ -353,6 +367,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                                 currentTableId);
                         tableScanCompleted(partition);
+                        snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), context.currentDataCollectionId(), SUCCEEDED);
                         nextDataCollection(partition);
                     }
                     else {
@@ -382,11 +397,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         currentTable = databaseSchema.tableFor(currentTableId);
         if (currentTable == null) {
             LOGGER.warn("Schema not found for table '{}', known tables {}", currentTableId, databaseSchema.tableIds());
+            snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), context.currentDataCollectionId(), UNKNOWN_SCHEMA);
             nextDataCollection(partition);
             return true;
         }
         if (getKeyMapper().getKeyKolumns(currentTable).isEmpty()) {
             LOGGER.warn("Incremental snapshot for table '{}' skipped cause the table has no primary keys", currentTableId);
+            snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), context.currentDataCollectionId(), NO_PRIMARY_KEY);
             nextDataCollection(partition);
             return true;
         }
@@ -473,6 +490,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
                 LOGGER.info("Stopping incremental snapshot.");
                 try {
+                    Collection<DataCollection<T>> dataCollectionsToSnapshot = context.getDataCollectionsToSnapshot();
+                    for (DataCollection<T> dataCollection : dataCollectionsToSnapshot) {
+                        snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), dataCollection, STOPPED);
+                    }
                     // This must be called prior to closeWindow to ensure the correct state is set
                     // to prevent chunk reads from triggering additional open/close events.
                     context.stopSnapshot();
@@ -499,10 +520,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         stopCurrentTableId = currentTable.id();
                     }
                     else {
-                        if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
+                        Collection<DataCollection<T>> removedDataCollections = context.removeDataCollectionFromSnapshot(dataCollectionId);
+                        for (DataCollection<T> removedDataCollection : removedDataCollections) {
                             LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
+                            snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), removedDataCollection, STOPPED);
                         }
-                        else {
+                        if (removedDataCollections.isEmpty()) {
                             LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
                         }
                     }
@@ -511,6 +534,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 if (stopCurrentTableId != null) {
                     window.clear();
                     LOGGER.info("Removed '{}' from incremental snapshot collection list.", stopCurrentTableId);
+                    snapshotStatusNotifications.snapshotCompleted(connectorConfig.getLogicalName(), context.currentDataCollectionId(), STOPPED);
                     tableScanCompleted(partition);
                     // If snapshot has no more collections, abort; otherwise advance to the next collection.
                     if (!context.snapshotRunning()) {

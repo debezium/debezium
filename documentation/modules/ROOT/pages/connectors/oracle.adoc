@@ -3153,6 +3153,10 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 ==== {prodname} Oracle connector database schema history configuration properties
 include::../../partials/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
+[id="debezium-oracle-connector-snapshot-status-notifications-properties"]
+==== {prodname} Oracle connector snapshot status notifications configuration properties
+include::../../partials/modules/all-connectors/ref-connector-configuration-snapshot-status-notifications-properties.adoc[leveloffset=+1]
+
 [id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} Oracle connector pass-through database driver configuration properties
 

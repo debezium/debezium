@@ -5,19 +5,34 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.pipeline.notification.KafkaSnapshotStatusNotifications.ADDITIONAL_CONDITION;
+import static io.debezium.pipeline.notification.KafkaSnapshotStatusNotifications.DATA_COLLECTION;
+import static io.debezium.pipeline.notification.KafkaSnapshotStatusNotifications.INCREMENTAL_SNAPSHOT;
+import static io.debezium.pipeline.notification.KafkaSnapshotStatusNotifications.STATUS;
+import static io.debezium.pipeline.notification.KafkaSnapshotStatusNotifications.TYPE;
+import static io.debezium.pipeline.notification.SnapshotCompletionStatus.SUCCEEDED;
+
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -38,9 +53,13 @@ import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.connector.mysql.signal.KafkaSignalThread;
 import io.debezium.doc.FixFor;
+import io.debezium.document.Document;
+import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.notification.KafkaSnapshotStatusNotifications;
+import io.debezium.pipeline.notification.SnapshotStatusNotifications;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
@@ -52,6 +71,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     private static KafkaCluster kafka;
     private static final int PARTITION_NO = 0;
     public static final String EXCLUDED_TABLE = "b";
+    private final DocumentReader reader = DocumentReader.defaultReader();
     @Rule
     public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
 
@@ -59,6 +79,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     public void before() throws SQLException {
         super.before();
         kafka.createTopic(getSignalsTopic(), 1, 1);
+        kafka.createTopic(getSnapshotNotificationsTopic(), 1, 1);
     }
 
     @BeforeClass
@@ -89,6 +110,9 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 .with(KafkaSignalThread.SIGNAL_TOPIC, getSignalsTopic())
                 .with(KafkaSignalThread.BOOTSTRAP_SERVERS, kafka.brokerList())
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+                .with(SnapshotStatusNotifications.SNAPSHOT_NOTIFICATIONS_CLASS, KafkaSnapshotStatusNotifications.class)
+                .with(KafkaSnapshotStatusNotifications.TOPIC, getSnapshotNotificationsTopic())
+                .with(KafkaSnapshotStatusNotifications.BOOTSTRAP_SERVERS, kafka.brokerList())
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
     }
 
@@ -96,8 +120,49 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         return DATABASE.getDatabaseName() + "signals_topic";
     }
 
+    private String getSnapshotNotificationsTopic() {
+        return DATABASE.getDatabaseName() + "notifications_topic";
+    }
+
     protected void sendExecuteSnapshotKafkaSignal() throws ExecutionException, InterruptedException {
         sendExecuteSnapshotKafkaSignal(tableDataCollectionId());
+    }
+
+    private KafkaConsumer<String, String> getConsumer() {
+        Properties props = new Properties();
+        props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList());
+        props.setProperty(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString());
+        props.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new KafkaConsumer<>(
+                props,
+                new StringDeserializer(),
+                new StringDeserializer());
+    }
+
+    protected void readSnapshotStatusNotifications(String fullTableNames, String additionalCondition) throws IOException {
+        try (final KafkaConsumer<String, String> consumer = getConsumer()) {
+            consumer.subscribe(Collections.singleton(getSnapshotNotificationsTopic()));
+            final List<ConsumerRecord<String, String>> notifications = new ArrayList<>();
+
+            Awaitility.await()
+                    .atMost(Duration.ofSeconds(5))
+                    .until(() -> {
+                        consumer.poll(Duration.ofSeconds(1))
+                                .iterator()
+                                .forEachRemaining(notifications::add);
+                        return !notifications.isEmpty();
+                    });
+            Assertions.assertThat(notifications.size()).isEqualTo(1);
+            ConsumerRecord<String, String> notification = notifications.get(0);
+            Assertions.assertThat(notification.key()).isEqualTo(SERVER_NAME);
+            Document document = reader.read(notification.value());
+            Assertions.assertThat(document.getString(STATUS)).isEqualTo(SUCCEEDED.name());
+            Assertions.assertThat(document.getString(TYPE)).isEqualTo(INCREMENTAL_SNAPSHOT);
+            Assertions.assertThat(document.getString(DATA_COLLECTION)).isEqualTo(fullTableNames);
+            if (additionalCondition != null) {
+                Assertions.assertThat(document.getString(ADDITIONAL_CONDITION)).isEqualTo(additionalCondition);
+            }
+        }
     }
 
     protected void sendExecuteSnapshotKafkaSignal(String fullTableNames) throws ExecutionException, InterruptedException {
@@ -215,6 +280,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
+        readSnapshotStatusNotifications(DATABASE.qualifiedTableName("a4"), null);
     }
 
     @Test
@@ -322,6 +388,12 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         for (int i = beforeResume + 1; i < ROW_COUNT; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
+    }
+
+    @Test
+    public void snapshotWithAdditionalCondition() throws Exception {
+        super.snapshotWithAdditionalCondition();
+        readSnapshotStatusNotifications(tableDataCollectionId(), String.format("aa = %s", Integer.MAX_VALUE));
     }
 
     protected void populate4PkTable() throws SQLException {
