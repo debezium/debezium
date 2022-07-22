@@ -120,6 +120,13 @@
                                     <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>
                                     <TZ>Asia/Kathmandu</TZ>
                                 </env>
+                                <volumes>
+                                    <bind>
+                                        <volume>${project.basedir}/src/test/docker/mssql.key:/etc/ssl/debezium/private/mssql.key</volume>
+                                        <volume>${project.basedir}/src/test/docker/mssql.pem:/etc/ssl/debezium/certs/mssql.pem</volume>
+                                        <volume>${project.basedir}/src/test/docker/mssql.conf:/var/opt/mssql/mssql.conf</volume>
+                                    </bind>
+                                </volumes>
                                 <ports>
                                     <port>${sqlserver.port}:1433</port>
                                 </ports>
@@ -188,6 +195,9 @@
                         <database.port>${sqlserver.port}</database.port>
                         <database.user>${sqlserver.user}</database.user>
                         <database.password>${sqlserver.password}</database.password>
+                        <database.ssl.truststore>${project.basedir}/src/test/resources/ssl</database.ssl.truststore>
+                        <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
+                        <database.trustServerCertificate>true</database.trustServerCertificate>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>
