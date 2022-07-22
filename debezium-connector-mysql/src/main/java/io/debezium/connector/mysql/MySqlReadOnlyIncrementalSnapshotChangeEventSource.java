@@ -9,13 +9,15 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Consumer;
 
-import io.debezium.connector.mysql.signal.KafkaSignal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mysql.signal.ExecuteSnapshotKafkaSignal;
+import io.debezium.connector.mysql.signal.KafkaSignal;
 import io.debezium.connector.mysql.signal.KafkaSignalThread;
+import io.debezium.connector.mysql.signal.PauseSnapshotKafkaSignal;
+import io.debezium.connector.mysql.signal.ResumeSnapshotKafkaSignal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
@@ -160,6 +162,14 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         getContext().enqueueKafkaSignal(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset));
     }
 
+    public void enqueuePauseSnapshot() {
+        getContext().enqueueKafkaSignal(new PauseSnapshotKafkaSignal());
+    }
+
+    public void enqueueResumeSnapshot() {
+        getContext().enqueueKafkaSignal(new ResumeSnapshotKafkaSignal());
+    }
+
     @Override
     public void processTransactionStartedEvent(MySqlPartition partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
@@ -240,6 +250,15 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             KafkaSignal signal = getContext().getKafkaSignals();
             if (signal instanceof ExecuteSnapshotKafkaSignal) {
                 addDataCollectionNamesToSnapshot((ExecuteSnapshotKafkaSignal) signal, partition, offsetContext);
+            }
+            else if (signal instanceof PauseSnapshotKafkaSignal) {
+                pauseSnapshot(partition, offsetContext);
+            }
+            else if (signal instanceof ResumeSnapshotKafkaSignal) {
+                resumeSnapshot(partition, offsetContext);
+            }
+            else {
+                throw new IllegalArgumentException("Unknown Kafka signal " + signal);
             }
         }
     }
